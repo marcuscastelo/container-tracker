@@ -61,9 +61,15 @@ export async function POST({ request }: any) {
     const parts = relTxt.split('/')
     const provider = parts.length >= 2 ? parts[1].toLowerCase() : ''
 
-    // Temporarily disable Maersk until token refresh logic is implemented
+    // If provider is Maersk, redirect to the dedicated Puppeteer-based handler
+    // The caller can follow the redirect. We return a 307 with Location header
+    // so the original method (POST) is preserved by clients that follow 307.
     if (provider === 'maersk') {
-      return new Response(JSON.stringify({ error: 'refresh for maersk is disabled for now' }), { status: 501 })
+      const redirectPath = `/api/refresh-maersk/${encodeURIComponent(String(container))}`
+      return new Response(JSON.stringify({ redirect: redirectPath }), {
+        status: 307,
+        headers: { Location: redirectPath, 'Content-Type': 'application/json' }
+      })
     }
     const parsed = parseCurl(curlContent)
     if (!parsed.url) return new Response(JSON.stringify({ error: 'could not parse url from curl' }), { status: 500 })
