@@ -13,6 +13,25 @@ const alerts = [
 ];
 
 export default function Home() {
+  async function refreshContainer(container: string) {
+    try {
+      alert(`Refreshing container ${container}...`)
+      const res = await fetch('http://localhost:3000/api/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ container }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok) {
+        window.alert(`Refresh failed: ${res.status} ${res.statusText}\n${j?.error ?? ''}`)
+      } else {
+        window.alert(`Refresh OK — updated: ${j?.updatedPath ?? 'unknown'}`)
+      }
+    } catch (err: any) {
+      console.error('refresh error', err)
+      window.alert(`Refresh error: ${err?.message ?? String(err)}`)
+    }
+  }
   return (
     <main class="mx-auto text-gray-700 p-6 max-w-6xl">
       <header class="flex items-center justify-between mb-6">
@@ -75,7 +94,22 @@ export default function Home() {
                 <td class="py-3 px-3 font-mono text-sm">{s.process}</td>
                 <td class="py-3 px-3">{s.client}</td>
                 <td class="py-3 px-3 font-semibold">{s.carrier}</td>
-                <td class="py-3 px-3">{s.container}</td>
+                <td class="py-3 px-3 flex items-center gap-2">
+                  <span>{s.container}</span>
+                  <button
+                    title="Refresh"
+                    class="p-1 rounded hover:bg-gray-100"
+                    onClick={() => refreshContainer(s.container).catch(() => {})}
+                  >
+                    {/* simple circular arrows icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="23 4 23 10 17 10"></polyline>
+                      <polyline points="1 20 1 14 7 14"></polyline>
+                      <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path>
+                      <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"></path>
+                    </svg>
+                  </button>
+                </td>
                 <td class="py-3 px-3">{s.route}</td>
                 <td class="py-3 px-3">
                   <span class={`inline-block px-3 py-1 rounded text-xs ${s.statusClass ?? 'bg-gray-200'}`}>
