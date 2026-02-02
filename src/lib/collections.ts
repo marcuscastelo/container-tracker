@@ -1,12 +1,48 @@
 import containerStatus from '../../schemas/containerStatus.schema'
 import { ShipmentsSchema as UIShipmentsSchema, Shipment as UIShipment } from '../../schemas/shipment.schema'
 
-// Import a few sample JSONs from collections (PoC). Adjust filenames if you add/remove samples.
-import maerskSample from '../../collections/maersk/MNBU3094033.json'
-import mscSample from '../../collections/msc/CXDU2058677.json'
-import cmacgmSample from '../../collections/cmacgm/FSCU4565494.json'
+// Load JSON samples. Prefer Vite's import.meta.globEager when available (dev/build),
+// but fall back to reading from the filesystem for SSR where globEager may not exist.
+let samples: Array<{ raw: any; path: string }> = []
 
-const samples = [maerskSample, mscSample, cmacgmSample]
+try {
+  // @ts-ignore - import.meta may have globEager under Vite
+  if (typeof (import.meta as any).globEager === 'function') {
+    const modules = (import.meta as any).globEager('../../collections/**/*.json') as Record<string, any>
+    samples = Object.entries(modules).map(([path, mod]) => ({ raw: (mod && (mod.default ?? mod)) || {}, path }))
+  } else {
+    throw new Error('no globEager')
+  }
+} catch (e) {
+  // SSR / node fallback: read files from disk
+  try {
+    // Use Node APIs to recursively read JSON files under the project-level collections/ folder
+    const fs = await import('fs')
+    const pathMod = await import('path')
+    const walk = (dir: string): string[] => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true })
+      const out: string[] = []
+      for (const ent of entries) {
+        const full = pathMod.join(dir, ent.name)
+        if (ent.isDirectory()) out.push(...walk(full))
+        else if (ent.isFile() && full.endsWith('.json')) out.push(full)
+      }
+      return out
+    }
+    const projectRoot = process.cwd()
+    const collectionsDir = pathMod.join(projectRoot, 'collections')
+    const files = walk(collectionsDir)
+    samples = files.map((p) => {
+      const raw = JSON.parse(fs.readFileSync(p, 'utf-8'))
+      // make path relative-ish to match previous behavior
+      const rel = pathMod.relative(projectRoot, p)
+      return { raw, path: rel }
+    })
+  } catch (err) {
+    // If everything fails, keep samples empty
+    samples = []
+  }
+}
 
 function safeString(v: unknown) {
   if (!v && v !== 0) return ''
@@ -14,13 +50,15 @@ function safeString(v: unknown) {
 }
 
 // Map a normalized Shipment (containerStatus.ShipmentSchema) to the simple UI Shipment
-function mapNormalizedToUI(raw: any, idx: number): UIShipment {
+function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   // try to find a container
   const containers = raw?.containers ?? []
   const first = containers[0] ?? {}
 
   const carrier = first.operator ?? raw?.source?.api ?? raw?.carrier ?? 'UNKNOWN'
-  const container_number = first.container_number ?? first.container_no ?? raw?.container_number ?? `SAMPLE${idx}`
+  // prefer container number from normalized payload, otherwise fall back to filename (without extension), then SAMPLE
+  const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
+  const container_number = first.container_number ?? first.container_no ?? raw?.container_number ?? fileBase ?? `SAMPLE${idx}`
   const client = raw?.client_name ?? raw?.source?.api ?? 'Cliente Teste'
   const origin = raw?.origin?.city ?? raw?.origin_display ?? ''
   const destination = raw?.destination?.city ?? raw?.destination_display ?? ''
@@ -47,26 +85,27 @@ function mapNormalizedToUI(raw: any, idx: number): UIShipment {
 export function getPoCShipments(): UIShipment[] {
   const out: UIShipment[] = []
 
-  samples.forEach((raw, i) => {
+  samples.forEach(({ raw, path }, i) => {
     // try to validate with the comprehensive schema
     try {
       const parsed = containerStatus.ShipmentSchema.parse(raw)
-      out.push(mapNormalizedToUI(parsed, i + 1))
+      out.push(mapNormalizedToUI(parsed, i + 1, path))
       return
     } catch (e) {
       // fallback: attempt to map raw file directly
       try {
         // raw may be an object with container-centric fields
-        const mapped = mapNormalizedToUI(raw, i + 1)
+        const mapped = mapNormalizedToUI(raw, i + 1, path)
         out.push(mapped)
         return
       } catch (err) {
-        // last resort: build a tiny row
+        // last resort: build a tiny row using filename as container
+        const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
         out.push({
           process: `sample-${i + 1}`,
           client: 'N/A',
           carrier: 'N/A',
-          container: String(i + 1),
+          container: fileBase ?? String(i + 1),
           route: 'N/A',
           status: 'N/A',
           eta: '',
