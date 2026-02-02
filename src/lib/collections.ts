@@ -55,7 +55,11 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   const containers = raw?.containers ?? []
   const first = containers[0] ?? {}
 
-  const carrier = first.operator ?? raw?.source?.api ?? raw?.carrier ?? 'UNKNOWN'
+  // derive carrier (armador) preferring normalized fields, otherwise infer from folder name in path
+  const rawCarrier = first.operator ?? raw?.source?.api ?? raw?.carrier
+  const normPath = path ? String(path).replace(/\\/g, '/') : undefined
+  const folderBase = normPath ? normPath.split('/').slice(-2)[0] : undefined
+  const carrier = rawCarrier ?? (folderBase ? folderBase.toUpperCase() : undefined) ?? 'UNKNOWN'
   // prefer container number from normalized payload, otherwise fall back to filename (without extension), then SAMPLE
   const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
   const container_number = first.container_number ?? first.container_no ?? raw?.container_number ?? fileBase ?? `SAMPLE${idx}`
