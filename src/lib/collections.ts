@@ -5,6 +5,8 @@ import { ShipmentsSchema as UIShipmentsSchema, Shipment as UIShipment } from '..
 // but fall back to reading from the filesystem for SSR where globEager may not exist.
 let samples: Array<{ raw: any; path: string }> = []
 
+// Prefer build-time glob import when available (client and server dev/build).
+// If not available, only attempt the filesystem fallback on the server (SSR/node).
 try {
   // @ts-ignore - import.meta may have globEager under Vite
   if (typeof (import.meta as any).globEager === 'function') {
@@ -12,40 +14,49 @@ try {
     samples = Object.entries(modules).map(([path, mod]) => ({ raw: (mod && (mod.default ?? mod)) || {}, path }))
     try { console.log('collections: loaded (globEager):', Object.keys(modules)) } catch (e) { }
   } else {
-    throw new Error('no globEager')
-  }
-} catch (e) {
-  // SSR / node fallback: read files from disk
-  try {
-    console.warn('collections: import.meta.globEager not available — falling back to filesystem read')
-    // Use Node APIs to recursively read JSON files under the project-level collections/ folder
-    const fs = await import('fs')
-    const pathMod = await import('path')
-    const walk = (dir: string): string[] => {
-      const entries = fs.readdirSync(dir, { withFileTypes: true })
-      const out: string[] = []
-      for (const ent of entries) {
-        const full = pathMod.join(dir, ent.name)
-        if (ent.isDirectory()) out.push(...walk(full))
-        else if (ent.isFile() && full.endsWith('.json')) out.push(full)
+    // globEager not available. Only attempt fs fallback when running in SSR/node.
+    const isServer = typeof window === 'undefined' || (import.meta as any).env?.SSR === true
+    if (!isServer) {
+      // In the browser we cannot read the filesystem — leave samples empty and warn.
+      try { console.warn('collections: import.meta.globEager not available — running in browser, skipping fs fallback') } catch (e) { }
+      samples = []
+    } else {
+      try {
+        console.warn('collections: import.meta.globEager not available — falling back to filesystem read')
+        // Use Node APIs to recursively read JSON files under the project-level collections/ folder
+        const fs = await import('fs')
+        const pathMod = await import('path')
+        const walk = (dir: string): string[] => {
+          const entries = fs.readdirSync(dir, { withFileTypes: true })
+          const out: string[] = []
+          for (const ent of entries) {
+            const full = pathMod.join(dir, ent.name)
+            if (ent.isDirectory()) out.push(...walk(full))
+            else if (ent.isFile() && full.endsWith('.json')) out.push(full)
+          }
+          return out
+        }
+        const projectRoot = (typeof process !== 'undefined' && typeof process.cwd === 'function') ? process.cwd() : '.'
+        const collectionsDir = pathMod.join(projectRoot, 'collections')
+        const files = walk(collectionsDir)
+        samples = files.map((p) => {
+          const raw = JSON.parse(fs.readFileSync(p, 'utf-8'))
+          // make path relative-ish to match previous behavior
+          const rel = pathMod.relative(projectRoot, p)
+          return { raw, path: rel }
+        })
+        try { console.log('collections: loaded (fs):', samples.map(s => s.path)) } catch (err) { }
+      } catch (err) {
+        // If everything fails, keep samples empty
+        try { console.error('collections: failed to load samples via fs fallback', err) } catch (e) { }
+        samples = []
       }
-      return out
     }
-    const projectRoot = process.cwd()
-    const collectionsDir = pathMod.join(projectRoot, 'collections')
-    const files = walk(collectionsDir)
-    samples = files.map((p) => {
-      const raw = JSON.parse(fs.readFileSync(p, 'utf-8'))
-      // make path relative-ish to match previous behavior
-      const rel = pathMod.relative(projectRoot, p)
-      return { raw, path: rel }
-    })
-    try { console.log('collections: loaded (fs):', samples.map(s => s.path)) } catch (err) { }
-  } catch (err) {
-    // If everything fails, keep samples empty
-    try { console.error('collections: failed to load samples via fs fallback', err) } catch (e) { }
-    samples = []
   }
+}
+catch (e) {
+  try { console.error('collections: unexpected error while loading samples', e) } catch (err) { }
+  samples = []
 }
 
 function safeString(v: unknown) {

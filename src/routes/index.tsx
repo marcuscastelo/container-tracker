@@ -15,8 +15,9 @@ const alerts = [
 export default function Home() {
   async function refreshContainer(container: string) {
     try {
+      console.debug('refreshContainer called for', container)
       alert(`Refreshing container ${container}...`)
-      const res = await fetch('http://localhost:3000/api/refresh', {
+      const res = await fetch('/api/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ container }),
@@ -97,9 +98,20 @@ export default function Home() {
                 <td class="py-3 px-3 flex items-center gap-2">
                   <span>{s.container}</span>
                   <button
+                    type="button"
                     title="Refresh"
                     class="p-1 rounded hover:bg-gray-100"
-                    onClick={() => refreshContainer(s.container).catch(() => {})}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.debug('refresh button click', s.container);
+                      // diagnostic: show immediate alert to verify handler runs
+                      alert(`button clicked: ${s.container}`)
+                      try {
+                        refreshContainer(s.container).catch(() => {})
+                      } catch (err) {
+                        console.error('call refreshContainer failed', err)
+                      }
+                    }}
                   >
                     {/* simple circular arrows icon */}
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
