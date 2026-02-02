@@ -1,69 +1,10 @@
 import { A } from "@solidjs/router";
 import { For } from "solid-js";
+import { getPoCShipments } from "~/lib/collections";
+import type { Shipment } from "~/schemas/shipment.schema";
 
-type Shipment = {
-  process: string;
-  client: string;
-  carrier: string;
-  container: string;
-  route: string;
-  status: string;
-  eta: string;
-  statusClass?: string;
-};
-
-const shipments: Shipment[] = [
-  {
-    process: "2024-0458",
-    client: "ABC Import",
-    carrier: "MAERSK",
-    container: "MABU1234567",
-    route: "Shanghai → Santos",
-    status: "Em Trânsito",
-    eta: "10/05/2024",
-    statusClass: "bg-green-500 text-white",
-  },
-  {
-    process: "2024-0321",
-    client: "XYZ Comércio",
-    carrier: "MSC",
-    container: "MEDU9876543",
-    route: "Hamburg → Rio de Janeiro",
-    status: "Chegada Atrasada",
-    eta: "07/05/2024",
-    statusClass: "bg-red-500 text-white",
-  },
-  {
-    process: "2024-0297",
-    client: "Delta Motors",
-    carrier: "CMA CGM",
-    container: "ECMU4567891",
-    route: "Los Angeles → Paranaguá",
-    status: "Carregado no Navio",
-    eta: "12/05/2024",
-    statusClass: "bg-green-600 text-white",
-  },
-  {
-    process: "2024-0510",
-    client: "Global Foods",
-    carrier: "COSCO",
-    container: "COSU1122334",
-    route: "Ningbo → Itajaí",
-    status: "Despacho Aduaneiro",
-    eta: "05/05/2024",
-    statusClass: "bg-yellow-400 text-black",
-  },
-  {
-    process: "2024-0387",
-    client: "Via Brasil Log",
-    carrier: "ONE",
-    container: "OOLU5566778",
-    route: "Busan → Navegantes",
-    status: "Liberado para Retirada",
-    eta: "04/05/2024",
-    statusClass: "bg-green-700 text-white",
-  },
-];
+// Load PoC shipments from sample collections and map to UI shape
+const shipments: Shipment[] = getPoCShipments()
 
 const alerts = [
   { text: "Atraso: Navio MSC MEDU9876543 - Chegada atrasada.", time: "Há 2 horas" },
