@@ -161,8 +161,11 @@ export function getPoCShipments(): UIShipment[] {
     // try to validate with the comprehensive schema
     try {
       console.debug(`collections: attempting to parse sample #${i + 1} with normalized schema (${path})`)
+      // validate with the comprehensive schema but keep the original raw object for mapping
       const parsed = containerStatus.ShipmentSchema.parse(raw)
-      out.push(mapNormalizedToUI(parsed, i + 1, path))
+      // NOTE: don't use `parsed` for mapping because zod object parsing strips unknown keys
+      // (some provider-specific fields like Reciept / LastDischargePort would be lost).
+      out.push(mapNormalizedToUI(raw, i + 1, path))
       return
     } catch (e) {
       console.debug(`collections: sample #${i + 1} did not match normalized schema, attempting UI schema (${path})`)
