@@ -1,0 +1,231 @@
+{
+  "has_import_shipment": false,
+  "is_container_search": true,
+  "is_split_combine_part_load": false,
+  "is_cancelled_shipment": false,
+  "unassigned_containers": 0,
+  "last_update_time": "2026-02-02T14:44:48.000Z",
+  "origin": {
+    "terminal": "DEKHILA TERMINAL",
+    "geo_site": "7F6EGC45TDBIY",
+    "city": "ALEXANDRIA DEKHEILA",
+    "state": null,
+    "country": "EGYPT",
+    "country_code": "EG",
+    "geoid_city": "7F6EGC45TDBIY",
+    "site_type": "TERMINAL",
+    "location_code": "EGALDTM"
+  },
+  "destination": {
+    "terminal": "Brasil Terminal Portuario",
+    "geo_site": "DOLGEEUHWCVDV",
+    "city": "SANTOS",
+    "state": "SP",
+    "country": "BRAZIL",
+    "country_code": "BR",
+    "geoid_city": "DOLGEEUHWCVDV",
+    "site_type": "TERMINAL",
+    "location_code": "BRSSZBT"
+  },
+  "containers": [
+    {
+      "container_num": "MRKU2733926",
+      "container_size": "40",
+      "container_type": "DRY",
+      "iso_code": "45G1",
+      "operator": "MAEU",
+      "locations": [
+        {
+          "terminal": "AICT",
+          "geo_site": "1LKQC7EW0APSU",
+          "city": "Alexandria",
+          "state": null,
+          "country": "Egypt",
+          "country_code": "EG",
+          "geoid_city": "1LKQC7EW0APSU",
+          "site_type": "TERMINAL",
+          "location_code": "EGALYAI",
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "eventId": "14196465653",
+              "locationCode": "EGALYAI",
+              "activity": "GATE-OUT",
+              "stempty": true,
+              "actfor": "EXP",
+              "event_time": "2026-01-08T17:43:00.000",
+              "event_time_type": "ACTUAL"
+            }
+          ]
+        },
+        {
+          "terminal": "DEKHILA TERMINAL",
+          "geo_site": "7F6EGC45TDBIY",
+          "city": "ALEXANDRIA DEKHEILA",
+          "state": null,
+          "country": "EGYPT",
+          "country_code": "EG",
+          "geoid_city": "7F6EGC45TDBIY",
+          "site_type": "TERMINAL",
+          "location_code": "EGALDTM",
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "eventId": "14203734309",
+              "locationCode": "EGALDTM",
+              "activity": "GATE-IN",
+              "stempty": false,
+              "actfor": "EXP",
+              "event_time": "2026-01-09T15:36:00.000",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "eventId": "14223994331",
+              "locationCode": "EGALDTM",
+              "activity": "LOAD",
+              "stempty": false,
+              "vessel_name": "PAN GG",
+              "voyage_num": "603E",
+              "vessel_num": "S6H",
+              "transport_mode": "FEF",
+              "event_time": "2026-01-14T22:03:00.000",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "eventId": "461499af-c813-3eb7-8834-54db5776c168",
+              "locationCode": "EGALDTM",
+              "activity": "CONTAINER DEPARTURE",
+              "stempty": false,
+              "vessel_name": "PAN GG",
+              "voyage_num": "603E",
+              "vessel_num": "S6H",
+              "transport_mode": "FEF",
+              "event_time": "2026-01-15T08:22:00.000",
+              "event_time_type": "ACTUAL"
+            }
+          ]
+        },
+        {
+          "terminal": "EAST PORT SAID TERMINAL",
+          "geo_site": "0FYKXUTLQUD49",
+          "city": "PORT SAID EAST",
+          "state": null,
+          "country": "EGYPT",
+          "country_code": "EG",
+          "geoid_city": "0FYKXUTLQUD49",
+          "site_type": "TERMINAL",
+          "location_code": "EGPSDTM",
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "eventId": "19b94227-3ceb-344a-ace0-62aaa27bd4db",
+              "locationCode": "EGPSDTM",
+              "activity": "CONTAINER ARRIVAL",
+              "stempty": false,
+              "vessel_name": "PAN GG",
+              "voyage_num": "603E",
+              "vessel_num": "S6H",
+              "transport_mode": "FEF",
+              "event_time": "2026-01-18T14:58:00.000",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "eventId": "14238888510",
+              "locationCode": "EGPSDTM",
+              "activity": "DISCHARG",
+              "stempty": false,
+              "vessel_name": "PAN GG",
+              "voyage_num": "603E",
+              "vessel_num": "S6H",
+              "transport_mode": "FEF",
+              "event_time": "2026-01-18T18:26:00.000",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "locationCode": "EGPSDTM",
+              "activity": "CONTAINER DEPARTURE",
+              "stempty": false,
+              "vessel_name": "SINE A",
+              "voyage_num": "606E",
+              "vessel_num": "72R",
+              "transport_mode": "FEO",
+              "event_time": "2026-02-07T15:00:00.000",
+              "event_time_type": "EXPECTED"
+            }
+          ]
+        },
+        {
+          "terminal": "APMT BARCELONA",
+          "geo_site": "38CSR2BBEC51A",
+          "city": "BARCELONA",
+          "state": null,
+          "country": "SPAIN",
+          "country_code": "ES",
+          "geoid_city": "38CSR2BBEC51A",
+          "site_type": "TERMINAL",
+          "location_code": "ESBCN07",
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "locationCode": "ESBCN07",
+              "activity": "CONTAINER ARRIVAL",
+              "stempty": false,
+              "vessel_name": "SINE A",
+              "voyage_num": "606E",
+              "vessel_num": "72R",
+              "transport_mode": "FEO",
+              "event_time": "2026-02-12T09:10:00.000",
+              "event_time_type": "EXPECTED"
+            },
+            {
+              "type": "EQUIPMENT",
+              "locationCode": "ESBCN07",
+              "activity": "CONTAINER DEPARTURE",
+              "stempty": false,
+              "vessel_name": "MAERSK PANGANI",
+              "voyage_num": "255S",
+              "vessel_num": "T9W",
+              "transport_mode": "MVS",
+              "event_time": "2026-02-14T22:00:00.000",
+              "event_time_type": "EXPECTED"
+            }
+          ]
+        },
+        {
+          "terminal": "Brasil Terminal Portuario",
+          "geo_site": "DOLGEEUHWCVDV",
+          "city": "SANTOS",
+          "state": "SP",
+          "country": "BRAZIL",
+          "country_code": "BR",
+          "geoid_city": "DOLGEEUHWCVDV",
+          "site_type": "TERMINAL",
+          "location_code": "BRSSZBT",
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "locationCode": "BRSSZBT",
+              "activity": "CONTAINER ARRIVAL",
+              "stempty": false,
+              "vessel_name": "MAERSK PANGANI",
+              "voyage_num": "255S",
+              "vessel_num": "T9W",
+              "transport_mode": "MVS",
+              "event_time": "2026-03-08T08:00:00.000",
+              "event_time_type": "EXPECTED"
+            }
+          ]
+        }
+      ],
+      "eta_final_delivery": "2026-03-08T08:00:00.000",
+      "status": "IN_PROGRESS",
+      "last_update_time": "2026-02-02T14:44:48Z",
+      "service_type_origin": "CONTAINER_YARD",
+      "service_type_destination": "CONTAINER_YARD"
+    }
+  ]
+}
