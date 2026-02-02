@@ -68,7 +68,8 @@ export async function POST({ request }: any) {
     const parsed = parseCurl(curlContent)
     if (!parsed.url) return new Response(JSON.stringify({ error: 'could not parse url from curl' }), { status: 500 })
 
-    console.log(`refresh: provider=${provider} container=${container} url=${parsed.url} method=${parsed.method}`)
+    console.debug(`refresh: provider=${provider} container=${container} url=${parsed.url} method=${parsed.method}`)
+    console.debug('refresh: fetchOpts.headers preview', Object.keys(parsed.headers || {}).slice(0,20))
 
     // perform request
     const fetchOpts: any = { method: parsed.method, headers: parsed.headers }
@@ -82,9 +83,14 @@ export async function POST({ request }: any) {
 
     let res
     try {
-      console.log('refresh: performing fetch...')
+      console.debug('refresh: performing fetch...')
       res = await fetch(parsed.url, fetchOpts)
-      console.log('refresh: fetch returned', res.status, res.statusText)
+      console.debug('refresh: fetch returned', res.status, res.statusText)
+      console.debug('refresh: response headers', {
+        'content-type': res.headers.get && res.headers.get('content-type'),
+        'content-encoding': res.headers.get && res.headers.get('content-encoding'),
+        'content-length': res.headers.get && res.headers.get('content-length'),
+      })
     } catch (err) {
       console.error('refresh: fetch failed', err)
       return new Response(JSON.stringify({ error: 'fetch failed', details: String(err) }), { status: 502 })
@@ -95,16 +101,26 @@ export async function POST({ request }: any) {
     try {
       const ab = await res.arrayBuffer()
       let buf = Buffer.from(ab)
-      console.log('refresh: raw buffer length', buf.length)
+      console.debug('refresh: raw buffer length', buf.length)
+      try {
+        const previewHex = buf.slice(0, 64).toString('hex')
+        const previewUtf = buf.slice(0, 128).toString('utf8')
+        console.debug('refresh: raw buffer preview hex', previewHex)
+        console.debug('refresh: raw buffer preview utf8 (maybe binary)', previewUtf.replace(/\s+/g, ' '))
+      } catch (e) {
+        console.debug('refresh: preview conversion failed', String(e))
+      }
       const ce = (res.headers && (res.headers.get ? res.headers.get('content-encoding') : null)) || null
       try {
         const zlib = await import('zlib')
         if (ce === 'gzip' || (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b)) {
-          try { buf = zlib.gunzipSync(buf); console.log('refresh: decompressed gzip response (by header/signature)') } catch (e) { console.error('refresh: gunzip failed', e) }
+          try { buf = zlib.gunzipSync(buf); console.debug('refresh: decompressed gzip response (by header/signature)') } catch (e) { console.error('refresh: gunzip failed', e) }
         } else if (ce === 'deflate' || (buf.length >= 2 && buf[0] === 0x78 && (buf[1] === 0x9c || buf[1] === 0x01 || buf[1] === 0xda))) {
-          try { buf = zlib.inflateSync(buf); console.log('refresh: inflated deflate response (by header/signature)') } catch (e) { console.error('refresh: inflate failed', e) }
+          try { buf = zlib.inflateSync(buf); console.debug('refresh: inflated deflate response (by header/signature)') } catch (e) { console.error('refresh: inflate failed', e) }
         } else if (ce === 'br') {
-          try { buf = zlib.brotliDecompressSync(buf); console.log('refresh: brotli-decompressed response') } catch (e) { console.error('refresh: brotli decompress failed', e) }
+          try { buf = zlib.brotliDecompressSync(buf); console.debug('refresh: brotli-decompressed response') } catch (e) { console.error('refresh: brotli decompress failed', e) }
+        } else {
+          console.debug('refresh: no compression detected by header or signature; content-encoding=', ce)
         }
       } catch (e) {
         console.error('refresh: zlib import failed or not available', e)
@@ -117,7 +133,8 @@ export async function POST({ request }: any) {
         console.error('refresh: buf.toString failed', e)
         text = ''
       }
-      console.log('refresh: decoded text length', text.length)
+      console.debug('refresh: decoded text length', text.length)
+      console.debug('refresh: decoded text preview', text.slice(0, 500).replace(/\s+/g, ' '))
     } catch (err) {
       console.error('refresh: reading response failed', err)
       return new Response(JSON.stringify({ error: 'reading response failed', details: String(err) }), { status: 502 })

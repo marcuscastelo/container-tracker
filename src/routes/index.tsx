@@ -1,5 +1,5 @@
 import { A } from "@solidjs/router";
-import { For, createSignal } from "solid-js";
+import { For } from "solid-js";
 import { getPoCShipments } from "~/lib/collections";
 import type { Shipment } from "~/schemas/shipment.schema";
 
@@ -13,11 +13,10 @@ const alerts = [
 ];
 
 export default function Home() {
-  const [loadingMap, setLoadingMap] = createSignal<Record<string, boolean>>({})
-
   async function refreshContainer(container: string) {
-    setLoadingMap(prev => ({ ...(prev || {}), [container]: true }))
     try {
+      console.debug('refreshContainer called for', container)
+      alert(`Refreshing container ${container}...`)
       const res = await fetch('/api/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,8 +31,6 @@ export default function Home() {
     } catch (err: any) {
       console.error('refresh error', err)
       window.alert(`Refresh error: ${err?.message ?? String(err)}`)
-    } finally {
-      setLoadingMap(prev => ({ ...(prev || {}), [container]: false }))
     }
   }
   return (
@@ -103,24 +100,33 @@ export default function Home() {
                   <button
                     type="button"
                     title="Refresh"
-                    class="p-1 rounded hover:bg-gray-100"
-                    disabled={loadingMap()[s.container]}
-                    onClick={(e) => { e.stopPropagation(); refreshContainer(s.container) }}
+                    class="p-1 rounded hover:bg-gray-100 refresh-button"
+                    data-container={s.container}
+                    onClick={(e) => {
+                      const el = e.currentTarget as HTMLElement
+                      // if a delegated handler already handled this click, skip to avoid duplicate
+                      if (el.dataset.delegateHandled === '1') {
+                        console.debug('refresh click already handled by delegate', s.container)
+                        // clear flag for future clicks
+                        delete el.dataset.delegateHandled
+                        return
+                      }
+                      e.stopPropagation();
+                      console.debug('refresh button click', s.container);
+                      try {
+                        refreshContainer(s.container).catch(() => {})
+                      } catch (err) {
+                        console.error('call refreshContainer failed', err)
+                      }
+                    }}
                   >
-                    {/* show spinner when loading */}
-                    {loadingMap()[s.container] ? (
-                      <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-                        <path d="M22 12a10 10 0 0 1-10 10" stroke-opacity="0.75"></path>
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"></polyline>
-                        <polyline points="1 20 1 14 7 14"></polyline>
-                        <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path>
-                        <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"></path>
-                      </svg>
-                    )}
+                    {/* simple circular arrows icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="23 4 23 10 17 10"></polyline>
+                      <polyline points="1 20 1 14 7 14"></polyline>
+                      <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path>
+                      <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"></path>
+                    </svg>
                   </button>
                 </td>
                 <td class="py-3 px-3">{s.route}</td>
