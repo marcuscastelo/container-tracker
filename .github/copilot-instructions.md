@@ -1,9 +1,9 @@
 ### Purpose
-These instructions help AI coding agents become productive in this repository quickly. Focus areas: app architecture, important files, developer workflows, and project-specific conventions.
+These instructions help AI coding agents and contributors become productive in this repository quickly. They summarise architecture, important files, conventions, and the specific mapping heuristics used by the PoC loader.
 
 ### Quick start (what to run)
 - Node.js >= 22 is required (see `package.json` "engines").
-- Install deps and run dev server:
+- Install dependencies and run dev server:
   - npm install
   - npm run dev   # runs `vinxi dev`
 - Build for production:
@@ -11,46 +11,63 @@ These instructions help AI coding agents become productive in this repository qu
   - npm start
 
 ### High-level architecture
-- This is a small SolidJS / SolidStart PoC app scaffolded with Vinxi. UI lives under `src/` (routes and components).
-- Data shaping is done by schema files in `schemas/` and the sample-data loader at `src/lib/collections.ts`.
-- The app shows a list of shipments derived from JSON samples in `collections/*/*.json` (provider folders: `maersk`, `cmacgm`, `msc`, ...).
+- Small SolidJS / SolidStart PoC scaffolded with Vinxi. UI lives under `src/` (routes and components).
+- Data shaping lives in `schemas/` and the sample-data loader `src/lib/collections.ts`.
+- The app renders a shipments list derived from JSON samples in `collections/*/*.json` (provider folders: `maersk`, `cmacgm`, `msc`, ...).
 
-Why this structure: the project intentionally separates:
-- provider-specific raw payloads (collections/*.json)
-- a normalized schema (`schemas/containerStatus.schema.ts`) using zod
-- a simplified UI schema (`schemas/shipment.schema.ts`) used by components
+Design choices
+- Provider-specific raw payloads are stored under `collections/` to keep mapping logic isolated from UI code.
+- A comprehensive zod schema (`schemas/containerStatus.schema.ts`) validates/normalizes provider payloads.
+- A small UI schema (`schemas/shipment.schema.ts`) describes the simplified shape the components expect.
 
-This makes the code tolerant to multiple vendor payload shapes and suitable for PoC iterations.
+### Key files
+- `src/lib/collections.ts` — loader + mapping logic. Important responsibilities:
+  - Load sample JSONs (Vite `import.meta.globEager` in dev) or read from disk during SSR fallback.
+  - Validate with the comprehensive Zod schema when possible, but map from the original raw object so provider-specific fields are preserved for fallbacks.
+  - Contain provider-specific heuristics for MSC, CMA-CGM, MAERSK, etc. (origin/destination, ETA, container number, carrier inference).
+- `schemas/containerStatus.schema.ts` — large normalized zod schema for shipments/containers/events.
+- `schemas/shipment.schema.ts` — minimal UI zod schema used by components.
+- `src/routes/index.tsx` — example UI consuming `getPoCShipments()`.
 
-### Key files and what they show
-- `src/lib/collections.ts` — Core mapping logic & sample loader. Important behaviors:
-  - Uses `import.meta.globEager` in dev (Vite) when available; falls back to reading files from disk for SSR (Node) — follow its try/catch flow when changing file-loading behavior.
-  - Contains provider-specific fallbacks (MSC, CMA-CGM) and extensive date parsing logic (see parseDateLike). If you add a new provider, add mapping fallbacks here.
-- `schemas/containerStatus.schema.ts` — comprehensive zod schema for normalized shipments/containers/events.
-- `schemas/shipment.schema.ts` — minimal UI schema the routes/components expect.
-- `src/routes/index.tsx` — Example UI that consumes `getPoCShipments()` and renders the table.
-- `app.config.ts` — Vinxi/Vite config (Tailwind plugin). Editing dev-server behavior typically happens here.
+### Loader behaviour & heuristics (important)
+- Loading:
+  - Client/dev: uses `import.meta.globEager('../../collections/**/*.json')` to bundle samples.
+  - SSR/node: falls back to reading files from `collections/` using `fs` and `process.cwd()`.
+  - Logging is present to show which path (globEager vs fs) was used.
+- Mapping strategy (high level):
+  1. Try validating with `ShipmentSchema` (comprehensive), but always map from the original raw object so provider-specific keys (like `Reciept`, `LastDischargePort`, `Data.*`) remain available.
+  2. Extract container number: prefer normalized fields, then common names (container_number/container_no/container_num/ContainerNumber), then filename fallback (the sample's JSON filename).
+  3. Infer carrier (armador): prefer normalized/operator fields, otherwise infer from the folder name (`collections/<provider>/...`).
+  4. Resolve origin/destination using multiple fallbacks in order:
+     - normalized `origin.city` / `destination.city`
+     - container `locations` (first/last)
+     - MSC: `Data.BillOfLadings[0].GeneralTrackingInfo` (PortOfLoad / PortOfDischarge, ShippedFrom / ShippedTo)
+     - CMA-CGM: top-level `Reciept`, `LastDischargePort`, `POL`, `POD` or `ContextInfo` fields
+     - route string fallback (split on arrows/dashes)
+  5. Derive ETA with provider-aware fallbacks and flexible parsing (handles `/Date(...)` strings, ISO, numeric timestamps, and `DD/MM/YYYY`):
+     - container-level `eta_final_delivery`
+     - common fields (EstimatedTimeOfArrival / last_update_time / eta_display)
+     - CMA-CGM `PODDate` / `ContextInfo.ValueLeft`
+     - MSC `Data.BillOfLadings[0].GeneralTrackingInfo.FinalPodEtaDate` or `ContainersInfo[0].PodEtaDate`
+     - events: prefer MSC container-level event with highest `Order` when present (most recent logical move), otherwise choose the most recent event date across container-level and location-level events.
 
-### Project-specific conventions / patterns
-- ESM-only TypeScript (package.json `type: "module"`) — use import syntax and async dynamic imports.
-- Aliases: code uses `~` style imports (e.g. `~/lib/collections`) — respect Vite / Vinxi resolver when moving files.
-- Logging: code relies on `console.debug` / `console.warn` / `console.error` in mapping logic. When changing behavior, keep useful debug messages.
-- Zod validation: `collections.ts` attempts normalized parse first, then falls back to mapping raw object to UI schema. Do not assume all samples match `containerStatus` schema.
+### Logging & debugging
+- The loader includes `console.debug`, `console.warn`, and `console.error` at key points:
+  - Which loading strategy was used (globEager vs fs)
+  - Which files were loaded
+  - Which fallbacks were used to infer carrier/container/origin/destination/ETA
+- Use the browser console (client mode) or terminal (SSR/fs fallback) to inspect logs during development.
 
 ### Adding sample data
-- Add JSON under `collections/<provider>/*.json`. The loader will pick it up in dev (globEager) and in server fallback.
-- Try to include representative raw fields (e.g., `Data.BillOfLadings` for MSC, `PODDate`/`POL` for CMA-CGM) to exercise mapping code.
+- Place JSON under `collections/<provider>/*.json` (e.g. `collections/msc/CXDU2058677.json`).
+- To exercise mapping heuristics, include provider-specific fields: MSC -> `Data.BillOfLadings`, CMA -> `PODDate`/`POL`/`Reciept`, Maersk -> `containers[].locations[]` events, etc.
 
-### Integration & external deps
-- Runtime: `vinxi` + `solid-start` + `solid-js` + `zod` + Tailwind. No backend services in this repo — mapping code simulates provider inputs.
+### Common edits & pitfalls
+- If you edit `src/lib/collections.ts`, test both dev (Vite) and SSR paths — the file purposely contains both `import.meta.globEager` and a Node fs fallback.
+- Don't pass Zod-parsed objects to the mapper if you need provider-specific keys — parse for validation, but map from the raw object to keep unknown fields.
+- Date parsing is permissive: preserve heuristics; add provider-specific parsing only when you have firm guarantees.
 
-### Common edits & pitfalls for agents
-- If changing the loader in `src/lib/collections.ts`, test both dev (Vite) and SSR paths — the file has a hard-coded fallback that uses Node `fs` and `process.cwd()`.
-- Keep schema changes coordinated: if you extend `ContainerSchema` or `ShipmentSchema`, update both the zod schema file and any code that accesses the new fields (mapping, UI rendering).
-- Date parsing is liberal: preserve the helper heuristics unless you have provider guarantees; otherwise add provider-specific parsing upstream.
+### Examples
+- UI expects the simplified shipments returned by `getPoCShipments()` (see `src/routes/index.tsx`).
+- To add a new provider, add JSON samples and extend `mapNormalizedToUI` with provider-specific fallbacks.
 
-### Examples to reference
-- To find how UI expects data: `src/routes/index.tsx` consumes `getPoCShipments()` which returns items matching `schemas/shipment.schema.ts`.
-- Loader behavior: `src/lib/collections.ts` — search for `globEager` and the `fs` fallback to understand environment-specific behavior.
-
-If anything in these notes is unclear or you want more examples (unit tests, new data mapping), tell me which area to expand and I will iterate.
