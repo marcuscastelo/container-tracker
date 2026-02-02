@@ -58,7 +58,14 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   console.debug(`collections: mapping sample #${idx} (${path})`)
   // try to find a container
   const containers = raw?.containers ?? []
-  const first = containers[0] ?? {}
+  let first: any = containers[0] ?? {}
+
+  // MSC payloads often include container info under Data.BillOfLadings[0].ContainersInfo
+  const mscContainers = raw?.Data?.BillOfLadings && raw.Data.BillOfLadings[0]?.ContainersInfo ? raw.Data.BillOfLadings[0].ContainersInfo : null
+  if ((!containers || containers.length === 0) && mscContainers && mscContainers.length > 0) {
+    first = mscContainers[0]
+    try { console.debug(`collections: using MSC ContainersInfo for sample ${path}`) } catch (e) {}
+  }
 
   // derive carrier (armador) preferring normalized fields, otherwise infer from folder name in path
   const rawCarrier = first.operator ?? raw?.source?.api ?? raw?.carrier
@@ -67,7 +74,7 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   const carrier = rawCarrier ?? (folderBase ? folderBase.toUpperCase() : undefined) ?? 'UNKNOWN'
   // prefer container number from normalized payload, otherwise fall back to filename (without extension), then SAMPLE
   const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
-  const container_number = first.container_number ?? first.container_no ?? raw?.container_number ?? fileBase ?? `SAMPLE${idx}`
+  const container_number = first.container_number ?? first.container_no ?? first.container_num ?? first.ContainerNumber ?? raw?.container_number ?? fileBase ?? `SAMPLE${idx}`
   const client = raw?.client_name ?? raw?.source?.api ?? 'Cliente Teste'
 
   // derive origin/destination from multiple possible payload shapes
@@ -80,8 +87,8 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   console.debug('after normalized:', { origin, destination })
 
   // 2) container locations array (first and last)
-  if ((!origin || !destination) && Array.isArray(containers) && containers.length > 0) {
-    const locs = first?.locations ?? []
+  if ((!origin || !destination) && ((Array.isArray(containers) && containers.length > 0) || (mscContainers && mscContainers.length > 0))) {
+    const locs = first?.locations ?? first?.Locations ?? []
     if (locs && locs.length > 0) {
       if (!origin) origin = locs[0]?.city ?? locs[0]?.Location ?? ''
       if (!destination) {
@@ -128,8 +135,86 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   }
   console.debug('final origin/destination:', { origin, destination })
 
-  const etaDate = first?.eta_final_delivery ?? raw?.eta ?? raw?.last_update_time
-  const eta = etaDate ? (typeof etaDate === 'string' ? etaDate : (new Date(etaDate)).toLocaleDateString()) : ''
+  // Derive ETA using multiple provider-specific fallbacks
+  function parseDateLike(v: any): Date | undefined {
+    if (v == null || v === '') return undefined
+    // /Date(1234567890)/
+    if (typeof v === 'string') {
+      const msMatch = v.match(/\/Date\(([-0-9]+)\)\//)
+      if (msMatch) {
+        const ms = Number(msMatch[1])
+        if (!Number.isNaN(ms)) return new Date(ms)
+      }
+      // try ISO or common date strings
+      const d = new Date(v)
+      if (!Number.isNaN(d.getTime())) return d
+      // try DD/MM/YYYY simple parse (MSC uses this format)
+      const parts = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+      if (parts) {
+        const dd = Number(parts[1]), mm = Number(parts[2]), yy = Number(parts[3])
+        return new Date(yy, mm - 1, dd)
+      }
+      return undefined
+    }
+    if (typeof v === 'number') {
+      const d = new Date(v)
+      if (!Number.isNaN(d.getTime())) return d
+      return undefined
+    }
+    if (v instanceof Date) return v
+    return undefined
+  }
+
+  let etaSource: string | undefined
+  let etaObj: Date | undefined
+
+  // 1) container normalized
+  etaObj = parseDateLike(first?.eta_final_delivery)
+  if (etaObj) etaSource = 'container.eta_final_delivery'
+
+  // 2) common fields
+  if (!etaObj) {
+    etaObj = parseDateLike(raw?.EstimatedTimeOfArrival ?? raw?.eta ?? raw?.eta_display ?? raw?.last_update_time)
+    if (etaObj) etaSource = 'common fields (EstimatedTimeOfArrival/eta/last_update_time)'
+  }
+
+  // 3) CMA CGM style
+  if (!etaObj && (raw?.PODDate || raw?.POLDate || raw?.POODate || raw?.ContextInfo?.ValueLeft)) {
+    etaObj = parseDateLike(raw?.PODDate ?? raw?.EstimatedTimeOfArrival ?? raw?.ContextInfo?.ValueLeft)
+    if (etaObj) etaSource = 'CMA CGM (PODDate/ContextInfo)'
+  }
+
+  // 4) MSC style
+  if (!etaObj && raw?.Data?.BillOfLadings && raw.Data.BillOfLadings[0]) {
+    const info = raw.Data.BillOfLadings[0].GeneralTrackingInfo
+    etaObj = parseDateLike(info?.FinalPodEtaDate ?? raw?.Data?.BillOfLadings[0]?.ContainersInfo?.[0]?.PodEtaDate)
+    if (etaObj) etaSource = 'MSC (FinalPodEtaDate/ContainersInfo.PodEtaDate)'
+  }
+
+  // 5) events fallback: check container-level events (MSC) and location events
+  if (!etaObj) {
+    const containerEvents = first?.Events ?? first?.events ?? null
+    if (Array.isArray(containerEvents) && containerEvents.length > 0) {
+      for (let ei = containerEvents.length - 1; ei >= 0 && !etaObj; ei--) {
+        etaObj = parseDateLike(containerEvents[ei]?.Date ?? containerEvents[ei]?.DateString ?? containerEvents[ei]?.event_time ?? containerEvents[ei]?.Date)
+        if (etaObj) etaSource = 'events (container-level last event Date)'
+      }
+    }
+
+    if (!etaObj && ((Array.isArray(containers) && containers.length > 0) || (mscContainers && mscContainers.length > 0))) {
+      const locs = first?.locations ?? first?.Locations ?? []
+      for (let li = locs.length - 1; li >= 0 && !etaObj; li--) {
+        const evs = locs[li]?.events ?? locs[li]?.Events ?? []
+        for (let ei = evs.length - 1; ei >= 0 && !etaObj; ei--) {
+          etaObj = parseDateLike(evs[ei]?.event_time ?? evs[ei]?.Date ?? evs[ei]?.DateString ?? evs[ei]?.Date)
+          if (etaObj) etaSource = 'events (last event_time/Date)'
+        }
+      }
+    }
+  }
+
+  const eta = etaObj ? etaObj.toISOString().replace(/\.000Z$/, '') : ''
+  try { if (etaSource) console.debug(`collections: ETA derived from ${etaSource} for ${fileBase ?? path}: ${eta}`) } catch (e) {}
 
   const status = first?.status ?? raw?.current_status ?? raw?.status ?? 'Desconhecido'
 
