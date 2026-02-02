@@ -15,7 +15,7 @@
 import { z } from 'zod'
 
 // Helper para normalizar várias representações de data usadas nas APIs
-const DateLike = z.preprocess((arg) => {
+const DateLike = z.preprocess((arg: unknown) => {
   if (arg == null || arg === '') return null
   // MS JSON dates like: "/Date(1765887180000)/"
   if (typeof arg === 'string') {
@@ -149,6 +149,59 @@ export const ShipmentSchema = z.object({
 })
 
 export type Shipment = z.infer<typeof ShipmentSchema>
+// --- Extensões para exibição na UI / summary ---
+// ContainerSummary: campos derivados que facilitam renderização da lista
+export const ContainerSummarySchema = z.object({
+  // identificadores e metadados para exibição
+  process_id: z.string().nullable().optional(),
+  client_name: z.string().nullable().optional(),
+  // BL ou Booking quando disponível
+  bl_number: z.string().nullable().optional(),
+  booking_number: z.string().nullable().optional(),
+  // campos de exibição de rota
+  origin_display: z.string().nullable().optional(),
+  destination_display: z.string().nullable().optional(),
+  route_display: z.string().nullable().optional(),
+
+  // resumo de status usado como badge
+  current_status: z.string().nullable().optional(),
+  // nível para colorização (info|warning|danger|success)
+  status_level: z.enum(['info', 'warning', 'danger', 'success']).nullable().optional(),
+
+  // ETA / progress
+  eta: DateLike.optional(),
+  eta_display: z.string().nullable().optional(),
+  progress_percentage: z.number().nullable().optional(),
+  progress_stage: z.string().nullable().optional(),
+
+  // flags rápidos
+  is_delayed: z.boolean().nullable().optional(),
+  arrival_today: z.boolean().nullable().optional(),
+
+  // último evento resumido
+  last_event_time: DateLike.optional(),
+  last_event_summary: z.string().nullable().optional(),
+
+  // raw original (se necessário)
+  raw: z.any().optional()
+})
+
+export type ContainerSummary = z.infer<typeof ContainerSummarySchema>
+
+// Enriquecer ContainerSchema com поле optional summary e metadata opcionais
+export const ContainerSchemaWithSummary = ContainerSchema.extend({
+  // campos que podem vir do mapeador para facilitar UI
+  process_id: z.string().nullable().optional(),
+  client_name: z.string().nullable().optional(),
+  bl_number: z.string().nullable().optional(),
+  booking_number: z.string().nullable().optional(),
+  origin_display: z.string().nullable().optional(),
+  destination_display: z.string().nullable().optional(),
+  route_display: z.string().nullable().optional(),
+  summary: ContainerSummarySchema.optional()
+})
+
+export type ContainerWithSummary = z.infer<typeof ContainerSchemaWithSummary>
 
 export default {
   DateLike,
@@ -156,5 +209,7 @@ export default {
   VesselSchema,
   EventSchema,
   ContainerSchema,
+  ContainerSchemaWithSummary,
+  ContainerSummarySchema,
   ShipmentSchema
 }
