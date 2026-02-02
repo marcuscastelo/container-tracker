@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <title>Paths Zod - containerStatus.schema</title>
+  </head>
+  <body>
+    <h1>Paths Zod - schemas/containerStatus.schema.ts</h1>
+
+    <h2>Shipment (root)</h2>
+    <table border="1">
+      <thead>
+        <tr><th>Campo</th><th>Exemplo de path (acesso JS / Zod)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>source.api</td><td>source.api</td></tr>
+        <tr><td>source.fetched_at</td><td>source.fetched_at</td></tr>
+        <tr><td>source.raw</td><td>source.raw</td></tr>
+        <tr><td>has_import_shipment</td><td>has_import_shipment</td></tr>
+        <tr><td>is_container_search</td><td>is_container_search</td></tr>
+        <tr><td>is_split_combine_part_load</td><td>is_split_combine_part_load</td></tr>
+        <tr><td>is_cancelled_shipment</td><td>is_cancelled_shipment</td></tr>
+        <tr><td>unassigned_containers</td><td>unassigned_containers</td></tr>
+        <tr><td>last_update_time</td><td>last_update_time</td></tr>
+        <tr><td>origin (Location)</td><td>origin.terminal, origin.city, origin.country, origin.location_code</td></tr>
+        <tr><td>destination (Location)</td><td>destination.terminal, destination.city, destination.country, destination.location_code</td></tr>
+        <tr><td>raw (payload completo)</td><td>raw</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Containers (array)</h2>
+    <p>Use índice para acessar um container específico, por exemplo <code>containers[0]</code></p>
+    <table border="1">
+      <thead>
+        <tr><th>Campo</th><th>Exemplo de path</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>container_number</td><td>containers[0].container_number</td></tr>
+        <tr><td>container_size</td><td>containers[0].container_size</td></tr>
+        <tr><td>container_type</td><td>containers[0].container_type</td></tr>
+        <tr><td>iso_code</td><td>containers[0].iso_code</td></tr>
+        <tr><td>operator</td><td>containers[0].operator</td></tr>
+        <tr><td>locations (array)</td><td>containers[0].locations[0]</td></tr>
+        <tr><td>eta_final_delivery</td><td>containers[0].eta_final_delivery</td></tr>
+        <tr><td>status</td><td>containers[0].status</td></tr>
+        <tr><td>status_code</td><td>containers[0].status_code</td></tr>
+        <tr><td>last_update_time</td><td>containers[0].last_update_time</td></tr>
+        <tr><td>service_type_origin</td><td>containers[0].service_type_origin</td></tr>
+        <tr><td>service_type_destination</td><td>containers[0].service_type_destination</td></tr>
+        <tr><td>raw (container original)</td><td>containers[0].raw</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Location / Terminal (dentro de containers[].locations[])</h2>
+    <p>Exemplo de acesso: <code>containers[0].locations[0].terminal</code></p>
+    <table border="1">
+      <thead>
+        <tr><th>Campo</th><th>Exemplo de path</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>terminal</td><td>containers[0].locations[0].terminal</td></tr>
+        <tr><td>geo_site</td><td>containers[0].locations[0].geo_site</td></tr>
+        <tr><td>city</td><td>containers[0].locations[0].city</td></tr>
+        <tr><td>state</td><td>containers[0].locations[0].state</td></tr>
+        <tr><td>country</td><td>containers[0].locations[0].country</td></tr>
+        <tr><td>country_code</td><td>containers[0].locations[0].country_code</td></tr>
+        <tr><td>geoid_city</td><td>containers[0].locations[0].geoid_city</td></tr>
+        <tr><td>site_type</td><td>containers[0].locations[0].site_type</td></tr>
+        <tr><td>location_code</td><td>containers[0].locations[0].location_code</td></tr>
+        <tr><td>events (array)</td><td>containers[0].locations[0].events[0]</td></tr>
+        <tr><td>raw (location)</td><td>containers[0].locations[0].raw</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Event (dentro de locations[].events[])</h2>
+    <p>Exemplo de acesso: <code>containers[0].locations[0].events[0].activity</code></p>
+    <table border="1">
+      <thead>
+        <tr><th>Campo</th><th>Exemplo de path</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>id</td><td>containers[0].locations[0].events[0].id</td></tr>
+        <tr><td>eventType</td><td>containers[0].locations[0].events[0].eventType</td></tr>
+        <tr><td>activity</td><td>containers[0].locations[0].events[0].activity</td></tr>
+        <tr><td>is_empty</td><td>containers[0].locations[0].events[0].is_empty</td></tr>
+        <tr><td>act_for</td><td>containers[0].locations[0].events[0].act_for</td></tr>
+        <tr><td>transport_mode</td><td>containers[0].locations[0].events[0].transport_mode</td></tr>
+        <tr><td>event_time</td><td>containers[0].locations[0].events[0].event_time</td></tr>
+        <tr><td>event_time_type</td><td>containers[0].locations[0].events[0].event_time_type</td></tr>
+        <tr><td>location (obj)</td><td>containers[0].locations[0].events[0].location</td></tr>
+        <tr><td>vessel (obj)</td><td>containers[0].locations[0].events[0].vessel</td></tr>
+        <tr><td>status_code</td><td>containers[0].locations[0].events[0].status_code</td></tr>
+        <tr><td>status_description</td><td>containers[0].locations[0].events[0].status_description</td></tr>
+        <tr><td>detail (array)</td><td>containers[0].locations[0].events[0].detail</td></tr>
+        <tr><td>order</td><td>containers[0].locations[0].events[0].order</td></tr>
+        <tr><td>sourceEvent (raw)</td><td>containers[0].locations[0].events[0].sourceEvent</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Vessel (dentro de event.vessel)</h2>
+    <table border="1">
+      <thead>
+        <tr><th>Campo</th><th>Exemplo de path</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>vessel_name</td><td>containers[0].locations[0].events[0].vessel.vessel_name</td></tr>
+        <tr><td>voyage_num</td><td>containers[0].locations[0].events[0].vessel.voyage_num</td></tr>
+        <tr><td>vessel_num</td><td>containers[0].locations[0].events[0].vessel.vessel_num</td></tr>
+        <tr><td>imo</td><td>containers[0].locations[0].events[0].vessel.imo</td></tr>
+        <tr><td>built</td><td>containers[0].locations[0].events[0].vessel.built</td></tr>
+        <tr><td>flag</td><td>containers[0].locations[0].events[0].vessel.flag</td></tr>
+        <tr><td>flagName</td><td>containers[0].locations[0].events[0].vessel.flagName</td></tr>
+        <tr><td>raw (vessel)</td><td>containers[0].locations[0].events[0].vessel.raw</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Tipos/exports (TS inferidos)</h2>
+    <table border="1">
+      <thead>
+        <tr><th>Tipo</th><th>Path / Nome exportado</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Location</td><td>LocationSchema / Location</td></tr>
+        <tr><td>Vessel</td><td>VesselSchema / Vessel</td></tr>
+        <tr><td>Event</td><td>EventSchema / Event</td></tr>
+        <tr><td>Container</td><td>ContainerSchema / Container</td></tr>
+        <tr><td>Shipment</td><td>ShipmentSchema / Shipment</td></tr>
+      </tbody>
+    </table>
+
+    <p>Observação: para arrays, use índice numérico ao montar paths para campos específicos (ex.: <code>containers[0].locations[0].events[0].activity</code>). Em validações Zod você normalmente chama <code>ShipmentSchema.parse(obj)</code> — as propriedades acima mostram como acessar os valores no objeto normalizado.</p>
+  </body>
+</html>
