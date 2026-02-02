@@ -1,7 +1,7 @@
 {
     "DisplayMap": false,
     "IsMapEnableFlag": false,
-    "RemainingDays": 2,
+    "RemainingDays": 1,
     "ActualTimeOfArrival": null,
     "LoadedOnBoardTime": "/Date(1765887180000)/",
     "FirstDateOnSea": null,
@@ -10,7 +10,7 @@
         "TitleLeft": "ETA Berth at POD",
         "ValueLeft": "/Date(1770212400000)/",
         "TitleRight": "Remaining",
-        "ValueRight": "2 days"
+        "ValueRight": "1 days"
     },
     "ProgressionPrePOL": 100,
     "ProgressionPrePOLStatus": "is-done is-circled",
@@ -20,7 +20,7 @@
     "ProgressionPostPODStatus": null,
     "ProgressionPostPODABP": 0,
     "ProgressionPostPODABPStatus": null,
-    "ProgressionOnSea": 97,
+    "ProgressionOnSea": 96,
     "ProgressionOnSeaStatus": "is-started is-circled",
     "ProgressionDestinationStatus": null,
     "MarkerClass": "is-boat",
