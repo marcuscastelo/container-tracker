@@ -193,23 +193,48 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
 
   // 5) events fallback: check container-level events (MSC) and location events
   if (!etaObj) {
+    const dateCandidates: Array<{ d: Date; source: string }> = []
+
+    // container-level events (MSC)
     const containerEvents = first?.Events ?? first?.events ?? null
     if (Array.isArray(containerEvents) && containerEvents.length > 0) {
-      for (let ei = containerEvents.length - 1; ei >= 0 && !etaObj; ei--) {
-        etaObj = parseDateLike(containerEvents[ei]?.Date ?? containerEvents[ei]?.DateString ?? containerEvents[ei]?.event_time ?? containerEvents[ei]?.Date)
-        if (etaObj) etaSource = 'events (container-level last event Date)'
+      // prefer MSC 'Order' semantics: choose event with highest Order if present
+      const haveOrder = containerEvents.some((ev: any) => typeof ev?.Order === 'number')
+      if (haveOrder) {
+        let best: any = null
+        for (const ev of containerEvents) {
+          if (best == null || (typeof ev?.Order === 'number' && ev.Order > best.Order)) best = ev
+        }
+        const rawDate = best?.Date ?? best?.DateString ?? best?.event_time
+        const d = parseDateLike(rawDate)
+        if (d) dateCandidates.push({ d, source: 'events (container-level, max Order)' })
+      } else {
+        for (let ei = 0; ei < containerEvents.length; ei++) {
+          const rawDate = containerEvents[ei]?.Date ?? containerEvents[ei]?.DateString ?? containerEvents[ei]?.event_time ?? containerEvents[ei]?.Date
+          const d = parseDateLike(rawDate)
+          if (d) dateCandidates.push({ d, source: 'events (container-level)' })
+        }
       }
     }
 
-    if (!etaObj && ((Array.isArray(containers) && containers.length > 0) || (mscContainers && mscContainers.length > 0))) {
+    // location events
+    if ((Array.isArray(containers) && containers.length > 0) || (mscContainers && mscContainers.length > 0)) {
       const locs = first?.locations ?? first?.Locations ?? []
-      for (let li = locs.length - 1; li >= 0 && !etaObj; li--) {
+      for (let li = 0; li < locs.length; li++) {
         const evs = locs[li]?.events ?? locs[li]?.Events ?? []
-        for (let ei = evs.length - 1; ei >= 0 && !etaObj; ei--) {
-          etaObj = parseDateLike(evs[ei]?.event_time ?? evs[ei]?.Date ?? evs[ei]?.DateString ?? evs[ei]?.Date)
-          if (etaObj) etaSource = 'events (last event_time/Date)'
+        for (let ei = 0; ei < evs.length; ei++) {
+          const rawDate = evs[ei]?.event_time ?? evs[ei]?.Date ?? evs[ei]?.DateString ?? evs[ei]?.Date
+          const d = parseDateLike(rawDate)
+          if (d) dateCandidates.push({ d, source: 'events (location-level)' })
         }
       }
+    }
+
+    if (dateCandidates.length > 0) {
+      // pick the most recent date
+      dateCandidates.sort((a, b) => b.d.getTime() - a.d.getTime())
+      etaObj = dateCandidates[0].d
+      etaSource = dateCandidates[0].source + ' (most recent)'
     }
   }
 
