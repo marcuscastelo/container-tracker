@@ -50,7 +50,7 @@
     "IsEtaAtConsignee": false,
     "ContainerReference": "FSCU4565494",
     "ContainerStatus": 51,
-    "EstimatedTimeOfArrival": "/Date(1770212400000)/",
+    "EstimatedTimeOfArrival": "/Date(1760212400000)/",
     "EtaDisplay": true,
     "PlaceOfLoading": "BARCELONA (ES)",
     "LastDischargePort": "ITAGUAI, RJ (BR)",
