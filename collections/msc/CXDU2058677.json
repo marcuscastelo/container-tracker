@@ -6,7 +6,7 @@
         "TrackingNumber": "CXDU2058677",
         "CurrentDate": "02/02/2026",
         "PriceCalculationLabel": "* Price calculation date is indicative. Please contact your local MSC office to verify this information.",
-        "TrackingResultsLabel": "Tracking results provided by MSC on 02.02.2026 at 20:30 Central Europe Standard Time",
+        "TrackingResultsLabel": "Tracking results provided by MSC on 02.02.2026 at 22:32 Central Europe Standard Time",
         "BillOfLadings": [
             {
                 "BillOfLadingNumber": "MEDUK9307522",
@@ -114,7 +114,7 @@
                                     "Bic": "",
                                     "CodeType": null,
                                     "Code": "",
-                                    "Name": "LORENZINI \u0026 C. SRL",
+                                    "Name": "LORENZINI & C. SRL",
                                     "Smdg": "LOREN"
                                 },
                                 "Vessel": {
@@ -139,7 +139,7 @@
                                     "Bic": "",
                                     "CodeType": null,
                                     "Code": "",
-                                    "Name": "LORENZINI \u0026 C. SRL",
+                                    "Name": "LORENZINI & C. SRL",
                                     "Smdg": "LOREN"
                                 },
                                 "Vessel": {
@@ -227,7 +227,7 @@
                         "Delivered": false,
                         "ContainerNumber": "CXDU2058677",
                         "PodEtaDate": "",
-                        "ContainerType": "40\u0027 HIGH CUBE",
+                        "ContainerType": "40' HIGH CUBE",
                         "LatestMove": "ITAPOA, BR"
                     }
                 ],

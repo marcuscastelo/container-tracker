@@ -3,12 +3,12 @@
     "IsMapEnableFlag": false,
     "RemainingDays": 2,
     "ActualTimeOfArrival": null,
-    "LoadedOnBoardTime": "\/Date(1765887180000)\/",
+    "LoadedOnBoardTime": "/Date(1765887180000)/",
     "FirstDateOnSea": null,
     "LastDateOnSea": null,
     "ContextInfo": {
         "TitleLeft": "ETA Berth at POD",
-        "ValueLeft": "\/Date(1770212400000)\/",
+        "ValueLeft": "/Date(1770212400000)/",
         "TitleRight": "Remaining",
         "ValueRight": "2 days"
     },
@@ -20,7 +20,7 @@
     "ProgressionPostPODStatus": null,
     "ProgressionPostPODABP": 0,
     "ProgressionPostPODABPStatus": null,
-    "ProgressionOnSea": 96,
+    "ProgressionOnSea": 97,
     "ProgressionOnSeaStatus": "is-started is-circled",
     "ProgressionDestinationStatus": null,
     "MarkerClass": "is-boat",
@@ -40,7 +40,7 @@
     "ContextInfoDisplay": true,
     "GoogleMapURL": null,
     "ModeOfTransport": "VESSEL",
-    "CollectionAddressPop": "\u003cdiv class=\u0027delivery-heading\u0027\u003e Collection Address\u003c/div\u003e\u003cdiv class=\u0027address\u0027\u003eURZANTE, CIUDAD AGROALIMENTARIA CALLE A, 31500, TUDELA, SPAIN\u003c/div\u003e",
+    "CollectionAddressPop": "<div class='delivery-heading'> Collection Address</div><div class='address'>URZANTE, CIUDAD AGROALIMENTARIA CALLE A, 31500, TUDELA, SPAIN</div>",
     "DeliveryAddressPop": null,
     "LaraContainerSize": null,
     "IsPartnerCodeNamed": false,
@@ -50,7 +50,7 @@
     "IsEtaAtConsignee": false,
     "ContainerReference": "FSCU4565494",
     "ContainerStatus": 51,
-    "EstimatedTimeOfArrival": "\/Date(1770212400000)\/",
+    "EstimatedTimeOfArrival": "/Date(1770212400000)/",
     "EtaDisplay": true,
     "PlaceOfLoading": "BARCELONA (ES)",
     "LastDischargePort": "ITAGUAI, RJ (BR)",
@@ -62,12 +62,12 @@
     "FPD": "",
     "ABPExport": "ESZAZ",
     "ABPImport": "",
-    "POODate": "\/Date(1764662400000)\/",
-    "POLDate": "\/Date(1765919400000)\/",
-    "PODDate": "\/Date(1770212400000)\/",
-    "FPDDate": "\/Date(-62135596800000)\/",
-    "ABPExportDate": "\/Date(1764709200000)\/",
-    "ABPImportDate": "\/Date(-62135596800000)\/",
+    "POODate": "/Date(1764662400000)/",
+    "POLDate": "/Date(1765919400000)/",
+    "PODDate": "/Date(1770212400000)/",
+    "FPDDate": "/Date(-62135596800000)/",
+    "ABPExportDate": "/Date(1764709200000)/",
+    "ABPImportDate": "/Date(-62135596800000)/",
     "CollectionAddress": {
         "Name": "URZANTE",
         "Street": "CIUDAD AGROALIMENTARIA CALLE A",
@@ -88,7 +88,7 @@
     "CustomNumber": "N/A",
     "PastMoves": [
         {
-            "Date": "\/Date(1764659520000)\/",
+            "Date": "/Date(1764659520000)/",
             "LocationTerminal": "TMZ ZARAGOZA",
             "Location": "ZARAGOZA",
             "LocationCode": "ESZAZ",
@@ -106,7 +106,7 @@
             "ModeOfTransport": "TRUCK"
         },
         {
-            "Date": "\/Date(1764679680000)\/",
+            "Date": "/Date(1764679680000)/",
             "LocationTerminal": "TMZ ZARAGOZA",
             "Location": "ZARAGOZA",
             "LocationCode": "ESZAZ",
@@ -124,7 +124,7 @@
             "ModeOfTransport": "TRUCK"
         },
         {
-            "Date": "\/Date(1764890160000)\/",
+            "Date": "/Date(1764890160000)/",
             "LocationTerminal": "TMZ ZARAGOZA",
             "Location": "ZARAGOZA",
             "LocationCode": "ESZAZ",
@@ -142,7 +142,7 @@
             "ModeOfTransport": "RAIL"
         },
         {
-            "Date": "\/Date(1764940200000)\/",
+            "Date": "/Date(1764940200000)/",
             "LocationTerminal": "BARCELONA EUROPE SOUTH TER BEST",
             "Location": "BARCELONA",
             "LocationCode": "ESBCN",
@@ -160,7 +160,7 @@
             "ModeOfTransport": "RAIL"
         },
         {
-            "Date": "\/Date(1765887180000)\/",
+            "Date": "/Date(1765887180000)/",
             "LocationTerminal": "BARCELONA EUROPE SOUTH TER BEST",
             "Location": "BARCELONA",
             "LocationCode": "ESBCN",
@@ -178,7 +178,7 @@
             "ModeOfTransport": "VESSEL"
         },
         {
-            "Date": "\/Date(1765919400000)\/",
+            "Date": "/Date(1765919400000)/",
             "LocationTerminal": "BARCELONA EUROPE SOUTH TER BEST",
             "Location": "BARCELONA",
             "LocationCode": "ESBCN",
@@ -196,7 +196,7 @@
             "ModeOfTransport": "VESSEL"
         },
         {
-            "Date": "\/Date(1766448240000)\/",
+            "Date": "/Date(1766448240000)/",
             "LocationTerminal": "EUROGATE TERMINAL TANGIER",
             "Location": "TANGER MED",
             "LocationCode": "MAPTM",
@@ -214,7 +214,7 @@
             "ModeOfTransport": "VESSEL"
         },
         {
-            "Date": "\/Date(1766472840000)\/",
+            "Date": "/Date(1766472840000)/",
             "LocationTerminal": "EUROGATE TERMINAL TANGIER",
             "Location": "TANGER MED",
             "LocationCode": "MAPTM",
@@ -232,7 +232,7 @@
             "ModeOfTransport": "VESSEL"
         },
         {
-            "Date": "\/Date(1768290780000)\/",
+            "Date": "/Date(1768290780000)/",
             "LocationTerminal": "EUROGATE TERMINAL TANGIER",
             "Location": "TANGER MED",
             "LocationCode": "MAPTM",
@@ -252,7 +252,7 @@
     ],
     "CurrentMoves": [
         {
-            "Date": "\/Date(1768315080000)\/",
+            "Date": "/Date(1768315080000)/",
             "LocationTerminal": "EUROGATE TERMINAL TANGIER",
             "Location": "TANGER MED",
             "LocationCode": "MAPTM",
@@ -272,7 +272,7 @@
     ],
     "ProvisionalMoves": [
         {
-            "Date": "\/Date(1764662400000)\/",
+            "Date": "/Date(1764662400000)/",
             "LocationTerminal": "",
             "Location": "TUDELA",
             "LocationCode": "ESTUD",
@@ -290,7 +290,7 @@
             "ModeOfTransport": "RAIL"
         },
         {
-            "Date": "\/Date(1770212400000)\/",
+            "Date": "/Date(1770212400000)/",
             "LocationTerminal": "ITAGUAI TECON",
             "Location": "ITAGUAI, RJ",
             "LocationCode": "BRIGI",
@@ -329,7 +329,7 @@
     "ClientAddress": null,
     "IsIFCMove": false,
     "LaraContainerCode": "40ST",
-    "EmptyReturnDate": "\/Date(-62135596800000)\/",
+    "EmptyReturnDate": "/Date(-62135596800000)/",
     "IsDisplayInlandOffers": false,
     "IsPartyRole": false,
     "EmptyReturnAddress": null,

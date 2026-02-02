@@ -100,12 +100,19 @@ export default function Home() {
                   <button
                     type="button"
                     title="Refresh"
-                    class="p-1 rounded hover:bg-gray-100"
+                    class="p-1 rounded hover:bg-gray-100 refresh-button"
+                    data-container={s.container}
                     onClick={(e) => {
+                      const el = e.currentTarget as HTMLElement
+                      // if a delegated handler already handled this click, skip to avoid duplicate
+                      if (el.dataset.delegateHandled === '1') {
+                        console.debug('refresh click already handled by delegate', s.container)
+                        // clear flag for future clicks
+                        delete el.dataset.delegateHandled
+                        return
+                      }
                       e.stopPropagation();
                       console.debug('refresh button click', s.container);
-                      // diagnostic: show immediate alert to verify handler runs
-                      alert(`button clicked: ${s.container}`)
                       try {
                         refreshContainer(s.container).catch(() => {})
                       } catch (err) {
