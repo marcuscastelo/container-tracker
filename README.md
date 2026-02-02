@@ -2,6 +2,9 @@
 
 Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
 
+## Install
+pnpm exec playwright install // TODO: explain and add to install script
+
 ## Creating a project
 
 ```bash

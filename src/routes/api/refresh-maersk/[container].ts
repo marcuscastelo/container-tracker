@@ -57,16 +57,20 @@ export async function GET({ params }: any) {
     if (provider !== 'maersk') return new Response(JSON.stringify({ error: 'not a maersk provider file' }), { status: 400 })
 
     // Try to import playwright dynamically; if missing, instruct user to install
-    let playwright: any = null
+    let chromium: any = null
     try {
-      // prefer playwright (bundles browsers via postinstall)
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      playwright = require('playwright')
+      const pw = await import('playwright').catch(() => null)
+      if (!pw) {
+        return new Response(JSON.stringify({ error: 'playwright not installed', hint: 'npm i -D playwright' }), { status: 500 })
+      }
+      // Playwright exports chromium, firefox, webkit
+      chromium = (pw as any).chromium
+      if (!chromium) {
+        return new Response(JSON.stringify({ error: 'playwright import failed (no chromium export)' }), { status: 500 })
+      }
     } catch (e) {
-      return new Response(JSON.stringify({ error: 'playwright not installed', hint: 'npm i -D playwright' }), { status: 500 })
+      return new Response(JSON.stringify({ error: 'playwright import error', details: String(e), hint: 'npm i -D playwright' }), { status: 500 })
     }
-
-    const chromium = playwright.chromium
 
     // Launch browser. For debugging we show the UI; set env HEADLESS=1 to run headless
     const headless = process.env.HEADLESS === '1' || process.env.HEADLESS === 'true'
@@ -74,7 +78,13 @@ export async function GET({ params }: any) {
     // add no-sandbox flags to help run in Linux dev containers
     launchArgs.push('--no-sandbox', '--disable-setuid-sandbox')
 
-    const browser = await chromium.launch({ headless: !!headless, args: launchArgs })
+    let browser: any
+    try {
+      browser = await chromium.launch({ headless: !!headless, args: launchArgs })
+    } catch (e) {
+      console.error('maersk-refresh: browser launch failed', e)
+      return new Response(JSON.stringify({ error: 'browser launch failed', details: String(e) }), { status: 500 })
+    }
     const context = await browser.newContext({
       // mimic a standard desktop UA to reduce fingerprinting differences
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
@@ -118,7 +128,7 @@ export async function GET({ params }: any) {
     }, { apiUrl, headers: parsed.headers })
 
     // close browser
-    try { await browser.close() } catch (e) { console.debug('maersk-refresh: browser close failed', e) }
+    try { if (browser) await browser.close() } catch (e) { console.debug('maersk-refresh: browser close failed', e) }
 
     if (!fetchResult || !fetchResult.ok) {
       return new Response(JSON.stringify({ error: 'fetch failed in browser', details: fetchResult }), { status: 502 })
