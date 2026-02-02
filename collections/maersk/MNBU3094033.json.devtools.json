@@ -1,0 +1,94 @@
+{
+  "request": {
+    "url": "https://api.maersk.com/synergy/tracking/MNBU3094033?operator=MAEU",
+    "method": "GET",
+    "headers": {
+      "API-Version": "v2",
+      "Accept": "application/json",
+      "Accept-Language": "en-US",
+      "Akamai-BM-Telemetry": "a=3FA6FECD0844796E91AD77CC2E157A8F&&&e=M0YzNjQ0RkU5MDEzM0RGRUIwMDJBQjc4Q0YxNDUxNTB+WUFBUXpnTVZBbGZPaWhlY0FRQUF6cE94SUI2NGxCTmhjNDIraHh6NGI0ZUU2WEQyRTdDOUZnaDNEUEt3blFqQ0J6QnN2ZGplKzgrMy9YR05Pcm81ZU43TzRhZGZoSVNwcFI3bk9WTU0xZ2pXY0FmWmIwdmdvKzNEb1hUdGZCZmdKVVc3THRFNkQwNUFJTmdpRlhUYnJzK0JwaytnU3g0YXdVMWRFYzZGMkNQKythOUNFc29QaEZ6SzNES3RvNkZJUGFjQjZVbGpoQ1hiRElINjFHVVozdHFONUxzSmNkaW9xejBkTVVaZnczZGl3YWFrT1NTSDNkRWwrNjdZUElETjV4bk4vR2ZDN2ttZ0QwMVh6MmVWNURsVjVlSHNWcEhwUjNvNWF1RU1qaUE4YmFwamQva01HelgwSjBJRkM2elhpMW1VUEZqOFRUK1Q3NDlYeURYVC84N2g3WG1ac2dkakR2djFZK0RqVFV2dXgyaG9ROE51dkRHd0NnMTBkVUdMVnlVQmwzR3l5SjlkY3FidjE5eEkzRmtlVHNrWGRteWt6bitXc24rU1J2VVdJNk90K3UxK2pwc1NwTkxmNjF4Z34zNDIyMDA4fjM2MTczNDk=&&&sensor_data=MjszNDIyMDA4OzM2MTczNDk7NiwxLDAsMCwyLDA7VF5pZWs6VC80b0I4KSheNCQye3dEfjNNflRVYW4ySmMrQ1EtX195MT1PW0tuTkdoXW9gVDl4KzlQamx0MkNMW2FtZ2lpKHEra00wL0RncHpnOTJBcFdoN3VkZm55VX0oczZbZ3VgVmghc1ljWUZ8TDxZOmJCalF0a0Zkb0dYNT11NCUsQS4gNkMuS1FGbShNWGcmKnBnNlc6O0dDNUo/XztqNFVvU1B8RD0lOTtUSCE/ViFHMXpTICBtZkB2fSxaQGpzMi15dT9WaGNXLU1ONU5eKTs2N2hKQCBafTsocSw6WktnfCAqXThEMktaL0p+SHZ6KT8/I1dNViBWOGFEMHNNOFEoLjNiLTkgditbI1sjY2p3PDRiXWJxSF9TKX45UDRRRHYjNHZIUmMjSyhEJlozVyR5PndYbH1MTkV5e2t4ZFYhX0NdZXMkazpYOGdRI2QhVHN6VktheExaVTVqRkA2Jk1xRWVQR1FmMmJOdmpBKU8hOVlEKUBzTn1YXl1ea1VHI3IoOUErNFY8YUJQVSN3dERSenpvJEgqcmdia2FuW0ZAKlRnXlh2N35KfXlrUkstVXxCLDVodG1LVEtbTWpuaENHbSYmMklqTjh5dmlRSShqfVpaTGVFPG5oPENGW2RiOUtpYn4uVn5iOGVOTj41eTZuOzlPKktXby5eIytDRmpDZ1Q2VmM+TTkzOnQmMFtPN2MlP0dsWmptKDNgXi0pMSpXKXN3ITxpZlJfQ2hZVSA9aFVQdlIkJiFFRXw4Tmt+e3pfQlNkSHIgaGtlKS41dyBZMSpmRmkoL0pbMEhwMUpQY0gwPjYzc3tsKCM4Q1Q7KyRnLEo2dWooSmpEVSw9dHN4ZlUhOiFjeXIhO2NaeWlsTT5fL3dnb3JXeUdfVG4sQ0lCNFl7djFQTmBHVl42Z18mKTQyc1ElMGwhPnZLbUFdfUFkKjozOmFHIExxfVEvcGlSQ1RwXipkK0FLID1mXigsISAwaDxafjUhLjJ8JjQxWW1ydD9MQ2RmJDJhcC44TSQmcWRAJlFQYHtDRmQtdThSUipjRUhOOig0SD5SfTIxSCZhXVYwM186biNMU0R0SHBDcXBlY0h5KSVnKUEpRD9ncHVnekNRLmtLT1Z3IDxqWVVeW2d+NV5xbVZ9ZFshJnRoWzkvUURqXjwlQ21bfXN7PnJHQnF2bWxrKXxHZUB9e3Y1b2A+SWUvZW18dFc+ej9dMk5PMjFldSpXSUFtYXFuOVVWVmR1VjAzPE04QGh3LXp2T0JRWjlPI0JgQ1hAWSxfZWBXRVMrfWNvbSQhcWp+T2JXUiMleWdxci9uezpYXjp7ZHZePkc+QSNnTntsKmthWlVMMkhmPU8tTEhhOHxwLDtXK34vYytAVChFfGFoMG15dzB6X0hqbS86PyoxZmBbUWNpe20jcCRyNGRtI051KFpOM3Z3UU86PUJrN2x+d3loUzNMI0Zfa0NpdzxqbCBKMGAxei5XY3VgQ3tzRW9EdTJsQVs2ZjwyLzdUQkp+bndgVD97K2JAR3o6cXQyJkt5O1pjWT4uP0BTKGBZb3g3ejl3dlU1V30qfDlaLSpUO1NOPFguLXZwPUtZbEArLXdFQXkxUy4vYXhnXjRKND0qeT5NOyhMcFArPT5WPmUzOH0rfmBJWHs6KE8tNWAoVGRiWDpSWUE1OGRxLmQ3OkJ6e20ob3pEQ31VKjRAfChlIWNUIUdhcnkwUX1LdVc2PTxfVn4mbDl+Wkx3YkRiUW0uN0JyTD1IYW1DUH1aJlNjWVYuc1BZXj0vP0ArWD8zMXkpZVpjTlB9NTEzPzVULCRkU2svWGxKIH1xQmYhLk1DM28xfHNXZjFtJSVPPmxsL2xPdSw8b1o7LE9SazxidzNJeyB2d1ZjbF1iZzdgXzt3V19RMVhJQlNGIzcqOl1WY19KYWtTSDh1W1Aob1BiWHwoP08oK2lDLHlxeGFkTUkjZXw3KnY2TitPRHVoPXspby1uWlF9OXFTOk9TQk89SypsLl1QPWx0Vn17X1YqIT1ASXdscT5RXlhYX0whPzs1dmxyVlQveTcsY00lLyNwRCxCcnl2NHVkQENNXWV3TCNnYzJiTVApTT5yeVhfVlYwaTdhc3lEa3ZbbGJ7NUhAVElKdkpbVSlSQS41cSZqb1JJeSVSYTJkdWVuIUc9bnIsfSZdIUNKc2BGJnIxPDIvKHxINzM9LlpdXXh8MGB9NlNFWClheC9wQkI3NDVDREtGOHtWaStlIE5MbiRJaTFCYXBsUXtRX1AkJiEuJU9RWFFZLnEzWDQmezJMbEddK0hscSRrZHMrWVVdW3F5OkBkU15QNUh2aEpXXzBPL0h4PG10KyxzMk1GKDM3XmZ8JCZQX3hyYHlwYSk4XihoNWE6Z2lkeWk/ZlNSVVh7Ml1wPDNRQjVSMyt2a31uWTRfSWpDX357bkVsbGF4cUtbJEN7fj4gZVAgZipGOC5LP3ImRiAoRktbcjdIQV5kWEk4UDg0VTtGe09jVEEmazc2Qzp1UGhIRT5nZlVVKS5yNG8xQ3w9QEYsXmNuTGpFMnhZTyhrPV94eGA9SlB2cWY0M3NJbkhhajc+P0gyWEAhdFZeRiRWKz9MPSU1N2N6YjYkOyVJd3ovfGZ5JHBJLWV3XWU6O2hJYnFddkE9cEpKeHM5KUEkN0dBK0RWRHloXlZAVzgva0hoL3RkI0F6PjhhSiMgRyQ4TUE4X1RhMkEuNSkzeX07L0RBLnE7YztbKXpbVj5lP24/M09oKSEyNThyZVNGUX1JQmp0WVVJNmxZZWA+P3s9Vi53RG40MGt3IHN0KHNVb1svY101RHVfMDUhKmBtQDdTLzc2YTkxJSYhQ1RrZnNlYitjYX1BaWU+Qjc6LDVqazNgbVhWJSFrLGQ7LFs1QCslYFFJYS5ZLTdHOyM6PjIkSXB2MmNZIDZSZTBadk8vKSxoO3o1bEZDKzYwQUZJX3NFJEJRWkVHUmR7SVIqO15nbU8oIDd5fW9VeyQ5QVRISSVqJSAkanJ5JmEsQ3o3YGh0USBlVWxNU3tbbU8sTkhSKXgtWkYvQnt1NmgwZ1QoWnMpJEo7KGxLSGF1aj4rKkEkcTtgWUYpbEQtbmVKMDpNYSVHdEM8fjA9WV02SW5uJW1vKlhYUHBwV3xiflQ2bit3RkMgRGt9QGZJZVhIOG5bU1AlTkl5OE5ZSnp4cGNuez8+RjRvayRsS2d4czBQZzQjIVc8PTxifWB2eltPfWAmU1E+OV9VbitPKzl3NGoqTUZQKWggeA==",
+      "Consumer-Key": "UtMm6JCDcGTnMGErNGvS2B98kt1Wl25H",
+      "Origin": "https://www.maersk.com",
+      "Referer": "https://www.maersk.com/",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "sec-ch-ua": "\"Chromium\";v=\"145\", \"Not:A-Brand\";v=\"99\"",
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": "\"Windows\""
+    }
+  },
+  "cookies": [
+    {
+      "name": "selectedLang",
+      "value": "en",
+      "domain": "www.maersk.com"
+    },
+    {
+      "name": "country_code",
+      "value": "br",
+      "domain": "www.maersk.com"
+    },
+    {
+      "name": "CookieInformationConsentError",
+      "value": "false",
+      "domain": "www.maersk.com"
+    },
+    {
+      "name": "ak_bmsc",
+      "value": "04DA279738658A153C47D90D24070452~000000000000000000000000000000~YAAQzgMVAsu/ihecAQAAEIexIB6I6p0V+59dZ8vruLa78oiyXTYazFyqGVu2xAl8eeIiqbAkYGu0uvCSnzogLcIyGsPS5NOp/MIyikEew+2PwmZ5nmj0695vBvP9jvf9gxITh+MT6Uuxl8ao4FLaN7AntFeglx/2gjxOs+5z5rGAMAMLzszUlLeyDhcBtVg1AQMetQg8qEhJneoADnsczEI4r0RfttIDh7j+P54q1OsM5+rejJnRTwzcRAFZPUk2p51Gj23sIvBMrpEvQAq5qIJEk2+BBI/R8ReV1KYnqWL1Xtx1lZGIIlP1ENIV5Y4MbpLHB3SVXp0JMDwdPpqhsTU1LxNvKrrIpRZJqjqOONEC1C3tdttZwvBRuL2V4EcAER9Mdh7mfR9jFZZMzT8Rwo91ygOoPxs8bwZsriXGSibsYRA+12gIYgh3YvQF97OUfoRq4dY7n6SMJu5YJJHpD0AiSY7ShZOrRyiGqQbX",
+      "domain": ".maersk.com"
+    },
+    {
+      "name": "bm_sv",
+      "value": "E07245C37F8CE345FCE08936F4912537~YAAQzgMVAlbOihecAQAAzpOxIB6Z1af+yqZsByklRBh3tUYuFrTpFlegfBhxagk6ZgL4nqkfvW6ziLPGL0hHGLJ36ubfeYsFvvS8MMwMFah340qDwxAGQK5uEG9WVJMuhURlLvCoH/mJ7I8jj0iRZn80IFXOV2RU82PjDrbNqMbuhnyPaqw0+cHiqvs5m1XelmCCkTrPkq9SiYneeVD7G7rkqPqiYHG4m/E77qp+uKG+4WhOJ25rxwv5304A6K3D~1",
+      "domain": ".maersk.com"
+    },
+    {
+      "name": "bm_sz",
+      "value": "3F3644FE90133DFEB002AB78CF145150~YAAQzgMVAlfOihecAQAAzpOxIB64lBNhc42+hxz4b4eE6XD2E7C9Fgh3DPKwnQjCBzBsvdje+8+3/XGNOro5eN7O4adfhISppR7nOVMM1gjWcAfZb0vgo+3DoXTtfBfgJUW7LtE6D05AINgiFXTbrs+Bpk+gSx4awU1dEc6F2CP++a9CEsoPhFzK3DKto6FIPacB6UljhCXbDIH61GUZ3tqN5LsJcdioqz0dMUZfw3diwaakOSSH3dEl+67YPIDN5xnN/GfC7kmgD01Xz2eV5DlV5eHsVpHpR3o5auEMjiA8bapjd/kMGzX0J0IFC6zXi1mUPFj8TT+T749XyDXT/87h7XmZsgdjDvv1Y+DjTUvux2hoQ8NuvDGwCg10dUGLVyUBl3GyyJ9dcqbv19xI3FkeTskXdmykzn+Wsn+SRvUWI6Ot+u1+jpsSpNLf61xg~3422008~3617349",
+      "domain": ".maersk.com"
+    },
+    {
+      "name": "PIM-SESSION-ID",
+      "value": "Y4el6UrfxOTCk1zM",
+      "domain": ".maersk.com"
+    },
+    {
+      "name": "akaalb_api_maersk_alb",
+      "value": "1770075035~op=~rv=25~m=~os=~id=767c2724cff1e941681c43f4d7a05bb4",
+      "domain": "api.maersk.com"
+    },
+    {
+      "name": "_abck",
+      "value": "3FA6FECD0844796E91AD77CC2E157A8F~-1~YAAQjioRAh6LtRicAQAArZaxIA+IY7lFI4ajt+tBnrdHgDkfzr4E40YnpX/yIX2yArkSs3qcMm/R4Oa9sdB8coOhn06W3fM+Kz1z/o6Bt5yLmhq3hnXlKy14mD1Ip2APXkIq6y83m4tFRurg2z6CIzQ2Q4W8KYGSgxyAIPFZ4QQIFvBmlEPsqXUxIk5W2vuKWrcpeOOKhgPgjmHZhJ8B/ZVssqwD4X24jQElfSxlE1X/dERJsF6JJDi9I6FFI+1Uav4k+bAcXjwbl1Bs0uIRYd9nwN5LMQlIUg0MFZFkltFa7E4NVyNLBxNF3l58GpOwWgmg9VNBpdl4sbZrfbKCJ6cXHX4POGxma6nbAqeoeulTY2eQUcP4CIv1CceCZnJSYDzVtGqiXcP9+wVnXPc81sudLW1esv/hgVRS09Loo3xIkJlaIHZstUkh/ypuOi4csCBYgDZFLrLUxkBzmxXNh7mokdWoF6EZ/xo5r1IkrZR7GGcowMFnz/6Weuizv53WMIQbpSoO2N8yTO6earAP9Q+71wpMkpnx0Ho6ROtpJq/hSDgIIsVyslHcuYIBQpjr+v0uNMP/QDdjBhgb6Mfe1O5EMrnzWAm1iaTu+MgK+PxxVwN7GLTfdBoptimP4OM3buq8kAoYY7S8FiUnSPSZtSbhcKt85/sciQ+7PvpyKX2K6VkU644d4wJu/Pzd/yNAIv8mFwDPQxpuvxFA6h3k38U44PblsIfymFER4NZaHsJ8eQ9SOcSpC+YgWs7AFlbBDiYfFJDT97KCB+Mx+uR64qwWoeL/EwmOUbsng+L7KRXn1jKorHbSfmKTcCSLnqaI0Lo6nqnJBYNDOYiZsCb8qF+1P+zzuPLK01IXlXZhMPJ5BRBlYC41LP2biE/XGRbwvpc0W2QFKv9UFmiI6FWZ6CeB+YXe8chb95nn0w9WrU9mXsq81ZqMJdBsGTRbcUlV5SA/zncZXv+j7obkad/WwbKmiWQ=~-1~-1~1770078630~AAQAAAAF%2f%2f%2f%2f%2fxU8BGBnJxG5Y3oY8w9GRVs5lSxExFmBEamPRSyY1k7+teFyb60UjxzdkGtd+jMnbv4VcDp7mMGb%2fWfRhCaBKCVZmAG+Euw18ySX~-1",
+      "domain": ".maersk.com"
+    }
+  ],
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "capturedAt": "2026-02-02T23:30:35.320Z",
+  "source": "playwright-route-interception",
+  "response": {
+    "status": 403,
+    "headers": {
+      "Server": "AkamaiGHost",
+      "Mime-Version": "1.0",
+      "Content-Type": "text/html",
+      "Content-Length": "409",
+      "Expires": "Mon, 02 Feb 2026 23:30:35 GMT",
+      "Date": "Mon, 02 Feb 2026 23:30:35 GMT",
+      "Connection": "close",
+      "Alt-Svc": "h3=\":443\"; ma=93600",
+      "Set-Cookie": "_abck=3FA6FECD0844796E91AD77CC2E157A8F~-1~YAAQjioRAh6LtRicAQAArZaxIA+IY7lFI4ajt+tBnrdHgDkfzr4E40YnpX/yIX2yArkSs3qcMm/R4Oa9sdB8coOhn06W3fM+Kz1z/o6Bt5yLmhq3hnXlKy14mD1Ip2APXkIq6y83m4tFRurg2z6CIzQ2Q4W8KYGSgxyAIPFZ4QQIFvBmlEPsqXUxIk5W2vuKWrcpeOOKhgPgjmHZhJ8B/ZVssqwD4X24jQElfSxlE1X/dERJsF6JJDi9I6FFI+1Uav4k+bAcXjwbl1Bs0uIRYd9nwN5LMQlIUg0MFZFkltFa7E4NVyNLBxNF3l58GpOwWgmg9VNBpdl4sbZrfbKCJ6cXHX4POGxma6nbAqeoeulTY2eQUcP4CIv1CceCZnJSYDzVtGqiXcP9+wVnXPc81sudLW1esv/hgVRS09Loo3xIkJlaIHZstUkh/ypuOi4csCBYgDZFLrLUxkBzmxXNh7mokdWoF6EZ/xo5r1IkrZR7GGcowMFnz/6Weuizv53WMIQbpSoO2N8yTO6earAP9Q+71wpMkpnx0Ho6ROtpJq/hSDgIIsVyslHcuYIBQpjr+v0uNMP/QDdjBhgb6Mfe1O5EMrnzWAm1iaTu+MgK+PxxVwN7GLTfdBoptimP4OM3buq8kAoYY7S8FiUnSPSZtSbhcKt85/sciQ+7PvpyKX2K6VkU644d4wJu/Pzd/yNAIv8mFwDPQxpuvxFA6h3k38U44PblsIfymFER4NZaHsJ8eQ9SOcSpC+YgWs7AFlbBDiYfFJDT97KCB+Mx+uR64qwWoeL/EwmOUbsng+L7KRXn1jKorHbSfmKTcCSLnqaI0Lo6nqnJBYNDOYiZsCb8qF+1P+zzuPLK01IXlXZhMPJ5BRBlYC41LP2biE/XGRbwvpc0W2QFKv9UFmiI6FWZ6CeB+YXe8chb95nn0w9WrU9mXsq81ZqMJdBsGTRbcUlV5SA/zncZXv+j7obkad/WwbKmiWQ=~-1~-1~1770078630~AAQAAAAF%2f%2f%2f%2f%2fxU8BGBnJxG5Y3oY8w9GRVs5lSxExFmBEamPRSyY1k7+teFyb60UjxzdkGtd+jMnbv4VcDp7mMGb%2fWfRhCaBKCVZmAG+Euw18ySX~-1; Domain=.maersk.com; Path=/; Expires=Tue, 02 Feb 2027 23:30:34 GMT; Max-Age=31535999; Secure",
+      "X-Content-Type-Options": "nosniff",
+      "Access-Control-Expose-Headers": "nextPageToken, Location, Content-Disposition, X-File-Name, First-Page, Previous-Page, Next-Page, Last-Page, Current-Page, Total-Count",
+      "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Credentials": "false",
+      "Access-Control-Allow-Headers": "*,Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, Maersk-Usi-Authorization, requestDate, userId, Consumer-Key, X-File-Name, x-datadog-origin, x-datadog-parent-id, x-datadog-sampled, x-datadog-sampling-priority, x-datadog-trace-id, x-maersk-consumer-key",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,OPTIONS,DELETE",
+      "Access-Control-Allow-Origin": "*",
+      "True-Client-IP-Port": "57946",
+      "x-akamai-reference": "0.8e2a1102.1770075035.9f362eb6",
+      "Strict-Transport-Security": "max-age=15768000 ; includeSubDomains"
+    }
+  },
+  "blockedResponse": "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n<H1>Access Denied</H1>\n \nYou don't have permission to access \"http&#58;&#47;&#47;api&#46;maersk&#46;com&#47;synergy&#47;tracking&#47;MNBU3094033&#63;\" on this server.<P>\nReference&#32;&#35;18&#46;8e2a1102&#46;1770075035&#46;9f362eb6\n<P>https&#58;&#47;&#47;errors&#46;edgesuite&#46;net&#47;18&#46;8e2a1102&#46;1770075035&#46;9f362eb6</P>\n</BODY>\n</HTML>\n"
+}

@@ -1,379 +1,361 @@
-import fs from 'fs'
-import path from 'path'
-import { chromium, type BrowserContext, type Page } from 'playwright'
+import { type APIEvent } from '@solidjs/start/server'
+import fs from 'node:fs'
+import path from 'node:path'
+import { chromium, type BrowserContext, type Route } from 'playwright'
 
-/**
- * Maersk container tracking refresh route.
- *
- * Opens the Maersk tracking page in a Playwright browser and intercepts the
- * API response from https://api.maersk.com/synergy/tracking/{container}
- * that the page automatically fetches. The response JSON is saved to
- * collections/maersk/<container>.json.
- *
- * Query params:
- *   ?headless=1|0       - Run headless (default: false for debugging)
- *   ?userDataDir=...    - Chrome user data directory for persistent sessions
- *   ?hold=1             - Keep browser open after capture for manual inspection
- *   ?timeout=<ms>       - Custom timeout for response capture (default: 45000)
- */
-
-interface CapturedResponse {
+interface CapturedData {
   url: string
-  status: number
+  method: string
   headers: Record<string, string>
+  status: number
+  responseHeaders: Record<string, string>
   body: string
-  json?: unknown
-}
-
-interface Diagnostics {
-  request: {
-    url: string
-    method: string
-    headers: Record<string, string>
-  } | null
-  response: {
-    status: number
-    headers: Record<string, string>
-  } | null
   cookies: Array<{ name: string; value: string; domain: string }>
   userAgent: string
-  capturedAt: string
-  source: 'playwright-route-interception'
+  timestamp: string
 }
 
-export async function GET({ params, request }: { params: { container?: string }; request: Request }) {
-  const container = params?.container
-  if (!container) {
-    return new Response(JSON.stringify({ error: 'container param required' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const projectRoot = process.cwd()
-  const collectionsDir = path.join(projectRoot, 'collections')
-  const provider = 'maersk'
-  const providerDir = path.join(collectionsDir, provider)
-
-  // Validate directories
-  if (!fs.existsSync(collectionsDir)) {
-    return new Response(JSON.stringify({ error: 'collections directory not found' }), { status: 500 })
-  }
-  if (!fs.existsSync(providerDir)) {
-    return new Response(JSON.stringify({ error: 'maersk collections directory not found' }), { status: 500 })
-  }
-
-  const jsonPath = path.join(providerDir, `${container}.json`)
-  const diagnosticsPath = jsonPath + '.devtools.json'
-
-  // Parse query params
-  const url = new URL(request.url)
-  const headless = url.searchParams.get('headless') !== '0' // default headless=true
-  const hold = url.searchParams.get('hold') === '1'
-  const timeout = parseInt(url.searchParams.get('timeout') || '45000', 10)
-  let userDataDir = url.searchParams.get('userDataDir')
-  if (!userDataDir) {
-    userDataDir = process.env.CHROME_USER_DATA_DIR || process.env.USER_DATA_DIR || null
-  }
-
-  console.log(`refresh-maersk: starting capture for container ${container}`)
-  console.log(`refresh-maersk: headless=${headless}, hold=${hold}, timeout=${timeout}`)
-
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
+export async function GET({ params, request }: APIEvent) {
+  // Declare config variables in outer scope so they're available in catch
+  let hold = false
+  let browser: any = null
   let context: BrowserContext | null = null
-  let page: Page | null = null
 
   try {
-    // Launch browser with stealth args
-    const launchOptions: Parameters<typeof chromium.launch>[0] = {
+    const container = params?.container
+    if (!container) {
+      return new Response(JSON.stringify({ error: 'container param required' }), { status: 400 })
+    }
+
+    const projectRoot = process.cwd()
+    const collectionsDir = path.join(projectRoot, 'collections')
+    if (!fs.existsSync(collectionsDir)) {
+      return new Response(JSON.stringify({ error: 'collections directory not found' }), { status: 500 })
+    }
+
+    const provider = 'maersk'
+    const providerDir = path.join(collectionsDir, provider)
+    if (!fs.existsSync(providerDir)) {
+      fs.mkdirSync(providerDir, { recursive: true })
+    }
+
+    const jsonPath = path.join(providerDir, `${container}.json`)
+    const diagnosticsPath = path.join(providerDir, `${container}.json.devtools.json`)
+
+    // Parse query params
+    const url = new URL(request.url)
+    const headless = url.searchParams.get('headless') === '1' || url.searchParams.get('headless') === 'true'
+    hold = url.searchParams.get('hold') === '1'
+    const timeoutMs = parseInt(url.searchParams.get('timeout') || '60000', 10)
+    let userDataDir = url.searchParams.get('userDataDir') || process.env.CHROME_USER_DATA_DIR || null
+
+    // Validate userDataDir exists
+    if (userDataDir && !fs.existsSync(userDataDir)) {
+      return new Response(
+        JSON.stringify({
+          error: 'userDataDir does not exist',
+          providedPath: userDataDir,
+          hint: 'Create the directory or use an existing Chrome profile path'
+        }),
+        { status: 400 }
+      )
+    }
+
+    console.log('[maersk-refresh] Starting capture for container:', container)
+    console.log('[maersk-refresh] Config:', { headless, hold, timeout: timeoutMs, userDataDir: userDataDir || 'ephemeral' })
+
+    // Launch browser with stealth settings
+    const launchOptions: any = {
       headless,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
-        '--disable-features=IsolateOrigins,site-per-process',
-      ],
+        '--disable-dev-shm-usage'
+      ]
     }
 
-    // Find system Chrome if needed
-    const systemChrome = findSystemChrome()
-    if (systemChrome) {
-      launchOptions.executablePath = systemChrome
-      console.log(`refresh-maersk: using system Chrome at ${systemChrome}`)
-    }
+    const persistent = !!userDataDir
 
-    browser = await chromium.launch(launchOptions)
-
-    // Create context with optional persistent storage
-    const contextOptions: Parameters<typeof browser.newContext>[0] = {
-      userAgent:
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    const contextOptions: any = {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       locale: 'en-US',
-      extraHTTPHeaders: {
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
+      timezoneId: 'America/New_York',
+      viewport: { width: 1920, height: 1080 }
     }
 
-    if (userDataDir && fs.existsSync(userDataDir)) {
-      // For persistent context, we need to use launchPersistentContext instead
-      // For now, just use a regular context
-      console.log(`refresh-maersk: note - userDataDir provided but using regular context`)
+    if (persistent) {
+      // launchPersistentContext uses the provided userDataDir and returns a BrowserContext
+      context = await chromium.launchPersistentContext(userDataDir as string, {
+        headless,
+        args: launchOptions.args,
+        ...contextOptions,
+      })
+    } else {
+      browser = await chromium.launch(launchOptions)
+      context = await browser.newContext(contextOptions)
     }
 
-    context = await browser.newContext(contextOptions)
+    // At this point context is guaranteed to be non-null
+    const ctx = context!
 
-    // Mask webdriver detection
-    await context.addInitScript(() => {
+    // Apply stealth techniques (comprehensive)
+    await ctx.addInitScript(() => {
+      // Overwrite webdriver detection
       Object.defineProperty(navigator, 'webdriver', { get: () => false })
       Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] })
-      // @ts-ignore
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] })
+      
+      // @ts-ignore - Chrome runtime
       window.chrome = { runtime: {} }
+      
+      // Remove automation-related properties
+      // @ts-ignore
+      delete navigator.__proto__.webdriver
+      
+      // Mock permissions
+      const originalQuery = window.navigator.permissions.query
+      // @ts-ignore
+      window.navigator.permissions.query = (parameters) => (
+        parameters.name === 'notifications' ?
+          Promise.resolve({ state: Notification.permission }) :
+          originalQuery(parameters)
+      )
     })
 
-    // Set up response capture BEFORE navigation
-    // Using an object to store capture state (avoids TypeScript closure narrowing issues)
-    const capture: {
-      response: CapturedResponse | null
-      request: { url: string; method: string; headers: Record<string, string> } | null
-    } = { response: null, request: null }
+    const page = await ctx.newPage()
 
-    // Use route interception to capture the tracking API response
-    // This catches ALL traffic including Service Worker requests
-    await context.route('**/synergy/tracking/**', async (route) => {
-      const req = route.request()
-      const reqUrl = req.url()
-
-      console.log(`refresh-maersk: intercepted request to ${reqUrl}`)
-
-      // Store request info
-      capture.request = {
-        url: reqUrl,
-        method: req.method(),
-        headers: req.headers(),
-      }
-
-      try {
-        // Let the request proceed and capture the response
-        const response = await route.fetch()
-        const status = response.status()
-        const headers = response.headers()
-        const body = await response.text()
-
-        console.log(`refresh-maersk: captured response status=${status}, size=${body.length}`)
-
-        // Parse JSON if possible
-        let json: unknown
-        try {
-          json = JSON.parse(body)
-        } catch {
-          // Not JSON
-        }
-
-        capture.response = {
-          url: reqUrl,
-          status,
-          headers,
-          body,
-          json,
-        }
-
-        // Continue the request with the original response so the page works normally
-        await route.fulfill({
-          status,
-          headers,
-          body,
-        })
-      } catch (err) {
-        console.error(`refresh-maersk: error fetching response`, err)
-        // Continue the request normally if fetch fails
-        await route.continue()
-      }
-    })
-
-    // Create page and navigate
-    page = await context.newPage()
-    const trackingUrl = `https://www.maersk.com/tracking/${container}`
-
-    console.log(`refresh-maersk: navigating to ${trackingUrl}`)
-
+    // Warmup: visit homepage first to establish session (avoid cold-start detection)
+    console.log('[maersk-refresh] Warmup: visiting homepage to establish session')
     try {
-      await page.goto(trackingUrl, { waitUntil: 'networkidle', timeout })
+      await page.goto('https://www.maersk.com', { waitUntil: 'domcontentloaded', timeout: 15000 })
+      await page.waitForTimeout(1500 + Math.random() * 1000) // Random delay 1.5-2.5s
+      
+      // Simulate human mouse movement
+      await page.mouse.move(100 + Math.random() * 200, 100 + Math.random() * 200)
+      await page.waitForTimeout(300 + Math.random() * 200)
+      await page.mouse.move(400 + Math.random() * 300, 200 + Math.random() * 200)
     } catch (err) {
-      console.warn(`refresh-maersk: navigation timeout/error, checking if we captured response anyway`)
+      console.warn('[maersk-refresh] Warmup navigation failed, continuing anyway', err)
     }
 
-    // Wait a bit more for any late API calls
-    if (!capture.response) {
-      console.log(`refresh-maersk: waiting additional time for API response...`)
-      await page.waitForTimeout(5000)
-    }
+    // Capture state
+    const captureState: { data: CapturedData | null } = { data: null }
 
-    // Collect diagnostics
-    const cookies = await context.cookies()
-    const relevantCookies = cookies.filter(
-      (c) => c.domain.includes('maersk.com') || c.domain.includes('api.maersk.com')
-    )
-    const userAgent = await page.evaluate(() => navigator.userAgent)
+    // Setup route interception for Maersk API
+    await ctx.route('**/synergy/tracking/**', async (route: Route) => {
+      const routeRequest = route.request()
+      const requestUrl = routeRequest.url()
 
-    // Build base diagnostics (response details added after null check)
-    const baseDiagnostics = {
-      request: capture.request,
-      cookies: relevantCookies.map((c) => ({ name: c.name, value: c.value, domain: c.domain })),
-      userAgent,
-      capturedAt: new Date().toISOString(),
-      source: 'playwright-route-interception' as const,
-    }
+      console.log('[maersk-refresh] Intercepted request:', requestUrl)
 
-    // Check if we got a valid response
-    if (!capture.response) {
-      const diagnostics: Diagnostics = { ...baseDiagnostics, response: null }
-      // Write diagnostics for debugging
-      fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-      console.log(`refresh-maersk: wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`)
+      // Continue the request and capture response
+      const response = await route.fetch()
+      const status = response.status()
+      const responseHeaders = await response.headersArray()
+      const cookies = await ctx.cookies()
+      const bodyText = await response.text()
 
-      if (hold) {
-        console.log(`refresh-maersk: holding browser open for manual inspection`)
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            reason: 'no-response-captured',
-            diagnosticsPath: path.relative(projectRoot, diagnosticsPath),
-            hint: 'Browser is held open for inspection. Check DevTools Network tab.',
-          }),
-          { status: 202 }
-        )
+      console.log('[maersk-refresh] Captured response:', { url: requestUrl, status, bodyLength: bodyText.length })
+
+      // Convert headers array to object
+      const reqHeadersObj: Record<string, string> = {}
+      const reqHeaders = await routeRequest.headersArray()
+      for (const { name, value } of reqHeaders) {
+        reqHeadersObj[name] = value
       }
 
-      await browser.close()
+      const respHeadersObj: Record<string, string> = {}
+      for (const { name, value } of responseHeaders) {
+        respHeadersObj[name] = value
+      }
+
+      captureState.data = {
+        url: requestUrl,
+        method: routeRequest.method(),
+        headers: reqHeadersObj,
+        status,
+        responseHeaders: respHeadersObj,
+        body: bodyText,
+        cookies: cookies.map(c => ({ name: c.name, value: c.value, domain: c.domain })),
+        userAgent: contextOptions.userAgent,
+        timestamp: new Date().toISOString()
+      }
+
+      // Fulfill with original response
+      await route.fulfill({ response })
+    })
+
+    // Navigate to tracking page
+    const trackingUrl = `https://www.maersk.com/tracking/${container}`
+    console.log('[maersk-refresh] Navigating to:', trackingUrl)
+
+    // Human-like delay before navigation
+    await page.waitForTimeout(800 + Math.random() * 400)
+
+    await page.goto(trackingUrl, { waitUntil: 'networkidle', timeout: timeoutMs })
+
+    // Simulate human interaction: scroll, mouse movements
+    await page.waitForTimeout(1000 + Math.random() * 500)
+    
+    try {
+      await page.mouse.move(300, 200)
+      await page.waitForTimeout(200)
+      await page.evaluate(() => window.scrollBy(0, 100))
+      await page.waitForTimeout(300 + Math.random() * 200)
+      await page.mouse.move(500 + Math.random() * 100, 300 + Math.random() * 100)
+    } catch (err) {
+      console.debug('[maersk-refresh] Mouse/scroll simulation failed', err)
+    }
+
+    // Wait for API calls with human-like delay
+    await page.waitForTimeout(2000 + Math.random() * 1000)
+
+    // If hold mode, keep browser open for manual inspection
+    if (hold) {
+      console.log('[maersk-refresh] HOLD mode active - browser will stay open. Press Ctrl+C to exit.')
+      await new Promise(() => {}) // never resolves
+    }
+
+    // Close the browser/context unless we're holding it open for manual inspection
+    if (!hold) {
+      try {
+        if (persistent) {
+          await ctx.close()
+        } else if (browser) {
+          await browser.close()
+        }
+      } catch (e) {
+        console.warn('[maersk-refresh] error closing browser/context', e)
+      }
+    }
+
+    // Check if we captured data
+    if (!captureState.data) {
       return new Response(
         JSON.stringify({
-          error: 'Failed to capture API response',
-          diagnostics,
+          error: 'No API request intercepted',
+          hint: 'The page did not make a request to /synergy/tracking/. Check if the container number is valid or if Maersk changed their API.',
+          expectedUrl: `https://api.maersk.com/synergy/tracking/${container}`
         }),
         { status: 502 }
       )
     }
 
-    // Now we know capture.response is not null - extract to typed variable
-    const resp = capture.response!
-    const diagnostics: Diagnostics = {
-      ...baseDiagnostics,
-      response: {
-        status: resp.status,
-        headers: resp.headers,
-      },
-    }
+    const captured = captureState.data
 
-    // Check for Access Denied or non-JSON response
-    if (resp.status === 403 || (resp.body && resp.body.includes('Access Denied'))) {
-      fs.writeFileSync(diagnosticsPath, JSON.stringify({ ...diagnostics, blockedResponse: resp.body.substring(0, 1000) }, null, 2), 'utf-8')
-
-      if (hold) {
-        console.log(`refresh-maersk: Access Denied - holding browser open`)
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            reason: 'access-denied',
-            diagnosticsPath: path.relative(projectRoot, diagnosticsPath),
-          }),
-          { status: 202 }
-        )
+    // Check for Akamai block
+    if (captured.status === 403 && captured.body.includes('Access Denied')) {
+      // Write diagnostics for debugging
+      const diagnostics = {
+        request: {
+          url: captured.url,
+          method: captured.method,
+          headers: captured.headers
+        },
+        cookies: captured.cookies,
+        userAgent: captured.userAgent,
+        capturedAt: captured.timestamp,
+        source: 'playwright-route-interception',
+        response: {
+          status: captured.status,
+          headers: captured.responseHeaders
+        },
+        blockedResponse: captured.body
       }
+      fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
 
-      await browser.close()
       return new Response(
         JSON.stringify({
           error: 'Access Denied by Akamai',
-          hint: 'Try with a userDataDir that has existing session cookies',
-          diagnostics,
+          hint: 'The API request was blocked. To fix this:\n1. Open Chrome normally and log into www.maersk.com\n2. Find your Chrome profile directory:\n   - Windows: %LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\n   - macOS: ~/Library/Application Support/Google/Chrome/Default\n   - Linux: ~/.config/google-chrome/default\n3. Call the API with ?userDataDir=/path/to/profile\n   Example: ?userDataDir=/home/user/.config/google-chrome/default\n4. Alternatively, set CHROME_USER_DATA_DIR environment variable',
+          diagnostics: {
+            status: captured.status,
+            url: captured.url,
+            diagnosticsFile: path.relative(projectRoot, diagnosticsPath),
+            cookiesPresent: captured.cookies.length,
+            userDataDir: userDataDir || 'none (ephemeral session)'
+          }
         }),
         { status: 403 }
       )
     }
 
-    // Write the JSON response
-    const jsonContent = resp.json
-      ? JSON.stringify(resp.json, null, 4)
-      : resp.body
-
-    fs.writeFileSync(jsonPath, jsonContent, 'utf-8')
-    console.log(`refresh-maersk: wrote ${path.relative(projectRoot, jsonPath)} (${jsonContent.length} bytes)`)
-
-    // Write diagnostics
-    fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-    console.log(`refresh-maersk: wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`)
-
-    if (hold) {
-      console.log(`refresh-maersk: success - holding browser open for inspection`)
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          updatedPath: path.relative(projectRoot, jsonPath),
-          diagnosticsPath: path.relative(projectRoot, diagnosticsPath),
-          held: true,
-        }),
-        { status: 200 }
-      )
+    // Check for successful JSON response
+    let parsedJson: any = null
+    try {
+      parsedJson = JSON.parse(captured.body)
+    } catch {
+      // Not JSON, might be HTML error
+      if (captured.body.includes('<HTML>') || captured.body.includes('<!DOCTYPE')) {
+        return new Response(
+          JSON.stringify({
+            error: 'Received HTML instead of JSON',
+            status: captured.status,
+            hint: 'The API returned an error page. Check diagnostics file for details.',
+            diagnosticsFile: path.relative(projectRoot, diagnosticsPath)
+          }),
+          { status: 502 }
+        )
+      }
     }
 
-    await browser.close()
+    // Write captured JSON to file
+    const outputJson = parsedJson || captured.body
+    fs.writeFileSync(jsonPath, JSON.stringify(outputJson, null, 2), 'utf-8')
+    console.log(`[maersk-refresh] Wrote ${path.relative(projectRoot, jsonPath)} (${captured.body.length} bytes)`)
+
+    // Write diagnostics
+    const diagnostics = {
+      request: {
+        url: captured.url,
+        method: captured.method,
+        headers: captured.headers
+      },
+      cookies: captured.cookies,
+      userAgent: captured.userAgent,
+      capturedAt: captured.timestamp,
+      source: 'playwright-route-interception',
+      response: {
+        status: captured.status,
+        headers: captured.responseHeaders
+      }
+    }
+    fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+    console.log(`[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`)
 
     return new Response(
       JSON.stringify({
         ok: true,
         updatedPath: path.relative(projectRoot, jsonPath),
         diagnosticsPath: path.relative(projectRoot, diagnosticsPath),
+        status: captured.status,
+        bytesWritten: captured.body.length
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200 }
     )
-  } catch (err) {
-    console.error('refresh-maersk: error', err)
-
-    // Cleanup
+  } catch (err: any) {
+    console.error('[maersk-refresh] Error:', err)
+    // Attempt cleanup
     try {
-      if (browser && !hold) await browser.close()
-    } catch {
-      // ignore
+      if (!hold) {
+        // @ts-ignore
+        if (context) await ctx.close()
+        // @ts-ignore
+        if (browser) await browser.close()
+      }
+    } catch (closeErr) {
+      console.warn('[maersk-refresh] error during cleanup', closeErr)
     }
 
     return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: String(err),
+        stack: err.stack
+      }),
+      { status: 500 }
     )
   }
 }
 
 export const POST = GET
-
-/**
- * Find a Chrome/Chromium executable on the system
- */
-function findSystemChrome(): string | null {
-  const envPath = process.env.CHROME_PATH || process.env.CHROMIUM_PATH
-  if (envPath && fs.existsSync(envPath)) return envPath
-
-  const platform = process.platform
-  const candidates: string[] = []
-
-  if (platform === 'win32') {
-    const programFiles = process.env['PROGRAMFILES'] || 'C:\\Program Files'
-    const programFilesx86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'
-    candidates.push(path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'))
-    candidates.push(path.join(programFilesx86, 'Google', 'Chrome', 'Application', 'chrome.exe'))
-  } else if (platform === 'darwin') {
-    candidates.push('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
-    candidates.push('/Applications/Chromium.app/Contents/MacOS/Chromium')
-  } else {
-    // Linux
-    candidates.push('/usr/bin/google-chrome')
-    candidates.push('/usr/bin/google-chrome-stable')
-    candidates.push('/usr/bin/chromium-browser')
-    candidates.push('/usr/bin/chromium')
-    candidates.push('/snap/bin/chromium')
-  }
-
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c
-  }
-  return null
-}
