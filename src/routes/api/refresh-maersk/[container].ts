@@ -31,7 +31,7 @@ interface CapturedData {
   timestamp: string
 }
 
-export async function GET({ params, request }: APIEvent) {
+async function handleMaersk({ params, request }: APIEvent) {
   // Outer scope for cleanup in catch block
   let hold = false
   let browser: any = null
@@ -460,4 +460,13 @@ export async function GET({ params, request }: APIEvent) {
   }
 }
 
-export const POST = GET
+// Export both GET and POST to call the same handler. We avoid assigning
+// `POST = GET` because some bundlers/tree-shakers may remove the non-picked
+// export when Vite loads the module with ?pick=POST, causing a ReferenceError.
+export async function GET(event: APIEvent) {
+  return handleMaersk(event)
+}
+
+export async function POST(event: APIEvent) {
+  return handleMaersk(event)
+}
