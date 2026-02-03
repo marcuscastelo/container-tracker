@@ -2,15 +2,22 @@ import { containerStatusUseCases } from '~/modules/container'
 import { z } from 'zod'
 
 // Explicit request/response schemas for this API
-export const RefreshRequestSchema = z.object({
+const RefreshRequestSchema = z.object({
   container: z.string(),
   carrier: z.string().optional().nullable(),
 }).strict()
 
-export const RefreshSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string() })
-export const RefreshRedirectResponseSchema = z.object({ redirect: z.string() })
-export const RefreshResponseSchema = z.union([RefreshSuccessResponseSchema, RefreshRedirectResponseSchema])
-export const RefreshErrorResponseSchema = z.object({ error: z.string() })
+const RefreshSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string() })
+const RefreshRedirectResponseSchema = z.object({ redirect: z.string() })
+const RefreshResponseSchema = z.union([RefreshSuccessResponseSchema, RefreshRedirectResponseSchema])
+const RefreshErrorResponseSchema = z.object({ error: z.string() })
+
+export {
+  RefreshResponseSchema,
+  RefreshSuccessResponseSchema,
+  RefreshRedirectResponseSchema,
+  RefreshErrorResponseSchema,
+}
 
 export type RefreshRequest = z.infer<typeof RefreshRequestSchema>
 export type RefreshResponse = z.infer<typeof RefreshResponseSchema>
@@ -89,11 +96,23 @@ export async function POST({ request }: any) {
   -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' \
   -H 'Accept-Language: en-US,en;q=0.5' \
   -H 'Accept-Encoding: gzip, deflate, br, zstd' \
-  -H 'Referer: https://www.cma-cgm.com/ebusiness/tracking' \
+  -H 'Referer: https://www.cma-cgm.com/ebusiness/tracking/search' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -H 'Origin: https://www.cma-cgm.com' \
+  -H 'Sec-GPC: 1' \
+  -H 'Alt-Used: www.cma-cgm.com' \
   -H 'Connection: keep-alive' \
-  --data-raw '__RequestVerificationToken=PLACEHOLDER&SearchViewModel.SearchBy=Container&SearchViewModel.Reference={container}&SearchViewModel.FromHome=true&search='`,
+  -H 'Cookie: datadome=EadwYMX4V~SX3ED9Vqkvc6Jegenl9TPtyO9SpgN89aKt4wZvHIHBM3_AcwHWH2tJkIc41fABd8B1ye8xLF3aOvYCt1AlO0mucLmUVkZrGSAdFhlEUFAIah8N_gmqN3KY; MustRelease=22.0.4.0; __RequestVerificationToken=64dS2BI8rYboYSq-JMaZn8dlXYijOkaLdFJIT0yXutdjqNzUCLbsLr61l1KUejvvPx1wCOqIFdpoh3vDBPBgt1B2j80asuEgtNeRpz0H2lI1; dtCookie=v_4_srv_2_sn_786CC8D9A19CFA6CC105F857BA5985D7_perc_100000_ol_0_mul_1_app-3A0b422508580a7b79_0_rcs-3Acss_0; Human_Search=1' \
+  -H 'Upgrade-Insecure-Requests: 1' \
+  -H 'Sec-Fetch-Dest: document' \
+  -H 'Sec-Fetch-Mode: navigate' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'Sec-Fetch-User: ?1' \
+  -H 'Priority: u=0, i' \
+  -H 'Pragma: no-cache' \
+  -H 'Cache-Control: no-cache' \
+  -H 'TE: trailers' \
+  --data-raw '__RequestVerificationToken=LXDaegidzJ7-SGQfrRDUDGSyU7iz97NftbpPpk1gW7EniJHdlbPcnJjCn4ZguciOiXDTcCixp-t9U-ASsTrXVNCcvz4uyhtCmqqH3o0XkyE1&SearchViewModel.SearchBy=Container&SearchViewModel.Reference={container}&SearchViewModel.FromHome=true&search='`,
 
       msc: `curl 'https://www.msc.com/api/feature/tools/TrackingInfo' \
   --compressed \
@@ -124,9 +143,18 @@ export async function POST({ request }: any) {
     if (!template) {
       console.error(`refresh: no curl template for carrier '${provider}'`)
       return respondWithSchema({ error: `no curl template for carrier ${provider}` }, RefreshErrorResponseSchema, 400)
+    } else {
+      console.debug(`refresh: using curl template for carrier '${provider}'`)
+      const url = template.match(/curl\s+['"]([^'"\s]+)['"]/)
+      if (url && url[1]) {
+        console.debug(`refresh: template url preview: ${url[1].replace(/\{container\}/g, '...')}`)
+      } else {
+        console.error('refresh: could not extract url from template for preview')
+      }
     }
 
     const curlContent = template.replace(/\{container\}/g, String(container))
+    console.debug('refresh: full curl command: \`' + curlContent + '\`')
     const parsed = parseCurl(curlContent)
     if (!parsed.url) return respondWithSchema({ error: 'could not parse url from curl' }, RefreshErrorResponseSchema, 500)
 

@@ -1,3 +1,4 @@
+import { CollectionsResponse } from '~/routes/api/collections'
 import containerStatus from '../../schemas/containerStatus.schema'
 import { ShipmentsSchema as UIShipmentsSchema, Shipment as UIShipment } from '../../schemas/shipment.schema'
 
@@ -21,7 +22,7 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
   const mscContainers = raw?.Data?.BillOfLadings && raw.Data.BillOfLadings[0]?.ContainersInfo ? raw.Data.BillOfLadings[0].ContainersInfo : null
   if ((!containers || containers.length === 0) && mscContainers && mscContainers.length > 0) {
     first = mscContainers[0]
-    try { console.debug(`collections: using MSC ContainersInfo for sample ${path}`) } catch (e) {}
+    try { console.debug(`collections: using MSC ContainersInfo for sample ${path}`) } catch (e) { }
   }
 
   // derive carrier (armador) preferring normalized fields, otherwise infer from folder name in path
@@ -194,7 +195,7 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
   }
 
   const eta = etaObj ? etaObj.toISOString().replace(/\.000Z$/, '') : ''
-  try { if (etaSource) console.debug(`collections: ETA derived from ${etaSource} for ${fileBase ?? path}: ${eta}`) } catch (e) {}
+  try { if (etaSource) console.debug(`collections: ETA derived from ${etaSource} for ${fileBase ?? path}: ${eta}`) } catch (e) { }
 
   const status = first?.status ?? raw?.current_status ?? raw?.status ?? 'Desconhecido'
 
@@ -225,15 +226,21 @@ export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
       return []
     }
     // API now returns array of { container_id, carrier, status } from Supabase
-    const data = await res.json() as Array<{ container_id: string; carrier: string, status: any }>
+    const data = await res.json() as CollectionsResponse
     const out: UIShipment[] = []
     console.debug(`collections: fetched ${data.length} records from /api/collections`)
-    data.forEach(({ container_id, carrier,status }, i) => {
+    data.forEach(({ container_id, carrier, status }, i) => {
       // Use container_id as the path for mapping heuristics
       console.debug(`collections: processing record #${i + 1} for container_id=${container_id}, carrier=${carrier}`)
       out.push(mapNormalizedToUI(status, carrier, i + 1, container_id))
     })
-    try { return UIShipmentsSchema.parse(out) } catch (e) { return out as any }
+    if (UIShipmentsSchema.safeParse(out).success) {
+      console.debug('collections: mapped shipments conform to UIShipmentsSchema')
+      return out
+    } else {
+      console.warn('collections: mapped shipments DO NOT conform to UIShipmentsSchema')
+      return []
+    }
   } catch (err) {
     console.error('collections: failed to fetch /api/collections', err)
     return []

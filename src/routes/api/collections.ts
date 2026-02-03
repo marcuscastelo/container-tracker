@@ -7,7 +7,7 @@ import { z } from 'zod/v4'
 const CollectionsRequestSchema = z.object({})
 const CollectionsItemSchema = z.object({
   container_id: z.string(),
-  carrier: z.string().nullable(),
+  carrier: z.string(),
   // status is stored as JSON in Supabase (JSONB) and can be any record
   status: z.any().nullable(),
 })
