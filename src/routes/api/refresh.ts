@@ -1,4 +1,35 @@
 import { containerStatusUseCases } from '~/modules/container'
+import { z } from 'zod'
+
+// Explicit request/response schemas for this API
+export const RefreshRequestSchema = z.object({
+  container: z.string(),
+  carrier: z.string().optional().nullable(),
+}).strict()
+
+export const RefreshSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string() })
+export const RefreshRedirectResponseSchema = z.object({ redirect: z.string() })
+export const RefreshResponseSchema = z.union([RefreshSuccessResponseSchema, RefreshRedirectResponseSchema])
+export const RefreshErrorResponseSchema = z.object({ error: z.string() })
+
+export type RefreshRequest = z.infer<typeof RefreshRequestSchema>
+export type RefreshResponse = z.infer<typeof RefreshResponseSchema>
+export type RefreshErrorResponse = z.infer<typeof RefreshErrorResponseSchema>
+
+// Health response schema for GET
+export const RefreshHealthResponseSchema = z.object({ ok: z.literal(true) })
+export type RefreshHealthResponse = z.infer<typeof RefreshHealthResponseSchema>
+
+// Helper to validate payloads against schemas and return Response
+function respondWithSchema<T>(payload: T, schema: z.ZodTypeAny, status = 200, extraHeaders?: Record<string,string>) {
+  const parsed = schema.safeParse(payload)
+  if (!parsed.success) {
+    console.error('refresh: response validation failed', parsed.error.format())
+    return new Response(JSON.stringify({ error: 'response validation failed' }), { status: 500 })
+  }
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, extraHeaders || {})
+  return new Response(JSON.stringify(parsed.data), { status, headers })
+}
 
 // Simple helper to recursively walk a directory
 function parseCurl(content: string) {
@@ -28,10 +59,11 @@ function parseCurl(content: string) {
 
 export async function POST({ request }: any) {
   try {
-    const body = await request.json().catch(() => ({}))
-    const container = body?.container
-    const provider = body?.carrier || 'unknown'
-    if (!container) return new Response(JSON.stringify({ error: 'container required' }), { status: 400 })
+    const rawBody = await request.json().catch(() => ({}))
+    const parsedReq = RefreshRequestSchema.safeParse(rawBody)
+    if (!parsedReq.success) return respondWithSchema({ error: `invalid request: ${parsedReq.error.message}` }, RefreshErrorResponseSchema, 400)
+    const container = parsedReq.data.container
+    const provider = parsedReq.data.carrier || 'unknown'
     // Fetch container record from DB
     const rec = await containerStatusUseCases.getContainerStatus(String(container))
     if (!rec) return new Response(JSON.stringify({ error: 'container not found in DB', container }), { status: 404 })
@@ -81,22 +113,22 @@ export async function POST({ request }: any) {
     // If provider is Maersk we keep the existing redirect to the puppeteer handler
     if (provider === 'maersk') {
       const redirectPath = `/api/refresh-maersk/${encodeURIComponent(String(container))}`
-      return new Response(JSON.stringify({ redirect: redirectPath }), {
-        status: 307,
-        headers: { Location: redirectPath, 'Content-Type': 'application/json' }
-      })
+      const redirectPayload = { redirect: redirectPath }
+      if (RefreshRedirectResponseSchema.safeParse(redirectPayload).success) {
+        return new Response(JSON.stringify(redirectPayload), { status: 307, headers: { Location: redirectPath, 'Content-Type': 'application/json' } })
+      }
+      return respondWithSchema(redirectPayload, RefreshRedirectResponseSchema, 307, { Location: redirectPath })
     }
 
     const template = CURL_TEMPLATES[provider] ?? CURL_TEMPLATES[provider.split('-')[0]] ?? null
     if (!template) {
-
       console.error(`refresh: no curl template for carrier '${provider}'`)
-    return new Response(JSON.stringify({ error: `no curl template for carrier ${provider}` }), { status: 400 })
+      return respondWithSchema({ error: `no curl template for carrier ${provider}` }, RefreshErrorResponseSchema, 400)
     }
 
     const curlContent = template.replace(/\{container\}/g, String(container))
     const parsed = parseCurl(curlContent)
-    if (!parsed.url) return new Response(JSON.stringify({ error: 'could not parse url from curl' }), { status: 500 })
+    if (!parsed.url) return respondWithSchema({ error: 'could not parse url from curl' }, RefreshErrorResponseSchema, 500)
 
     console.debug(`refresh: provider=${provider} container=${container} url=${parsed.url} method=${parsed.method}`)
     console.debug('refresh: fetchOpts.headers preview', Object.keys(parsed.headers || {}).slice(0,20))
@@ -123,7 +155,7 @@ export async function POST({ request }: any) {
       })
     } catch (err) {
       console.error('refresh: fetch failed', err)
-      return new Response(JSON.stringify({ error: 'fetch failed', details: String(err) }), { status: 502 })
+      return respondWithSchema({ error: `fetch failed: ${String(err)}` }, RefreshErrorResponseSchema, 502)
     }
 
     // Read response as ArrayBuffer and handle possible compressed payloads (gzip/deflate/br).
@@ -167,7 +199,7 @@ export async function POST({ request }: any) {
       console.debug('refresh: decoded text preview', text.slice(0, 500).replace(/\s+/g, ' '))
     } catch (err) {
       console.error('refresh: reading response failed', err)
-      return new Response(JSON.stringify({ error: 'reading response failed', details: String(err) }), { status: 502 })
+      return respondWithSchema({ error: `reading response failed: ${String(err)}` }, RefreshErrorResponseSchema, 502)
     }
 
     // try to pretty-print JSON responses
@@ -227,14 +259,14 @@ export async function POST({ request }: any) {
       console.log(`refresh: saved container ${container} to Supabase`)
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
-      return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), { status: 500 })
+      return respondWithSchema({ error: `Supabase save failed: ${String(err)}` }, RefreshErrorResponseSchema, 500)
     }
 
-    return new Response(JSON.stringify({ ok: true, container: String(container) }), { status: 200 })
+    return respondWithSchema({ ok: true, container: String(container) }, RefreshSuccessResponseSchema, 200)
   } catch (err: any) {
     console.error('refresh error', err)
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
+    return respondWithSchema({ error: String(err) }, RefreshErrorResponseSchema, 500)
   }
 }
 
-export const GET = () => new Response(JSON.stringify({ ok: true }), { status: 200 })
+export const GET = () => respondWithSchema({ ok: true }, RefreshHealthResponseSchema, 200)

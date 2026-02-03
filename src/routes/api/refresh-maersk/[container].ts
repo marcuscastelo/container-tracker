@@ -1,7 +1,38 @@
 import type { APIEvent } from '@solidjs/start/server'
+import { z } from 'zod'
 import fs from 'fs'
 import path from 'path'
 import { containerStatusUseCases } from '~/modules/container'
+
+// Zod schemas and exported types for the Maersk refresh endpoint
+export const MaerskRequestParamsSchema = z.object({ container: z.string() })
+export const MaerskRequestQuerySchema = z.object({
+  headless: z.string().optional(),
+  userDataDir: z.string().optional(),
+  hold: z.string().optional(),
+  timeout: z.string().optional(),
+})
+
+export const MaerskRequestSchema = z.object({ params: MaerskRequestParamsSchema, query: MaerskRequestQuerySchema })
+
+export const MaerskSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string(), status: z.number().optional(), savedToSupabase: z.boolean().optional() })
+export const MaerskErrorResponseSchema = z.object({ error: z.string().optional(), hint: z.string().optional(), diagnostics: z.any().optional() })
+
+export type MaerskRequestParams = z.infer<typeof MaerskRequestParamsSchema>
+export type MaerskRequestQuery = z.infer<typeof MaerskRequestQuerySchema>
+export type MaerskRequest = z.infer<typeof MaerskRequestSchema>
+export type MaerskSuccessResponse = z.infer<typeof MaerskSuccessResponseSchema>
+export type MaerskErrorResponse = z.infer<typeof MaerskErrorResponseSchema>
+
+// Helper to validate payloads against schemas and return Response
+function respondWithSchema<T>(payload: T, schema: z.ZodTypeAny, status = 200) {
+  const parsed = schema.safeParse(payload)
+  if (!parsed.success) {
+    console.error('maersk-refresh: response validation failed', parsed.error.format())
+    return new Response(JSON.stringify({ error: 'response validation failed' }), { status: 500 })
+  }
+  return new Response(JSON.stringify(parsed.data), { status, headers: { 'Content-Type': 'application/json' } })
+}
 
 /** Helper for delays (Puppeteer doesn't have page.waitForTimeout) */
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -38,10 +69,10 @@ async function handleMaersk({ params, request }: APIEvent) {
   let browser: any = null
 
   try {
-    const container = params?.container
-    if (!container) {
-      return new Response(JSON.stringify({ error: 'container param required' }), { status: 400 })
-    }
+    // Validate params
+    const paramsParsed = MaerskRequestParamsSchema.safeParse(params || {})
+    if (!paramsParsed.success) return respondWithSchema({ error: `invalid params: ${paramsParsed.error.message}` }, MaerskErrorResponseSchema, 400)
+    const container = paramsParsed.data.container
 
     const projectRoot = process.cwd()
     const collectionsDir = path.join(projectRoot, 'collections')
@@ -58,23 +89,24 @@ async function handleMaersk({ params, request }: APIEvent) {
     const jsonPath = path.join(providerDir, `${container}.json`)
     const diagnosticsPath = path.join(providerDir, `${container}.json.devtools.json`)
 
-    // Parse query params
+    // Parse and validate query params
     const url = new URL(request.url)
-    const headless = url.searchParams.get('headless') === '1' || url.searchParams.get('headless') === 'true'
-    hold = url.searchParams.get('hold') === '1'
-    const timeoutMs = parseInt(url.searchParams.get('timeout') || '60000', 10)
-    let userDataDir = url.searchParams.get('userDataDir') || process.env.CHROME_USER_DATA_DIR || null
+    const queryObj = {
+      headless: url.searchParams.get('headless') ?? undefined,
+      userDataDir: url.searchParams.get('userDataDir') ?? undefined,
+      hold: url.searchParams.get('hold') ?? undefined,
+      timeout: url.searchParams.get('timeout') ?? undefined,
+    }
+    const qParsed = MaerskRequestQuerySchema.safeParse(queryObj)
+    if (!qParsed.success) return respondWithSchema({ error: `invalid query: ${qParsed.error.message}` }, MaerskErrorResponseSchema, 400)
+    const headless = qParsed.data.headless === '1' || qParsed.data.headless === 'true'
+    hold = qParsed.data.hold === '1'
+    const timeoutMs = parseInt(qParsed.data.timeout || '60000', 10)
+    let userDataDir = qParsed.data.userDataDir || process.env.CHROME_USER_DATA_DIR || null
 
     // Validate userDataDir
     if (userDataDir && !fs.existsSync(userDataDir)) {
-      return new Response(
-        JSON.stringify({
-          error: 'userDataDir does not exist',
-          providedPath: userDataDir,
-          hint: 'Create the directory or use an existing Chrome profile path'
-        }),
-        { status: 400 }
-      )
+      return respondWithSchema({ error: 'userDataDir does not exist', hint: 'Create the directory or use an existing Chrome profile path', diagnostics: { providedPath: userDataDir } }, MaerskErrorResponseSchema, 400)
     }
 
     console.log('[maersk-refresh] Starting capture for container:', container)
