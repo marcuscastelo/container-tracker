@@ -1,10 +1,65 @@
 {
-  "name": "example-with-tailwindcss",
+  "name": "container-tracker",
+  "version": "1.0.0",
+  "description": "Container Tracker - SolidStart + Electron",
+  "author": "Marcus",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "electron:dev": "concurrently --kill-others \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:linux": "npm run build && electron-builder --linux AppImage",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.container-tracker.app",
+    "productName": "Container Tracker",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".output",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "collections",
+        "to": "server/collections",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "node_modules",
+        "to": "server/node_modules",
+        "filter": ["**/*"]
+      }
+    ],
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility",
+      "icon": "public/icon.png"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "public/icon.ico"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "public/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {
     "@solidjs/router": "^0.15.0",
@@ -15,11 +70,15 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.7",
+    "concurrently": "^9.2.1",
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0",
     "playwright": "^1.58.1",
     "puppeteer": "^24.36.1",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "tailwindcss": "^4.0.7"
+    "tailwindcss": "^4.0.7",
+    "wait-on": "^9.0.3"
   },
   "engines": {
     "node": ">=22"
