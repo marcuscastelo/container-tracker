@@ -1,0 +1,239 @@
+{
+  "Data": {
+    "CurrentDate": "03/02/2026",
+    "TrackingType": "Container",
+    "BillOfLadings": [
+      {
+        "Delivered": false,
+        "ContainersInfo": [
+          {
+            "Events": [
+              {
+                "Date": "02/02/2026",
+                "Order": 7,
+                "Detail": [
+                  "MSC BIANCA",
+                  "QI548A"
+                ],
+                "Vessel": {
+                  "IMO": "9770749",
+                  "Flag": "LR",
+                  "Built": "2019",
+                  "FlagName": "LIBERIA"
+                },
+                "Location": "ITAPOA, BR",
+                "Description": "Import Discharged from Vessel",
+                "UnLocationCode": "BRIOA",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "ITAPOA TERMINAIS PORTUARIOS S/A",
+                  "Smdg": "ITP",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "20/01/2026",
+                "Order": 6,
+                "Detail": [
+                  "MSC BIANCA",
+                  "QI548A"
+                ],
+                "Vessel": {
+                  "IMO": "9770749",
+                  "Flag": "LR",
+                  "Built": "2019",
+                  "FlagName": "LIBERIA"
+                },
+                "Location": "SANTOS, BR",
+                "Description": "Full Transshipment Loaded",
+                "UnLocationCode": "BRSSZ",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "BRASIL TERMINAL PORTUARIO S/A",
+                  "Smdg": "BTP",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "07/01/2026",
+                "Order": 5,
+                "Detail": [
+                  "MSC NAIROBI X",
+                  "MM552R"
+                ],
+                "Vessel": {
+                  "IMO": "9605243",
+                  "Flag": "LR",
+                  "Built": "2013",
+                  "FlagName": "LIBERIA"
+                },
+                "Location": "SANTOS, BR",
+                "Description": "Full Transshipment Discharged",
+                "UnLocationCode": "BRSSZ",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "BRASIL TERMINAL PORTUARIO S/A",
+                  "Smdg": "BTP",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "30/11/2025",
+                "Order": 4,
+                "Detail": [
+                  "MSC NAIROBI X",
+                  "MM548A"
+                ],
+                "Vessel": {
+                  "IMO": "9605243",
+                  "Flag": "LR",
+                  "Built": "2013",
+                  "FlagName": "LIBERIA"
+                },
+                "Location": "LEGHORN, IT",
+                "Description": "Full Transshipment Loaded",
+                "UnLocationCode": "ITLIV",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "LORENZINI & C. SRL",
+                  "Smdg": "LOREN",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "29/11/2025",
+                "Order": 3,
+                "Detail": [
+                  "MSC PARIS",
+                  "MZ546A"
+                ],
+                "Vessel": {
+                  "IMO": "9301483",
+                  "Flag": "LR",
+                  "Built": "2006",
+                  "FlagName": "LIBERIA"
+                },
+                "Location": "LEGHORN, IT",
+                "Description": "Full Transshipment Discharged",
+                "UnLocationCode": "ITLIV",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "LORENZINI & C. SRL",
+                  "Smdg": "LOREN",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "26/11/2025",
+                "Order": 2,
+                "Detail": [
+                  "MSC PARIS",
+                  "MZ546A"
+                ],
+                "Vessel": {
+                  "IMO": "9301483",
+                  "Flag": "LR",
+                  "Built": "2006",
+                  "FlagName": "LIBERIA"
+                },
+                "Location": "NAPLES, IT",
+                "Description": "Export Loaded on Vessel",
+                "UnLocationCode": "ITNAP",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "CONATECO",
+                  "Smdg": "CONA",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "17/11/2025",
+                "Order": 1,
+                "Detail": [
+                  "LADEN"
+                ],
+                "Vessel": {
+                  "IMO": "",
+                  "Flag": "",
+                  "Built": "",
+                  "FlagName": ""
+                },
+                "Location": "NAPLES, IT",
+                "Description": "Export received at CY",
+                "UnLocationCode": "ITNAP",
+                "EquipmentHandling": {
+                  "Bic": "",
+                  "Code": "",
+                  "Name": "CONATECO",
+                  "Smdg": "CONA",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "17/11/2025",
+                "Order": 0,
+                "Detail": [
+                  "EMPTY"
+                ],
+                "Vessel": {
+                  "IMO": "",
+                  "Flag": "",
+                  "Built": "",
+                  "FlagName": ""
+                },
+                "Location": "NAPLES, IT",
+                "Description": "Empty to Shipper",
+                "UnLocationCode": "ITNAP",
+                "EquipmentHandling": {
+                  "Bic": "ITNAPRJIY",
+                  "Code": "",
+                  "Name": "MIELE",
+                  "Smdg": "",
+                  "CodeType": null
+                },
+                "IntermediaryPortCalls": null
+              }
+            ],
+            "Delivered": false,
+            "LatestMove": "ITAPOA, BR",
+            "PodEtaDate": "",
+            "ContainerType": "40' HIGH CUBE",
+            "ContainerNumber": "CXDU2058677"
+          }
+        ],
+        "BillOfLadingNumber": "MEDUK9307522",
+        "NumberOfContainers": 1,
+        "GeneralTrackingInfo": {
+          "ShippedTo": "ITAPOA, BR",
+          "PortOfLoad": "NAPLES, IT",
+          "ShippedFrom": "NAPLES, IT",
+          "Transshipments": [
+            "LEGHORN, IT"
+          ],
+          "FinalPodEtaDate": "",
+          "PortOfDischarge": "ITAPOA, BR",
+          "PriceCalculationDate": "26/11/2025"
+        }
+      }
+    ],
+    "TrackingTitle": "CONTAINER NUMBER:",
+    "TrackingNumber": "CXDU2058677",
+    "TrackingResultsLabel": "Tracking results provided by MSC on 03.02.2026 at 22:28 Central Europe Standard Time",
+    "PriceCalculationLabel": "* Price calculation date is indicative. Please contact your local MSC office to verify this information.",
+    "ShowSubscriptionBanner": true
+  },
+  "IsSuccess": true
+}
