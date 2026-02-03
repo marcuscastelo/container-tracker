@@ -1,62 +1,49 @@
 import containerStatus from '../../schemas/containerStatus.schema'
 import { ShipmentsSchema as UIShipmentsSchema, Shipment as UIShipment } from '../../schemas/shipment.schema'
+// createRequire is used to obtain a synchronous require() in Node ESM runtimes
+// (avoids top-level await while still allowing sync fs reads on the server)
+// Note: importing 'module' is a Node built-in and will only be used at runtime on the server.
+// createRequire will be loaded dynamically only when running on the server to
+// avoid bundler/client-side issues.
 
 // Load JSON samples. Prefer Vite's import.meta.globEager when available (dev/build),
 // but fall back to reading from the filesystem for SSR where globEager may not exist.
 let samples: Array<{ raw: any; path: string }> = []
+let samplesLoaded = false
 
-// Prefer build-time glob import when available (client and server dev/build).
-// If not available, only attempt the filesystem fallback on the server (SSR/node).
-try {
-  // @ts-ignore - import.meta may have globEager under Vite
-  if (typeof (import.meta as any).globEager === 'function') {
-    const modules = (import.meta as any).globEager('../../collections/**/*.json') as Record<string, any>
-    samples = Object.entries(modules).map(([path, mod]) => ({ raw: (mod && (mod.default ?? mod)) || {}, path }))
-    try { console.log('collections: loaded (globEager):', Object.keys(modules)) } catch (e) { }
-  } else {
-    // globEager not available. Only attempt fs fallback when running in SSR/node.
-    const isServer = typeof window === 'undefined' || (import.meta as any).env?.SSR === true
-    if (!isServer) {
-      // In the browser we cannot read the filesystem — leave samples empty and warn.
-      try { console.warn('collections: import.meta.globEager not available — running in browser, skipping fs fallback') } catch (e) { }
-      samples = []
-    } else {
-      try {
-        console.warn('collections: import.meta.globEager not available — falling back to filesystem read')
-        // Use Node APIs to recursively read JSON files under the project-level collections/ folder
-        const fs = await import('fs')
-        const pathMod = await import('path')
-        const walk = (dir: string): string[] => {
-          const entries = fs.readdirSync(dir, { withFileTypes: true })
-          const out: string[] = []
-          for (const ent of entries) {
-            const full = pathMod.join(dir, ent.name)
-            if (ent.isDirectory()) out.push(...walk(full))
-            else if (ent.isFile() && full.endsWith('.json')) out.push(full)
-          }
-          return out
-        }
-        const projectRoot = (typeof process !== 'undefined' && typeof process.cwd === 'function') ? process.cwd() : '.'
-        const collectionsDir = pathMod.join(projectRoot, 'collections')
-        const files = walk(collectionsDir)
-        samples = files.map((p) => {
-          const raw = JSON.parse(fs.readFileSync(p, 'utf-8'))
-          // make path relative-ish to match previous behavior
-          const rel = pathMod.relative(projectRoot, p)
-          return { raw, path: rel }
-        })
-        try { console.log('collections: loaded (fs):', samples.map(s => s.path)) } catch (err) { }
-      } catch (err) {
-        // If everything fails, keep samples empty
-        try { console.error('collections: failed to load samples via fs fallback', err) } catch (e) { }
-        samples = []
-      }
+// Synchronous initialization using globEager (works in Vite dev/build)
+function initSamplesSync(): boolean {
+  try {
+    // @ts-ignore - import.meta may have globEager under Vite
+    if (typeof (import.meta as any).globEager === 'function') {
+      const modules = (import.meta as any).globEager('../../collections/**/*.json') as Record<string, any>
+      samples = Object.entries(modules).map(([path, mod]) => ({ raw: (mod && (mod.default ?? mod)) || {}, path }))
+      try { console.log('collections: loaded (globEager):', Object.keys(modules)) } catch (e) { }
+      return true
     }
+  } catch (e) {
+    try { console.error('collections: unexpected error while loading samples via globEager', e) } catch (err) { }
   }
+  return false
 }
-catch (e) {
-  try { console.error('collections: unexpected error while loading samples', e) } catch (err) { }
-  samples = []
+
+// Synchronous filesystem fallback removed — prefer the async API-backed loader.
+function initSamplesFsSync(): boolean {
+  // intentionally no-op: server-side loading should use getPoCShipmentsAsync which calls
+  // the internal `/api/collections` route. Keeping this stub avoids top-level await and
+  // ESM/require issues during bundling.
+  return false
+}
+
+// Initialize samples lazily on first access
+function ensureSamplesLoaded(): void {
+  if (samplesLoaded) return
+  samplesLoaded = true
+
+  // Try globEager first, then fs fallback
+  if (!initSamplesSync()) {
+    initSamplesFsSync()
+  }
 }
 
 function safeString(v: unknown) {
@@ -275,6 +262,10 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
 }
 
 export function getPoCShipments(): UIShipment[] {
+  // Deprecated synchronous loader: attempt to use bundled samples if present.
+  // Keep for backward compatibility but prefer the async `getPoCShipmentsAsync`.
+  ensureSamplesLoaded()
+
   const out: UIShipment[] = []
 
   samples.forEach(({ raw, path }, i) => {
@@ -321,4 +312,21 @@ export function getPoCShipments(): UIShipment[] {
   }
 }
 
-export default { getPoCShipments }
+export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
+  try {
+    const res = await fetch('/api/collections')
+    if (!res.ok) {
+      console.warn('collections: /api/collections returned', res.status)
+      return []
+    }
+    const mods = await res.json() as Array<{ raw: any; path: string }>
+    const out: UIShipment[] = []
+    mods.forEach(({ raw, path }, i) => out.push(mapNormalizedToUI(raw, i + 1, path)))
+    try { return UIShipmentsSchema.parse(out) } catch (e) { return out as any }
+  } catch (err) {
+    console.error('collections: failed to fetch /api/collections', err)
+    return []
+  }
+}
+
+export default { getPoCShipments, getPoCShipmentsAsync }
