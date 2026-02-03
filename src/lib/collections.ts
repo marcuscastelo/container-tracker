@@ -1,50 +1,9 @@
 import containerStatus from '../../schemas/containerStatus.schema'
 import { ShipmentsSchema as UIShipmentsSchema, Shipment as UIShipment } from '../../schemas/shipment.schema'
-// createRequire is used to obtain a synchronous require() in Node ESM runtimes
-// (avoids top-level await while still allowing sync fs reads on the server)
-// Note: importing 'module' is a Node built-in and will only be used at runtime on the server.
-// createRequire will be loaded dynamically only when running on the server to
-// avoid bundler/client-side issues.
 
-// Load JSON samples. Prefer Vite's import.meta.globEager when available (dev/build),
-// but fall back to reading from the filesystem for SSR where globEager may not exist.
-let samples: Array<{ raw: any; path: string }> = []
-let samplesLoaded = false
-
-// Synchronous initialization using globEager (works in Vite dev/build)
-function initSamplesSync(): boolean {
-  try {
-    // @ts-ignore - import.meta may have globEager under Vite
-    if (typeof (import.meta as any).globEager === 'function') {
-      const modules = (import.meta as any).globEager('../../collections/**/*.json') as Record<string, any>
-      samples = Object.entries(modules).map(([path, mod]) => ({ raw: (mod && (mod.default ?? mod)) || {}, path }))
-      try { console.log('collections: loaded (globEager):', Object.keys(modules)) } catch (e) { }
-      return true
-    }
-  } catch (e) {
-    try { console.error('collections: unexpected error while loading samples via globEager', e) } catch (err) { }
-  }
-  return false
-}
-
-// Synchronous filesystem fallback removed — prefer the async API-backed loader.
-function initSamplesFsSync(): boolean {
-  // intentionally no-op: server-side loading should use getPoCShipmentsAsync which calls
-  // the internal `/api/collections` route. Keeping this stub avoids top-level await and
-  // ESM/require issues during bundling.
-  return false
-}
-
-// Initialize samples lazily on first access
-function ensureSamplesLoaded(): void {
-  if (samplesLoaded) return
-  samplesLoaded = true
-
-  // Try globEager first, then fs fallback
-  if (!initSamplesSync()) {
-    initSamplesFsSync()
-  }
-}
+// Collections module now uses Supabase as the data source.
+// The API route `/api/collections` fetches from the `container-status` table
+// and this module consumes that API for the async loader.
 
 function safeString(v: unknown) {
   if (!v && v !== 0) return ''
@@ -261,55 +220,14 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   return s
 }
 
+/**
+ * @deprecated Synchronous loader is no longer supported.
+ * Use `getPoCShipmentsAsync()` instead which fetches from Supabase via API.
+ */
 export function getPoCShipments(): UIShipment[] {
-  // Deprecated synchronous loader: attempt to use bundled samples if present.
-  // Keep for backward compatibility but prefer the async `getPoCShipmentsAsync`.
-  ensureSamplesLoaded()
-
-  const out: UIShipment[] = []
-
-  samples.forEach(({ raw, path }, i) => {
-    console.debug(`collections: processing sample #${i + 1} (${path})`)
-    // try to validate with the comprehensive schema
-    try {
-      console.debug(`collections: attempting to parse sample #${i + 1} with normalized schema (${path})`)
-      // validate with the comprehensive schema but keep the original raw object for mapping
-      const parsed = containerStatus.ShipmentSchema.parse(raw)
-      // NOTE: don't use `parsed` for mapping because zod object parsing strips unknown keys
-      // (some provider-specific fields like Reciept / LastDischargePort would be lost).
-      out.push(mapNormalizedToUI(raw, i + 1, path))
-      return
-    } catch (e) {
-      console.debug(`collections: sample #${i + 1} did not match normalized schema, attempting UI schema (${path})`)
-      // fallback: attempt to map raw file directly
-      try {
-        // raw may be an object with container-centric fields
-        const mapped = mapNormalizedToUI(raw, i + 1, path)
-        out.push(mapped)
-        return
-      } catch (err) {
-        // last resort: build a tiny row using filename as container
-        const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
-        out.push({
-          process: `sample-${i + 1}`,
-          client: 'N/A',
-          carrier: 'N/A',
-          container: fileBase ?? String(i + 1),
-          route: 'N/A',
-          status: 'N/A',
-          eta: '',
-        })
-      }
-    }
-  })
-
-  // Ensure the result matches the simple UI schema (best-effort)
-  try {
-    return UIShipmentsSchema.parse(out)
-  } catch (e) {
-    // if validation fails, return out as-is (PoC tolerant)
-    return out as any
-  }
+  console.warn('getPoCShipments() is deprecated. Use getPoCShipmentsAsync() instead.')
+  // Return empty array - data now comes from Supabase via async API
+  return []
 }
 
 export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
@@ -319,9 +237,13 @@ export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
       console.warn('collections: /api/collections returned', res.status)
       return []
     }
-    const mods = await res.json() as Array<{ raw: any; path: string }>
+    // API now returns array of { container_id, status } from Supabase
+    const data = await res.json() as Array<{ container_id: string; status: any }>
     const out: UIShipment[] = []
-    mods.forEach(({ raw, path }, i) => out.push(mapNormalizedToUI(raw, i + 1, path)))
+    data.forEach(({ container_id, status }, i) => {
+      // Use container_id as the path for mapping heuristics
+      out.push(mapNormalizedToUI(status, i + 1, container_id))
+    })
     try { return UIShipmentsSchema.parse(out) } catch (e) { return out as any }
   } catch (err) {
     console.error('collections: failed to fetch /api/collections', err)

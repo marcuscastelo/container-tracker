@@ -1,6 +1,7 @@
 import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
+import { containerStatusUseCases } from '~/modules/container'
 
 /** Helper for delays (Puppeteer doesn't have page.waitForTimeout) */
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -408,14 +409,20 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     }
 
-    // Write captured JSON
-    const outputContent = parsedJson 
-      ? JSON.stringify(parsedJson, null, 2) 
-      : captured.body
-    fs.writeFileSync(jsonPath, outputContent, 'utf-8')
-    console.log(`[maersk-refresh] Wrote ${path.relative(projectRoot, jsonPath)} (${outputContent.length} bytes)`)
+    // Save to Supabase
+    const statusData = parsedJson || { raw: captured.body }
+    try {
+      await containerStatusUseCases.saveContainerStatus(String(container), statusData)
+      console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
+    } catch (err) {
+      console.error('[maersk-refresh] Supabase save failed:', err)
+      return new Response(
+        JSON.stringify({ error: 'Supabase save failed', details: String(err) }),
+        { status: 500 }
+      )
+    }
 
-    // Write diagnostics
+    // Write diagnostics to file (optional, for debugging)
     const diagnostics = {
       request: {
         url: captured.url,
@@ -431,16 +438,21 @@ async function handleMaersk({ params, request }: APIEvent) {
         status: captured.status
       }
     }
-    fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-    console.log(`[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`)
+    
+    // Still write diagnostics file for debugging purposes
+    try {
+      fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+      console.log(`[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`)
+    } catch (e) {
+      console.warn('[maersk-refresh] Could not write diagnostics file:', e)
+    }
 
     return new Response(
       JSON.stringify({
         ok: true,
-        updatedPath: path.relative(projectRoot, jsonPath),
-        diagnosticsPath: path.relative(projectRoot, diagnosticsPath),
+        container: String(container),
         status: captured.status,
-        bytesWritten: outputContent.length
+        savedToSupabase: true
       }),
       { status: 200 }
     )

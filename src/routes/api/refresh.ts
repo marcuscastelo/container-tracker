@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { containerStatusUseCases } from '~/modules/container'
 
 // Simple helper to recursively walk a directory
 function walk(dir: string): string[] {
@@ -180,25 +181,33 @@ export async function POST({ request }: any) {
     }
 
     // If we didn't transform the output (not CMA or parsing failed), attempt to parse body as JSON
+    let parsedStatus: Record<string, unknown> = {}
     if (outText === text) {
       try {
-        const parsedJson = JSON.parse(text)
-        outText = JSON.stringify(parsedJson, null, 4)
+        parsedStatus = JSON.parse(text)
+        outText = JSON.stringify(parsedStatus, null, 4)
       } catch (_) {
-        // not JSON - keep raw
+        // not JSON - keep raw, wrap in status object
+        parsedStatus = { raw: text }
+      }
+    } else {
+      try {
+        parsedStatus = JSON.parse(outText)
+      } catch (_) {
+        parsedStatus = { raw: outText }
       }
     }
 
-    // write to json file path
+    // Save to Supabase instead of filesystem
     try {
-      fs.writeFileSync(json, outText, 'utf-8')
-      console.log(`refresh: wrote ${path.relative(projectRoot, json)} (${outText.length} bytes)`)
+      await containerStatusUseCases.saveContainerStatus(String(container), parsedStatus)
+      console.log(`refresh: saved container ${container} to Supabase`)
     } catch (err) {
-      console.error('refresh: write failed', err)
-      return new Response(JSON.stringify({ error: 'write failed', details: String(err) }), { status: 500 })
+      console.error('refresh: Supabase save failed', err)
+      return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), { status: 500 })
     }
 
-    return new Response(JSON.stringify({ ok: true, updatedPath: path.relative(projectRoot, json) }), { status: 200 })
+    return new Response(JSON.stringify({ ok: true, container: String(container) }), { status: 200 })
   } catch (err: any) {
     console.error('refresh error', err)
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 })

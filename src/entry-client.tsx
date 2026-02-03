@@ -1,5 +1,9 @@
 // @refresh reload
 import { mount, StartClient } from "@solidjs/start/client";
+import env from '~/shared/config/env'
+
+// Load env on the client bundle as well so the app has consistent config
+void env
 // Diagnostic logging to ensure client bundle is running and to capture clicks
 try {
 	console.debug('entry-client: running')

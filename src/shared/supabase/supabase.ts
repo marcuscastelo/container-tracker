@@ -3,17 +3,16 @@ import { z } from 'zod/v4'
 
 import env from '~/shared/config/env'
 import { type Database } from '~/shared/supabase/database.types'
-import { logging } from '~/shared/utils/logging'
 import { parseWithStack } from '~/shared/utils/parseWithStack'
 
 const supabaseUrl = parseWithStack(
   z.string(),
-  env.VITE_NEXT_PUBLIC_SUPABASE_URL,
+  env.VITE_PUBLIC_SUPABASE_URL,
 )
 
 const supabaseAnonKey = parseWithStack(
   z.string(),
-  env.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  env.VITE_PUBLIC_SUPABASE_ANON_KEY,
 )
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -65,7 +64,7 @@ export function registerSubapabaseRealtimeCallback<T>(
   callback: (payload: RealtimeEvent<T>) => void,
 ): void {
   const handleCallback = (payload: unknown) => {
-    logging.debug(`SUPABASE_REALTIME - ${table} -> payload=`, { payload })
+    console.debug(`SUPABASE_REALTIME - ${table} -> payload=`, payload)
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const payloadData = payload as {
       eventType: 'INSERT' | 'UPDATE' | 'DELETE'
