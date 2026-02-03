@@ -32,6 +32,9 @@ function createWindow() {
 
   // Find bundled server entries
   const possibleServers = [
+    // packaged native server binaries (pkg outputs) - prefer these when available
+    path.join(__dirname, '..', 'dist', 'servers', 'server-linux'),
+    path.join(__dirname, '..', 'dist', 'servers', 'maersk-linux'),
     path.join(__dirname, '..', 'server', 'index.js'),
     path.join(__dirname, '..', '.vinxi', 'build', 'ssr', 'index.js'),
     path.join(__dirname, '..', '.vinxi', 'build', 'ssr', 'ssr.js'),
@@ -41,6 +44,25 @@ function createWindow() {
   ]
 
   const projectRoot = path.join(__dirname, '..')
+
+  // If packaged, also check for native server binaries placed under resources/servers
+  const packagedServerPaths = () => {
+    try {
+      const rp = process.resourcesPath
+      return [
+        path.join(rp, 'servers', 'server-linux'),
+        path.join(rp, 'servers', 'maersk-linux'),
+        path.join(rp, '..', 'servers', 'server-linux'),
+        path.join(rp, '..', 'servers', 'maersk-linux'),
+        path.join(rp, 'app.asar.unpacked', 'servers', 'server-linux'),
+        path.join(rp, 'app.asar.unpacked', 'servers', 'maersk-linux'),
+        path.join(rp, 'app.asar', 'servers', 'server-linux'),
+        path.join(rp, 'app.asar', 'servers', 'maersk-linux')
+      ]
+    } catch (e) {
+      return []
+    }
+  }
 
   // Helper: try multiple locations (dev tree, resources, asarUnpacked) to locate an entry
   const resolveCandidate = (p) => {
@@ -57,41 +79,46 @@ function createWindow() {
     return null
   }
 
-  const serverEntry = possibleServers.map(resolveCandidate).find(Boolean)
+  let serverEntry = possibleServers.map(resolveCandidate).find(Boolean)
   const maerskEntryCandidates = [
     path.join(projectRoot, 'server', 'maersk-server.cjs'),
     path.join(projectRoot, 'server', 'maersk-server.js')
   ]
-  const maerskEntry = maerskEntryCandidates.map(resolveCandidate).find(Boolean)
+  let maerskEntry = maerskEntryCandidates.map(resolveCandidate).find(Boolean)
+  // prefer packaged native servers if present
+  const packaged = packagedServerPaths().find((p) => fs.existsSync(p))
+  if (packaged) {
+    if (packaged.endsWith('maersk-linux')) {
+      // maersk-only binary found
+      maerskEntry = packaged
+    } else {
+      // main server binary found
+      serverEntry = packaged
+    }
+  }
 
   const children = []
   const startProcess = (entry, port) => {
     const { spawn } = require('child_process')
+    // If the entry is inside the packaged resources (AppImage/asar), do not attempt to
+    // execute it in-place — packaged installations should run the server binary that
+    // ships alongside the AppImage or as a separate artifact. Return false so the
+    // caller can fallback or the user can run the server manually.
     try {
-      // Prefer loading in-process for JS/CJS files when possible (works inside AppImage mounts)
-      if (entry.endsWith('.cjs')) {
-        try {
-          require(entry)
-          return true
-        } catch (e) {
-          console.warn('require(entry) failed, falling back to spawn:', e)
-        }
-      }
-      if (entry.endsWith('.js')) {
-        try {
-          const { pathToFileURL } = require('url')
-          import(pathToFileURL(entry).href).then(() => {}).catch(() => {})
-          return true
-        } catch (e) {
-          console.warn('dynamic import failed, falling back to spawn:', e)
-        }
+      if (process.resourcesPath && String(entry).includes(process.resourcesPath)) {
+        console.warn('Found server inside packaged resources; do not execute in-place. Please run the external server binary located next to the AppImage or use the run script. Entry:', entry)
+        return false
       }
 
-      const child = spawn(process.execPath, [entry], {
-        cwd: projectRoot,
-        env: { ...process.env, PORT: String(port || process.env.PORT || '3000') },
-        stdio: 'inherit'
-      })
+      // Prefer loading in-process for local JS/CJS files (development)
+      if (entry.endsWith('.cjs')) {
+        try { require(entry); return true } catch (e) { console.warn('require(entry) failed, falling back to spawn:', e) }
+      }
+      if (entry.endsWith('.js')) {
+        try { const { pathToFileURL } = require('url'); import(pathToFileURL(entry).href).then(() => {}).catch(() => {}); return true } catch (e) { console.warn('dynamic import failed, falling back to spawn:', e) }
+      }
+
+      const child = spawn(process.execPath, [entry], { cwd: projectRoot, env: { ...process.env, PORT: String(port || process.env.PORT || '3000') }, stdio: 'inherit' })
       child.on('exit', (code, signal) => { if (code !== 0) console.error(`${entry} exited code=${code} signal=${signal}`) })
       children.push(child)
       return true

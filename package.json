@@ -14,24 +14,31 @@
     "start-server": "node server/index.js",
     "start-server:port": "PORT=4000 node server/index.js",
     "start-maersk-server": "node server/maersk-server.cjs",
+    "build:servers:linux": "pnpm exec pkg server/index.cjs --targets node18-linux-x64 --output dist/servers/server-linux && pnpm exec pkg server/maersk-server.cjs --targets node18-linux-x64 --output dist/servers/maersk-linux",
+    "run:desktop-with-server": "bash scripts/run-with-server.sh",
     "build:maersk:win": "pkg server/maersk-server.cjs --targets node22-win-x64 --output dist/maersk-server.exe",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "pnpm run build:maersk:win && pnpm run build && pnpm exec electron-builder --win --x64 --publish never"
   },
   "dependencies": {
+    "@solidjs/router": "^0.15.4",
     "express": "^4.22.1",
     "puppeteer": "^24.36.1",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "solid-js": "^1.9.11",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "pkg": "^5.10.9",
+    "@solidjs/start": "^1.2.1",
     "@tailwindcss/vite": "^4.0.7",
     "concurrently": "^8.0.0",
     "electron": "^26.0.0",
     "electron-builder": "^24.0.0",
+    "pkg": "^5.8.1",
     "playwright": "^1.58.1",
     "tailwindcss": "^4.0.7",
+    "vinxi": "^0.5.11",
     "wait-on": "^7.0.0"
   },
   "build": {
@@ -42,19 +49,21 @@
       "build/**",
       ".vinxi/build/**",
       "electron/**",
-      "package.json"
+      "package.json",
+      "server/**",
+      "node_modules/**"
     ],
     "asarUnpack": [
       ".vinxi/build/**",
-      "build/**"
+      "build/**",
+      "server/**",
+      "node_modules/**"
     ],
     "extraResources": [
       {
-        "from": "server",
-        "to": "server",
-        "filter": [
-          "**/*"
-        ]
+        "from": "dist/servers",
+        "to": "servers",
+        "filter": ["**/*"]
       }
     ],
     "linux": {
