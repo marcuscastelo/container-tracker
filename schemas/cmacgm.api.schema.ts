@@ -29,6 +29,8 @@ export const CmaCgmMoveSchema = z.object({
 export const CmaCgmApiSchema = z.object({
   ContainerReference: z.string().nullable().optional(),
   EstimatedTimeOfArrival: z.string().nullable().optional(), // "/Date(...)\/"
+  ABPExportDate: z.string().nullable().optional(),
+  ABPImportDate: z.string().nullable().optional(),
   CurrentMoves: z.array(CmaCgmMoveSchema).optional(),
   PastMoves: z.array(CmaCgmMoveSchema).optional(),
   ProvisionalMoves: z.array(CmaCgmMoveSchema).optional(),
