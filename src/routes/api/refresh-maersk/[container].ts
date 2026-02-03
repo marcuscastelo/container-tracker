@@ -1,7 +1,7 @@
 import type { APIEvent } from '@solidjs/start/server'
-import { z } from 'zod'
 import fs from 'fs'
 import path from 'path'
+import { z } from 'zod'
 import { containerStatusUseCases } from '~/modules/container'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
@@ -13,10 +13,22 @@ const MaerskRequestQuerySchema = z.object({
   timeout: z.string().optional(),
 })
 
-const MaerskRequestSchema = z.object({ params: MaerskRequestParamsSchema, query: MaerskRequestQuerySchema })
+const MaerskRequestSchema = z.object({
+  params: MaerskRequestParamsSchema,
+  query: MaerskRequestQuerySchema,
+})
 
-const MaerskSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string(), status: z.number().optional(), savedToSupabase: z.boolean().optional() })
-const MaerskErrorResponseSchema = z.object({ error: z.string().optional(), hint: z.string().optional(), diagnostics: z.any().optional() })
+const MaerskSuccessResponseSchema = z.object({
+  ok: z.literal(true),
+  container: z.string(),
+  status: z.number().optional(),
+  savedToSupabase: z.boolean().optional(),
+})
+const MaerskErrorResponseSchema = z.object({
+  error: z.string().optional(),
+  hint: z.string().optional(),
+  diagnostics: z.any().optional(),
+})
 
 export {
   MaerskRequestParamsSchema,
@@ -39,18 +51,21 @@ function respondWithSchema<T>(payload: T, schema: z.ZodTypeAny, status = 200) {
     console.error('maersk-refresh: response validation failed', parsed.error.format())
     return new Response(JSON.stringify({ error: 'response validation failed' }), { status: 500 })
   }
-  return new Response(JSON.stringify(parsed.data), { status, headers: { 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(parsed.data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 /** Helper for delays (Puppeteer doesn't have page.waitForTimeout) */
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /**
  * Maersk container tracking refresh route using Puppeteer + Stealth plugin.
- * 
+ *
  * Opens the Maersk tracking page and intercepts the API response via CDP.
  * Uses puppeteer-extra-plugin-stealth for better bot detection evasion.
- * 
+ *
  * Query params:
  *   ?headless=0|1     - Run headless (default: false)
  *   ?userDataDir=...  - Chrome profile directory for persistent session
@@ -58,7 +73,7 @@ const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
  *   ?timeout=<ms>     - Navigation timeout (default: 60000)
  */
 
-interface CapturedData {
+type CapturedData = {
   url: string
   method: string
   headers: Record<string, string>
@@ -79,13 +94,20 @@ async function handleMaersk({ params, request }: APIEvent) {
   try {
     // Validate params
     const paramsParsed = MaerskRequestParamsSchema.safeParse(params || {})
-    if (!paramsParsed.success) return respondWithSchema({ error: `invalid params: ${paramsParsed.error.message}` }, MaerskErrorResponseSchema, 400)
+    if (!paramsParsed.success)
+      return respondWithSchema(
+        { error: `invalid params: ${paramsParsed.error.message}` },
+        MaerskErrorResponseSchema,
+        400,
+      )
     const container = paramsParsed.data.container
 
     const projectRoot = process.cwd()
     const collectionsDir = path.join(projectRoot, 'collections')
     if (!fs.existsSync(collectionsDir)) {
-      return new Response(JSON.stringify({ error: 'collections directory not found' }), { status: 500 })
+      return new Response(JSON.stringify({ error: 'collections directory not found' }), {
+        status: 500,
+      })
     }
 
     const provider = 'maersk'
@@ -94,7 +116,7 @@ async function handleMaersk({ params, request }: APIEvent) {
       fs.mkdirSync(providerDir, { recursive: true })
     }
 
-    const jsonPath = path.join(providerDir, `${container}.json`)
+    const _jsonPath = path.join(providerDir, `${container}.json`)
     const diagnosticsPath = path.join(providerDir, `${container}.json.devtools.json`)
 
     // Parse and validate query params
@@ -106,7 +128,12 @@ async function handleMaersk({ params, request }: APIEvent) {
       timeout: url.searchParams.get('timeout') ?? undefined,
     }
     const qParsed = MaerskRequestQuerySchema.safeParse(queryObj)
-    if (!qParsed.success) return respondWithSchema({ error: `invalid query: ${qParsed.error.message}` }, MaerskErrorResponseSchema, 400)
+    if (!qParsed.success)
+      return respondWithSchema(
+        { error: `invalid query: ${qParsed.error.message}` },
+        MaerskErrorResponseSchema,
+        400,
+      )
     const headless = qParsed.data.headless === '1' || qParsed.data.headless === 'true'
     hold = qParsed.data.hold === '1'
     const timeoutMs = parseInt(qParsed.data.timeout || '60000', 10)
@@ -114,46 +141,58 @@ async function handleMaersk({ params, request }: APIEvent) {
 
     // Validate userDataDir
     if (userDataDir && !fs.existsSync(userDataDir)) {
-      return respondWithSchema({ error: 'userDataDir does not exist', hint: 'Create the directory or use an existing Chrome profile path', diagnostics: { providedPath: userDataDir } }, MaerskErrorResponseSchema, 400)
+      return respondWithSchema(
+        {
+          error: 'userDataDir does not exist',
+          hint: 'Create the directory or use an existing Chrome profile path',
+          diagnostics: { providedPath: userDataDir },
+        },
+        MaerskErrorResponseSchema,
+        400,
+      )
     }
 
     console.log('[maersk-refresh] Starting capture for container:', container)
-    console.log('[maersk-refresh] Config:', { headless, hold, timeout: timeoutMs, userDataDir: userDataDir || 'ephemeral' })
+    console.log('[maersk-refresh] Config:', {
+      headless,
+      hold,
+      timeout: timeoutMs,
+      userDataDir: userDataDir || 'ephemeral',
+    })
 
     // Import puppeteer-extra with stealth
     let puppeteerExtra: any
     try {
       const pe = await import('puppeteer-extra').catch(() => null)
       const stealthMod = await import('puppeteer-extra-plugin-stealth').catch(() => null)
-      
+
       if (!pe || !stealthMod) {
         return new Response(
           JSON.stringify({
             error: 'puppeteer-extra or stealth plugin not installed',
-            hint: 'Run: npm i -D puppeteer puppeteer-extra puppeteer-extra-plugin-stealth'
+            hint: 'Run: npm i -D puppeteer puppeteer-extra puppeteer-extra-plugin-stealth',
           }),
-          { status: 500 }
+          { status: 500 },
         )
       }
-      
+
       puppeteerExtra = (pe as any).default || pe
       const Stealth = (stealthMod as any).default || stealthMod
       puppeteerExtra.use(Stealth())
     } catch (e) {
-      return new Response(
-        JSON.stringify({ error: 'puppeteer import error', details: String(e) }),
-        { status: 500 }
-      )
+      return new Response(JSON.stringify({ error: 'puppeteer import error', details: String(e) }), {
+        status: 500,
+      })
     }
 
     // Find Chrome executable
     function findSystemChrome(): string | null {
       const envPath = process.env.CHROME_PATH || process.env.CHROMIUM_PATH
       if (envPath && fs.existsSync(envPath)) return envPath
-      
+
       const platform = process.platform
       const candidates: string[] = []
-      
+
       if (platform === 'win32') {
         const programFiles = process.env['PROGRAMFILES'] || 'C:\\Program Files'
         const programFilesx86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'
@@ -169,7 +208,7 @@ async function handleMaersk({ params, request }: APIEvent) {
         candidates.push('/usr/bin/chromium')
         candidates.push('/snap/bin/chromium')
       }
-      
+
       for (const c of candidates) {
         if (fs.existsSync(c)) return c
       }
@@ -181,13 +220,13 @@ async function handleMaersk({ params, request }: APIEvent) {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
-      '--disable-dev-shm-usage'
+      '--disable-dev-shm-usage',
     ]
 
     const launchOpts: any = {
       headless: headless ? 'new' : false,
       args: launchArgs,
-      defaultViewport: { width: 1920, height: 1080 }
+      defaultViewport: { width: 1920, height: 1080 },
     }
 
     // Add userDataDir if provided
@@ -210,23 +249,29 @@ async function handleMaersk({ params, request }: APIEvent) {
         JSON.stringify({
           error: 'Browser launch failed',
           details: String(e),
-          hint: 'Install Chrome/Chromium or set CHROME_PATH'
+          hint: 'Install Chrome/Chromium or set CHROME_PATH',
         }),
-        { status: 500 }
+        { status: 500 },
       )
     }
 
     const page = await browser.newPage()
 
     // Set realistic user agent and headers
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    )
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
 
     // Additional stealth: override webdriver, plugins, languages
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false })
-      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] })
-      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] })
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      })
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
+      })
       // @ts-ignore
       window.chrome = { runtime: {} }
       // @ts-ignore
@@ -250,10 +295,12 @@ async function handleMaersk({ params, request }: APIEvent) {
             url: r.url,
             method: r.method,
             headers: r.headers,
-            postData: r.postData
+            postData: r.postData,
           })
         }
-      } catch (e) { /* ignore */ }
+      } catch (_e) {
+        /* ignore */
+      }
     })
 
     // Listen for responses - capture the tracking API response
@@ -261,12 +308,19 @@ async function handleMaersk({ params, request }: APIEvent) {
       try {
         const respUrl = evt.response?.url
         if (respUrl && respUrl.includes('/synergy/tracking/') && respUrl.includes(container)) {
-          console.log('[maersk-refresh] CDP captured response:', respUrl, 'status:', evt.response.status)
-          
+          console.log(
+            '[maersk-refresh] CDP captured response:',
+            respUrl,
+            'status:',
+            evt.response.status,
+          )
+
           try {
             // Get response body
-            const bodyResult = await cdpClient.send('Network.getResponseBody', { requestId: evt.requestId })
-            const body = bodyResult.base64Encoded 
+            const bodyResult = await cdpClient.send('Network.getResponseBody', {
+              requestId: evt.requestId,
+            })
+            const body = bodyResult.base64Encoded
               ? Buffer.from(bodyResult.body, 'base64').toString('utf8')
               : bodyResult.body
 
@@ -280,10 +334,10 @@ async function handleMaersk({ params, request }: APIEvent) {
                 try {
                   const b = (window as any).bmak
                   if (b && typeof b.get_telemetry === 'function') return b.get_telemetry()
-                } catch (e) {}
+                } catch (_e) {}
                 return null
               })
-            } catch (e) {
+            } catch (_e) {
               telemetry = null
             }
 
@@ -301,21 +355,26 @@ async function handleMaersk({ params, request }: APIEvent) {
               cookies,
               userAgent,
               telemetry,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             }
           } catch (e) {
             console.error('[maersk-refresh] Error getting response body:', e)
           }
         }
-      } catch (e) { /* ignore */ }
+      } catch (_e) {
+        /* ignore */
+      }
     })
 
     // Warmup: visit homepage first
     console.log('[maersk-refresh] Warmup: visiting homepage')
     try {
-      await page.goto('https://www.maersk.com', { waitUntil: 'domcontentloaded', timeout: 15000 })
+      await page.goto('https://www.maersk.com', {
+        waitUntil: 'domcontentloaded',
+        timeout: 15000,
+      })
       await delay(1500 + Math.random() * 1000)
-      
+
       // Random mouse movements
       await page.mouse.move(100 + Math.random() * 200, 100 + Math.random() * 200)
       await delay(300 + Math.random() * 200)
@@ -332,8 +391,11 @@ async function handleMaersk({ params, request }: APIEvent) {
     await delay(800 + Math.random() * 400)
 
     try {
-      await page.goto(trackingUrl, { waitUntil: 'networkidle0', timeout: timeoutMs })
-    } catch (e) {
+      await page.goto(trackingUrl, {
+        waitUntil: 'networkidle0',
+        timeout: timeoutMs,
+      })
+    } catch (_e) {
       console.warn('[maersk-refresh] Navigation timeout, checking if we captured response')
     }
 
@@ -346,7 +408,9 @@ async function handleMaersk({ params, request }: APIEvent) {
       await delay(200)
       await page.evaluate(() => window.scrollBy(0, 100))
       await delay(300 + Math.random() * 200)
-    } catch (e) { /* ignore */ }
+    } catch (_e) {
+      /* ignore */
+    }
 
     // Wait a bit more for the API call
     if (!captureState.data) {
@@ -359,10 +423,10 @@ async function handleMaersk({ params, request }: APIEvent) {
       try {
         await page.waitForFunction(
           () => (window as any).bmak && typeof (window as any).bmak.get_telemetry === 'function',
-          { timeout: 10000 }
+          { timeout: 10000 },
         )
         await delay(2000)
-      } catch (e) {
+      } catch (_e) {
         console.debug('[maersk-refresh] bmak not found')
       }
     }
@@ -389,9 +453,9 @@ async function handleMaersk({ params, request }: APIEvent) {
         JSON.stringify({
           error: 'No API response captured',
           hint: 'The page did not make a request to /synergy/tracking/. Try with ?hold=1 to inspect manually.',
-          expectedUrl: `https://api.maersk.com/synergy/tracking/${container}`
+          expectedUrl: `https://api.maersk.com/synergy/tracking/${container}`,
         }),
-        { status: 502 }
+        { status: 502 },
       )
     }
 
@@ -403,17 +467,21 @@ async function handleMaersk({ params, request }: APIEvent) {
         request: {
           url: captured.url,
           method: captured.method,
-          headers: captured.headers
+          headers: captured.headers,
         },
-        cookies: captured.cookies.map((c: any) => ({ name: c.name, value: c.value, domain: c.domain })),
+        cookies: captured.cookies.map((c: any) => ({
+          name: c.name,
+          value: c.value,
+          domain: c.domain,
+        })),
         userAgent: captured.userAgent,
         telemetry: captured.telemetry ? captured.telemetry.substring(0, 100) + '...' : null,
         capturedAt: captured.timestamp,
         source: 'puppeteer-cdp',
         response: {
-          status: captured.status
+          status: captured.status,
         },
-        blockedResponse: captured.body
+        blockedResponse: captured.body,
       }
       fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
 
@@ -426,10 +494,10 @@ async function handleMaersk({ params, request }: APIEvent) {
             url: captured.url,
             cookiesPresent: captured.cookies.length,
             telemetryPresent: !!captured.telemetry,
-            userDataDir: userDataDir || 'none (ephemeral)'
-          }
+            userDataDir: userDataDir || 'none (ephemeral)',
+          },
         }),
-        { status: 403 }
+        { status: 403 },
       )
     }
 
@@ -437,14 +505,14 @@ async function handleMaersk({ params, request }: APIEvent) {
     let parsedJson: any = null
     try {
       parsedJson = JSON.parse(captured.body)
-    } catch (e) {
+    } catch (_e) {
       if (captured.body.includes('<HTML>') || captured.body.includes('<!DOCTYPE')) {
         return new Response(
           JSON.stringify({
             error: 'Received HTML instead of JSON',
-            status: captured.status
+            status: captured.status,
           }),
-          { status: 502 }
+          { status: 502 },
         )
       }
     }
@@ -457,10 +525,9 @@ async function handleMaersk({ params, request }: APIEvent) {
       console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
     } catch (err) {
       console.error('[maersk-refresh] Supabase save failed:', err)
-      return new Response(
-        JSON.stringify({ error: 'Supabase save failed', details: String(err) }),
-        { status: 500 }
-      )
+      return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), {
+        status: 500,
+      })
     }
 
     // Write diagnostics to file (optional, for debugging)
@@ -468,22 +535,28 @@ async function handleMaersk({ params, request }: APIEvent) {
       request: {
         url: captured.url,
         method: captured.method,
-        headers: captured.headers
+        headers: captured.headers,
       },
-      cookies: captured.cookies.map((c: any) => ({ name: c.name, value: c.value, domain: c.domain })),
+      cookies: captured.cookies.map((c: any) => ({
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+      })),
       userAgent: captured.userAgent,
       telemetry: captured.telemetry ? captured.telemetry.substring(0, 100) + '...' : null,
       capturedAt: captured.timestamp,
       source: 'puppeteer-cdp',
       response: {
-        status: captured.status
-      }
+        status: captured.status,
+      },
     }
-    
+
     // Still write diagnostics file for debugging purposes
     try {
       fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-      console.log(`[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`)
+      console.log(
+        `[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`,
+      )
     } catch (e) {
       console.warn('[maersk-refresh] Could not write diagnostics file:', e)
     }
@@ -493,22 +566,28 @@ async function handleMaersk({ params, request }: APIEvent) {
         ok: true,
         container: String(container),
         status: captured.status,
-        savedToSupabase: true
+        savedToSupabase: true,
       }),
-      { status: 200 }
+      { status: 200 },
     )
-
-  } catch (err: any) {
+  } catch (err) {
     console.error('[maersk-refresh] Error:', err)
 
     // Cleanup
     if (!hold && browser) {
-      try { await browser.close() } catch (e) { /* ignore */ }
+      try {
+        await browser.close()
+      } catch (_e) {
+        /* ignore */
+      }
     }
 
     return new Response(
-      JSON.stringify({ error: String(err), stack: err.stack }),
-      { status: 500 }
+      JSON.stringify({
+        error: String(err),
+        stack: (err as Error)?.stack ?? null,
+      }),
+      { status: 500 },
     )
   }
 }

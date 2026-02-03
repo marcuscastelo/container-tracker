@@ -1,14 +1,19 @@
-import { containerStatusUseCases } from '~/modules/container'
 import { z } from 'zod'
+import { containerStatusUseCases } from '~/modules/container'
 import { getProvider } from './refresh-providers'
 
 // Explicit request/response schemas for this API
-const RefreshRequestSchema = z.object({
-  container: z.string(),
-  carrier: z.string().optional().nullable(),
-}).strict()
+const RefreshRequestSchema = z
+  .object({
+    container: z.string(),
+    carrier: z.string().optional().nullable(),
+  })
+  .strict()
 
-const RefreshSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string() })
+const RefreshSuccessResponseSchema = z.object({
+  ok: z.literal(true),
+  container: z.string(),
+})
 const RefreshRedirectResponseSchema = z.object({ redirect: z.string() })
 const RefreshResponseSchema = z.union([RefreshSuccessResponseSchema, RefreshRedirectResponseSchema])
 const RefreshErrorResponseSchema = z.object({ error: z.string() })
@@ -29,7 +34,12 @@ export const RefreshHealthResponseSchema = z.object({ ok: z.literal(true) })
 export type RefreshHealthResponse = z.infer<typeof RefreshHealthResponseSchema>
 
 // Helper to validate payloads against schemas and return Response
-function respondWithSchema<T>(payload: T, schema: z.ZodTypeAny, status = 200, extraHeaders?: Record<string,string>) {
+function respondWithSchema<T>(
+  payload: T,
+  schema: z.ZodTypeAny,
+  status = 200,
+  extraHeaders?: Record<string, string>,
+) {
   const parsed = schema.safeParse(payload)
   if (!parsed.success) {
     console.error('refresh: response validation failed', parsed.error.format())
@@ -39,31 +49,51 @@ function respondWithSchema<T>(payload: T, schema: z.ZodTypeAny, status = 200, ex
   return new Response(JSON.stringify(parsed.data), { status, headers })
 }
 
-export async function POST({ request }: any) {
+export async function POST({ request }: { request: Request }) {
   try {
     const rawBody = await request.json().catch(() => ({}))
     const parsedReq = RefreshRequestSchema.safeParse(rawBody)
-    if (!parsedReq.success) return respondWithSchema({ error: `invalid request: ${parsedReq.error.message}` }, RefreshErrorResponseSchema, 400)
+    if (!parsedReq.success)
+      return respondWithSchema(
+        { error: `invalid request: ${parsedReq.error.message}` },
+        RefreshErrorResponseSchema,
+        400,
+      )
     const container = parsedReq.data.container
     const provider = parsedReq.data.carrier || 'unknown'
     // Fetch container record from DB
     const rec = await containerStatusUseCases.getContainerStatus(String(container))
-    if (!rec) return new Response(JSON.stringify({ error: 'container not found in DB', container }), { status: 404 })
+    if (!rec)
+      return new Response(JSON.stringify({ error: 'container not found in DB', container }), {
+        status: 404,
+      })
 
     // If provider is Maersk we keep the existing redirect to the puppeteer handler
     if (provider === 'maersk') {
       const redirectPath = `/api/refresh-maersk/${encodeURIComponent(String(container))}`
       const redirectPayload = { redirect: redirectPath }
       if (RefreshRedirectResponseSchema.safeParse(redirectPayload).success) {
-        return new Response(JSON.stringify(redirectPayload), { status: 307, headers: { Location: redirectPath, 'Content-Type': 'application/json' } })
+        return new Response(JSON.stringify(redirectPayload), {
+          status: 307,
+          headers: {
+            Location: redirectPath,
+            'Content-Type': 'application/json',
+          },
+        })
       }
-      return respondWithSchema(redirectPayload, RefreshRedirectResponseSchema, 307, { Location: redirectPath })
+      return respondWithSchema(redirectPayload, RefreshRedirectResponseSchema, 307, {
+        Location: redirectPath,
+      })
     }
     // Lookup provider handler and invoke it to get a parsed status object.
     const handler = getProvider(String(provider))
     if (!handler) {
       console.error(`refresh: no handler for carrier '${provider}'`)
-      return respondWithSchema({ error: `no handler for carrier ${provider}` }, RefreshErrorResponseSchema, 400)
+      return respondWithSchema(
+        { error: `no handler for carrier ${provider}` },
+        RefreshErrorResponseSchema,
+        400,
+      )
     }
 
     let result: { parsedStatus?: Record<string, unknown>; raw?: string } | undefined
@@ -72,7 +102,11 @@ export async function POST({ request }: any) {
       result = await handler.fetchStatus(String(container))
     } catch (err) {
       console.error('refresh: provider fetch failed', err)
-      return respondWithSchema({ error: `provider fetch failed: ${String(err)}` }, RefreshErrorResponseSchema, 502)
+      return respondWithSchema(
+        { error: `provider fetch failed: ${String(err)}` },
+        RefreshErrorResponseSchema,
+        502,
+      )
     }
 
     let parsedStatus: Record<string, unknown> = {}
@@ -107,16 +141,26 @@ export async function POST({ request }: any) {
     parsedStatus = sanitizeValue(parsedStatus) as Record<string, unknown>
 
     try {
-      console.log(`refresh: saving container ${container} status to Supabase, status=${JSON.stringify(parsedStatus, null, 2).substring(0, 100)}`)
+      console.log(
+        `refresh: saving container ${container} status to Supabase, status=${JSON.stringify(parsedStatus, null, 2).substring(0, 100)}`,
+      )
       await containerStatusUseCases.saveContainerStatus(String(container), parsedStatus)
       console.log(`refresh: saved container ${container} to Supabase`)
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
-      return respondWithSchema({ error: `Supabase save failed: ${String(err)}` }, RefreshErrorResponseSchema, 500)
+      return respondWithSchema(
+        { error: `Supabase save failed: ${String(err)}` },
+        RefreshErrorResponseSchema,
+        500,
+      )
     }
 
-    return respondWithSchema({ ok: true, container: String(container) }, RefreshSuccessResponseSchema, 200)
-  } catch (err: any) {
+    return respondWithSchema(
+      { ok: true, container: String(container) },
+      RefreshSuccessResponseSchema,
+      200,
+    )
+  } catch (err) {
     console.error('refresh error', err)
     return respondWithSchema({ error: String(err) }, RefreshErrorResponseSchema, 500)
   }

@@ -1,5 +1,5 @@
 // @refresh reload
-import { createHandler, StartServer } from "@solidjs/start/server";
+import { createHandler, StartServer } from '@solidjs/start/server'
 import env from '~/shared/config/env'
 
 // Ensure environment is loaded early (fail fast on missing vars)
@@ -22,4 +22,4 @@ export default createHandler(() => (
       </html>
     )}
   />
-));
+))

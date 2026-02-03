@@ -1,4 +1,4 @@
-import { type ContainerStatus } from './containerStatus'
+import type { ContainerStatus } from './containerStatus'
 
 export type ContainerStatusRepository = {
   /**

@@ -1,7 +1,11 @@
 import * as cmacgm from './cmacgm'
 import * as msc from './msc'
 
-export type ProviderHandler = { fetchStatus: (container: string) => Promise<{ parsedStatus?: Record<string, unknown>; raw?: string }> }
+export type ProviderHandler = {
+  fetchStatus: (
+    container: string,
+  ) => Promise<{ parsedStatus?: Record<string, unknown>; raw?: string }>
+}
 
 const PROVIDERS: Record<string, ProviderHandler> = {
   cmacgm: cmacgm as unknown as ProviderHandler,

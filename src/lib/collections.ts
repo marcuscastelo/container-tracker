@@ -1,6 +1,9 @@
-import { CollectionsResponse } from '~/routes/api/collections'
+import type { CollectionsResponse } from '~/routes/api/collections'
 import containerStatus from '../../schemas/containerStatus.schema'
-import { ShipmentsSchema as UIShipmentsSchema, Shipment as UIShipment } from '../../schemas/shipment.schema'
+import {
+  type Shipment as UIShipment,
+  ShipmentsSchema as UIShipmentsSchema,
+} from '../../schemas/shipment.schema'
 
 // Collections module now uses Supabase as the data source.
 // The API route `/api/collections` fetches from the `container-status` table
@@ -19,18 +22,35 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
   let first: any = containers[0] ?? {}
 
   // MSC payloads often include container info under Data.BillOfLadings[0].ContainersInfo
-  const mscContainers = raw?.Data?.BillOfLadings && raw.Data.BillOfLadings[0]?.ContainersInfo ? raw.Data.BillOfLadings[0].ContainersInfo : null
+  const mscContainers =
+    raw?.Data?.BillOfLadings && raw.Data.BillOfLadings[0]?.ContainersInfo
+      ? raw.Data.BillOfLadings[0].ContainersInfo
+      : null
   if ((!containers || containers.length === 0) && mscContainers && mscContainers.length > 0) {
     first = mscContainers[0]
-    try { console.debug(`collections: using MSC ContainersInfo for sample ${path}`) } catch (e) { }
+    try {
+      console.debug(`collections: using MSC ContainersInfo for sample ${path}`)
+    } catch (_e) {}
   }
 
   // derive carrier (armador) preferring normalized fields, otherwise infer from folder name in path
   const normPath = path ? String(path).replace(/\\/g, '/') : undefined
-  const folderBase = normPath ? normPath.split('/').slice(-2)[0] : undefined
+  const _folderBase = normPath ? normPath.split('/').slice(-2)[0] : undefined
   // prefer container number from normalized payload, otherwise fall back to filename (without extension), then SAMPLE
-  const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
-  const container_number = first.container_number ?? first.container_no ?? first.container_num ?? first.ContainerNumber ?? raw?.container_number ?? fileBase ?? `SAMPLE${idx}`
+  const fileBase = path
+    ? String(path)
+        .split('/')
+        .pop()
+        ?.replace(/\.[^.]+$/, '')
+    : undefined
+  const container_number =
+    first.container_number ??
+    first.container_no ??
+    first.container_num ??
+    first.ContainerNumber ??
+    raw?.container_number ??
+    fileBase ??
+    `SAMPLE${idx}`
   const client = raw?.client_name ?? raw?.source?.api ?? 'Cliente Teste'
 
   // derive origin/destination from multiple possible payload shapes
@@ -43,14 +63,22 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
   console.debug('after normalized:', { origin, destination })
 
   // 2) container locations array (first and last)
-  if ((!origin || !destination) && ((Array.isArray(containers) && containers.length > 0) || (mscContainers && mscContainers.length > 0))) {
+  if (
+    (!origin || !destination) &&
+    ((Array.isArray(containers) && containers.length > 0) ||
+      (mscContainers && mscContainers.length > 0))
+  ) {
     const locs = first?.locations ?? first?.Locations ?? []
     if (locs && locs.length > 0) {
       if (!origin) origin = locs[0]?.city ?? locs[0]?.Location ?? ''
       if (!destination) {
         const last = locs[locs.length - 1]
         destination = last?.city ?? last?.Location ?? ''
-        try { console.debug(`collections: used container locations for origin/destination (${fileBase ?? path})`) } catch (e) { }
+        try {
+          console.debug(
+            `collections: used container locations for origin/destination (${fileBase ?? path})`,
+          )
+        } catch (_e) {}
       }
     }
     console.debug('after fallback locs:', { origin, destination })
@@ -62,17 +90,28 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
     if (info) {
       if (!origin) origin = info.PortOfLoad ?? info.ShippedFrom ?? origin
       if (!destination) destination = info.PortOfDischarge ?? info.ShippedTo ?? destination
-      try { console.debug(`collections: used MSC BillOfLadings GeneralTrackingInfo for (${fileBase ?? path})`) } catch (e) { }
+      try {
+        console.debug(
+          `collections: used MSC BillOfLadings GeneralTrackingInfo for (${fileBase ?? path})`,
+        )
+      } catch (_e) {}
     }
     console.debug('after fallback MSC:', { origin, destination })
   }
 
   console.debug('Raw data for fallbacks:', raw)
   // 4) CMA CGM style top-level fields
-  if ((!origin || !destination) && (raw?.Reciept || raw?.LastDischargePort || raw?.POL || raw?.POD)) {
+  if (
+    (!origin || !destination) &&
+    (raw?.Reciept || raw?.LastDischargePort || raw?.POL || raw?.POD)
+  ) {
     if (!origin) origin = raw.Reciept ?? raw.POL ?? origin
     if (!destination) destination = raw.LastDischargePort ?? raw.POD ?? destination
-    try { console.debug(`collections: used CMA-CGM fields (Reciept/LastDischargePort/POL/POD) for (${fileBase ?? path})`) } catch (e) { }
+    try {
+      console.debug(
+        `collections: used CMA-CGM fields (Reciept/LastDischargePort/POL/POD) for (${fileBase ?? path})`,
+      )
+    } catch (_e) {}
     console.debug('after fallback CMA CGM:', { origin, destination })
   }
 
@@ -86,7 +125,12 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
     const parts = routeFromRaw.split(/→|->|–|-/).map((p: string) => p.trim())
     if (!origin && parts[0]) origin = parts[0]
     if (!destination && parts[1]) destination = parts[1]
-    try { console.debug(`collections: used route string fallback for (${fileBase ?? path}):`, routeFromRaw) } catch (e) { }
+    try {
+      console.debug(
+        `collections: used route string fallback for (${fileBase ?? path}):`,
+        routeFromRaw,
+      )
+    } catch (_e) {}
     console.debug('after fallback route string:', { origin, destination })
   }
   console.debug('final origin/destination:', { origin, destination })
@@ -107,7 +151,9 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
       // try DD/MM/YYYY simple parse (MSC uses this format)
       const parts = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
       if (parts) {
-        const dd = Number(parts[1]), mm = Number(parts[2]), yy = Number(parts[3])
+        const dd = Number(parts[1]),
+          mm = Number(parts[2]),
+          yy = Number(parts[3])
         return new Date(yy, mm - 1, dd)
       }
       return undefined
@@ -130,20 +176,26 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
 
   // 2) common fields
   if (!etaObj) {
-    etaObj = parseDateLike(raw?.EstimatedTimeOfArrival ?? raw?.eta ?? raw?.eta_display ?? raw?.last_update_time)
+    etaObj = parseDateLike(
+      raw?.EstimatedTimeOfArrival ?? raw?.eta ?? raw?.eta_display ?? raw?.last_update_time,
+    )
     if (etaObj) etaSource = 'common fields (EstimatedTimeOfArrival/eta/last_update_time)'
   }
 
   // 3) CMA CGM style
   if (!etaObj && (raw?.PODDate || raw?.POLDate || raw?.POODate || raw?.ContextInfo?.ValueLeft)) {
-    etaObj = parseDateLike(raw?.PODDate ?? raw?.EstimatedTimeOfArrival ?? raw?.ContextInfo?.ValueLeft)
+    etaObj = parseDateLike(
+      raw?.PODDate ?? raw?.EstimatedTimeOfArrival ?? raw?.ContextInfo?.ValueLeft,
+    )
     if (etaObj) etaSource = 'CMA CGM (PODDate/ContextInfo)'
   }
 
   // 4) MSC style
   if (!etaObj && raw?.Data?.BillOfLadings && raw.Data.BillOfLadings[0]) {
     const info = raw.Data.BillOfLadings[0].GeneralTrackingInfo
-    etaObj = parseDateLike(info?.FinalPodEtaDate ?? raw?.Data?.BillOfLadings[0]?.ContainersInfo?.[0]?.PodEtaDate)
+    etaObj = parseDateLike(
+      info?.FinalPodEtaDate ?? raw?.Data?.BillOfLadings[0]?.ContainersInfo?.[0]?.PodEtaDate,
+    )
     if (etaObj) etaSource = 'MSC (FinalPodEtaDate/ContainersInfo.PodEtaDate)'
   }
 
@@ -163,10 +215,18 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
         }
         const rawDate = best?.Date ?? best?.DateString ?? best?.event_time
         const d = parseDateLike(rawDate)
-        if (d) dateCandidates.push({ d, source: 'events (container-level, max Order)' })
+        if (d)
+          dateCandidates.push({
+            d,
+            source: 'events (container-level, max Order)',
+          })
       } else {
         for (let ei = 0; ei < containerEvents.length; ei++) {
-          const rawDate = containerEvents[ei]?.Date ?? containerEvents[ei]?.DateString ?? containerEvents[ei]?.event_time ?? containerEvents[ei]?.Date
+          const rawDate =
+            containerEvents[ei]?.Date ??
+            containerEvents[ei]?.DateString ??
+            containerEvents[ei]?.event_time ??
+            containerEvents[ei]?.Date
           const d = parseDateLike(rawDate)
           if (d) dateCandidates.push({ d, source: 'events (container-level)' })
         }
@@ -174,12 +234,16 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
     }
 
     // location events
-    if ((Array.isArray(containers) && containers.length > 0) || (mscContainers && mscContainers.length > 0)) {
+    if (
+      (Array.isArray(containers) && containers.length > 0) ||
+      (mscContainers && mscContainers.length > 0)
+    ) {
       const locs = first?.locations ?? first?.Locations ?? []
       for (let li = 0; li < locs.length; li++) {
         const evs = locs[li]?.events ?? locs[li]?.Events ?? []
         for (let ei = 0; ei < evs.length; ei++) {
-          const rawDate = evs[ei]?.event_time ?? evs[ei]?.Date ?? evs[ei]?.DateString ?? evs[ei]?.Date
+          const rawDate =
+            evs[ei]?.event_time ?? evs[ei]?.Date ?? evs[ei]?.DateString ?? evs[ei]?.Date
           const d = parseDateLike(rawDate)
           if (d) dateCandidates.push({ d, source: 'events (location-level)' })
         }
@@ -195,7 +259,10 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
   }
 
   const eta = etaObj ? etaObj.toISOString().replace(/\.000Z$/, '') : ''
-  try { if (etaSource) console.debug(`collections: ETA derived from ${etaSource} for ${fileBase ?? path}: ${eta}`) } catch (e) { }
+  try {
+    if (etaSource)
+      console.debug(`collections: ETA derived from ${etaSource} for ${fileBase ?? path}: ${eta}`)
+  } catch (_e) {}
 
   const status = first?.status ?? raw?.current_status ?? raw?.status ?? 'Desconhecido'
 
@@ -204,7 +271,10 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
     client: safeString(client),
     carrier: safeString(carrier),
     container: safeString(container_number),
-    route: origin && destination ? `${origin} → ${destination}` : safeString(raw?.route ?? raw?.route_display ?? ''),
+    route:
+      origin && destination
+        ? `${origin} → ${destination}`
+        : safeString(raw?.route ?? raw?.route_display ?? ''),
     status: safeString(status),
     eta: eta || safeString(raw?.eta_display ?? raw?.eta ?? ''),
     statusClass: raw?.status_level === 'danger' ? 'bg-red-500 text-white' : undefined,
@@ -212,8 +282,9 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
 
   // debug logs for fallbacks
   try {
-    if (!first.container_number && !raw?.container_number && fileBase) console.debug(`collections: using filename '${fileBase}' as container number for ${fileBase}`)
-  } catch (e) { }
+    if (!first.container_number && !raw?.container_number && fileBase)
+      console.debug(`collections: using filename '${fileBase}' as container number for ${fileBase}`)
+  } catch (_e) {}
 
   return s
 }
@@ -226,12 +297,14 @@ export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
       return []
     }
     // API now returns array of { container_id, carrier, status } from Supabase
-    const data = await res.json() as CollectionsResponse
+    const data = (await res.json()) as CollectionsResponse
     const out: UIShipment[] = []
     console.debug(`collections: fetched ${data.length} records from /api/collections`)
     data.forEach(({ container_id, carrier, status }, i) => {
       // Use container_id as the path for mapping heuristics
-      console.debug(`collections: processing record #${i + 1} for container_id=${container_id}, carrier=${carrier}`)
+      console.debug(
+        `collections: processing record #${i + 1} for container_id=${container_id}, carrier=${carrier}`,
+      )
       out.push(mapNormalizedToUI(status, carrier, i + 1, container_id))
     })
     if (UIShipmentsSchema.safeParse(out).success) {

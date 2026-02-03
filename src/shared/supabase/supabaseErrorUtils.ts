@@ -21,12 +21,7 @@ export function isSupabaseDuplicateKeyError(
     typeof error.message === 'string' &&
     error.message.includes(uniqueKey)
   ) {
-    if (
-      ean !== undefined &&
-      ean !== null &&
-      typeof ean === 'string' &&
-      ean !== ''
-    ) {
+    if (ean !== undefined && ean !== null && typeof ean === 'string' && ean !== '') {
       return true
     }
     // If no EAN provided, still consider it a duplicate key error
@@ -41,9 +36,6 @@ export function isSupabaseDuplicateKeyError(
  * @param ean - The EAN value to check (optional, for stricter matching)
  * @returns True if the error is a duplicate EAN unique constraint violation
  */
-export function isSupabaseDuplicateEanError(
-  error: unknown,
-  ean?: string | null,
-): ean is string {
+export function isSupabaseDuplicateEanError(error: unknown, ean?: string | null): ean is string {
   return isSupabaseDuplicateKeyError(error, 'foods_ean_key', ean)
 }

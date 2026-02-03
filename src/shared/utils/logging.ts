@@ -11,11 +11,7 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 /**
  * Create a log event using OpenTelemetry spans and events
  */
-const createLogEvent = (
-  level: LogLevel,
-  message: string,
-  data?: Record<string, unknown>,
-): void => {
+const createLogEvent = (level: LogLevel, message: string, data?: Record<string, unknown>): void => {
   // Get caller information automatically
   const stack = new Error().stack
   const callerLine = stack?.split('\n')[3] // Skip createLogEvent, logging method, and Error()
@@ -27,8 +23,7 @@ const createLogEvent = (
     // Extract file name from stack trace
     const fileMatch = callerLine?.match(/\/([^/]+\.tsx?)/)
     if (fileMatch) {
-      fileName =
-        fileMatch[1]?.replace(/\.(ts|tsx)$/, '') ?? callerLine ?? 'unknown'
+      fileName = fileMatch[1]?.replace(/\.(ts|tsx)$/, '') ?? callerLine ?? 'unknown'
     }
 
     // Extract function name from stack trace
@@ -114,11 +109,7 @@ export const logging = {
    * Error-level logging with automatic context
    * Also sends to Sentry for error tracking
    */
-  error: (
-    message: string,
-    error?: unknown,
-    data?: Record<string, unknown>,
-  ): void => {
+  error: (message: string, error?: unknown, data?: Record<string, unknown>): void => {
     console.error(message, error, data)
     createLogEvent('error', message, {
       error: error instanceof Error ? error.message : error,

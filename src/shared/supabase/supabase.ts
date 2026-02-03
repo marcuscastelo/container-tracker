@@ -2,18 +2,12 @@ import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
 
 import env from '~/shared/config/env'
-import { type Database } from '~/shared/supabase/database.types'
+import type { Database } from '~/shared/supabase/database.types'
 import { parseWithStack } from '~/shared/utils/parseWithStack'
 
-const supabaseUrl = parseWithStack(
-  z.string(),
-  env.VITE_PUBLIC_SUPABASE_URL,
-)
+const supabaseUrl = parseWithStack(z.string(), env.VITE_PUBLIC_SUPABASE_URL)
 
-const supabaseAnonKey = parseWithStack(
-  z.string(),
-  env.VITE_PUBLIC_SUPABASE_ANON_KEY,
-)
+const supabaseAnonKey = parseWithStack(z.string(), env.VITE_PUBLIC_SUPABASE_ANON_KEY)
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   db: {
@@ -74,11 +68,9 @@ export function registerSubapabaseRealtimeCallback<T>(
 
     const eventType = payloadData.eventType
 
-    const oldRecord =
-      payloadData.old !== null ? validator.safeParse(payloadData.old) : null
+    const oldRecord = payloadData.old !== null ? validator.safeParse(payloadData.old) : null
 
-    const newRecord =
-      payloadData.new !== null ? validator.safeParse(payloadData.new) : null
+    const newRecord = payloadData.new !== null ? validator.safeParse(payloadData.new) : null
 
     callback({
       eventType,
@@ -89,10 +81,6 @@ export function registerSubapabaseRealtimeCallback<T>(
 
   supabase
     .channel(table)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table },
-      handleCallback,
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', table }, handleCallback)
     .subscribe()
 }

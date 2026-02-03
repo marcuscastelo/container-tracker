@@ -1,14 +1,16 @@
-import { createResource } from "solid-js";
-import { getPoCShipmentsAsync } from "~/lib/collections";
-import type { Shipment } from "../../schemas/shipment.schema";
-import HomeHeader from "../components/HomeHeader";
-import MetricsCards from "../components/MetricsCards";
-import ShipmentsTable from "../components/ShipmentsTable";
-import TimelineAlerts from "../components/TimelineAlerts";
+import { createResource } from 'solid-js'
+import { getPoCShipmentsAsync } from '~/lib/collections'
+import type { Shipment } from '../../schemas/shipment.schema'
+import HomeHeader from '../components/HomeHeader'
+import MetricsCards from '../components/MetricsCards'
+import ShipmentsTable from '../components/ShipmentsTable'
+import TimelineAlerts from '../components/TimelineAlerts'
 
 export default function Home() {
   // load shipments via internal API/bundled samples
-  const [shipments] = createResource<Shipment[]>(getPoCShipmentsAsync, { initialValue: [] })
+  const [shipments] = createResource<Shipment[]>(getPoCShipmentsAsync, {
+    initialValue: [],
+  })
 
   async function refreshContainer(container: string, carrier: string) {
     try {
@@ -25,9 +27,9 @@ export default function Home() {
       } else {
         window.alert(`Refresh OK — updated: ${j?.updatedPath ?? 'unknown'}`)
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('refresh error', err)
-      window.alert(`Refresh error: ${err?.message ?? String(err)}`)
+      window.alert(`Refresh error: ${(err as Error)?.message ?? String(err)}`)
     }
   }
 
@@ -38,5 +40,5 @@ export default function Home() {
       <ShipmentsTable shipments={shipments() ?? []} onRefresh={refreshContainer} />
       <TimelineAlerts />
     </main>
-  );
+  )
 }

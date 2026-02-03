@@ -1,36 +1,36 @@
 {
-	"name": "example-with-tailwindcss",
-	"type": "module",
-	"scripts": {
-		"dev": "vinxi dev",
-		"build": "vinxi build",
-		"start": "vinxi start",
-		"type-check": "tsc --noEmit --skipLibCheck",
-		"test": "vitest run",
-		"fix": "pnpm exec biome format --write . --format-with-errors true || true",
-		"lint": "pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
-		"flint": "pnpm run fix && pnpm run lint",
-		"supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"
-	},
-	"dependencies": {
-		"@solidjs/router": "^0.15.0",
-		"@solidjs/start": "^1.1.0",
-		"@supabase/supabase-js": "^2.94.0",
-		"axios": "^1.13.4",
-		"solid-js": "^1.9.5",
-		"vinxi": "^0.5.7",
-		"zod": "^4.3.6"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.3.14",
-		"@tailwindcss/vite": "^4.0.7",
-		"playwright": "^1.58.1",
-		"puppeteer": "^24.36.1",
-		"puppeteer-extra": "^3.3.6",
-		"puppeteer-extra-plugin-stealth": "^2.11.2",
-		"tailwindcss": "^4.0.7"
-	},
-	"engines": {
-		"node": ">=22"
-	}
+  "name": "example-with-tailwindcss",
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "type-check": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "fix": "pnpm exec biome format --write . --format-with-errors true || true",
+    "lint": "pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
+    "flint": "pnpm run fix && pnpm run lint",
+    "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.15.0",
+    "@solidjs/start": "^1.1.0",
+    "@supabase/supabase-js": "^2.94.0",
+    "axios": "^1.13.4",
+    "solid-js": "^1.9.5",
+    "vinxi": "^0.5.7",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
+    "@tailwindcss/vite": "^4.0.7",
+    "playwright": "^1.58.1",
+    "puppeteer": "^24.36.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "tailwindcss": "^4.0.7"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

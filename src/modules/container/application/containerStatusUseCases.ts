@@ -1,5 +1,5 @@
-import { type ContainerStatus } from '../domain/containerStatus'
-import { type ContainerStatusRepository } from '../domain/containerStatusRepository'
+import type { ContainerStatus } from '../domain/containerStatus'
+import type { ContainerStatusRepository } from '../domain/containerStatusRepository'
 
 export type ContainerStatusUseCases = {
   getAllContainerStatuses: () => Promise<readonly ContainerStatus[]>
@@ -19,9 +19,7 @@ export function createContainerStatusUseCases(
       return repository.fetchAll()
     },
 
-    async getContainerStatus(
-      containerId: string,
-    ): Promise<ContainerStatus | null> {
+    async getContainerStatus(containerId: string): Promise<ContainerStatus | null> {
       return repository.fetchById(containerId)
     },
 

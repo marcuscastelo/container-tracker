@@ -1,4 +1,4 @@
-import { z, ZodError } from 'zod/v4'
+import { ZodError, z } from 'zod/v4'
 
 /**
  * Parses data with a Zod schema and always throws a JS Error with stack trace on failure.
@@ -7,10 +7,7 @@ import { z, ZodError } from 'zod/v4'
  * @returns The parsed data if valid
  * @throws Error with stack trace and Zod issues if invalid
  */
-export function parseWithStack<T extends z.core.$ZodType>(
-  schema: T,
-  data: unknown,
-): z.output<T> {
+export function parseWithStack<T extends z.core.$ZodType>(schema: T, data: unknown): z.output<T> {
   try {
     // eslint-disable-next-line no-restricted-syntax
     return z.parse(schema, data)

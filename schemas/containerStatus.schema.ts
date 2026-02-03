@@ -49,7 +49,7 @@ export const LocationSchema = z.object({
   site_type: z.string().nullable().optional(),
   location_code: z.string().nullable().optional(),
   // keep original raw location when mapping from specific API
-  raw: z.any().optional()
+  raw: z.any().optional(),
 })
 
 export type Location = z.infer<typeof LocationSchema>
@@ -63,7 +63,7 @@ export const VesselSchema = z.object({
   built: z.string().nullable().optional(),
   flag: z.string().nullable().optional(),
   flagName: z.string().nullable().optional(),
-  raw: z.any().optional()
+  raw: z.any().optional(),
 })
 
 export type Vessel = z.infer<typeof VesselSchema>
@@ -94,14 +94,14 @@ export const EventSchema = z.object({
   detail: z.array(z.string()).nullable().optional(),
   order: z.number().nullable().optional(),
   // mantemos o evento original para referência/mapping
-  sourceEvent: z.any().optional()
+  sourceEvent: z.any().optional(),
 })
 
 export type Event = z.infer<typeof EventSchema>
 
 // Local com eventos (utilizado em Maersk-like payloads)
 export const LocationWithEventsSchema = LocationSchema.extend({
-  events: z.array(EventSchema).optional()
+  events: z.array(EventSchema).optional(),
 })
 
 // Container padronizado
@@ -122,7 +122,7 @@ export const ContainerSchema = z.object({
   service_type_origin: z.string().nullable().optional(),
   service_type_destination: z.string().nullable().optional(),
   // raw original payload for this container
-  raw: z.any().optional()
+  raw: z.any().optional(),
 })
 
 export type Container = z.infer<typeof ContainerSchema>
@@ -130,11 +130,13 @@ export type Container = z.infer<typeof ContainerSchema>
 // Shipment / consulta unificada contendo origem, destino, containers e metadados
 export const ShipmentSchema = z.object({
   // metadados comuns
-  source: z.object({
-    api: z.string().nullable().optional(), // ex: 'maersk' | 'cmacgm' | 'msc'
-    fetched_at: DateLike.optional(),
-    raw: z.any().optional()
-  }).optional(),
+  source: z
+    .object({
+      api: z.string().nullable().optional(), // ex: 'maersk' | 'cmacgm' | 'msc'
+      fetched_at: DateLike.optional(),
+      raw: z.any().optional(),
+    })
+    .optional(),
   has_import_shipment: z.boolean().nullable().optional(),
   is_container_search: z.boolean().nullable().optional(),
   is_split_combine_part_load: z.boolean().nullable().optional(),
@@ -145,7 +147,7 @@ export const ShipmentSchema = z.object({
   destination: LocationSchema.optional(),
   containers: z.array(ContainerSchema).optional(),
   // keep the original full payload when needed
-  raw: z.any().optional()
+  raw: z.any().optional(),
 })
 
 export type Shipment = z.infer<typeof ShipmentSchema>
@@ -183,7 +185,7 @@ export const ContainerSummarySchema = z.object({
   last_event_summary: z.string().nullable().optional(),
 
   // raw original (se necessário)
-  raw: z.any().optional()
+  raw: z.any().optional(),
 })
 
 export type ContainerSummary = z.infer<typeof ContainerSummarySchema>
@@ -198,7 +200,7 @@ export const ContainerSchemaWithSummary = ContainerSchema.extend({
   origin_display: z.string().nullable().optional(),
   destination_display: z.string().nullable().optional(),
   route_display: z.string().nullable().optional(),
-  summary: ContainerSummarySchema.optional()
+  summary: ContainerSummarySchema.optional(),
 })
 
 export type ContainerWithSummary = z.infer<typeof ContainerSchemaWithSummary>
@@ -211,5 +213,5 @@ export default {
   ContainerSchema,
   ContainerSchemaWithSummary,
   ContainerSummarySchema,
-  ShipmentSchema
+  ShipmentSchema,
 }

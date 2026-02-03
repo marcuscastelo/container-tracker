@@ -1,7 +1,8 @@
 // API route: return container statuses from Supabase as a simple array
 // This handler runs on the server and fetches from the `container-status` table.
-import { containerStatusUseCases } from '~/modules/container'
+
 import { z } from 'zod/v4'
+import { containerStatusUseCases } from '~/modules/container'
 
 // Explicit Zod schemas for request/response types
 const CollectionsRequestSchema = z.object({})
@@ -34,7 +35,7 @@ async function handle() {
     console.log(`api/collections: fetched ${samples.length} container statuses`)
     // Build schema inline to avoid possible circular initialization issues
     return respondWithSchema(samples, CollectionsResponseSchema, 200)
-  } catch (err: any) {
+  } catch (err) {
     console.error('api/collections GET error', err)
     const errSchema = z.object({ error: z.string() })
     return respondWithSchema({ error: String(err) }, errSchema, 500)
@@ -63,5 +64,8 @@ function respondWithSchema<T>(payload: T, schema: z.ZodTypeAny, status = 200) {
     console.error('collections: response validation failed', parsed.error.format())
     return new Response(JSON.stringify({ error: 'response validation failed' }), { status: 500 })
   }
-  return new Response(JSON.stringify(parsed.data), { status, headers: { 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(parsed.data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }

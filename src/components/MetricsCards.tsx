@@ -26,5 +26,5 @@ export default function MetricsCards() {
         </div>
       </div>
     </section>
-  );
+  )
 }

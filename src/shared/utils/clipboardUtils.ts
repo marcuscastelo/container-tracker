@@ -1,4 +1,4 @@
-import { type z } from 'zod/v4'
+import type { z } from 'zod/v4'
 
 import { jsonParseWithStack } from '~/shared/utils/jsonParseWithStack'
 import { logging } from '~/shared/utils/logging'
@@ -25,11 +25,10 @@ export function deserializeClipboard<T extends z.ZodType<unknown>>(
   }
   const result = allowedSchema.safeParse(parsed)
   if (!result.success) {
-    logging.error(
-      'Clipboard deserializeClipboard - Invalid data:',
-      result.error,
-      { clipboard, parsed },
-    )
+    logging.error('Clipboard deserializeClipboard - Invalid data:', result.error, {
+      clipboard,
+      parsed,
+    })
     return null
   }
   return result.data

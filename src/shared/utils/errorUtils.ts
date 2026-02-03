@@ -52,14 +52,8 @@ export function isBackendOutageError(error: unknown): boolean {
     )
   }
   if (typeof error === 'object' && error !== null) {
-    const msg =
-      'message' in error && typeof error.message === 'string'
-        ? error.message
-        : ''
-    const details =
-      'details' in error && typeof error.details === 'string'
-        ? error.details
-        : ''
+    const msg = 'message' in error && typeof error.message === 'string' ? error.message : ''
+    const details = 'details' in error && typeof error.details === 'string' ? error.details : ''
     return (
       msg.includes('Failed to fetch') ||
       msg.includes('NetworkError') ||
