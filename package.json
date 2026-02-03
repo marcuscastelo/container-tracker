@@ -28,21 +28,22 @@
     ],
     "extraResources": [
       {
-        "from": ".output",
+        "from": ".output/server",
         "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": ".output/public",
+        "to": "server/public",
         "filter": ["**/*"]
       },
       {
         "from": "collections",
         "to": "server/collections",
         "filter": ["**/*"]
-      },
-      {
-        "from": "node_modules",
-        "to": "server/node_modules",
-        "filter": ["**/*"]
       }
     ],
+    "afterPack": "./electron/afterPack.cjs",
     "linux": {
       "target": ["AppImage"],
       "category": "Utility",

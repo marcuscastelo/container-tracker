@@ -2,6 +2,7 @@ const { app, BrowserWindow } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const net = require('net');
+const { exec } = require('child_process');
 
 let mainWindow = null;
 let serverProcess = null;
@@ -76,19 +77,23 @@ function startServer() {
     console.log('Starting SolidStart server...');
 
     const serverPath = path.join(process.resourcesPath, 'server');
-    const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const args = ['start'];
+
+    // In production, the Nitro server is run directly with node
+    const nodeExecutable = process.execPath; // Use the bundled Node or system Node
+    const serverScript = path.join(serverPath, 'index.mjs');
 
     console.log(`Server path: ${serverPath}`);
-    console.log(`Running: ${command} ${args.join(' ')}`);
+    console.log(`Running: node ${serverScript}`);
 
-    serverProcess = spawn(command, args, {
+    // Kill any existing server process
+    serverProcess = spawn('node', [serverScript], {
       cwd: serverPath,
-      shell: true,
+      shell: false,
       env: {
         ...process.env,
         PORT: SERVER_PORT.toString(),
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        NITRO_PORT: SERVER_PORT.toString()
       }
     });
 
@@ -159,20 +164,100 @@ function stopServer() {
   if (serverProcess) {
     console.log('Stopping server...');
 
-    if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', serverProcess.pid.toString(), '/f', '/t']);
-    } else {
-      // Kill the process group
-      process.kill(-serverProcess.pid, 'SIGTERM');
+    try {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/pid', serverProcess.pid.toString(), '/f', '/t'])
+      } else {
+        // Kill process group
+        process.kill(-serverProcess.pid, 'SIGTERM')
+      }
+    } catch (err) {
+      if (err.code !== 'ESRCH') {
+        throw err
+      }
+      // ESRCH = process / process group already gone → OK
+    } finally {
+      serverProcess = null
     }
+  }
+  killLeftover(SERVER_PORT);
+}
 
-    serverProcess = null;
+function killLeftover(port) {
+  if (process.platform === 'win32') {
+    // Windows: use netstat to find processes using the port and kill them
+    exec(`netstat -ano | findstr :${port}`, (err, stdout) => {
+      if (err) {
+        console.warn('Could not check for leftover server processes:', err);
+        return;
+      }
+      const lines = stdout.split('\n').filter(Boolean);
+      lines.forEach(line => {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== process.pid.toString()) {
+          console.warn(`Killing leftover process on port ${port}: PID ${pid}`);
+          spawn('taskkill', ['/pid', pid, '/f', '/t']);
+        }
+      });
+    });
+  } else {
+    // Linux/macOS: use lsof to find processes using the port and kill them
+    exec(`lsof -i :${port} -sTCP:LISTEN -t`, (err, stdout) => {
+      if (err) {
+        // lsof returns non-zero if nothing is found, that's fine
+        return;
+      }
+      const pids = stdout.split('\n').filter(Boolean);
+      pids.forEach(pid => {
+        if (pid && pid !== process.pid.toString()) {
+          console.warn(`Killing leftover process on port ${port}: PID ${pid}`);
+          try {
+            process.kill(parseInt(pid), 'SIGTERM');
+          } catch (e) {
+            console.error(`Failed to kill PID ${pid}:`, e);
+          }
+        }
+      });
+    });
+  }
+  if (process.platform === 'win32') {
+    // Windows: use netstat to find processes using the port
+    exec(`netstat -ano | findstr :${port}`, (err, stdout) => {
+      if (err) {
+        console.warn('Could not check for leftover server processes:', err);
+        return;
+      }
+      const lines = stdout.split('\n').filter(Boolean);
+      lines.forEach(line => {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && pid !== process.pid.toString()) {
+          console.warn(`Leftover process detected on port ${port}: PID ${pid}`);
+        }
+      });
+    });
+  } else {
+    // Linux/macOS: use lsof to find processes using the port
+    exec(`lsof -i :${port} -sTCP:LISTEN -t`, (err, stdout) => {
+      if (err) {
+        // lsof returns non-zero if nothing is found, that's fine
+        return;
+      }
+      const pids = stdout.split('\n').filter(Boolean);
+      pids.forEach(pid => {
+        if (pid && pid !== process.pid.toString()) {
+          console.warn(`Leftover process detected on port ${port}: PID ${pid}`);
+        }
+      });
+    });
   }
 }
 
 // App lifecycle events
 app.whenReady().then(async () => {
   try {
+    killLeftover(SERVER_PORT);
     await startServer();
     createWindow();
   } catch (error) {
