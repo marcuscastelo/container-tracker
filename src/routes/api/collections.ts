@@ -4,18 +4,16 @@ import { containerStatusUseCases } from '~/modules/container'
 import { z } from 'zod/v4'
 
 // Explicit Zod schemas for request/response types
-export const CollectionsRequestSchema = z.object({}).strict()
-
-export const CollectionsItemSchema = z.object({
+const CollectionsRequestSchema = z.object({})
+const CollectionsItemSchema = z.object({
   container_id: z.string(),
   carrier: z.string().nullable(),
   // status is stored as JSON in Supabase (JSONB) and can be any record
-  status: z.record(z.unknown()).nullable(),
+  status: z.any().nullable(),
 })
 
-export const CollectionsResponseSchema = z.array(CollectionsItemSchema)
-
-export const ApiErrorResponseSchema = z.object({ error: z.string() })
+const CollectionsResponseSchema = z.array(CollectionsItemSchema)
+const ApiErrorResponseSchema = z.object({ error: z.string() })
 
 export type CollectionsRequest = z.infer<typeof CollectionsRequestSchema>
 export type CollectionsResponse = z.infer<typeof CollectionsResponseSchema>
@@ -35,8 +33,7 @@ async function handle() {
 
     console.log(`api/collections: fetched ${samples.length} container statuses`)
     // Build schema inline to avoid possible circular initialization issues
-    const successSchema = z.array(z.object({ container_id: z.string(), carrier: z.string().nullable(), status: z.string().nullable() }))
-    return respondWithSchema(samples, successSchema, 200)
+    return respondWithSchema(samples, CollectionsResponseSchema, 200)
   } catch (err: any) {
     console.error('api/collections GET error', err)
     const errSchema = z.object({ error: z.string() })
@@ -50,6 +47,13 @@ export async function GET() {
 
 export async function POST() {
   return handle()
+}
+
+export {
+  CollectionsRequestSchema,
+  CollectionsItemSchema,
+  CollectionsResponseSchema,
+  ApiErrorResponseSchema,
 }
 
 // Helper to validate payloads against schemas and return Response
