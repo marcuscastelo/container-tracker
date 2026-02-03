@@ -1,3 +1,6 @@
 node_modules/
+.env
 .vinxi/
 .output/
+
+marucs-src/
