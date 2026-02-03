@@ -10,6 +10,7 @@ async function handle() {
     // Transform to the expected format for the collections loader
     const samples = statuses.map((s) => ({
       container_id: s.container_id,
+      carrier: s.carrier,
       status: s.status,
     }))
 

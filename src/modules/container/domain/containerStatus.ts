@@ -8,6 +8,7 @@ import { z } from 'zod/v4'
  */
 export const containerStatusSchema = z.object({
   container_id: z.string(),
+  carrier: z.string(),
   status: z.record(z.unknown()),
 })
 

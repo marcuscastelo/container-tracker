@@ -18,9 +18,10 @@ try {
 					// mark as handled so component handler can skip duplicate
 					try { btn.dataset.delegateHandled = '1' } catch (err) {}
 					const container = btn.getAttribute('data-container') || ''
+					const carrier = btn.getAttribute('data-carrier') || 'unknown'
 					console.debug('entry-client: delegated refresh click for', container)
 					try { alert(`delegated handler: refreshing ${container}...`) } catch (err) {}
-					fetch('/api/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ container }) })
+					fetch('/api/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ container, carrier }) })
 						.then(async (res) => {
 							let j = null
 							try { j = await res.json() } catch (e) { }

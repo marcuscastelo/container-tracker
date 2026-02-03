@@ -11,7 +11,7 @@ function safeString(v: unknown) {
 }
 
 // Map a normalized Shipment (containerStatus.ShipmentSchema) to the simple UI Shipment
-function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
+function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string): UIShipment {
   console.debug(`collections: mapping sample #${idx} (${path})`)
   // try to find a container
   const containers = raw?.containers ?? []
@@ -25,10 +25,8 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
   }
 
   // derive carrier (armador) preferring normalized fields, otherwise infer from folder name in path
-  const rawCarrier = first.operator ?? raw?.source?.api ?? raw?.carrier
   const normPath = path ? String(path).replace(/\\/g, '/') : undefined
   const folderBase = normPath ? normPath.split('/').slice(-2)[0] : undefined
-  const carrier = rawCarrier ?? (folderBase ? folderBase.toUpperCase() : undefined) ?? 'UNKNOWN'
   // prefer container number from normalized payload, otherwise fall back to filename (without extension), then SAMPLE
   const fileBase = path ? String(path).split('/').pop()?.replace(/\.[^.]+$/, '') : undefined
   const container_number = first.container_number ?? first.container_no ?? first.container_num ?? first.ContainerNumber ?? raw?.container_number ?? fileBase ?? `SAMPLE${idx}`
@@ -213,21 +211,10 @@ function mapNormalizedToUI(raw: any, idx: number, path?: string): UIShipment {
 
   // debug logs for fallbacks
   try {
-    if (!rawCarrier && folderBase) console.debug(`collections: inferred carrier '${carrier}' from folder '${folderBase}' for ${fileBase ?? path}`)
     if (!first.container_number && !raw?.container_number && fileBase) console.debug(`collections: using filename '${fileBase}' as container number for ${fileBase}`)
   } catch (e) { }
 
   return s
-}
-
-/**
- * @deprecated Synchronous loader is no longer supported.
- * Use `getPoCShipmentsAsync()` instead which fetches from Supabase via API.
- */
-export function getPoCShipments(): UIShipment[] {
-  console.warn('getPoCShipments() is deprecated. Use getPoCShipmentsAsync() instead.')
-  // Return empty array - data now comes from Supabase via async API
-  return []
 }
 
 export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
@@ -237,12 +224,14 @@ export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
       console.warn('collections: /api/collections returned', res.status)
       return []
     }
-    // API now returns array of { container_id, status } from Supabase
-    const data = await res.json() as Array<{ container_id: string; status: any }>
+    // API now returns array of { container_id, carrier, status } from Supabase
+    const data = await res.json() as Array<{ container_id: string; carrier: string, status: any }>
     const out: UIShipment[] = []
-    data.forEach(({ container_id, status }, i) => {
+    console.debug(`collections: fetched ${data.length} records from /api/collections`)
+    data.forEach(({ container_id, carrier,status }, i) => {
       // Use container_id as the path for mapping heuristics
-      out.push(mapNormalizedToUI(status, i + 1, container_id))
+      console.debug(`collections: processing record #${i + 1} for container_id=${container_id}, carrier=${carrier}`)
+      out.push(mapNormalizedToUI(status, carrier, i + 1, container_id))
     })
     try { return UIShipmentsSchema.parse(out) } catch (e) { return out as any }
   } catch (err) {
@@ -251,4 +240,4 @@ export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
   }
 }
 
-export default { getPoCShipments, getPoCShipmentsAsync }
+export default { getPoCShipmentsAsync }

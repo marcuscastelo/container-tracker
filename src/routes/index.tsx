@@ -13,14 +13,14 @@ export default function Home() {
   // load shipments via internal API/bundled samples
   const [shipments] = createResource<Shipment[]>(getPoCShipmentsAsync, { initialValue: [] })
 
-  async function refreshContainer(container: string) {
+  async function refreshContainer(container: string, carrier: string) {
     try {
       console.debug('refreshContainer called for', container)
       alert(`Refreshing container ${container}...`)
       const res = await fetch('/api/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ container }),
+        body: JSON.stringify({ container, carrier }),
       })
       const j = await res.json().catch(() => null)
       if (!res.ok) {
@@ -102,6 +102,7 @@ export default function Home() {
                     title="Refresh"
                     class="p-1 rounded hover:bg-gray-100 refresh-button"
                     data-container={s.container}
+                    data-carrier={s.carrier}
                     onClick={(e) => {
                       const el = e.currentTarget as HTMLElement
                       // if a delegated handler already handled this click, skip to avoid duplicate
@@ -114,7 +115,7 @@ export default function Home() {
                       e.stopPropagation();
                       console.debug('refresh button click', s.container);
                       try {
-                        refreshContainer(s.container).catch(() => {})
+                        refreshContainer(s.container, s.carrier).catch(() => {})
                       } catch (err) {
                         console.error('call refreshContainer failed', err)
                       }

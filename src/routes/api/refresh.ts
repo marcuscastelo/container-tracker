@@ -1,19 +1,6 @@
-import fs from 'fs'
-import path from 'path'
 import { containerStatusUseCases } from '~/modules/container'
 
 // Simple helper to recursively walk a directory
-function walk(dir: string): string[] {
-  const out: string[] = []
-  const entries = fs.readdirSync(dir, { withFileTypes: true })
-  for (const ent of entries) {
-    const full = path.join(dir, ent.name)
-    if (ent.isDirectory()) out.push(...walk(full))
-    else out.push(full)
-  }
-  return out
-}
-
 function parseCurl(content: string) {
   // url
   const urlMatch = content.match(/curl\s+['"]([^'"\s]+)['"]/)
@@ -43,28 +30,55 @@ export async function POST({ request }: any) {
   try {
     const body = await request.json().catch(() => ({}))
     const container = body?.container
+    const provider = body?.carrier || 'unknown'
     if (!container) return new Response(JSON.stringify({ error: 'container required' }), { status: 400 })
+    // Fetch container record from DB
+    const rec = await containerStatusUseCases.getContainerStatus(String(container))
+    if (!rec) return new Response(JSON.stringify({ error: 'container not found in DB', container }), { status: 404 })
 
-    const projectRoot = process.cwd()
-    const collectionsDir = path.join(projectRoot, 'collections')
-    if (!fs.existsSync(collectionsDir)) return new Response(JSON.stringify({ error: 'collections directory not found' }), { status: 500 })
+    // Hardcoded curl templates per carrier. Templates may include {container} placeholder.
+    const CURL_TEMPLATES: Record<string, string> = {
+      maersk: `curl 'https://api.maersk.com/synergy/tracking/{container}?operator=MAEU' \
+  --compressed \
+  -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0' \
+  -H 'Accept: application/json' \
+  -H 'Accept-Language: en-US,en;q=0.5' \
+  -H 'Accept-Encoding: gzip, deflate, br, zstd' \
+  -H 'Referer: https://www.maersk.com/' \
+  -H 'Consumer-Key: UtMm6JCDcGTnMGErNGvS2B98kt1Wl25H' \
+  -H 'API-Version: v2' \
+  -H 'Connection: keep-alive' \
+  -H 'TE: trailers'`,
 
-    const files = walk(collectionsDir)
-    const txt = files.find((f) => path.basename(f).replace(/\.[^.]+$/, '') === String(container) && f.endsWith('.txt'))
-    const json = files.find((f) => path.basename(f).replace(/\.[^.]+$/, '') === String(container) && f.endsWith('.json'))
+      cmacgm: `curl 'https://www.cma-cgm.com/ebusiness/tracking/search' \
+  --compressed \
+  -X POST \
+  -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0' \
+  -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' \
+  -H 'Accept-Language: en-US,en;q=0.5' \
+  -H 'Accept-Encoding: gzip, deflate, br, zstd' \
+  -H 'Referer: https://www.cma-cgm.com/ebusiness/tracking' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -H 'Origin: https://www.cma-cgm.com' \
+  -H 'Connection: keep-alive' \
+  --data-raw '__RequestVerificationToken=PLACEHOLDER&SearchViewModel.SearchBy=Container&SearchViewModel.Reference={container}&SearchViewModel.FromHome=true&search='`,
 
-    if (!txt) return new Response(JSON.stringify({ error: 'curl .txt not found for container', container }), { status: 404 })
-    if (!json) return new Response(JSON.stringify({ error: 'json file not found for container', container }), { status: 404 })
+      msc: `curl 'https://www.msc.com/api/feature/tools/TrackingInfo' \
+  --compressed \
+  -X POST \
+  -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: en-US,en;q=0.5' \
+  -H 'Accept-Encoding: gzip, deflate, br, zstd' \
+  -H 'Referer: https://www.msc.com/en/track-a-shipment' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Requested-With: XMLHttpRequest' \
+  -H 'Origin: https://www.msc.com' \
+  -H 'Connection: keep-alive' \
+  --data-raw '{"trackingNumber":"{container}","trackingMode":"0"}'`,
+    }
 
-    const curlContent = fs.readFileSync(txt, 'utf-8')
-    // determine provider folder (collections/<provider>/<file>.txt)
-    const relTxt = path.relative(projectRoot, txt).replace(/\\/g, '/')
-    const parts = relTxt.split('/')
-    const provider = parts.length >= 2 ? parts[1].toLowerCase() : ''
-
-    // If provider is Maersk, redirect to the dedicated Puppeteer-based handler
-    // The caller can follow the redirect. We return a 307 with Location header
-    // so the original method (POST) is preserved by clients that follow 307.
+    // If provider is Maersk we keep the existing redirect to the puppeteer handler
     if (provider === 'maersk') {
       const redirectPath = `/api/refresh-maersk/${encodeURIComponent(String(container))}`
       return new Response(JSON.stringify({ redirect: redirectPath }), {
@@ -72,6 +86,15 @@ export async function POST({ request }: any) {
         headers: { Location: redirectPath, 'Content-Type': 'application/json' }
       })
     }
+
+    const template = CURL_TEMPLATES[provider] ?? CURL_TEMPLATES[provider.split('-')[0]] ?? null
+    if (!template) {
+
+      console.error(`refresh: no curl template for carrier '${provider}'`)
+    return new Response(JSON.stringify({ error: `no curl template for carrier ${provider}` }), { status: 400 })
+    }
+
+    const curlContent = template.replace(/\{container\}/g, String(container))
     const parsed = parseCurl(curlContent)
     if (!parsed.url) return new Response(JSON.stringify({ error: 'could not parse url from curl' }), { status: 500 })
 
