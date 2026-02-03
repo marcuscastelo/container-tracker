@@ -1,10 +1,7 @@
 import { A } from "@solidjs/router";
-import { For } from "solid-js";
-import { getPoCShipments } from "~/lib/collections";
+import { For, createResource } from "solid-js";
+import { getPoCShipmentsAsync } from "~/lib/collections";
 import type { Shipment } from "~/schemas/shipment.schema";
-
-// Load PoC shipments from sample collections and map to UI shape
-const shipments: Shipment[] = getPoCShipments()
 
 const alerts = [
   { text: "Atraso: Navio MSC MEDU9876543 - Chegada atrasada.", time: "Há 2 horas" },
@@ -13,6 +10,9 @@ const alerts = [
 ];
 
 export default function Home() {
+  // load shipments via internal API/bundled samples
+  const [shipments] = createResource<Shipment[]>(getPoCShipmentsAsync, { initialValue: [] })
+
   async function refreshContainer(container: string) {
     try {
       console.debug('refreshContainer called for', container)
@@ -90,7 +90,7 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            <For each={shipments}>{(s: Shipment) => (
+            <For each={shipments()}>{(s: Shipment) => (
               <tr class="border-t">
                 <td class="py-3 px-3 font-mono text-sm">{s.process}</td>
                 <td class="py-3 px-3">{s.client}</td>
