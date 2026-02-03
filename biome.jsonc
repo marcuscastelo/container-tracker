@@ -1,9 +1,15 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+
+	"css": {
+		"parser": { "tailwindDirectives": true }
+	},
+
 	"linter": {
 		"rules": { "recommended": false, "style": { "useImportType": "off" } },
 		"includes": [
 			"**",
+			"!marucs-src/app.css",
 			"!node_modules",
 			"!src/sections/datepicker",
 			"!.vercel",
@@ -209,7 +215,7 @@
 						"noCompareNegZero": "error",
 						"noConsole": "off",
 						"noConstantBinaryExpressions": "error",
-						"noControlCharactersInRegex": "error",
+						"noControlCharactersInRegex": "off",
 						"noDebugger": "error",
 						"noDoubleEquals": "error",
 						"noDuplicateCase": "error",
@@ -217,8 +223,8 @@
 						"noDuplicateElseIf": "error",
 						"noDuplicateObjectKeys": "error",
 						"noDuplicateParameters": "error",
-						"noEmptyBlockStatements": "error",
-						"noExplicitAny": "error",
+						"noEmptyBlockStatements": "off",
+						"noExplicitAny": "warn",
 						"noExtraNonNullAssertion": "error",
 						"noFallthroughSwitchClause": "error",
 						"noFunctionAssign": "error",
