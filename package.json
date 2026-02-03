@@ -14,7 +14,9 @@
     "start-server": "node server/index.js",
     "start-server:port": "PORT=4000 node server/index.js",
     "start-maersk-server": "node server/maersk-server.cjs",
-    "electron:build": "npm run build && electron-builder"
+    "build:maersk:win": "pkg server/maersk-server.cjs --targets node22-win-x64 --output dist/maersk-server.exe",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "pnpm run build:maersk:win && pnpm run build && pnpm exec electron-builder --win --x64 --publish never"
   },
   "dependencies": {
     "express": "^4.22.1",
@@ -23,6 +25,7 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
+    "pkg": "^5.10.9",
     "@tailwindcss/vite": "^4.0.7",
     "concurrently": "^8.0.0",
     "electron": "^26.0.0",

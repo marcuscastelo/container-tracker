@@ -1,3 +1,142 @@
+# Container Tracker — Electron & Server (how to run)
+
+Este repositório contém uma pequena PoC SolidStart (vinxi) que foi adaptada para rodar também como um aplicativo desktop com Electron.
+O projeto pode rodar em três modos principais:
+
+- Desenvolvimento web (vinxi dev) — servidor + browser (padrão dev)
+- Empacotado como Electron App (dev/prod)
+- AppImage único contendo Electron + servidores (experimental) — também suportamos executar um servidor Maersk separado para rastreio (usa Puppeteer)
+
+Este README descreve o passo-a-passo para preparar um repositório recém-clonado e executar o app no modo Electron (desenvolvimento e empacotado), além de detalhes sobre o servidor Maersk que usa Puppeteer.
+
+Prerequisitos
+ - Node.js >= 22 (vou usar `v22.x` nos exemplos)
+ - pnpm (ou npm/yarn, mas os scripts assumem pnpm)
+ - git
+ - (opcional) Para o handler Maersk: Chrome/Chromium instalado ou deixe o Puppeteer baixar um Chromium (só em ambiente com internet)
+
+Rápido — comandos essenciais
+
+1) Clonar e instalar dependências
+
+```bash
+git clone <repo-url>
+cd aGaryImport
+pnpm install
+```
+
+2) Rodar em modo desenvolvimento (web)
+
+```bash
+pnpm run dev
+# abrir http://localhost:3000 (ou porta que vinxi indicar)
+```
+
+3) Rodar em modo Electron durante desenvolvimento (abre o browser dev e o Electron que usa a URL dev)
+
+```bash
+pnpm run electron:dev
+```
+
+4) Rodar o server shim local (serve client build e a API /api/refresh)
+
+```bash
+# servidor principal (shim) que serve os assets e as rotas API (sem Puppeteer)
+PORT=4200 pnpm run start-server
+
+# servidor Maersk (opcional; usa puppeteer-extra e Chromium)
+PORT=4310 pnpm run start-maersk-server
+```
+
+Observações sobre o server Maersk
+- O handler Maersk exige `puppeteer` (ou `puppeteer-core`) + `puppeteer-extra` + `puppeteer-extra-plugin-stealth` e um executável Chrome/Chromium no sistema ou o Puppeteer fará o download automático.
+- No repositório há um servidor separado: `server/maersk-server.cjs`. Ele captura a chamada interna de tracking via CDP e grava `collections/maersk/<container>.json`.
+- Para executar manualmente (testar):
+
+```bash
+# start maersk server (pode demorar no primeiro start por conta do download do Chromium)
+PORT=4310 node server/maersk-server.cjs
+
+# depois, disparar um refresh
+curl -i -X POST "http://localhost:4310/api/refresh-maersk/MRKU2733926"
+```
+
+Building / Empacotar (AppImage)
+
+Este repositório já tem configuração para `electron-builder` no `package.json` (target AppImage para Linux). Passos gerais:
+
+1) Gerar a build do app (vinxi) — NOTA: este passo requer `vinxi` no PATH. Em alguns ambientes de CI/dev, vinxi pode não estar disponível globalmente.
+
+```bash
+pnpm run build
+# (se vinxi não estiver disponível globalmente, instale-o ou use o comando que o projeto esperar)
+```
+
+2) Empacotar com electron-builder (gera `dist/Container Tracker-<version>.AppImage`)
+
+```bash
+pnpm exec electron-builder --linux --x64
+```
+
+3) Executar o AppImage gerado
+
+```bash
+chmod +x dist/Container\ Tracker-0.0.0.AppImage
+./dist/Container\ Tracker-0.0.0.AppImage
+```
+
+Dicas e limitações importantes sobre empacotar tudo em um AppImage
+- Empacotar Electron + servidor que depende de Puppeteer/Chromium em um único AppImage é possível, mas delicado.
+- Problemas que podem ocorrer ao executar o AppImage:
+  - spawn ENOTDIR ao tentar executar arquivos diretamente dentro do mount do AppImage;
+  - módulos (node_modules) não resolvidos quando executados via require/import em contextos dentro do `app.asar`;
+  - Puppeteer precisa de um Chromium executável disponível ou fará download (aumenta muito o tamanho do artefato).
+- Recomenda-se a abordagem em duas peças para maior robustez:
+  1) AppImage principal: Electron + cliente + servidor shim leve (sem Puppeteer);
+  2) AppImage/binário separado: Maersk server (com Puppeteer/Chromium) — o App principal pode spawnar esse binário via um caminho conhecido em `resources`.
+
+Como empacotar o servidor Maersk separadamente (recomendado)
+
+Opção A — gerar binário com `pkg` e empacotar como AppImage separado
+ - Crie um `package.json` mínimo para o servidor ou configure `pkg` (não incluso automaticamente aqui)
+ - Gere binário: `pkg server/maersk-server.cjs --targets node22-linux-x64 --output maersk-server`
+ - Empacote `maersk-server` em um AppImage ou distribua o binário como um recurso extra
+
+Opção B — empacotar Node + node_modules em um AppImage separado (mais fácil para testes locais)
+
+No nosso fluxo atual, o `electron/main.cjs` já tenta localizar e spawnar um `server/maersk-server.cjs` a partir de `resources` (extraResources) e também tenta extrair/copiar para um tmpdir se necessário, mas esse comportamento pode variar por plataforma.
+
+Variáveis de ambiente úteis
+- PORT — porta para o servidor principal (`server/index.js`), padrão 3000
+- MAERSK_PORT — porta para o servidor Maersk (se iniciado pelo Electron), padrão 4300
+- CHROME_PATH — caminho para o executável Chrome/Chromium a ser usado pelo Puppeteer
+- CHROME_USER_DATA_DIR — pasta de profile para evitar captchas/limitações em Maersk
+
+Testes rápidos das APIs
+
+1) Refresh genérico (usa curl .txt nos collections)
+
+```bash
+curl -i -X POST "http://localhost:4200/api/refresh" -H "Content-Type: application/json" -d '{"container":"FSCU4565494"}'
+```
+
+2) Maersk via servidor separado (direto)
+
+```bash
+curl -i -X POST "http://localhost:4310/api/refresh-maersk/MRKU2733926"
+```
+
+Resolução de problemas (dicas rápidas)
+- Se o AppImage gerar ENOTDIR ao spawnar: prefira empacotar o servidor como binário separado e spawnar esse binário.
+- Se `require('express')` ou outro módulo não for encontrado dentro do AppImage, garanta que `node_modules` tenha sido incluído em `asarUnpack` ou como `extraResources` (ou use a estratégia de binário separado com `pkg`).
+- Para debug rápido, rode os servidores separadamente localmente (node server/index.js e node server/maersk-server.cjs) para confirmar que endpoints funcionam antes de empacotar.
+
+Contato / acompanhamento
+ - Se quiser, eu posso:
+   - Gerar um AppImage separado para o Maersk server e ajustar `electron/main.cjs` para spawnar o binário (recomendado); ou
+   - Continuar refinando a estratégia de empacotamento único (1A) e forçar unpack de node_modules / usar extraResources de forma a tornar o runtime mais robusto.
+
+Boa sorte — se quiser que eu gere os AppImages separados agora, responda que eu prossigo e enviarei os passos finais, artefatos e comandos de teste.
 # SolidStart
 
 Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
