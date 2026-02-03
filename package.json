@@ -4,7 +4,13 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "type-check": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "fix": "eslint . --fix --cache >/dev/null 2>&1 || exit 0",
+    "lint": "eslint . --cache",
+    "flint": "pnpm run fix && pnpm run lint",
+    "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"
   },
   "dependencies": {
     "@solidjs/router": "^0.15.0",
