@@ -1,10 +1,10 @@
-const electron = require('electron');
-const { BrowserWindow } = electron;
-const path = require('path');
+const { app, BrowserWindow } = require('electron')
+const path = require('path')
+const fs = require('fs')
 
-const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev')
 
-let mainWindow = null;
+let mainWindow = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -14,50 +14,133 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-    },
-  });
+    }
+  })
 
-  if (isDev) {
-    // during dev the dev server should be started by the npm script (we use wait-on)
-    const devUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173';
-    mainWindow.loadURL(devUrl).catch((e) => {
-      console.error('Failed to load dev URL', e);
-    });
-    mainWindow.webContents.openDevTools();
-  } else {
-    // production: load the built client index.html. Adjust path as needed after build.
-    const indexHtml = path.join(__dirname, '..', 'dist', 'client', 'index.html');
-    // fallback to common build paths
-    const fallback = path.join(__dirname, '..', 'build', 'index.html');
+  // Check for static client
+  const possibleStatic = [
+    path.join(__dirname, '..', '.vinxi', 'build', 'client', '_build', 'index.html'),
+    path.join(__dirname, '..', 'dist', 'client', 'index.html'),
+    path.join(__dirname, '..', 'build', 'index.html'),
+    path.join(__dirname, '..', 'dist', 'index.html'),
+  ]
+  const firstStatic = possibleStatic.find((p) => fs.existsSync(p))
+  if (firstStatic) {
+    mainWindow.loadFile(firstStatic).catch(console.error)
+    return
+  }
 
-    const fs = require('fs');
-    if (fs.existsSync(indexHtml)) {
-      mainWindow.loadFile(indexHtml).catch(console.error);
-    } else if (fs.existsSync(fallback)) {
-      mainWindow.loadFile(fallback).catch(console.error);
-    } else {
-      // Last resort: try to load a local server on 3000
-      mainWindow.loadURL('http://localhost:3000').catch(console.error);
+  // Find bundled server entries
+  const possibleServers = [
+    path.join(__dirname, '..', 'server', 'index.js'),
+    path.join(__dirname, '..', '.vinxi', 'build', 'ssr', 'index.js'),
+    path.join(__dirname, '..', '.vinxi', 'build', 'ssr', 'ssr.js'),
+    path.join(__dirname, '..', '.vinxi', 'build', 'server-fns', '_server', 'server-fns.js'),
+    path.join(__dirname, '..', 'build', 'index.js'),
+    path.join(__dirname, '..', 'dist', 'server', 'index.js'),
+  ]
+
+  const projectRoot = path.join(__dirname, '..')
+
+  // Helper: try multiple locations (dev tree, resources, asarUnpacked) to locate an entry
+  const resolveCandidate = (p) => {
+    if (fs.existsSync(p)) return p
+    try {
+      const rel = path.relative(projectRoot, p).replace(/\\/g, '/')
+      // check resources path (extraResources copied here)
+      const resPath = path.join(process.resourcesPath, rel)
+      if (fs.existsSync(resPath)) return resPath
+      // check asar unpacked location
+      const unpacked = path.join(process.resourcesPath, 'app.asar.unpacked', rel)
+      if (fs.existsSync(unpacked)) return unpacked
+    } catch (e) {}
+    return null
+  }
+
+  const serverEntry = possibleServers.map(resolveCandidate).find(Boolean)
+  const maerskEntryCandidates = [
+    path.join(projectRoot, 'server', 'maersk-server.cjs'),
+    path.join(projectRoot, 'server', 'maersk-server.js')
+  ]
+  const maerskEntry = maerskEntryCandidates.map(resolveCandidate).find(Boolean)
+
+  const children = []
+  const startProcess = (entry, port) => {
+    const { spawn } = require('child_process')
+    try {
+      // Prefer loading in-process for JS/CJS files when possible (works inside AppImage mounts)
+      if (entry.endsWith('.cjs')) {
+        try {
+          require(entry)
+          return true
+        } catch (e) {
+          console.warn('require(entry) failed, falling back to spawn:', e)
+        }
+      }
+      if (entry.endsWith('.js')) {
+        try {
+          const { pathToFileURL } = require('url')
+          import(pathToFileURL(entry).href).then(() => {}).catch(() => {})
+          return true
+        } catch (e) {
+          console.warn('dynamic import failed, falling back to spawn:', e)
+        }
+      }
+
+      const child = spawn(process.execPath, [entry], {
+        cwd: projectRoot,
+        env: { ...process.env, PORT: String(port || process.env.PORT || '3000') },
+        stdio: 'inherit'
+      })
+      child.on('exit', (code, signal) => { if (code !== 0) console.error(`${entry} exited code=${code} signal=${signal}`) })
+      children.push(child)
+      return true
+    } catch (e) {
+      console.error('Failed to spawn', entry, e)
+      return false
     }
   }
+
+  const waitForUrl = async (url, timeout = 20000, interval = 200) => {
+    const start = Date.now()
+    while (Date.now() - start < timeout) {
+      try {
+        const res = await fetch(url, { method: 'HEAD' })
+        if (res && (res.status === 200 || res.status === 204 || res.status === 301 || res.status === 302)) return true
+      } catch (e) {}
+      await new Promise((r) => setTimeout(r, interval))
+    }
+    return false
+  }
+
+  ;(async () => {
+    // Start main server if present
+    let started = false
+    if (serverEntry) started = startProcess(serverEntry, process.env.PORT || 3000)
+    // Also start maersk server separately if present
+    if (maerskEntry) startProcess(maerskEntry, process.env.MAERSK_PORT || 4300)
+
+    const port = process.env.PORT || 3000
+    const url = `http://localhost:${port}`
+    if (started) {
+      const ok = await waitForUrl(url, 20000)
+      if (ok) {
+        mainWindow.loadURL(url).catch(console.error)
+        return
+      }
+    }
+    // fallback to trying localhost anyway
+    mainWindow.loadURL(url).catch(console.error)
+  })()
 }
 
-// use electron.app to avoid redeclaring an identifier named `app` in environments
-// where the module might be executed in a scope that already has `app` defined.
-const app = electron.app;
-
-app.on('ready', createWindow);
+app.whenReady().then(() => {
+  createWindow()
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+})
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (mainWindow === null) createWindow();
-});
-
-// graceful exit in dev when using Electron with certain environments
-if (isDev) {
-  process.on('SIGTERM', () => app.quit());
-  process.on('SIGHUP', () => app.quit());
-}
+  if (process.platform !== 'darwin') app.quit()
+  })
