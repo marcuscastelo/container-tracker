@@ -5,18 +5,26 @@ import path from 'path'
 import { containerStatusUseCases } from '~/modules/container'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
-export const MaerskRequestParamsSchema = z.object({ container: z.string() })
-export const MaerskRequestQuerySchema = z.object({
+const MaerskRequestParamsSchema = z.object({ container: z.string() })
+const MaerskRequestQuerySchema = z.object({
   headless: z.string().optional(),
   userDataDir: z.string().optional(),
   hold: z.string().optional(),
   timeout: z.string().optional(),
 })
 
-export const MaerskRequestSchema = z.object({ params: MaerskRequestParamsSchema, query: MaerskRequestQuerySchema })
+const MaerskRequestSchema = z.object({ params: MaerskRequestParamsSchema, query: MaerskRequestQuerySchema })
 
-export const MaerskSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string(), status: z.number().optional(), savedToSupabase: z.boolean().optional() })
-export const MaerskErrorResponseSchema = z.object({ error: z.string().optional(), hint: z.string().optional(), diagnostics: z.any().optional() })
+const MaerskSuccessResponseSchema = z.object({ ok: z.literal(true), container: z.string(), status: z.number().optional(), savedToSupabase: z.boolean().optional() })
+const MaerskErrorResponseSchema = z.object({ error: z.string().optional(), hint: z.string().optional(), diagnostics: z.any().optional() })
+
+export {
+  MaerskRequestParamsSchema,
+  MaerskRequestQuerySchema,
+  MaerskRequestSchema,
+  MaerskSuccessResponseSchema,
+  MaerskErrorResponseSchema,
+}
 
 export type MaerskRequestParams = z.infer<typeof MaerskRequestParamsSchema>
 export type MaerskRequestQuery = z.infer<typeof MaerskRequestQuerySchema>
@@ -444,6 +452,7 @@ async function handleMaersk({ params, request }: APIEvent) {
     // Save to Supabase
     const statusData = parsedJson || { raw: captured.body }
     try {
+      console.debug('[maersk-refresh] Saving to Supabase json:', statusData)
       await containerStatusUseCases.saveContainerStatus(String(container), statusData)
       console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
     } catch (err) {
