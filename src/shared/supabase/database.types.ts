@@ -17,14 +17,17 @@ export type Database = {
     Tables: {
       "container-status": {
         Row: {
+          carrier: string
           container_id: string
           status: Json
         }
         Insert: {
+          carrier?: string
           container_id: string
           status: Json
         }
         Update: {
+          carrier?: string
           container_id?: string
           status?: Json
         }
