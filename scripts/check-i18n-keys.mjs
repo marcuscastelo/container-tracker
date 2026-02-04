@@ -74,8 +74,14 @@ async function main() {
   // capture any local const object used as keys, e.g. `const keys = { ... }` or `const asdf = { ... }`
   const constObjRegex = /const\s+([A-Za-z0-9_]+)\s*=\s*{([\s\S]*?)}\s*;?/gm
   const keyEntryRegex = /([A-Za-z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`]/g
-  // detect usages like t(someVar.someKey)
+  
+  // usages like t(someVar.someKey) or more complex expressions like
+  // t(condition ? someVar.someKey : someVar.otherKey)
+  // We'll first match the whole t(...) call and then search inside the
+  // argument expression for occurrences of localVar.prop so we don't miss
+  // usages embedded in ternaries or longer expressions.
   const keysUsageRegex = /\bt\s*\(\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\)/g
+  const tCallRegex = /\bt\s*\(\s*([^)]*?)\s*\)/g
 
   for (const file of files) {
     const content = await readFile(file, 'utf8')
@@ -118,7 +124,27 @@ async function main() {
       }
       // if not found, ignore — avoids false positives when keys object is imported or built dynamically
     }
+  
+    // Also match any t(...) calls and look for localVar.prop occurrences inside
+    // the argument expression. This handles ternary expressions and other
+    // non-trivial usages like: t(props.mode === 'edit' ? keys.titleEdit : keys.title)
+    while ((m = tCallRegex.exec(content))) {
+      const arg = m[1]
+      let inner
+      const innerRegex = /([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)/g
+      while ((inner = innerRegex.exec(arg))) {
+        const varName = inner[1]
+        const prop = inner[2]
+        if (varName in localMap && localMap[varName] && prop in localMap[varName]) {
+          const mapped = localMap[varName][prop]
+          usedKeys.add(mapped)
+          usedKeyLocations[mapped] = usedKeyLocations[mapped] || new Set()
+          usedKeyLocations[mapped].add(file)
+        }
+      }
+      }
   }
+
 
   // report missing keys per locale
   let totalMissing = 0
