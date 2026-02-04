@@ -12,7 +12,7 @@ Em vez de forçar a ISO 6346, apenas exibir um warning na criacao/edicao do proc
 Metadados de carriers devem ir para o banco, ex: url de busca para double check dos containers (fica na timeline para clicar e ir para o site do carrier, mas pode mudar com o tempo e estando no banco facilita updates futuros)
 
 # TODO
-Exibir armador no ShipmentView e Dashboard (table)
+Exibir ícone do armador no ShipmentView e Dashboard (table)
 Determinar todos os alertas possíveis e como serão exibidos (cores, ícones, etc)
 Determinar todos os eventos e estados possíveis e como serão exibidos (cores, ícones, etc)
 Locale i18n para alertas em vez de salvar strings fixas no banco de dados
