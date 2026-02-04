@@ -74,7 +74,7 @@ async function main() {
   // capture any local const object used as keys, e.g. `const keys = { ... }` or `const asdf = { ... }`
   const constObjRegex = /const\s+([A-Za-z0-9_]+)\s*=\s*{([\s\S]*?)}\s*;?/gm
   const keyEntryRegex = /([A-Za-z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`]/g
-  
+
   // usages like t(someVar.someKey) or more complex expressions like
   // t(condition ? someVar.someKey : someVar.otherKey)
   // We'll first match the whole t(...) call and then search inside the
@@ -124,7 +124,7 @@ async function main() {
       }
       // if not found, ignore — avoids false positives when keys object is imported or built dynamically
     }
-  
+
     // Also match any t(...) calls and look for localVar.prop occurrences inside
     // the argument expression. This handles ternary expressions and other
     // non-trivial usages like: t(props.mode === 'edit' ? keys.titleEdit : keys.title)
@@ -142,9 +142,8 @@ async function main() {
           usedKeyLocations[mapped].add(file)
         }
       }
-      }
+    }
   }
-
 
   // report missing keys per locale
   let totalMissing = 0
