@@ -13,6 +13,7 @@
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "@supabase/supabase-js": "^2.94.0",

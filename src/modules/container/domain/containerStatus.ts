@@ -1,4 +1,4 @@
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 /**
  * Container Status entity schema.
@@ -9,7 +9,7 @@ import { z } from 'zod/v4'
 export const containerStatusSchema = z.object({
   container_id: z.string(),
   carrier: z.string(),
-  status: z.record(z.unknown()),
+  status: z.record(z.string(), z.unknown()),
 })
 
 export type ContainerStatus = Readonly<z.infer<typeof containerStatusSchema>>
@@ -21,9 +21,11 @@ export type NewContainerStatus = ContainerStatus
 export function createContainerStatus(
   containerId: string,
   status: Record<string, unknown>,
+  carrier = 'UNKNOWN',
 ): ContainerStatus {
   return {
     container_id: containerId,
+    carrier,
     status,
   }
 }

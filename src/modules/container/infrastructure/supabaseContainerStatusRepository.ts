@@ -1,3 +1,4 @@
+import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import type { ContainerStatus } from '../domain/containerStatus'
 import type { ContainerStatusRepository } from '../domain/containerStatusRepository'
@@ -21,7 +22,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
 
     // Parse and validate each row. Avoid depending on Zod at runtime to prevent
     // potential incompatible zod internals errors in different environments.
-    return data.map((row) => {
+    return (data as any[]).map((row: any) => {
       try {
         const cid = row?.container_id
           ? String(row.container_id)
@@ -83,11 +84,16 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     if (!data) return null
 
     try {
-      const cid = data?.container_id
-        ? String(data.container_id)
-        : String(data?.ContainerNumber ?? data?.Container ?? containerId)
-      const status = data?.status ?? data ?? {}
-      return { container_id: cid, status: status as Record<string, unknown> }
+      const d: any = data
+      const cid = d?.container_id
+        ? String(d.container_id)
+        : String(d?.ContainerNumber ?? d?.Container ?? containerId)
+      const status = d?.status ?? d ?? {}
+      return {
+        container_id: cid,
+        carrier: String(d?.carrier ?? 'UNKNOWN'),
+        status: status as Record<string, unknown>,
+      }
     } catch (e) {
       console.warn(
         'supabaseContainerStatusRepository.fetchById: failed to normalize data',
@@ -104,7 +110,8 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
       .upsert(
         {
           container_id: containerStatus.container_id,
-          status: containerStatus.status,
+          carrier: containerStatus.carrier,
+          status: containerStatus.status as unknown as Json,
         },
         {
           onConflict: 'container_id',
@@ -126,6 +133,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
 
     return {
       container_id: data.container_id,
+      carrier: String(data?.carrier ?? 'UNKNOWN'),
       status: data.status as Record<string, unknown>,
     }
   },

@@ -27,10 +27,10 @@ export function createContainerStatusUseCases(
       containerId: string,
       status: Record<string, unknown>,
     ): Promise<ContainerStatus> {
-      return repository.upsert({
-        container_id: containerId,
-        status,
-      })
+      // Preserve existing carrier if present, otherwise default to 'UNKNOWN'
+      const existing = await repository.fetchById(containerId)
+      const carrier = existing?.carrier ?? 'UNKNOWN'
+      return repository.upsert({ container_id: containerId, carrier, status })
     },
 
     async deleteContainerStatus(containerId: string): Promise<void> {
