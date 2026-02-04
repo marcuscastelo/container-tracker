@@ -34,4 +34,4 @@ export const isDevelopment = (): boolean => {
   return import.meta.env.DEV === true
 }
 
-export default env
+export { env }

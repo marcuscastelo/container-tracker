@@ -50,5 +50,3 @@ export const CmaCgmApiSchema = z.object({
 })
 
 export type CmaCgmApi = z.infer<typeof CmaCgmApiSchema>
-
-export default { CmaCgmApiSchema, CmaCgmMoveSchema }

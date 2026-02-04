@@ -204,14 +204,3 @@ export const ContainerSchemaWithSummary = ContainerSchema.extend({
 })
 
 export type ContainerWithSummary = z.infer<typeof ContainerSchemaWithSummary>
-
-export default {
-  DateLike,
-  LocationSchema,
-  VesselSchema,
-  EventSchema,
-  ContainerSchema,
-  ContainerSchemaWithSummary,
-  ContainerSummarySchema,
-  ShipmentSchema,
-}

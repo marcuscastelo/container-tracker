@@ -1,10 +1,11 @@
-import Normalized, {
-  type Container as NormContainer,
-  type Event as NormEvent,
-  type Location as NormLocation,
-  type Shipment as NormShipment,
+import type {
+  Container as NormContainer,
+  Event as NormEvent,
+  Location as NormLocation,
+  Shipment as NormShipment,
 } from '../../schemas/containerStatus.schema'
-import Msc from '../../schemas/msc.api.schema'
+import * as Normalized from '../../schemas/containerStatus.schema'
+import * as Msc from '../../schemas/msc.api.schema'
 import { parseDate } from './parseDate'
 
 export function mscToNormalized(payload: unknown): NormShipment {

@@ -1,10 +1,8 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
-
   "css": {
     "parser": { "tailwindDirectives": true }
   },
-
   "linter": {
     "rules": {
       "recommended": false,
@@ -22,7 +20,7 @@
     },
     "includes": [
       "**",
-      "!marucs-src/app.css",
+      "!marucs-src/**",
       "!node_modules",
       "!src/sections/datepicker",
       "!.vercel",
@@ -47,6 +45,16 @@
     }
   },
   "overrides": [
+    {
+      "includes": [
+        "src/entry-server.tsx",
+        "src/entry-client.tsx",
+        "src/app.tsx",
+        "src/routes/**/*.tsx",
+        "app.config.ts"
+      ],
+      "linter": { "rules": { "style": { "noDefaultExport": "off" } } } // Used by Solid
+    },
     {
       "includes": ["**/*.ts", "**/*.tsx"],
       "javascript": {

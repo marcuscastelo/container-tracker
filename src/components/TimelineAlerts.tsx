@@ -5,7 +5,7 @@ type Alert = {
   time: string
 }
 
-export default function TimelineAlerts(props: { alerts?: Alert[] }) {
+export function TimelineAlerts(props: { alerts?: Alert[] }) {
   const alerts = props.alerts ?? [
     {
       text: 'Atraso: Navio MSC MEDU9876543 - Chegada atrasada.',

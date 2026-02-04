@@ -1,10 +1,12 @@
-import Cma, { type CmaCgmApi, CmaCgmApiSchema } from '../../schemas/cmacgm.api.schema'
-import Normalized, {
-  type Container as NormContainer,
-  type Event as NormEvent,
-  type Location as NormLocation,
-  type Shipment as NormShipment,
+import type { CmaCgmApi } from '../../schemas/cmacgm.api.schema'
+import * as Cma from '../../schemas/cmacgm.api.schema'
+import type {
+  Container as NormContainer,
+  Event as NormEvent,
+  Location as NormLocation,
+  Shipment as NormShipment,
 } from '../../schemas/containerStatus.schema'
+import * as Normalized from '../../schemas/containerStatus.schema'
 import { parseDate } from './parseDate'
 
 type Move = NonNullable<CmaCgmApi['CurrentMoves']>[number]

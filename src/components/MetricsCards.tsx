@@ -1,4 +1,4 @@
-export default function MetricsCards() {
+export function MetricsCards() {
   return (
     <section class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
       <div class="bg-white p-4 rounded shadow flex items-center justify-between">

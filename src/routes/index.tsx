@@ -1,10 +1,10 @@
 import { createResource } from 'solid-js'
 import { getPoCShipmentsAsync } from '~/lib/collections'
 import type { Shipment } from '../../schemas/shipment.schema'
-import HomeHeader from '../components/HomeHeader'
-import MetricsCards from '../components/MetricsCards'
-import ShipmentsTable from '../components/ShipmentsTable'
-import TimelineAlerts from '../components/TimelineAlerts'
+import { HomeHeader } from '../components/HomeHeader'
+import { MetricsCards } from '../components/MetricsCards'
+import { ShipmentsTable } from '../components/ShipmentsTable'
+import { TimelineAlerts } from '../components/TimelineAlerts'
 
 export default function Home() {
   // load shipments via internal API/bundled samples

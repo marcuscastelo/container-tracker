@@ -20,14 +20,13 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
       throw new Error(`Failed to fetch container statuses: ${error.message}`)
     }
 
-    // Parse and validate each row. Avoid depending on Zod at runtime to prevent
-    // potential incompatible zod internals errors in different environments.
-    return (data as any[]).map((row: any) => {
+    return data.map((row) => {
       try {
-        const cid = row?.container_id
-          ? String(row.container_id)
-          : String(row?.ContainerNumber ?? row?.Container ?? 'unknown')
-        const status = row?.status ?? row?.Status ?? row ?? {}
+        const r = row as Record<string, unknown>
+        const cid = r?.container_id
+          ? String(r.container_id as string)
+          : String(r?.ContainerNumber ?? r?.Container ?? 'unknown')
+        const status = r?.status ?? r?.Status ?? r ?? {}
 
         // Basic runtime shape checks
         if (typeof cid !== 'string' || cid.length === 0) {
@@ -84,9 +83,9 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     if (!data) return null
 
     try {
-      const d: any = data
+      const d = data as unknown as Record<string, unknown>
       const cid = d?.container_id
-        ? String(d.container_id)
+        ? String(d.container_id as string)
         : String(d?.ContainerNumber ?? d?.Container ?? containerId)
       const status = d?.status ?? d ?? {}
       return {

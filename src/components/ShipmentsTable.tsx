@@ -6,7 +6,7 @@ type Props = {
   onRefresh: (container: string, carrier: string) => Promise<void> | void
 }
 
-export default function ShipmentsTable(props: Props) {
+export function ShipmentsTable(props: Props) {
   return (
     <section class="bg-white rounded shadow p-4">
       <h2 class="text-lg font-semibold mb-4">Resumo dos Embarques</h2>

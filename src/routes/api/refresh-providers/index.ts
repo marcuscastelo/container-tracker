@@ -17,5 +17,3 @@ export function getProvider(name: string): ProviderHandler | undefined {
   const key = name.split('-')[0].toLowerCase()
   return PROVIDERS[key]
 }
-
-export default { getProvider }

@@ -50,11 +50,3 @@ export type Alert = z.infer<typeof AlertSchema>
 
 // Mapping hints (documented as constants) used by adapters
 export const ActivityToEventType = z.record(z.string(), EventType)
-
-export default {
-  AlertSeverity,
-  EventType,
-  AlertCategory,
-  AlertSchema,
-  ActivityToEventType,
-}

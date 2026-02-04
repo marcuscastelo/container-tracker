@@ -62,5 +62,3 @@ export const MscApiSchema = z.object({
 })
 
 export type MscApi = z.infer<typeof MscApiSchema>
-
-export default { MscApiSchema, MscEventSchema }

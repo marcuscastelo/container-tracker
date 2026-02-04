@@ -85,5 +85,3 @@ export async function fetchStatus(
     return { raw: text }
   }
 }
-
-export default { fetchStatus }

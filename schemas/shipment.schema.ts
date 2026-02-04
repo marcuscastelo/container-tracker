@@ -15,8 +15,3 @@ export const ShipmentSchema = z.object({
 export const ShipmentsSchema = z.array(ShipmentSchema)
 
 export type Shipment = z.infer<typeof ShipmentSchema>
-
-export default {
-  ShipmentSchema,
-  ShipmentsSchema,
-}

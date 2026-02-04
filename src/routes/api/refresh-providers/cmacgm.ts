@@ -75,5 +75,3 @@ export async function fetchStatus(
     return { raw: html }
   }
 }
-
-export default { fetchStatus }

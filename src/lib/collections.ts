@@ -1,5 +1,5 @@
 import type { CollectionsResponse } from '~/routes/api/collections'
-import containerStatus from '../../schemas/containerStatus.schema'
+import * as containerStatus from '../../schemas/containerStatus.schema'
 import {
   type Shipment as UIShipment,
   ShipmentsSchema as UIShipmentsSchema,
@@ -319,5 +319,3 @@ export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
     return []
   }
 }
-
-export default { getPoCShipmentsAsync }

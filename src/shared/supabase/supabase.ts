@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
 
-import env from '~/shared/config/env'
+import { env } from '~/shared/config/env'
 import type { Database } from '~/shared/supabase/database.types'
 import { parseWithStack } from '~/shared/utils/parseWithStack'
 

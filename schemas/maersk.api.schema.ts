@@ -68,9 +68,3 @@ export const MaerskApiSchema = z.object({
 })
 
 export type MaerskApi = z.infer<typeof MaerskApiSchema>
-
-export default {
-  MaerskApiSchema,
-  MaerskContainerSchema,
-  MaerskEventSchema,
-}

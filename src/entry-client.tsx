@@ -1,6 +1,6 @@
 // @refresh reload
 import { mount, StartClient } from '@solidjs/start/client'
-import env from '~/shared/config/env'
+import { env } from '~/shared/config/env'
 
 // Load env on the client bundle as well so the app has consistent config
 void env
