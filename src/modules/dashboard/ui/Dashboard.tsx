@@ -2,6 +2,7 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
+import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
 import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/process'
 import { AppHeader, EmptyState, MetricCard, StatusBadge, type StatusVariant } from '~/shared/ui'
@@ -68,25 +69,8 @@ async function fetchProcesses(): Promise<readonly ProcessSummary[]> {
   }
   const data: ProcessApiResponse[] = await response.json()
 
-  // DEBUG: log raw API response to help diagnose missing UI rows
-  try {
-    // eslint-disable-next-line no-console
-    console.debug('fetchProcesses: raw response', data)
-  } catch (_e) {}
-
-  return data.map((p) => ({
-    id: p.id,
-    reference: p.reference,
-    origin: p.origin,
-    destination: p.destination,
-    containerCount: p.containers.length,
-    // For now, all manually created processes are "unknown" status
-    // In the future, this will be derived from container events
-    status: 'unknown' as StatusVariant,
-    statusLabel: 'Aguardando dados',
-    eta: null, // Will be derived from events
-    carrier: p.carrier,
-  }))
+  // Delegate mapping to presenter
+  return presentProcessList(data)
 }
 
 // Create process via API
