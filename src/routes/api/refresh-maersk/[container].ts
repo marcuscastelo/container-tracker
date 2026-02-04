@@ -2,6 +2,7 @@ import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
+import { mapParsedStatusToF1 } from '~/adapters/toCanonical.adapter'
 import { containerStatusUseCases } from '~/modules/container'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
@@ -517,10 +518,42 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     }
 
-    // Save to Supabase
-    const statusData = parsedJson || { raw: captured.body }
+    // Prefer saving canonical F1 shipment like the generic /api/refresh route.
+    // parsedJson is the JSON payload intercepted from Maersk; try to map
+    // it to the canonical shape so the DB stores consistent objects.
+    let statusData: Record<string, unknown> = parsedJson || { raw: captured.body }
+    if (parsedJson) {
+      try {
+        const mapped = mapParsedStatusToF1(parsedJson, String(container), 'maersk')
+        if (mapped.ok) {
+          statusData = mapped.shipment as Record<string, unknown>
+          console.debug('[maersk-refresh] Mapped parsed JSON to canonical shipment', {
+            container,
+            shipmentId: mapped.shipment.id,
+            containers: Array.isArray(mapped.shipment.containers)
+              ? mapped.shipment.containers.length
+              : 0,
+            firstContainerEvents:
+              Array.isArray(mapped.shipment.containers) && mapped.shipment.containers[0]?.events
+                ? (mapped.shipment.containers[0].events as unknown[]).length
+                : 0,
+          })
+        } else {
+          console.warn('[maersk-refresh] Could not map parsed JSON to canonical:', mapped.error)
+        }
+      } catch (mapErr) {
+        console.warn('[maersk-refresh] mapping to canonical threw error:', String(mapErr))
+      }
+    }
+
     try {
-      console.debug('[maersk-refresh] Saving to Supabase json:', statusData)
+      console.debug('[maersk-refresh] Saving to Supabase payload summary:', {
+        container,
+        hasContainers: Array.isArray((statusData as any)?.containers),
+        firstContainerEvents: Array.isArray((statusData as any)?.containers)
+          ? ((statusData as any).containers[0]?.events ?? null)
+          : null,
+      })
       await containerStatusUseCases.saveContainerStatus(String(container), statusData)
       console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
     } catch (err) {

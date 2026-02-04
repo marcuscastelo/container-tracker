@@ -27,6 +27,23 @@ export function createContainerStatusUseCases(
       containerId: string,
       status: Record<string, unknown>,
     ): Promise<ContainerStatus> {
+      try {
+        // Lightweight debug summary to help investigate missing events in DB.
+        const s = status as Record<string, unknown>
+        const containers = Array.isArray(s?.containers) ? (s.containers as unknown[]) : []
+        const firstContainer =
+          containers.length > 0 ? (containers[0] as Record<string, unknown>) : null
+        const firstEvents = firstContainer ? firstContainer['events'] : undefined
+        console.debug('containerStatusUseCases.saveContainerStatus:', {
+          containerId,
+          containers: containers.length,
+          firstContainerEvents: Array.isArray(firstEvents)
+            ? (firstEvents as unknown[]).length
+            : (firstEvents ?? null),
+        })
+      } catch (_e) {
+        /* ignore logging errors */
+      }
       // Preserve existing carrier if present, otherwise default to 'UNKNOWN'
       const existing = await repository.fetchById(containerId)
       const carrier = existing?.carrier ?? 'UNKNOWN'
