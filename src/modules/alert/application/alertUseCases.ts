@@ -1,6 +1,10 @@
-import type { Alert, AlertCode } from '../domain/alert'
-import { calculateAlertExpiration, createAlert, shouldAutoAcknowledge } from '../domain/alert'
-import type { AlertRepository } from '../domain/alertRepository'
+import type { Alert, AlertCode } from '~/src/modules/alert/domain/alert'
+import {
+  calculateAlertExpiration,
+  createAlert,
+  shouldAutoAcknowledge,
+} from '~/src/modules/alert/domain/alert'
+import type { AlertRepository } from '~/src/modules/alert/domain/alertRepository'
 
 /**
  * Alert Use Cases

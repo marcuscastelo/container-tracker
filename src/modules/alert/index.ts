@@ -1,7 +1,10 @@
 // Domain
 
 // Application
-export { type AlertUseCases, createAlertUseCases } from './application/alertUseCases'
+export {
+  type AlertUseCases,
+  createAlertUseCases,
+} from '~/src/modules/alert/application/alertUseCases'
 export {
   ALERT_METADATA,
   type Alert,
@@ -13,14 +16,14 @@ export {
   calculateAlertExpiration,
   createAlert,
   shouldAutoAcknowledge,
-} from './domain/alert'
-export { type AlertRepository } from './domain/alertRepository'
+} from '~/src/modules/alert/domain/alert'
+export { type AlertRepository } from '~/src/modules/alert/domain/alertRepository'
 
 // Infrastructure
-export { supabaseAlertRepository } from './infrastructure/supabaseAlertRepository'
+export { supabaseAlertRepository } from '~/src/modules/alert/infrastructure/supabaseAlertRepository'
 
 // Default use cases instance (using Supabase repository)
-import { createAlertUseCases } from './application/alertUseCases'
-import { supabaseAlertRepository } from './infrastructure/supabaseAlertRepository'
+import { createAlertUseCases } from '~/src/modules/alert/application/alertUseCases'
+import { supabaseAlertRepository } from '~/src/modules/alert/infrastructure/supabaseAlertRepository'
 
 export const alertUseCases = createAlertUseCases(supabaseAlertRepository)

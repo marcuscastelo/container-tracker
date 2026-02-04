@@ -15,18 +15,32 @@
           "options": {
             "style": "type"
           }
+        },
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["../**", "./**"],
+                "message": "Relative imports are not allowed. Please use absolute imports instead (e.g., import { foo } from '~/modules/foo')."
+              }
+            ]
+          }
         }
       }
     },
     "includes": [
       "**",
       "!marucs-src/**",
-      "!node_modules",
+      "!node_modules/**",
       "!src/sections/datepicker",
       "!.vercel",
       "!.vinxi",
+      "!.vinxi/**",
       "!dist",
       "!build",
+      "!out/**",
+      "!.output/**",
       "!coverage",
       "!public",
       "!out",

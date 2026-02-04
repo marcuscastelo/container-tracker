@@ -6,7 +6,7 @@
   - Projetado para ser extensível quando criarmos mappings específicos por API
 
   Uso rápido:
-  import { ShipmentSchema } from '../schemas/containerStatus.schema'
+  import { ShipmentSchema } from '~/schemas/containerStatus.schema'
   const parsed = ShipmentSchema.parse(payload)
 
   Autor: gerado por Copilot (GPT-5 mini)

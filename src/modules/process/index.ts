@@ -4,7 +4,7 @@
 export {
   createProcessUseCases,
   type ProcessUseCases,
-} from './application/processUseCases'
+} from '~/src/modules/process/application/processUseCases'
 export {
   type Carrier,
   type ContainerInitialStatus,
@@ -22,17 +22,17 @@ export {
   type ProcessWithContainers,
   ProcessWithContainersSchema,
   validateContainerNumber,
-} from './domain/process'
-export { type ProcessRepository } from './domain/processRepository'
+} from '~/src/modules/process/domain/process'
+export { type ProcessRepository } from '~/src/modules/process/domain/processRepository'
 
 // Infrastructure
-export { supabaseProcessRepository } from './infrastructure/supabaseProcessRepository'
+export { supabaseProcessRepository } from '~/src/modules/process/infrastructure/supabaseProcessRepository'
 
 // UI
-export { CreateProcessDialog } from './ui/CreateProcessDialog'
+export { CreateProcessDialog } from '~/src/modules/process/ui/CreateProcessDialog'
 
 // Default use cases instance (using Supabase repository)
-import { createProcessUseCases } from './application/processUseCases'
-import { supabaseProcessRepository } from './infrastructure/supabaseProcessRepository'
+import { createProcessUseCases } from '~/src/modules/process/application/processUseCases'
+import { supabaseProcessRepository } from '~/src/modules/process/infrastructure/supabaseProcessRepository'
 
 export const processUseCases = createProcessUseCases(supabaseProcessRepository)

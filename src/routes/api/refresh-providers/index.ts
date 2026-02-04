@@ -1,5 +1,5 @@
-import * as cmacgm from './cmacgm'
-import * as msc from './msc'
+import * as cmacgm from '~/src/routes/api/refresh-providers/cmacgm'
+import * as msc from '~/src/routes/api/refresh-providers/msc'
 
 export type ProviderHandler = {
   fetchStatus: (

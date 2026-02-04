@@ -1,9 +1,9 @@
 import type { CollectionsResponse } from '~/routes/api/collections'
-import * as containerStatus from '../../schemas/containerStatus.schema'
+import * as containerStatus from '~/schemas/containerStatus.schema'
 import {
   type Shipment as UIShipment,
   ShipmentsSchema as UIShipmentsSchema,
-} from '../../schemas/shipment.schema'
+} from '~/schemas/shipment.schema'
 
 // Collections module now uses Supabase as the data source.
 // The API route `/api/collections` fetches from the `container-status` table

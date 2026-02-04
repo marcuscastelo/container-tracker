@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { cmacgmToNormalized } from './adapters/cmacgm.adapter'
-import { maerskToNormalized } from './adapters/maersk.adapter'
-import { mscToNormalized } from './adapters/msc.adapter'
+import { cmacgmToNormalized } from '~/scripts/adapters/cmacgm.adapter'
+import { maerskToNormalized } from '~/scripts/adapters/maersk.adapter'
+import { mscToNormalized } from '~/scripts/adapters/msc.adapter'
 
 function loadJson(name: string) {
   const p = path.join(process.cwd(), 'examples', name)

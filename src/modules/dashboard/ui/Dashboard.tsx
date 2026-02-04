@@ -1,16 +1,10 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
-import { useTranslation } from '../../../i18n'
-import {
-  AppHeader,
-  EmptyState,
-  MetricCard,
-  StatusBadge,
-  type StatusVariant,
-} from '../../../shared/ui'
-import { CreateProcessDialog } from '../../process'
-import type { CreateProcessInput } from '../../process/domain/process'
+import { useTranslation } from '~/src/i18n'
+import { CreateProcessDialog } from '~/src/modules/process'
+import type { CreateProcessInput } from '~/src/modules/process/domain/process'
+import { AppHeader, EmptyState, MetricCard, StatusBadge, type StatusVariant } from '~/src/shared/ui'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',

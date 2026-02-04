@@ -5,8 +5,8 @@ import type {
   Process,
   ProcessContainer,
   ProcessWithContainers,
-} from '../domain/process'
-import type { ProcessRepository } from '../domain/processRepository'
+} from '~/src/modules/process/domain/process'
+import type { ProcessRepository } from '~/src/modules/process/domain/processRepository'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'process_containers'

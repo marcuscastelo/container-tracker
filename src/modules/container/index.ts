@@ -4,21 +4,21 @@
 export {
   type ContainerStatusUseCases,
   createContainerStatusUseCases,
-} from './application/containerStatusUseCases'
+} from '~/src/modules/container/application/containerStatusUseCases'
 export {
   type ContainerStatus,
   containerStatusSchema,
   createContainerStatus,
   type NewContainerStatus,
   newContainerStatusSchema,
-} from './domain/containerStatus'
-export { type ContainerStatusRepository } from './domain/containerStatusRepository'
+} from '~/src/modules/container/domain/containerStatus'
+export { type ContainerStatusRepository } from '~/src/modules/container/domain/containerStatusRepository'
 // Infrastructure
-export { supabaseContainerStatusRepository } from './infrastructure/supabaseContainerStatusRepository'
+export { supabaseContainerStatusRepository } from '~/src/modules/container/infrastructure/supabaseContainerStatusRepository'
 
-import { createContainerStatusUseCases } from './application/containerStatusUseCases'
+import { createContainerStatusUseCases } from '~/src/modules/container/application/containerStatusUseCases'
 // Default use cases instance (using Supabase repository)
-import { supabaseContainerStatusRepository } from './infrastructure/supabaseContainerStatusRepository'
+import { supabaseContainerStatusRepository } from '~/src/modules/container/infrastructure/supabaseContainerStatusRepository'
 
 export const containerStatusUseCases = createContainerStatusUseCases(
   supabaseContainerStatusRepository,

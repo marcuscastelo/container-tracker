@@ -1,7 +1,7 @@
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { Alert, AlertState } from '../domain/alert'
-import type { AlertRepository } from '../domain/alertRepository'
+import type { Alert, AlertState } from '~/src/modules/alert/domain/alert'
+import type { AlertRepository } from '~/src/modules/alert/domain/alertRepository'
 
 const TABLE_NAME = 'alerts'
 

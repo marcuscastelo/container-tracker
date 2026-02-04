@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { useTranslation } from '../../i18n'
+import { useTranslation } from '~/src/i18n'
 import { LanguageSwitch } from '.'
 
 const keys = {

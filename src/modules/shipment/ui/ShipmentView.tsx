@@ -1,10 +1,10 @@
 import { A, useNavigate, useParams } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
-import { useTranslation } from '../../../i18n'
-import { AppHeader, StatusBadge, type StatusVariant } from '../../../shared/ui'
-import { CreateProcessDialog } from '../../process'
-import type { FormData as ProcessFormData } from '../../process/ui/CreateProcessDialog'
+import { useTranslation } from '~/src/i18n'
+import { CreateProcessDialog } from '~/src/modules/process'
+import type { FormData as ProcessFormData } from '~/src/modules/process/ui/CreateProcessDialog'
+import { AppHeader, StatusBadge, type StatusVariant } from '~/src/shared/ui'
 
 const keys = {
   backToList: 'shipmentView.backToList',
