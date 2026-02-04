@@ -1,23 +1,6 @@
 {
-  "buttons": {
-    "save": "Salvar",
-    "cancel": "Cancelar"
-  },
-  "errors": {
-    "network": "Falha de conexão. Verifique sua rede e tente novamente."
-  },
-  "placeholders": {
-    "containerNumber": "Número do container"
-  },
   "nav": {
-    "home": "Home",
-    "about": "Sobre"
-  },
-  "home": {
-    "brand": "TMS Caseiro",
-    "dashboard": "Dashboard",
-    "shipments": "Embarques",
-    "containers": "Containers"
+    "home": "Home"
   },
   "header": {
     "brand": "Container Tracker",
@@ -29,7 +12,6 @@
     "createProcess": "+ Criar Processo"
   },
   "dashboard": {
-    "pageTitle": "Dashboard",
     "metrics": {
       "activeShipments": "Embarques Ativos",
       "inTransit": "Em Trânsito",
@@ -55,8 +37,6 @@
   "shipmentView": {
     "backToList": "Voltar para Embarques",
     "header": "Processo",
-    "origin": "Origem",
-    "destination": "Destino",
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Não disponível",
@@ -64,24 +44,12 @@
       "title": "Containers"
     },
     "timeline": {
-      "title": "Timeline do Container",
-      "expected": "Previsto",
-      "actual": "Realizado"
+      "title": "Timeline do Container"
     },
     "alerts": {
       "title": "Alertas",
       "empty": "Nenhum alerta para este embarque."
     }
-  },
-  "status": {
-    "inTransit": "Em Trânsito",
-    "delayed": "Atrasado",
-    "loaded": "Carregado no Navio",
-    "customs": "Despacho Aduaneiro",
-    "released": "Liberado para Retirada",
-    "delivered": "Entregue",
-    "pending": "Pendente",
-    "unknown": "Desconhecido"
   },
   "metrics": {
     "activeShipments": "Embarques Ativos",
@@ -89,43 +57,7 @@
     "delays": "Atrasos",
     "arrivalsToday": "Chegadas Hoje"
   },
-  "shipments": {
-    "title": "Resumo dos Embarques",
-    "col": {
-      "process": "Processo",
-      "client": "Cliente",
-      "carrier": "Armador",
-      "blContainer": "BL / Contêiner",
-      "route": "Origem → Destino",
-      "status": "Status Atual",
-      "eta": "ETA"
-    },
-    "refresh": "Atualizar"
-  },
-  "timeline": {
-    "title": "Linha do Tempo - Processo {{process}}",
-    "description": "Uma representação simples do progresso do embarque.",
-    "final": "Entrega Final",
-    "alertsTitle": "Alertas Recentes",
-    "sample": {
-      "delay": "Atraso: Navio {{ship}} - Chegada atrasada.",
-      "released": "Container {{container}} - Liberado para retirada.",
-      "arrival": "Chegada: {{ship}} - Atravou em {{place}}.",
-      "time": {
-        "hours": "Há {{hours}} horas",
-        "today": "Hoje {{time}}",
-        "yesterday": "Ontem {{time}}"
-      },
-      "date": "{{date}}"
-    }
-  },
-  "counter": {
-    "clicks": "Cliques: {{count}}"
-  },
   "actions": {
-    "refreshing": "Atualizando container {{container}}...",
-    "refreshFailed": "Falha ao atualizar: {{status}} {{error}}",
-    "refreshOk": "Atualização OK — atualizado: {{updatedPath}}",
     "refreshError": "Erro ao atualizar: {{message}}"
   },
   "createProcess": {
