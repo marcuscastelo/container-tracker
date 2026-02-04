@@ -1,3 +1,4 @@
+import { parseDate } from '~/adapters/parseDate'
 import * as Maersk from '~/schemas/api/maersk.api.schema'
 import type {
   Container as NormContainer,
@@ -6,7 +7,6 @@ import type {
   Shipment as NormShipment,
 } from '~/schemas/containerStatus.schema'
 import * as Normalized from '~/schemas/containerStatus.schema'
-import { parseDate } from '~/scripts/adapters/parseDate'
 
 // Adapter: Maersk API -> Normalized ShipmentSchema
 export function maerskToNormalized(payload: unknown): NormShipment {

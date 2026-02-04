@@ -68,6 +68,12 @@ async function fetchProcesses(): Promise<readonly ProcessSummary[]> {
   }
   const data: ProcessApiResponse[] = await response.json()
 
+  // DEBUG: log raw API response to help diagnose missing UI rows
+  try {
+    // eslint-disable-next-line no-console
+    console.debug('fetchProcesses: raw response', data)
+  } catch (_e) {}
+
   return data.map((p) => ({
     id: p.id,
     reference: p.reference,

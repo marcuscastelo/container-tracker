@@ -1,3 +1,4 @@
+import { parseDate } from '~/adapters/parseDate'
 import type { CmaCgmApi } from '~/schemas/api/cmacgm.api.schema'
 import * as Cma from '~/schemas/api/cmacgm.api.schema'
 import type {
@@ -7,7 +8,6 @@ import type {
   Shipment as NormShipment,
 } from '~/schemas/containerStatus.schema'
 import * as Normalized from '~/schemas/containerStatus.schema'
-import { parseDate } from '~/scripts/adapters/parseDate'
 
 type Move = NonNullable<CmaCgmApi['CurrentMoves']>[number]
 

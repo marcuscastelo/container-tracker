@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { mapParsedStatusToF1 } from '~/adapters/toCanonical.adapter'
+import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
+import { type CreateProcessInput, processUseCases } from '~/modules/process'
 import { getProvider } from '~/routes/api/refresh-providers'
 
 // Explicit request/response schemas for this API
@@ -157,6 +159,78 @@ export async function POST({ request }: { request: Request }) {
         canonicalStatus as Record<string, unknown>,
       )
       console.log(`refresh: saved canonical container ${container} to Supabase`)
+      // Ingest canonical shipment into Processes so the UI (Dashboard) can surface it.
+      // This follows the event->state->UI flow by creating/updating a Process derived
+      // from the canonical F1 shipment. Failures here must NOT break the refresh API.
+      try {
+        const shipment = canonicalStatus as Record<string, unknown>
+        const containers = Array.isArray(shipment.containers) ? shipment.containers : []
+
+        if (containers.length > 0) {
+          const createInput: CreateProcessInput = {
+            reference: null,
+            operation_type: 'import',
+            origin: shipment.origin
+              ? { display_name: (shipment.origin as any).city ?? null }
+              : null,
+            destination: shipment.destination
+              ? { display_name: (shipment.destination as any).city ?? null }
+              : null,
+            carrier: (shipment.carrier as any) ?? null,
+            bl_reference: null,
+            containers: containers.map((c: any) => ({
+              container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
+              iso_type: c.iso_code ?? c.iso_type ?? null,
+            })),
+          }
+
+          try {
+            const res = await processUseCases.createProcess(createInput)
+            console.log(`refresh: created process ${res.process.id} for container ${container}`)
+            try {
+              // create initial alerts similarly to API process creation
+              await alertUseCases.createProcessCreatedAlerts({
+                process_id: res.process.id,
+                container_ids: res.process.containers.map((c) => c.id),
+              })
+            } catch (ae) {
+              console.warn('refresh: failed to create initial alerts for imported process', ae)
+            }
+          } catch (createErr: any) {
+            // If creation failed because container already exists, try to reconcile by
+            // finding the existing process and updating it (non-blocking).
+            const msg = String(createErr?.message ?? createErr)
+            console.warn('refresh: createProcess failed, attempting reconciliation:', msg)
+            try {
+              const all = await processUseCases.getAllProcessesWithContainers()
+              const normalized = String(container).toUpperCase().trim()
+              const found = all.find((p) =>
+                p.containers.some((c) => c.container_number === normalized),
+              )
+              if (found) {
+                // Attempt to update missing metadata (carrier/origin/destination) if empty
+                const updates: Record<string, unknown> = {}
+                if (!found.carrier && createInput.carrier) updates.carrier = createInput.carrier
+                if ((!found.origin || !found.origin.display_name) && createInput.origin)
+                  updates.origin = createInput.origin
+                if (
+                  (!found.destination || !found.destination.display_name) &&
+                  createInput.destination
+                )
+                  updates.destination = createInput.destination
+                if (Object.keys(updates).length > 0) {
+                  await processUseCases.updateProcess(found.id, updates)
+                  console.log(`refresh: reconciled process ${found.id} for container ${container}`)
+                }
+              }
+            } catch (recErr) {
+              console.warn('refresh: reconciliation attempt failed', recErr)
+            }
+          }
+        }
+      } catch (ingestErr) {
+        console.warn('refresh: ingesting canonical shipment into processes failed', ingestErr)
+      }
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
       return respondWithSchema(

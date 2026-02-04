@@ -90,6 +90,15 @@ type ProcessApiResponse = {
     container_number: string
     iso_type: string | null
     initial_status: string
+    eta?: string | null
+    events?: Array<{
+      id?: string
+      activity?: string
+      event_time?: string | null
+      event_time_type?: string | null
+      location?: string | null
+      raw?: Record<string, unknown>
+    }>
   }>
   alerts: Array<{
     id: string
@@ -156,15 +165,44 @@ async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
     status: 'unknown',
     statusLabel: 'Aguardando dados',
     eta: null,
-    containers: data.containers.map((c) => ({
-      id: c.id,
-      number: c.container_number,
-      isoType: c.iso_type ?? null,
-      status: 'unknown' as StatusVariant,
-      statusLabel: c.initial_status === 'booked' ? 'Booked' : 'Unknown',
-      eta: null,
-      timeline: [createdEvent], // Only the creation event for now
-    })),
+    containers: data.containers.map((c) => {
+      // Build timeline from API-provided events if present
+      let timeline: TimelineEvent[] = [createdEvent]
+      if (Array.isArray(c.events) && c.events.length > 0) {
+        // Map canonical events to UI timeline events
+        const mapped = c.events
+          .map((ev, idx) => {
+            const evDate = ev.event_time ? new Date(ev.event_time) : null
+            const dateStr = evDate ? evDate.toLocaleDateString() : null
+            const expectedDate =
+              ev.event_time_type === 'EXPECTED' && ev.event_time
+                ? new Date(ev.event_time).toLocaleDateString()
+                : null
+            const status: EventStatus = ev.event_time_type === 'ACTUAL' ? 'completed' : 'expected'
+            return {
+              id: ev.id ?? `ev-${idx}`,
+              label: ev.activity ?? ev.raw?.Description ?? 'Event',
+              location: ev.location ?? ev.raw?.Location ?? undefined,
+              date: dateStr,
+              expectedDate,
+              status,
+            } as TimelineEvent
+          })
+          .filter(Boolean)
+
+        if (mapped.length > 0) timeline = mapped
+      }
+
+      return {
+        id: c.id,
+        number: c.container_number,
+        isoType: c.iso_type ?? null,
+        status: 'unknown' as StatusVariant,
+        statusLabel: c.initial_status === 'booked' ? 'Booked' : 'Unknown',
+        eta: c.eta ?? null,
+        timeline,
+      }
+    }),
     alerts: data.alerts
       .filter((a) => a.state === 'active')
       .map((a) => ({
