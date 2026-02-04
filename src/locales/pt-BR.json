@@ -54,6 +54,8 @@
   },
   "createProcess": {
     "description": "Defina um novo embarque para rastrear um ou mais containers.",
+    "title": "Criar Processo",
+    "titleEdit": "Editar Processo",
     "section": {
       "identification": "Identificação",
       "route": "Rota Planejada",
@@ -89,6 +91,8 @@
       "containerNumberRequired": "Número do container é obrigatório."
     },
     "action": {
+      "update": "Atualizar Processo",
+      "create": "Criar Processo",
       "addContainer": "Adicionar container",
       "removeContainer": "Remover container",
       "cancel": "Cancelar"

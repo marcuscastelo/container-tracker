@@ -54,6 +54,8 @@
   },
   "createProcess": {
     "description": "Defina uma nova expedição para rastrear um ou mais contentores.",
+    "title": "Criar Processo",
+    "titleEdit": "Editar Processo",
     "section": {
       "identification": "Identificação",
       "route": "Rota Planeada",
@@ -89,6 +91,8 @@
       "containerNumberRequired": "O número do contentor é obrigatório."
     },
     "action": {
+      "update": "Atualizar Processo",
+      "create": "Criar Processo",
       "addContainer": "Adicionar contentor",
       "removeContainer": "Remover contentor",
       "cancel": "Cancelar"

@@ -10,6 +10,7 @@ When `Container MNBU3094033 already exists in the system`, provide a link to tha
 Sistema de UNDO para alertas acked/dismissed, outras acoes importantes (dificil, pensar se vale a pena agora para evitar retrabalho ou deixa para depois)
 
 # TODO
+Exibir armador no ShipmentView e Dashboard (table)
 Determinar todos os alertas possíveis e como serão exibidos (cores, ícones, etc)
 Determinar todos os eventos e estados possíveis e como serão exibidos (cores, ícones, etc)
 Locale i18n para alertas em vez de salvar strings fixas no banco de dados

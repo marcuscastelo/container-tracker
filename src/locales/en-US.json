@@ -54,6 +54,8 @@
   },
   "createProcess": {
     "description": "Define a new shipment to track one or more containers.",
+    "title": "Create Process",
+    "titleEdit": "Edit Process",
     "section": {
       "identification": "Identification",
       "route": "Planned Route",
@@ -89,6 +91,8 @@
       "containerNumberRequired": "Container number is required."
     },
     "action": {
+      "update": "Update Process",
+      "create": "Create Process",
       "addContainer": "Add container",
       "removeContainer": "Remove container",
       "cancel": "Cancel"
