@@ -51,15 +51,6 @@
       "empty": "No alerts for this shipment."
     }
   },
-  "metrics": {
-    "activeShipments": "Active Shipments",
-    "inTransit": "Containers in Transit",
-    "delays": "Delays",
-    "arrivalsToday": "Arrivals Today"
-  },
-  "actions": {
-    "refreshError": "Refresh error: {{message}}"
-  },
   "createProcess": {
     "title": "Create Process",
     "description": "Define a new shipment to track one or more containers.",
@@ -105,8 +96,6 @@
     }
   },
   "about": {
-    "title": "About Page",
-    "learnLinkText": "Visit",
     "page": "About Page"
   },
   "notfound": {

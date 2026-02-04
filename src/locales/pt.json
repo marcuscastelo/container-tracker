@@ -51,15 +51,6 @@
       "empty": "Nenhum alerta para este embarque."
     }
   },
-  "metrics": {
-    "activeShipments": "Embarques Ativos",
-    "inTransit": "Containers em Trânsito",
-    "delays": "Atrasos",
-    "arrivalsToday": "Chegadas Hoje"
-  },
-  "actions": {
-    "refreshError": "Erro ao atualizar: {{message}}"
-  },
   "createProcess": {
     "title": "Criar Processo",
     "description": "Defina um novo embarque para rastrear um ou mais containers.",
@@ -105,8 +96,6 @@
     }
   },
   "about": {
-    "title": "Sobre",
-    "learnLinkText": "Visite",
     "page": "Sobre"
   },
   "notfound": {

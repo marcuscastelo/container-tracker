@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile, copyFile } from 'fs/promises'
+import { copyFile, readdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 
 async function readJson(file) {
@@ -208,7 +208,9 @@ async function main() {
   // keys used in code but not present in reference
   const usedButMissing = [...usedKeys].filter((k) => !refKeys.has(k))
   if (usedButMissing.length) {
-    console.warn(`There are ${usedButMissing.length} keys used in code but not present in reference locale (${refLocale}):`)
+    console.warn(
+      `There are ${usedButMissing.length} keys used in code but not present in reference locale (${refLocale}):`,
+    )
     for (const k of usedButMissing.slice(0, 100)) {
       console.warn('  -', k)
       const locs = usedKeyLocations[k]
