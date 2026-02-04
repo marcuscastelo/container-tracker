@@ -40,6 +40,10 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Not available",
+    "loading": "Loading...",
+    "notFound": "Process not found",
+    "noEvents": "No events recorded yet",
+    "processCreated": "Process registered in the system",
     "containers": {
       "title": "Containers"
     },
@@ -49,6 +53,75 @@
     "alerts": {
       "title": "Alerts",
       "empty": "No alerts for this shipment."
+    }
+  },
+  "alerts": {
+    "eta": {
+      "missing": {
+        "title": "ETA not available",
+        "description": "No expected arrival date is available for this container."
+      },
+      "passed": {
+        "title": "Expected arrival date passed",
+        "description": "No arrival event has been recorded."
+      },
+      "changed": {
+        "title": "ETA changed",
+        "description": "The expected arrival date has been updated."
+      }
+    },
+    "movement": {
+      "noMovement": {
+        "title": "No movement updates",
+        "description": "No events recorded in the last 7 days."
+      },
+      "unexpected": {
+        "title": "Unexpected movement detected",
+        "description": "Event sequence may be incomplete."
+      },
+      "vesselDeparture": {
+        "title": "Vessel departed"
+      },
+      "vesselArrival": {
+        "title": "Vessel arrived"
+      },
+      "discharged": {
+        "title": "Container discharged"
+      },
+      "delivered": {
+        "title": "Container delivered"
+      }
+    },
+    "customs": {
+      "hold": {
+        "title": "Customs hold",
+        "description": "Container is currently under customs inspection."
+      },
+      "released": {
+        "title": "Customs released"
+      }
+    },
+    "data": {
+      "carrierSilent": {
+        "title": "Carrier not reporting updates",
+        "description": "Data may be outdated."
+      },
+      "inconsistent": {
+        "title": "Inconsistent data detected",
+        "description": "Timeline may contain conflicting information."
+      },
+      "outOfOrder": {
+        "title": "Events out of order",
+        "description": "Some events may have arrived in unexpected sequence."
+      }
+    },
+    "status": {
+      "changed": {
+        "title": "Status updated"
+      },
+      "processCreated": {
+        "title": "Process registered in the system"
+      }
     }
   },
   "createProcess": {

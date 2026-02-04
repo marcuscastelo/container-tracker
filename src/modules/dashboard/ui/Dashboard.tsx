@@ -1,6 +1,6 @@
-import { A } from '@solidjs/router'
+import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createSignal, For, Show } from 'solid-js'
+import { createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '../../../i18n'
 import {
   AppHeader,
@@ -10,6 +10,7 @@ import {
   type StatusVariant,
 } from '../../../shared/ui'
 import { CreateProcessDialog } from '../../process'
+import type { CreateProcessInput } from '../../process/domain/process'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -26,73 +27,82 @@ const keys = {
   emptyTitle: 'dashboard.empty.title',
   emptyDescription: 'dashboard.empty.description',
   emptyAction: 'dashboard.empty.action',
+  loading: 'dashboard.loading',
+  error: 'dashboard.error',
 }
 
-// Domain types for the dashboard
-type ShipmentSummary = {
+// Domain types for the dashboard - derived from API response
+type ProcessSummary = {
   readonly id: string
-  readonly processRef: string
-  readonly origin: string
-  readonly destination: string
+  readonly reference: string | null
+  readonly origin: { display_name?: string | null } | null
+  readonly destination: { display_name?: string | null } | null
   readonly containerCount: number
   readonly status: StatusVariant
   readonly statusLabel: string
   readonly eta: string | null
+  readonly carrier: string | null
 }
 
-// Sample data for demonstration
-const sampleShipments: readonly ShipmentSummary[] = [
-  {
-    id: '1',
-    processRef: '2024-0458',
-    origin: 'Shanghai',
-    destination: 'Santos',
-    containerCount: 2,
-    status: 'in-transit',
-    statusLabel: 'Em Trânsito',
-    eta: '10/05/2024',
-  },
-  {
-    id: '2',
-    processRef: '2024-0321',
-    origin: 'Hamburg',
-    destination: 'Rio de Janeiro',
-    containerCount: 1,
-    status: 'delayed',
-    statusLabel: 'Chegada Atrasada',
-    eta: '07/05/2024',
-  },
-  {
-    id: '3',
-    processRef: '2024-0297',
-    origin: 'Los Angeles',
-    destination: 'Paranaguá',
-    containerCount: 3,
-    status: 'loaded',
-    statusLabel: 'Carregado no Navio',
-    eta: '12/05/2024',
-  },
-  {
-    id: '4',
-    processRef: '2024-0510',
-    origin: 'Ningbo',
-    destination: 'Itajaí',
-    containerCount: 1,
-    status: 'customs',
-    statusLabel: 'Despacho Aduaneiro',
-    eta: '05/05/2024',
-  },
-  {
-    id: '5',
-    processRef: '2024-0387',
-    origin: 'Busan',
-    destination: 'Navegantes',
-    containerCount: 2,
-    status: 'released',
-    statusLabel: 'Liberado para Retirada',
-    eta: '04/05/2024',
-  },
-]
+// API response type
+type ProcessApiResponse = {
+  id: string
+  reference: string | null
+  operation_type: string
+  origin: { display_name?: string | null } | null
+  destination: { display_name?: string | null } | null
+  carrier: string | null
+  bl_reference: string | null
+  source: string
+  created_at: string
+  updated_at: string
+  containers: Array<{
+    id: string
+    container_number: string
+    iso_type: string | null
+    initial_status: string
+  }>
+}
+
+// Fetch processes from API
+async function fetchProcesses(): Promise<readonly ProcessSummary[]> {
+  const response = await fetch('/api/processes')
+  if (!response.ok) {
+    throw new Error(`Failed to fetch processes: ${response.statusText}`)
+  }
+  const data: ProcessApiResponse[] = await response.json()
+
+  return data.map((p) => ({
+    id: p.id,
+    reference: p.reference,
+    origin: p.origin,
+    destination: p.destination,
+    containerCount: p.containers.length,
+    // For now, all manually created processes are "unknown" status
+    // In the future, this will be derived from container events
+    status: 'unknown' as StatusVariant,
+    statusLabel: 'Aguardando dados',
+    eta: null, // Will be derived from events
+    carrier: p.carrier,
+  }))
+}
+
+// Create process via API
+async function createProcessApi(input: CreateProcessInput): Promise<{ id: string }> {
+  const response = await fetch('/api/processes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }))
+    throw new Error(error.error || 'Failed to create process')
+  }
+
+  const result = await response.json()
+  return { id: result.process.id }
+}
 
 function ShipIcon(): JSX.Element {
   return (
@@ -162,11 +172,13 @@ function CheckIcon(): JSX.Element {
 
 export function Dashboard(): JSX.Element {
   const { t } = useTranslation()
-  const [shipments] = createSignal<readonly ShipmentSummary[]>(sampleShipments)
+  const navigate = useNavigate()
+  const [processes, { refetch }] = createResource(fetchProcesses)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
+  const [createError, setCreateError] = createSignal<string | null>(null)
 
   const metrics = () => {
-    const data = shipments()
+    const data = processes() ?? []
     const activeCount = data.length
     const inTransitCount = data.filter(
       (s) => s.status === 'in-transit' || s.status === 'loaded',
@@ -179,12 +191,62 @@ export function Dashboard(): JSX.Element {
   }
 
   const handleCreateProcess = () => {
+    setCreateError(null)
     setIsCreateDialogOpen(true)
   }
 
-  const handleProcessSubmit = (data: unknown) => {
-    // TODO: Actually create the process via API
-    console.log('Process created:', data)
+  const handleProcessSubmit = async (data: {
+    reference: string
+    operationType: string
+    origin: string
+    destination: string
+    containers: Array<{ id: string; containerNumber: string; isoType: string }>
+    carrier: string
+    blReference: string
+  }) => {
+    try {
+      setCreateError(null)
+
+      // Transform UI form data to API input format
+      const input: CreateProcessInput = {
+        reference: data.reference || null,
+        operation_type: (data.operationType as CreateProcessInput['operation_type']) || undefined,
+        origin: data.origin ? { display_name: data.origin } : null,
+        destination: data.destination ? { display_name: data.destination } : null,
+        carrier: (data.carrier as CreateProcessInput['carrier']) || null,
+        bl_reference: data.blReference || null,
+        containers: data.containers.map((c) => ({
+          container_number: c.containerNumber,
+          iso_type: c.isoType || null,
+        })),
+      }
+
+      const result = await createProcessApi(input)
+
+      // Refetch processes list
+      await refetch()
+
+      // Close dialog
+      setIsCreateDialogOpen(false)
+
+      // Navigate to the new process
+      navigate(`/shipments/${result.id}`)
+    } catch (err) {
+      console.error('Failed to create process:', err)
+      setCreateError(err instanceof Error ? err.message : 'Failed to create process')
+    }
+  }
+
+  const displayProcessRef = (p: ProcessSummary): string => {
+    if (p.reference) return p.reference
+    return `Process ${p.id.slice(0, 8)}`
+  }
+
+  const displayRoute = (p: ProcessSummary): { origin: string; destination: string } => {
+    return {
+      origin: p.origin?.display_name || '—',
+      destination: p.destination?.display_name || '—',
+    }
   }
 
   return (
@@ -197,6 +259,13 @@ export function Dashboard(): JSX.Element {
       />
 
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Error message */}
+        <Show when={createError()}>
+          <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {createError()}
+          </div>
+        </Show>
+
         {/* Metrics Grid */}
         <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -229,69 +298,82 @@ export function Dashboard(): JSX.Element {
             <h2 class="text-lg font-semibold text-slate-900">{t(keys.tableTitle)}</h2>
           </header>
 
-          <Show
-            when={shipments().length > 0}
-            fallback={
-              <EmptyState
-                title={t(keys.emptyTitle)}
-                description={t(keys.emptyDescription)}
-                actionLabel={t(keys.emptyAction)}
-                onAction={handleCreateProcess}
-              />
-            }
-          >
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead>
-                  <tr class="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                    <th class="px-6 py-3">{t(keys.colProcess)}</th>
-                    <th class="px-6 py-3">{t(keys.colRoute)}</th>
-                    <th class="px-6 py-3 text-center">{t(keys.colContainers)}</th>
-                    <th class="px-6 py-3">{t(keys.colStatus)}</th>
-                    <th class="px-6 py-3">{t(keys.colEta)}</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <For each={shipments()}>
-                    {(shipment) => (
-                      <tr class="transition-colors hover:bg-slate-50">
-                        <td class="px-6 py-4">
-                          <A
-                            href={`/shipments/${shipment.id}`}
-                            class="font-medium text-slate-900 hover:text-slate-700 hover:underline"
-                          >
-                            {shipment.processRef}
-                          </A>
-                        </td>
-                        <td class="px-6 py-4">
-                          <div class="flex items-center gap-2 text-sm text-slate-600">
-                            <span>{shipment.origin}</span>
-                            <ArrowIcon />
-                            <span>{shipment.destination}</span>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                          <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-100 px-2 text-xs font-medium text-slate-700">
-                            {shipment.containerCount}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4">
-                          <StatusBadge variant={shipment.status} label={shipment.statusLabel} />
-                        </td>
-                        <td class="px-6 py-4 text-sm text-slate-600">
-                          <Show
-                            when={shipment.eta}
-                            fallback={<span class="text-slate-400">—</span>}
-                          >
-                            {shipment.eta}
-                          </Show>
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
+          <Show when={processes.loading}>
+            <div class="px-6 py-12 text-center text-slate-500">Loading...</div>
+          </Show>
+
+          <Show when={processes.error}>
+            <div class="px-6 py-12 text-center text-red-500">Failed to load processes</div>
+          </Show>
+
+          <Show when={!processes.loading && !processes.error}>
+            <Show
+              when={(processes() ?? []).length > 0}
+              fallback={
+                <EmptyState
+                  title={t(keys.emptyTitle)}
+                  description={t(keys.emptyDescription)}
+                  actionLabel={t(keys.emptyAction)}
+                  onAction={handleCreateProcess}
+                />
+              }
+            >
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead>
+                    <tr class="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                      <th class="px-6 py-3">{t(keys.colProcess)}</th>
+                      <th class="px-6 py-3">{t(keys.colRoute)}</th>
+                      <th class="px-6 py-3 text-center">{t(keys.colContainers)}</th>
+                      <th class="px-6 py-3">{t(keys.colStatus)}</th>
+                      <th class="px-6 py-3">{t(keys.colEta)}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <For each={processes()}>
+                      {(process) => {
+                        const route = displayRoute(process)
+                        return (
+                          <tr class="transition-colors hover:bg-slate-50">
+                            <td class="px-6 py-4">
+                              <A
+                                href={`/shipments/${process.id}`}
+                                class="font-medium text-slate-900 hover:text-slate-700 hover:underline"
+                              >
+                                {displayProcessRef(process)}
+                              </A>
+                            </td>
+                            <td class="px-6 py-4">
+                              <div class="flex items-center gap-2 text-sm text-slate-600">
+                                <span>{route.origin}</span>
+                                <ArrowIcon />
+                                <span>{route.destination}</span>
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                              <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-100 px-2 text-xs font-medium text-slate-700">
+                                {process.containerCount}
+                              </span>
+                            </td>
+                            <td class="px-6 py-4">
+                              <StatusBadge variant={process.status} label={process.statusLabel} />
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-600">
+                              <Show
+                                when={process.eta}
+                                fallback={<span class="text-slate-400">—</span>}
+                              >
+                                {process.eta}
+                              </Show>
+                            </td>
+                          </tr>
+                        )
+                      }}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
           </Show>
         </section>
       </main>

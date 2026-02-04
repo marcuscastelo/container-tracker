@@ -40,6 +40,10 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Não disponível",
+    "loading": "Carregando...",
+    "notFound": "Processo não encontrado",
+    "noEvents": "Nenhum evento registrado ainda",
+    "processCreated": "Processo registrado no sistema",
     "containers": {
       "title": "Containers"
     },
@@ -49,6 +53,75 @@
     "alerts": {
       "title": "Alertas",
       "empty": "Nenhum alerta para este embarque."
+    }
+  },
+  "alerts": {
+    "eta": {
+      "missing": {
+        "title": "ETA não disponível",
+        "description": "Nenhuma data de chegada prevista está disponível para este container."
+      },
+      "passed": {
+        "title": "Data de chegada prevista expirou",
+        "description": "Nenhum evento de chegada foi registrado."
+      },
+      "changed": {
+        "title": "ETA alterado",
+        "description": "A data de chegada prevista foi atualizada."
+      }
+    },
+    "movement": {
+      "noMovement": {
+        "title": "Sem atualizações de movimentação",
+        "description": "Nenhum evento registrado nos últimos 7 dias."
+      },
+      "unexpected": {
+        "title": "Movimentação inesperada detectada",
+        "description": "Sequência de eventos pode estar incompleta."
+      },
+      "vesselDeparture": {
+        "title": "Navio partiu"
+      },
+      "vesselArrival": {
+        "title": "Navio chegou"
+      },
+      "discharged": {
+        "title": "Container descarregado"
+      },
+      "delivered": {
+        "title": "Container entregue"
+      }
+    },
+    "customs": {
+      "hold": {
+        "title": "Retenção alfandegária",
+        "description": "Container está atualmente sob inspeção aduaneira."
+      },
+      "released": {
+        "title": "Liberação alfandegária"
+      }
+    },
+    "data": {
+      "carrierSilent": {
+        "title": "Armador sem atualizações",
+        "description": "Os dados podem estar desatualizados."
+      },
+      "inconsistent": {
+        "title": "Dados inconsistentes detectados",
+        "description": "A timeline pode conter informações conflitantes."
+      },
+      "outOfOrder": {
+        "title": "Eventos fora de ordem",
+        "description": "Alguns eventos podem ter chegado em sequência inesperada."
+      }
+    },
+    "status": {
+      "changed": {
+        "title": "Status atualizado"
+      },
+      "processCreated": {
+        "title": "Processo registrado no sistema"
+      }
     }
   },
   "createProcess": {

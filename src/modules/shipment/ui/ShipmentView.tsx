@@ -1,6 +1,6 @@
-import { A } from '@solidjs/router'
+import { A, useParams } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '../../../i18n'
 import { AppHeader, StatusBadge, type StatusVariant } from '../../../shared/ui'
 
@@ -18,9 +18,13 @@ const keys = {
   alertsTitle: 'shipmentView.alerts.title',
   alertsEmpty: 'shipmentView.alerts.empty',
   etaMissing: 'shipmentView.etaMissing',
+  loading: 'shipmentView.loading',
+  notFound: 'shipmentView.notFound',
+  noEvents: 'shipmentView.noEvents',
+  processCreated: 'shipmentView.processCreated',
 }
 
-// Domain types
+// Domain types for the shipment view
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
 
 type TimelineEvent = {
@@ -32,9 +36,10 @@ type TimelineEvent = {
   readonly status: EventStatus
 }
 
-type Alert = {
+type AlertDisplay = {
   readonly id: string
   readonly type: 'delay' | 'customs' | 'missing-eta' | 'info'
+  readonly severity: 'info' | 'success' | 'warning' | 'danger'
   readonly message: string
   readonly timestamp: string
 }
@@ -57,141 +62,106 @@ type ShipmentDetail = {
   readonly statusLabel: string
   readonly eta: string | null
   readonly containers: readonly ContainerDetail[]
-  readonly alerts: readonly Alert[]
+  readonly alerts: readonly AlertDisplay[]
 }
 
-// Sample data
-const sampleShipment: ShipmentDetail = {
-  id: '2',
-  processRef: '2024-0321',
-  origin: 'Hamburg',
-  destination: 'Rio de Janeiro',
-  status: 'delayed',
-  statusLabel: 'Chegada Atrasada',
-  eta: '07/05/2024',
-  containers: [
-    {
-      id: 'c1',
-      number: 'MEDU9876543',
-      status: 'delayed',
-      statusLabel: 'Chegada Atrasada',
-      eta: '07/05/2024',
-      timeline: [
-        {
-          id: 'e1',
-          label: 'Booking Confirmed',
-          location: 'Hamburg',
-          date: '15/04/2024',
-          status: 'completed',
-        },
-        {
-          id: 'e2',
-          label: 'Gate In',
-          location: 'Hamburg Terminal',
-          date: '18/04/2024',
-          status: 'completed',
-        },
-        {
-          id: 'e3',
-          label: 'Loaded on Vessel',
-          location: 'MSC Tina',
-          date: '20/04/2024',
-          status: 'completed',
-        },
-        {
-          id: 'e4',
-          label: 'Delay in Transit',
-          location: 'Atlantic Ocean',
-          date: null,
-          expectedDate: '28/04/2024',
-          status: 'delayed',
-        },
-        {
-          id: 'e5',
-          label: 'Arrival at POD',
-          location: 'Rio de Janeiro',
-          date: null,
-          expectedDate: '07/05/2024',
-          status: 'expected',
-        },
-        {
-          id: 'e6',
-          label: 'Final Delivery',
-          location: undefined,
-          date: null,
-          expectedDate: undefined,
-          status: 'expected',
-        },
-      ],
-    },
-    {
-      id: 'c2',
-      number: 'MRKU1234567',
-      status: 'in-transit',
-      statusLabel: 'Em Trânsito',
-      eta: '09/05/2024',
-      timeline: [
-        {
-          id: 'e1',
-          label: 'Booking Confirmed',
-          location: 'Hamburg',
-          date: '16/04/2024',
-          status: 'completed',
-        },
-        {
-          id: 'e2',
-          label: 'Gate In',
-          location: 'Hamburg Terminal',
-          date: '19/04/2024',
-          status: 'completed',
-        },
-        {
-          id: 'e3',
-          label: 'Loaded on Vessel',
-          location: 'MSC Tina',
-          date: '20/04/2024',
-          status: 'completed',
-        },
-        {
-          id: 'e4',
-          label: 'In Transit',
-          location: 'Atlantic Ocean',
-          date: null,
-          status: 'current',
-        },
-        {
-          id: 'e5',
-          label: 'Arrival at POD',
-          location: 'Rio de Janeiro',
-          date: null,
-          expectedDate: '09/05/2024',
-          status: 'expected',
-        },
-        {
-          id: 'e6',
-          label: 'Final Delivery',
-          location: undefined,
-          date: null,
-          expectedDate: undefined,
-          status: 'expected',
-        },
-      ],
-    },
-  ],
-  alerts: [
-    {
-      id: 'a1',
-      type: 'delay',
-      message: 'Navio MSC Tina - Chegada atrasada em 2 dias devido a condições climáticas.',
-      timestamp: 'Há 2 horas',
-    },
-    {
-      id: 'a2',
-      type: 'info',
-      message: 'Container MRKU1234567 - Documentação liberada.',
-      timestamp: 'Hoje 08:30',
-    },
-  ],
+// API response types
+type ProcessApiResponse = {
+  id: string
+  reference: string | null
+  operation_type: string
+  origin: { display_name?: string | null } | null
+  destination: { display_name?: string | null } | null
+  carrier: string | null
+  bl_reference: string | null
+  source: string
+  created_at: string
+  updated_at: string
+  containers: Array<{
+    id: string
+    container_number: string
+    iso_type: string | null
+    initial_status: string
+  }>
+  alerts: Array<{
+    id: string
+    category: string
+    code: string
+    severity: string
+    title: string
+    description: string | null
+    state: string
+    created_at: string
+  }>
+}
+
+// Map alert code to display type
+function mapAlertType(code: string): AlertDisplay['type'] {
+  if (code.startsWith('ETA_')) return 'missing-eta'
+  if (code.includes('DELAY') || code.includes('PASSED')) return 'delay'
+  if (code.includes('CUSTOMS')) return 'customs'
+  return 'info'
+}
+
+// Format relative time
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  return `${diffDays}d ago`
+}
+
+// Fetch process by ID
+async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
+  const response = await fetch(`/api/processes/${id}`)
+  if (!response.ok) {
+    if (response.status === 404) return null
+    throw new Error(`Failed to fetch process: ${response.statusText}`)
+  }
+  const data: ProcessApiResponse = await response.json()
+
+  // Create a system event for process creation
+  const createdAt = new Date(data.created_at)
+  const createdEvent: TimelineEvent = {
+    id: 'system-created',
+    label: 'Process registered in the system',
+    location: undefined,
+    date: createdAt.toLocaleDateString(),
+    status: 'completed',
+  }
+
+  return {
+    id: data.id,
+    processRef: data.reference || `Process ${data.id.slice(0, 8)}`,
+    origin: data.origin?.display_name || '—',
+    destination: data.destination?.display_name || '—',
+    status: 'unknown',
+    statusLabel: 'Aguardando dados',
+    eta: null,
+    containers: data.containers.map((c) => ({
+      id: c.id,
+      number: c.container_number,
+      status: 'unknown' as StatusVariant,
+      statusLabel: c.initial_status === 'booked' ? 'Booked' : 'Unknown',
+      eta: null,
+      timeline: [createdEvent], // Only the creation event for now
+    })),
+    alerts: data.alerts
+      .filter((a) => a.state === 'active')
+      .map((a) => ({
+        id: a.id,
+        type: mapAlertType(a.code),
+        severity: a.severity as AlertDisplay['severity'],
+        message: a.description || a.title,
+        timestamp: formatRelativeTime(a.created_at),
+      })),
+  }
 }
 
 function ChevronLeftIcon(): JSX.Element {
@@ -221,7 +191,7 @@ function ArrowIcon(): JSX.Element {
   )
 }
 
-function AlertIcon(props: { readonly type: Alert['type'] }): JSX.Element {
+function AlertIcon(props: { readonly type: AlertDisplay['type'] }): JSX.Element {
   const colorClass = () => {
     switch (props.type) {
       case 'delay':
@@ -327,17 +297,35 @@ function TimelineNode(props: {
 
 export function ShipmentView(): JSX.Element {
   const { t } = useTranslation()
+  const params = useParams()
 
-  // In a real app, this would fetch shipment by params.id using useParams()
-  const [shipment] = createSignal<ShipmentDetail>(sampleShipment)
-  const [selectedContainerId, setSelectedContainerId] = createSignal<string>(
-    sampleShipment.containers[0]?.id ?? '',
+  const [shipment] = createResource(
+    () => params.id,
+    (id) => fetchProcess(id),
   )
 
+  const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
+
+  // Set the first container as selected when data loads
   const selectedContainer = createMemo(() => {
-    return (
-      shipment().containers.find((c) => c.id === selectedContainerId()) ?? shipment().containers[0]
-    )
+    const data = shipment()
+    if (!data) return null
+    const containers = data.containers
+    if (containers.length === 0) return null
+
+    const selected = selectedContainerId()
+    if (selected) {
+      return containers.find((c) => c.id === selected) ?? containers[0]
+    }
+    return containers[0]
+  })
+
+  // Update selected container when data loads
+  createMemo(() => {
+    const data = shipment()
+    if (data && data.containers.length > 0 && !selectedContainerId()) {
+      setSelectedContainerId(data.containers[0].id)
+    }
   })
 
   return (
@@ -354,127 +342,164 @@ export function ShipmentView(): JSX.Element {
           {t(keys.backToList)}
         </A>
 
-        {/* Shipment Header Card */}
-        <section class="mb-6 rounded-lg border border-slate-200 bg-white p-6">
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 class="text-xl font-semibold text-slate-900">
-                {t(keys.shipmentHeader)} {shipment().processRef}
-              </h1>
-              <div class="mt-2 flex items-center gap-2 text-sm text-slate-600">
-                <span>{shipment().origin}</span>
-                <ArrowIcon />
-                <span>{shipment().destination}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-6">
-              <div class="text-right">
-                <p class="text-xs uppercase text-slate-500">{t(keys.status)}</p>
-                <StatusBadge variant={shipment().status} label={shipment().statusLabel} />
-              </div>
-              <div class="text-right">
-                <p class="text-xs uppercase text-slate-500">{t(keys.eta)}</p>
-                <p class="text-sm font-medium text-slate-900">
-                  {shipment().eta ?? t(keys.etaMissing)}
-                </p>
-              </div>
-            </div>
+        {/* Loading state */}
+        <Show when={shipment.loading}>
+          <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
+            <p class="text-slate-500">Loading...</p>
           </div>
-        </section>
+        </Show>
 
-        <div class="grid gap-6 lg:grid-cols-3">
-          {/* Left column: Container selector + Timeline */}
-          <div class="lg:col-span-2 space-y-6">
-            {/* Container Selector */}
-            <section class="rounded-lg border border-slate-200 bg-white">
-              <header class="border-b border-slate-200 px-6 py-4">
-                <h2 class="text-base font-semibold text-slate-900">
-                  {t(keys.containersTitle)} ({shipment().containers.length})
-                </h2>
-              </header>
-              <div class="p-4">
-                <div class="flex flex-wrap gap-2">
-                  <For each={shipment().containers}>
-                    {(container) => (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedContainerId(container.id)}
-                        class={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                          selectedContainerId() === container.id
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
+        {/* Error/Not found state */}
+        <Show when={shipment.error || (shipment() === null && !shipment.loading)}>
+          <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
+            <p class="text-red-500">Process not found</p>
+            <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
+              Back to dashboard
+            </A>
+          </div>
+        </Show>
+
+        {/* Shipment content */}
+        <Show when={shipment()}>
+          {(data) => (
+            <>
+              {/* Shipment Header Card */}
+              <section class="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h1 class="text-xl font-semibold text-slate-900">
+                      {t(keys.shipmentHeader)} {data().processRef}
+                    </h1>
+                    <div class="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                      <span>{data().origin}</span>
+                      <ArrowIcon />
+                      <span>{data().destination}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-6">
+                    <div class="text-right">
+                      <p class="text-xs uppercase text-slate-500">{t(keys.status)}</p>
+                      <StatusBadge variant={data().status} label={data().statusLabel} />
+                    </div>
+                    <div class="text-right">
+                      <p class="text-xs uppercase text-slate-500">{t(keys.eta)}</p>
+                      <p class="text-sm font-medium text-slate-900">
+                        {data().eta ?? t(keys.etaMissing)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="grid gap-6 lg:grid-cols-3">
+                {/* Left column: Container selector + Timeline */}
+                <div class="lg:col-span-2 space-y-6">
+                  {/* Container Selector */}
+                  <section class="rounded-lg border border-slate-200 bg-white">
+                    <header class="border-b border-slate-200 px-6 py-4">
+                      <h2 class="text-base font-semibold text-slate-900">
+                        {t(keys.containersTitle)} ({data().containers.length})
+                      </h2>
+                    </header>
+                    <div class="p-4">
+                      <div class="flex flex-wrap gap-2">
+                        <For each={data().containers}>
+                          {(container) => (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedContainerId(container.id)}
+                              class={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                                selectedContainerId() === container.id
+                                  ? 'bg-slate-900 text-white'
+                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              }`}
+                            >
+                              <span>{container.number}</span>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Timeline */}
+                  <section class="rounded-lg border border-slate-200 bg-white">
+                    <header class="border-b border-slate-200 px-6 py-4">
+                      <h2 class="text-base font-semibold text-slate-900">
+                        {t(keys.timelineTitle)}
+                      </h2>
+                      <Show when={selectedContainer()}>
+                        <p class="mt-1 text-xs text-slate-500">
+                          {selectedContainer()?.number} •{' '}
+                          <StatusBadge
+                            variant={selectedContainer()?.status ?? 'unknown'}
+                            label={selectedContainer()?.statusLabel ?? ''}
+                          />
+                        </p>
+                      </Show>
+                    </header>
+                    <div class="p-6">
+                      <Show
+                        when={
+                          selectedContainer()?.timeline && selectedContainer()!.timeline.length > 0
+                        }
+                        fallback={
+                          <p class="py-4 text-center text-sm text-slate-500">
+                            No events recorded yet
+                          </p>
+                        }
                       >
-                        <span>{container.number}</span>
-                      </button>
-                    )}
-                  </For>
+                        <div>
+                          <For each={selectedContainer()?.timeline ?? []}>
+                            {(event, index) => (
+                              <TimelineNode
+                                event={event}
+                                isLast={index() === (selectedContainer()?.timeline.length ?? 0) - 1}
+                              />
+                            )}
+                          </For>
+                        </div>
+                      </Show>
+                    </div>
+                  </section>
+                </div>
+
+                {/* Right column: Alerts */}
+                <div>
+                  <section class="rounded-lg border border-slate-200 bg-white">
+                    <header class="border-b border-slate-200 px-6 py-4">
+                      <h2 class="text-base font-semibold text-slate-900">{t(keys.alertsTitle)}</h2>
+                    </header>
+                    <div class="p-4">
+                      <Show
+                        when={data().alerts.length > 0}
+                        fallback={
+                          <p class="py-4 text-center text-sm text-slate-500">
+                            {t(keys.alertsEmpty)}
+                          </p>
+                        }
+                      >
+                        <ul class="space-y-3">
+                          <For each={data().alerts}>
+                            {(alert) => (
+                              <li class="flex gap-3 rounded-md border border-slate-100 bg-slate-50 p-3">
+                                <AlertIcon type={alert.type} />
+                                <div class="flex-1 min-w-0">
+                                  <p class="text-sm text-slate-700">{alert.message}</p>
+                                  <p class="mt-1 text-xs text-slate-500">{alert.timestamp}</p>
+                                </div>
+                              </li>
+                            )}
+                          </For>
+                        </ul>
+                      </Show>
+                    </div>
+                  </section>
                 </div>
               </div>
-            </section>
-
-            {/* Timeline */}
-            <section class="rounded-lg border border-slate-200 bg-white">
-              <header class="border-b border-slate-200 px-6 py-4">
-                <h2 class="text-base font-semibold text-slate-900">{t(keys.timelineTitle)}</h2>
-                <p class="mt-1 text-xs text-slate-500">
-                  {selectedContainer()?.number} •{' '}
-                  <StatusBadge
-                    variant={selectedContainer()?.status ?? 'unknown'}
-                    label={selectedContainer()?.statusLabel ?? ''}
-                  />
-                </p>
-              </header>
-              <div class="p-6">
-                <Show when={selectedContainer()}>
-                  {(container) => (
-                    <div>
-                      <For each={container().timeline}>
-                        {(event, index) => (
-                          <TimelineNode
-                            event={event}
-                            isLast={index() === container().timeline.length - 1}
-                          />
-                        )}
-                      </For>
-                    </div>
-                  )}
-                </Show>
-              </div>
-            </section>
-          </div>
-
-          {/* Right column: Alerts */}
-          <div>
-            <section class="rounded-lg border border-slate-200 bg-white">
-              <header class="border-b border-slate-200 px-6 py-4">
-                <h2 class="text-base font-semibold text-slate-900">{t(keys.alertsTitle)}</h2>
-              </header>
-              <div class="p-4">
-                <Show
-                  when={shipment().alerts.length > 0}
-                  fallback={
-                    <p class="py-4 text-center text-sm text-slate-500">{t(keys.alertsEmpty)}</p>
-                  }
-                >
-                  <ul class="space-y-3">
-                    <For each={shipment().alerts}>
-                      {(alert) => (
-                        <li class="flex gap-3 rounded-md border border-slate-100 bg-slate-50 p-3">
-                          <AlertIcon type={alert.type} />
-                          <div class="flex-1 min-w-0">
-                            <p class="text-sm text-slate-700">{alert.message}</p>
-                            <p class="mt-1 text-xs text-slate-500">{alert.timestamp}</p>
-                          </div>
-                        </li>
-                      )}
-                    </For>
-                  </ul>
-                </Show>
-              </div>
-            </section>
-          </div>
-        </div>
+            </>
+          )}
+        </Show>
       </main>
     </div>
   )

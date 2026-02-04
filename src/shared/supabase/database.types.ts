@@ -9,6 +9,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          acknowledged_at: string | null
+          category: string
+          code: string
+          container_id: string | null
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          process_id: string | null
+          related_event_ids: Json | null
+          resolved_at: string | null
+          severity: string
+          state: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          category: string
+          code: string
+          container_id?: string | null
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          process_id?: string | null
+          related_event_ids?: Json | null
+          resolved_at?: string | null
+          severity: string
+          state: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          category?: string
+          code?: string
+          container_id?: string | null
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          process_id?: string | null
+          related_event_ids?: Json | null
+          resolved_at?: string | null
+          severity?: string
+          state?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       'container-status': {
         Row: {
           carrier: string
@@ -24,6 +78,89 @@ export type Database = {
           carrier?: string
           container_id?: string
           status?: Json
+        }
+        Relationships: []
+      }
+      process_containers: {
+        Row: {
+          container_number: string | null
+          created_at: string
+          id: string
+          initial_status: string
+          iso_type: string | null
+          process_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          container_number?: string | null
+          created_at?: string
+          id?: string
+          initial_status: string
+          iso_type?: string | null
+          process_id?: string | null
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          container_number?: string | null
+          created_at?: string
+          id?: string
+          initial_status?: string
+          iso_type?: string | null
+          process_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'process_containers_process_id_fkey'
+            columns: ['process_id']
+            isOneToOne: false
+            referencedRelation: 'processes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      processes: {
+        Row: {
+          bl_reference: string | null
+          booking_reference: string | null
+          carrier: string | null
+          created_at: string | null
+          destination: Json | null
+          id: string
+          operation_type: string
+          origin: Json | null
+          reference: string | null
+          source: string
+          updated_at: string | null
+        }
+        Insert: {
+          bl_reference?: string | null
+          booking_reference?: string | null
+          carrier?: string | null
+          created_at?: string | null
+          destination?: Json | null
+          id?: string
+          operation_type: string
+          origin?: Json | null
+          reference?: string | null
+          source: string
+          updated_at?: string | null
+        }
+        Update: {
+          bl_reference?: string | null
+          booking_reference?: string | null
+          carrier?: string | null
+          created_at?: string | null
+          destination?: Json | null
+          id?: string
+          operation_type?: string
+          origin?: Json | null
+          reference?: string | null
+          source?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
