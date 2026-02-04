@@ -5059,3 +5059,307 @@ Mas isso já é engenharia de produto de verdade, não brainstorm.
 
 Quando quiser avançar, me diz qual dessas frentes você quer atacar 👌
 ````
+
+Perfeito. UI gerada com sucesso. Agora vamos focar em implementar as features e popular os campos do dashboard. Atualmente estamos no estado inicial:
+
+Resumo dos Embarques
+Processo	Cliente	Origem → Destino	Containers	Status	ETA
+Process 4f854c72	<Client>	
+—
+—
+1	
+?
+Aguardando dados
+—
+Process 73aeb3ee	<Client>	
+—
+—
+1	
+?
+Aguardando dados
+—
+
+Perfeito — agora entramos na fase mais importante do produto:
+transformar dados crus (ou ausência deles) em informação honesta e útil.
+
+Vou estruturar a resposta em 4 blocos práticos:
+
+Modelo mental do dashboard
+
+Como cada coluna é populada (regras exatas)
+
+Por que hoje tudo aparece como “— / ? / Aguardando dados”
+
+Roadmap incremental de implementação (o que fazer primeiro no código)
+
+1️⃣ O dashboard NÃO é um espelho do banco
+
+Ele é um view derivado.
+
+A Home nunca lê dados diretamente do shipment ou container.
+Ela lê projeções derivadas.
+
+Mental model correto:
+
+Process (shipment)
+  └─ containers[]
+       └─ events[]
+             └─ derived container state
+                    └─ derived shipment summary
+
+
+Ou seja:
+
+Containers são a unidade factual
+
+Shipment é agregação
+
+Dashboard é agregação da agregação
+
+2️⃣ Como popular cada coluna (regras canônicas)
+
+Vamos pegar sua tabela:
+
+Resumo dos Embarques
+Processo | Cliente | Origem → Destino | Containers | Status | ETA
+
+🔹 Processo
+
+Fonte
+
+process.reference se existir
+
+Senão: Process {short_id}
+
+Exemplo:
+
+Process 4f854c72
+
+
+✔️ Já está correto no seu estado atual.
+
+🔹 Cliente
+
+No v0, você tem 3 opções válidas (ordem de prioridade):
+
+Campo manual no processo (futuro)
+
+Derivado de metadata do shipment (BL, party)
+
+Fallback explícito
+
+Regra recomendada agora:
+
+client = process.client_name ?? "<Client>"
+
+
+💡 Importante: mostrar <Client> é melhor do que esconder a coluna
+Isso comunica claramente: “esse dado ainda não existe no produto”.
+
+🔹 Origem → Destino (INTENÇÃO)
+
+NUNCA derive isso diretamente dos eventos no dashboard.
+
+Regra:
+
+origin = process.planned_origin ?? "—"
+destination = process.planned_destination ?? "—"
+
+
+Render:
+
+— → —
+
+
+ou, como você já fez:
+
+—
+—
+
+
+✔️ Isso está correto e honesto no estado atual.
+
+👉 Quando houver sync:
+
+Isso não muda automaticamente
+
+A intenção só muda se o usuário editar
+
+🔹 Containers
+
+Essa é a coluna mais simples e sempre confiável.
+
+Regra:
+
+containers_count = process.containers.length
+
+
+Resultado:
+
+1
+
+
+✔️ Já correto.
+
+🔹 Status (AGREGADO)
+
+Aqui está o coração do produto.
+
+Primeiro: container status, depois shipment.
+
+Status do container (derivado)
+
+No estado atual:
+
+Nenhum evento
+
+Nenhuma ETA
+
+Nenhuma movimentação
+
+Regra:
+
+if (container.events.length === 0) {
+  status = "AWAITING_DATA"
+}
+
+
+Label:
+
+Aguardando dados
+
+
+Ícone:
+
+⏳ ou ⭘ neutro
+
+não verde, não vermelho
+
+Status do shipment (agregado)
+
+Regra canônica:
+
+if (all containers AWAITING_DATA) {
+  shipment_status = "AWAITING_DATA"
+}
+
+
+Render:
+
+Aguardando dados
+
+
+✔️ Seu dashboard está exatamente certo aqui.
+
+🔹 ETA (DERIVADA)
+
+ETA nunca vem do processo, só dos containers.
+
+Regras:
+
+etas = containers
+  .map(c => c.final_eta)
+  .filter(Boolean)
+
+if (etas.length === 0) {
+  eta = "—"
+}
+else {
+  eta = max(etas)
+}
+
+
+No seu estado atual:
+
+Nenhum container tem ETA
+→ render:
+
+—
+
+
+✔️ Correto.
+
+3️⃣ Por que esse estado inicial é BOM (mesmo parecendo vazio)
+
+Muita gente erra aqui tentando “embelezar”.
+
+Você fez o contrário — e acertou.
+
+Esse estado comunica 3 coisas importantes ao usuário:
+
+✅ O processo foi criado
+
+⚠️ Ainda não há dados operacionais
+
+🧠 O sistema não inventa informação
+
+Isso gera confiança, não frustração.
+
+4️⃣ Roadmap técnico de implementação (ordem certa)
+
+Agora, como sair desse estado passo a passo sem quebrar nada.
+
+🔹 Fase 1 — Projeções básicas (sem carrier)
+
+Objetivo: Dashboard consistente mesmo sem eventos.
+
+Implementar:
+
+deriveContainerStatus()
+
+deriveShipmentStatus()
+
+deriveShipmentETA()
+
+Mesmo que sempre retornem “Aguardando dados / —”.
+
+👉 Isso cria a infra mental do produto.
+
+🔹 Fase 2 — Ingestão de eventos (retroativos)
+
+Quando entrar o primeiro sync:
+
+Eventos entram no passado
+
+Timeline se ordena
+
+Status muda automaticamente
+
+Nada muda no dashboard logicamente — só nos dados.
+
+Esse é o sinal de que o design está certo.
+
+🔹 Fase 3 — Alertas
+
+Quando:
+
+ETA < now
+
+Missing ETA
+
+Divergência entre containers
+
+O dashboard começa a mostrar:
+
+⚠️ 1 container atrasado
+
+
+Sem mudar layout.
+
+5️⃣ Regra de ouro (pra não errar daqui pra frente)
+
+Se um campo não pode ser derivado com certeza, ele deve mostrar ausência, não suposição.
+
+Seu estado atual está 100% alinhado com isso.
+
+Próximo passo recomendado
+
+Se você quiser seguir de forma incremental e segura, o próximo passo ideal é:
+
+👉 Definir enums + funções puras de derivação
+
+ContainerDerivedStatus
+
+ShipmentDerivedStatus
+
+Antes de qualquer integração com carrier.
