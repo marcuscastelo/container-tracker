@@ -1,1 +1,1 @@
-export { ShipmentView } from '~/src/modules/shipment/ui/ShipmentView'
+export { ShipmentView } from '~/modules/shipment/ui/ShipmentView'

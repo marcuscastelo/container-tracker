@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
-import { useTranslation } from '~/src/i18n'
+import { useTranslation } from '~/i18n'
 
 // Small mapping of language code to a representative country code for flags.
 // This is a best-effort fallback when the locale doesn't include a region subtag.

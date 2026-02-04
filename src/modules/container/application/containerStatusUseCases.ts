@@ -1,5 +1,5 @@
-import type { ContainerStatus } from '~/src/modules/container/domain/containerStatus'
-import type { ContainerStatusRepository } from '~/src/modules/container/domain/containerStatusRepository'
+import type { ContainerStatus } from '~/modules/container/domain/containerStatus'
+import type { ContainerStatusRepository } from '~/modules/container/domain/containerStatusRepository'
 
 export type ContainerStatusUseCases = {
   getAllContainerStatuses: () => Promise<readonly ContainerStatus[]>

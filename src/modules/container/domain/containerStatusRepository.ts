@@ -1,4 +1,4 @@
-import type { ContainerStatus } from '~/src/modules/container/domain/containerStatus'
+import type { ContainerStatus } from '~/modules/container/domain/containerStatus'
 
 export type ContainerStatusRepository = {
   /**

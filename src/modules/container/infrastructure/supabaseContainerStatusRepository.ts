@@ -1,7 +1,7 @@
+import type { ContainerStatus } from '~/modules/container/domain/containerStatus'
+import type { ContainerStatusRepository } from '~/modules/container/domain/containerStatusRepository'
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { ContainerStatus } from '~/src/modules/container/domain/containerStatus'
-import type { ContainerStatusRepository } from '~/src/modules/container/domain/containerStatusRepository'
 
 const TABLE_NAME = 'container-status'
 

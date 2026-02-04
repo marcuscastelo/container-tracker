@@ -1,1 +1,1 @@
-export { Dashboard } from '~/src/modules/dashboard/ui/Dashboard'
+export { Dashboard } from '~/modules/dashboard/ui/Dashboard'

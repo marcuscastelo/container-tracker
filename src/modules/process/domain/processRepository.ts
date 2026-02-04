@@ -2,7 +2,7 @@ import type {
   Process,
   ProcessContainer,
   ProcessWithContainers,
-} from '~/src/modules/process/domain/process'
+} from '~/modules/process/domain/process'
 
 /**
  * Process Repository Interface

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { mapParsedStatusToF1 } from '~/adapters/toCanonical.adapter'
 import { containerStatusUseCases } from '~/modules/container'
-import { getProvider } from '~/src/routes/api/refresh-providers'
+import { getProvider } from '~/routes/api/refresh-providers'
 
 // Explicit request/response schemas for this API
 const RefreshRequestSchema = z

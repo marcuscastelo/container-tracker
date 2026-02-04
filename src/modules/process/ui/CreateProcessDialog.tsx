@@ -1,9 +1,9 @@
 import type { JSX } from 'solid-js'
 import { createEffect, createSignal, For } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { useTranslation } from '~/src/i18n'
-import { Dialog } from '~/src/shared/ui/Dialog'
-import { FormInput, FormSelect } from '~/src/shared/ui/FormFields'
+import { useTranslation } from '~/i18n'
+import { Dialog } from '~/shared/ui/Dialog'
+import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 
 const keys = {
   title: 'createProcess.title',

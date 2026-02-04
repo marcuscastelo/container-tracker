@@ -1,5 +1,5 @@
 // @refresh reload
-import '~/src/i18n'
+import '~/i18n'
 import { mount, StartClient } from '@solidjs/start/client'
 import { env } from '~/shared/config/env'
 

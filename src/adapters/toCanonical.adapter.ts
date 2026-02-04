@@ -21,22 +21,25 @@ export function mapParsedStatusToF1(
     }
 
     // Attempt to read common fields from parsed payload
-    const p = parsed as any
+    const p = parsed as Record<string, unknown>
     const shipmentId = String(p?.process_id ?? p?.process ?? `ship-${normalizedContainerNumber}`)
 
     const origin = p?.origin ?? p?.origin_display ?? undefined
     const destination = p?.destination ?? p?.destination_display ?? undefined
 
     // Find container info if present
-    let c: any = null
-    if (Array.isArray(p?.containers) && p.containers.length > 0) {
+    let c: Record<string, unknown> | null = null
+    const containersRaw = p?.containers as unknown
+    if (Array.isArray(containersRaw) && (containersRaw as unknown[]).length > 0) {
+      const arr = containersRaw as unknown[]
       c =
-        p.containers.find((ci: any) => {
+        (arr.find((ci) => {
+          const ciObj = ci as Record<string, unknown>
           const num = upperTrim(
-            ci?.container_number ?? ci?.container_no ?? ci?.ContainerNumber ?? '',
+            ciObj?.container_number ?? ciObj?.container_no ?? ciObj?.ContainerNumber ?? '',
           )
           return num === normalizedContainerNumber
-        }) ?? p.containers[0]
+        }) as Record<string, unknown> | undefined) ?? (arr[0] as Record<string, unknown>)
     }
     // fallback to top-level fields
     if (!c) c = p
@@ -52,14 +55,24 @@ export function mapParsedStatusToF1(
 
     const eventsRaw = c?.events ?? c?.Events ?? p?.events ?? p?.Events ?? null
     const events = Array.isArray(eventsRaw)
-      ? eventsRaw.map((ev: any) => ({
-          id: String(ev?.id ?? ev?.Id ?? ev?.EventId ?? '') || undefined,
-          activity: (ev?.activity ?? ev?.Activity ?? 'OTHER').toUpperCase(),
-          event_time: ev?.event_time ?? ev?.Date ?? ev?.DateString ?? undefined,
-          event_time_type: (ev?.event_time_type ?? ev?.EventTimeType ?? undefined) as any,
-          location: ev?.location ?? ev?.Location ?? undefined,
-          sourceEvent: ev,
-        }))
+      ? (eventsRaw as unknown[]).map((ev) => {
+          const evObj = ev as Record<string, unknown>
+          const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
+          const eventTimeTypeRaw = evObj?.event_time_type ?? evObj?.EventTimeType ?? undefined
+          const eventTimeType =
+            typeof eventTimeTypeRaw === 'string'
+              ? String(eventTimeTypeRaw).toUpperCase()
+              : undefined
+
+          return {
+            id: String(evObj?.id ?? evObj?.Id ?? evObj?.EventId ?? '') || undefined,
+            activity: String(evObj?.activity ?? evObj?.Activity ?? 'OTHER').toUpperCase(),
+            event_time: rawEventTime as unknown,
+            event_time_type: eventTimeType as unknown,
+            location: evObj?.location ?? evObj?.Location ?? undefined,
+            sourceEvent: evObj,
+          }
+        })
       : undefined
 
     const container = {

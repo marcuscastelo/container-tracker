@@ -1,12 +1,12 @@
-import type { Json } from '~/shared/supabase/database.types'
-import { supabase } from '~/shared/supabase/supabase'
 import type {
   PlannedLocation,
   Process,
   ProcessContainer,
   ProcessWithContainers,
-} from '~/src/modules/process/domain/process'
-import type { ProcessRepository } from '~/src/modules/process/domain/processRepository'
+} from '~/modules/process/domain/process'
+import type { ProcessRepository } from '~/modules/process/domain/processRepository'
+import type { Json } from '~/shared/supabase/database.types'
+import { supabase } from '~/shared/supabase/supabase'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'process_containers'

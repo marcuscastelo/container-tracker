@@ -3,13 +3,13 @@ import type {
   Process,
   ProcessContainer,
   ProcessWithContainers,
-} from '~/src/modules/process/domain/process'
+} from '~/modules/process/domain/process'
 import {
   createProcess,
   findDuplicateContainers,
   validateContainerNumber,
-} from '~/src/modules/process/domain/process'
-import type { ProcessRepository } from '~/src/modules/process/domain/processRepository'
+} from '~/modules/process/domain/process'
+import type { ProcessRepository } from '~/modules/process/domain/processRepository'
 
 // Input shape used by updateProcess - UI-friendly field names
 export type UpdateProcessInput = {

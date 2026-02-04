@@ -1,4 +1,4 @@
-import type { Alert, AlertState } from '~/src/modules/alert/domain/alert'
+import type { Alert, AlertState } from '~/modules/alert/domain/alert'
 
 /**
  * Alert Repository Interface

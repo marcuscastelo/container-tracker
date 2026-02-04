@@ -1,4 +1,4 @@
-import { ShipmentView } from '~/src/modules/shipment'
+import { ShipmentView } from '~/modules/shipment'
 
 export default function ShipmentPage() {
   return <ShipmentView />
