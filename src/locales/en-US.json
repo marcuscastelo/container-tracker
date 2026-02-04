@@ -39,6 +39,8 @@
   "shipmentView": {
     "backToList": "Back to Shipments",
     "header": "Process",
+    "origin": "Origin",
+    "destination": "Destination",
     "carrier": "Carrier",
     "status": "Status",
     "eta": "ETA",
@@ -47,12 +49,18 @@
       "title": "Containers"
     },
     "timeline": {
-      "title": "Container Timeline"
+      "title": "Container Timeline",
+      "expected": "Expected",
+      "actual": "Actual"
     },
     "alerts": {
       "title": "Alerts",
       "empty": "No alerts for this shipment."
-    }
+    },
+    "loading": "Loading...",
+    "notFound": "Process not found",
+    "noEvents": "No events recorded yet",
+    "processCreated": "Process created"
   },
   "createProcess": {
     "description": "Define a new shipment to track one or more containers.",

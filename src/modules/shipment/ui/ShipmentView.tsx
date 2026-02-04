@@ -5,6 +5,8 @@ import { useTranslation } from '~/i18n'
 import { CreateProcessDialog } from '~/modules/process'
 import type { FormData as ProcessFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { AppHeader, CopyButton, StatusBadge, type StatusVariant } from '~/shared/ui'
+import { carrierTrackUrl } from '~/shared/utils/carrier'
+import { copyToClipboard } from '~/shared/utils/clipboard'
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -28,61 +30,9 @@ const keys = {
 }
 
 // Return a tracking URL for common carriers. If unknown, returns a safe search fallback.
-function carrierTrackUrl(carrier: string | null, containerNumber: string): string | null {
-  if (!carrier || !containerNumber) return null
-  const c = carrier.toLowerCase()
-  const cn = encodeURIComponent(containerNumber)
+// carrierTrackUrl moved to shared util: ~/shared/utils/carrier
 
-  // Best-effort patterns for major carriers
-  if (c.includes('maersk')) {
-    return `https://www.maersk.com/tracking/${cn}`
-  }
-  if (c.includes('msc')) {
-    return `https://www.msc.com/en/track-a-shipment`
-  }
-  if (c.includes('cma') || c.includes('cma-cgm')) {
-    return `https://www.cma-cgm.com/ebusiness/tracking`
-  }
-
-  // Generic fallback: search the web for the carrier + container
-  return `https://www.google.com/search?q=${encodeURIComponent(carrier + ' container ' + containerNumber)}`
-}
-
-// Copy text to clipboard with a fallback for older browsers
-async function copyToClipboard(text: string): Promise<void> {
-  if (!text) return
-  try {
-    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text)
-      return
-    }
-  } catch {
-    // ignore and try fallback
-  }
-
-  // Fallback: textarea + execCommand
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'absolute'
-    ta.style.left = '-9999px'
-    document.body.appendChild(ta)
-    const selection = document.getSelection()
-    const range = document.createRange()
-    range.selectNodeContents(ta)
-    if (selection) {
-      selection.removeAllRanges()
-      selection.addRange(range)
-    }
-    ta.select()
-    document.execCommand('copy')
-    if (selection) selection.removeAllRanges()
-    document.body.removeChild(ta)
-  } catch {
-    // give up silently
-  }
-}
+// copyToClipboard moved to shared util: ~/shared/utils/clipboard
 
 // Domain types for the shipment view
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'

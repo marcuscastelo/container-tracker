@@ -39,6 +39,8 @@
   "shipmentView": {
     "backToList": "Voltar para Expedições",
     "header": "Processo",
+    "origin": "Origem",
+    "destination": "Destino",
     "carrier": "Armador",
     "status": "Estado",
     "eta": "ETA",
@@ -47,12 +49,18 @@
       "title": "Contentores"
     },
     "timeline": {
-      "title": "Linha Temporal do Contentor"
+      "title": "Linha Temporal do Contentor",
+      "expected": "Previsto",
+      "actual": "Real"
     },
     "alerts": {
       "title": "Alertas",
       "empty": "Nenhum alerta para esta expedição."
-    }
+    },
+    "loading": "A carregar...",
+    "notFound": "Processo não encontrado",
+    "noEvents": "Nenhum evento registado ainda",
+    "processCreated": "Processo criado"
   },
   "createProcess": {
     "description": "Defina uma nova expedição para rastrear um ou mais contentores.",

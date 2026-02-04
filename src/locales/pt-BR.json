@@ -39,6 +39,8 @@
   "shipmentView": {
     "backToList": "Voltar para Embarques",
     "header": "Processo",
+    "origin": "Origem",
+    "destination": "Destino",
     "carrier": "Armador",
     "status": "Status",
     "eta": "ETA",
@@ -47,12 +49,18 @@
       "title": "Containers"
     },
     "timeline": {
-      "title": "Timeline do Container"
+      "title": "Timeline do Container",
+      "expected": "Previsto",
+      "actual": "Real"
     },
     "alerts": {
       "title": "Alertas",
       "empty": "Nenhum alerta para este embarque."
-    }
+    },
+    "loading": "Carregando...",
+    "notFound": "Processo não encontrado",
+    "noEvents": "Nenhum evento registrado ainda",
+    "processCreated": "Processo criado"
   },
   "createProcess": {
     "description": "Defina um novo embarque para rastrear um ou mais containers.",
