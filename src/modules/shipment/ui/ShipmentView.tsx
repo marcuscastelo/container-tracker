@@ -1,4 +1,4 @@
-import { A, useParams } from '@solidjs/router'
+import { A, useNavigate, useParams } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '../../../i18n'
@@ -361,6 +361,49 @@ export function ShipmentView(): JSX.Element {
   const [isEditOpen, setIsEditOpen] = createSignal(false)
   const [editInitialData, setEditInitialData] = createSignal<ProcessFormData | null>(null)
 
+  // Create dialog state (header "Create process" button uses this)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
+  const navigate = useNavigate()
+
+  const handleCreateSubmit = async (formData: ProcessFormData) => {
+    try {
+      // Map UI form data to API shape
+      const input: Record<string, unknown> = {
+        reference: formData.reference || null,
+        operation_type: formData.operationType || undefined,
+        origin: formData.origin ? { display_name: formData.origin } : null,
+        destination: formData.destination ? { display_name: formData.destination } : null,
+        carrier: formData.carrier || null,
+        bl_reference: formData.blReference || null,
+        containers: formData.containers.map((c) => ({
+          container_number: c.containerNumber,
+          iso_type: c.isoType || null,
+        })),
+      }
+
+      const res = await fetch('/api/processes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(error.error || 'Failed to create process')
+      }
+
+      const result = await res.json().catch(() => null)
+      setIsCreateDialogOpen(false)
+
+      // Navigate to the created process if we have an id
+      const newId = result?.process?.id ?? result?.id
+      if (newId) navigate(`/shipments/${newId}`)
+    } catch (err) {
+      console.error('Failed to create process:', err)
+      setIsCreateDialogOpen(false)
+    }
+  }
+
   const handleEditSubmit = async (formData: ProcessFormData) => {
     try {
       // Map UI form data to API shape
@@ -423,13 +466,23 @@ export function ShipmentView(): JSX.Element {
 
   return (
     <div class="min-h-screen bg-slate-50">
-      <AppHeader />
+      <AppHeader onCreateProcess={() => setIsCreateDialogOpen(true)} />
+
+      {/* Edit process dialog (when editing current shipment) */}
       <CreateProcessDialog
         open={isEditOpen()}
         onClose={() => setIsEditOpen(false)}
         initialData={editInitialData()}
         mode="edit"
         onSubmit={handleEditSubmit}
+      />
+
+      {/* Create process dialog (triggered from header) */}
+      <CreateProcessDialog
+        open={isCreateDialogOpen()}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onSubmit={handleCreateSubmit}
+        mode="create"
       />
 
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
