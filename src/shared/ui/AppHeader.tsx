@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { useTranslation } from '../../i18n'
+import { LanguageSwitch } from '.'
 
 const keys = {
   brand: 'header.brand',
@@ -68,6 +69,7 @@ export function AppHeader(props: Props): JSX.Element {
 
         {/* Actions */}
         <div class="flex items-center gap-4">
+          <LanguageSwitch />
           <button
             type="button"
             onClick={props.onCreateProcess}
