@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'fs/promises'
+import { readdir, readFile, writeFile, copyFile } from 'fs/promises'
 import path from 'path'
 
 async function readJson(file) {
@@ -143,6 +143,65 @@ async function main() {
       console.warn(`Locale '${loc}' has ${unusedKeys.length} keys that appear unused:`)
       for (const k of unusedKeys.slice(0, 50)) console.warn('  -', k)
       if (unusedKeys.length > 50) console.warn(`  ...and ${unusedKeys.length - 50} more`)
+    }
+  }
+
+  // option: remove unused keys in-place from locale JSON files
+  if (process.argv.includes('--remove-unused')) {
+    console.log('--remove-unused passed: removing unused keys from locale files')
+
+    function removeKeyAndPrune(root, segments) {
+      // build stack of { parent, key }
+      const stack = []
+      let node = root
+      for (const seg of segments) {
+        stack.push({ parent: node, key: seg })
+        if (node && typeof node === 'object' && seg in node) {
+          node = node[seg]
+        } else {
+          // path doesn't exist, nothing to remove
+          return
+        }
+      }
+
+      // delete the leaf
+      const last = stack.pop()
+      delete last.parent[last.key]
+
+      // prune empty parents
+      while (stack.length > 0) {
+        const top = stack.pop()
+        const maybe = top.parent[top.key]
+        if (maybe && typeof maybe === 'object' && Object.keys(maybe).length === 0) {
+          delete top.parent[top.key]
+        } else {
+          break
+        }
+      }
+    }
+
+    for (const f of localeFiles) {
+      try {
+        const txt = await readFile(f, 'utf8')
+        const j = JSON.parse(txt)
+        const name = path.basename(f, '.json')
+        const toRemove = unused[name] || []
+        if (!toRemove.length) continue
+
+        // backup original file
+        await copyFile(f, `${f}.bak`)
+
+        for (const key of toRemove) {
+          const segs = key.split('.')
+          removeKeyAndPrune(j, segs)
+        }
+
+        // write back formatted JSON
+        await writeFile(f, JSON.stringify(j, null, 2) + '\n', 'utf8')
+        console.log(`Wrote ${f} (removed ${toRemove.length} keys). Backup at ${f}.bak`)
+      } catch (err) {
+        console.error('Failed to update', f, err.message)
+      }
     }
   }
 
