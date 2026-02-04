@@ -128,6 +128,50 @@
     "refreshOk": "Refresh OK — updated: {{updatedPath}}",
     "refreshError": "Refresh error: {{message}}"
   },
+  "createProcess": {
+    "title": "Create Process",
+    "description": "Define a new shipment to track one or more containers.",
+    "section": {
+      "identification": "Identification",
+      "route": "Planned Route",
+      "routeHelper": "This is the intended route, not the actual path taken by the containers.",
+      "containers": "Containers",
+      "source": "Source / Integration"
+    },
+    "field": {
+      "reference": "Reference",
+      "referencePlaceholder": "e.g. 2024-0512 or PO-12345",
+      "operationType": "Operation Type",
+      "operationTypePlaceholder": "Select operation type",
+      "origin": "Origin",
+      "originPlaceholder": "e.g. Shanghai, Rotterdam",
+      "destination": "Destination",
+      "destinationPlaceholder": "e.g. Santos, Los Angeles",
+      "containerNumber": "Container",
+      "containerNumberPlaceholder": "e.g. MRKU1234567",
+      "isoType": "ISO Type/Size",
+      "isoTypePlaceholder": "e.g. 40HC, 20GP",
+      "carrier": "Carrier",
+      "carrierPlaceholder": "Select carrier",
+      "blReference": "BL / Booking Reference",
+      "blReferencePlaceholder": "e.g. MAEU123456789"
+    },
+    "operationType": {
+      "import": "Import",
+      "export": "Export",
+      "transshipment": "Transshipment",
+      "unknown": "Unknown"
+    },
+    "validation": {
+      "containerNumberRequired": "Container number is required."
+    },
+    "action": {
+      "addContainer": "Add container",
+      "removeContainer": "Remove container",
+      "create": "Create Process",
+      "cancel": "Cancel"
+    }
+  },
   "about": {
     "title": "About Page",
     "learnLinkText": "Visit",

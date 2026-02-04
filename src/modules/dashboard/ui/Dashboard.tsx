@@ -9,6 +9,7 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '../../../shared/ui'
+import { CreateProcessDialog } from '../../process'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -162,6 +163,7 @@ function CheckIcon(): JSX.Element {
 export function Dashboard(): JSX.Element {
   const { t } = useTranslation()
   const [shipments] = createSignal<readonly ShipmentSummary[]>(sampleShipments)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
 
   const metrics = () => {
     const data = shipments()
@@ -177,13 +179,22 @@ export function Dashboard(): JSX.Element {
   }
 
   const handleCreateProcess = () => {
-    // TODO: Navigate to create process flow
-    console.log('Create process clicked')
+    setIsCreateDialogOpen(true)
+  }
+
+  const handleProcessSubmit = (data: unknown) => {
+    // TODO: Actually create the process via API
+    console.log('Process created:', data)
   }
 
   return (
     <div class="min-h-screen bg-slate-50">
       <AppHeader onCreateProcess={handleCreateProcess} />
+      <CreateProcessDialog
+        open={isCreateDialogOpen()}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onSubmit={handleProcessSubmit}
+      />
 
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Metrics Grid */}

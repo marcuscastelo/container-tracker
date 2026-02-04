@@ -128,6 +128,50 @@
     "refreshOk": "Atualização OK — atualizado: {{updatedPath}}",
     "refreshError": "Erro ao atualizar: {{message}}"
   },
+  "createProcess": {
+    "title": "Criar Processo",
+    "description": "Defina um novo embarque para rastrear um ou mais containers.",
+    "section": {
+      "identification": "Identificação",
+      "route": "Rota Planejada",
+      "routeHelper": "Esta é a rota pretendida, não o caminho real percorrido pelos containers.",
+      "containers": "Containers",
+      "source": "Origem / Integração"
+    },
+    "field": {
+      "reference": "Referência",
+      "referencePlaceholder": "ex. 2024-0512 ou PO-12345",
+      "operationType": "Tipo de Operação",
+      "operationTypePlaceholder": "Selecione o tipo de operação",
+      "origin": "Origem",
+      "originPlaceholder": "ex. Shanghai, Rotterdam",
+      "destination": "Destino",
+      "destinationPlaceholder": "ex. Santos, Los Angeles",
+      "containerNumber": "Container",
+      "containerNumberPlaceholder": "ex. MRKU1234567",
+      "isoType": "Tipo/Tamanho ISO",
+      "isoTypePlaceholder": "ex. 40HC, 20GP",
+      "carrier": "Armador",
+      "carrierPlaceholder": "Selecione o armador",
+      "blReference": "BL / Referência de Booking",
+      "blReferencePlaceholder": "ex. MAEU123456789"
+    },
+    "operationType": {
+      "import": "Importação",
+      "export": "Exportação",
+      "transshipment": "Transbordo",
+      "unknown": "Desconhecido"
+    },
+    "validation": {
+      "containerNumberRequired": "Número do container é obrigatório."
+    },
+    "action": {
+      "addContainer": "Adicionar container",
+      "removeContainer": "Remover container",
+      "create": "Criar Processo",
+      "cancel": "Cancelar"
+    }
+  },
   "about": {
     "title": "Sobre",
     "learnLinkText": "Visite",

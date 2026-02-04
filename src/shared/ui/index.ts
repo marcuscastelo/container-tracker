@@ -1,4 +1,6 @@
 export { AppHeader } from './AppHeader'
+export { Dialog } from './Dialog'
 export { EmptyState } from './EmptyState'
+export { FormInput, FormSelect } from './FormFields'
 export { MetricCard } from './MetricCard'
 export { StatusBadge, type StatusVariant } from './StatusBadge'
