@@ -1,5 +1,6 @@
 import { For } from 'solid-js'
 import type { Shipment } from '../../schemas/shipment.schema'
+import { useTranslation } from '../i18n'
 
 type Props = {
   shipments: Shipment[]
@@ -7,20 +8,32 @@ type Props = {
 }
 
 export function ShipmentsTable(props: Props) {
+  const { t } = useTranslation()
+  const keys = {
+    title: 'shipments.title',
+    colProcess: 'shipments.col.process',
+    colClient: 'shipments.col.client',
+    colCarrier: 'shipments.col.carrier',
+    colBlContainer: 'shipments.col.blContainer',
+    colRoute: 'shipments.col.route',
+    colStatus: 'shipments.col.status',
+    colEta: 'shipments.col.eta',
+    refreshTitle: 'shipments.refresh',
+  }
   return (
     <section class="bg-white rounded shadow p-4">
-      <h2 class="text-lg font-semibold mb-4">Resumo dos Embarques</h2>
+      <h2 class="text-lg font-semibold mb-4">{t(keys.title)}</h2>
 
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="text-sm text-gray-600">
-            <th class="py-2 px-3">Processo</th>
-            <th class="py-2 px-3">Cliente</th>
-            <th class="py-2 px-3">Armador</th>
-            <th class="py-2 px-3">BL / Contêiner</th>
-            <th class="py-2 px-3">Origem → Destino</th>
-            <th class="py-2 px-3">Status Atual</th>
-            <th class="py-2 px-3">ETA</th>
+            <th class="py-2 px-3">{t(keys.colProcess)}</th>
+            <th class="py-2 px-3">{t(keys.colClient)}</th>
+            <th class="py-2 px-3">{t(keys.colCarrier)}</th>
+            <th class="py-2 px-3">{t(keys.colBlContainer)}</th>
+            <th class="py-2 px-3">{t(keys.colRoute)}</th>
+            <th class="py-2 px-3">{t(keys.colStatus)}</th>
+            <th class="py-2 px-3">{t(keys.colEta)}</th>
           </tr>
         </thead>
         <tbody>
@@ -34,7 +47,7 @@ export function ShipmentsTable(props: Props) {
                   <span>{s.container}</span>
                   <button
                     type="button"
-                    title="Refresh"
+                    title={t(keys.refreshTitle)}
                     class="p-1 rounded hover:bg-gray-100 refresh-button"
                     data-container={s.container}
                     data-carrier={s.carrier}

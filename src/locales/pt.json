@@ -9,4 +9,54 @@
   "placeholders": {
     "containerNumber": "Número do container"
   }
+  ,
+  "nav": {
+    "home": "Home",
+    "about": "Sobre"
+  },
+  "home": {
+    "brand": "TMS Caseiro",
+    "dashboard": "Dashboard",
+    "shipments": "Embarques",
+    "containers": "Containers"
+  },
+  "metrics": {
+    "activeShipments": "Embarques Ativos",
+    "inTransit": "Containers em Trânsito",
+    "delays": "Atrasos",
+    "arrivalsToday": "Chegadas Hoje"
+  },
+  "shipments": {
+    "title": "Resumo dos Embarques",
+    "col": {
+      "process": "Processo",
+      "client": "Cliente",
+      "carrier": "Armador",
+      "blContainer": "BL / Contêiner",
+      "route": "Origem → Destino",
+      "status": "Status Atual",
+      "eta": "ETA"
+    },
+    "refresh": "Atualizar"
+  },
+  "timeline": {
+    "title": "Linha do Tempo - Processo {{process}}",
+    "description": "Uma representação simples do progresso do embarque.",
+    "final": "Entrega Final",
+    "alertsTitle": "Alertas Recentes",
+    "sample": {
+      "delay": "Atraso: Navio {{ship}} - Chegada atrasada.",
+      "released": "Container {{container}} - Liberado para retirada.",
+      "arrival": "Chegada: {{ship}} - Atravou em {{place}}.",
+      "time": {
+        "hours": "Há {{hours}} horas",
+        "today": "Hoje {{time}}",
+        "yesterday": "Ontem {{time}}"
+      },
+      "date": "{{date}}"
+    }
+  },
+  "counter": {
+    "clicks": "Cliques: {{count}}"
+  }
 }

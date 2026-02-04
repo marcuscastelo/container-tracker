@@ -9,4 +9,54 @@
   "placeholders": {
     "containerNumber": "Container number"
   }
+  ,
+  "nav": {
+    "home": "Home",
+    "about": "About"
+  },
+  "home": {
+    "brand": "TMS Caseiro",
+    "dashboard": "Dashboard",
+    "shipments": "Shipments",
+    "containers": "Containers"
+  },
+  "metrics": {
+    "activeShipments": "Active Shipments",
+    "inTransit": "Containers in Transit",
+    "delays": "Delays",
+    "arrivalsToday": "Arrivals Today"
+  },
+  "shipments": {
+    "title": "Shipments Overview",
+    "col": {
+      "process": "Process",
+      "client": "Client",
+      "carrier": "Carrier",
+      "blContainer": "BL / Container",
+      "route": "Origin → Destination",
+      "status": "Current Status",
+      "eta": "ETA"
+    },
+    "refresh": "Refresh"
+  },
+  "timeline": {
+    "title": "Timeline - Process {{process}}",
+    "description": "A simple representation of the shipment progress.",
+    "final": "Final Delivery",
+    "alertsTitle": "Recent Alerts",
+    "sample": {
+      "delay": "Delay: Ship {{ship}} - Arrival delayed.",
+      "released": "Container {{container}} - Released for pickup.",
+      "arrival": "Arrival: {{ship}} - Held at {{place}}.",
+      "time": {
+        "hours": "{{hours}} hours ago",
+        "today": "Today {{time}}",
+        "yesterday": "Yesterday {{time}}"
+      },
+      "date": "{{date}}"
+    }
+  },
+  "counter": {
+    "clicks": "Clicks: {{count}}"
+  }
 }

@@ -219,6 +219,24 @@ Copilot **não deve** sugerir configs redundantes entre Biome e ESLint.
 * Nunca esconder erro
 * Strings sempre via chave i18n
 
+### Uso de chaves (guideline importante)
+
+Quando for chamar a função de tradução (`t()`), sempre declare um objeto `const keys = { ... }` no topo do componente e use essas chaves (ex.: `t(keys.save)`).
+Vantagens:
+- Facilita refactors (renomear chaves em um único lugar).
+- Mantém chaves agrupadas e legíveis no componente.
+- Simplifica busca de onde uma chave é usada.
+
+Exemplo de padrão em um componente:
+
+```ts
+const keys = { save: 'buttons.save', cancel: 'buttons.cancel' }
+const { t } = useTranslation()
+return <button>{t(keys.save)}</button>
+```
+
+Sempre prefira esse padrão em vez de usar literais de string diretamente em chamadas `t('buttons.save')` espalhadas pelo JSX.
+
 ---
 
 ## 11. Testes
