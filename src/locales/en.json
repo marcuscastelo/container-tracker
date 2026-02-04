@@ -1,0 +1,12 @@
+{
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "errors": {
+    "network": "Network error. Check your connection and try again."
+  },
+  "placeholders": {
+    "containerNumber": "Container number"
+  }
+}

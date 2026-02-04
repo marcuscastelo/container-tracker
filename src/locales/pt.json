@@ -1,0 +1,12 @@
+{
+  "buttons": {
+    "save": "Salvar",
+    "cancel": "Cancelar"
+  },
+  "errors": {
+    "network": "Falha de conexão. Verifique sua rede e tente novamente."
+  },
+  "placeholders": {
+    "containerNumber": "Número do container"
+  }
+}
