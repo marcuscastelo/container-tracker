@@ -18,7 +18,8 @@ async function run() {
   try {
     const msc = loadExample('msc.json')
     const norm = mscToNormalized(msc)
-    console.log('MSC -> normalized containers:', norm.containers.length)
+    const containers = norm.containers ?? []
+    console.log('MSC -> normalized containers:', containers.length)
   } catch (err) {
     console.error('MSC adapter failed:', err)
   }
@@ -27,7 +28,8 @@ async function run() {
   try {
     const cma = loadExample('cmagcm.json')
     const norm = cmacgmToNormalized(cma)
-    console.log('CMA CGM -> normalized containers:', norm.containers.length)
+    const containers = norm.containers ?? []
+    console.log('CMA CGM -> normalized containers:', containers.length)
   } catch (err) {
     console.error('CMA CGM adapter failed:', err)
   }
@@ -36,7 +38,8 @@ async function run() {
   try {
     const maersk = loadExample('maersk.json')
     const norm = maerskToNormalized(maersk)
-    console.log('Maersk -> normalized containers:', norm.containers.length)
+    const containers = norm.containers ?? []
+    console.log('Maersk -> normalized containers:', containers.length)
   } catch (err) {
     console.error('Maersk adapter failed:', err)
   }

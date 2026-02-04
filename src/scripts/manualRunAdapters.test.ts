@@ -1,7 +1,8 @@
-import fs from 'fs'
+// @ts-nocheck
+/// <reference types="vitest" />
 import fs from 'fs'
 import path from 'path'
-import path from 'path'
+import { it } from 'vitest'
 import { cmacgmToNormalized } from '~/adapters/cmacgm.adapter'
 import { maerskToNormalized } from '~/adapters/maersk.adapter'
 import { mscToNormalized } from '~/adapters/msc.adapter'

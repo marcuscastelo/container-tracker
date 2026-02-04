@@ -85,9 +85,32 @@ export function mapParsedStatusToF1(
     }
     const status = mapStatusToCanonical(statusRaw)
 
+    // events may be present in multiple shapes: top-level c.events or nested inside
+    // container.locations[].events (common for CMA-CGM normalized output). Try several
+    // fallbacks to extract an array of event objects.
     const eventsRaw = c?.events ?? c?.Events ?? p?.events ?? p?.Events ?? null
-    const events = Array.isArray(eventsRaw)
-      ? (eventsRaw as unknown[]).map((ev) => {
+    let events: unknown[] | undefined = undefined
+    if (Array.isArray(eventsRaw)) {
+      events = eventsRaw as unknown[]
+    } else if (Array.isArray(c?.locations)) {
+      // flatten location.events arrays into events
+      const locs = c.locations
+      const flat: unknown[] = []
+      for (const L of locs) {
+        if (!L) continue
+        if (Array.isArray(L.events)) {
+          for (const ev of L.events) flat.push(ev)
+        }
+        // also accept other conventions
+        if (Array.isArray(L.Events)) {
+          for (const ev of L.Events) flat.push(ev)
+        }
+      }
+      if (flat.length > 0) events = flat
+    }
+
+    const eventsMapped = Array.isArray(events)
+      ? (events as unknown[]).map((ev) => {
           const evObj = ev as Record<string, unknown>
           const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
           const eventTimeTypeRaw = evObj?.event_time_type ?? evObj?.EventTimeType ?? undefined
@@ -96,11 +119,28 @@ export function mapParsedStatusToF1(
               ? String(eventTimeTypeRaw).toUpperCase()
               : undefined
 
+          const rawActivity = String(
+            evObj?.activity ?? evObj?.Activity ?? evObj?.StatusDescription ?? 'OTHER',
+          ).toUpperCase()
+          // Map various free-text activities into canonical EventActivity values where possible
+          let activityMapped: string = 'OTHER'
+          if (/DEPART/.test(rawActivity)) activityMapped = 'DEPARTURE'
+          else if (/ARRIV|ARRIVED/.test(rawActivity)) activityMapped = 'ARRIVAL'
+          else if (/LOAD|LOADED/.test(rawActivity)) activityMapped = 'LOAD'
+          else if (/DISCHARG|DISCHARGED/.test(rawActivity)) activityMapped = 'DISCHARGE'
+          else if (/GATE_IN|GATEIN/.test(rawActivity)) activityMapped = 'GATE_IN'
+          else if (/GATE_OUT|GATEOUT/.test(rawActivity)) activityMapped = 'GATE_OUT'
+          else if (/CUSTOMS/.test(rawActivity)) activityMapped = 'CUSTOMS_HOLD'
+
+          const idRaw = evObj?.id ?? evObj?.Id ?? evObj?.EventId ?? undefined
+          const idStr = idRaw == null ? undefined : String(idRaw)
+          const evtTimeType = typeof eventTimeType === 'string' ? eventTimeType : undefined
+
           return {
-            id: String(evObj?.id ?? evObj?.Id ?? evObj?.EventId ?? '') || undefined,
-            activity: String(evObj?.activity ?? evObj?.Activity ?? 'OTHER').toUpperCase(),
+            id: idStr,
+            activity: activityMapped,
             event_time: rawEventTime as unknown,
-            event_time_type: eventTimeType as unknown,
+            event_time_type: evtTimeType as unknown,
             location: evObj?.location ?? evObj?.Location ?? undefined,
             sourceEvent: evObj,
           }
@@ -115,7 +155,7 @@ export function mapParsedStatusToF1(
       initial_status: status ? undefined : 'UNKNOWN',
       eta: eta ?? undefined,
       flags: { missing_eta: !eta, stale_data: false },
-      events,
+      events: eventsMapped,
       source: { type: 'api' as const, api: provider, fetched_at: now, raw: parsed },
       created_at: now,
       raw: c ?? parsed,
@@ -146,6 +186,7 @@ export function mapParsedStatusToF1(
     // validate via zod
     const parsedShipment = F1ShipmentSchema.safeParse(shipment)
     if (!parsedShipment.success) {
+      console.warn('toCanonical: canonical validation failed', parsedShipment.error.format())
       return {
         ok: false,
         error: `canonical validation failed: ${JSON.stringify(parsedShipment.error.format())}`,

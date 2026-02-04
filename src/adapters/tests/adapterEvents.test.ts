@@ -11,7 +11,10 @@ function loadExample(name: string) {
   return JSON.parse(raw)
 }
 
-function containerHasEvents(container: any): boolean {
+function containerHasEvents(container: {
+  events?: unknown[]
+  locations?: Array<{ events?: unknown[]; Events?: unknown[] }>
+}): boolean {
   // events can be on container.events or inside locations[].events
   if (Array.isArray(container.events) && container.events.length > 0) return true
   if (Array.isArray(container.locations)) {
@@ -28,27 +31,30 @@ describe('Adapters emit events in normalized output', () => {
   it('Maersk example should contain events in normalized container', () => {
     const maersk = loadExample('maersk.json')
     const norm = maerskToNormalized(maersk)
-    expect(Array.isArray(norm.containers)).toBe(true)
-    expect(norm.containers.length).toBeGreaterThan(0)
-    const c = norm.containers[0]
+    const containers = norm.containers ?? []
+    expect(Array.isArray(containers)).toBe(true)
+    expect(containers.length).toBeGreaterThan(0)
+    const c = containers[0]
     expect(containerHasEvents(c)).toBe(true)
   })
 
   it('MSC example should contain events in normalized container', () => {
     const msc = loadExample('msc.json')
     const norm = mscToNormalized(msc)
-    expect(Array.isArray(norm.containers)).toBe(true)
-    expect(norm.containers.length).toBeGreaterThan(0)
-    const c = norm.containers[0]
+    const containers = norm.containers ?? []
+    expect(Array.isArray(containers)).toBe(true)
+    expect(containers.length).toBeGreaterThan(0)
+    const c = containers[0]
     expect(containerHasEvents(c)).toBe(true)
   })
 
   it('CMA CGM example should contain events in normalized container', () => {
     const cma = loadExample('cmagcm.json')
     const norm = cmacgmToNormalized(cma)
-    expect(Array.isArray(norm.containers)).toBe(true)
-    expect(norm.containers.length).toBeGreaterThan(0)
-    const c = norm.containers[0]
+    const containers = norm.containers ?? []
+    expect(Array.isArray(containers)).toBe(true)
+    expect(containers.length).toBeGreaterThan(0)
+    const c = containers[0]
     expect(containerHasEvents(c)).toBe(true)
   })
 })

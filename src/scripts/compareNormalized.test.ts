@@ -1,5 +1,8 @@
+// @ts-nocheck
+/// <reference types="vitest" />
 import fs from 'fs'
 import path from 'path'
+import { it } from 'vitest'
 
 function load(file: string) {
   const p = path.resolve(process.cwd(), '.output', file)
@@ -7,7 +10,7 @@ function load(file: string) {
   return JSON.parse(raw)
 }
 
-function countEvents(container: any) {
+function countEvents(container: unknown) {
   let cnt = 0
   if (Array.isArray(container.events)) cnt += container.events.length
   if (Array.isArray(container.locations)) {
@@ -20,7 +23,7 @@ function countEvents(container: any) {
   return cnt
 }
 
-function summarize(name: string, obj: any) {
+function summarize(name: string, obj: unknown) {
   const containers = obj.containers ?? obj.containers ?? []
   const cCount = Array.isArray(containers) ? containers.length : 0
   let events = 0

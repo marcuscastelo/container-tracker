@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { cmacgmToNormalized } from '~/adapters/cmacgm.adapter'
 
 // Provider: CMA-CGM
 // Implements a POST fetch to the public CMA-CGM tracking endpoint and
@@ -65,7 +66,44 @@ export async function fetchStatus(
     try {
       const parsedJson = JSON.parse(inner)
       console.debug('cmacgm: Parsed JSON: ', parsedJson)
-      return { parsedStatus: parsedJson }
+
+      // Convert CMA-CGM API payload into a generic parsedStatus shape that
+      // our canonical mapper understands. We use the provider-specific
+      // adapter to extract moves into a normalized shape and then flatten
+      // events into container.events so mapParsedStatusToF1 can find them.
+      try {
+        const norm = cmacgmToNormalized(parsedJson)
+        const containers = (norm.containers || []).map((c: any) => {
+          // flatten events from locations -> events into container.events
+          const locs = Array.isArray(c.locations) ? c.locations : []
+          const events: any[] = []
+          for (const L of locs) {
+            if (!Array.isArray(L.events)) continue
+            for (const ev of L.events) events.push(ev)
+          }
+          return {
+            container_number: c.container_number,
+            iso_code: c.iso_code ?? c.container_size ?? null,
+            status: c.status ?? null,
+            eta: c.eta_final_delivery ?? null,
+            events,
+            raw: c.raw ?? parsedJson,
+          }
+        })
+
+        const parsedStatus = {
+          source: { api: 'cmacgm' },
+          origin: norm.origin,
+          destination: norm.destination,
+          containers,
+          raw: parsedJson,
+        }
+
+        return { parsedStatus }
+      } catch (adapterErr) {
+        console.warn('cmacgm: adapter normalization failed, returning raw parsed JSON', adapterErr)
+        return { parsedStatus: parsedJson }
+      }
     } catch (e) {
       console.error('cmacgm: Failed to parse CMA responseData after unescape', e)
       return { raw: html }
