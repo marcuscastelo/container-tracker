@@ -4,7 +4,13 @@ import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
 import { CreateProcessDialog } from '~/modules/process'
 import type { FormData as ProcessFormData } from '~/modules/process/ui/CreateProcessDialog'
-import { AppHeader, CopyButton, StatusBadge, type StatusVariant } from '~/shared/ui'
+import {
+  AppHeader,
+  CopyButton,
+  ExistingProcessError,
+  StatusBadge,
+  type StatusVariant,
+} from '~/shared/ui'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 
@@ -287,6 +293,11 @@ export function ShipmentView(): JSX.Element {
   // Create dialog state (header "Create process" button uses this)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const navigate = useNavigate()
+  const [createError, setCreateError] = createSignal<
+    | string
+    | { message: string; processId?: string; containerId?: string; containerNumber?: string }
+    | null
+  >(null)
 
   // Copy button state is handled by shared `CopyButton` component
 
@@ -319,12 +330,14 @@ export function ShipmentView(): JSX.Element {
           const existing = asObj.existing as Record<string, unknown>
           const processId = String(existing.processId ?? existing.process_id ?? '')
           setIsCreateDialogOpen(false)
-          try {
-            navigate(`/shipments/${processId}`)
-            return
-          } catch {
-            // ignore navigation errors
-          }
+          // Show banner with link instead of auto-navigating so user sees the message
+          setCreateError({
+            message: String(asObj.error ?? asObj.message ?? 'Container already exists'),
+            processId,
+            containerId: String(existing.containerId ?? existing.container_id ?? ''),
+            containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
+          })
+          return
         }
         throw new Error(
           String((asObj && (asObj.error ?? asObj.message)) ?? 'Failed to create process'),
@@ -366,6 +379,21 @@ export function ShipmentView(): JSX.Element {
       })
 
       if (!res.ok) {
+        // Try to surface structured conflict info (existing container) to the UI
+        const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
+        const asObj = json as Record<string, unknown>
+        if (res.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
+          const existing = asObj.existing as Record<string, unknown>
+          const processId = String(existing.processId ?? existing.process_id ?? '')
+          setIsEditOpen(false)
+          setCreateError({
+            message: String(asObj.error ?? asObj.message ?? 'Container already exists'),
+            processId,
+            containerId: String(existing.containerId ?? existing.container_id ?? ''),
+            containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
+          })
+          return
+        }
         throw new Error(`Failed to update process: ${res.statusText}`)
       }
 
@@ -374,7 +402,20 @@ export function ShipmentView(): JSX.Element {
       setIsEditOpen(false)
     } catch (err) {
       console.error('Failed to update process:', err)
-      // Could show UI error; for now just log and close
+      // Show structured existing conflict if present
+      if (err && typeof err === 'object') {
+        const r = err as Record<string, unknown>
+        if (r.existing && typeof r.existing === 'object') {
+          const ex = r.existing as Record<string, unknown>
+          setCreateError({
+            message: String(r.message ?? 'Container already exists'),
+            processId: String(ex.processId ?? ex.process_id ?? ''),
+            containerId: String(ex.containerId ?? ex.container_id ?? ''),
+            containerNumber: String(ex.containerNumber ?? ex.container_number ?? ''),
+          })
+        }
+      }
+      // Could show other UI error; for now just log and close
       setIsEditOpen(false)
     }
   }
@@ -437,6 +478,28 @@ export function ShipmentView(): JSX.Element {
           <ChevronLeftIcon />
           {t(keys.backToList)}
         </A>
+
+        {/* Show conflict banner when create/edit results in an existing-container conflict */}
+        <Show when={createError()}>
+          <ExistingProcessError
+            message={
+              typeof createError() === 'string'
+                ? (createError() as string)
+                : String((createError() as Record<string, unknown>).message ?? '')
+            }
+            existing={
+              createError() && typeof createError() === 'object'
+                ? {
+                    processId: String((createError() as Record<string, unknown>).processId ?? ''),
+                    containerId: String(
+                      (createError() as Record<string, unknown>).containerId ?? '',
+                    ),
+                  }
+                : undefined
+            }
+            onAcknowledge={() => setCreateError(null)}
+          />
+        </Show>
 
         {/* Loading state */}
         <Show when={shipment.loading}>

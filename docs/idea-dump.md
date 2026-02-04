@@ -6,7 +6,6 @@ Ack em alertas de long periods sem movement (ex: 7 days without events) (talvez 
 Adicionar links na timeline que redirecionam para o site do carrier caso o usuario queira ver cruzar os dados com a fonte original
 Permitir usuário ver alertas dismissed/acked em uma seção separada para auditoria e clicks nao intencionais
 Add fail fast to CreateProcess if any container already exists in the system, show inline error per container (required new api method /check-containers or similar)
-bug: `Container MRKU2733926 already exists in the system` only appears in dashboard, should appear in ShipmentView too (after CreateProcess or EditProcess)
 
 Sistema de UNDO para alertas acked/dismissed, outras acoes importantes (dificil, pensar se vale a pena agora para evitar retrabalho ou deixa para depois)
 Em vez de forçar a ISO 6346, apenas exibir um warning na criacao/edicao do processo/ adicao de container e um badge amarelo no container view (evita retrabalho e frustraçao do usuario, mas ainda avisa que o container pode ser invalido)
@@ -31,3 +30,5 @@ Renomear BL para `Bill of Lading (BL)` em toda a UI, documentação e comunicaç
 CopyButton e ShipmentView duplicado clipboard utils
 ShipmentView, Dashboard, refresh, [id] route, estao com parsings e enrichment extensos que deveriam ser feitos na camada de dados/adapters e testáveis
 Mappers duplicados, F1, UI, etc. api collections deprecated? Avaliar se ja resolvido ou se simplesmente falso.
+Aparentemente o check se o container já existe é naive, nao checa o erro de fato e assume que qualquer erro é por container existente. Melhorar isso, se ainda estiver assim.
+CreateProcessDialog exige reimplementacao de logica de submit, duplicacao para permitir edit, etc. em todos os lugares que usam. Refatorar para um hook ou componente separado.

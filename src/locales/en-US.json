@@ -100,14 +100,19 @@
       "unknown": "Unknown"
     },
     "validation": {
-      "containerNumberRequired": "Container number is required."
+      "containerNumberRequired": "Container number is required.",
+      "duplicateContainer": "Duplicate container number"
     },
     "action": {
       "update": "Update Process",
       "create": "Create Process",
       "addContainer": "Add container",
       "removeContainer": "Remove container",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "existingProcessLink": "View existing process",
+      "dismiss": "Dismiss",
+      "existingProcessError": "Container {{container}} already exists in the system",
+      "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it"
     }
   },
   "about": {

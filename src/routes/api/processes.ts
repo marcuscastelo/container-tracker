@@ -142,6 +142,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
                 existing: {
                   processId: container.process_id,
                   containerId: container.id,
+                  containerNumber: container.container_number,
                   link: processLink,
                 },
               },

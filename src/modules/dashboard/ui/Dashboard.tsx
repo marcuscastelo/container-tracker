@@ -5,7 +5,14 @@ import { useTranslation } from '~/i18n'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
 import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/process'
-import { AppHeader, EmptyState, MetricCard, StatusBadge, type StatusVariant } from '~/shared/ui'
+import {
+  AppHeader,
+  EmptyState,
+  ExistingProcessError,
+  MetricCard,
+  StatusBadge,
+  type StatusVariant,
+} from '~/shared/ui'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -87,7 +94,12 @@ async function createProcessApi(input: CreateProcessInput): Promise<{ id: string
     type ApiExisting = {
       status: number
       message?: string
-      existing?: { processId: string; containerId: string; link?: string }
+      existing?: {
+        processId: string
+        containerId: string
+        containerNumber?: string
+        link?: string
+      }
       error?: string
     }
 
@@ -97,6 +109,7 @@ async function createProcessApi(input: CreateProcessInput): Promise<{ id: string
       const ex = {
         processId: String(existing.processId ?? existing.process_id ?? existing.processId),
         containerId: String(existing.containerId ?? existing.container_id ?? existing.id ?? ''),
+        containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
         link: String(existing.link ?? ''),
       }
       const payload: ApiExisting = {
@@ -185,7 +198,9 @@ export function Dashboard(): JSX.Element {
   const [processes, { refetch }] = createResource(fetchProcesses)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<
-    string | { message: string; processId?: string; containerId?: string } | null
+    | string
+    | { message: string; processId?: string; containerId?: string; containerNumber?: string }
+    | null
   >(null)
 
   const metrics = () => {
@@ -263,11 +278,13 @@ export function Dashboard(): JSX.Element {
         const ex = (err as { existing?: Record<string, unknown> }).existing || {}
         const processId = String(ex.processId ?? ex.process_id ?? '')
         const containerId = String(ex.containerId ?? ex.container_id ?? '')
+        const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
         const r = err as { message?: string }
         setCreateError({
           message: String(r.message ?? 'Container already exists'),
           processId,
           containerId,
+          containerNumber,
         })
       } else {
         setCreateError(err instanceof Error ? err.message : 'Failed to create process')
@@ -299,24 +316,27 @@ export function Dashboard(): JSX.Element {
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Error message */}
         <Show when={createError()}>
-          <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <Show when={typeof createError() === 'string'}>
-              <span>{createError() as string}</span>
-            </Show>
-            <Show when={createError() && typeof createError() === 'object'}>
-              <div>
-                <div>{String((createError() as Record<string, unknown>).message ?? '')}</div>
-                <Show when={Boolean((createError() as Record<string, unknown>).processId)}>
-                  <A
-                    href={`/shipments/${String((createError() as Record<string, unknown>).processId ?? '')}`}
-                    class="font-medium text-slate-900 hover:underline"
-                  >
-                    View existing process
-                  </A>
-                </Show>
-              </div>
-            </Show>
-          </div>
+          <ExistingProcessError
+            message={
+              typeof createError() === 'string'
+                ? (createError() as string)
+                : String((createError() as Record<string, unknown>).message ?? '')
+            }
+            existing={
+              createError() && typeof createError() === 'object'
+                ? {
+                    processId: String((createError() as Record<string, unknown>).processId ?? ''),
+                    containerId: String(
+                      (createError() as Record<string, unknown>).containerId ?? '',
+                    ),
+                    containerNumber: String(
+                      (createError() as Record<string, unknown>).containerNumber ?? '',
+                    ),
+                  }
+                : undefined
+            }
+            onAcknowledge={() => setCreateError(null)}
+          />
         </Show>
 
         {/* Metrics Grid */}

@@ -1,7 +1,8 @@
 import type { JSX } from 'solid-js'
-import { createEffect, createSignal, For } from 'solid-js'
+import { createEffect, createMemo, createSignal, For } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { useTranslation } from '~/i18n'
+import { findDuplicateContainers } from '~/modules/process'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 
@@ -31,6 +32,7 @@ const keys = {
   containerNumber: 'createProcess.field.containerNumber',
   containerNumberPlaceholder: 'createProcess.field.containerNumberPlaceholder',
   containerNumberRequired: 'createProcess.validation.containerNumberRequired',
+  duplicateContainer: 'createProcess.validation.duplicateContainer',
   isoType: 'createProcess.field.isoType',
   isoTypePlaceholder: 'createProcess.field.isoTypePlaceholder',
   addContainer: 'createProcess.action.addContainer',
@@ -175,6 +177,22 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     return undefined
   }
 
+  // Return duplicate error for a container if the same container number appears more than once in the form
+  const getDuplicateError = (container: ContainerInput): string | undefined => {
+    const normalized = containers.map((c) => c.containerNumber.toUpperCase().trim())
+    const counts: Record<string, number> = {}
+    for (const n of normalized) {
+      if (!n) continue
+      counts[n] = (counts[n] ?? 0) + 1
+    }
+    const thisNum = container.containerNumber.toUpperCase().trim()
+    if (thisNum && counts[thisNum] > 1) {
+      // include the number for clarity
+      return `${t(keys.duplicateContainer)} (${thisNum})`
+    }
+    return undefined
+  }
+
   const markTouched = (fieldKey: string) => {
     setTouched((prev) => ({ ...prev, [fieldKey]: true }))
   }
@@ -192,6 +210,16 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     }
 
     if (!hasValidContainers()) {
+      return
+    }
+
+    // Check for duplicate container numbers in the form and block submission
+    const containerNumbers = containers
+      .map((c) => c.containerNumber.trim())
+      .filter((n) => n.length > 0)
+    const duplicates = findDuplicateContainers(containerNumbers)
+    if (duplicates.length > 0) {
+      // keep touched state so inline errors (duplicate) are visible and prevent submit
       return
     }
 
@@ -221,6 +249,33 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     setTouched({})
     props.onClose()
   }
+
+  // Derived state: detect duplicates and whether submit should be disabled
+  const containerNumbersMemo = createMemo(() =>
+    containers.map((c) => c.containerNumber.trim()).filter((n) => n.length > 0),
+  )
+
+  const duplicateList = createMemo(() => findDuplicateContainers(containerNumbersMemo()))
+
+  const isSubmitDisabled = createMemo(() => {
+    // disable when no valid containers or duplicates present
+    if (!hasValidContainers()) return true
+    if ((duplicateList() ?? []).length > 0) return true
+    return false
+  })
+
+  // Tooltip text to show when the submit is disabled: prefer duplicate message, otherwise required message
+  const submitTooltip = createMemo(() => {
+    if (!isSubmitDisabled()) return ''
+    const dups = duplicateList()
+    if (dups && dups.length > 0) {
+      return `${t(keys.duplicateContainer)} (${dups[0]})`
+    }
+    if (!hasValidContainers()) {
+      return t(keys.containerNumberRequired)
+    }
+    return ''
+  })
 
   return (
     <Dialog
@@ -296,7 +351,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                       onInput={(v) => updateContainer(container.id, 'containerNumber', v)}
                       onBlur={() => markTouched(`container-${container.id}`)}
                       placeholder={t(keys.containerNumberPlaceholder)}
-                      error={getContainerError(container)}
+                      error={getContainerError(container) ?? getDuplicateError(container)}
                       required
                     />
                     <FormInput
@@ -392,7 +447,14 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           </button>
           <button
             type="submit"
-            class="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+            disabled={isSubmitDisabled()}
+            aria-disabled={isSubmitDisabled()}
+            title={isSubmitDisabled() ? submitTooltip() : undefined}
+            class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${
+              isSubmitDisabled()
+                ? 'opacity-50 cursor-not-allowed hover:bg-slate-900'
+                : 'hover:bg-slate-800'
+            }`}
           >
             {t(props.mode === 'edit' ? keys.update : keys.create)}
           </button>

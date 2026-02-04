@@ -100,14 +100,19 @@
       "unknown": "Desconhecido"
     },
     "validation": {
-      "containerNumberRequired": "O número do contentor é obrigatório."
+      "containerNumberRequired": "O número do contentor é obrigatório.",
+      "duplicateContainer": "Número de contentor duplicado"
     },
     "action": {
       "update": "Atualizar Processo",
       "create": "Criar Processo",
       "addContainer": "Adicionar contentor",
       "removeContainer": "Remover contentor",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "existingProcessLink": "Ver processo existente",
+      "dismiss": "Fechar",
+      "existingProcessError": "Contentor {{container}} já existe no sistema",
+      "existingProcessSame": "O contentor {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele"
     }
   },
   "about": {
