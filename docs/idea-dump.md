@@ -21,3 +21,4 @@ Locale i18n para alertas em vez de salvar strings fixas no banco de dados
 # Debito tecnico
 CopyButton e ShipmentView duplicado clipboard utils
 ShipmentView, Dashboard, refresh, [id] route, estao com parsings e enrichment extensos que deveriam ser feitos na camada de dados/adapters e testáveis
+Mappers duplicados, F1, UI, etc. api collections deprecated? Avaliar se ja resolvido ou se simplesmente falso.
