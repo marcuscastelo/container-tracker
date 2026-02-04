@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createEffect, createSignal, For } from 'solid-js'
+import { createStore } from 'solid-js/store'
 import { useTranslation } from '../../../i18n'
 import { Dialog } from '../../../shared/ui/Dialog'
 import { FormInput, FormSelect } from '../../../shared/ui/FormFields'
@@ -86,7 +87,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const [operationType, setOperationType] = createSignal('')
   const [origin, setOrigin] = createSignal('')
   const [destination, setDestination] = createSignal('')
-  const [containers, setContainers] = createSignal<ContainerInput[]>([createEmptyContainer()])
+  const [containers, setContainers] = createStore<ContainerInput[]>([createEmptyContainer()])
   const [carrier, setCarrier] = createSignal('')
   const [blReference, setBlReference] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
@@ -127,18 +128,20 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   ]
 
   const updateContainer = (id: string, field: 'containerNumber' | 'isoType', value: string) => {
-    setContainers((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)))
+    const idx = containers.findIndex((c) => c.id === id)
+    if (idx >= 0) {
+      // update the specific field in the store to avoid remounting the whole item
+      setContainers(idx, field, value)
+    }
   }
 
   const addContainer = () => {
-    setContainers((prev) => [...prev, createEmptyContainer()])
+    setContainers([...containers, createEmptyContainer()])
   }
 
   const removeContainer = (id: string) => {
-    setContainers((prev) => {
-      if (prev.length <= 1) return prev
-      return prev.filter((c) => c.id !== id)
-    })
+    if (containers.length <= 1) return
+    setContainers(containers.filter((c) => c.id !== id))
   }
 
   const getContainerError = (container: ContainerInput): string | undefined => {
@@ -155,14 +158,14 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   }
 
   const hasValidContainers = () => {
-    return containers().some((c) => c.containerNumber.trim().length > 0)
+    return containers.some((c) => c.containerNumber.trim().length > 0)
   }
 
   const handleSubmit = (e: Event) => {
     e.preventDefault()
 
     // Mark all container fields as touched
-    for (const c of containers()) {
+    for (const c of containers) {
       markTouched(`container-${c.id}`)
     }
 
@@ -175,7 +178,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       operationType: operationType(),
       origin: origin(),
       destination: destination(),
-      containers: containers().filter((c) => c.containerNumber.trim()),
+      containers: containers.filter((c) => c.containerNumber.trim()),
       carrier: carrier(),
       blReference: blReference(),
     }
@@ -260,7 +263,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             {t(keys.sectionContainers)}
           </h3>
           <div class="space-y-3">
-            <For each={containers()}>
+            <For each={containers}>
               {(container, index) => (
                 <div class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div class="grid flex-1 gap-4 sm:grid-cols-2">
@@ -282,7 +285,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                       placeholder={t(keys.isoTypePlaceholder)}
                     />
                   </div>
-                  {containers().length > 1 && (
+                  {containers.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeContainer(container.id)}
