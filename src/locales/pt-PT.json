@@ -1,0 +1,104 @@
+{
+  "nav": {
+    "home": "Início"
+  },
+  "header": {
+    "brand": "Container Tracker",
+    "nav": {
+      "dashboard": "Painel",
+      "shipments": "Expedições",
+      "containers": "Contentores"
+    },
+    "createProcess": "Criar Processo"
+  },
+  "dashboard": {
+    "metrics": {
+      "activeShipments": "Expedições Ativas",
+      "inTransit": "Em Trânsito",
+      "delays": "Atrasos",
+      "arrivalsToday": "Chegadas Hoje"
+    },
+    "table": {
+      "title": "Resumo das Expedições",
+      "col": {
+        "process": "Processo",
+        "client": "Cliente",
+        "route": "Origem → Destino",
+        "containers": "Contentores",
+        "status": "Estado",
+        "eta": "ETA"
+      }
+    },
+    "empty": {
+      "title": "Ainda sem expedições",
+      "description": "Crie a sua primeira expedição para começar a rastrear contentores.",
+      "action": "Criar Processo"
+    }
+  },
+  "shipmentView": {
+    "backToList": "Voltar para Expedições",
+    "header": "Processo",
+    "status": "Estado",
+    "eta": "ETA",
+    "etaMissing": "Não disponível",
+    "containers": {
+      "title": "Contentores"
+    },
+    "timeline": {
+      "title": "Linha Temporal do Contentor"
+    },
+    "alerts": {
+      "title": "Alertas",
+      "empty": "Nenhum alerta para esta expedição."
+    }
+  },
+  "createProcess": {
+    "description": "Defina uma nova expedição para rastrear um ou mais contentores.",
+    "section": {
+      "identification": "Identificação",
+      "route": "Rota Planeada",
+      "routeHelper": "Esta é a rota prevista, não o percurso real realizado pelos contentores.",
+      "containers": "Contentores",
+      "source": "Origem / Integração"
+    },
+    "field": {
+      "reference": "Referência",
+      "referencePlaceholder": "ex. 2024-0512 ou PO-12345",
+      "operationType": "Tipo de Operação",
+      "operationTypePlaceholder": "Selecione o tipo de operação",
+      "origin": "Origem",
+      "originPlaceholder": "ex. Shanghai, Rotterdam",
+      "destination": "Destino",
+      "destinationPlaceholder": "ex. Santos, Los Angeles",
+      "containerNumber": "Contentor",
+      "containerNumberPlaceholder": "ex. MRKU1234567",
+      "isoType": "Tipo/Tamanho ISO",
+      "isoTypePlaceholder": "ex. 40HC, 20GP",
+      "carrier": "Armador",
+      "carrierPlaceholder": "Selecione o armador",
+      "blReference": "BL / Referência de Booking",
+      "blReferencePlaceholder": "ex. MAEU123456789"
+    },
+    "operationType": {
+      "import": "Importação",
+      "export": "Exportação",
+      "transshipment": "Transbordo",
+      "unknown": "Desconhecido"
+    },
+    "validation": {
+      "containerNumberRequired": "O número do contentor é obrigatório."
+    },
+    "action": {
+      "addContainer": "Adicionar contentor",
+      "removeContainer": "Remover contentor",
+      "cancel": "Cancelar"
+    }
+  },
+  "about": {
+    "page": "Sobre"
+  },
+  "notfound": {
+    "title": "Não Encontrado",
+    "learn": "Visite"
+  }
+}
