@@ -1,5 +1,5 @@
 # Ideas
-Ctrl K Search containers and processes (shipments)
+Ctrl K Search containers and processes (shipments) by ID, client, BL, date, origin, destination, status, etc.
 Ctrl K Actions such as: New process, Recently viewed, Favorites, etc. (quickly thought examples, not final)
 Export to CSV/PDF/XLSX/etc
 Ack em alertas de long periods sem movement (ex: 7 days without events) (talvez ack em todos os alertas? e os estruturais como "No ETA defined" tambem seriam ackeáveis?)
