@@ -20,6 +20,7 @@ const keys = {
   arrivalsToday: 'dashboard.metrics.arrivalsToday',
   tableTitle: 'dashboard.table.title',
   colProcess: 'dashboard.table.col.process',
+  colClient: 'dashboard.table.col.client',
   colRoute: 'dashboard.table.col.route',
   colContainers: 'dashboard.table.col.containers',
   colStatus: 'dashboard.table.col.status',
@@ -323,6 +324,7 @@ export function Dashboard(): JSX.Element {
                   <thead>
                     <tr class="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                       <th class="px-6 py-3">{t(keys.colProcess)}</th>
+                      <th class="px-6 py-3">{t(keys.colClient)}</th>
                       <th class="px-6 py-3">{t(keys.colRoute)}</th>
                       <th class="px-6 py-3 text-center">{t(keys.colContainers)}</th>
                       <th class="px-6 py-3">{t(keys.colStatus)}</th>
@@ -342,6 +344,9 @@ export function Dashboard(): JSX.Element {
                               >
                                 {displayProcessRef(process)}
                               </A>
+                            </td>
+                            <td class="px-6 py-4">
+                              <span class="text-sm text-slate-600">{'<Client>'}</span>
                             </td>
                             <td class="px-6 py-4">
                               <div class="flex items-center gap-2 text-sm text-slate-600">

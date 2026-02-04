@@ -219,6 +219,23 @@ Copilot **não deve** sugerir configs redundantes entre Biome e ESLint.
 * Nunca esconder erro
 * Strings sempre via chave i18n
 
+### Adição de novas chaves i18n (regra obrigatória)
+
+Sempre que for criar chaves novas no código (ex.: ao adicionar `keys` em um componente), adicione imediatamente as mesmas chaves em todos os arquivos de tradução local presentes em `src/locales` (por exemplo `src/locales/en.json` e `src/locales/pt.json`).
+
+Recomendações:
+- Insira valores placeholder curtos (ex.: `"dashboard.table.col.client": "Client"` / `"dashboard.table.col.client": "Cliente"`) quando a tradução final não estiver disponível.
+- Use chaves idênticas em todos os arquivos de locale para evitar regressões em runtime.
+- Commita essas mudanças junto com a alteração do componente que introduziu a nova chave.
+
+Para garantir que não haja chaves faltando entre os arquivos de locale, sempre rode o verificador de chaves i18n após adicionar novas chaves:
+
+```bash
+pnpm i18n:check
+```
+
+Esse comando falhará localmente (saindo com código de erro) quando existirem chaves faltantes ou inconsistentes entre os arquivos em `src/locales`.
+
 ### Uso de chaves (guideline importante)
 
 Quando for chamar a função de tradução (`t()`), sempre declare um objeto `const keys = { ... }` no topo do componente e use essas chaves (ex.: `t(keys.save)`).
