@@ -36,8 +36,10 @@ const keys = {
 
 // Domain types for the shipment view
 import type {
+  AlertDisplay,
   ProcessApiResponse,
   ShipmentDetail,
+  TimelineEvent,
 } from '~/modules/shipment/application/processPresenter'
 
 import { presentProcess } from '~/modules/shipment/application/processPresenter'

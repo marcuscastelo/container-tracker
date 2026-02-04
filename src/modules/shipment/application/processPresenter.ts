@@ -1,3 +1,5 @@
+import type { StatusVariant } from '~/shared/ui'
+
 // Presenter: convert ProcessApiResponse (API) into ShipmentDetail (UI shape)
 export type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
 
@@ -21,7 +23,7 @@ export type AlertDisplay = {
 export type ContainerDetail = {
   readonly id: string
   readonly number: string
-  readonly status: string
+  readonly status: StatusVariant
   readonly statusLabel: string
   readonly eta: string | null
   readonly timeline: readonly TimelineEvent[]
@@ -37,7 +39,7 @@ export type ShipmentDetail = {
   readonly bl_reference?: string | null
   readonly origin: string
   readonly destination: string
-  readonly status: string
+  readonly status: StatusVariant
   readonly statusLabel: string
   readonly eta: string | null
   readonly containers: readonly ContainerDetail[]
