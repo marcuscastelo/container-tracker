@@ -1,11 +1,13 @@
 # Ideas
 Ctrl K Search containers and processes (shipments) by ID, client, BL, date, origin, destination, status, etc.
 Ctrl K Actions such as: New process, Recently viewed, Favorites, etc. (quickly thought examples, not final)
-Export to CSV/PDF/XLSX/etc
+Export to CSV/PDF/XLSX/Key-Value-plain-trello-like-style/JSON of 2 types of exports:
+    1. Static exports: only metadata such as process reference, container numbers, origin and destination, client, dates, etc. nothing that is "live" or changes often
+    2. Full exports: all data including events, alerts, statuses, timestamps, etc
 Ack em alertas de long periods sem movement (ex: 7 days without events) (talvez ack em todos os alertas? e os estruturais como "No ETA defined" tambem seriam ackeáveis?)
 Adicionar links na timeline que redirecionam para o site do carrier caso o usuario queira ver cruzar os dados com a fonte original
 Permitir usuário ver alertas dismissed/acked em uma seção separada para auditoria e clicks nao intencionais
-Add fail fast to CreateProcess if any container already exists in the system, show inline error per container (required new api method /check-containers or similar)
+Fechar CreateProcessDialog com dados preenchidos deve exibir um warning "Are you sure you want to close? Unsaved data will be lost.", mas só se houver dados preenchidos, senao fecha sem avisos para nao frustrar usuario (melhora a usabilidade, evita perda acidental de dados)
 
 Sistema de UNDO para alertas acked/dismissed, outras acoes importantes (dificil, pensar se vale a pena agora para evitar retrabalho ou deixa para depois)
 Em vez de forçar a ISO 6346, apenas exibir um warning na criacao/edicao do processo/ adicao de container e um badge amarelo no container view (evita retrabalho e frustraçao do usuario, mas ainda avisa que o container pode ser invalido)

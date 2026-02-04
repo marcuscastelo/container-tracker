@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createSignal, For } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { useTranslation } from '~/i18n'
 import { findDuplicateContainers } from '~/modules/process'
@@ -94,6 +94,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const [carrier, setCarrier] = createSignal('')
   const [blReference, setBlReference] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
+  const [serverErrors, setServerErrors] = createSignal<
+    Record<string, { message: string; link?: string }>
+  >({})
 
   // Populate form when editing
   createEffect(() => {
@@ -174,6 +177,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     if (!container.containerNumber.trim()) {
       return t(keys.containerNumberRequired)
     }
+    // Prefer server-side error if present for this container
+    const srv = serverErrors()[fieldKey]
+    if (srv) return srv.message
     return undefined
   }
 
@@ -223,18 +229,91 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       return
     }
 
-    const data: FormData = {
-      reference: reference(),
-      operationType: operationType(),
-      origin: origin(),
-      destination: destination(),
-      containers: containers.filter((c) => c.containerNumber.trim()),
-      carrier: carrier(),
-      blReference: blReference(),
-    }
+    // Fail-fast server-side check: ask backend if any of these container numbers already exist
+    const containerNumbersForCheck = containerNumbers.map((n) => n.toUpperCase().trim())
+    ;(async () => {
+      try {
+        // Reset previous server errors
+        setServerErrors({})
+        const res = await fetch('/api/processes/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ containers: containerNumbersForCheck }),
+        })
 
-    props.onSubmit?.(data)
-    handleClose()
+        if (!res.ok) {
+          // Unexpected error from check endpoint - surface generic message
+          const txt = await res.text().catch(() => '')
+          setServerErrors(
+            Object.fromEntries(
+              containerNumbers.map((n, i) => [
+                `container-${containers[i].id}`,
+                { message: txt || 'Failed to validate container' },
+              ]),
+            ),
+          )
+          return
+        }
+
+        const json = await res.json().catch(() => ({}))
+        const conflicts: {
+          containerNumber: string
+          processId?: string
+          containerId?: string
+          link?: string
+          message?: string
+        }[] = json.conflicts || []
+
+        if (conflicts.length > 0) {
+          // Map conflicts to per-field errors and mark touched so they show inline
+          const errs: Record<string, { message: string; link?: string }> = {}
+          for (const c of conflicts) {
+            // find matching container id in current form
+            const idx = containerNumbersForCheck.findIndex(
+              (n) => n === c.containerNumber.toUpperCase(),
+            )
+            const fieldKey =
+              idx >= 0 ? `container-${containers[idx].id}` : `container-${c.containerNumber}`
+            errs[fieldKey] = {
+              message: c.message ?? `Container ${c.containerNumber} already exists`,
+              link: c.link,
+            }
+          }
+          // Mark touched for all containers so errors are visible
+          for (const c of containers) markTouched(`container-${c.id}`)
+          setServerErrors(errs)
+          return
+        }
+
+        // No conflicts -> proceed with submit
+        const data: FormData = {
+          reference: reference(),
+          operationType: operationType(),
+          origin: origin(),
+          destination: destination(),
+          containers: containers.filter((c) => c.containerNumber.trim()),
+          carrier: carrier(),
+          blReference: blReference(),
+        }
+
+        props.onSubmit?.(data)
+        handleClose()
+      } catch (err) {
+        console.error('Failed to check containers before submit:', err)
+        // In case of unexpected failures just block submit and show generic errors
+        for (const c of containers) markTouched(`container-${c.id}`)
+        setServerErrors(
+          Object.fromEntries(
+            containerNumbers.map((n, i) => [
+              `container-${containers[i].id}`,
+              { message: 'Failed to validate container' },
+            ]),
+          ),
+        )
+      }
+    })()
+
+    // Submission will continue from the async check above; no synchronous submit here
   }
 
   const handleClose = () => {
@@ -261,6 +340,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     // disable when no valid containers or duplicates present
     if (!hasValidContainers()) return true
     if ((duplicateList() ?? []).length > 0) return true
+    // disable when server-side errors are present
+    if (Object.keys(serverErrors() ?? {}).length > 0) return true
     return false
   })
 
@@ -270,6 +351,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     const dups = duplicateList()
     if (dups && dups.length > 0) {
       return `${t(keys.duplicateContainer)} (${dups[0]})`
+    }
+    // show server-side error if present
+    const srvKeys = Object.keys(serverErrors() ?? {})
+    if (srvKeys.length > 0) {
+      return serverErrors()[srvKeys[0]]?.message ?? ''
     }
     if (!hasValidContainers()) {
       return t(keys.containerNumberRequired)
@@ -344,23 +430,100 @@ export function CreateProcessDialog(props: Props): JSX.Element {
               {(container, index) => (
                 <div class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div class="grid flex-1 gap-4 sm:grid-cols-2">
-                    <FormInput
-                      label={`${t(keys.containerNumber)} ${index() + 1}`}
-                      name={`container-${container.id}`}
-                      value={container.containerNumber}
-                      onInput={(v) => updateContainer(container.id, 'containerNumber', v)}
-                      onBlur={() => markTouched(`container-${container.id}`)}
-                      placeholder={t(keys.containerNumberPlaceholder)}
-                      error={getContainerError(container) ?? getDuplicateError(container)}
-                      required
-                    />
-                    <FormInput
-                      label={t(keys.isoType)}
-                      name={`iso-${container.id}`}
-                      value={container.isoType}
-                      onInput={(v) => updateContainer(container.id, 'isoType', v)}
-                      placeholder={t(keys.isoTypePlaceholder)}
-                    />
+                    <div>
+                      <FormInput
+                        label={`${t(keys.containerNumber)} ${index() + 1}`}
+                        name={`container-${container.id}`}
+                        value={container.containerNumber}
+                        onInput={(v) => updateContainer(container.id, 'containerNumber', v)}
+                        onBlur={async () => {
+                          markTouched(`container-${container.id}`)
+                          const val = container.containerNumber.trim()
+                          // only check non-empty container numbers
+                          if (!val) return
+                          try {
+                            // reset any previous server error for this field
+                            setServerErrors((prev) => {
+                              const copy = { ...prev }
+                              delete copy[`container-${container.id}`]
+                              return copy
+                            })
+
+                            const res = await fetch('/api/processes/check', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ containers: [val.toUpperCase().trim()] }),
+                            })
+                            if (!res.ok) {
+                              const txt = await res.text().catch(() => '')
+                              setServerErrors((prev) => ({
+                                ...prev,
+                                [`container-${container.id}`]: {
+                                  message: txt || 'Failed to validate container',
+                                },
+                              }))
+                              return
+                            }
+                            const json = await res.json().catch(() => ({}))
+                            const conflicts = json.conflicts || []
+                            if (conflicts.length > 0) {
+                              const c = conflicts[0]
+                              setServerErrors((prev) => ({
+                                ...prev,
+                                [`container-${container.id}`]: {
+                                  message:
+                                    c.message ?? `Container ${c.containerNumber} already exists`,
+                                  link: c.link,
+                                },
+                              }))
+                            }
+                          } catch (err) {
+                            console.error('onBlur check failed', err)
+                            setServerErrors((prev) => ({
+                              ...prev,
+                              [`container-${container.id}`]: {
+                                message: 'Failed to validate container',
+                              },
+                            }))
+                          }
+                        }}
+                        placeholder={t(keys.containerNumberPlaceholder)}
+                        error={getContainerError(container) ?? getDuplicateError(container)}
+                        required
+                      />
+
+                      {/* If server returned a link for this container, show it next to the error text */}
+                      <Show when={serverErrors()[`container-${container.id}`]?.link}>
+                        <p class="mt-1 text-xs text-slate-600 underline">
+                          <button
+                            type="button"
+                            class="underline hover:cursor-pointer"
+                            onClick={() => {
+                              const linkUrl = serverErrors()[`container-${container.id}`]?.link
+                              if (!linkUrl) return
+                              const ok = window.confirm(
+                                'Você perderá o progresso do formulário. Deseja continuar?',
+                              )
+                              if (ok) {
+                                window.location.href = linkUrl
+                              }
+                            }}
+                          >
+                            {t('createProcess.action.existingProcessLink')}
+                          </button>
+                        </p>
+                      </Show>
+                    </div>
+
+                    <div>
+                      <FormInput
+                        label={t(keys.isoType)}
+                        name={`iso-${container.id}`}
+                        value={container.isoType}
+                        onInput={(v) => updateContainer(container.id, 'isoType', v)}
+                        placeholder={t(keys.isoTypePlaceholder)}
+                      />
+                    </div>
                   </div>
                   {containers.length > 1 && (
                     <button
