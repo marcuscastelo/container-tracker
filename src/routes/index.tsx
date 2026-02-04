@@ -1,4 +1,5 @@
 import { createResource } from 'solid-js'
+import { ExamplePopover } from '~/components/ExamplePopover'
 import { getPoCShipmentsAsync } from '~/lib/collections'
 import type { Shipment } from '../../schemas/shipment.schema'
 import { HomeHeader } from '../components/HomeHeader'
@@ -44,6 +45,7 @@ export default function Home() {
     <main class="mx-auto text-gray-700 p-6 max-w-6xl">
       <HomeHeader />
       <MetricsCards />
+      <ExamplePopover />
       <ShipmentsTable shipments={shipments() ?? []} onRefresh={refreshContainer} />
       <TimelineAlerts />
     </main>

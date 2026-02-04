@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* https://base-ui-docs-solid.vercel.app/solid/overview/quick-start */
+/* BaseUI Portals isolation (to be on top) */
+.root {
+    isolation: isolate;
+}
