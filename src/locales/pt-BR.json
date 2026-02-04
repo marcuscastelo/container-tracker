@@ -22,6 +22,7 @@
       "title": "Resumo dos Embarques",
       "col": {
         "process": "Processo",
+        "carrier": "Armador",
         "client": "Cliente",
         "route": "Origem → Destino",
         "containers": "Containers",
@@ -38,6 +39,7 @@
   "shipmentView": {
     "backToList": "Voltar para Embarques",
     "header": "Processo",
+    "carrier": "Armador",
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Não disponível",

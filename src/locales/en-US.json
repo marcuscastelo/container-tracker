@@ -22,6 +22,7 @@
       "title": "Shipments Overview",
       "col": {
         "process": "Process",
+        "carrier": "Carrier",
         "client": "Client",
         "route": "Origin → Destination",
         "containers": "Containers",
@@ -38,6 +39,7 @@
   "shipmentView": {
     "backToList": "Back to Shipments",
     "header": "Process",
+    "carrier": "Carrier",
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Not available",

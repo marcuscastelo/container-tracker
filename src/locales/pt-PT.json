@@ -22,6 +22,7 @@
       "title": "Resumo das Expedições",
       "col": {
         "process": "Processo",
+        "carrier": "Armador",
         "client": "Cliente",
         "route": "Origem → Destino",
         "containers": "Contentores",
@@ -38,6 +39,7 @@
   "shipmentView": {
     "backToList": "Voltar para Expedições",
     "header": "Processo",
+    "carrier": "Armador",
     "status": "Estado",
     "eta": "ETA",
     "etaMissing": "Não disponível",

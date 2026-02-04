@@ -19,6 +19,7 @@ const keys = {
   timelineActual: 'shipmentView.timeline.actual',
   alertsTitle: 'shipmentView.alerts.title',
   alertsEmpty: 'shipmentView.alerts.empty',
+  carrier: 'shipmentView.carrier',
   etaMissing: 'shipmentView.etaMissing',
   loading: 'shipmentView.loading',
   notFound: 'shipmentView.notFound',
@@ -479,6 +480,10 @@ export function ShipmentView(): JSX.Element {
                     <div class="text-right">
                       <p class="text-xs uppercase text-slate-500">{t(keys.status)}</p>
                       <StatusBadge variant={data().status} label={data().statusLabel} />
+                    </div>
+                    <div class="text-center">
+                      <p class="text-xs uppercase text-slate-500">{t(keys.carrier)}</p>
+                      <p class="text-sm font-medium text-slate-900">{data().carrier ?? '—'}</p>
                     </div>
                     <div class="text-right">
                       <p class="text-xs uppercase text-slate-500">{t(keys.eta)}</p>
