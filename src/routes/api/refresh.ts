@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { mapParsedStatusToF1 } from '~/adapters/toCanonical.adapter'
 import { containerStatusUseCases } from '~/modules/container'
 import { getProvider } from './refresh-providers'
 
@@ -135,11 +136,27 @@ export async function POST({ request }: { request: Request }) {
     parsedStatus = sanitizeValue(parsedStatus) as Record<string, unknown>
 
     try {
+      // Map parsedStatus to canonical F1 shape before saving
+      const mapped = mapParsedStatusToF1(parsedStatus, String(container), provider)
+      if (!mapped.ok) {
+        console.error('refresh: mapping to canonical failed', mapped.error)
+        return respondWithSchema(
+          { error: `mapping to canonical failed: ${mapped.error}` },
+          RefreshErrorResponseSchema,
+          500,
+        )
+      }
+
+      const canonicalStatus = mapped.shipment
       console.log(
-        `refresh: saving container ${container} status to Supabase, status=${JSON.stringify(parsedStatus, null, 2).substring(0, 100)}`,
+        `refresh: saving canonical status for container ${container} to Supabase, shipment id=${canonicalStatus.id}`,
       )
-      await containerStatusUseCases.saveContainerStatus(String(container), parsedStatus)
-      console.log(`refresh: saved container ${container} to Supabase`)
+      // Save canonical object as the status payload
+      await containerStatusUseCases.saveContainerStatus(
+        String(container),
+        canonicalStatus as Record<string, unknown>,
+      )
+      console.log(`refresh: saved canonical container ${container} to Supabase`)
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
       return respondWithSchema(

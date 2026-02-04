@@ -1,3 +1,4 @@
+import * as Msc from '../../schemas/api/msc.api.schema'
 import type {
   Container as NormContainer,
   Event as NormEvent,
@@ -5,7 +6,6 @@ import type {
   Shipment as NormShipment,
 } from '../../schemas/containerStatus.schema'
 import * as Normalized from '../../schemas/containerStatus.schema'
-import * as Msc from '../../schemas/msc.api.schema'
 import { parseDate } from './parseDate'
 
 export function mscToNormalized(payload: unknown): NormShipment {

@@ -1,5 +1,5 @@
-import type { CmaCgmApi } from '../../schemas/cmacgm.api.schema'
-import * as Cma from '../../schemas/cmacgm.api.schema'
+import type { CmaCgmApi } from '../../schemas/api/cmacgm.api.schema'
+import * as Cma from '../../schemas/api/cmacgm.api.schema'
 import type {
   Container as NormContainer,
   Event as NormEvent,
