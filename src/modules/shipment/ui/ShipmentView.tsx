@@ -35,18 +35,53 @@ function carrierTrackUrl(carrier: string | null, containerNumber: string): strin
 
   // Best-effort patterns for major carriers
   if (c.includes('maersk')) {
-    return `https://www.maersk.com/tracking?container=${cn}`
+    return `https://www.maersk.com/tracking/${cn}`
   }
   if (c.includes('msc')) {
-    //www.msc.com/en/track-a-shipment?container=CXDU2058677
-    https: return `https://www.msc.com/en/track-a-shipment?container=${cn}`
+    return `https://www.msc.com/en/track-a-shipment`
   }
   if (c.includes('cma') || c.includes('cma-cgm')) {
-    return `https://www.cma-cgm.com/ebusiness/tracking?container=${cn}`
+    return `https://www.cma-cgm.com/ebusiness/tracking`
   }
 
   // Generic fallback: search the web for the carrier + container
   return `https://www.google.com/search?q=${encodeURIComponent(carrier + ' container ' + containerNumber)}`
+}
+
+// Copy text to clipboard with a fallback for older browsers
+async function copyToClipboard(text: string): Promise<void> {
+  if (!text) return
+  try {
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+  } catch {
+    // ignore and try fallback
+  }
+
+  // Fallback: textarea + execCommand
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'absolute'
+    ta.style.left = '-9999px'
+    document.body.appendChild(ta)
+    const selection = document.getSelection()
+    const range = document.createRange()
+    range.selectNodeContents(ta)
+    if (selection) {
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+    ta.select()
+    document.execCommand('copy')
+    if (selection) selection.removeAllRanges()
+    document.body.removeChild(ta)
+  } catch {
+    // give up silently
+  }
 }
 
 // Domain types for the shipment view
@@ -373,6 +408,22 @@ function TimelineNode(props: {
                     rel="noopener noreferrer"
                     title="View on carrier site"
                     class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-600"
+                    onClick={async (e) => {
+                      try {
+                        e.preventDefault()
+                        // copy container number to clipboard (best-effort)
+                        if (props.containerNumber) await copyToClipboard(props.containerNumber)
+                      } catch {
+                        /* ignore */
+                      } finally {
+                        // open carrier link in new tab
+                        try {
+                          window.open(trackUrl as string, '_blank')
+                        } catch {
+                          // ignore
+                        }
+                      }
+                    }}
                   >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
