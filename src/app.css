@@ -5,3 +5,28 @@
 .root {
   isolation: isolate;
 }
+
+/* CopyButton ripple animation */
+@keyframes rippleExpand {
+  from {
+    transform: scale(0);
+    opacity: 0.9;
+  }
+
+  to {
+    transform: scale(6);
+    opacity: 0;
+  }
+}
+
+.copy-button-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.18);
+  width: 10px;
+  height: 10px;
+  animation: rippleExpand 650ms ease-out forwards;
+}

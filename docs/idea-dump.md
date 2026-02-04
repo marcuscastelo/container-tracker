@@ -16,3 +16,7 @@ Exibir armador no ShipmentView e Dashboard (table)
 Determinar todos os alertas possíveis e como serão exibidos (cores, ícones, etc)
 Determinar todos os eventos e estados possíveis e como serão exibidos (cores, ícones, etc)
 Locale i18n para alertas em vez de salvar strings fixas no banco de dados
+
+# Debito tecnico
+CopyButton e ShipmentView duplicado clipboard utils
+ShipmentView, Dashboard, refresh, [id] route, estao com parsings e enrichment extensos que deveriam ser feitos na camada de dados/adapters e testáveis

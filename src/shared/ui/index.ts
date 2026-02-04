@@ -1,4 +1,5 @@
 export { AppHeader } from '~/shared/ui/AppHeader'
+export { CopyButton } from '~/shared/ui/CopyButton'
 export { Dialog } from '~/shared/ui/Dialog'
 export { EmptyState } from '~/shared/ui/EmptyState'
 export { FormInput, FormSelect } from '~/shared/ui/FormFields'
