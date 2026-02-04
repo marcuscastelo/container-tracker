@@ -1,58 +1,260 @@
-These instructions help AI coding agents and contributors become productive in this repository quickly. They summarise architecture, important files, conventions, and the specific mapping heuristics used by the PoC loader.
+# Copilot Instructions — Container Tracker
 
-### Quick start (what to run)
-- Node.js >= 22 is required (see `package.json` "engines").
-- Install dependencies and run dev server:
-  - npm install
-  - npm run dev   # runs `vinxi dev`
-- Build for production:
-  ## Purpose
-  Concise guidance for AI coding agents and contributors to become productive quickly in this SolidJS / SolidStart PoC.
+Este documento define **instruções de alto nível e regras operacionais** para uso do GitHub Copilot / LLMs auxiliares no projeto **Container Tracker**.
 
-  ## Quick start (commands)
-  Node.js >= 22 (see `package.json`). Typical local flow:
-  ```bash
-  npm install
-  npm run dev    # runs `vinxi dev` (development, uses Vite)
-  npm run build
-  npm start      # production server
-  ```
+Ele consolida **conhecimento de domínio (logística marítima)**, **boas práticas de arquitetura**, **idiomaticidade em TypeScript, SolidJS e TailwindCSS**, **padrões de segurança**, e **uso correto de BiomeJS/ESLint**.
 
-  ## High-level architecture (why it exists)
-  - UI: `src/` (routes + components) — minimal SolidStart app showing a shipments list.
-  - Data loader: `src/lib/collections.ts` — loads sample JSON payloads from `collections/`, validates with Zod, and maps to a small UI schema.
-  - Schemas: `schemas/containerStatus.schema.ts` (comprehensive) and `schemas/shipment.schema.ts` (UI shape).
-  - Samples: `collections/<provider>/*.json` (provider folders: `maersk`, `cmacgm`, `msc`, ...). The design is to keep provider raw payloads for robust fallbacks.
+> Regra de ouro: **o domínio manda no código e na UI**. Nunca simplifique a realidade operacional para “facilitar” a implementação.
 
-  ## Key patterns & conventions (actionable)
-  - Always map from the original raw object, not the Zod-parsed value, when you need provider-specific keys. See `src/lib/collections.ts` — it validates but uses the raw payload for mapping.
-  - Dev vs SSR loading:
-    - Dev/client: uses `import.meta.globEager('../../collections/**/*.json')` (bundles samples).
-    - SSR/node: falls back to reading `collections/` from disk with `fs` (useful for server-side rendering/testing).
-  - Container number heuristics: checks normalized fields first, then common keys (`container_number`, `ContainerNumber`), then filename fallback.
-  - Carrier inference: prefer normalized/operator fields; otherwise derive from the folder name (`collections/<provider>/...`).
-  - Origin/destination & ETA: layered fallbacks with provider-specific logic (see `src/lib/collections.ts` for exact order). ETA parsing accepts `/Date(...)`, ISO, timestamps, and `DD/MM/YYYY` formats.
+---
 
-  ## Important files to inspect when changing behaviour
-  - `src/lib/collections.ts` — the core loader + mapper. If you edit it, test both dev (Vite) and SSR behaviour.
-  - `schemas/containerStatus.schema.ts` — full Zod schema used for validation and normalization.
-  - `schemas/shipment.schema.ts` — the minimal UI schema components expect.
-  - `src/routes/index.tsx` — example consumer of `getPoCShipments()`.
-  - `collections/*/*.json` — add samples here to exercise provider-specific mapping.
+## 1. Papel do Copilot no Projeto
 
-  ## Debugging tips
-  - Logs: loader emits `console.debug/warn/error` showing whether globEager or fs path was used and which fallbacks were selected.
-  - To reproduce SSR behaviour locally, run the built server (`npm run build && npm start`) and check server logs (not the browser console).
+O Copilot deve atuar como:
 
-  ## Adding a new provider (practical steps)
-  1. Add JSON to `collections/<new-provider>/example.json`.
-  2. Add provider-specific mapping heuristics in `src/lib/collections.ts` (follow existing patterns: container extraction, carrier inference, origin/ETA fallbacks).
-  3. Run dev and build+start to verify both client and SSR loading paths.
+* **Assistente técnico de Product + Engineering**
+* Especialista em **Track & Trace marítimo B2B**
+* Guardião de **consistência de domínio, tipagem forte e UX operacional**
 
-  ## Minimal examples from this repo
-  - Sample path: `collections/msc/CXDU2058677.json` — used to exercise MSC-specific fallbacks like `Data.BillOfLadings`.
-  - See `src/routes/index.tsx` for how the UI consumes the simplified shipment objects returned by the loader.
+O Copilot **NÃO** deve:
 
-  ## Keep in mind
-  - The loader intentionally preserves unknown provider fields so the UI (or future mappings) can fallback — do not strip unknowns prematurely.
-  - There are no unit tests in the repo; validate changes by adding sample JSON and verifying UI + server logs.
+* Inventar dados de carriers
+* Ocultar incertezas (ETAs ausentes, eventos faltantes)
+* Criar abstrações genéricas sem lastro no domínio
+* Introduzir lógica de negócio em componentes de UI
+
+---
+
+## 2. Princípios de Arquitetura
+
+### 2.1 Separação de Camadas
+
+Organizar o código em camadas explícitas:
+
+* **Domain**
+
+  * Entidades (Shipment, Container, Event, Alert)
+  * Regras de derivação de estado
+  * Tipos canônicos
+* **Application**
+
+  * Casos de uso
+  * Orquestração de eventos
+  * Normalização de dados de carriers
+* **Infrastructure**
+
+  * Fetchers / scrapers / APIs
+  * Parsers
+  * Persistência
+* **UI (SolidJS)**
+
+  * Componentes puros
+  * Nenhuma regra de domínio pesada
+
+Copilot deve **recusar** colocar regras de derivação dentro da UI.
+
+---
+
+## 3. Domínio — Regras Invioláveis
+
+### 3.1 Estados são Derivados
+
+* **Nunca persistir estado final**
+* Estado atual = último evento relevante + regras
+* Eventos são fatos imutáveis
+
+### 3.2 Dados Incompletos São Válidos
+
+* ETA ausente é um estado explícito
+* Timeline pode ter buracos
+* UI deve explicar a ausência
+
+### 3.3 Raw Payload Sempre Preservado
+
+* Nunca descartar payload original do carrier
+* Parsing falho gera `Alert[data]`
+
+---
+
+## 4. TypeScript — Boas Práticas Obrigatórias
+
+### 4.1 Tipagem Forte Sempre
+
+* `any` é proibido
+* Preferir `unknown` + type guards
+* Usar `readonly` sempre que possível
+
+### 4.2 Tipos Canônicos
+
+* Definir enums/union types fechados para:
+
+  * ContainerStatus
+  * EventType
+  * AlertCategory
+  * Severity
+
+### 4.3 Narrowing Explícito
+
+* Nunca assumir forma de dados externos
+* Criar guards como:
+
+  * `isCarrierEvent()`
+  * `isExpectedEvent()`
+
+### 4.4 Funções Pequenas e Determinísticas
+
+* Sem efeitos colaterais escondidos
+* Regras de domínio devem ser puras
+
+---
+
+## 5. BiomeJS / ESLint
+
+### 5.1 Biome como Fonte Primária
+
+* Formatter + Linter principal
+* Configuração minimalista e explícita
+
+### 5.2 Regras Essenciais
+
+* No unused vars
+* No implicit any
+* No floating promises
+* Prefer const
+* Explicit return types em funções públicas
+
+### 5.3 ESLint Apenas Onde Biome Não Cobre
+
+* Regras específicas de framework
+* Plugins muito específicos
+
+Copilot **não deve** sugerir configs redundantes entre Biome e ESLint.
+
+---
+
+## 6. Segurança
+
+### 6.1 Input Não Confiável
+
+* Todo dado externo é hostil
+* Validar payloads com Zod
+
+### 6.2 Scraping / APIs
+
+* Rate limiting explícito
+* Retry controlado
+* Timeouts definidos
+
+### 6.3 UI
+
+* Nunca renderizar HTML bruto
+* Escapar strings externas
+
+---
+
+## 7. SolidJS — Idiomaticidade
+
+### 7.1 Reatividade Correta
+
+* Usar `createSignal` para estado local
+* Usar `createMemo` para derivação
+* Nunca derivar estado imperativamente
+
+### 7.2 Efeitos
+
+* `createEffect` apenas para side-effects
+* Nunca para computação
+
+### 7.3 Componentes
+
+* Componentes devem ser **puros**
+* Props bem tipadas
+* Estados: `loading | empty | error | ready`
+
+### 7.4 Performance
+
+* Evitar reatividade profunda desnecessária
+* Preferir dados normalizados
+
+---
+
+## 8. TailwindCSS — Idiomaticidade
+
+### 8.1 Sem CSS Arbitrário
+
+* Usar classes utilitárias
+* Evitar `style={}` inline
+
+### 8.2 Design Operacional
+
+* UI densa
+* Espaçamento funcional
+* Priorizar legibilidade de tabela
+
+### 8.3 Estados Visuais Claros
+
+* Status nunca só por cor
+* Ícone + texto
+
+---
+
+## 9. UI Operacional
+
+### 9.1 Tabelas
+
+* Uma linha = um container/processo
+* Status e ETA sempre visíveis
+* Hover mostra último evento
+
+### 9.2 Alertas
+
+* Alertas são eventos, não flags mágicas
+* Severidade clara
+
+---
+
+## 10. Microcopy e i18n
+
+* Texto curto e operacional
+* Nunca esconder erro
+* Strings sempre via chave i18n
+
+---
+
+## 11. Testes
+
+### 11.1 Domínio
+
+* Testar regras de derivação
+* Casos incompletos e inconsistentes
+
+### 11.2 UI
+
+* Estados vazios
+* Dados quebrados
+
+---
+
+## 12. Anti‑Padrões (Copilot Deve Evitar)
+
+* Abstrações genéricas sem domínio
+* `any` para “resolver rápido”
+* UI que esconde incerteza
+* Lógica de negócio em componentes
+* Estados mágicos não rastreáveis
+
+---
+
+## 13. Checklist Mental do Copilot
+
+Antes de gerar código, o Copilot deve se perguntar:
+
+1. Isso respeita o domínio marítimo real?
+2. A incerteza está visível?
+3. A tipagem está forte e explícita?
+4. A lógica está no lugar correto?
+5. A UI ajuda o operador ou atrapalha?
+
+---
+
+**Se houver dúvida, priorize clareza, rastreabilidade e fidelidade operacional.**
