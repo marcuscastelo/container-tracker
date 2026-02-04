@@ -27,6 +27,28 @@ const keys = {
   processCreated: 'shipmentView.processCreated',
 }
 
+// Return a tracking URL for common carriers. If unknown, returns a safe search fallback.
+function carrierTrackUrl(carrier: string | null, containerNumber: string): string | null {
+  if (!carrier || !containerNumber) return null
+  const c = carrier.toLowerCase()
+  const cn = encodeURIComponent(containerNumber)
+
+  // Best-effort patterns for major carriers
+  if (c.includes('maersk')) {
+    return `https://www.maersk.com/tracking?container=${cn}`
+  }
+  if (c.includes('msc')) {
+    //www.msc.com/en/track-a-shipment?container=CXDU2058677
+    https: return `https://www.msc.com/en/track-a-shipment?container=${cn}`
+  }
+  if (c.includes('cma') || c.includes('cma-cgm')) {
+    return `https://www.cma-cgm.com/ebusiness/tracking?container=${cn}`
+  }
+
+  // Generic fallback: search the web for the carrier + container
+  return `https://www.google.com/search?q=${encodeURIComponent(carrier + ' container ' + containerNumber)}`
+}
+
 // Domain types for the shipment view
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
 
@@ -277,6 +299,8 @@ function AlertIcon(props: { readonly type: AlertDisplay['type'] }): JSX.Element 
 function TimelineNode(props: {
   readonly event: TimelineEvent
   readonly isLast: boolean
+  readonly carrier?: string | null
+  readonly containerNumber?: string | null
 }): JSX.Element {
   const nodeStyles = (): { dot: string; line: string; text: string } => {
     switch (props.event.status) {
@@ -308,6 +332,7 @@ function TimelineNode(props: {
   }
 
   const styles = nodeStyles()
+  const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
 
   return (
     <div class="flex gap-4">
@@ -337,7 +362,29 @@ function TimelineNode(props: {
                 </Show>
               }
             >
-              <p class="text-xs text-slate-600">{props.event.date}</p>
+              <div class="flex items-center justify-end gap-2">
+                <p class="text-xs text-slate-600">{props.event.date}</p>
+
+                {/* Small neutral badge linking to carrier tracking (rarely used) */}
+                <Show when={trackUrl}>
+                  <a
+                    href={trackUrl as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View on carrier site"
+                    class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-600"
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
+                      />
+                    </svg>
+                  </a>
+                </Show>
+              </div>
             </Show>
           </div>
         </div>
@@ -726,6 +773,8 @@ export function ShipmentView(): JSX.Element {
                               <TimelineNode
                                 event={event}
                                 isLast={index() === (selectedContainer()?.timeline.length ?? 0) - 1}
+                                carrier={data().carrier}
+                                containerNumber={selectedContainer()?.number}
                               />
                             )}
                           </For>
