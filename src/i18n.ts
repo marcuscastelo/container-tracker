@@ -37,12 +37,12 @@ const initialLng =
     ? storedLang
     : availableLocales.includes(i18next.language)
       ? i18next.language
-      : (availableLocales[0] ?? 'en')
+      : (availableLocales[0] ?? 'en-US')
 
 const initOptions: InitOptions = {
   resources,
   lng: initialLng,
-  fallbackLng: availableLocales.includes('en') ? 'en' : (availableLocales[0] ?? 'en'),
+  fallbackLng: availableLocales.includes('en-US') ? 'en-US' : (availableLocales[0] ?? 'en-US'),
   interpolation: { escapeValue: false },
 }
 
