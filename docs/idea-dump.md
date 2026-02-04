@@ -8,6 +8,7 @@ Permitir usuário ver alertas dismissed/acked em uma seção separada para audit
 When `Container MNBU3094033 already exists in the system`, provide a link to that process/container's page so user can quickly navigate to it
 
 Sistema de UNDO para alertas acked/dismissed, outras acoes importantes (dificil, pensar se vale a pena agora para evitar retrabalho ou deixa para depois)
+Em vez de forçar a ISO 6346, apenas exibir um warning na criacao/edicao do processo/ adicao de container e um badge amarelo no container view (evita retrabalho e frustraçao do usuario, mas ainda avisa que o container pode ser invalido)
 
 # TODO
 Exibir armador no ShipmentView e Dashboard (table)
