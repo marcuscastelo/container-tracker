@@ -54,7 +54,36 @@ export function mapParsedStatusToF1(
       }
     }
 
-    const status = c?.status ?? p?.current_status ?? p?.status ?? null
+    const statusRaw = c?.status ?? p?.current_status ?? p?.status ?? null
+    // Normalize status into canonical ContainerStatusEnum when possible
+    const canonicalStatuses = new Set([
+      'UNKNOWN',
+      'AWAITING_DATA',
+      'GATE_IN',
+      'LOADED_ON_VESSEL',
+      'DEPARTED',
+      'IN_TRANSIT',
+      'ARRIVED_AT_POD',
+      'DISCHARGED',
+      'CUSTOMS_HOLD',
+      'CUSTOMS_RELEASED',
+      'AVAILABLE_FOR_PICKUP',
+      'DELIVERED',
+      'EMPTY_RETURNED',
+      'CANCELLED',
+    ])
+    function mapStatusToCanonical(s: unknown): string | null {
+      if (!s && s !== 0) return null
+      const raw = String(s).toUpperCase().replace(/\s+/g, '_')
+      if (canonicalStatuses.has(raw)) return raw
+      // common synonyms
+      if (raw === 'AVAILABLE') return 'AVAILABLE_FOR_PICKUP'
+      if (raw === 'LOADED') return 'LOADED_ON_VESSEL'
+      if (raw === 'GATEIN' || raw === 'GATE-IN') return 'GATE_IN'
+      if (raw === 'GATEOUT' || raw === 'GATE-OUT') return 'UNKNOWN'
+      return null
+    }
+    const status = mapStatusToCanonical(statusRaw)
 
     const eventsRaw = c?.events ?? c?.Events ?? p?.events ?? p?.Events ?? null
     const events = Array.isArray(eventsRaw)
