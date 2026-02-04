@@ -1,0 +1,174 @@
+import { readdir, readFile } from 'fs/promises'
+import path from 'path'
+
+async function readJson(file) {
+  const txt = await readFile(file, 'utf8')
+  return JSON.parse(txt)
+}
+
+function flatten(obj, prefix = '') {
+  const out = []
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}.${k}` : k
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      out.push(...flatten(v, key))
+    } else {
+      out.push(key)
+    }
+  }
+  return out
+}
+
+async function findFiles(dir, exts = ['.ts', '.tsx', '.js', '.jsx']) {
+  const entries = await readdir(dir, { withFileTypes: true })
+  let files = []
+  for (const e of entries) {
+    const res = path.join(dir, e.name)
+    if (e.isDirectory()) files = files.concat(await findFiles(res, exts))
+    else if (exts.includes(path.extname(e.name))) files.push(res)
+  }
+  return files
+}
+
+async function main() {
+  const localesDir = path.join(process.cwd(), 'src', 'locales')
+  let localeFiles = []
+  try {
+    const all = await readdir(localesDir)
+    localeFiles = all.filter((f) => f.endsWith('.json')).map((f) => path.join(localesDir, f))
+  } catch (err) {
+    console.error('Could not read locales directory:', err.message)
+    process.exit(2)
+  }
+
+  if (localeFiles.length === 0) {
+    console.error('No locale JSON files found in src/locales')
+    process.exit(2)
+  }
+
+  const locales = {}
+  for (const f of localeFiles) {
+    try {
+      const j = await readJson(f)
+      const name = path.basename(f, '.json')
+      locales[name] = new Set(flatten(j))
+    } catch (err) {
+      console.error('Failed parsing', f, err.message)
+      process.exit(2)
+    }
+  }
+
+  const refLocale = locales['en'] ? 'en' : Object.keys(locales)[0]
+  const refKeys = locales[refLocale]
+  console.log(`Reference locale: ${refLocale} (${refKeys.size} keys)`)
+
+  // scan code for used keys
+  const srcDir = path.join(process.cwd(), 'src')
+  const files = await findFiles(srcDir)
+  const usedKeys = new Set()
+  const usedKeyLocations = {}
+
+  // only consider string literals that look like i18n keys (contain a dot)
+  // match t('...') but avoid matching other identifiers like alert(...)
+  const literalRegex = /\bt\s*\(\s*['"`]([^'"`]+)['"`]/g
+  // capture any local const object used as keys, e.g. `const keys = { ... }` or `const asdf = { ... }`
+  const constObjRegex = /const\s+([A-Za-z0-9_]+)\s*=\s*{([\s\S]*?)}\s*;?/gm
+  const keyEntryRegex = /([A-Za-z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`]/g
+  // detect usages like t(someVar.someKey)
+  const keysUsageRegex = /\bt\s*\(\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\)/g
+
+  for (const file of files) {
+    const content = await readFile(file, 'utf8')
+
+    let m
+    while ((m = literalRegex.exec(content))) {
+      const cand = m[1].trim()
+      // only accept candidates that look like i18n keys (e.g. contain a dot)
+      if (cand.includes('.')) {
+        usedKeys.add(cand)
+        usedKeyLocations[cand] = usedKeyLocations[cand] || new Set()
+        usedKeyLocations[cand].add(file)
+      }
+    }
+
+    // map local const objects that look like key maps (not just `keys` literal)
+    const localMap = {}
+    while ((m = constObjRegex.exec(content))) {
+      const varName = m[1]
+      const body = m[2]
+      let e
+      while ((e = keyEntryRegex.exec(body))) {
+        // only map values that look like i18n keys (contain a dot)
+        if (e[2] && e[2].includes('.')) {
+          localMap[varName] = localMap[varName] || {}
+          localMap[varName][e[1]] = e[2]
+        }
+      }
+    }
+
+    // usages like t(someVar.someKey)
+    while ((m = keysUsageRegex.exec(content))) {
+      const varName = m[1]
+      const prop = m[2]
+      if (varName in localMap && localMap[varName] && prop in localMap[varName]) {
+        const mapped = localMap[varName][prop]
+        usedKeys.add(mapped)
+        usedKeyLocations[mapped] = usedKeyLocations[mapped] || new Set()
+        usedKeyLocations[mapped].add(file)
+      }
+      // if not found, ignore — avoids false positives when keys object is imported or built dynamically
+    }
+  }
+
+  // report missing keys per locale
+  let totalMissing = 0
+  for (const [loc, keysSet] of Object.entries(locales)) {
+    if (loc === refLocale) continue
+    const missing = [...refKeys].filter((k) => !keysSet.has(k))
+    if (missing.length) {
+      console.error(`Locale '${loc}' is missing ${missing.length} keys compared to ${refLocale}:`)
+      for (const k of missing) console.error('  -', k)
+      totalMissing += missing.length
+    } else {
+      console.log(`Locale '${loc}': OK`)
+    }
+  }
+
+  // unused keys warnings (present in locale but not used anywhere)
+  const unused = {}
+  for (const [loc, keysSet] of Object.entries(locales)) {
+    const unusedKeys = [...keysSet].filter((k) => !usedKeys.has(k))
+    unused[loc] = unusedKeys
+    if (unusedKeys.length) {
+      console.warn(`Locale '${loc}' has ${unusedKeys.length} keys that appear unused:`)
+      for (const k of unusedKeys.slice(0, 50)) console.warn('  -', k)
+      if (unusedKeys.length > 50) console.warn(`  ...and ${unusedKeys.length - 50} more`)
+    }
+  }
+
+  // keys used in code but not present in reference
+  const usedButMissing = [...usedKeys].filter((k) => !refKeys.has(k))
+  if (usedButMissing.length) {
+    console.warn(`There are ${usedButMissing.length} keys used in code but not present in reference locale (${refLocale}):`)
+    for (const k of usedButMissing.slice(0, 100)) {
+      console.warn('  -', k)
+      const locs = usedKeyLocations[k]
+      if (locs && locs.size) {
+        for (const l of Array.from(locs).slice(0, 5)) console.warn('      ->', l)
+      }
+    }
+  }
+
+  console.log('Summary:')
+  console.log('  reference locale:', refLocale)
+  console.log('  total files scanned:', files.length)
+  console.log('  total usedKeys detected:', usedKeys.size)
+  console.log('  total missing keys:', totalMissing)
+
+  if (totalMissing > 0) process.exit(1)
+}
+
+main().catch((err) => {
+  console.error(err)
+  process.exit(2)
+})
