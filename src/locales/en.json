@@ -19,6 +19,70 @@
     "shipments": "Shipments",
     "containers": "Containers"
   },
+  "header": {
+    "brand": "Container Tracker",
+    "nav": {
+      "dashboard": "Dashboard",
+      "shipments": "Shipments",
+      "containers": "Containers"
+    },
+    "createProcess": "+ Create Process"
+  },
+  "dashboard": {
+    "pageTitle": "Dashboard",
+    "metrics": {
+      "activeShipments": "Active Shipments",
+      "inTransit": "In Transit",
+      "delays": "Delays",
+      "arrivalsToday": "Arrivals Today"
+    },
+    "table": {
+      "title": "Shipments Overview",
+      "col": {
+        "process": "Process",
+        "route": "Origin → Destination",
+        "containers": "Containers",
+        "status": "Status",
+        "eta": "ETA"
+      }
+    },
+    "empty": {
+      "title": "No shipments yet",
+      "description": "Create your first process to start tracking containers.",
+      "action": "Create Process"
+    }
+  },
+  "shipmentView": {
+    "backToList": "Back to Shipments",
+    "header": "Process",
+    "origin": "Origin",
+    "destination": "Destination",
+    "status": "Status",
+    "eta": "ETA",
+    "etaMissing": "Not available",
+    "containers": {
+      "title": "Containers"
+    },
+    "timeline": {
+      "title": "Container Timeline",
+      "expected": "Expected",
+      "actual": "Actual"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "empty": "No alerts for this shipment."
+    }
+  },
+  "status": {
+    "inTransit": "In Transit",
+    "delayed": "Delayed",
+    "loaded": "Loaded on Vessel",
+    "customs": "Customs Clearance",
+    "released": "Released for Pickup",
+    "delivered": "Delivered",
+    "pending": "Pending",
+    "unknown": "Unknown"
+  },
   "metrics": {
     "activeShipments": "Active Shipments",
     "inTransit": "Containers in Transit",

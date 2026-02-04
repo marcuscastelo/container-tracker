@@ -19,6 +19,70 @@
     "shipments": "Embarques",
     "containers": "Containers"
   },
+  "header": {
+    "brand": "Container Tracker",
+    "nav": {
+      "dashboard": "Dashboard",
+      "shipments": "Embarques",
+      "containers": "Containers"
+    },
+    "createProcess": "+ Criar Processo"
+  },
+  "dashboard": {
+    "pageTitle": "Dashboard",
+    "metrics": {
+      "activeShipments": "Embarques Ativos",
+      "inTransit": "Em Trânsito",
+      "delays": "Atrasos",
+      "arrivalsToday": "Chegadas Hoje"
+    },
+    "table": {
+      "title": "Resumo dos Embarques",
+      "col": {
+        "process": "Processo",
+        "route": "Origem → Destino",
+        "containers": "Containers",
+        "status": "Status",
+        "eta": "ETA"
+      }
+    },
+    "empty": {
+      "title": "Nenhum embarque ainda",
+      "description": "Crie seu primeiro processo para começar a rastrear containers.",
+      "action": "Criar Processo"
+    }
+  },
+  "shipmentView": {
+    "backToList": "Voltar para Embarques",
+    "header": "Processo",
+    "origin": "Origem",
+    "destination": "Destino",
+    "status": "Status",
+    "eta": "ETA",
+    "etaMissing": "Não disponível",
+    "containers": {
+      "title": "Containers"
+    },
+    "timeline": {
+      "title": "Timeline do Container",
+      "expected": "Previsto",
+      "actual": "Realizado"
+    },
+    "alerts": {
+      "title": "Alertas",
+      "empty": "Nenhum alerta para este embarque."
+    }
+  },
+  "status": {
+    "inTransit": "Em Trânsito",
+    "delayed": "Atrasado",
+    "loaded": "Carregado no Navio",
+    "customs": "Despacho Aduaneiro",
+    "released": "Liberado para Retirada",
+    "delivered": "Entregue",
+    "pending": "Pendente",
+    "unknown": "Desconhecido"
+  },
   "metrics": {
     "activeShipments": "Embarques Ativos",
     "inTransit": "Containers em Trânsito",
