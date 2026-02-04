@@ -61,12 +61,6 @@ export async function POST({ request }: { request: Request }) {
       )
     const container = parsedReq.data.container
     const provider = parsedReq.data.carrier || 'unknown'
-    // Fetch container record from DB
-    const rec = await containerStatusUseCases.getContainerStatus(String(container))
-    if (!rec)
-      return new Response(JSON.stringify({ error: 'container not found in DB', container }), {
-        status: 404,
-      })
 
     // If provider is Maersk we keep the existing redirect to the puppeteer handler
     if (provider === 'maersk') {

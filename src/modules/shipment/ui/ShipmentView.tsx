@@ -3,6 +3,8 @@ import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '../../../i18n'
 import { AppHeader, StatusBadge, type StatusVariant } from '../../../shared/ui'
+import { CreateProcessDialog } from '../../process'
+import type { FormData as ProcessFormData } from '../../process/ui/CreateProcessDialog'
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -51,11 +53,16 @@ type ContainerDetail = {
   readonly statusLabel: string
   readonly eta: string | null
   readonly timeline: readonly TimelineEvent[]
+  readonly isoType?: string | null
 }
 
 type ShipmentDetail = {
   readonly id: string
   readonly processRef: string
+  readonly reference?: string | null
+  readonly operationType?: string
+  readonly carrier?: string | null
+  readonly bl_reference?: string | null
   readonly origin: string
   readonly destination: string
   readonly status: StatusVariant
@@ -139,6 +146,10 @@ async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
   return {
     id: data.id,
     processRef: data.reference || `Process ${data.id.slice(0, 8)}`,
+    reference: data.reference,
+    operationType: data.operation_type,
+    carrier: data.carrier,
+    bl_reference: data.bl_reference,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: 'unknown',
@@ -147,6 +158,7 @@ async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
     containers: data.containers.map((c) => ({
       id: c.id,
       number: c.container_number,
+      isoType: c.iso_type ?? null,
       status: 'unknown' as StatusVariant,
       statusLabel: c.initial_status === 'booked' ? 'Booked' : 'Unknown',
       eta: null,
@@ -299,10 +311,90 @@ export function ShipmentView(): JSX.Element {
   const { t } = useTranslation()
   const params = useParams()
 
-  const [shipment] = createResource(
+  const [shipment, { refetch }] = createResource(
     () => params.id,
     (id) => fetchProcess(id),
   )
+
+  const [isRefreshing, setIsRefreshing] = createSignal(false)
+
+  async function triggerRefresh() {
+    const data = shipment()
+    if (!data) return
+    const containers = data.containers
+    if (!containers || containers.length === 0) return
+
+    try {
+      setIsRefreshing(true)
+      // For each container, call POST /api/refresh with container and carrier
+      const promises = containers.map((c) =>
+        fetch('/api/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ container: c.number, carrier: data.carrier ?? null }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const text = await res.text().catch(() => '')
+            throw new Error(`refresh failed for ${c.number}: ${res.status} ${text}`)
+          }
+          return res.json().catch(() => ({}))
+        }),
+      )
+
+      // Wait for all refreshes to finish (failures will reject)
+      await Promise.all(promises)
+    } catch (err) {
+      console.error('Failed to refresh containers:', err)
+    } finally {
+      setIsRefreshing(false)
+      // After syncing with external APIs, refetch the process data
+      try {
+        await refetch()
+      } catch (err) {
+        console.error('Failed to refetch after refresh:', err)
+      }
+    }
+  }
+
+  // Edit dialog state
+  const [isEditOpen, setIsEditOpen] = createSignal(false)
+  const [editInitialData, setEditInitialData] = createSignal<ProcessFormData | null>(null)
+
+  const handleEditSubmit = async (formData: ProcessFormData) => {
+    try {
+      // Map UI form data to API shape
+      const input: Record<string, unknown> = {
+        reference: formData.reference || null,
+        operation_type: formData.operationType || undefined,
+        origin: formData.origin ? { display_name: formData.origin } : null,
+        destination: formData.destination ? { display_name: formData.destination } : null,
+        carrier: formData.carrier || null,
+        bl_reference: formData.blReference || null,
+        containers: formData.containers.map((c) => ({
+          container_number: c.containerNumber,
+          iso_type: c.isoType || null,
+        })),
+      }
+
+      const res = await fetch(`/api/processes/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+
+      if (!res.ok) {
+        throw new Error(`Failed to update process: ${res.statusText}`)
+      }
+
+      // Refresh data
+      await refetch()
+      setIsEditOpen(false)
+    } catch (err) {
+      console.error('Failed to update process:', err)
+      // Could show UI error; for now just log and close
+      setIsEditOpen(false)
+    }
+  }
 
   const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
 
@@ -331,6 +423,13 @@ export function ShipmentView(): JSX.Element {
   return (
     <div class="min-h-screen bg-slate-50">
       <AppHeader />
+      <CreateProcessDialog
+        open={isEditOpen()}
+        onClose={() => setIsEditOpen(false)}
+        initialData={editInitialData()}
+        mode="edit"
+        onSubmit={handleEditSubmit}
+      />
 
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Back link */}
@@ -386,6 +485,82 @@ export function ShipmentView(): JSX.Element {
                       <p class="text-sm font-medium text-slate-900">
                         {data().eta ?? t(keys.etaMissing)}
                       </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => triggerRefresh()}
+                        class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${
+                          isRefreshing() ? 'opacity-60 pointer-events-none' : ''
+                        }`}
+                        title="Refresh"
+                        aria-busy={isRefreshing()}
+                        disabled={isRefreshing()}
+                      >
+                        {isRefreshing() ? (
+                          <svg
+                            class="h-4 w-4 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                          >
+                            <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
+                            <path
+                              d="M22 12a10 10 0 00-10-10"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            class="h-4 w-4"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M4 4v6h6M20 20v-6h-6"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // prepare initial form data
+                          const d = data()
+                          if (!d) return
+                          const initial = {
+                            reference: d.reference ?? '',
+                            operationType: d.operationType ?? '',
+                            origin: d.origin || '',
+                            destination: d.destination || '',
+                            containers: d.containers.map((c) => ({
+                              id: c.id,
+                              containerNumber: c.number,
+                              isoType: c.isoType ?? '',
+                            })),
+                            carrier: d.carrier || '',
+                            blReference: d.bl_reference || '',
+                          }
+                          setEditInitialData(initial)
+                          setIsEditOpen(true)
+                        }}
+                        class="rounded-md p-2 text-slate-500 hover:bg-slate-100"
+                        title="Edit"
+                      >
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536M4 20l7.5-1.5L20 9l-7.5-7.5L4 20z"
+                          />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </div>

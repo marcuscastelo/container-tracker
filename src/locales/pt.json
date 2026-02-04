@@ -126,6 +126,7 @@
   },
   "createProcess": {
     "title": "Criar Processo",
+    "titleEdit": "Editar Processo",
     "description": "Defina um novo embarque para rastrear um ou mais containers.",
     "section": {
       "identification": "Identificação",
@@ -165,6 +166,7 @@
       "addContainer": "Adicionar container",
       "removeContainer": "Remover container",
       "create": "Criar Processo",
+      "update": "Salvar alterações",
       "cancel": "Cancelar"
     }
   },

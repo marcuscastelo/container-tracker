@@ -165,6 +165,7 @@
       "addContainer": "Add container",
       "removeContainer": "Remove container",
       "create": "Create Process",
+      "update": "Save changes",
       "cancel": "Cancel"
     }
   },

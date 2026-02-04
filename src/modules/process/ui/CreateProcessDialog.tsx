@@ -1,11 +1,12 @@
 import type { JSX } from 'solid-js'
-import { createSignal, For } from 'solid-js'
+import { createEffect, createSignal, For } from 'solid-js'
 import { useTranslation } from '../../../i18n'
 import { Dialog } from '../../../shared/ui/Dialog'
 import { FormInput, FormSelect } from '../../../shared/ui/FormFields'
 
 const keys = {
   title: 'createProcess.title',
+  titleEdit: 'createProcess.titleEdit',
   description: 'createProcess.description',
   // Section: Identification
   sectionIdentification: 'createProcess.section.identification',
@@ -41,16 +42,17 @@ const keys = {
   blReferencePlaceholder: 'createProcess.field.blReferencePlaceholder',
   // Actions
   create: 'createProcess.action.create',
+  update: 'createProcess.action.update',
   cancel: 'createProcess.action.cancel',
 }
 
-type ContainerInput = {
+export type ContainerInput = {
   readonly id: string
   containerNumber: string
   isoType: string
 }
 
-type FormData = {
+export type FormData = {
   reference: string
   operationType: string
   origin: string
@@ -64,6 +66,8 @@ type Props = {
   readonly open: boolean
   readonly onClose: () => void
   readonly onSubmit?: (data: FormData) => void
+  readonly initialData?: FormData | null
+  readonly mode?: 'create' | 'edit'
 }
 
 function generateId(): string {
@@ -86,6 +90,27 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const [carrier, setCarrier] = createSignal('')
   const [blReference, setBlReference] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
+
+  // Populate form when editing
+  createEffect(() => {
+    if (props.open && props.initialData) {
+      setReference(props.initialData.reference || '')
+      setOperationType(props.initialData.operationType || '')
+      setOrigin(props.initialData.origin || '')
+      setDestination(props.initialData.destination || '')
+      setCarrier(props.initialData.carrier || '')
+      setBlReference(props.initialData.blReference || '')
+      setContainers(
+        props.initialData.containers.length
+          ? props.initialData.containers.map((c) => ({
+              id: c.id,
+              containerNumber: c.containerNumber,
+              isoType: c.isoType,
+            }))
+          : [createEmptyContainer()],
+      )
+    }
+  })
 
   const operationOptions = () => [
     { value: 'import', label: t(keys.opImport) },
@@ -176,7 +201,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     <Dialog
       open={props.open}
       onClose={handleClose}
-      title={t(keys.title)}
+      title={t(props.mode === 'edit' ? keys.titleEdit : keys.title)}
       description={t(keys.description)}
       maxWidth="xl"
     >
@@ -344,7 +369,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             type="submit"
             class="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
           >
-            {t(keys.create)}
+            {t(props.mode === 'edit' ? keys.update : keys.create)}
           </button>
         </div>
       </form>

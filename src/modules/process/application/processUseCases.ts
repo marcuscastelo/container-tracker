@@ -7,6 +7,17 @@ import type {
 import { createProcess, findDuplicateContainers, validateContainerNumber } from '../domain/process'
 import type { ProcessRepository } from '../domain/processRepository'
 
+// Input shape used by updateProcess - UI-friendly field names
+export type UpdateProcessInput = {
+  reference?: string | null
+  operationType?: string
+  origin?: unknown
+  destination?: unknown
+  carrier?: string | null
+  blReference?: string | null
+  containers?: Array<{ containerNumber: string; isoType?: string | null }>
+}
+
 /**
  * Process Use Cases
  *
@@ -62,6 +73,11 @@ export type ProcessUseCases = {
    * Remove a container from a process
    */
   removeContainer: (containerId: string, processId: string) => Promise<void>
+
+  /**
+   * Update a process and reconcile its containers (add/remove)
+   */
+  updateProcess: (processId: string, input: UpdateProcessInput) => Promise<ProcessWithContainers>
 }
 
 export function createProcessUseCases(repository: ProcessRepository): ProcessUseCases {
@@ -157,6 +173,79 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       }
 
       return repository.removeContainer(containerId)
+    },
+
+    async updateProcess(processId, input) {
+      // Reconcile containers if provided
+      if (input.containers) {
+        const existing = await repository.fetchContainersByProcessId(processId)
+        const existingByNumber = new Map(existing.map((c) => [c.container_number.toUpperCase(), c]))
+
+        type IncomingContainer = {
+          containerNumber?: string
+          container_number?: string
+          isoType?: string | null
+          iso_type?: string | null
+        }
+
+        // Normalize incoming containers (accept either UI shape or API shape)
+        const incoming = (input.containers as IncomingContainer[]).map((c) => {
+          const containerNumber = (c.containerNumber ?? c.container_number ?? '')
+            .toUpperCase()
+            .trim()
+          const isoType = c.isoType ?? c.iso_type ?? null
+          return { containerNumber, isoType }
+        })
+
+        const incomingNumbers = incoming.map((c) => c.containerNumber)
+
+        // Add new containers
+        for (const inc of incoming) {
+          if (!existingByNumber.has(inc.containerNumber)) {
+            await repository.addContainer(processId, {
+              container_number: inc.containerNumber,
+              iso_type: inc.isoType || null,
+              initial_status: 'unknown',
+              source: 'manual',
+            })
+          }
+        }
+
+        // Remove containers that are not in incoming list
+        for (const ex of existing) {
+          if (!incomingNumbers.includes(ex.container_number.toUpperCase())) {
+            // Ensure we don't remove last container
+            const all = await repository.fetchContainersByProcessId(processId)
+            if (all.length <= 1) {
+              // skip removal to avoid leaving process without containers
+              continue
+            }
+            await repository.removeContainer(ex.id)
+          }
+        }
+      }
+
+      // Map field names from CreateProcessInput -> repository update shape
+      const updates: Record<string, unknown> = {}
+      if (input.reference !== undefined) updates.reference = input.reference
+      if (input.operationType !== undefined) updates.operation_type = input.operationType
+      if (input.origin !== undefined) updates.origin = input.origin
+      if (input.destination !== undefined) updates.destination = input.destination
+      if (input.carrier !== undefined) updates.carrier = input.carrier
+      if (input.blReference !== undefined) updates.bl_reference = input.blReference
+
+      // Call repository.update for provided fields
+      if (Object.keys(updates).length > 0) {
+        // repository.update expects partial Process fields with repository naming
+        await repository.update(
+          processId,
+          updates as Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>>,
+        )
+      }
+
+      const updated = await repository.fetchByIdWithContainers(processId)
+      if (!updated) throw new Error('Process not found after update')
+      return updated
     },
   }
 }
