@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { type ProcessApiResponse, presentProcessList } from '~/modules/dashboard/application/processListPresenter'
+import {
+  type ProcessApiResponse,
+  presentProcessList,
+} from '~/modules/dashboard/application/processListPresenter'
 
 describe('presentProcessList', () => {
   it('maps API response to ProcessSummary array', () => {

@@ -1,10 +1,12 @@
+import type { StatusVariant } from '~/shared/ui/StatusBadge'
+
 export type ProcessSummary = {
   readonly id: string
   readonly reference: string | null
   readonly origin: { display_name?: string | null } | null
   readonly destination: { display_name?: string | null } | null
   readonly containerCount: number
-  readonly status: string
+  readonly status: StatusVariant
   readonly statusLabel: string
   readonly eta: string | null
   readonly carrier: string | null

@@ -47,8 +47,11 @@ export function mapParsedStatusToF1(
     const etaRaw = c?.eta_final_delivery ?? c?.eta ?? p?.eta ?? p?.EstimatedTimeOfArrival ?? null
     let eta: Date | null = null
     if (etaRaw) {
-      const d = new Date(etaRaw)
-      if (!Number.isNaN(d.getTime())) eta = d
+      // Accept strings, numbers or Date instances — guard against object literals
+      if (typeof etaRaw === 'string' || typeof etaRaw === 'number' || etaRaw instanceof Date) {
+        const d = new Date(etaRaw as string | number | Date)
+        if (!Number.isNaN(d.getTime())) eta = d
+      }
     }
 
     const status = c?.status ?? p?.current_status ?? p?.status ?? null
@@ -98,7 +101,13 @@ export function mapParsedStatusToF1(
           : destination
             ? { city: String(destination) }
             : undefined,
-      carrier: p?.source?.api ?? provider ?? null,
+      // p is a loose object; safely read nested source.api if present
+      carrier:
+        (typeof p?.source === 'object' && p?.source !== null
+          ? ((p.source as Record<string, unknown>)['api'] as string | undefined)
+          : undefined) ??
+        provider ??
+        null,
       created_at: now,
       source: { type: 'api' as const, api: provider, fetched_at: now, raw: parsed },
       containers: [container],
