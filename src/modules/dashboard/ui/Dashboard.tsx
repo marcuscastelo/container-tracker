@@ -241,7 +241,7 @@ export function Dashboard(): JSX.Element {
 
   const displayProcessRef = (p: ProcessSummary): string => {
     if (p.reference) return p.reference
-    return `Process ${p.id.slice(0, 8)}`
+    return `<${p.id.slice(0, 8)}>`
   }
 
   const displayRoute = (p: ProcessSummary): { origin: string; destination: string } => {

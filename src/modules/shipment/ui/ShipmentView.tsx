@@ -212,7 +212,7 @@ async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
 
   return {
     id: data.id,
-    processRef: data.reference || `Process ${data.id.slice(0, 8)}`,
+    processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference,
     operationType: data.operation_type,
     carrier: data.carrier,
