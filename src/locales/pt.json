@@ -8,8 +8,7 @@
   },
   "placeholders": {
     "containerNumber": "Número do container"
-  }
-  ,
+  },
   "nav": {
     "home": "Home",
     "about": "Sobre"
@@ -58,5 +57,20 @@
   },
   "counter": {
     "clicks": "Cliques: {{count}}"
+  },
+  "actions": {
+    "refreshing": "Atualizando container {{container}}...",
+    "refreshFailed": "Falha ao atualizar: {{status}} {{error}}",
+    "refreshOk": "Atualização OK — atualizado: {{updatedPath}}",
+    "refreshError": "Erro ao atualizar: {{message}}"
+  },
+  "about": {
+    "title": "Sobre",
+    "learnLinkText": "Visite",
+    "page": "Sobre"
+  },
+  "notfound": {
+    "title": "Não Encontrado",
+    "learn": "Visite"
   }
 }
