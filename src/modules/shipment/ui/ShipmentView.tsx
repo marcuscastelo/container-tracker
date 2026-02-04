@@ -313,8 +313,22 @@ export function ShipmentView(): JSX.Element {
       })
 
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(error.error || 'Failed to create process')
+        const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
+        const asObj = json as Record<string, unknown>
+        if (res.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
+          const existing = asObj.existing as Record<string, unknown>
+          const processId = String(existing.processId ?? existing.process_id ?? '')
+          setIsCreateDialogOpen(false)
+          try {
+            navigate(`/shipments/${processId}`)
+            return
+          } catch {
+            // ignore navigation errors
+          }
+        }
+        throw new Error(
+          String((asObj && (asObj.error ?? asObj.message)) ?? 'Failed to create process'),
+        )
       }
 
       const result = await res.json().catch(() => null)

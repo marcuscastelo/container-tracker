@@ -40,6 +40,11 @@ export type ProcessRepository = {
    * Check if a container number already exists in the system
    */
   containerExists: (containerNumber: string) => Promise<boolean>
+  /**
+   * Fetch a container by its container number. Returns the ProcessContainer or null if not found.
+   * This is useful to resolve which process currently owns a container number.
+   */
+  fetchContainerByNumber: (containerNumber: string) => Promise<ProcessContainer | null>
 
   /**
    * Create a new process with its containers (transactional)

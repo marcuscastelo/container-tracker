@@ -5,7 +5,8 @@ Export to CSV/PDF/XLSX/etc
 Ack em alertas de long periods sem movement (ex: 7 days without events) (talvez ack em todos os alertas? e os estruturais como "No ETA defined" tambem seriam ackeáveis?)
 Adicionar links na timeline que redirecionam para o site do carrier caso o usuario queira ver cruzar os dados com a fonte original
 Permitir usuário ver alertas dismissed/acked em uma seção separada para auditoria e clicks nao intencionais
-When `Container MNBU3094033 already exists in the system`, provide a link to that process/container's page so user can quickly navigate to it
+Add fail fast to CreateProcess if any container already exists in the system, show inline error per container (required new api method /check-containers or similar)
+bug: `Container MRKU2733926 already exists in the system` only appears in dashboard, should appear in ShipmentView too (after CreateProcess or EditProcess)
 
 Sistema de UNDO para alertas acked/dismissed, outras acoes importantes (dificil, pensar se vale a pena agora para evitar retrabalho ou deixa para depois)
 Em vez de forçar a ISO 6346, apenas exibir um warning na criacao/edicao do processo/ adicao de container e um badge amarelo no container view (evita retrabalho e frustraçao do usuario, mas ainda avisa que o container pode ser invalido)
@@ -14,6 +15,9 @@ Em vez de exibir apenas a quantidade de containers no dashboard (table), exibir 
 
 Server roda checagem se api bate com schema, se nao bater, notifica dev via email para manutencao do adapter veloz, antes do usuario ser impactado (melhora a confiabilidade do sistema, evita dados corrompidos chegando ao usuario final)
 Adicionar telemetria e observabilidade (Sentry? OTel?) para monitorar performance, erros e uso do sistema (ajuda a identificar gargalos e melhorar a experiencia do usuario) (Como fica LGPD/privacidade nesse caso? Pensar em anonimizar dados sensiveis, ou pedir consentimento explicito do usuario)
+
+# Refine
+How to delete processes safely or remove containers from a process? (soft delete? hard delete? archive?)
 
 # TODO
 Exibir ícone do armador no ShipmentView e Dashboard (table)

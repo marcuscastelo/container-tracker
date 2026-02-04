@@ -82,8 +82,31 @@ async function createProcessApi(input: CreateProcessInput): Promise<{ id: string
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }))
-    throw new Error(error.error || 'Failed to create process')
+    const json = await response.json().catch(() => ({ error: response.statusText }))
+    // If API returned structured info about existing container, throw that to the caller
+    type ApiExisting = {
+      status: number
+      message?: string
+      existing?: { processId: string; containerId: string; link?: string }
+      error?: string
+    }
+
+    const asObj = json as Record<string, unknown>
+    if (response.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
+      const existing = asObj.existing as Record<string, unknown>
+      const ex = {
+        processId: String(existing.processId ?? existing.process_id ?? existing.processId),
+        containerId: String(existing.containerId ?? existing.container_id ?? existing.id ?? ''),
+        link: String(existing.link ?? ''),
+      }
+      const payload: ApiExisting = {
+        status: 409,
+        message: String(asObj.error ?? asObj.message ?? 'Conflict'),
+        existing: ex,
+      }
+      throw payload
+    }
+    throw new Error(json.error || 'Failed to create process')
   }
 
   const result = await response.json()
@@ -161,7 +184,9 @@ export function Dashboard(): JSX.Element {
   const navigate = useNavigate()
   const [processes, { refetch }] = createResource(fetchProcesses)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
-  const [createError, setCreateError] = createSignal<string | null>(null)
+  const [createError, setCreateError] = createSignal<
+    string | { message: string; processId?: string; containerId?: string } | null
+  >(null)
 
   const metrics = () => {
     const data = processes() ?? []
@@ -219,7 +244,34 @@ export function Dashboard(): JSX.Element {
       navigate(`/shipments/${result.id}`)
     } catch (err) {
       console.error('Failed to create process:', err)
-      setCreateError(err instanceof Error ? err.message : 'Failed to create process')
+      // Type guard for the structured API conflict payload
+      const isExisting = (
+        obj: unknown,
+      ): obj is {
+        status: number
+        message?: string
+        existing?: { processId: string; containerId?: string }
+      } => {
+        if (!obj || typeof obj !== 'object') return false
+        const r = obj as Record<string, unknown>
+        if (!r.existing || typeof r.existing !== 'object') return false
+        const ex = r.existing as Record<string, unknown>
+        return typeof ex.processId === 'string' || typeof ex.process_id === 'string'
+      }
+
+      if (isExisting(err)) {
+        const ex = (err as { existing?: Record<string, unknown> }).existing || {}
+        const processId = String(ex.processId ?? ex.process_id ?? '')
+        const containerId = String(ex.containerId ?? ex.container_id ?? '')
+        const r = err as { message?: string }
+        setCreateError({
+          message: String(r.message ?? 'Container already exists'),
+          processId,
+          containerId,
+        })
+      } else {
+        setCreateError(err instanceof Error ? err.message : 'Failed to create process')
+      }
     }
   }
 
@@ -248,7 +300,22 @@ export function Dashboard(): JSX.Element {
         {/* Error message */}
         <Show when={createError()}>
           <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {createError()}
+            <Show when={typeof createError() === 'string'}>
+              <span>{createError() as string}</span>
+            </Show>
+            <Show when={createError() && typeof createError() === 'object'}>
+              <div>
+                <div>{String((createError() as Record<string, unknown>).message ?? '')}</div>
+                <Show when={Boolean((createError() as Record<string, unknown>).processId)}>
+                  <A
+                    href={`/shipments/${String((createError() as Record<string, unknown>).processId ?? '')}`}
+                    class="font-medium text-slate-900 hover:underline"
+                  >
+                    View existing process
+                  </A>
+                </Show>
+              </div>
+            </Show>
           </div>
         </Show>
 

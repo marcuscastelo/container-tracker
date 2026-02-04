@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
-import { processUseCases } from '~/modules/process'
+import { processUseCases, supabaseProcessRepository } from '~/modules/process'
 import { CreateProcessInputSchema } from '~/modules/process/domain/process'
 
 // Response schemas
@@ -127,6 +127,32 @@ export async function POST({ request }: { request: Request }): Promise<Response>
 
     // Check for known error types
     if (message.includes('already exists')) {
+      // Try to resolve which process owns the container so the UI can link to it
+      try {
+        // Expect message like: "Container MNBU3094033 already exists in the system"
+        const m = message.match(/Container\s+([A-Za-z0-9]+)\s+already exists/i)
+        const containerNumber = m ? m[1] : null
+        if (containerNumber) {
+          const container = await supabaseProcessRepository.fetchContainerByNumber(containerNumber)
+          if (container) {
+            const processLink = `/shipments/${container.process_id}`
+            return jsonResponse(
+              {
+                error: message,
+                existing: {
+                  processId: container.process_id,
+                  containerId: container.id,
+                  link: processLink,
+                },
+              },
+              409,
+            )
+          }
+        }
+      } catch (resolveErr) {
+        console.warn('Failed to resolve existing container owner:', resolveErr)
+      }
+
       return jsonResponse({ error: message }, 409)
     }
 

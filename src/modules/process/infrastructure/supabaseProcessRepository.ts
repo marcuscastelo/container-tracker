@@ -121,6 +121,23 @@ export const supabaseProcessRepository: ProcessRepository = {
     return (data?.length ?? 0) > 0
   },
 
+  async fetchContainerByNumber(containerNumber: string): Promise<ProcessContainer | null> {
+    const normalized = containerNumber.toUpperCase().trim()
+    const { data, error } = await supabase
+      .from(CONTAINERS_TABLE)
+      .select('*')
+      .eq('container_number', normalized)
+      .limit(1)
+
+    if (error) {
+      console.error('supabaseProcessRepository.fetchContainerByNumber error:', error)
+      throw new Error(`Failed to fetch container by number: ${error.message}`)
+    }
+
+    if (!data || (data as unknown[]).length === 0) return null
+    return rowToContainer((data as unknown[])[0])
+  },
+
   async create(
     process: Omit<Process, 'id' | 'created_at' | 'updated_at'>,
     containers: readonly Omit<
