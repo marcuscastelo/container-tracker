@@ -9,6 +9,7 @@
     "rules": {
       "recommended": false,
       "style": {
+        "noDefaultExport": "error",
         "useImportType": "on",
         "useConsistentTypeDefinitions": {
           "fix": "safe",

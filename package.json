@@ -10,6 +10,7 @@
     "fix": "pnpm exec biome format --write . --format-with-errors true || true",
     "lint": "pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
     "flint": "pnpm run fix && pnpm run lint",
+    "check": "run-p flint type-check test",
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"
   },
   "dependencies": {
@@ -25,11 +26,13 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@tailwindcss/vite": "^4.0.7",
+    "npm-run-all": "^4.1.5",
     "playwright": "^1.58.1",
-    "puppeteer": "^24.36.1",
-    "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "tailwindcss": "^4.0.7"
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer": "^24.36.1",
+    "tailwindcss": "^4.0.7",
+    "vitest": "^3.2.2"
   },
   "engines": {
     "node": ">=22"
