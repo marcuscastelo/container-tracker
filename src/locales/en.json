@@ -9,7 +9,7 @@
       "shipments": "Shipments",
       "containers": "Containers"
     },
-    "createProcess": "+ Create Process"
+    "createProcess": "Create Process"
   },
   "dashboard": {
     "metrics": {

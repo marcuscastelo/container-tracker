@@ -9,7 +9,7 @@
       "shipments": "Embarques",
       "containers": "Containers"
     },
-    "createProcess": "+ Criar Processo"
+    "createProcess": "Criar Processo"
   },
   "dashboard": {
     "metrics": {
