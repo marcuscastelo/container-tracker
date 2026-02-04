@@ -10,6 +10,7 @@ When `Container MNBU3094033 already exists in the system`, provide a link to tha
 Sistema de UNDO para alertas acked/dismissed, outras acoes importantes (dificil, pensar se vale a pena agora para evitar retrabalho ou deixa para depois)
 Em vez de forçar a ISO 6346, apenas exibir um warning na criacao/edicao do processo/ adicao de container e um badge amarelo no container view (evita retrabalho e frustraçao do usuario, mas ainda avisa que o container pode ser invalido)
 Metadados de carriers devem ir para o banco, ex: url de busca para double check dos containers (fica na timeline para clicar e ir para o site do carrier, mas pode mudar com o tempo e estando no banco facilita updates futuros)
+Em vez de exibir apenas a quantidade de containers no dashboard (table), exibir o primeiro ID e usar uma badge "+N" para indicar que ha mais containers (melhora a usabilidade, facilita identificar o processo correto rapidamente) (pensar se é melhor ficar +1 ou 2 containers nesse badge para evitar ambiguidade, talvez com multiplos nao mostre nenhum e apenas o total, elminando a ideia da badge? Talvez mostrar badge e hover com lista completa?)
 
 # TODO
 Exibir ícone do armador no ShipmentView e Dashboard (table)
