@@ -60,7 +60,9 @@
     "loading": "Loading...",
     "notFound": "Process not found",
     "noEvents": "No events recorded yet",
-    "processCreated": "Process created"
+    "processCreated": "Process created",
+    "internalIdMessage": "This process is shown with an internal ID because no reference was provided. You can add a custom reference to make it easier to identify.",
+    "internalIdCTA": "Add reference"
   },
   "createProcess": {
     "description": "Define a new shipment to track one or more containers.",

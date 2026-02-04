@@ -27,6 +27,8 @@ const keys = {
   notFound: 'shipmentView.notFound',
   noEvents: 'shipmentView.noEvents',
   processCreated: 'shipmentView.processCreated',
+  internalIdMessage: 'shipmentView.internalIdMessage',
+  internalIdCTA: 'shipmentView.internalIdCTA',
 }
 
 // Return a tracking URL for common carriers. If unknown, returns a safe search fallback.
@@ -279,6 +281,8 @@ export function ShipmentView(): JSX.Element {
   // Edit dialog state
   const [isEditOpen, setIsEditOpen] = createSignal(false)
   const [editInitialData, setEditInitialData] = createSignal<ProcessFormData | null>(null)
+  const [showInternalIdInfo, setShowInternalIdInfo] = createSignal(false)
+  const [focusReferenceOnOpen, setFocusReferenceOnOpen] = createSignal(false)
 
   // Create dialog state (header "Create process" button uses this)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
@@ -392,9 +396,13 @@ export function ShipmentView(): JSX.Element {
       {/* Edit process dialog (when editing current shipment) */}
       <CreateProcessDialog
         open={isEditOpen()}
-        onClose={() => setIsEditOpen(false)}
+        onClose={() => {
+          setIsEditOpen(false)
+          setFocusReferenceOnOpen(false)
+        }}
         initialData={editInitialData()}
         mode="edit"
+        focusReference={focusReferenceOnOpen()}
         onSubmit={handleEditSubmit}
       />
 
@@ -443,6 +451,59 @@ export function ShipmentView(): JSX.Element {
                   <div>
                     <h1 class="text-xl font-semibold text-slate-900">
                       {t(keys.shipmentHeader)} {data().processRef}
+                      <Show when={!data().reference}>
+                        <span class="relative inline-block ml-2">
+                          <button
+                            type="button"
+                            aria-label={t(keys.internalIdMessage)}
+                            class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-blue-600 text-xs font-medium hover:bg-slate-200 animate-pulse hover:cursor-pointer hover:scale-110 transition-transform"
+                            onClick={() => setShowInternalIdInfo((s) => !s)}
+                          >
+                            i
+                          </button>
+
+                          <div
+                            class={`absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg ${
+                              showInternalIdInfo() ? '' : 'hidden'
+                            }`}
+                            role="dialog"
+                            aria-hidden={!showInternalIdInfo()}
+                          >
+                            <p class="text-xs text-slate-700">{t(keys.internalIdMessage)}</p>
+                            <div class="mt-2 text-right">
+                              <button
+                                type="button"
+                                class="rounded outline bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                onClick={() => {
+                                  // Prepare initial form data and open edit dialog
+                                  const d = data()
+                                  if (!d) return
+                                  const initial = {
+                                    reference: d.reference ?? '',
+                                    operationType: d.operationType ?? '',
+                                    origin: d.origin || '',
+                                    destination: d.destination || '',
+                                    containers: d.containers.map((c) => ({
+                                      id: c.id,
+                                      containerNumber: c.number,
+                                      isoType: c.isoType ?? '',
+                                    })),
+                                    carrier: d.carrier || '',
+                                    blReference: d.bl_reference || '',
+                                  }
+                                  setEditInitialData(initial)
+                                  // request autofocus on the reference field when opening the edit dialog
+                                  setFocusReferenceOnOpen(true)
+                                  setIsEditOpen(true)
+                                  setShowInternalIdInfo(false)
+                                }}
+                              >
+                                {t(keys.internalIdCTA)}
+                              </button>
+                            </div>
+                          </div>
+                        </span>
+                      </Show>
                     </h1>
                     <div class="mt-2 flex items-center gap-2 text-sm text-slate-600">
                       <span>{data().origin}</span>

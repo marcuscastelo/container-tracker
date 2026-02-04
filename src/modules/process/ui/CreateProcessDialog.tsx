@@ -69,6 +69,7 @@ type Props = {
   readonly onSubmit?: (data: FormData) => void
   readonly initialData?: FormData | null
   readonly mode?: 'create' | 'edit'
+  readonly focusReference?: boolean
 }
 
 function generateId(): string {
@@ -110,6 +111,27 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             }))
           : [createEmptyContainer()],
       )
+
+      // Optionally autofocus the reference input when requested by the caller
+      if (props.focusReference) {
+        // schedule after next tick so input is mounted
+        setTimeout(() => {
+          try {
+            const el = document.getElementById('reference') as HTMLInputElement | null
+            if (el) {
+              el.focus()
+              // select existing text for convenience
+              try {
+                el.select()
+              } catch {
+                /* ignore */
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }, 0)
+      }
     }
   })
 
