@@ -1,13 +1,6 @@
 import { z } from 'zod'
 import { supabaseProcessRepository } from '~/modules/process'
-
-// Helper to create JSON response
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
+import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
 const BodySchema = z.object({
   containers: z.array(z.string()).nonempty(),
@@ -15,11 +8,7 @@ const BodySchema = z.object({
 
 export async function POST({ request }: { request: Request }): Promise<Response> {
   try {
-    const raw = await request.json().catch(() => ({}))
-    const parsed = BodySchema.safeParse(raw)
-    if (!parsed.success) {
-      return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
-    }
+    const parsed = await parseBody(request, BodySchema)
 
     const conflicts: {
       containerNumber: string
@@ -29,7 +18,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
       message?: string
     }[] = []
 
-    for (const c of parsed.data.containers) {
+    for (const c of parsed.containers) {
       const normalized = c.toUpperCase().trim()
       try {
         const container = await supabaseProcessRepository.fetchContainerByNumber(normalized)

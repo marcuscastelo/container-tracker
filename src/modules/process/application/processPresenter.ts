@@ -89,16 +89,14 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
     status: 'completed',
   }
 
-  const operationType = OperationTypeSchema.safeParse(data.operation_type)
-    ? (data.operation_type as OperationType)
+  const operationTypeResult = OperationTypeSchema.safeParse(data.operation_type)
+  const operationType: OperationType | undefined = operationTypeResult.success
+    ? operationTypeResult.data
     : undefined
 
-  const carrier =
-    data.carrier === null
-      ? null
-      : CarrierSchema.safeParse(data.carrier)
-        ? (data.carrier as Carrier)
-        : 'unknown'
+  const carrierResult = CarrierSchema.safeParse(data.carrier)
+  const carrier: Carrier | 'unknown' | null =
+    data.carrier === null ? null : carrierResult.success ? carrierResult.data : 'unknown'
 
   return {
     id: data.id,

@@ -21,12 +21,12 @@ export async function GET({ params }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
     if (!processId) {
-      return typedJsonResponse({ error: 'Process ID is required' } as any, 400)
+      return typedJsonResponse({ error: 'Process ID is required' }, 400)
     }
 
     const process = await processUseCases.getProcessWithContainers(processId)
     if (!process) {
-      return typedJsonResponse({ error: 'Process not found' } as any, 404)
+      return typedJsonResponse({ error: 'Process not found' }, 404)
     }
 
     // Get alerts for this process
@@ -240,10 +240,10 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       })),
     }
 
-    return typedJsonResponse(response as any, 200, ProcessDetailResponseSchema)
+    return typedJsonResponse(response, 200, ProcessDetailResponseSchema)
   } catch (err) {
     console.error('GET /api/processes/[id] error:', err)
-    return typedJsonResponse({ error: String(err) } as any, 500)
+    return typedJsonResponse({ error: String(err) }, 500)
   }
 }
 
@@ -252,21 +252,21 @@ export async function DELETE({ params }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
     if (!processId) {
-      return typedJsonResponse({ error: 'Process ID is required' } as any, 400)
+      return typedJsonResponse({ error: 'Process ID is required' }, 400)
     }
 
     // Check if process exists
     const process = await processUseCases.getProcess(processId)
     if (!process) {
-      return typedJsonResponse({ error: 'Process not found' } as any, 404)
+      return typedJsonResponse({ error: 'Process not found' }, 404)
     }
 
     await processUseCases.deleteProcess(processId)
 
-    return typedJsonResponse({ success: true, deleted: processId } as any)
+    return typedJsonResponse({ success: true, deleted: processId })
   } catch (err) {
     console.error('DELETE /api/processes/[id] error:', err)
-    return typedJsonResponse({ error: String(err) } as any, 500)
+    return typedJsonResponse({ error: String(err) }, 500)
   }
 }
 
@@ -275,14 +275,14 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
     if (!processId) {
-      return typedJsonResponse({ error: 'Process ID is required' } as any, 400)
+      return typedJsonResponse({ error: 'Process ID is required' }, 400)
     }
 
     const rawBody = await request.json().catch(() => ({}))
     // Allow partial updates - reuse CreateProcessInputSchema but optional
     const parsed = CreateProcessInputSchema.partial().safeParse(rawBody)
     if (!parsed.success) {
-      return typedJsonResponse({ error: `Invalid request: ${parsed.error.message}` } as any, 400)
+      return typedJsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
     }
 
     // Map incoming containers to UI-friendly shape if present
@@ -324,9 +324,9 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
       })),
     }
 
-    return typedJsonResponse(response as any, 200, ProcessResponseSchema)
+    return typedJsonResponse(response, 200, ProcessResponseSchema)
   } catch (err) {
     console.error('PATCH /api/processes/[id] error:', err)
-    return typedJsonResponse({ error: String(err) } as any, 500)
+    return typedJsonResponse({ error: String(err) }, 500)
   }
 }

@@ -10,6 +10,11 @@ import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
+import {
+  CreateProcessResponseSchema,
+  ProcessResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 import { AppHeader, ExistingProcessError } from '~/shared/ui'
 import { isRecord } from '~/shared/utils/typeGuards'
 
@@ -119,36 +124,40 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         })),
       }
 
-      const res = await fetch('/api/processes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      })
-
-      if (!res.ok) {
-        const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
-        if (res.status === 409 && isRecord(json) && 'existing' in json && isRecord(json.existing)) {
-          const existing = json.existing
+      try {
+        const result = await typedFetch(
+          '/api/processes',
+          {
+            method: 'POST',
+            body: JSON.stringify(input),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          CreateProcessResponseSchema,
+        )
+        setIsCreateDialogOpen(false)
+        const newId = result.process?.id
+        if (newId) navigate(`/shipments/${newId}`)
+      } catch (err) {
+        if (
+          err instanceof TypedFetchError &&
+          err.status === 409 &&
+          isRecord(err.body) &&
+          'existing' in err.body &&
+          isRecord(err.body.existing)
+        ) {
+          const existing = err.body.existing
           const processId = String(existing.processId ?? existing.process_id ?? '')
           setIsCreateDialogOpen(false)
-          // Show banner with link instead of auto-navigating so user sees the message
           setCreateError({
-            message: String(json.error ?? json.message ?? 'Container already exists'),
+            message: String(err.body.error ?? 'Container already exists'),
             processId,
             containerId: String(existing.containerId ?? existing.container_id ?? ''),
             containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
           })
           return
         }
-        throw new Error(String(JSON.stringify(json) ?? 'Failed to create process'))
+        throw err
       }
-
-      const result = await res.json().catch(() => null)
-      setIsCreateDialogOpen(false)
-
-      // Navigate to the created process if we have an id
-      const newId = result?.process?.id ?? result?.id
-      if (newId) navigate(`/shipments/${newId}`)
     } catch (err) {
       console.error('Failed to create process:', err)
       setIsCreateDialogOpen(false)
@@ -171,33 +180,41 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         })),
       }
 
-      const res = await fetch(`/api/processes/${params.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      })
+      try {
+        await typedFetch(
+          `/api/processes/${params.id}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify(input),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          ProcessResponseSchema,
+        )
 
-      if (!res.ok) {
-        // Try to surface structured conflict info (existing container) to the UI
-        const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
-        if (res.status === 409 && isRecord(json) && 'existing' in json && isRecord(json.existing)) {
-          const existing = json.existing
+        // Refresh data
+        await refetch()
+        setIsEditOpen(false)
+      } catch (err) {
+        if (
+          err instanceof TypedFetchError &&
+          err.status === 409 &&
+          isRecord(err.body) &&
+          'existing' in err.body &&
+          isRecord(err.body.existing)
+        ) {
+          const existing = err.body.existing
           const processId = String(existing.processId ?? existing.process_id ?? '')
           setIsEditOpen(false)
           setCreateError({
-            message: String(json.error ?? json.message ?? 'Container already exists'),
+            message: String(err.body.error ?? 'Container already exists'),
             processId,
             containerId: String(existing.containerId ?? existing.container_id ?? ''),
             containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
           })
           return
         }
-        throw new Error(`Failed to update process: ${res.statusText}`)
+        throw err
       }
-
-      // Refresh data
-      await refetch()
-      setIsEditOpen(false)
     } catch (err) {
       console.error('Failed to update process:', err)
       // Show structured existing conflict if present
