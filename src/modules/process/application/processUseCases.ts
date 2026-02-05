@@ -10,6 +10,7 @@ import {
   findDuplicateContainers,
   validateContainerNumber,
 } from '~/modules/process/domain/processStuff'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 // Input shape used by updateProcess - UI-friendly field names
 export type UpdateProcessInput = {
@@ -195,25 +196,31 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
         const existing = await repository.fetchContainersByProcessId(processId)
         const existingByNumber = new Map(existing.map((c) => [c.container_number.toUpperCase(), c]))
 
-        type IncomingContainer = {
-          containerNumber?: string
-          container_number?: string
-          container_type?: string | null
-          containerType?: string | null
-          containerSize?: string | null
-          container_size?: string | null
-          carrier_code?: string | null
-        }
-
         // Normalize incoming containers (accept either UI shape or API shape)
-        const incoming = (input.containers as IncomingContainer[]).map((c) => {
-          const containerNumber = (c.containerNumber ?? c.container_number ?? '')
+        const incoming = (Array.isArray(input.containers) ? input.containers : []).map((c) => {
+          const item = isRecord(c) ? c : {}
+          const containerNumber = String(item.containerNumber ?? item.container_number ?? '')
             .toUpperCase()
             .trim()
-          const container_type = c.container_type ?? c.containerType ?? null
-          const container_size = c.container_size ?? c.containerSize ?? null
-          const carrier_code = c.carrier_code ?? null
-          return { containerNumber, container_type, container_size, carrier_code }
+          const container_type =
+            typeof item.container_type === 'string'
+              ? item.container_type
+              : typeof item.containerType === 'string'
+                ? item.containerType
+                : null
+          const container_size =
+            typeof item.container_size === 'string'
+              ? item.container_size
+              : typeof item.containerSize === 'string'
+                ? item.containerSize
+                : null
+          const carrier_code = typeof item.carrier_code === 'string' ? item.carrier_code : null
+          return {
+            containerNumber,
+            container_type,
+            container_size,
+            carrier_code,
+          }
         })
 
         const incomingNumbers = incoming.map((c) => c.containerNumber)

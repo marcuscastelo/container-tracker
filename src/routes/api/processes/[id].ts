@@ -54,7 +54,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
               // cs.status is expected to be the canonical shipment payload saved by refresh,
               // however some rows/variants may store the canonical shape at the root or under
               // other keys. Build a permissive canonical object and try multiple heuristics.
-              const canonical = (cs.status ?? cs) as any
+              const canonical = cs.status ?? cs
 
               // helper to find the f1 container inside a canonical-shaped object
               const findF1Container = (payload: any, containerNumber: string) => {
@@ -203,10 +203,10 @@ export async function GET({ params }: APIEvent): Promise<Response> {
                 carrier_code: c.carrier_code ?? null,
                 container_type:
                   f1container?.iso_code ?? f1container?.container_type ?? c.container_type ?? null,
-                container_size: f1container?.size ?? null ?? null,
+                container_size: f1container?.size ?? null,
                 eta:
                   (f1container && f1container.eta) || (canonical && canonical.eta)
-                    ? new Date((f1container?.eta ?? canonical?.eta) as string).toISOString()
+                    ? new Date(f1container?.eta ?? canonical?.eta).toISOString()
                     : null,
                 events,
               }

@@ -14,6 +14,7 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '~/shared/ui'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -105,9 +106,9 @@ async function createProcessApi(input: CreateProcessInput): Promise<{ id: string
       error?: string
     }
 
-    const asObj = json as Record<string, unknown>
-    if (response.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
-      const existing = asObj.existing as Record<string, unknown>
+    const asObj = isRecord(json) ? json : null
+    if (response.status === 409 && asObj && isRecord(asObj.existing)) {
+      const existing = asObj.existing
       const ex = {
         processId: String(existing.processId ?? existing.process_id ?? existing.processId),
         containerId: String(existing.containerId ?? existing.container_id ?? existing.id ?? ''),
@@ -230,10 +231,12 @@ export function Dashboard(): JSX.Element {
       // Transform UI form data to API input format
       const input: CreateProcessInput = {
         reference: data.reference || null,
-        operation_type: (data.operationType as CreateProcessInput['operation_type']) || undefined,
+        // data.operationType is already strongly typed in the form's type; pass it through
+        operation_type: data.operationType || undefined,
         origin: data.origin ? { display_name: data.origin } : null,
         destination: data.destination ? { display_name: data.destination } : null,
-        carrier: (data.carrier as CreateProcessInput['carrier']) || null,
+        // carrier from the form is already typed
+        carrier: data.carrier || null,
         bill_of_lading: data.billOfLading || null,
         containers: data.containers.map((c) => ({
           container_number: c.containerNumber,
@@ -256,26 +259,21 @@ export function Dashboard(): JSX.Element {
       // Type guard for the structured API conflict payload
       const isExisting = (
         obj: unknown,
-      ): obj is {
-        status: number
-        message?: string
-        existing?: { processId: string; containerId?: string }
-      } => {
-        if (!obj || typeof obj !== 'object') return false
-        const r = obj as Record<string, unknown>
-        if (!r.existing || typeof r.existing !== 'object') return false
-        const ex = r.existing as Record<string, unknown>
+      ): obj is { status: number; message?: string; existing?: Record<string, unknown> } => {
+        if (!isRecord(obj)) return false
+        const r = obj
+        if (!('existing' in r) || !isRecord(r.existing)) return false
+        const ex = r.existing
         return typeof ex.processId === 'string' || typeof ex.process_id === 'string'
       }
 
       if (isExisting(err)) {
-        const ex = (err as { existing?: Record<string, unknown> }).existing || {}
+        const ex = err.existing ?? {}
         const processId = String(ex.processId ?? ex.process_id ?? '')
         const containerId = String(ex.containerId ?? ex.container_id ?? '')
         const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
-        const r = err as { message?: string }
         setCreateError({
-          message: String(r.message ?? 'Container already exists'),
+          message: String(err.message ?? 'Container already exists'),
           processId,
           containerId,
           containerNumber,
@@ -311,24 +309,23 @@ export function Dashboard(): JSX.Element {
         {/* Error message */}
         <Show when={createError()}>
           <ExistingProcessError
-            message={
-              typeof createError() === 'string'
-                ? (createError() as string)
-                : String((createError() as Record<string, unknown>).message ?? '')
-            }
-            existing={
-              createError() && typeof createError() === 'object'
-                ? {
-                    processId: String((createError() as Record<string, unknown>).processId ?? ''),
-                    containerId: String(
-                      (createError() as Record<string, unknown>).containerId ?? '',
-                    ),
-                    containerNumber: String(
-                      (createError() as Record<string, unknown>).containerNumber ?? '',
-                    ),
-                  }
-                : undefined
-            }
+            message={(() => {
+              const v = createError()
+              if (typeof v === 'string') return v
+              if (isRecord(v) && typeof v.message === 'string') return v.message
+              return ''
+            })()}
+            existing={(() => {
+              const v = createError()
+              if (v && typeof v === 'object' && isRecord(v)) {
+                return {
+                  processId: String(v.processId ?? v.process_id ?? ''),
+                  containerId: String(v.containerId ?? v.container_id ?? ''),
+                  containerNumber: String(v.containerNumber ?? v.container_number ?? ''),
+                }
+              }
+              return undefined
+            })()}
             onAcknowledge={() => setCreateError(null)}
           />
         </Show>

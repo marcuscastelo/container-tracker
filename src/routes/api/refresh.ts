@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
-import { type CreateProcessInput, processUseCases } from '~/modules/process'
+import { type Carrier, type CreateProcessInput, processUseCases } from '~/modules/process'
 import { getProvider } from '~/routes/api/refresh-providers'
 
 // Explicit request/response schemas for this API
@@ -127,7 +127,7 @@ export async function POST({ request }: { request: Request }) {
       if (Array.isArray(v)) return v.map(sanitizeValue)
       if (v && typeof v === 'object') {
         const out: Record<string, unknown> = {}
-        for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        for (const [k, val] of Object.entries(v)) {
           out[k] = sanitizeValue(val)
         }
         return out
@@ -135,7 +135,7 @@ export async function POST({ request }: { request: Request }) {
       return v
     }
 
-    parsedStatus = sanitizeValue(parsedStatus) as Record<string, unknown>
+    parsedStatus = <typeof parsedStatus>sanitizeValue(parsedStatus)
 
     try {
       // Map parsedStatus to canonical F1 shape before saving
@@ -154,29 +154,24 @@ export async function POST({ request }: { request: Request }) {
         `refresh: saving canonical status for container ${container} to Supabase, shipment id=${canonicalStatus.id}`,
       )
       // Save canonical object as the status payload
-      await containerStatusUseCases.saveContainerStatus(
-        String(container),
-        canonicalStatus as Record<string, unknown>,
-      )
+      await containerStatusUseCases.saveContainerStatus(String(container), canonicalStatus)
       console.log(`refresh: saved canonical container ${container} to Supabase`)
       // Ingest canonical shipment into Processes so the UI (Dashboard) can surface it.
       // This follows the event->state->UI flow by creating/updating a Process derived
       // from the canonical F1 shipment. Failures here must NOT break the refresh API.
       try {
-        const shipment = canonicalStatus as Record<string, unknown>
+        const shipment = canonicalStatus
         const containers = Array.isArray(shipment.containers) ? shipment.containers : []
 
         if (containers.length > 0) {
           const createInput: CreateProcessInput = {
             reference: null,
             operation_type: 'import',
-            origin: shipment.origin
-              ? { display_name: (shipment.origin as any).city ?? null }
-              : null,
+            origin: shipment.origin ? { display_name: shipment.origin.city ?? null } : null,
             destination: shipment.destination
-              ? { display_name: (shipment.destination as any).city ?? null }
+              ? { display_name: shipment.destination.city ?? null }
               : null,
-            carrier: (shipment.carrier as any) ?? null,
+            carrier: <Carrier>shipment.carrier ?? null, // FIXME: remove cast when new schema is updated
             bill_of_lading: null,
             containers: containers.map((c: any) => ({
               container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),

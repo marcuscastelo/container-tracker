@@ -41,6 +41,7 @@ export function TimelineNode(props: {
 
   const styles = nodeStyles()
   const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
+  const href = typeof trackUrl === 'string' ? trackUrl : undefined
 
   return (
     <div class="flex gap-4">
@@ -74,9 +75,9 @@ export function TimelineNode(props: {
                 <p class="text-xs text-slate-600">{props.event.date}</p>
 
                 {/* Small neutral badge linking to carrier tracking (rarely used) */}
-                <Show when={trackUrl}>
+                <Show when={href}>
                   <a
-                    href={trackUrl as string}
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
                     title="View on carrier site"
@@ -91,7 +92,7 @@ export function TimelineNode(props: {
                       } finally {
                         // open carrier link in new tab
                         try {
-                          window.open(trackUrl as string, '_blank')
+                          if (typeof href === 'string') window.open(href, '_blank')
                         } catch {
                           // ignore
                         }

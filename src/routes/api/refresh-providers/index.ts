@@ -8,8 +8,8 @@ export type ProviderHandler = {
 }
 
 const PROVIDERS: Record<string, ProviderHandler> = {
-  cmacgm: cmacgm as unknown as ProviderHandler,
-  msc: msc as unknown as ProviderHandler,
+  cmacgm: cmacgm,
+  msc: msc,
 }
 
 export function getProvider(name: string): ProviderHandler | undefined {

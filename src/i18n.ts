@@ -5,10 +5,7 @@ import { createSignal } from 'solid-js'
 // Dynamically load all locale JSON files from ./locales folder.
 // This makes adding a new locale seamless: drop a new JSON file and it will be picked up.
 // Vite's import.meta.glob is used with eager import to obtain the parsed JSON at build time.
-const modules = import.meta.glob('./locales/*.json', { eager: true }) as Record<
-  string,
-  { default: Record<string, unknown> } | Record<string, unknown>
->
+const modules = import.meta.glob('./locales/*.json', { eager: true })
 
 const resources: Resource = {}
 const availableLocales: string[] = []
@@ -19,10 +16,13 @@ for (const path of Object.keys(modules)) {
   if (!match) continue
   const key = match[1]
   // modules[path] may be `{ default: {...} }` when using eager import, or the object itself.
-  type LocaleModule = { default?: Record<string, unknown> } | Record<string, unknown>
-  const mod = modules[path] as LocaleModule
-  const translation = (mod && ('default' in mod ? mod.default : mod)) as Record<string, unknown>
-  resources[key] = { translation }
+  const mod: any = modules[path]
+  let translation: Record<string, unknown> | undefined = undefined
+  if (mod && typeof mod === 'object') {
+    if ('default' in mod && typeof mod.default === 'object') translation = mod.default
+    else if (typeof mod === 'object') translation = mod
+  }
+  if (translation) resources[key] = { translation }
   availableLocales.push(key)
 }
 

@@ -1,3 +1,4 @@
+import type { AlertSeverity } from '~/modules/alert'
 import type { Carrier, OperationType } from '~/modules/process/domain'
 import type { StatusVariant } from '~/shared/ui'
 
@@ -145,17 +146,12 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
             const status: EventStatus = ev.event_time_type === 'ACTUAL' ? 'completed' : 'expected'
             return {
               id: ev.id ?? `ev-${idx}`,
-              label:
-                ev.activity ??
-                (((ev.raw as Record<string, unknown>) || {})['Description'] as string) ??
-                'Event',
-              location:
-                ev.location ??
-                ((((ev.raw as Record<string, unknown>) || {})['Location'] as string) || undefined),
+              label: ev.activity ?? <string>(ev.raw || {})['Description'] ?? 'Event', // FIXME: Replace assertion with proper parsing
+              location: ev.location ?? <string>((ev.raw || {})['Location'] || undefined), // FIXME: Replace assertion with proper parsing
               date: dateStr,
               expectedDate,
               status,
-            } as TimelineEvent
+            } satisfies TimelineEvent
           })
           .filter(Boolean)
 
@@ -177,7 +173,7 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
       .map((a) => ({
         id: a.id,
         type: mapAlertType(a.code),
-        severity: a.severity as AlertDisplay['severity'],
+        severity: <AlertSeverity>a.severity, // FIXME: Replace assertion with proper parsing
         message: a.description || a.title,
         timestamp: formatRelativeTime(a.created_at),
       })),

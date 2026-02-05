@@ -71,20 +71,25 @@ export function maerskToNormalized(payload: unknown): NormShipment {
           status_description: null,
           sourceEvent: e,
         }
-        locOut.events.push(ev as NormEvent)
+        // push partial event object; will be validated by schema later
+        locOut.events.push(ev)
       }
-      ;(container.locations as Array<Partial<NormLocation> & { events?: NormEvent[] }>).push(locOut)
+      // ensure container.locations is an array and append
+      let locsArr: unknown[] = []
+      if (Array.isArray(container.locations)) locsArr = container.locations
+      locsArr.push(locOut)
+      container.locations = locsArr
     }
 
-    ;(shipment.containers as Array<Partial<NormContainer>>).push(container)
+    if (!Array.isArray(shipment.containers)) shipment.containers = []
+    shipment.containers.push(container)
   }
 
   // validate with normalized schema (best-effort)
   try {
-    Normalized.ShipmentSchema.parse(shipment)
+    return Normalized.ShipmentSchema.parse(shipment)
   } catch (err) {
     console.warn('Normalized schema parse warning (maersk):', err)
+    return shipment
   }
-
-  return shipment as NormShipment
 }

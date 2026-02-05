@@ -224,13 +224,13 @@ function rowToAlert(row: unknown): Alert {
   const r = row as Record<string, unknown>
   return {
     id: String(r.id),
-    process_id: r.process_id as string | null,
-    container_id: r.container_id as string | null,
-    category: r.category as Alert['category'],
-    code: r.code as Alert['code'],
+    process_id: r.process_id,
+    container_id: r.container_id,
+    category: r.category,
+    code: r.code,
     severity: r.severity as Alert['severity'],
     title: String(r.title),
-    description: r.description as string | null,
+    description: r.description,
     related_event_ids: (r.related_event_ids as string[]) ?? null,
     state: (r.state as Alert['state']) ?? 'active',
     created_at: new Date(r.created_at as string),

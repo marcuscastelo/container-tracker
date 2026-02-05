@@ -11,6 +11,7 @@ import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { AppHeader, ExistingProcessError } from '~/shared/ui'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -126,23 +127,20 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
       if (!res.ok) {
         const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
-        const asObj = json as Record<string, unknown>
-        if (res.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
-          const existing = asObj.existing as Record<string, unknown>
+        if (res.status === 409 && isRecord(json) && 'existing' in json && isRecord(json.existing)) {
+          const existing = json.existing
           const processId = String(existing.processId ?? existing.process_id ?? '')
           setIsCreateDialogOpen(false)
           // Show banner with link instead of auto-navigating so user sees the message
           setCreateError({
-            message: String(asObj.error ?? asObj.message ?? 'Container already exists'),
+            message: String(json.error ?? json.message ?? 'Container already exists'),
             processId,
             containerId: String(existing.containerId ?? existing.container_id ?? ''),
             containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
           })
           return
         }
-        throw new Error(
-          String((asObj && (asObj.error ?? asObj.message)) ?? 'Failed to create process'),
-        )
+        throw new Error(String(JSON.stringify(json) ?? 'Failed to create process'))
       }
 
       const result = await res.json().catch(() => null)
@@ -182,13 +180,12 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       if (!res.ok) {
         // Try to surface structured conflict info (existing container) to the UI
         const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
-        const asObj = json as Record<string, unknown>
-        if (res.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
-          const existing = asObj.existing as Record<string, unknown>
+        if (res.status === 409 && isRecord(json) && 'existing' in json && isRecord(json.existing)) {
+          const existing = json.existing
           const processId = String(existing.processId ?? existing.process_id ?? '')
           setIsEditOpen(false)
           setCreateError({
-            message: String(asObj.error ?? asObj.message ?? 'Container already exists'),
+            message: String(json.error ?? json.message ?? 'Container already exists'),
             processId,
             containerId: String(existing.containerId ?? existing.container_id ?? ''),
             containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
@@ -204,17 +201,20 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
     } catch (err) {
       console.error('Failed to update process:', err)
       // Show structured existing conflict if present
-      if (err && typeof err === 'object') {
-        const r = err as Record<string, unknown>
-        if (r.existing && typeof r.existing === 'object') {
-          const ex = r.existing as Record<string, unknown>
-          setCreateError({
-            message: String(r.message ?? 'Container already exists'),
-            processId: String(ex.processId ?? ex.process_id ?? ''),
-            containerId: String(ex.containerId ?? ex.container_id ?? ''),
-            containerNumber: String(ex.containerNumber ?? ex.container_number ?? ''),
-          })
-        }
+      if (
+        err &&
+        typeof err === 'object' &&
+        isRecord(err) &&
+        'existing' in err &&
+        isRecord(err.existing)
+      ) {
+        const ex = err.existing
+        setCreateError({
+          message: String(err.message ?? 'Container already exists'),
+          processId: String(ex.processId ?? ex.process_id ?? ''),
+          containerId: String(ex.containerId ?? ex.container_id ?? ''),
+          containerNumber: String(ex.containerNumber ?? ex.container_number ?? ''),
+        })
       }
       // Could show other UI error; for now just log and close
       setIsEditOpen(false)
@@ -283,21 +283,22 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         {/* Show conflict banner when create/edit results in an existing-container conflict */}
         <Show when={createError()}>
           <ExistingProcessError
-            message={
-              typeof createError() === 'string'
-                ? (createError() as string)
-                : String((createError() as Record<string, unknown>).message ?? '')
-            }
-            existing={
-              createError() && typeof createError() === 'object'
-                ? {
-                    processId: String((createError() as Record<string, unknown>).processId ?? ''),
-                    containerId: String(
-                      (createError() as Record<string, unknown>).containerId ?? '',
-                    ),
-                  }
-                : undefined
-            }
+            message={(() => {
+              const v = createError()
+              if (typeof v === 'string') return v
+              if (isRecord(v) && typeof v.message === 'string') return v.message
+              return ''
+            })()}
+            existing={(() => {
+              const v = createError()
+              if (v && typeof v === 'object' && isRecord(v)) {
+                return {
+                  processId: String(v.processId ?? v.processId ?? ''),
+                  containerId: String(v.containerId ?? v.containerId ?? ''),
+                }
+              }
+              return undefined
+            })()}
             onAcknowledge={() => setCreateError(null)}
           />
         </Show>

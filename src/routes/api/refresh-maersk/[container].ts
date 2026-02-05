@@ -177,8 +177,10 @@ async function handleMaersk({ params, request }: APIEvent) {
         )
       }
 
-      puppeteerExtra = (pe as any).default || pe
-      const Stealth = (stealthMod as any).default || stealthMod
+      const peMod: any = pe
+      const stealthWrapped: any = stealthMod
+      puppeteerExtra = peMod?.default || peMod
+      const Stealth = stealthWrapped?.default || stealthWrapped
       puppeteerExtra.use(Stealth())
     } catch (e) {
       return new Response(JSON.stringify({ error: 'puppeteer import error', details: String(e) }), {
@@ -333,7 +335,8 @@ async function handleMaersk({ params, request }: APIEvent) {
             try {
               telemetry = await page.evaluate(() => {
                 try {
-                  const b = (window as any).bmak
+                  // access global telemetry object if present without using type assertions
+                  const b = (<any>window)['bmak'] ?? (<any>window)['bmak']
                   if (b && typeof b.get_telemetry === 'function') return b.get_telemetry()
                 } catch (_e) {}
                 return null
@@ -423,7 +426,11 @@ async function handleMaersk({ params, request }: APIEvent) {
     if (!captureState.data) {
       try {
         await page.waitForFunction(
-          () => (window as any).bmak && typeof (window as any).bmak.get_telemetry === 'function',
+          // check for existence of bmak telemetry function without type assertions
+          () =>
+            typeof window !== 'undefined' &&
+            (<any>window)['bmak'] &&
+            typeof (<any>window)['bmak'].get_telemetry === 'function',
           { timeout: 10000 },
         )
         await delay(2000)
@@ -521,12 +528,12 @@ async function handleMaersk({ params, request }: APIEvent) {
     // Prefer saving canonical F1 shipment like the generic /api/refresh route.
     // parsedJson is the JSON payload intercepted from Maersk; try to map
     // it to the canonical shape so the DB stores consistent objects.
-    let statusData: Record<string, unknown> = parsedJson || { raw: captured.body }
+    let statusData: unknown = parsedJson || { raw: captured.body }
     if (parsedJson) {
       try {
         const mapped = mapParsedStatusToF1(parsedJson, String(container), 'maersk')
         if (mapped.ok) {
-          statusData = mapped.shipment as Record<string, unknown>
+          statusData = mapped.shipment
           console.debug('[maersk-refresh] Mapped parsed JSON to canonical shipment', {
             container,
             shipmentId: mapped.shipment.id,
@@ -535,7 +542,7 @@ async function handleMaersk({ params, request }: APIEvent) {
               : 0,
             firstContainerEvents:
               Array.isArray(mapped.shipment.containers) && mapped.shipment.containers[0]?.events
-                ? (mapped.shipment.containers[0].events as unknown[]).length
+                ? mapped.shipment.containers[0].events.length
                 : 0,
           })
         } else {
@@ -549,12 +556,24 @@ async function handleMaersk({ params, request }: APIEvent) {
     try {
       console.debug('[maersk-refresh] Saving to Supabase payload summary:', {
         container,
-        hasContainers: Array.isArray((statusData as any)?.containers),
-        firstContainerEvents: Array.isArray((statusData as any)?.containers)
-          ? ((statusData as any).containers[0]?.events ?? null)
+        hasContainers: Array.isArray(statusData && (<any>statusData).containers)
+          ? (<any>statusData).containers.length
+          : 0,
+        firstContainerEvents: Array.isArray(statusData && (<any>statusData).containers)
+          ? ((<any>statusData).containers[0]?.events ?? null)
           : null,
       })
-      await containerStatusUseCases.saveContainerStatus(String(container), statusData)
+      if (typeof statusData === 'object' && statusData !== null) {
+        // statusData is an object-like value
+        await containerStatusUseCases.saveContainerStatus(
+          String(container),
+          <Record<string, unknown>>statusData,
+        )
+      } else {
+        await containerStatusUseCases.saveContainerStatus(String(container), {
+          raw: String(statusData),
+        })
+      }
       console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
     } catch (err) {
       console.error('[maersk-refresh] Supabase save failed:', err)
@@ -618,7 +637,7 @@ async function handleMaersk({ params, request }: APIEvent) {
     return new Response(
       JSON.stringify({
         error: String(err),
-        stack: (err as Error)?.stack ?? null,
+        stack: (<Error>err)?.stack ?? null,
       }),
       { status: 500 },
     )

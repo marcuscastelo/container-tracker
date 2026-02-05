@@ -13,12 +13,11 @@ try {
       'click',
       (e) => {
         try {
-          const t = e.target as HTMLElement | null
+          const t = e.target instanceof HTMLElement ? e.target : null
           console.debug('entry-client: global click on', t && (t.id || t.tagName || t.className))
           // Delegated handler for refresh buttons (works even if Solid onClick isn't attached)
-          const btn = (e.target as HTMLElement | null)?.closest?.(
-            'button.refresh-button',
-          ) as HTMLElement | null
+          const candidate = t?.closest?.('button.refresh-button') ?? null
+          const btn = candidate instanceof HTMLElement ? candidate : null
           if (btn) {
             // mark as handled so component handler can skip duplicate
             try {

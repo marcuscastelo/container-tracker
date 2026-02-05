@@ -53,24 +53,32 @@ export function cmacgmToNormalized(payload: unknown): NormShipment {
       status_description: m.StatusDescription ?? null,
       sourceEvent: m,
     }
-    ;(container.locations as Array<Partial<NormLocation> & { events?: NormEvent[] }>).push({
+    // ensure locations is an array and push a normalized location object
+    let locs: unknown[] = []
+    if (Array.isArray(container.locations)) locs = container.locations
+    const newLoc = {
       city: m.Location ?? null,
-      events: [ev as NormEvent],
+      events: [ev],
       raw: m,
-    })
+    }
+    locs.push(newLoc)
+    container.locations = locs
   }
 
   ;(parsed.ProvisionalMoves ?? []).forEach(pushMove)
   ;(parsed.CurrentMoves ?? []).forEach(pushMove)
   ;(parsed.PastMoves ?? []).forEach(pushMove)
 
-  ;(shipment.containers as Array<Partial<NormContainer>>).push(container)
+  // append container to shipment.containers
+  if (!Array.isArray(shipment.containers)) shipment.containers = []
+  shipment.containers.push(container)
 
   try {
-    Normalized.ShipmentSchema.parse(shipment)
+    // attempt to validate and return the parsed normalized shipment
+    return Normalized.ShipmentSchema.parse(shipment)
   } catch (err) {
     console.warn('Normalized schema parse warning (cmacgm):', err)
+    // fallback: coerce to any-shaped object and return to preserve previous behavior
+    return shipment
   }
-
-  return shipment as NormShipment
 }

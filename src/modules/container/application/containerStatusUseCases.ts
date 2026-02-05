@@ -1,5 +1,6 @@
 import type { ContainerStatus } from '~/modules/container/domain/containerStatus'
 import type { ContainerStatusRepository } from '~/modules/container/domain/containerStatusRepository'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 export type ContainerStatusUseCases = {
   getAllContainerStatuses: () => Promise<readonly ContainerStatus[]>
@@ -29,16 +30,16 @@ export function createContainerStatusUseCases(
     ): Promise<ContainerStatus> {
       try {
         // Lightweight debug summary to help investigate missing events in DB.
-        const s = status as Record<string, unknown>
-        const containers = Array.isArray(s?.containers) ? (s.containers as unknown[]) : []
+        const s: Record<string, unknown> = isRecord(status) ? status : {}
+        const containers = Array.isArray(s?.containers) ? s.containers : []
         const firstContainer =
-          containers.length > 0 ? (containers[0] as Record<string, unknown>) : null
+          containers.length > 0 && isRecord(containers[0]) ? containers[0] : null
         const firstEvents = firstContainer ? firstContainer['events'] : undefined
         console.debug('containerStatusUseCases.saveContainerStatus:', {
           containerId,
           containers: containers.length,
           firstContainerEvents: Array.isArray(firstEvents)
-            ? (firstEvents as unknown[]).length
+            ? firstEvents.length
             : (firstEvents ?? null),
         })
       } catch (_e) {

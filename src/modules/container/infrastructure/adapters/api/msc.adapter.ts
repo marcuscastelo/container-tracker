@@ -50,22 +50,29 @@ export function mscToNormalized(payload: unknown): NormShipment {
           status_description: e.Description ?? null,
           sourceEvent: e,
         }
-        ;(container.locations as Array<Partial<NormLocation> & { events?: NormEvent[] }>).push({
+        // ensure container.locations is an array and append
+        let locs: unknown[] = []
+        if (Array.isArray(container.locations)) locs = container.locations
+        const newLoc = {
           city: e.Location ?? null,
-          events: [ev as NormEvent],
+          events: [ev],
           raw: e,
-        })
+        }
+        locs.push(newLoc)
+        container.locations = locs
       }
 
-      ;(shipment.containers as Array<Partial<NormContainer>>).push(container)
+      if (!Array.isArray(shipment.containers)) shipment.containers = []
+      shipment.containers.push(container)
     }
   }
 
   try {
-    Normalized.ShipmentSchema.parse(shipment)
+    // validate and return normalized shipment when possible
+    return Normalized.ShipmentSchema.parse(shipment)
   } catch (err) {
     console.warn('Normalized schema parse warning (msc):', err)
   }
 
-  return shipment as NormShipment
+  return shipment
 }

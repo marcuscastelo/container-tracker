@@ -45,7 +45,7 @@ export async function fetchStatus(
     },
   )
 
-  const html = response.data as string
+  const html = response.data
   console.debug('cmacgm: HTML: ', html)
 
   const regex = /options\.responseData\s*=\s*(['"])([\s\S]*?)\1/

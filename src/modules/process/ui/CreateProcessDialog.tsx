@@ -131,8 +131,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         // schedule after next tick so input is mounted
         setTimeout(() => {
           try {
-            const el = document.getElementById('reference') as HTMLInputElement | null
-            if (el) {
+            const el = document.getElementById('reference')
+            if (el instanceof HTMLInputElement) {
               el.focus()
               // select existing text for convenience
               try {

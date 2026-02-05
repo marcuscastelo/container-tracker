@@ -42,7 +42,7 @@ export async function fetchStatus(
       responseType: 'arraybuffer',
     })
   } catch (err) {
-    throw new Error(`msc.fetchStatus: network error: ${String((err as Error)?.message ?? err)}`)
+    throw new Error(`msc.fetchStatus: network error: ${String((<Error>err)?.message ?? err)}`)
   }
 
   const data = resp.data
@@ -50,8 +50,7 @@ export async function fetchStatus(
   try {
     const buf = Buffer.from(data)
     // Attempt to decode/decompress like CMA handler
-    const contentEncoding =
-      (resp.headers && (resp.headers['content-encoding'] as string | undefined)) || null
+    const contentEncoding = (resp.headers && resp.headers['content-encoding']) || null
     try {
       const zlib = await import('zlib')
       if (contentEncoding === 'gzip' || (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b)) {

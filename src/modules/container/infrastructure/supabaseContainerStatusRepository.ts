@@ -2,6 +2,7 @@ import type { ContainerStatus } from '~/modules/container/domain/containerStatus
 import type { ContainerStatusRepository } from '~/modules/container/domain/containerStatusRepository'
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 const TABLE_NAME = 'container_tracking_snapshots'
 
@@ -26,10 +27,10 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
 
     return data.map((row) => {
       try {
-        const r = row as Record<string, unknown>
+        const r = isRecord(row) ? row : {}
         const cid = r?.container_id
-          ? String(r.container_id as string)
-          : String(r?.container_id ?? 'unknown')
+          ? String(r.container_id)
+          : String(row?.container_id ?? 'unknown')
         const status = r?.raw_payload ?? r?.raw ?? r ?? {}
 
         // Basic runtime shape checks
@@ -43,7 +44,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
         return {
           container_id: cid,
           carrier: String(row?.carrier_code ?? 'UNKNOWN'),
-          status: status as Record<string, unknown>,
+          status: isRecord(status) ? status : {},
         }
       } catch (e) {
         console.warn(
@@ -54,7 +55,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
         return {
           container_id: String(row?.container_id ?? 'unknown'),
           carrier: String(row?.carrier_code ?? 'UNKNOWN'),
-          status: (row?.raw_payload as Record<string, unknown>) ?? {},
+          status: isRecord(row?.raw_payload) ? row.raw_payload : {},
         }
       }
     })
@@ -80,13 +81,14 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     if (!data) return null
 
     try {
-      const d = (Array.isArray(data) ? data[0] : data) as unknown as Record<string, unknown>
-      const cid = d?.container_id ? String(d.container_id as string) : containerId
-      const status = d?.raw_payload ?? d ?? {}
+      const d = Array.isArray(data) ? data[0] : data
+      const rec = isRecord(d) ? d : {}
+      const cid = rec?.container_id ? String(rec.container_id) : containerId
+      const status = rec?.raw_payload ?? rec ?? {}
       return {
         container_id: cid,
-        carrier: String(d?.carrier_code ?? d?.carrier ?? 'UNKNOWN'),
-        status: status as Record<string, unknown>,
+        carrier: String(rec?.carrier_code ?? rec?.carrier ?? 'UNKNOWN'),
+        status: isRecord(status) ? status : {},
       }
     } catch (e) {
       console.warn(
@@ -105,7 +107,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
         container_id: containerStatus.container_id,
         carrier_code: containerStatus.carrier,
         fetched_at: new Date().toISOString(),
-        raw_payload: containerStatus.status as unknown as Json,
+        raw_payload: containerStatus.status,
       })
       .select()
 
@@ -121,10 +123,11 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     }
 
     const first = Array.isArray(data) ? data[0] : data
+    const stat = isRecord(first?.raw_payload) ? first.raw_payload : {}
     return {
       container_id: first.container_id,
       carrier: String(first?.carrier_code ?? 'UNKNOWN'),
-      status: (first.raw_payload as Record<string, unknown>) ?? {},
+      status: stat,
     }
   },
 

@@ -2,6 +2,7 @@ import {
   type F1Shipment,
   F1ShipmentSchema,
 } from '~/modules/container/domain/schemas/canonical.schema'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 function upperTrim(v: unknown): string {
   if (!v && v !== 0) return ''
@@ -24,7 +25,7 @@ export function mapParsedStatusToF1(
     }
 
     // Attempt to read common fields from parsed payload
-    const p = parsed as Record<string, unknown>
+    const p: Record<string, unknown> = isRecord(parsed) ? parsed : {}
     const shipmentId = String(p?.process_id ?? p?.process ?? `ship-${normalizedContainerNumber}`)
 
     const origin = p?.origin ?? p?.origin_display ?? undefined
@@ -32,17 +33,17 @@ export function mapParsedStatusToF1(
 
     // Find container info if present
     let c: Record<string, unknown> | null = null
-    const containersRaw = p?.containers as unknown
-    if (Array.isArray(containersRaw) && (containersRaw as unknown[]).length > 0) {
-      const arr = containersRaw as unknown[]
+    const containersRaw = p?.containers
+    if (Array.isArray(containersRaw) && containersRaw.length > 0) {
+      const arr = containersRaw
       c =
         (arr.find((ci) => {
-          const ciObj = ci as Record<string, unknown>
+          if (!isRecord(ci)) return false
           const num = upperTrim(
-            ciObj?.container_number ?? ciObj?.container_no ?? ciObj?.ContainerNumber ?? '',
+            ci?.container_number ?? ci?.container_no ?? ci?.ContainerNumber ?? '',
           )
           return num === normalizedContainerNumber
-        }) as Record<string, unknown> | undefined) ?? (arr[0] as Record<string, unknown>)
+        }) satisfies Record<string, unknown> | undefined) ?? (isRecord(arr[0]) ? arr[0] : null)
     }
     // fallback to top-level fields
     if (!c) c = p
@@ -52,7 +53,9 @@ export function mapParsedStatusToF1(
     if (etaRaw) {
       // Accept strings, numbers or Date instances — guard against object literals
       if (typeof etaRaw === 'string' || typeof etaRaw === 'number' || etaRaw instanceof Date) {
-        const d = new Date(etaRaw as string | number | Date)
+        let d: Date
+        if (typeof etaRaw === 'number') d = new Date(etaRaw)
+        else d = new Date(String(etaRaw))
         if (!Number.isNaN(d.getTime())) eta = d
       }
     }
@@ -94,7 +97,7 @@ export function mapParsedStatusToF1(
     const eventsRaw = c?.events ?? c?.Events ?? p?.events ?? p?.Events ?? null
     let events: unknown[] | undefined = undefined
     if (Array.isArray(eventsRaw)) {
-      events = eventsRaw as unknown[]
+      events = eventsRaw
     } else if (Array.isArray(c?.locations)) {
       // flatten location.events arrays into events
       const locs = c.locations
@@ -113,8 +116,8 @@ export function mapParsedStatusToF1(
     }
 
     const eventsMapped = Array.isArray(events)
-      ? (events as unknown[]).map((ev) => {
-          const evObj = ev as Record<string, unknown>
+      ? events.map((ev) => {
+          const evObj: Record<string, unknown> = isRecord(ev) ? ev : {}
           const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
           const eventTimeTypeRaw = evObj?.event_time_type ?? evObj?.EventTimeType ?? undefined
           const eventTimeType =
@@ -142,8 +145,8 @@ export function mapParsedStatusToF1(
           return {
             id: idStr,
             activity: activityMapped,
-            event_time: rawEventTime as unknown,
-            event_time_type: evtTimeType as unknown,
+            event_time: rawEventTime,
+            event_time_type: evtTimeType,
             location: evObj?.location ?? evObj?.Location ?? undefined,
             sourceEvent: evObj,
           }
@@ -173,12 +176,14 @@ export function mapParsedStatusToF1(
             ? { city: String(destination) }
             : undefined,
       // p is a loose object; safely read nested source.api if present
-      carrier:
-        (typeof p?.source === 'object' && p?.source !== null
-          ? ((p.source as Record<string, unknown>)['api'] as string | undefined)
-          : undefined) ??
-        provider ??
-        null,
+      carrier: (() => {
+        const src = p?.source
+        if (isRecord(src)) {
+          const apiVal = src['api']
+          if (typeof apiVal === 'string') return apiVal
+        }
+        return provider ?? null
+      })(),
       created_at: now,
       source: { type: 'api' as const, api: provider, fetched_at: now, raw: parsed },
       containers: [container],

@@ -1,9 +1,15 @@
 import type { Process } from '~/modules/process/domain/process'
 import type { ProcessRepository } from '~/modules/process/domain/processRepository'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
-import type { PlannedLocation } from '~/modules/process/domain/value-objects'
+import type {
+  Carrier,
+  OperationType,
+  PlannedLocation,
+  ProcessSource,
+} from '~/modules/process/domain/value-objects'
 import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
@@ -134,7 +140,7 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to fetch container by number: ${error.message}`)
     }
 
-    if (!data || (data as unknown[]).length === 0) return null
+    if (!data || data.length === 0) return null
     return rowToContainer(data[0])
   },
 
@@ -152,8 +158,8 @@ export const supabaseProcessRepository: ProcessRepository = {
       .insert({
         reference: process.reference,
         operation_type: process.operation_type,
-        origin: process.origin as unknown as Json,
-        destination: process.destination as unknown as Json,
+        origin: process.origin ?? null,
+        destination: process.destination ?? null,
         carrier: process.carrier,
         bill_of_lading: process.bill_of_lading,
         booking_reference: process.booking_reference,
@@ -239,8 +245,8 @@ export const supabaseProcessRepository: ProcessRepository = {
       .from(PROCESSES_TABLE)
       .update({
         ...updates,
-        origin: updates.origin as unknown as Json,
-        destination: updates.destination as unknown as Json,
+        origin: updates.origin ?? null,
+        destination: updates.destination ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', processId)
@@ -279,16 +285,16 @@ export const supabaseProcessRepository: ProcessRepository = {
 function rowToProcess(row: ProcessRow): Process {
   return {
     id: String(row.id),
-    reference: row.reference as string | null,
-    operation_type: (row.operation_type as Process['operation_type']) ?? 'unknown',
-    origin: row.origin as PlannedLocation | null,
-    destination: row.destination as PlannedLocation | null,
-    carrier: row.carrier as Process['carrier'] | null,
-    bill_of_lading: row.bill_of_lading as string | null,
-    booking_reference: row.booking_reference as string | null,
-    source: (row.source as Process['source']) ?? 'manual',
-    created_at: new Date(row.created_at as string),
-    updated_at: new Date(row.updated_at as string),
+    reference: row.reference == null ? null : String(row.reference),
+    operation_type: <OperationType>(row.operation_type ?? 'unknown'), // FIXME: Replace assertion with proper parsing
+    origin: isRecord(row.origin) ? row.origin : null,
+    destination: isRecord(row.destination) ? row.destination : null,
+    carrier: row.carrier == null ? null : <Carrier>String(row.carrier), // FIXME: Replace assertion with proper parsing
+    bill_of_lading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
+    booking_reference: row.booking_reference == null ? null : String(row.booking_reference),
+    source: <ProcessSource>row.source ?? 'manual', // FIXME: Replace assertion with proper parsing
+    created_at: new Date(String(row.created_at)),
+    updated_at: new Date(String(row.updated_at)),
   } satisfies Process
 }
 
@@ -297,10 +303,10 @@ function rowToContainer(row: ContainerRow): ProcessContainer {
     id: String(row.id),
     process_id: String(row.process_id),
     container_number: String(row.container_number),
-    carrier_code: (row.carrier_code as string | null) ?? null,
-    container_type: (row.container_type as string | null) ?? null,
-    container_size: (row.container_size as string | null) ?? null,
-    created_at: new Date(row.created_at as string),
-    removed_at: row.removed_at ? new Date(row.removed_at as string) : null,
+    carrier_code: row.carrier_code == null ? null : String(row.carrier_code),
+    container_type: row.container_type == null ? null : String(row.container_type),
+    container_size: row.container_size == null ? null : String(row.container_size),
+    created_at: new Date(String(row.created_at)),
+    removed_at: row.removed_at ? new Date(String(row.removed_at)) : null,
   }
 }
