@@ -1,47 +1,12 @@
 import { z } from 'zod'
+import { type Process, ProcessSchema } from '~/modules/process/domain/process'
+import {
+  Carrier,
+  ContainerInitialStatus,
+  OperationType,
+  ProcessSource,
+} from '~/modules/process/domain/value-objects'
 
-/**
- * Process (Shipment) Domain Model
- *
- * A Process is a logical grouping created by the user to track one or more containers.
- * It represents the INTENTION, not the reality - it can exist with incomplete data.
- *
- * Key decisions (from brainstorm):
- * - Process is always created manually (source = 'manual')
- * - Status is DERIVED from containers, never stored directly
- * - Origin/Destination are INTENTIONAL, not observed
- * - A Process must have at least 1 container
- */
-
-// Operation type enum - explicit choice, defaults to 'unknown'
-export const OperationType = z.enum(['import', 'export', 'transshipment', 'unknown'])
-export type OperationType = z.infer<typeof OperationType>
-
-// Source of the process data
-export const ProcessSource = z.enum(['manual', 'api', 'import'])
-export type ProcessSource = z.infer<typeof ProcessSource>
-
-// Carrier enum (extensible)
-export const Carrier = z.enum(['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'])
-export type Carrier = z.infer<typeof Carrier>
-
-// Location for planned route (intentional, not observed)
-export const PlannedLocation = z.object({
-  display_name: z.string().nullable().optional(), // Free text like "Santos" or "BRSSZ"
-  unlocode: z.string().nullable().optional(), // UN/LOCODE when known
-  city: z.string().nullable().optional(),
-  country_code: z.string().nullable().optional(),
-})
-export type PlannedLocation = z.infer<typeof PlannedLocation>
-
-// Container initial status - explicit choice
-export const ContainerInitialStatus = z.enum(['unknown', 'booked'])
-export type ContainerInitialStatus = z.infer<typeof ContainerInitialStatus>
-
-/**
- * ProcessContainer - a container associated with a process
- * This is the user's declaration, not the tracking data
- */
 export const ProcessContainerSchema = z.object({
   id: z.string().uuid(),
   process_id: z.string().uuid(),
@@ -56,30 +21,6 @@ export const ProcessContainerSchema = z.object({
   updated_at: z.date(),
 })
 export type ProcessContainer = z.infer<typeof ProcessContainerSchema>
-
-/**
- * Process (Shipment) Schema - the main entity
- */
-export const ProcessSchema = z.object({
-  id: z.string().uuid(),
-  // User-provided reference (optional, not unique)
-  reference: z.string().nullable().optional(),
-  // Operation type (import/export/etc)
-  operation_type: OperationType.default('unknown'),
-  // Planned route (intentional, may differ from actual)
-  origin: PlannedLocation.nullable().optional(),
-  destination: PlannedLocation.nullable().optional(),
-  // Source/Integration metadata
-  carrier: Carrier.nullable().optional(),
-  bl_reference: z.string().nullable().optional(),
-  booking_reference: z.string().nullable().optional(),
-  // Process metadata
-  source: ProcessSource.default('manual'),
-  created_at: z.date(),
-  updated_at: z.date(),
-  // Containers are fetched separately, not embedded in the schema
-})
-export type Process = z.infer<typeof ProcessSchema>
 
 /**
  * Schema for creating a new process (input from UI)

@@ -1,8 +1,5 @@
-import type {
-  Process,
-  ProcessContainer,
-  ProcessWithContainers,
-} from '~/modules/process/domain/processStuff'
+import type { Process } from '~/modules/process/domain/process'
+import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
 
 /**
  * Process Repository Interface

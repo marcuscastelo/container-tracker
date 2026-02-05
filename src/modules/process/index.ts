@@ -5,7 +5,6 @@ export {
   createProcessUseCases,
   type ProcessUseCases,
 } from '~/modules/process/application/processUseCases'
-export { type ProcessRepository } from '~/modules/process/domain/processRepository'
 export {
   type Carrier,
   type ContainerInitialStatus,
@@ -18,12 +17,13 @@ export {
   type Process,
   type ProcessContainer,
   ProcessContainerSchema,
+  type ProcessRepository,
   ProcessSchema,
   type ProcessSource,
   type ProcessWithContainers,
   ProcessWithContainersSchema,
   validateContainerNumber,
-} from '~/modules/process/domain/processStuff'
+} from '~/modules/process/domain'
 
 // Infrastructure
 export { supabaseProcessRepository } from '~/modules/process/infrastructure/supabaseProcessRepository'

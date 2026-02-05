@@ -1,7 +1,7 @@
+import type { Process } from '~/modules/process/domain'
 import type { ProcessRepository } from '~/modules/process/domain/processRepository'
 import type {
   CreateProcessInput,
-  Process,
   ProcessContainer,
   ProcessWithContainers,
 } from '~/modules/process/domain/processStuff'

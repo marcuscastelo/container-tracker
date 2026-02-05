@@ -1,10 +1,7 @@
+import type { Process } from '~/modules/process/domain/process'
 import type { ProcessRepository } from '~/modules/process/domain/processRepository'
-import type {
-  PlannedLocation,
-  Process,
-  ProcessContainer,
-  ProcessWithContainers,
-} from '~/modules/process/domain/processStuff'
+import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
+import type { PlannedLocation } from '~/modules/process/domain/value-objects'
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 

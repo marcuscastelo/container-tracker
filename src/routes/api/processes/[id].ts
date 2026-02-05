@@ -1,8 +1,7 @@
 import type { APIEvent } from '@solidjs/start/server'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
-import { processUseCases } from '~/modules/process'
-import { CreateProcessInputSchema } from '~/modules/process/domain/processStuff'
+import { CreateProcessInputSchema, processUseCases } from '~/modules/process'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {
