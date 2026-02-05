@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { cmacgmToNormalized } from '~/adapters/api/cmacgm.adapter'
-import { mapParsedStatusToF1 } from '~/adapters/cannonical/toCanonical.adapter'
+import { mapParsedStatusToF1 } from '~/adapters/canonical/toCanonical.adapter'
 
 function loadExample(name: string) {
   const p = path.resolve(process.cwd(), 'examples', name)
