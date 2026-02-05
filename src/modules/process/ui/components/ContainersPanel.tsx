@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
-import type { ContainerDetail } from '~/modules/shipment/application/processPresenter'
-import { ContainerSelector } from '~/modules/shipment/ui/components/ContainerSelector'
+import type { ContainerDetail } from '~/modules/process/application/processPresenter'
+import { ContainerSelector } from '~/modules/process/ui/components/ContainerSelector'
 
 type Props = {
   containers: readonly ContainerDetail[]

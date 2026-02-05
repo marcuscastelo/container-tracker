@@ -18,10 +18,10 @@ Este documento descreve o racional, evidências, impacto e recomendações prát
 1) Últimos 10 commits (resumo relevante)
 --------------------------------------
 - 2e632d6 feat(copy-button): implement reusable CopyButton component — adicionou `src/shared/ui/CopyButton.tsx`, atualizou `ShipmentView.tsx`, `src/app.css`, `docs/idea-dump.md`.
-- 9988fe6 feat(shipment-view): add clipboard copy functionality for container numbers with animation — `src/modules/shipment/ui/ShipmentView.tsx`.
-- 3791736 style(process-ref): update process reference id format — `src/modules/dashboard/ui/Dashboard.tsx`, `src/modules/shipment/ui/ShipmentView.tsx`.
-- e355839 feat(shipment-view): implement clipboard copy functionality for container numbers — `src/modules/shipment/ui/ShipmentView.tsx`.
-- d00c089 feat(shipment-view): add carrier tracking URL functionality in ShipmentView — `src/modules/shipment/ui/ShipmentView.tsx`.
+- 9988fe6 feat(shipment-view): add clipboard copy functionality for container numbers with animation — `src/modules/process/ui/ShipmentView.tsx`.
+- 3791736 style(process-ref): update process reference id format — `src/modules/dashboard/ui/Dashboard.tsx`, `src/modules/process/ui/ShipmentView.tsx`.
+- e355839 feat(shipment-view): implement clipboard copy functionality for container numbers — `src/modules/process/ui/ShipmentView.tsx`.
+- d00c089 feat(shipment-view): add carrier tracking URL functionality in ShipmentView — `src/modules/process/ui/ShipmentView.tsx`.
 - b1c54fe feat(idea-dump): add carrier metadata storage suggestion — `docs/idea-dump.md`.
 - cb3ee6a feat(container): provide detailed status and event timeline — atualizou adapters (`src/adapters/*`), `ShipmentView.tsx`, dashboard, e rotas API.
 - 3fbe874 refactor(schemas): move schema files to src directory — `src/schemas/*` reorganizados.
@@ -31,7 +31,7 @@ Este documento descreve o racional, evidências, impacto e recomendações prát
 2) Evidências e locais afetados
 --------------------------------
 - Código duplicado de clipboard
-  - `src/modules/shipment/ui/ShipmentView.tsx` contém uma função `copyToClipboard` (fallback + execCommand) e o projeto agora tem `src/shared/ui/CopyButton.tsx` com implementação similar.
+  - `src/modules/process/ui/ShipmentView.tsx` contém uma função `copyToClipboard` (fallback + execCommand) e o projeto agora tem `src/shared/ui/CopyButton.tsx` com implementação similar.
 
 - Parsing/enriquecimento no UI
   - `ShipmentView.tsx` implementa `fetchProcess()` que consome `/api/processes/:id` e mapeia `ProcessApiResponse` para `ShipmentDetail` (cria evento de sistema, mapeia events -> timeline, formata datas, monta `AlertDisplay` etc.).
@@ -80,7 +80,7 @@ Curto prazo (quick wins — 0.5h a 1 dia)
 
 Médio prazo (refactor seguro — 1 a 5 dias)
 - Mover parsing/enriquecimento para presenter/adapter
-  - Criar `src/modules/shipment/application/processPresenter.ts` (ou `src/adapters/process.presenter.ts`) que recebe o `ProcessApiResponse` e retorna o `ShipmentDetail` que a UI espera.
+  - Criar `src/modules/process/application/processPresenter.ts` (ou `src/adapters/process.presenter.ts`) que recebe o `ProcessApiResponse` e retorna o `ShipmentDetail` que a UI espera.
   - A presenter deve reutilizar `src/adapters/*` e `src/schemas/*` (usar tipos canônicos) e conter a transformação (criação de evento system-created, mapeamento de eventos, formatação de datas no formato desejado pela UI, não no formato de exibição — preferir ISO ou data bruta e deixar formatação na UI quando for about locale).
   - Adaptar `ShipmentView.fetchProcess()` para delegar ao presenter.
   - Cobrir presenter com testes unitários (sat de inputs dos adapters/carriers).
@@ -107,7 +107,7 @@ Longo prazo (robustez, 3–10 dias)
   - Add missing i18n keys to all locales and run `pnpm i18n:check`
 
 - PR 2 — presenter scaffold
-  - Add `src/modules/shipment/application/processPresenter.ts`
+  - Add `src/modules/process/application/processPresenter.ts`
   - Migrate `fetchProcess()` mapping into presenter, keep `ShipmentView` using presenter result with same shape (backwards compatible)
   - Add unit tests for presenter using sample `ProcessApiResponse` payloads (use examples in `examples/`)
 

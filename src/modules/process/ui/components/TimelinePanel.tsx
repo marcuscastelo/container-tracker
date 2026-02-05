@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
-import type { ContainerDetail } from '~/modules/shipment/application/processPresenter'
-import { TimelineNode } from '~/modules/shipment/ui/components/TimelineNode'
+import type { ContainerDetail } from '~/modules/process/application/processPresenter'
+import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
 
 type Props = {
   selectedContainer: ContainerDetail | null

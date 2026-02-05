@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type ProcessApiResponse,
   presentProcess,
-} from '~/modules/shipment/application/processPresenter'
+} from '~/modules/process/application/processPresenter'
 
 describe('processPresenter', () => {
   it('presents a minimal API payload into shipment detail', () => {

@@ -1,8 +1,8 @@
 import type {
   ProcessApiResponse,
   ShipmentDetail,
-} from '~/modules/shipment/application/processPresenter'
-import { presentProcess } from '~/modules/shipment/application/processPresenter'
+} from '~/modules/process/application/processPresenter'
+import { presentProcess } from '~/modules/process/application/processPresenter'
 
 export async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
   const response = await fetch(`/api/processes/${id}`)

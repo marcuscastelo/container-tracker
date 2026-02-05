@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import type { TimelineEvent } from '~/modules/shipment/application/processPresenter'
+import type { TimelineEvent } from '~/modules/process/application/processPresenter'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 

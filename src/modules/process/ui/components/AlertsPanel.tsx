@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import type { AlertDisplay } from '~/modules/shipment/application/processPresenter'
-import { AlertsList } from '~/modules/shipment/ui/components/AlertsList'
+import type { AlertDisplay } from '~/modules/process/application/processPresenter'
+import { AlertsList } from '~/modules/process/ui/components/AlertsList'
 
 type Props = {
   alerts: readonly AlertDisplay[]

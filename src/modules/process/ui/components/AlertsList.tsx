@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
-import type { AlertDisplay } from '~/modules/shipment/application/processPresenter'
-import { AlertIcon } from '~/modules/shipment/ui/components/Icons'
+import type { AlertDisplay } from '~/modules/process/application/processPresenter'
+import { AlertIcon } from '~/modules/process/ui/components/Icons'
 
 export function AlertsList(props: { alerts: readonly AlertDisplay[] }): JSX.Element {
   return (

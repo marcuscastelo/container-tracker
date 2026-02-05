@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import type { ShipmentDetail } from '~/modules/shipment/application/processPresenter'
-import { ArrowIcon } from '~/modules/shipment/ui/components/Icons'
+import type { ShipmentDetail } from '~/modules/process/application/processPresenter'
+import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { StatusBadge } from '~/shared/ui'
 
 type Props = {
