@@ -4,7 +4,7 @@ import { createResource, createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
 import { CreateProcessDialog } from '~/modules/process'
-import type { CreateProcessInput } from '~/modules/process/domain/process'
+import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
 import {
   AppHeader,
   EmptyState,

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
 import { processUseCases, supabaseProcessRepository } from '~/modules/process'
-import { CreateProcessInputSchema } from '~/modules/process/domain/process'
+import { CreateProcessInputSchema } from '~/modules/process/domain/processStuff'
 
 // Response schemas
 const ProcessResponseSchema = z.object({

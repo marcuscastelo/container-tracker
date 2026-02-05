@@ -2,7 +2,7 @@ import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { useTranslation } from '~/i18n'
-import { findDuplicateContainers } from '~/modules/process/domain/process'
+import { findDuplicateContainers } from '~/modules/process/domain/processStuff'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 

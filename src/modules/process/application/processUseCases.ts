@@ -1,15 +1,15 @@
+import type { ProcessRepository } from '~/modules/process/domain/processRepository'
 import type {
   CreateProcessInput,
   Process,
   ProcessContainer,
   ProcessWithContainers,
-} from '~/modules/process/domain/process'
+} from '~/modules/process/domain/processStuff'
 import {
   createProcess,
   findDuplicateContainers,
   validateContainerNumber,
-} from '~/modules/process/domain/process'
-import type { ProcessRepository } from '~/modules/process/domain/processRepository'
+} from '~/modules/process/domain/processStuff'
 
 // Input shape used by updateProcess - UI-friendly field names
 export type UpdateProcessInput = {
