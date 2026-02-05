@@ -1,9 +1,9 @@
 import fs from 'fs'
 import path from 'path'
-import { cmacgmToNormalized } from '~/adapters/cmacgm.adapter'
-import { maerskToNormalized } from '~/adapters/maersk.adapter'
-import { mscToNormalized } from '~/adapters/msc.adapter'
-import { mapParsedStatusToF1 } from '~/adapters/toCanonical.adapter'
+import { cmacgmToNormalized } from '~/adapters/api/cmacgm.adapter'
+import { maerskToNormalized } from '~/adapters/api/maersk.adapter'
+import { mscToNormalized } from '~/adapters/api/msc.adapter'
+import { mapParsedStatusToF1 } from '~/adapters/cannonical/toCanonical.adapter'
 
 function loadExample(name: string) {
   const p = path.resolve(process.cwd(), 'examples', name)

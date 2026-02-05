@@ -1,13 +1,21 @@
-import type { CollectionsResponse } from '~/routes/api/collections'
-import * as containerStatus from '~/schemas/containerStatus.schema'
-import {
-  type Shipment as UIShipment,
-  ShipmentsSchema as UIShipmentsSchema,
-} from '~/schemas/shipment.schema'
+/** biome-ignore-all lint/suspicious/noExplicitAny: Deprecated file */
+import { z } from 'zod'
 
-// Collections module now uses Supabase as the data source.
-// The API route `/api/collections` fetches from the `container-status` table
-// and this module consumes that API for the async loader.
+// Schema simples usado pela UI PoC (corresponde ao tipo Shipment do componente)
+export const ShipmentSchema = z.object({
+  process: z.string(),
+  client: z.string(),
+  carrier: z.string(),
+  container: z.string(),
+  route: z.string(),
+  status: z.string(),
+  eta: z.string(),
+  statusClass: z.string().optional(),
+})
+
+export const ShipmentsSchema = z.array(ShipmentSchema)
+
+export type Shipment = z.infer<typeof ShipmentSchema>
 
 function safeString(v: unknown) {
   if (!v && v !== 0) return ''
@@ -15,7 +23,11 @@ function safeString(v: unknown) {
 }
 
 // Map a normalized Shipment (containerStatus.ShipmentSchema) to the simple UI Shipment
-function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string): UIShipment {
+/**
+ * @deprecated use mapParsedStatusToF1 and then mapF1ToUI instead
+ * Kept for future LLM reference
+ */
+export function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string): Shipment {
   console.debug(`collections: mapping sample #${idx} (${path})`)
   // try to find a container
   const containers = raw?.containers ?? []
@@ -266,7 +278,7 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
 
   const status = first?.status ?? raw?.current_status ?? raw?.status ?? 'Desconhecido'
 
-  const s: UIShipment = {
+  const s: Shipment = {
     process: safeString(raw?.process ?? raw?.process_id ?? `2024-0${100 + idx}`),
     client: safeString(client),
     carrier: safeString(carrier),
@@ -287,35 +299,4 @@ function mapNormalizedToUI(raw: any, carrier: string, idx: number, path?: string
   } catch (_e) {}
 
   return s
-}
-
-export async function getPoCShipmentsAsync(): Promise<UIShipment[]> {
-  try {
-    const res = await fetch('/api/collections')
-    if (!res.ok) {
-      console.warn('collections: /api/collections returned', res.status)
-      return []
-    }
-    // API now returns array of { container_id, carrier, status } from Supabase
-    const data = (await res.json()) as CollectionsResponse
-    const out: UIShipment[] = []
-    console.debug(`collections: fetched ${data.length} records from /api/collections`)
-    data.forEach(({ container_id, carrier, status }, i) => {
-      // Use container_id as the path for mapping heuristics
-      console.debug(
-        `collections: processing record #${i + 1} for container_id=${container_id}, carrier=${carrier}`,
-      )
-      out.push(mapNormalizedToUI(status, carrier, i + 1, container_id))
-    })
-    if (UIShipmentsSchema.safeParse(out).success) {
-      console.debug('collections: mapped shipments conform to UIShipmentsSchema')
-      return out
-    } else {
-      console.warn('collections: mapped shipments DO NOT conform to UIShipmentsSchema')
-      return []
-    }
-  } catch (err) {
-    console.error('collections: failed to fetch /api/collections', err)
-    return []
-  }
 }

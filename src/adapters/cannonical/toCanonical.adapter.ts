@@ -1,4 +1,4 @@
-import { type F1Shipment, F1ShipmentSchema } from '~/schemas/canonical.schema'
+import { type F1Shipment, F1ShipmentSchema } from '~/schemas/cannonical/canonical.schema'
 
 function upperTrim(v: unknown): string {
   if (!v && v !== 0) return ''

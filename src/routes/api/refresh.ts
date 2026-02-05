@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { mapParsedStatusToF1 } from '~/adapters/toCanonical.adapter'
+import { mapParsedStatusToF1 } from '~/adapters/cannonical/toCanonical.adapter'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
