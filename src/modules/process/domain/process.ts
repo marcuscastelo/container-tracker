@@ -13,7 +13,7 @@ export const ProcessSchema = z.object({
   origin: PlannedLocation.nullable().optional(),
   destination: PlannedLocation.nullable().optional(),
   carrier: Carrier.nullable().optional(),
-  bl_reference: z.string().nullable().optional(),
+  bill_of_lading: z.string().nullable().optional(),
   booking_reference: z.string().nullable().optional(),
   source: ProcessSource.default('manual'),
   created_at: z.date(),

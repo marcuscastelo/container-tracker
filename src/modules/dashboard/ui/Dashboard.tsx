@@ -5,6 +5,7 @@ import { useTranslation } from '~/i18n'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
 import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
+import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import {
   AppHeader,
   EmptyState,
@@ -221,15 +222,7 @@ export function Dashboard(): JSX.Element {
     setIsCreateDialogOpen(true)
   }
 
-  const handleProcessSubmit = async (data: {
-    reference: string
-    operationType: string
-    origin: string
-    destination: string
-    containers: Array<{ id: string; containerNumber: string; isoType: string }>
-    carrier: string
-    blReference: string
-  }) => {
+  const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
     try {
       setCreateError(null)
 
@@ -240,7 +233,7 @@ export function Dashboard(): JSX.Element {
         origin: data.origin ? { display_name: data.origin } : null,
         destination: data.destination ? { display_name: data.destination } : null,
         carrier: (data.carrier as CreateProcessInput['carrier']) || null,
-        bl_reference: data.blReference || null,
+        bill_of_lading: data.billOfLading || null,
         containers: data.containers.map((c) => ({
           container_number: c.containerNumber,
           iso_type: c.isoType || null,

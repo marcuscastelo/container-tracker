@@ -177,7 +177,7 @@ export async function POST({ request }: { request: Request }) {
               ? { display_name: (shipment.destination as any).city ?? null }
               : null,
             carrier: (shipment.carrier as any) ?? null,
-            bl_reference: null,
+            bill_of_lading: null,
             containers: containers.map((c: any) => ({
               container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
               iso_type: c.iso_code ?? c.iso_type ?? null,

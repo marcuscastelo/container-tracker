@@ -41,7 +41,7 @@ export const CreateProcessInputSchema = z.object({
     .nullable()
     .optional(),
   carrier: Carrier.nullable().optional(),
-  bl_reference: z.string().nullable().optional(),
+  bill_of_lading: z.string().nullable().optional(),
   containers: z
     .array(
       z.object({
@@ -122,7 +122,7 @@ export function createProcess(input: CreateProcessInput): {
       ? { display_name: input.destination.display_name }
       : null,
     carrier: input.carrier ?? null,
-    bl_reference: input.bl_reference ?? null,
+    bill_of_lading: input.bill_of_lading ?? null,
     booking_reference: null,
     source: 'manual',
   }

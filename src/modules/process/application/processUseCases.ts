@@ -1,4 +1,4 @@
-import type { Process } from '~/modules/process/domain'
+import type { Carrier, OperationType, Process } from '~/modules/process/domain'
 import type { ProcessRepository } from '~/modules/process/domain/processRepository'
 import type {
   CreateProcessInput,
@@ -14,11 +14,11 @@ import {
 // Input shape used by updateProcess - UI-friendly field names
 export type UpdateProcessInput = {
   reference?: string | null
-  operationType?: string
+  operationType?: OperationType
   origin?: unknown
   destination?: unknown
-  carrier?: string | null
-  blReference?: string | null
+  carrier?: Carrier | null
+  billOfLading?: string | null
   containers?: Array<{ containerNumber: string; isoType?: string | null }>
 }
 
@@ -230,21 +230,18 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       }
 
       // Map field names from CreateProcessInput -> repository update shape
-      const updates: Record<string, unknown> = {}
+      const updates: Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>> = {}
       if (input.reference !== undefined) updates.reference = input.reference
       if (input.operationType !== undefined) updates.operation_type = input.operationType
       if (input.origin !== undefined) updates.origin = input.origin
       if (input.destination !== undefined) updates.destination = input.destination
       if (input.carrier !== undefined) updates.carrier = input.carrier
-      if (input.blReference !== undefined) updates.bl_reference = input.blReference
+      if (input.billOfLading !== undefined) updates.bill_of_lading = input.billOfLading
 
       // Call repository.update for provided fields
       if (Object.keys(updates).length > 0) {
         // repository.update expects partial Process fields with repository naming
-        await repository.update(
-          processId,
-          updates as Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>>,
-        )
+        await repository.update(processId, updates)
       }
 
       const updated = await repository.fetchByIdWithContainers(processId)

@@ -55,21 +55,21 @@ export type ContainerInput = {
   isoType: string
 }
 
-export type FormData = {
+export type CreateProcessDialogFormData = {
   reference: string
   operationType: string
   origin: string
   destination: string
   containers: ContainerInput[]
   carrier: string
-  blReference: string
+  billOfLading: string
 }
 
 type Props = {
   readonly open: boolean
   readonly onClose: () => void
-  readonly onSubmit?: (data: FormData) => void
-  readonly initialData?: FormData | null
+  readonly onSubmit?: (data: CreateProcessDialogFormData) => void
+  readonly initialData?: CreateProcessDialogFormData | null
   readonly mode?: 'create' | 'edit'
   readonly focusReference?: boolean
 }
@@ -92,7 +92,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const [destination, setDestination] = createSignal('')
   const [containers, setContainers] = createStore<ContainerInput[]>([createEmptyContainer()])
   const [carrier, setCarrier] = createSignal('')
-  const [blReference, setBlReference] = createSignal('')
+  const [billOfLading, setBillOfLading] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
   const [serverErrors, setServerErrors] = createSignal<
     Record<string, { message: string; link?: string }>
@@ -106,7 +106,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       setOrigin(props.initialData.origin || '')
       setDestination(props.initialData.destination || '')
       setCarrier(props.initialData.carrier || '')
-      setBlReference(props.initialData.blReference || '')
+      setBillOfLading(props.initialData.billOfLading || '')
       setContainers(
         props.initialData.containers.length
           ? props.initialData.containers.map((c) => ({
@@ -286,14 +286,14 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         }
 
         // No conflicts -> proceed with submit
-        const data: FormData = {
+        const data: CreateProcessDialogFormData = {
           reference: reference(),
           operationType: operationType(),
           origin: origin(),
           destination: destination(),
           containers: containers.filter((c) => c.containerNumber.trim()),
           carrier: carrier(),
-          blReference: blReference(),
+          billOfLading: billOfLading(),
         }
 
         props.onSubmit?.(data)
@@ -324,7 +324,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     setDestination('')
     setContainers([createEmptyContainer()])
     setCarrier('')
-    setBlReference('')
+    setBillOfLading('')
     setTouched({})
     props.onClose()
   }
@@ -592,8 +592,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             <FormInput
               label={t(keys.blReference)}
               name="blReference"
-              value={blReference()}
-              onInput={setBlReference}
+              value={billOfLading()}
+              onInput={setBillOfLading}
               placeholder={t(keys.blReferencePlaceholder)}
             />
           </div>

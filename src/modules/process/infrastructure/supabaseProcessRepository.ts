@@ -2,11 +2,14 @@ import type { Process } from '~/modules/process/domain/process'
 import type { ProcessRepository } from '~/modules/process/domain/processRepository'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
 import type { PlannedLocation } from '~/modules/process/domain/value-objects'
-import type { Json } from '~/shared/supabase/database.types'
+import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'process_containers'
+
+type ProcessRow = Database['public']['Tables']['processes']['Row']
+type ContainerRow = Database['public']['Tables']['process_containers']['Row']
 
 /**
  * Supabase-backed implementation of ProcessRepository.
@@ -40,7 +43,7 @@ export const supabaseProcessRepository: ProcessRepository = {
 
     return (data ?? []).map((row) => {
       const process = rowToProcess(row)
-      const containers = ((row as Record<string, unknown>)[CONTAINERS_TABLE] as unknown[]) ?? []
+      const containers = row[CONTAINERS_TABLE] ?? []
       return {
         ...process,
         containers: containers.map(rowToContainer),
@@ -80,7 +83,7 @@ export const supabaseProcessRepository: ProcessRepository = {
     if (!data) return null
 
     const process = rowToProcess(data)
-    const containers = ((data as Record<string, unknown>)[CONTAINERS_TABLE] as unknown[]) ?? []
+    const containers = data[CONTAINERS_TABLE] ?? []
     return {
       ...process,
       containers: containers.map(rowToContainer),
@@ -132,7 +135,7 @@ export const supabaseProcessRepository: ProcessRepository = {
     }
 
     if (!data || (data as unknown[]).length === 0) return null
-    return rowToContainer((data as unknown[])[0])
+    return rowToContainer(data[0])
   },
 
   async create(
@@ -152,12 +155,12 @@ export const supabaseProcessRepository: ProcessRepository = {
         origin: process.origin as unknown as Json,
         destination: process.destination as unknown as Json,
         carrier: process.carrier,
-        bl_reference: process.bl_reference,
+        bill_of_lading: process.bill_of_lading,
         booking_reference: process.booking_reference,
         source: process.source,
         created_at: now,
         updated_at: now,
-      })
+      } satisfies Database['public']['Tables']['processes']['Insert'])
       .select()
       .single()
 
@@ -273,33 +276,31 @@ export const supabaseProcessRepository: ProcessRepository = {
 }
 
 // Helper functions to convert database rows to domain types
-function rowToProcess(row: unknown): Process {
-  const r = row as Record<string, unknown>
+function rowToProcess(row: ProcessRow): Process {
   return {
-    id: String(r.id),
-    reference: r.reference as string | null,
-    operation_type: (r.operation_type as Process['operation_type']) ?? 'unknown',
-    origin: r.origin as PlannedLocation | null,
-    destination: r.destination as PlannedLocation | null,
-    carrier: r.carrier as Process['carrier'] | null,
-    bl_reference: r.bl_reference as string | null,
-    booking_reference: r.booking_reference as string | null,
-    source: (r.source as Process['source']) ?? 'manual',
-    created_at: new Date(r.created_at as string),
-    updated_at: new Date(r.updated_at as string),
-  }
+    id: String(row.id),
+    reference: row.reference as string | null,
+    operation_type: (row.operation_type as Process['operation_type']) ?? 'unknown',
+    origin: row.origin as PlannedLocation | null,
+    destination: row.destination as PlannedLocation | null,
+    carrier: row.carrier as Process['carrier'] | null,
+    bill_of_lading: row.bill_of_lading as string | null,
+    booking_reference: row.booking_reference as string | null,
+    source: (row.source as Process['source']) ?? 'manual',
+    created_at: new Date(row.created_at as string),
+    updated_at: new Date(row.updated_at as string),
+  } satisfies Process
 }
 
-function rowToContainer(row: unknown): ProcessContainer {
-  const r = row as Record<string, unknown>
+function rowToContainer(row: ContainerRow): ProcessContainer {
   return {
-    id: String(r.id),
-    process_id: String(r.process_id),
-    container_number: String(r.container_number),
-    iso_type: r.iso_type as string | null,
-    initial_status: (r.initial_status as ProcessContainer['initial_status']) ?? 'unknown',
-    source: (r.source as ProcessContainer['source']) ?? 'manual',
-    created_at: new Date(r.created_at as string),
-    updated_at: new Date(r.updated_at as string),
+    id: String(row.id),
+    process_id: String(row.process_id),
+    container_number: String(row.container_number),
+    iso_type: row.iso_type as string | null,
+    initial_status: (row.initial_status as ProcessContainer['initial_status']) ?? 'unknown',
+    source: (row.source as ProcessContainer['source']) ?? 'manual',
+    created_at: new Date(row.created_at as string),
+    updated_at: new Date(row.updated_at as string),
   }
 }

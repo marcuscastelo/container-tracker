@@ -3,7 +3,7 @@ import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
 import { CreateProcessDialog } from '~/modules/process'
-import type { FormData as ProcessFormData } from '~/modules/process/ui/CreateProcessDialog'
+import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
@@ -85,7 +85,9 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
   // Edit dialog state
   const [isEditOpen, setIsEditOpen] = createSignal(false)
-  const [editInitialData, setEditInitialData] = createSignal<ProcessFormData | null>(null)
+  const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
+    null,
+  )
   const [focusReferenceOnOpen, setFocusReferenceOnOpen] = createSignal(false)
 
   // Create dialog state (header "Create process" button uses this)
@@ -99,7 +101,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
   // Copy button state is handled by shared `CopyButton` component
 
-  const handleCreateSubmit = async (formData: ProcessFormData) => {
+  const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
       // Map UI form data to API shape
       const input: Record<string, unknown> = {
@@ -108,7 +110,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.blReference || null,
+        bl_reference: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
           iso_type: c.isoType || null,
@@ -154,7 +156,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
     }
   }
 
-  const handleEditSubmit = async (formData: ProcessFormData) => {
+  const handleEditSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
       // Map UI form data to API shape
       const input: Record<string, unknown> = {
@@ -163,7 +165,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.blReference || null,
+        bl_reference: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
           iso_type: c.isoType || null,
@@ -340,8 +342,8 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                       isoType: c.isoType ?? '',
                     })),
                     carrier: d.carrier || '',
-                    blReference: d.bl_reference ?? '',
-                  }
+                    billOfLading: d.bl_reference ?? '',
+                  } satisfies CreateProcessDialogFormData
                   setEditInitialData(initial)
                   setFocusReferenceOnOpen(!!focusReference)
                   setIsEditOpen(true)

@@ -34,7 +34,8 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       origin: process.origin,
       destination: process.destination,
       carrier: process.carrier,
-      bl_reference: process.bl_reference,
+      // TODO: Rename to bill_of_lading in the future, with type safe zod schema and typescript refactor
+      bl_reference: process.bill_of_lading,
       source: process.source,
       created_at: process.created_at.toISOString(),
       updated_at: process.updated_at.toISOString(),
@@ -283,7 +284,7 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     if (parsed.data.origin !== undefined) input.origin = parsed.data.origin
     if (parsed.data.destination !== undefined) input.destination = parsed.data.destination
     if (parsed.data.carrier !== undefined) input.carrier = parsed.data.carrier
-    if (parsed.data.bl_reference !== undefined) input.blReference = parsed.data.bl_reference
+    if (parsed.data.bill_of_lading !== undefined) input.blReference = parsed.data.bill_of_lading
     if (parsed.data.containers !== undefined) {
       input.containers = parsed.data.containers.map((c: any) => ({
         containerNumber: c.container_number,
@@ -300,7 +301,7 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
       origin: updated.origin,
       destination: updated.destination,
       carrier: updated.carrier,
-      bl_reference: updated.bl_reference,
+      bl_reference: updated.bill_of_lading,
       source: updated.source,
       created_at: updated.created_at.toISOString(),
       updated_at: updated.updated_at.toISOString(),
