@@ -124,41 +124,62 @@ export type Database = {
       }
       processes: {
         Row: {
-          bl_reference: string | null
+          archived_at: string | null
+          bill_of_lading: string | null
+          booking_number: string | null
           booking_reference: string | null
           carrier: string | null
+          client_id: string | null
           created_at: string | null
+          deleted_at: string | null
           destination: Json | null
+          exporter_name: string | null
           id: string
+          importer_name: string | null
           operation_type: string
           origin: Json | null
           reference: string | null
+          reference_importer: string | null
           source: string
           updated_at: string | null
         }
         Insert: {
-          bl_reference?: string | null
+          archived_at?: string | null
+          bill_of_lading?: string | null
+          booking_number?: string | null
           booking_reference?: string | null
           carrier?: string | null
+          client_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           destination?: Json | null
+          exporter_name?: string | null
           id?: string
+          importer_name?: string | null
           operation_type: string
           origin?: Json | null
           reference?: string | null
+          reference_importer?: string | null
           source: string
           updated_at?: string | null
         }
         Update: {
-          bl_reference?: string | null
+          archived_at?: string | null
+          bill_of_lading?: string | null
+          booking_number?: string | null
           booking_reference?: string | null
           carrier?: string | null
+          client_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           destination?: Json | null
+          exporter_name?: string | null
           id?: string
+          importer_name?: string | null
           operation_type?: string
           origin?: Json | null
           reference?: string | null
+          reference_importer?: string | null
           source?: string
           updated_at?: string | null
         }
