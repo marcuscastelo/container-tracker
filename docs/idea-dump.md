@@ -9,6 +9,7 @@ Adicionar booking_number no processo (domain).
 Pensar se mantemos unknown ou null para os campos (carrier e operationType) que nao sao obrigatorios, e se sim, padronizar isso em todo o codigo (domain, application, ui). Null gasta menos espaço no banco...
 
 # Pedidos do cliente (alguns precisam de mais detalhes)
+Adicionar campo mercadoria (description of goods) no processo.
 
 # Debito tecnico
 CopyButton e ShipmentView duplicado clipboard utils
