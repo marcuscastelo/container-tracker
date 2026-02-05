@@ -90,7 +90,7 @@
       "isoTypePlaceholder": "e.g. 40HC, 20GP",
       "carrier": "Carrier",
       "carrierPlaceholder": "Select carrier",
-      "blReference": "BL / Booking Reference",
+      "blReference": "Bill of Lading (BL)",
       "blReferencePlaceholder": "e.g. MAEU123456789"
     },
     "operationType": {

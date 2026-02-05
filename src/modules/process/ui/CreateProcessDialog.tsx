@@ -2,6 +2,7 @@ import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { useTranslation } from '~/i18n'
+import type { Carrier, OperationType } from '~/modules/process/domain'
 import { findDuplicateContainers } from '~/modules/process/domain/processStuff'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
@@ -57,11 +58,11 @@ export type ContainerInput = {
 
 export type CreateProcessDialogFormData = {
   reference: string
-  operationType: string
+  operationType: OperationType
   origin: string
   destination: string
   containers: ContainerInput[]
-  carrier: string
+  carrier: Carrier
   billOfLading: string
 }
 
@@ -87,16 +88,24 @@ export function CreateProcessDialog(props: Props): JSX.Element {
 
   // Form state
   const [reference, setReference] = createSignal('')
-  const [operationType, setOperationType] = createSignal('')
+  const [operationType, setOperationType] = createSignal<OperationType>('unknown')
   const [origin, setOrigin] = createSignal('')
   const [destination, setDestination] = createSignal('')
   const [containers, setContainers] = createStore<ContainerInput[]>([createEmptyContainer()])
-  const [carrier, setCarrier] = createSignal('')
+  const [carrier, setCarrier] = createSignal<Carrier>('unknown')
   const [billOfLading, setBillOfLading] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
   const [serverErrors, setServerErrors] = createSignal<
     Record<string, { message: string; link?: string }>
   >({})
+
+  // Set of container numbers that were present when the dialog was opened (edit initial state)
+  const initialContainerNumbersSet = createMemo(
+    () =>
+      new Set<string>(
+        (props.initialData?.containers ?? []).map((c) => c.containerNumber.toUpperCase().trim()),
+      ),
+  )
 
   // Populate form when editing
   createEffect(() => {
@@ -229,12 +238,38 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       return
     }
 
-    // Fail-fast server-side check: ask backend if any of these container numbers already exist
-    const containerNumbersForCheck = containerNumbers.map((n) => n.toUpperCase().trim())
+    // Fail-fast server-side check: ask backend if any of these container numbers already exist.
+    // IMPORTANT: when editing, skip checking container numbers that were already present in
+    // the initial process (they are allowed to remain). Only check new or changed numbers.
+    const entries = containerNumbers.map((n, i) => ({
+      num: n.toUpperCase().trim(),
+      id: containers[i].id,
+    }))
+    const entriesToCheck = entries.filter((e) => !initialContainerNumbersSet().has(e.num))
+    const containerNumbersForCheck = entriesToCheck.map((e) => e.num)
     ;(async () => {
       try {
         // Reset previous server errors
         setServerErrors({})
+
+        // If nothing to check (e.g., editing without adding new containers), skip server check
+        if (containerNumbersForCheck.length === 0) {
+          // proceed with submit
+          const data: CreateProcessDialogFormData = {
+            reference: reference(),
+            operationType: operationType(),
+            origin: origin(),
+            destination: destination(),
+            containers: containers.filter((c) => c.containerNumber.trim()),
+            carrier: carrier(),
+            billOfLading: billOfLading(),
+          }
+
+          props.onSubmit?.(data)
+          handleClose()
+          return
+        }
+
         const res = await fetch('/api/processes/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -268,12 +303,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           // Map conflicts to per-field errors and mark touched so they show inline
           const errs: Record<string, { message: string; link?: string }> = {}
           for (const c of conflicts) {
-            // find matching container id in current form
-            const idx = containerNumbersForCheck.findIndex(
-              (n) => n === c.containerNumber.toUpperCase(),
-            )
-            const fieldKey =
-              idx >= 0 ? `container-${containers[idx].id}` : `container-${c.containerNumber}`
+            // find matching entry in the entriesToCheck array
+            const match = entriesToCheck.find((e) => e.num === c.containerNumber.toUpperCase())
+            const fieldKey = match ? `container-${match.id}` : `container-${c.containerNumber}`
             errs[fieldKey] = {
               message: c.message ?? `Container ${c.containerNumber} already exists`,
               link: c.link,
@@ -319,11 +351,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const handleClose = () => {
     // Reset form
     setReference('')
-    setOperationType('')
+    setOperationType('unknown')
     setOrigin('')
     setDestination('')
     setContainers([createEmptyContainer()])
-    setCarrier('')
+    setCarrier('unknown')
     setBillOfLading('')
     setTouched({})
     props.onClose()
@@ -441,6 +473,12 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                           const val = container.containerNumber.trim()
                           // only check non-empty container numbers
                           if (!val) return
+
+                          // When editing an existing process, skip server-side check for
+                          // container numbers that were already present in the initial data
+                          const normalized = val.toUpperCase().trim()
+                          if (initialContainerNumbersSet().has(normalized)) return
+
                           try {
                             // reset any previous server error for this field
                             setServerErrors((prev) => {

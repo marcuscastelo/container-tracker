@@ -237,7 +237,8 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       if (input.destination !== undefined) updates.destination = input.destination
       if (input.carrier !== undefined) updates.carrier = input.carrier
       if (input.billOfLading !== undefined) updates.bill_of_lading = input.billOfLading
-
+      console.debug('processUseCases.updateProcess: full input', input)
+      console.debug('processUseCases.updateProcess: updates to apply', updates)
       // Call repository.update for provided fields
       if (Object.keys(updates).length > 0) {
         // repository.update expects partial Process fields with repository naming

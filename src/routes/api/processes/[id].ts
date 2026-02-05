@@ -2,6 +2,7 @@ import type { APIEvent } from '@solidjs/start/server'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
 import { CreateProcessInputSchema, processUseCases } from '~/modules/process'
+import type { UpdateProcessInput } from '~/modules/process/application/processUseCases'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {
@@ -278,13 +279,13 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     }
 
     // Map incoming containers to UI-friendly shape if present
-    const input: any = {}
+    const input: UpdateProcessInput = {}
     if (parsed.data.reference !== undefined) input.reference = parsed.data.reference
     if (parsed.data.operation_type !== undefined) input.operationType = parsed.data.operation_type
     if (parsed.data.origin !== undefined) input.origin = parsed.data.origin
     if (parsed.data.destination !== undefined) input.destination = parsed.data.destination
     if (parsed.data.carrier !== undefined) input.carrier = parsed.data.carrier
-    if (parsed.data.bill_of_lading !== undefined) input.blReference = parsed.data.bill_of_lading
+    if (parsed.data.bill_of_lading !== undefined) input.billOfLading = parsed.data.bill_of_lading
     if (parsed.data.containers !== undefined) {
       input.containers = parsed.data.containers.map((c: any) => ({
         containerNumber: c.container_number,

@@ -2,7 +2,7 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
-import { CreateProcessDialog } from '~/modules/process'
+import { CreateProcessDialog, type CreateProcessInput } from '~/modules/process'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
@@ -159,13 +159,13 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   const handleEditSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
       // Map UI form data to API shape
-      const input: Record<string, unknown> = {
+      const input: CreateProcessInput = {
         reference: formData.reference || null,
         operation_type: formData.operationType || undefined,
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.billOfLading || null,
+        bill_of_lading: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
           iso_type: c.isoType || null,
@@ -333,7 +333,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                   if (!d) return
                   const initial = {
                     reference: d.reference ?? '',
-                    operationType: d.operationType ?? '',
+                    operationType: d.operationType ?? 'unknown',
                     origin: d.origin || '',
                     destination: d.destination || '',
                     containers: d.containers.map((c) => ({
@@ -341,7 +341,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                       containerNumber: c.number,
                       isoType: c.isoType ?? '',
                     })),
-                    carrier: d.carrier || '',
+                    carrier: d.carrier ?? 'unknown',
                     billOfLading: d.bl_reference ?? '',
                   } satisfies CreateProcessDialogFormData
                   setEditInitialData(initial)

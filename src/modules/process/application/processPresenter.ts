@@ -1,3 +1,4 @@
+import type { Carrier, OperationType } from '~/modules/process/domain'
 import type { StatusVariant } from '~/shared/ui'
 
 // Presenter: convert ProcessApiResponse (API) into ShipmentDetail (UI shape)
@@ -34,8 +35,8 @@ export type ShipmentDetail = {
   readonly id: string
   readonly processRef: string
   readonly reference?: string | null
-  readonly operationType?: string
-  readonly carrier?: string | null
+  readonly operationType?: OperationType
+  readonly carrier?: Carrier | null
   // TODO: ShipmentDetail is duplicated throughout the codebase, unify in api schemas with zod and proper typesbill_of_lading
   // TODO: Once unified, change all references from bl_reference to bill_of_lading or billOfLading
   readonly bl_reference?: string | null
@@ -52,10 +53,10 @@ export type ShipmentDetail = {
 export type ProcessApiResponse = {
   id: string
   reference: string | null
-  operation_type: string
+  operation_type: OperationType
   origin: { display_name?: string | null } | null
   destination: { display_name?: string | null } | null
-  carrier: string | null
+  carrier: Carrier | null
   bl_reference: string | null
   source: string
   created_at: string
