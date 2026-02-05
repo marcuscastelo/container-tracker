@@ -1,18 +1,16 @@
 import { A, useNavigate, useParams } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, For, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
 import { CreateProcessDialog } from '~/modules/process'
 import type { FormData as ProcessFormData } from '~/modules/process/ui/CreateProcessDialog'
-import {
-  AppHeader,
-  CopyButton,
-  ExistingProcessError,
-  StatusBadge,
-  type StatusVariant,
-} from '~/shared/ui'
-
-// carrierTrackUrl and copyToClipboard are used by TimelineNode; moved to component
+import { AlertsPanel } from '~/modules/shipment/ui/components/AlertsPanel'
+import { ContainersPanel } from '~/modules/shipment/ui/components/ContainersPanel'
+import { ChevronLeftIcon } from '~/modules/shipment/ui/components/Icons'
+import { ShipmentHeader } from '~/modules/shipment/ui/components/ShipmentHeader'
+import { TimelinePanel } from '~/modules/shipment/ui/components/TimelinePanel'
+import { fetchProcess } from '~/modules/shipment/ui/fetchProcess'
+import { AppHeader, ExistingProcessError } from '~/shared/ui'
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -36,20 +34,6 @@ const keys = {
   internalIdMessage: 'shipmentView.internalIdMessage',
   internalIdCTA: 'shipmentView.internalIdCTA',
 }
-
-// Return a tracking URL for common carriers. If unknown, returns a safe search fallback.
-// carrierTrackUrl moved to shared util: ~/shared/utils/carrier
-
-// copyToClipboard moved to shared util: ~/shared/utils/clipboard
-
-import { AlertsList } from '~/modules/shipment/ui/components/AlertsList'
-import { ContainerSelector } from '~/modules/shipment/ui/components/ContainerSelector'
-import { ArrowIcon, ChevronLeftIcon } from '~/modules/shipment/ui/components/Icons'
-// Domain types for the shipment view
-import { TimelineNode } from '~/modules/shipment/ui/components/TimelineNode'
-import { fetchProcess } from '~/modules/shipment/ui/fetchProcess'
-
-// Components extracted to `./components` to keep this file focused
 
 export function ShipmentView(): JSX.Element {
   const { t } = useTranslation()
@@ -103,7 +87,6 @@ export function ShipmentView(): JSX.Element {
   // Edit dialog state
   const [isEditOpen, setIsEditOpen] = createSignal(false)
   const [editInitialData, setEditInitialData] = createSignal<ProcessFormData | null>(null)
-  const [showInternalIdInfo, setShowInternalIdInfo] = createSignal(false)
   const [focusReferenceOnOpen, setFocusReferenceOnOpen] = createSignal(false)
 
   // Create dialog state (header "Create process" button uses this)
@@ -338,249 +321,46 @@ export function ShipmentView(): JSX.Element {
         <Show when={shipment()}>
           {(data) => (
             <>
-              {/* Shipment Header Card */}
-              <section class="mb-6 rounded-lg border border-slate-200 bg-white p-6">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h1 class="text-xl font-semibold text-slate-900">
-                      {t(keys.shipmentHeader)} {data().processRef}
-                      <Show when={!data().reference}>
-                        <span class="relative inline-block ml-2">
-                          <button
-                            type="button"
-                            aria-label={t(keys.internalIdMessage)}
-                            class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-blue-600 text-xs font-medium hover:bg-slate-200 animate-pulse hover:cursor-pointer hover:scale-110 transition-transform"
-                            onClick={() => setShowInternalIdInfo((s) => !s)}
-                          >
-                            i
-                          </button>
-
-                          <div
-                            class={`absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg ${
-                              showInternalIdInfo() ? '' : 'hidden'
-                            }`}
-                            role="dialog"
-                            aria-hidden={!showInternalIdInfo()}
-                          >
-                            <p class="text-xs text-slate-700">{t(keys.internalIdMessage)}</p>
-                            <div class="mt-2 text-right">
-                              <button
-                                type="button"
-                                class="rounded outline bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                                onClick={() => {
-                                  // Prepare initial form data and open edit dialog
-                                  const d = data()
-                                  if (!d) return
-                                  const initial = {
-                                    reference: d.reference ?? '',
-                                    operationType: d.operationType ?? '',
-                                    origin: d.origin || '',
-                                    destination: d.destination || '',
-                                    containers: d.containers.map((c) => ({
-                                      id: c.id,
-                                      containerNumber: c.number,
-                                      isoType: c.isoType ?? '',
-                                    })),
-                                    carrier: d.carrier || '',
-                                    blReference: d.bl_reference || '',
-                                  }
-                                  setEditInitialData(initial)
-                                  // request autofocus on the reference field when opening the edit dialog
-                                  setFocusReferenceOnOpen(true)
-                                  setIsEditOpen(true)
-                                  setShowInternalIdInfo(false)
-                                }}
-                              >
-                                {t(keys.internalIdCTA)}
-                              </button>
-                            </div>
-                          </div>
-                        </span>
-                      </Show>
-                    </h1>
-                    <div class="mt-2 flex items-center gap-2 text-sm text-slate-600">
-                      <span>{data().origin}</span>
-                      <ArrowIcon />
-                      <span>{data().destination}</span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-6">
-                    <div class="text-right">
-                      <p class="text-xs uppercase text-slate-500">{t(keys.status)}</p>
-                      <StatusBadge variant={data().status} label={data().statusLabel} />
-                    </div>
-                    <div class="text-center">
-                      <p class="text-xs uppercase text-slate-500">{t(keys.carrier)}</p>
-                      <p class="text-sm font-medium text-slate-900">{data().carrier ?? '—'}</p>
-                    </div>
-                    <div class="text-right">
-                      <p class="text-xs uppercase text-slate-500">{t(keys.eta)}</p>
-                      <p class="text-sm font-medium text-slate-900">
-                        {data().eta ?? t(keys.etaMissing)}
-                      </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => triggerRefresh()}
-                        class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${
-                          isRefreshing() ? 'opacity-60 pointer-events-none' : ''
-                        }`}
-                        title="Refresh"
-                        aria-busy={isRefreshing()}
-                        disabled={isRefreshing()}
-                      >
-                        {isRefreshing() ? (
-                          <svg
-                            class="h-4 w-4 animate-spin"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                          >
-                            <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
-                            <path
-                              d="M22 12a10 10 0 00-10-10"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            class="h-4 w-4"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M4 4v6h6M20 20v-6h-6"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // prepare initial form data
-                          const d = data()
-                          if (!d) return
-                          const initial = {
-                            reference: d.reference ?? '',
-                            operationType: d.operationType ?? '',
-                            origin: d.origin || '',
-                            destination: d.destination || '',
-                            containers: d.containers.map((c) => ({
-                              id: c.id,
-                              containerNumber: c.number,
-                              isoType: c.isoType ?? '',
-                            })),
-                            carrier: d.carrier || '',
-                            blReference: d.bl_reference || '',
-                          }
-                          setEditInitialData(initial)
-                          setIsEditOpen(true)
-                        }}
-                        class="rounded-md p-2 text-slate-500 hover:bg-slate-100"
-                        title="Edit"
-                      >
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M15.232 5.232l3.536 3.536M4 20l7.5-1.5L20 9l-7.5-7.5L4 20z"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
+              <ShipmentHeader
+                t={t}
+                keys={keys}
+                data={data()}
+                isRefreshing={isRefreshing()}
+                onTriggerRefresh={() => triggerRefresh()}
+                onOpenEdit={() => {
+                  const d = data()
+                  if (!d) return
+                  const initial = {
+                    reference: d.reference ?? '',
+                    operationType: d.operationType ?? '',
+                    origin: d.origin || '',
+                    destination: d.destination || '',
+                    containers: d.containers.map((c) => ({
+                      id: c.id,
+                      containerNumber: c.number,
+                      isoType: c.isoType ?? '',
+                    })),
+                    carrier: d.carrier || '',
+                    blReference: d.bl_reference ?? '',
+                  }
+                  setEditInitialData(initial)
+                  setIsEditOpen(true)
+                }}
+              />
 
               <div class="grid gap-6 lg:grid-cols-3">
-                {/* Left column: Container selector + Timeline */}
                 <div class="lg:col-span-2 space-y-6">
-                  {/* Container Selector */}
-                  <section class="rounded-lg border border-slate-200 bg-white">
-                    <header class="border-b border-slate-200 px-6 py-4">
-                      <h2 class="text-base font-semibold text-slate-900">
-                        {t(keys.containersTitle)} ({data().containers.length})
-                      </h2>
-                    </header>
-                    <ContainerSelector
-                      containers={data().containers}
-                      selectedId={selectedContainerId()}
-                      onSelect={(id) => setSelectedContainerId(id)}
-                    />
-                  </section>
+                  <ContainersPanel
+                    containers={data().containers}
+                    selectedId={selectedContainerId()}
+                    onSelect={(id) => setSelectedContainerId(id)}
+                  />
 
-                  {/* Timeline */}
-                  <section class="rounded-lg border border-slate-200 bg-white">
-                    <header class="border-b border-slate-200 px-6 py-4">
-                      <h2 class="text-base font-semibold text-slate-900">
-                        {t(keys.timelineTitle)}
-                      </h2>
-                      <Show when={selectedContainer()}>
-                        <p class="mt-1 text-xs text-slate-500">
-                          {selectedContainer()?.number} •{' '}
-                          <StatusBadge
-                            variant={selectedContainer()?.status ?? 'unknown'}
-                            label={selectedContainer()?.statusLabel ?? ''}
-                          />
-                        </p>
-                      </Show>
-                    </header>
-                    <div class="p-6">
-                      <Show
-                        when={
-                          selectedContainer()?.timeline && selectedContainer()!.timeline.length > 0
-                        }
-                        fallback={
-                          <p class="py-4 text-center text-sm text-slate-500">
-                            No events recorded yet
-                          </p>
-                        }
-                      >
-                        <div>
-                          <For each={selectedContainer()?.timeline ?? []}>
-                            {(event, index) => (
-                              <TimelineNode
-                                event={event}
-                                isLast={index() === (selectedContainer()?.timeline.length ?? 0) - 1}
-                                carrier={data().carrier}
-                                containerNumber={selectedContainer()?.number}
-                              />
-                            )}
-                          </For>
-                        </div>
-                      </Show>
-                    </div>
-                  </section>
+                  <TimelinePanel selectedContainer={selectedContainer()} carrier={data().carrier} />
                 </div>
 
-                {/* Right column: Alerts */}
                 <div>
-                  <section class="rounded-lg border border-slate-200 bg-white">
-                    <header class="border-b border-slate-200 px-6 py-4">
-                      <h2 class="text-base font-semibold text-slate-900">{t(keys.alertsTitle)}</h2>
-                    </header>
-                    <div class="p-4">
-                      <Show
-                        when={data().alerts.length > 0}
-                        fallback={
-                          <p class="py-4 text-center text-sm text-slate-500">
-                            {t(keys.alertsEmpty)}
-                          </p>
-                        }
-                      >
-                        <ul class="space-y-3">
-                          <AlertsList alerts={data().alerts} />
-                        </ul>
-                      </Show>
-                    </div>
-                  </section>
+                  <AlertsPanel alerts={data().alerts} t={t} keys={keys} />
                 </div>
               </div>
             </>
