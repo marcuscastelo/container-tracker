@@ -22,8 +22,9 @@ const ProcessResponseSchema = z.object({
     z.object({
       id: z.string(),
       container_number: z.string(),
-      iso_type: z.string().nullish(),
-      initial_status: z.string(),
+      carrier_code: z.string().nullish(),
+      container_type: z.string().nullish(),
+      container_size: z.string().nullish(),
     }),
   ),
 })
@@ -68,8 +69,9 @@ export async function GET(): Promise<Response> {
           containers: p.containers.map((c) => ({
             id: c.id,
             container_number: c.container_number,
-            iso_type: c.iso_type,
-            initial_status: c.initial_status,
+            carrier_code: c.carrier_code,
+            container_type: c.container_type,
+            container_size: c.container_size,
           })),
         }) satisfies z.infer<typeof ProcessResponseSchema>,
     )
@@ -119,8 +121,9 @@ export async function POST({ request }: { request: Request }): Promise<Response>
         containers: result.process.containers.map((c) => ({
           id: c.id,
           container_number: c.container_number,
-          iso_type: c.iso_type,
-          initial_status: c.initial_status,
+          carrier_code: c.carrier_code,
+          container_type: c.container_type,
+          container_size: c.container_size,
         })),
       },
       warnings: result.warnings,

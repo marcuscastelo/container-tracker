@@ -1,5 +1,5 @@
 // API route: return container statuses from Supabase as a simple array
-// This handler runs on the server and fetches from the `container-status` table.
+// This handler runs on the server and fetches canonical statuses stored in snapshots/observations.
 
 import { z } from 'zod/v4'
 import { containerStatusUseCases } from '~/modules/container'

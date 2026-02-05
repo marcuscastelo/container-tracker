@@ -42,7 +42,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       updated_at: process.updated_at.toISOString(),
       containers: await Promise.all(
         process.containers.map(async (c) => {
-          // Attempt to enrich container with canonical status/events from container-status table
+          // Attempt to enrich container with canonical status/events from snapshots/observations
           try {
             const cs = await containerStatusUseCases.getContainerStatus(c.container_number)
             const csStr = cs && cs.status ? JSON.stringify(cs.status).slice(0, 2000) : null
@@ -200,8 +200,10 @@ export async function GET({ params }: APIEvent): Promise<Response> {
               return {
                 id: c.id,
                 container_number: c.container_number,
-                iso_type: c.iso_type,
-                initial_status: c.initial_status,
+                carrier_code: c.carrier_code ?? null,
+                container_type:
+                  f1container?.iso_code ?? f1container?.container_type ?? c.container_type ?? null,
+                container_size: f1container?.size ?? null ?? null,
                 eta:
                   (f1container && f1container.eta) || (canonical && canonical.eta)
                     ? new Date((f1container?.eta ?? canonical?.eta) as string).toISOString()
@@ -216,8 +218,9 @@ export async function GET({ params }: APIEvent): Promise<Response> {
           return {
             id: c.id,
             container_number: c.container_number,
-            iso_type: c.iso_type,
-            initial_status: c.initial_status,
+            carrier_code: c.carrier_code ?? null,
+            container_type: c.container_type ?? null,
+            container_size: null,
           }
         }),
       ),
@@ -289,7 +292,9 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     if (parsed.data.containers !== undefined) {
       input.containers = parsed.data.containers.map((c: any) => ({
         containerNumber: c.container_number,
-        isoType: c.iso_type ?? null,
+        container_type: c.container_type ?? null,
+        container_size: c.container_size ?? null,
+        carrier_code: c.carrier_code ?? null,
       }))
     }
 
@@ -309,8 +314,9 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
       containers: updated.containers.map((c) => ({
         id: c.id,
         container_number: c.container_number,
-        iso_type: c.iso_type,
-        initial_status: c.initial_status,
+        carrier_code: c.carrier_code ?? null,
+        container_type: c.container_type ?? null,
+        container_size: c.container_size ?? null,
       })),
     }
 

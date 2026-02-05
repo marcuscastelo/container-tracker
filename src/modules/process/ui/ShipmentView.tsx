@@ -114,7 +114,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         bl_reference: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          iso_type: c.isoType || null,
+          container_type: c.isoType || null,
         })),
       }
 
@@ -169,7 +169,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         bill_of_lading: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          iso_type: c.isoType || null,
+          container_type: c.isoType || null,
         })),
       }
 

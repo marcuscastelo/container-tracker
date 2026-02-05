@@ -155,7 +155,6 @@ export function mapParsedStatusToF1(
       container_number: normalizedContainerNumber,
       shipment_id: shipmentId,
       status: status ?? null,
-      initial_status: status ? undefined : 'UNKNOWN',
       eta: eta ?? undefined,
       flags: { missing_eta: !eta, stale_data: false },
       events: eventsMapped,

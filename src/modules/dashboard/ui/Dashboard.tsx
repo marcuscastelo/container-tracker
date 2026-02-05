@@ -64,8 +64,9 @@ type ProcessApiResponse = {
   containers: Array<{
     id: string
     container_number: string
-    iso_type: string | null
-    initial_status: string
+    carrier_code: string | null
+    container_type: string | null
+    container_size?: string | null
   }>
 }
 
@@ -236,7 +237,7 @@ export function Dashboard(): JSX.Element {
         bill_of_lading: data.billOfLading || null,
         containers: data.containers.map((c) => ({
           container_number: c.containerNumber,
-          iso_type: c.isoType || null,
+          container_type: c.isoType || null,
         })),
       }
 

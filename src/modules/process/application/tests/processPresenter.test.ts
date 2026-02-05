@@ -21,8 +21,8 @@ describe('processPresenter', () => {
         {
           id: 'c1',
           container_number: 'MRKU1234567',
-          iso_type: '40HC',
-          initial_status: 'booked',
+          container_type: '40HC',
+          carrier_code: 'MAERSK',
           eta: null,
           events: [
             {

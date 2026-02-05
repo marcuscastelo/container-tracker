@@ -3,17 +3,21 @@ import type { ContainerStatusRepository } from '~/modules/container/domain/conta
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 
-const TABLE_NAME = 'container-status'
+const TABLE_NAME = 'container_tracking_snapshots'
 
 /**
  * Supabase-backed implementation of ContainerStatusRepository.
- * Uses the `container-status` table with columns:
- * - container_id: string (primary key)
- * - status: JSONB
+ * Uses the `container_tracking_snapshots` table (append-only) and exposes a simple
+ * adapter that maps latest snapshot.raw_payload -> ContainerStatus. This keeps the
+ * old repository interface while persisting canonical payloads as snapshots.
  */
 export const supabaseContainerStatusRepository: ContainerStatusRepository = {
   async fetchAll(): Promise<readonly ContainerStatus[]> {
-    const { data, error } = await supabase.from(TABLE_NAME).select('*')
+    // Return latest snapshot per container_id (best-effort): select all snapshots and map
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select('*')
+      .order('fetched_at', { ascending: false })
 
     if (error) {
       console.error('supabaseContainerStatusRepository.fetchAll error:', error)
@@ -25,8 +29,8 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
         const r = row as Record<string, unknown>
         const cid = r?.container_id
           ? String(r.container_id as string)
-          : String(r?.ContainerNumber ?? r?.Container ?? 'unknown')
-        const status = r?.status ?? r?.Status ?? r ?? {}
+          : String(r?.container_id ?? 'unknown')
+        const status = r?.raw_payload ?? r?.raw ?? r ?? {}
 
         // Basic runtime shape checks
         if (typeof cid !== 'string' || cid.length === 0) {
@@ -36,17 +40,9 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
           )
         }
 
-        if (status == null) {
-          return {
-            container_id: cid,
-            carrier: String(row?.carrier ?? 'UNKNOWN'),
-            status: {},
-          }
-        }
-
         return {
           container_id: cid,
-          carrier: String(row?.carrier ?? 'UNKNOWN'),
+          carrier: String(row?.carrier_code ?? 'UNKNOWN'),
           status: status as Record<string, unknown>,
         }
       } catch (e) {
@@ -57,8 +53,8 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
         )
         return {
           container_id: String(row?.container_id ?? 'unknown'),
-          carrier: String(row?.carrier ?? 'UNKNOWN'),
-          status: (row?.status as Record<string, unknown>) ?? {},
+          carrier: String(row?.carrier_code ?? 'UNKNOWN'),
+          status: (row?.raw_payload as Record<string, unknown>) ?? {},
         }
       }
     })
@@ -69,7 +65,8 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
       .from(TABLE_NAME)
       .select('*')
       .eq('container_id', containerId)
-      .single()
+      .order('fetched_at', { ascending: false })
+      .limit(1)
 
     if (error) {
       // PGRST116 = no rows found, which is not an error for us
@@ -83,14 +80,12 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     if (!data) return null
 
     try {
-      const d = data as unknown as Record<string, unknown>
-      const cid = d?.container_id
-        ? String(d.container_id as string)
-        : String(d?.ContainerNumber ?? d?.Container ?? containerId)
-      const status = d?.status ?? d ?? {}
+      const d = (Array.isArray(data) ? data[0] : data) as unknown as Record<string, unknown>
+      const cid = d?.container_id ? String(d.container_id as string) : containerId
+      const status = d?.raw_payload ?? d ?? {}
       return {
         container_id: cid,
-        carrier: String(d?.carrier ?? 'UNKNOWN'),
+        carrier: String(d?.carrier_code ?? d?.carrier ?? 'UNKNOWN'),
         status: status as Record<string, unknown>,
       }
     } catch (e) {
@@ -106,18 +101,13 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
   async upsert(containerStatus: ContainerStatus): Promise<ContainerStatus> {
     const { data, error } = await supabase
       .from(TABLE_NAME)
-      .upsert(
-        {
-          container_id: containerStatus.container_id,
-          carrier: containerStatus.carrier,
-          status: containerStatus.status as unknown as Json,
-        },
-        {
-          onConflict: 'container_id',
-        },
-      )
+      .insert({
+        container_id: containerStatus.container_id,
+        carrier_code: containerStatus.carrier,
+        fetched_at: new Date().toISOString(),
+        raw_payload: containerStatus.status as unknown as Json,
+      })
       .select()
-      .single()
 
     if (error) {
       console.error('supabaseContainerStatusRepository.upsert error:', error)
@@ -127,13 +117,14 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     }
 
     if (!data) {
-      throw new Error(`Upsert returned no data for ${containerStatus.container_id}`)
+      throw new Error(`Insert returned no data for ${containerStatus.container_id}`)
     }
 
+    const first = Array.isArray(data) ? data[0] : data
     return {
-      container_id: data.container_id,
-      carrier: String(data?.carrier ?? 'UNKNOWN'),
-      status: data.status as Record<string, unknown>,
+      container_id: first.container_id,
+      carrier: String(first?.carrier_code ?? 'UNKNOWN'),
+      status: (first.raw_payload as Record<string, unknown>) ?? {},
     }
   },
 

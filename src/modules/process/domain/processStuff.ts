@@ -14,11 +14,11 @@ export const ProcessContainerSchema = z.object({
     .string()
     .min(1)
     .transform((v) => v.toUpperCase().trim()),
-  iso_type: z.string().nullable().optional(), // e.g., "40HC", "20GP"
-  initial_status: ContainerInitialStatus.default('unknown'),
-  source: ProcessSource.default('manual'),
+  carrier_code: z.string().nullable().optional(),
+  container_type: z.string().nullable().optional(), // e.g., "40HC", "20GP"
+  container_size: z.string().nullable().optional(),
   created_at: z.date(),
-  updated_at: z.date(),
+  removed_at: z.date().nullable().optional(),
 })
 export type ProcessContainer = z.infer<typeof ProcessContainerSchema>
 
@@ -46,8 +46,9 @@ export const CreateProcessInputSchema = z.object({
     .array(
       z.object({
         container_number: z.string().min(1),
-        iso_type: z.string().nullable().optional(),
-        initial_status: ContainerInitialStatus.optional(),
+        carrier_code: z.string().nullable().optional(),
+        container_type: z.string().nullable().optional(),
+        container_size: z.string().nullable().optional(),
       }),
     )
     .min(1, 'At least one container is required'),
@@ -129,9 +130,9 @@ export function createProcess(input: CreateProcessInput): {
 
   const containers = input.containers.map((c) => ({
     container_number: c.container_number.toUpperCase().trim(),
-    iso_type: c.iso_type ?? null,
-    initial_status: c.initial_status ?? ('unknown' as const),
-    source: 'manual' as const,
+    carrier_code: c.carrier_code ?? null,
+    container_type: c.container_type ?? null,
+    container_size: c.container_size ?? null,
   }))
 
   return { process, containers }

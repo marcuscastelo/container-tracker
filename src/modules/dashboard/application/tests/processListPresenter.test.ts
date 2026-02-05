@@ -19,7 +19,7 @@ describe('presentProcessList', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [
-          { id: 'c1', container_number: 'MRKU1111111', iso_type: null, initial_status: 'booked' },
+          { id: 'c1', container_number: 'MRKU1111111', carrier_code: null, container_type: null },
         ],
       },
     ]

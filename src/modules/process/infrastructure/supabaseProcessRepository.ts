@@ -6,10 +6,10 @@ import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 
 const PROCESSES_TABLE = 'processes'
-const CONTAINERS_TABLE = 'process_containers'
+const CONTAINERS_TABLE = 'containers'
 
 type ProcessRow = Database['public']['Tables']['processes']['Row']
-type ContainerRow = Database['public']['Tables']['process_containers']['Row']
+type ContainerRow = Database['public']['Tables']['containers']['Row']
 
 /**
  * Supabase-backed implementation of ProcessRepository.
@@ -179,11 +179,11 @@ export const supabaseProcessRepository: ProcessRepository = {
     const containerInserts = containers.map((c) => ({
       process_id: createdProcess.id,
       container_number: c.container_number.toUpperCase().trim(),
-      iso_type: c.iso_type,
-      initial_status: c.initial_status,
-      source: c.source,
+      carrier_code: c.carrier_code ?? null,
+      container_type: c.container_type ?? null,
+      container_size: c.container_size ?? null,
       created_at: now,
-      updated_at: now,
+      removed_at: null,
     }))
 
     const { data: containersData, error: containersError } = await supabase
@@ -214,11 +214,11 @@ export const supabaseProcessRepository: ProcessRepository = {
       .insert({
         process_id: processId,
         container_number: container.container_number.toUpperCase().trim(),
-        iso_type: container.iso_type,
-        initial_status: container.initial_status,
-        source: container.source,
+        carrier_code: container.carrier_code ?? null,
+        container_type: container.container_type ?? null,
+        container_size: container.container_size ?? null,
         created_at: now,
-        updated_at: now,
+        removed_at: null,
       })
       .select()
       .single()
@@ -297,10 +297,10 @@ function rowToContainer(row: ContainerRow): ProcessContainer {
     id: String(row.id),
     process_id: String(row.process_id),
     container_number: String(row.container_number),
-    iso_type: row.iso_type as string | null,
-    initial_status: (row.initial_status as ProcessContainer['initial_status']) ?? 'unknown',
-    source: (row.source as ProcessContainer['source']) ?? 'manual',
+    carrier_code: (row.carrier_code as string | null) ?? null,
+    container_type: (row.container_type as string | null) ?? null,
+    container_size: (row.container_size as string | null) ?? null,
     created_at: new Date(row.created_at as string),
-    updated_at: new Date(row.updated_at as string),
+    removed_at: row.removed_at ? new Date(row.removed_at as string) : null,
   }
 }

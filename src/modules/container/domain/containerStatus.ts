@@ -2,9 +2,8 @@ import { z } from 'zod'
 
 /**
  * Container Status entity schema.
- * Maps to the Supabase table `container-status` which has:
- * - container_id: string (primary key)
- * - status: JSONB
+ * Lightweight canonical status object used across the app. Persisted as
+ * `container_tracking_snapshots.raw_payload` in Supabase (append-only).
  */
 export const containerStatusSchema = z.object({
   container_id: z.string(),

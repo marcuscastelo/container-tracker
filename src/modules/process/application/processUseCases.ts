@@ -19,7 +19,12 @@ export type UpdateProcessInput = {
   destination?: unknown
   carrier?: Carrier | null
   billOfLading?: string | null
-  containers?: Array<{ containerNumber: string; isoType?: string | null }>
+  containers?: Array<{
+    containerNumber: string
+    container_type?: string | null
+    container_size?: string | null
+    carrier_code?: string | null
+  }>
 }
 
 /**
@@ -62,7 +67,12 @@ export type ProcessUseCases = {
    */
   addContainer: (
     processId: string,
-    container: { container_number: string; iso_type?: string | null },
+    container: {
+      container_number: string
+      container_type?: string | null
+      container_size?: string | null
+      carrier_code?: string | null
+    },
   ) => Promise<{
     container: ProcessContainer
     warnings: readonly string[]
@@ -157,9 +167,9 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       // Add the container
       const created = await repository.addContainer(processId, {
         container_number: container.container_number.toUpperCase().trim(),
-        iso_type: container.iso_type ?? null,
-        initial_status: 'unknown',
-        source: 'manual',
+        carrier_code: container.carrier_code ?? null,
+        container_type: container.container_type ?? null,
+        container_size: container.container_size ?? null,
       })
 
       return { container: created, warnings }
@@ -188,8 +198,11 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
         type IncomingContainer = {
           containerNumber?: string
           container_number?: string
-          isoType?: string | null
-          iso_type?: string | null
+          container_type?: string | null
+          containerType?: string | null
+          containerSize?: string | null
+          container_size?: string | null
+          carrier_code?: string | null
         }
 
         // Normalize incoming containers (accept either UI shape or API shape)
@@ -197,8 +210,10 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
           const containerNumber = (c.containerNumber ?? c.container_number ?? '')
             .toUpperCase()
             .trim()
-          const isoType = c.isoType ?? c.iso_type ?? null
-          return { containerNumber, isoType }
+          const container_type = c.container_type ?? c.containerType ?? null
+          const container_size = c.container_size ?? c.containerSize ?? null
+          const carrier_code = c.carrier_code ?? null
+          return { containerNumber, container_type, container_size, carrier_code }
         })
 
         const incomingNumbers = incoming.map((c) => c.containerNumber)
@@ -208,9 +223,9 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
           if (!existingByNumber.has(inc.containerNumber)) {
             await repository.addContainer(processId, {
               container_number: inc.containerNumber,
-              iso_type: inc.isoType || null,
-              initial_status: 'unknown',
-              source: 'manual',
+              carrier_code: inc.carrier_code ?? null,
+              container_type: inc.container_type ?? null,
+              container_size: inc.container_size ?? null,
             })
           }
         }

@@ -26,8 +26,9 @@ export type ProcessApiResponse = {
   containers: Array<{
     id: string
     container_number: string
-    iso_type: string | null
-    initial_status: string
+    carrier_code: string | null
+    container_type: string | null
+    container_size?: string | null
   }>
 }
 

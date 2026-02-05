@@ -180,7 +180,9 @@ export async function POST({ request }: { request: Request }) {
             bill_of_lading: null,
             containers: containers.map((c: any) => ({
               container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
-              iso_type: c.iso_code ?? c.iso_type ?? null,
+              container_type: c.iso_code ?? c.container_type ?? null,
+              container_size: c.size ?? null,
+              carrier_code: shipment.carrier ? String(shipment.carrier) : null,
             })),
           }
 

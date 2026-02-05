@@ -64,8 +64,9 @@ export type ProcessApiResponse = {
   containers: Array<{
     id: string
     container_number: string
-    iso_type: string | null
-    initial_status: string
+    container_type: string | null
+    container_size?: string | null
+    carrier_code?: string | null
     eta?: string | null
     events?: Array<{
       id?: string
@@ -164,9 +165,9 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
       return {
         id: c.id,
         number: c.container_number,
-        isoType: c.iso_type ?? null,
+        isoType: c.container_type ?? null,
         status: 'unknown',
-        statusLabel: c.initial_status === 'booked' ? 'Booked' : 'Unknown',
+        statusLabel: 'Unknown',
         eta: c.eta ?? null,
         timeline,
       }
