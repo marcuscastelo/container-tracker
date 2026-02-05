@@ -38,6 +38,7 @@
   },
   "shipmentView": {
     "backToList": "Voltar para Embarques",
+    "backToDashboard": "Voltar para o Dashboard",
     "header": "Processo",
     "origin": "Origem",
     "destination": "Destino",

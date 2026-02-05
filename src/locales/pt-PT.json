@@ -38,6 +38,7 @@
   },
   "shipmentView": {
     "backToList": "Voltar para Expedições",
+    "backToDashboard": "Voltar para o Painel",
     "header": "Processo",
     "origin": "Origem",
     "destination": "Destino",

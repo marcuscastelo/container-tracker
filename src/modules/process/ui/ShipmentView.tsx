@@ -29,6 +29,7 @@ const keys = {
   etaMissing: 'shipmentView.etaMissing',
   loading: 'shipmentView.loading',
   notFound: 'shipmentView.notFound',
+  backToDashboard: 'shipmentView.backToDashboard',
   noEvents: 'shipmentView.noEvents',
   processCreated: 'shipmentView.processCreated',
   internalIdMessage: 'shipmentView.internalIdMessage',
@@ -304,16 +305,16 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         {/* Loading state */}
         <Show when={shipment.loading}>
           <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-slate-500">Loading...</p>
+            <p class="text-slate-500">{t(keys.loading)}</p>
           </div>
         </Show>
 
         {/* Error/Not found state */}
         <Show when={shipment.error || (shipment() === null && !shipment.loading)}>
           <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-red-500">Process not found</p>
+            <p class="text-red-500">{t(keys.notFound)}</p>
             <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
-              Back to dashboard
+              {t(keys.backToDashboard)}
             </A>
           </div>
         </Show>
