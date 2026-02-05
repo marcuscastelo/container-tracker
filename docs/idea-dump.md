@@ -5,21 +5,6 @@
 # TODO
 
 # Pedidos do cliente (alguns precisam de mais detalhes)
-"o campo alerta deve ter um foco especial principalmente em transbordo"
-```
-Tipo de operação não precisa pois é sempre importação
-
-Tipo e Tamanho do container seria melhor se ele pegasse do proprio site do armador.
-
-Complementar com:
-
-Nome do importador:
-Ref. Castro:
-Ref. Imp:
-Exportador: 
-
-Se possível mandamos o follow da Flush para ele testar o programa, vai ser lindo
-```
 
 # Debito tecnico
 CopyButton e ShipmentView duplicado clipboard utils
