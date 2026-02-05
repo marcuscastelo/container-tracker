@@ -1,4 +1,4 @@
-import { A, useNavigate, useParams } from '@solidjs/router'
+import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import { useTranslation } from '~/i18n'
@@ -35,9 +35,8 @@ const keys = {
   internalIdCTA: 'shipmentView.internalIdCTA',
 }
 
-export function ShipmentView(): JSX.Element {
+export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
   const { t } = useTranslation()
-  const params = useParams()
 
   const [shipment, { refetch }] = createResource(
     () => params.id,
