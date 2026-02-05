@@ -48,6 +48,9 @@ importers:
       '@types/i18next':
         specifier: ^13.0.0
         version: 13.0.0
+      biome-plugin-no-type-assertion:
+        specifier: ^1.0.2
+        version: 1.0.2
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
@@ -1425,6 +1428,9 @@ packages:
 
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
+
+  biome-plugin-no-type-assertion@1.0.2:
+    resolution: {integrity: sha512-YGVXDQ67cOM79gA/lPdyndMYZ/vKO39T0rv8DYKsiKwr3bAPZy0PdbC834tvlOXzgRJf2ie6rEFwBg7axdJnEg==}
 
   boxen@8.0.1:
     resolution: {integrity: sha512-F3PH5k5juxom4xktynS7MoFY+NUWH5LC4CnH11YB8NPew+HLpmBLCybSAEyb2F+4pRXhuhWqFesoQd6DAyc2hw==}
@@ -5253,6 +5259,8 @@ snapshots:
   bindings@1.5.0:
     dependencies:
       file-uri-to-path: 1.0.0
+
+  biome-plugin-no-type-assertion@1.0.2: {}
 
   boxen@8.0.1:
     dependencies:

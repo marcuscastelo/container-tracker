@@ -66,4 +66,5 @@ try {
   // ignore
 }
 
+// biome-ignore lint/style/noNonNullAssertion: SolidJS entry point
 mount(() => <StartClient />, document.getElementById('app')!)
