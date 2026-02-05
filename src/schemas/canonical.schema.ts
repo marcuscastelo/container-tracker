@@ -74,9 +74,9 @@ export const EventSchema = z.object({
 export const ContainerStatusEnum = z.enum([
   'UNKNOWN',
   'AWAITING_DATA',
+  'BOOKED',
   'GATE_IN',
   'LOADED_ON_VESSEL',
-  'DEPARTED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',
   'DISCHARGED',
