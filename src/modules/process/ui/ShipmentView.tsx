@@ -326,7 +326,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                 data={data()}
                 isRefreshing={isRefreshing()}
                 onTriggerRefresh={() => triggerRefresh()}
-                onOpenEdit={() => {
+                onOpenEdit={(focusReference?: boolean) => {
                   const d = data()
                   if (!d) return
                   const initial = {
@@ -343,6 +343,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                     blReference: d.bl_reference ?? '',
                   }
                   setEditInitialData(initial)
+                  setFocusReferenceOnOpen(!!focusReference)
                   setIsEditOpen(true)
                 }}
               />
