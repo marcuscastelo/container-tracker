@@ -143,12 +143,11 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
               id: ev.id ?? `ev-${idx}`,
               label:
                 ev.activity ??
-                ((ev.raw as Record<string, unknown>)['Description'] as string) ??
+                (((ev.raw as Record<string, unknown>) || {})['Description'] as string) ??
                 'Event',
               location:
                 ev.location ??
-                ((ev.raw as Record<string, unknown>)['Location'] as string) ??
-                undefined,
+                ((((ev.raw as Record<string, unknown>) || {})['Location'] as string) || undefined),
               date: dateStr,
               expectedDate,
               status,

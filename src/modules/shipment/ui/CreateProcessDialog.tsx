@@ -10,7 +10,6 @@ const keys = {
   title: 'createProcess.title',
   titleEdit: 'createProcess.titleEdit',
   description: 'createProcess.description',
-  // Section: Identification
   sectionIdentification: 'createProcess.section.identification',
   reference: 'createProcess.field.reference',
   referencePlaceholder: 'createProcess.field.referencePlaceholder',
@@ -20,14 +19,12 @@ const keys = {
   opExport: 'createProcess.operationType.export',
   opTransshipment: 'createProcess.operationType.transshipment',
   opUnknown: 'createProcess.operationType.unknown',
-  // Section: Route
   sectionRoute: 'createProcess.section.route',
   routeHelper: 'createProcess.section.routeHelper',
   origin: 'createProcess.field.origin',
   originPlaceholder: 'createProcess.field.originPlaceholder',
   destination: 'createProcess.field.destination',
   destinationPlaceholder: 'createProcess.field.destinationPlaceholder',
-  // Section: Containers
   sectionContainers: 'createProcess.section.containers',
   containerNumber: 'createProcess.field.containerNumber',
   containerNumberPlaceholder: 'createProcess.field.containerNumberPlaceholder',
@@ -37,13 +34,11 @@ const keys = {
   isoTypePlaceholder: 'createProcess.field.isoTypePlaceholder',
   addContainer: 'createProcess.action.addContainer',
   removeContainer: 'createProcess.action.removeContainer',
-  // Section: Source
   sectionSource: 'createProcess.section.source',
   carrier: 'createProcess.field.carrier',
   carrierPlaceholder: 'createProcess.field.carrierPlaceholder',
   blReference: 'createProcess.field.blReference',
   blReferencePlaceholder: 'createProcess.field.blReferencePlaceholder',
-  // Actions
   create: 'createProcess.action.create',
   update: 'createProcess.action.update',
   cancel: 'createProcess.action.cancel',
@@ -85,7 +80,6 @@ function createEmptyContainer(): ContainerInput {
 export function CreateProcessDialog(props: Props): JSX.Element {
   const { t } = useTranslation()
 
-  // Form state
   const [reference, setReference] = createSignal('')
   const [operationType, setOperationType] = createSignal('')
   const [origin, setOrigin] = createSignal('')
@@ -98,7 +92,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     Record<string, { message: string; link?: string }>
   >({})
 
-  // Populate form when editing
   createEffect(() => {
     if (props.open && props.initialData) {
       setReference(props.initialData.reference || '')
@@ -117,15 +110,12 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           : [createEmptyContainer()],
       )
 
-      // Optionally autofocus the reference input when requested by the caller
       if (props.focusReference) {
-        // schedule after next tick so input is mounted
         setTimeout(() => {
           try {
             const el = document.getElementById('reference') as HTMLInputElement | null
             if (el) {
               el.focus()
-              // select existing text for convenience
               try {
                 el.select()
               } catch {
@@ -157,7 +147,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const updateContainer = (id: string, field: 'containerNumber' | 'isoType', value: string) => {
     const idx = containers.findIndex((c) => c.id === id)
     if (idx >= 0) {
-      // update the specific field in the store to avoid remounting the whole item
       setContainers(idx, field, value)
     }
   }
@@ -177,13 +166,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     if (!container.containerNumber.trim()) {
       return t(keys.containerNumberRequired)
     }
-    // Prefer server-side error if present for this container
     const srv = serverErrors()[fieldKey]
     if (srv) return srv.message
     return undefined
   }
 
-  // Return duplicate error for a container if the same container number appears more than once in the form
   const getDuplicateError = (container: ContainerInput): string | undefined => {
     const normalized = containers.map((c) => c.containerNumber.toUpperCase().trim())
     const counts: Record<string, number> = {}
@@ -193,7 +180,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     }
     const thisNum = container.containerNumber.toUpperCase().trim()
     if (thisNum && counts[thisNum] > 1) {
-      // include the number for clarity
       return `${t(keys.duplicateContainer)} (${thisNum})`
     }
     return undefined
@@ -209,8 +195,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault()
-
-    // Mark all container fields as touched
     for (const c of containers) {
       markTouched(`container-${c.id}`)
     }
@@ -219,21 +203,17 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       return
     }
 
-    // Check for duplicate container numbers in the form and block submission
     const containerNumbers = containers
       .map((c) => c.containerNumber.trim())
       .filter((n) => n.length > 0)
     const duplicates = findDuplicateContainers(containerNumbers)
     if (duplicates.length > 0) {
-      // keep touched state so inline errors (duplicate) are visible and prevent submit
       return
     }
 
-    // Fail-fast server-side check: ask backend if any of these container numbers already exist
     const containerNumbersForCheck = containerNumbers.map((n) => n.toUpperCase().trim())
     ;(async () => {
       try {
-        // Reset previous server errors
         setServerErrors({})
         const res = await fetch('/api/processes/check', {
           method: 'POST',
@@ -242,7 +222,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         })
 
         if (!res.ok) {
-          // Unexpected error from check endpoint - surface generic message
           const txt = await res.text().catch(() => '')
           setServerErrors(
             Object.fromEntries(
@@ -265,10 +244,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         }[] = json.conflicts || []
 
         if (conflicts.length > 0) {
-          // Map conflicts to per-field errors and mark touched so they show inline
           const errs: Record<string, { message: string; link?: string }> = {}
           for (const c of conflicts) {
-            // find matching container id in current form
             const idx = containerNumbersForCheck.findIndex(
               (n) => n === c.containerNumber.toUpperCase(),
             )
@@ -279,13 +256,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
               link: c.link,
             }
           }
-          // Mark touched for all containers so errors are visible
           for (const c of containers) markTouched(`container-${c.id}`)
           setServerErrors(errs)
           return
         }
 
-        // No conflicts -> proceed with submit
         const data: FormData = {
           reference: reference(),
           operationType: operationType(),
@@ -300,7 +275,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         handleClose()
       } catch (err) {
         console.error('Failed to check containers before submit:', err)
-        // In case of unexpected failures just block submit and show generic errors
         for (const c of containers) markTouched(`container-${c.id}`)
         setServerErrors(
           Object.fromEntries(
@@ -312,12 +286,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         )
       }
     })()
-
-    // Submission will continue from the async check above; no synchronous submit here
   }
 
   const handleClose = () => {
-    // Reset form
     setReference('')
     setOperationType('')
     setOrigin('')
@@ -329,7 +300,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     props.onClose()
   }
 
-  // Derived state: detect duplicates and whether submit should be disabled
   const containerNumbersMemo = createMemo(() =>
     containers.map((c) => c.containerNumber.trim()).filter((n) => n.length > 0),
   )
@@ -337,22 +307,18 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const duplicateList = createMemo(() => findDuplicateContainers(containerNumbersMemo()))
 
   const isSubmitDisabled = createMemo(() => {
-    // disable when no valid containers or duplicates present
     if (!hasValidContainers()) return true
     if ((duplicateList() ?? []).length > 0) return true
-    // disable when server-side errors are present
     if (Object.keys(serverErrors() ?? {}).length > 0) return true
     return false
   })
 
-  // Tooltip text to show when the submit is disabled: prefer duplicate message, otherwise required message
   const submitTooltip = createMemo(() => {
     if (!isSubmitDisabled()) return ''
     const dups = duplicateList()
     if (dups && dups.length > 0) {
       return `${t(keys.duplicateContainer)} (${dups[0]})`
     }
-    // show server-side error if present
     const srvKeys = Object.keys(serverErrors() ?? {})
     if (srvKeys.length > 0) {
       return serverErrors()[srvKeys[0]]?.message ?? ''
@@ -372,7 +338,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       maxWidth="xl"
     >
       <form onSubmit={handleSubmit} class="space-y-8">
-        {/* Section: Identification */}
         <section>
           <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
             {t(keys.sectionIdentification)}
@@ -396,7 +361,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           </div>
         </section>
 
-        {/* Section: Planned Route */}
         <section>
           <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
             {t(keys.sectionRoute)}
@@ -420,7 +384,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           </div>
         </section>
 
-        {/* Section: Containers */}
         <section>
           <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
             {t(keys.sectionContainers)}
@@ -439,10 +402,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                         onBlur={async () => {
                           markTouched(`container-${container.id}`)
                           const val = container.containerNumber.trim()
-                          // only check non-empty container numbers
                           if (!val) return
                           try {
-                            // reset any previous server error for this field
                             setServerErrors((prev) => {
                               const copy = { ...prev }
                               delete copy[`container-${container.id}`]
@@ -492,7 +453,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                         required
                       />
 
-                      {/* If server returned a link for this container, show it next to the error text */}
                       <Show when={serverErrors()[`container-${container.id}`]?.link}>
                         <p class="mt-1 text-xs text-slate-600 underline">
                           <button
@@ -575,7 +535,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           </button>
         </section>
 
-        {/* Section: Source / Integration */}
         <section>
           <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
             {t(keys.sectionSource)}
@@ -599,7 +558,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           </div>
         </section>
 
-        {/* Actions */}
         <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-6">
           <button
             type="button"

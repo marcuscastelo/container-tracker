@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { supabaseProcessRepository } from '~/modules/process'
+import { supabaseProcessRepository } from '~/modules/shipment'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {

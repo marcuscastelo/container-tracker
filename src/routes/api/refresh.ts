@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
-import { type CreateProcessInput, processUseCases } from '~/modules/process'
+import { type CreateProcessInput, processUseCases } from '~/modules/shipment'
 import { getProvider } from '~/routes/api/refresh-providers'
 
 // Explicit request/response schemas for this API
