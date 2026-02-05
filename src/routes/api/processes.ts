@@ -1,44 +1,16 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
 import {
   CreateProcessInputSchema,
   processUseCases,
   supabaseProcessRepository,
 } from '~/modules/process'
-
-// Response schemas
-const ProcessResponseSchema = z.object({
-  id: z.string(),
-  reference: z.string().nullish(),
-  operation_type: z.string(),
-  origin: z.any().nullable(),
-  destination: z.any().nullable(),
-  carrier: z.string().nullish(),
-  bill_of_lading: z.string().nullish(),
-  source: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
-  containers: z.array(
-    z.object({
-      id: z.string(),
-      container_number: z.string(),
-      carrier_code: z.string().nullish(),
-      container_type: z.string().nullish(),
-      container_size: z.string().nullish(),
-    }),
-  ),
-})
-
-const ProcessListResponseSchema = z.array(ProcessResponseSchema)
-
-const ErrorResponseSchema = z.object({
-  error: z.string(),
-})
-
-const CreateProcessResponseSchema = z.object({
-  process: ProcessResponseSchema,
-  warnings: z.array(z.string()).readonly(),
-})
+import {
+  CreateProcessResponseSchema,
+  ErrorResponseSchema,
+  ProcessListResponseSchema,
+  ProcessResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {

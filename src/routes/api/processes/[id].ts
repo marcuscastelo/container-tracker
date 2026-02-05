@@ -2,27 +2,31 @@ import type { APIEvent } from '@solidjs/start/server'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
 import { CreateProcessInputSchema, processUseCases } from '~/modules/process'
-import type { UpdateProcessInput } from '~/modules/process/application/processUseCases'
+import { isRecord } from '~/shared/utils/typeGuards'
 
-// Helper to create JSON response
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+function safeGet(obj: unknown, key: string): unknown {
+  if (!isRecord(obj)) return undefined
+  return obj[key]
 }
+
+import type { UpdateProcessInput } from '~/modules/process/application/processUseCases'
+import { jsonResponse as typedJsonResponse } from '~/shared/api/typedRoute'
+import {
+  ProcessDetailResponseSchema,
+  ProcessResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 
 // GET /api/processes/[id] - Get a single process with containers
 export async function GET({ params }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
     if (!processId) {
-      return jsonResponse({ error: 'Process ID is required' }, 400)
+      return typedJsonResponse({ error: 'Process ID is required' } as any, 400)
     }
 
     const process = await processUseCases.getProcessWithContainers(processId)
     if (!process) {
-      return jsonResponse({ error: 'Process not found' }, 404)
+      return typedJsonResponse({ error: 'Process not found' } as any, 404)
     }
 
     // Get alerts for this process
@@ -140,7 +144,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
               } else {
                 // try several raw locations: container-level raw, container info raw, canonical raw, source.raw
                 rawEvents = extractEventsFromRaw(
-                  f1container?.raw ?? f1container ?? canonical?.raw ?? canonical?.source?.raw ?? {},
+                  f1container ?? canonical ?? safeGet(canonical, 'source') ?? {},
                 )
               }
 
@@ -236,10 +240,10 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       })),
     }
 
-    return jsonResponse(response)
+    return typedJsonResponse(response as any, 200, ProcessDetailResponseSchema)
   } catch (err) {
     console.error('GET /api/processes/[id] error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return typedJsonResponse({ error: String(err) } as any, 500)
   }
 }
 
@@ -248,21 +252,21 @@ export async function DELETE({ params }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
     if (!processId) {
-      return jsonResponse({ error: 'Process ID is required' }, 400)
+      return typedJsonResponse({ error: 'Process ID is required' } as any, 400)
     }
 
     // Check if process exists
     const process = await processUseCases.getProcess(processId)
     if (!process) {
-      return jsonResponse({ error: 'Process not found' }, 404)
+      return typedJsonResponse({ error: 'Process not found' } as any, 404)
     }
 
     await processUseCases.deleteProcess(processId)
 
-    return jsonResponse({ success: true, deleted: processId })
+    return typedJsonResponse({ success: true, deleted: processId } as any)
   } catch (err) {
     console.error('DELETE /api/processes/[id] error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return typedJsonResponse({ error: String(err) } as any, 500)
   }
 }
 
@@ -271,14 +275,14 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
     if (!processId) {
-      return jsonResponse({ error: 'Process ID is required' }, 400)
+      return typedJsonResponse({ error: 'Process ID is required' } as any, 400)
     }
 
     const rawBody = await request.json().catch(() => ({}))
     // Allow partial updates - reuse CreateProcessInputSchema but optional
     const parsed = CreateProcessInputSchema.partial().safeParse(rawBody)
     if (!parsed.success) {
-      return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
+      return typedJsonResponse({ error: `Invalid request: ${parsed.error.message}` } as any, 400)
     }
 
     // Map incoming containers to UI-friendly shape if present
@@ -320,9 +324,9 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
       })),
     }
 
-    return jsonResponse(response)
+    return typedJsonResponse(response as any, 200, ProcessResponseSchema)
   } catch (err) {
     console.error('PATCH /api/processes/[id] error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return typedJsonResponse({ error: String(err) } as any, 500)
   }
 }

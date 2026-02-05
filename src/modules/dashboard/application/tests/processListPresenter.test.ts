@@ -14,7 +14,7 @@ describe('presentProcessList', () => {
         origin: { display_name: 'Shanghai' },
         destination: { display_name: 'Santos' },
         carrier: 'Maersk',
-        bl_reference: null,
+        bill_of_lading: null,
         source: 'api',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

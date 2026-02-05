@@ -2,8 +2,10 @@ import { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
-import { type Carrier, type CreateProcessInput, processUseCases } from '~/modules/process'
+import { type CreateProcessInput, processUseCases } from '~/modules/process'
+import { Carrier } from '~/modules/process/domain/value-objects'
 import { getProvider } from '~/routes/api/refresh-providers'
+import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
 // Explicit request/response schemas for this API
 const RefreshRequestSchema = z
@@ -54,16 +56,18 @@ function respondWithSchema<T>(
 
 export async function POST({ request }: { request: Request }) {
   try {
-    const rawBody = await request.json().catch(() => ({}))
-    const parsedReq = RefreshRequestSchema.safeParse(rawBody)
-    if (!parsedReq.success)
-      return respondWithSchema(
-        { error: `invalid request: ${parsedReq.error.message}` },
-        RefreshErrorResponseSchema,
+    let parsedReqData: z.infer<typeof RefreshRequestSchema>
+    try {
+      parsedReqData = await parseBody(request, RefreshRequestSchema)
+    } catch (err) {
+      return jsonResponse(
+        { error: `invalid request: ${String(err)}` },
         400,
+        RefreshErrorResponseSchema,
       )
-    const container = parsedReq.data.container
-    const provider = parsedReq.data.carrier || 'unknown'
+    }
+    const container = parsedReqData.container
+    const provider = parsedReqData.carrier || 'unknown'
 
     // If provider is Maersk we keep the existing redirect to the puppeteer handler
     if (provider === 'maersk') {
@@ -171,7 +175,9 @@ export async function POST({ request }: { request: Request }) {
             destination: shipment.destination
               ? { display_name: shipment.destination.city ?? null }
               : null,
-            carrier: <Carrier>shipment.carrier ?? null, // FIXME: remove cast when new schema is updated
+            carrier: Carrier.safeParse(shipment.carrier).success
+              ? Carrier.parse(shipment.carrier)
+              : 'unknown',
             bill_of_lading: null,
             containers: containers.map((c: any) => ({
               container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),

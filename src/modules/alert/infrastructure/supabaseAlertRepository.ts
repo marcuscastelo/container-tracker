@@ -1,4 +1,5 @@
 import type { Alert, AlertState } from '~/modules/alert/domain/alert'
+import { AlertSchema } from '~/modules/alert/domain/alert'
 import type { AlertRepository } from '~/modules/alert/domain/alertRepository'
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
@@ -102,7 +103,7 @@ export const supabaseAlertRepository: AlertRepository = {
         severity: alert.severity,
         title: alert.title,
         description: alert.description,
-        related_event_ids: alert.related_event_ids as unknown as Json,
+        related_event_ids: alert.related_event_ids ? [...alert.related_event_ids] : null,
         state: alert.state,
         created_at: now,
         updated_at: now,
@@ -135,7 +136,7 @@ export const supabaseAlertRepository: AlertRepository = {
       severity: alert.severity,
       title: alert.title,
       description: alert.description,
-      related_event_ids: alert.related_event_ids as unknown as Json,
+      related_event_ids: alert.related_event_ids ? [...alert.related_event_ids] : null,
       state: alert.state,
       created_at: now,
       updated_at: now,
@@ -220,23 +221,48 @@ export const supabaseAlertRepository: AlertRepository = {
 }
 
 // Helper function to convert database row to domain type
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null
+}
+
+function ensureStringOrNull(v: unknown): string | null {
+  return typeof v === 'string' ? v : null
+}
+
+function ensureStringArrayOrNull(v: unknown): string[] | null {
+  if (v == null) return null
+  if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return [...v]
+  return null
+}
+
+function parseDateOrNull(v: unknown): Date | null {
+  if (v == null) return null
+  if (typeof v === 'string') return new Date(v)
+  if (v instanceof Date) return v
+  throw new Error('Invalid date value in DB row')
+}
+
 function rowToAlert(row: unknown): Alert {
-  const r = row as Record<string, unknown>
-  return {
-    id: String(r.id),
-    process_id: r.process_id,
-    container_id: r.container_id,
-    category: r.category,
-    code: r.code,
-    severity: r.severity as Alert['severity'],
-    title: String(r.title),
-    description: r.description,
-    related_event_ids: (r.related_event_ids as string[]) ?? null,
-    state: (r.state as Alert['state']) ?? 'active',
-    created_at: new Date(r.created_at as string),
-    updated_at: new Date(r.updated_at as string),
-    acknowledged_at: r.acknowledged_at ? new Date(r.acknowledged_at as string) : null,
-    resolved_at: r.resolved_at ? new Date(r.resolved_at as string) : null,
-    expires_at: r.expires_at ? new Date(r.expires_at as string) : null,
+  if (!isRecord(row)) throw new Error('Invalid DB row for alert')
+
+  const candidate = {
+    id: String(row.id),
+    process_id: ensureStringOrNull(row.process_id),
+    container_id: ensureStringOrNull(row.container_id),
+    category: String(row.category),
+    code: String(row.code),
+    severity: String(row.severity),
+    title: String(row.title),
+    description: row.description == null ? null : String(row.description),
+    related_event_ids: ensureStringArrayOrNull(row.related_event_ids),
+    state: typeof row.state === 'string' ? String(row.state) : 'active',
+    created_at: parseDateOrNull(row.created_at) ?? new Date(),
+    updated_at: parseDateOrNull(row.updated_at) ?? new Date(),
+    acknowledged_at: parseDateOrNull(row.acknowledged_at),
+    resolved_at: parseDateOrNull(row.resolved_at),
+    expires_at: parseDateOrNull(row.expires_at),
   }
+
+  // Validate against domain schema to ensure runtime safety and proper typing
+  return AlertSchema.parse(candidate)
 }

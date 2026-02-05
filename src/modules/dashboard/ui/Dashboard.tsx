@@ -6,6 +6,11 @@ import { presentProcessList } from '~/modules/dashboard/application/processListP
 import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
+import { typedFetch } from '~/shared/api/typedFetch'
+import {
+  CreateProcessResponseSchema,
+  ProcessListResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 import {
   AppHeader,
   EmptyState,
@@ -14,7 +19,7 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '~/shared/ui'
-import { isRecord } from '~/shared/utils/typeGuards'
+import { getStringProp, isRecord } from '~/shared/utils/typeGuards'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -50,82 +55,23 @@ type ProcessSummary = {
   readonly carrier: string | null
 }
 
-// API response type
-type ProcessApiResponse = {
-  id: string
-  reference: string | null
-  operation_type: string
-  origin: { display_name?: string | null } | null
-  destination: { display_name?: string | null } | null
-  carrier: string | null
-  bl_reference: string | null
-  source: string
-  created_at: string
-  updated_at: string
-  containers: Array<{
-    id: string
-    container_number: string
-    carrier_code: string | null
-    container_type: string | null
-    container_size?: string | null
-  }>
-}
-
 // Fetch processes from API
 async function fetchProcesses(): Promise<readonly ProcessSummary[]> {
-  const response = await fetch('/api/processes')
-  if (!response.ok) {
-    throw new Error(`Failed to fetch processes: ${response.statusText}`)
-  }
-  const data: ProcessApiResponse[] = await response.json()
-
-  // Delegate mapping to presenter
+  const data = await typedFetch('/api/processes', undefined, ProcessListResponseSchema)
   return presentProcessList(data)
 }
 
 // Create process via API
 async function createProcessApi(input: CreateProcessInput): Promise<{ id: string }> {
-  const response = await fetch('/api/processes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
-
-  if (!response.ok) {
-    const json = await response.json().catch(() => ({ error: response.statusText }))
-    // If API returned structured info about existing container, throw that to the caller
-    type ApiExisting = {
-      status: number
-      message?: string
-      existing?: {
-        processId: string
-        containerId: string
-        containerNumber?: string
-        link?: string
-      }
-      error?: string
-    }
-
-    const asObj = isRecord(json) ? json : null
-    if (response.status === 409 && asObj && isRecord(asObj.existing)) {
-      const existing = asObj.existing
-      const ex = {
-        processId: String(existing.processId ?? existing.process_id ?? existing.processId),
-        containerId: String(existing.containerId ?? existing.container_id ?? existing.id ?? ''),
-        containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
-        link: String(existing.link ?? ''),
-      }
-      const payload: ApiExisting = {
-        status: 409,
-        message: String(asObj.error ?? asObj.message ?? 'Conflict'),
-        existing: ex,
-      }
-      throw payload
-    }
-    throw new Error(json.error || 'Failed to create process')
-  }
-
-  const result = await response.json()
+  const result = await typedFetch(
+    '/api/processes',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'Content-Type': 'application/json' },
+    },
+    CreateProcessResponseSchema,
+  )
   return { id: result.process.id }
 }
 
@@ -319,9 +265,17 @@ export function Dashboard(): JSX.Element {
               const v = createError()
               if (v && typeof v === 'object' && isRecord(v)) {
                 return {
-                  processId: String(v.processId ?? v.process_id ?? ''),
-                  containerId: String(v.containerId ?? v.container_id ?? ''),
-                  containerNumber: String(v.containerNumber ?? v.container_number ?? ''),
+                  processId: String(
+                    getStringProp(v, 'processId') ?? getStringProp(v, 'process_id') ?? '',
+                  ),
+                  containerId: String(
+                    getStringProp(v, 'containerId') ?? getStringProp(v, 'container_id') ?? '',
+                  ),
+                  containerNumber: String(
+                    getStringProp(v, 'containerNumber') ??
+                      getStringProp(v, 'container_number') ??
+                      '',
+                  ),
                 }
               }
               return undefined

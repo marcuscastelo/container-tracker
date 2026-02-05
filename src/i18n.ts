@@ -1,6 +1,7 @@
 import type { Resource } from 'i18next'
 import i18next from 'i18next'
 import { createSignal } from 'solid-js'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 // Dynamically load all locale JSON files from ./locales folder.
 // This makes adding a new locale seamless: drop a new JSON file and it will be picked up.
@@ -16,11 +17,11 @@ for (const path of Object.keys(modules)) {
   if (!match) continue
   const key = match[1]
   // modules[path] may be `{ default: {...} }` when using eager import, or the object itself.
-  const mod: any = modules[path]
+  const mod: unknown = modules[path]
   let translation: Record<string, unknown> | undefined = undefined
-  if (mod && typeof mod === 'object') {
-    if ('default' in mod && typeof mod.default === 'object') translation = mod.default
-    else if (typeof mod === 'object') translation = mod
+  if (isRecord(mod)) {
+    if ('default' in mod && isRecord(mod.default)) translation = mod.default
+    else translation = mod
   }
   if (translation) resources[key] = { translation }
   availableLocales.push(key)

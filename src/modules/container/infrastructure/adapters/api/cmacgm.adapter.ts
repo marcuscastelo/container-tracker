@@ -14,7 +14,7 @@ type Move = NonNullable<CmaCgmApi['CurrentMoves']>[number]
 export function cmacgmToNormalized(payload: unknown): NormShipment {
   const parsed = Cma.CmaCgmApiSchema.parse(payload)
 
-  const shipment: Partial<NormShipment> = {
+  const shipment: NormShipment = {
     source: { api: 'cmacgm', fetched_at: new Date(), raw: payload },
     origin: parsed.PlaceOfLoading ? { city: parsed.PlaceOfLoading } : undefined,
     destination: parsed.LastDischargePort ? { city: parsed.LastDischargePort } : undefined,
@@ -23,7 +23,7 @@ export function cmacgmToNormalized(payload: unknown): NormShipment {
     raw: payload,
   }
 
-  const container: Partial<NormContainer> = {
+  const container: NormContainer = {
     container_number: parsed.ContainerReference ?? 'unknown',
     container_size: parsed.LaraContainerCode ?? null,
     container_type: null,
@@ -36,28 +36,58 @@ export function cmacgmToNormalized(payload: unknown): NormShipment {
     status: null,
     status_code: parsed.ContainerStatus ?? null,
     last_update_time: parsed.ABPExportDate ? parseDate(parsed.ABPExportDate) : null,
+    service_type_origin: undefined,
+    service_type_destination: undefined,
     raw: parsed,
   }
 
   const pushMove = (m: Move | undefined) => {
     if (!m) return
-    const ev: Partial<NormEvent> = {
+    const ev: NormEvent = {
       id: null,
       eventType: 'MOVE',
       activity: m.StatusDescription ?? null,
       event_time: m.Date ? parseDate(m.Date) : null,
       event_time_type: null,
-      vessel: { vessel_name: m.Vessel ?? null, voyage_num: m.Voyage ?? null },
-      location: { city: m.Location ?? null, location_code: m.LocationCode ?? null, raw: m },
+      vessel: {
+        vessel_name: m.Vessel ?? null,
+        voyage_num: m.Voyage ?? null,
+        vessel_num: null,
+        imo: undefined,
+        built: undefined,
+        flag: undefined,
+        flagName: undefined,
+        raw: undefined,
+      },
+      location: {
+        terminal: null,
+        geo_site: undefined,
+        city: m.Location ?? null,
+        state: undefined,
+        country: null,
+        country_code: undefined,
+        geoid_city: undefined,
+        site_type: undefined,
+        location_code: m.LocationCode ?? null,
+        raw: m,
+      },
       status_code: m.Status ?? null,
       status_description: m.StatusDescription ?? null,
+      detail: null,
+      order: null,
       sourceEvent: m,
     }
-    // ensure locations is an array and push a normalized location object
-    let locs: unknown[] = []
-    if (Array.isArray(container.locations)) locs = container.locations
-    const newLoc = {
+    const locs: NormLocation[] = Array.isArray(container.locations) ? container.locations : []
+    const newLoc: NormLocation & { events?: NormEvent[] } = {
+      terminal: null,
+      geo_site: undefined,
       city: m.Location ?? null,
+      state: undefined,
+      country: null,
+      country_code: undefined,
+      geoid_city: undefined,
+      site_type: undefined,
+      location_code: m.LocationCode ?? null,
       events: [ev],
       raw: m,
     }

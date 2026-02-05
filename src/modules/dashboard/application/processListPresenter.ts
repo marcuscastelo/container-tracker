@@ -14,20 +14,20 @@ export type ProcessSummary = {
 
 export type ProcessApiResponse = {
   id: string
-  reference: string | null
+  reference?: string | null
   operation_type: string
   origin: { display_name?: string | null } | null
   destination: { display_name?: string | null } | null
-  carrier: string | null
-  bl_reference: string | null
+  carrier?: string | null
+  bill_of_lading?: string | null
   source: string
   created_at: string
   updated_at: string
   containers: Array<{
     id: string
     container_number: string
-    carrier_code: string | null
-    container_type: string | null
+    carrier_code?: string | null
+    container_type?: string | null
     container_size?: string | null
   }>
 }
@@ -35,13 +35,13 @@ export type ProcessApiResponse = {
 export function presentProcessList(data: ProcessApiResponse[]): readonly ProcessSummary[] {
   return data.map((p) => ({
     id: p.id,
-    reference: p.reference,
+    reference: p.reference ?? null,
     origin: p.origin,
     destination: p.destination,
     containerCount: p.containers.length,
     status: 'unknown',
     statusLabel: 'Aguardando dados',
     eta: null,
-    carrier: p.carrier,
+    carrier: p.carrier ?? null,
   }))
 }

@@ -4,6 +4,30 @@ import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import { isRecord } from '~/shared/utils/typeGuards'
 
+function safeGet(obj: unknown, key: string): unknown {
+  if (!isRecord(obj)) return undefined
+  return obj[key]
+}
+
+// Recursively coerce arbitrary unknown -> Json (best-effort). This avoids unsafe casts
+function toJson(v: unknown): import('~/shared/supabase/database.types').Json {
+  if (v === null || v === undefined) return null
+  if (typeof v === 'string') return v
+  if (typeof v === 'number') return v
+  if (typeof v === 'boolean') return v
+  if (Array.isArray(v)) return v.map((x) => toJson(x))
+  if (typeof v === 'object') {
+    const out: Record<string, import('~/shared/supabase/database.types').Json | undefined> = {}
+    if (isRecord(v)) {
+      for (const [k, val] of Object.entries(v)) {
+        out[k] = toJson(val)
+      }
+    }
+    return out
+  }
+  return String(v)
+}
+
 const TABLE_NAME = 'container_tracking_snapshots'
 
 /**
@@ -27,11 +51,11 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
 
     return data.map((row) => {
       try {
-        const r = isRecord(row) ? row : {}
-        const cid = r?.container_id
-          ? String(r.container_id)
-          : String(row?.container_id ?? 'unknown')
-        const status = r?.raw_payload ?? r?.raw ?? r ?? {}
+        const cid =
+          typeof safeGet(row, 'container_id') === 'string'
+            ? String(safeGet(row, 'container_id'))
+            : String(safeGet(row, 'container_id') ?? 'unknown')
+        const status = safeGet(row, 'raw_payload') ?? safeGet(row, 'raw') ?? row ?? {}
 
         // Basic runtime shape checks
         if (typeof cid !== 'string' || cid.length === 0) {
@@ -43,7 +67,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
 
         return {
           container_id: cid,
-          carrier: String(row?.carrier_code ?? 'UNKNOWN'),
+          carrier: String(safeGet(row, 'carrier_code') ?? 'UNKNOWN'),
           status: isRecord(status) ? status : {},
         }
       } catch (e) {
@@ -52,10 +76,12 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
           row,
           String(e),
         )
+        const payload = safeGet(row, 'raw_payload')
+        const statusVal = isRecord(payload) ? payload : {}
         return {
-          container_id: String(row?.container_id ?? 'unknown'),
-          carrier: String(row?.carrier_code ?? 'UNKNOWN'),
-          status: isRecord(row?.raw_payload) ? row.raw_payload : {},
+          container_id: String(safeGet(row, 'container_id') ?? 'unknown'),
+          carrier: String(safeGet(row, 'carrier_code') ?? 'UNKNOWN'),
+          status: statusVal,
         }
       }
     })
@@ -82,12 +108,12 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
 
     try {
       const d = Array.isArray(data) ? data[0] : data
-      const rec = isRecord(d) ? d : {}
-      const cid = rec?.container_id ? String(rec.container_id) : containerId
-      const status = rec?.raw_payload ?? rec ?? {}
+      const rec = isRecord(d) ? d : undefined
+      const cid = rec?.['container_id'] ? String(rec['container_id']) : containerId
+      const status = rec?.['raw_payload'] ?? rec ?? {}
       return {
         container_id: cid,
-        carrier: String(rec?.carrier_code ?? rec?.carrier ?? 'UNKNOWN'),
+        carrier: String(safeGet(rec, 'carrier_code') ?? safeGet(rec, 'carrier') ?? 'UNKNOWN'),
         status: isRecord(status) ? status : {},
       }
     } catch (e) {
@@ -107,7 +133,7 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
         container_id: containerStatus.container_id,
         carrier_code: containerStatus.carrier,
         fetched_at: new Date().toISOString(),
-        raw_payload: containerStatus.status,
+        raw_payload: toJson(containerStatus.status),
       })
       .select()
 
@@ -123,10 +149,10 @@ export const supabaseContainerStatusRepository: ContainerStatusRepository = {
     }
 
     const first = Array.isArray(data) ? data[0] : data
-    const stat = isRecord(first?.raw_payload) ? first.raw_payload : {}
+    const stat = isRecord(first?.['raw_payload']) ? first['raw_payload'] : {}
     return {
-      container_id: first.container_id,
-      carrier: String(first?.carrier_code ?? 'UNKNOWN'),
+      container_id: first['container_id'],
+      carrier: String(first?.['carrier_code'] ?? 'UNKNOWN'),
       status: stat,
     }
   },

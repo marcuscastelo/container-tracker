@@ -10,7 +10,7 @@ import {
   findDuplicateContainers,
   validateContainerNumber,
 } from '~/modules/process/domain/processStuff'
-import { isRecord } from '~/shared/utils/typeGuards'
+import { getStringProp, isRecord } from '~/shared/utils/typeGuards'
 
 // Input shape used by updateProcess - UI-friendly field names
 export type UpdateProcessInput = {
@@ -198,23 +198,21 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
 
         // Normalize incoming containers (accept either UI shape or API shape)
         const incoming = (Array.isArray(input.containers) ? input.containers : []).map((c) => {
-          const item = isRecord(c) ? c : {}
-          const containerNumber = String(item.containerNumber ?? item.container_number ?? '')
+          const item = isRecord(c) ? c : undefined
+          const containerNumber = String(
+            getStringProp(item, 'containerNumber') ?? getStringProp(item, 'container_number') ?? '',
+          )
             .toUpperCase()
             .trim()
-          const container_type =
-            typeof item.container_type === 'string'
-              ? item.container_type
-              : typeof item.containerType === 'string'
-                ? item.containerType
-                : null
-          const container_size =
-            typeof item.container_size === 'string'
-              ? item.container_size
-              : typeof item.containerSize === 'string'
-                ? item.containerSize
-                : null
-          const carrier_code = typeof item.carrier_code === 'string' ? item.carrier_code : null
+          const _ct1 = getStringProp(item, 'container_type')
+          const _ct2 = getStringProp(item, 'containerType')
+          const container_type = _ct1 ?? _ct2 ?? null
+
+          const _cs1 = getStringProp(item, 'container_size')
+          const _cs2 = getStringProp(item, 'containerSize')
+          const container_size = _cs1 ?? _cs2 ?? null
+
+          const carrier_code = getStringProp(item, 'carrier_code') ?? null
           return {
             containerNumber,
             container_type,

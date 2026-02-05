@@ -1,6 +1,15 @@
 import type { AlertSeverity } from '~/modules/alert'
 import type { Carrier, OperationType } from '~/modules/process/domain'
+import {
+  Carrier as CarrierSchema,
+  OperationType as OperationTypeSchema,
+} from '~/modules/process/domain'
+import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
+import { getStringProp, isRecord } from '~/shared/utils/typeGuards'
+
+// Backwards-compatible alias for tests and other callers
+export type ProcessApiResponse = ProcessDetailResponse
 
 // Presenter: convert ProcessApiResponse (API) into ShipmentDetail (UI shape)
 export type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
@@ -50,46 +59,6 @@ export type ShipmentDetail = {
   readonly alerts: readonly AlertDisplay[]
 }
 
-// Input shape from /api/processes/:id
-export type ProcessApiResponse = {
-  id: string
-  reference: string | null
-  operation_type: OperationType
-  origin: { display_name?: string | null } | null
-  destination: { display_name?: string | null } | null
-  carrier: Carrier | null
-  bl_reference: string | null
-  source: string
-  created_at: string
-  updated_at: string
-  containers: Array<{
-    id: string
-    container_number: string
-    container_type: string | null
-    container_size?: string | null
-    carrier_code?: string | null
-    eta?: string | null
-    events?: Array<{
-      id?: string
-      activity?: string
-      event_time?: string | null
-      event_time_type?: string | null
-      location?: string | null
-      raw?: Record<string, unknown>
-    }>
-  }>
-  alerts: Array<{
-    id: string
-    category: string
-    code: string
-    severity: string
-    title: string
-    description: string | null
-    state: string
-    created_at: string
-  }>
-}
-
 function mapAlertType(code: string): AlertDisplay['type'] {
   if (code.startsWith('ETA_')) return 'missing-eta'
   if (code.includes('DELAY') || code.includes('PASSED')) return 'delay'
@@ -110,7 +79,7 @@ function formatRelativeTime(dateString: string): string {
   return `${diffDays}d ago`
 }
 
-export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
+export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const createdAt = new Date(data.created_at)
   const createdEvent: TimelineEvent = {
     id: 'system-created',
@@ -120,12 +89,23 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
     status: 'completed',
   }
 
+  const operationType = OperationTypeSchema.safeParse(data.operation_type)
+    ? (data.operation_type as OperationType)
+    : undefined
+
+  const carrier =
+    data.carrier === null
+      ? null
+      : CarrierSchema.safeParse(data.carrier)
+        ? (data.carrier as Carrier)
+        : 'unknown'
+
   return {
     id: data.id,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference,
-    operationType: data.operation_type,
-    carrier: data.carrier,
+    operationType,
+    carrier,
     bl_reference: data.bl_reference,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
@@ -135,7 +115,7 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
     containers: data.containers.map((c) => {
       let timeline: TimelineEvent[] = [createdEvent]
       if (Array.isArray(c.events) && c.events.length > 0) {
-        const mapped = c.events
+        const mapped = (c.events ?? [])
           .map((ev, idx) => {
             const evDate = ev.event_time ? new Date(ev.event_time) : null
             const dateStr = evDate ? evDate.toLocaleDateString() : null
@@ -144,10 +124,24 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
                 ? new Date(ev.event_time).toLocaleDateString()
                 : null
             const status: EventStatus = ev.event_time_type === 'ACTUAL' ? 'completed' : 'expected'
+
+            const raw = ev.raw
+            // Safely pick description/activity from raw carrier payloads
+            const rawDescription = isRecord(raw)
+              ? (getStringProp(raw, 'Description') ??
+                getStringProp(raw, 'description') ??
+                getStringProp(raw, 'Activity') ??
+                getStringProp(raw, 'activity'))
+              : undefined
+
+            const rawLocation = isRecord(raw)
+              ? (getStringProp(raw, 'Location') ?? getStringProp(raw, 'location'))
+              : undefined
+
             return {
               id: ev.id ?? `ev-${idx}`,
-              label: ev.activity ?? <string>(ev.raw || {})['Description'] ?? 'Event', // FIXME: Replace assertion with proper parsing
-              location: ev.location ?? <string>((ev.raw || {})['Location'] || undefined), // FIXME: Replace assertion with proper parsing
+              label: ev.activity ?? rawDescription ?? 'Event',
+              location: ev.location ?? rawLocation ?? undefined,
               date: dateStr,
               expectedDate,
               status,
@@ -168,14 +162,21 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
         timeline,
       }
     }),
-    alerts: data.alerts
+    alerts: (data.alerts ?? [])
       .filter((a) => a.state === 'active')
-      .map((a) => ({
-        id: a.id,
-        type: mapAlertType(a.code),
-        severity: <AlertSeverity>a.severity, // FIXME: Replace assertion with proper parsing
-        message: a.description || a.title,
-        timestamp: formatRelativeTime(a.created_at),
-      })),
+      .map((a) => {
+        const sev = ((): AlertSeverity => {
+          const s = a.severity
+          if (s === 'info' || s === 'success' || s === 'warning' || s === 'danger') return s
+          return 'info'
+        })()
+        return {
+          id: a.id,
+          type: mapAlertType(a.code),
+          severity: sev,
+          message: a.description || a.title,
+          timestamp: formatRelativeTime(a.created_at),
+        }
+      }),
   }
 }
