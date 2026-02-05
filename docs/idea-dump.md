@@ -3,6 +3,7 @@
 # Refine
 
 # TODO
+Remover coluna operation_type do banco depois de confirmar que sempre é importacao e transbordo nao é um tipo de operacao, mas um estado do container.
 
 # Pedidos do cliente (alguns precisam de mais detalhes)
 
