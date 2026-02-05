@@ -11,8 +11,8 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '~/shared/ui'
-import { carrierTrackUrl } from '~/shared/utils/carrier'
-import { copyToClipboard } from '~/shared/utils/clipboard'
+
+// carrierTrackUrl and copyToClipboard are used by TimelineNode; moved to component
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -42,198 +42,14 @@ const keys = {
 
 // copyToClipboard moved to shared util: ~/shared/utils/clipboard
 
+import { AlertsList } from '~/modules/shipment/ui/components/AlertsList'
+import { ContainerSelector } from '~/modules/shipment/ui/components/ContainerSelector'
+import { ArrowIcon, ChevronLeftIcon } from '~/modules/shipment/ui/components/Icons'
 // Domain types for the shipment view
-import type {
-  AlertDisplay,
-  ProcessApiResponse,
-  ShipmentDetail,
-  TimelineEvent,
-} from '~/modules/shipment/application/processPresenter'
+import { TimelineNode } from '~/modules/shipment/ui/components/TimelineNode'
+import { fetchProcess } from '~/modules/shipment/ui/fetchProcess'
 
-import { presentProcess } from '~/modules/shipment/application/processPresenter'
-
-// Fetch process by ID (delegates mapping to presenter)
-async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
-  const response = await fetch(`/api/processes/${id}`)
-  if (!response.ok) {
-    if (response.status === 404) return null
-    throw new Error(`Failed to fetch process: ${response.statusText}`)
-  }
-  const data: ProcessApiResponse = await response.json()
-  return presentProcess(data)
-}
-
-function ChevronLeftIcon(): JSX.Element {
-  return (
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-    </svg>
-  )
-}
-
-function ArrowIcon(): JSX.Element {
-  return (
-    <svg
-      class="h-4 w-4 text-slate-400"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M17 8l4 4m0 0l-4 4m4-4H3"
-      />
-    </svg>
-  )
-}
-
-function AlertIcon(props: { readonly type: AlertDisplay['type'] }): JSX.Element {
-  const colorClass = () => {
-    switch (props.type) {
-      case 'delay':
-        return 'text-red-500'
-      case 'customs':
-        return 'text-amber-500'
-      case 'missing-eta':
-        return 'text-amber-500'
-      default:
-        return 'text-blue-500'
-    }
-  }
-
-  return (
-    <svg
-      class={`h-5 w-5 ${colorClass()}`}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-      />
-    </svg>
-  )
-}
-
-function TimelineNode(props: {
-  readonly event: TimelineEvent
-  readonly isLast: boolean
-  readonly carrier?: string | null
-  readonly containerNumber?: string | null
-}): JSX.Element {
-  const nodeStyles = (): { dot: string; line: string; text: string } => {
-    switch (props.event.status) {
-      case 'completed':
-        return {
-          dot: 'bg-emerald-500 border-emerald-500',
-          line: 'bg-emerald-500',
-          text: 'text-slate-900',
-        }
-      case 'current':
-        return {
-          dot: 'bg-blue-500 border-blue-500 ring-4 ring-blue-100',
-          line: 'bg-slate-200',
-          text: 'text-slate-900 font-medium',
-        }
-      case 'delayed':
-        return {
-          dot: 'bg-red-500 border-red-500 ring-4 ring-red-100',
-          line: 'bg-slate-200',
-          text: 'text-red-700 font-medium',
-        }
-      default:
-        return {
-          dot: 'bg-white border-slate-300 border-2',
-          line: 'bg-slate-200',
-          text: 'text-slate-500',
-        }
-    }
-  }
-
-  const styles = nodeStyles()
-  const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
-
-  return (
-    <div class="flex gap-4">
-      {/* Timeline node and connector */}
-      <div class="flex flex-col items-center">
-        <div class={`h-3 w-3 rounded-full ${styles.dot}`} />
-        <Show when={!props.isLast}>
-          <div class={`w-0.5 flex-1 min-h-12 ${styles.line}`} />
-        </Show>
-      </div>
-
-      {/* Event content */}
-      <div class="flex-1 pb-6">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class={`text-sm ${styles.text}`}>{props.event.label}</p>
-            <Show when={props.event.location}>
-              <p class="text-xs text-slate-500 mt-0.5">{props.event.location}</p>
-            </Show>
-          </div>
-          <div class="text-right">
-            <Show
-              when={props.event.date}
-              fallback={
-                <Show when={props.event.expectedDate}>
-                  <p class="text-xs text-slate-400">Est. {props.event.expectedDate}</p>
-                </Show>
-              }
-            >
-              <div class="flex items-center justify-end gap-2">
-                <p class="text-xs text-slate-600">{props.event.date}</p>
-
-                {/* Small neutral badge linking to carrier tracking (rarely used) */}
-                <Show when={trackUrl}>
-                  <a
-                    href={trackUrl as string}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="View on carrier site"
-                    class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-600"
-                    onClick={async (e) => {
-                      try {
-                        e.preventDefault()
-                        // copy container number to clipboard (best-effort)
-                        if (props.containerNumber) await copyToClipboard(props.containerNumber)
-                      } catch {
-                        /* ignore */
-                      } finally {
-                        // open carrier link in new tab
-                        try {
-                          window.open(trackUrl as string, '_blank')
-                        } catch {
-                          // ignore
-                        }
-                      }
-                    }}
-                  >
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
-                      />
-                    </svg>
-                  </a>
-                </Show>
-              </div>
-            </Show>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// Components extracted to `./components` to keep this file focused
 
 export function ShipmentView(): JSX.Element {
   const { t } = useTranslation()
@@ -693,39 +509,11 @@ export function ShipmentView(): JSX.Element {
                         {t(keys.containersTitle)} ({data().containers.length})
                       </h2>
                     </header>
-                    <div class="p-4">
-                      <div class="flex flex-wrap gap-2">
-                        <For each={data().containers}>
-                          {(container) => (
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => setSelectedContainerId(container.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault()
-                                  setSelectedContainerId(container.id)
-                                }
-                              }}
-                              class={`rounded-md px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
-                                selectedContainerId() === container.id
-                                  ? 'bg-slate-900 text-white'
-                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                              }`}
-                            >
-                              <span class="truncate">{container.number}</span>
-
-                              {/* Copy button component */}
-                              <CopyButton
-                                text={container.number}
-                                title="Copy container number"
-                                class="inline-flex"
-                              />
-                            </div>
-                          )}
-                        </For>
-                      </div>
-                    </div>
+                    <ContainerSelector
+                      containers={data().containers}
+                      selectedId={selectedContainerId()}
+                      onSelect={(id) => setSelectedContainerId(id)}
+                    />
                   </section>
 
                   {/* Timeline */}
@@ -788,17 +576,7 @@ export function ShipmentView(): JSX.Element {
                         }
                       >
                         <ul class="space-y-3">
-                          <For each={data().alerts}>
-                            {(alert) => (
-                              <li class="flex gap-3 rounded-md border border-slate-100 bg-slate-50 p-3">
-                                <AlertIcon type={alert.type} />
-                                <div class="flex-1 min-w-0">
-                                  <p class="text-sm text-slate-700">{alert.message}</p>
-                                  <p class="mt-1 text-xs text-slate-500">{alert.timestamp}</p>
-                                </div>
-                              </li>
-                            )}
-                          </For>
+                          <AlertsList alerts={data().alerts} />
                         </ul>
                       </Show>
                     </div>
