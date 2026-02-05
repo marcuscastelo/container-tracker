@@ -2,8 +2,8 @@ import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
-import { mapParsedStatusToF1 } from '~/adapters/canonical/toCanonical.adapter'
 import { containerStatusUseCases } from '~/modules/container'
+import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })

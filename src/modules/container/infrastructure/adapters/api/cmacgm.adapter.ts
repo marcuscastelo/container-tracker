@@ -1,13 +1,13 @@
-import { parseDate } from '~/adapters/parseDate'
-import type { CmaCgmApi } from '~/schemas/api/cmacgm.api.schema'
-import * as Cma from '~/schemas/api/cmacgm.api.schema'
 import type {
   Container as NormContainer,
   Event as NormEvent,
   Location as NormLocation,
   Shipment as NormShipment,
-} from '~/schemas/containerStatus.schema'
-import * as Normalized from '~/schemas/containerStatus.schema'
+} from '~/modules/container/domain/schemas/containerStatus.schema'
+import * as Normalized from '~/modules/container/domain/schemas/containerStatus.schema'
+import type { CmaCgmApi } from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
+import * as Cma from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
+import { parseDate } from '~/shared/utils/parseDate'
 
 type Move = NonNullable<CmaCgmApi['CurrentMoves']>[number]
 

@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { mapParsedStatusToF1 } from '~/adapters/canonical/toCanonical.adapter'
 import { alertUseCases } from '~/modules/alert'
 import { containerStatusUseCases } from '~/modules/container'
+import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
 import { getProvider } from '~/routes/api/refresh-providers'
 

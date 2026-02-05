@@ -1,9 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { cmacgmToNormalized } from '~/adapters/api/cmacgm.adapter'
-import { maerskToNormalized } from '~/adapters/api/maersk.adapter'
-import { mscToNormalized } from '~/adapters/api/msc.adapter'
+import { cmacgmToNormalized } from '~/modules/container/infrastructure/adapters/api/cmacgm.adapter'
+import { maerskToNormalized } from '~/modules/container/infrastructure/adapters/api/maersk.adapter'
+import { mscToNormalized } from '~/modules/container/infrastructure/adapters/api/msc.adapter'
 
 function loadExample(name: string) {
   const p = path.resolve(process.cwd(), 'examples', name)

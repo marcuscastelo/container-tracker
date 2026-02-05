@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { cmacgmToNormalized } from '~/adapters/api/cmacgm.adapter'
+import { cmacgmToNormalized } from '~/modules/container/infrastructure/adapters/api/cmacgm.adapter'
 
 // Provider: CMA-CGM
 // Implements a POST fetch to the public CMA-CGM tracking endpoint and

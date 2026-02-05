@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapParsedStatusToF1 } from '~/adapters/canonical/toCanonical.adapter'
+import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 
 describe('mapParsedStatusToF1', () => {
   it('parses eta when provided as ISO string and reads carrier from p.source.api', () => {
