@@ -1,0 +1,12 @@
+{
+  "id": "c1d2e3f4-g5h6-7890-abcd-ef1234567890",
+  "container_number": "MSKU1234567",
+  "size": 40,
+  "type": "standard",
+  "carrier": "maersk",
+  // FK 1 to N (actually exists here, it is NOT a virtual relationship like in the process)
+  "process_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" // References the process this container belongs to
+
+  // FK N to 1 (virtual relationship, does not actually exist in the database, but is a convenient way to represent the relationship in the domain model)
+  // "events": ContainerEvent[] -> Each event has a container_id that references this container
+}
