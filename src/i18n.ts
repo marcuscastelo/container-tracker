@@ -23,8 +23,16 @@ for (const path of Object.keys(modules)) {
   // Use zod to safely parse module shape (some bundlers return { default: {...} })
   const modRec = safeParseOrDefault(mod, z.record(z.string(), z.unknown()).parse, null)
   if (modRec) {
-    if ('default' in modRec && typeof (modRec as any).default === 'object' && (modRec as any).default !== null) {
-      const def = safeParseOrDefault((modRec as any).default, z.record(z.string(), z.unknown()).parse, null)
+    if (
+      'default' in modRec &&
+      typeof (modRec as any).default === 'object' &&
+      (modRec as any).default !== null
+    ) {
+      const def = safeParseOrDefault(
+        (modRec as any).default,
+        z.record(z.string(), z.unknown()).parse,
+        null,
+      )
       if (def) translation = def
     } else {
       translation = modRec

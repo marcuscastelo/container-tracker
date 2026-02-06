@@ -1,4 +1,6 @@
+import z from 'zod'
 import type { AlertSeverity } from '~/modules/alert'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import {
   type Carrier,
   CarrierSchema,
@@ -7,8 +9,6 @@ import {
 } from '~/modules/process/domain/value-objects'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
-import z from 'zod'
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 // Backwards-compatible alias for tests and other callers
 export type ProcessApiResponse = ProcessDetailResponse
@@ -129,7 +129,7 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
             // Safely pick description/activity from raw carrier payloads
             const rawObj = safeParseOrDefault(raw, z.record(z.string(), z.unknown()).parse, null)
             const rawDescription = rawObj
-              ? (typeof rawObj['Description'] === 'string'
+              ? typeof rawObj['Description'] === 'string'
                 ? rawObj['Description']
                 : typeof rawObj['description'] === 'string'
                   ? rawObj['description']
@@ -137,15 +137,15 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
                     ? rawObj['Activity']
                     : typeof rawObj['activity'] === 'string'
                       ? rawObj['activity']
-                      : undefined)
+                      : undefined
               : undefined
 
             const rawLocation = rawObj
-              ? (typeof rawObj['Location'] === 'string'
+              ? typeof rawObj['Location'] === 'string'
                 ? rawObj['Location']
                 : typeof rawObj['location'] === 'string'
                   ? rawObj['location']
-                  : undefined)
+                  : undefined
               : undefined
 
             return {

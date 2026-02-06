@@ -1,8 +1,8 @@
+import z from 'zod'
 import {
   type F1Shipment,
   F1ShipmentSchema,
 } from '~/modules/container/domain/schemas/canonical.schema'
-import z from 'zod'
 import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 function upperTrim(v: unknown): string {
@@ -39,7 +39,7 @@ export function mapParsedStatusToF1(
     // Find container info if present
     let c: Record<string, unknown> | null = null
     const containersRaw = p?.containers
-      if (Array.isArray(containersRaw) && containersRaw.length > 0) {
+    if (Array.isArray(containersRaw) && containersRaw.length > 0) {
       const arr = containersRaw
       c =
         (arr.find((ci) => {
@@ -49,7 +49,8 @@ export function mapParsedStatusToF1(
             ciRec?.container_number ?? ciRec?.container_no ?? ciRec?.ContainerNumber ?? '',
           )
           return num === normalizedContainerNumber
-        }) satisfies Record<string, unknown> | undefined) ?? safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()).parse, null)
+        }) satisfies Record<string, unknown> | undefined) ??
+        safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()).parse, null)
     }
     // fallback to top-level fields
     if (!c) c = p
@@ -123,7 +124,11 @@ export function mapParsedStatusToF1(
 
     const eventsMapped = Array.isArray(events)
       ? events.map((ev) => {
-          const evObj: Record<string, unknown> = safeParseOrDefault(ev, z.record(z.string(), z.unknown()).parse, {})
+          const evObj: Record<string, unknown> = safeParseOrDefault(
+            ev,
+            z.record(z.string(), z.unknown()).parse,
+            {},
+          )
           const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
           const eventTimeTypeRaw = evObj?.event_time_type ?? evObj?.EventTimeType ?? undefined
           const eventTimeType =
@@ -184,8 +189,8 @@ export function mapParsedStatusToF1(
       // p is a loose object; safely read nested source.api if present
       carrier: (() => {
         const src = p?.source
-          const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()).parse, null)
-          if (srcRec) {
+        const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()).parse, null)
+        if (srcRec) {
           const apiVal = srcRec['api']
           if (typeof apiVal === 'string') return apiVal
         }

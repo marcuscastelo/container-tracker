@@ -1,7 +1,9 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, Show } from 'solid-js'
+import z from 'zod'
 import { useTranslation } from '~/i18n'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import { CreateProcessDialog, type CreateProcessInput } from '~/modules/process'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
@@ -16,8 +18,6 @@ import {
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { AppHeader, ExistingProcessError } from '~/shared/ui'
-import z from 'zod'
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -125,39 +125,45 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         })),
       }
 
-        try {
-          const result = await typedFetch(
-            '/api/processes',
-            {
-              method: 'POST',
-              body: JSON.stringify(input),
-              headers: { 'Content-Type': 'application/json' },
-            },
-            CreateProcessResponseSchema,
-          )
-          setIsCreateDialogOpen(false)
-          const newId = result.process?.id
-          if (newId) navigate(`/shipments/${newId}`)
-        } catch (err) {
-          if (err instanceof TypedFetchError && err.status === 409) {
-            const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()).parse, null)
-            if (body && 'existing' in body) {
-              const existing = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()).parse, null)
-              if (existing) {
-                const processId = String(existing.processId ?? existing.process_id ?? '')
-                setIsCreateDialogOpen(false)
-                setCreateError({
-                  message: String(body.error ?? 'Container already exists'),
-                  processId,
-                  containerId: String(existing.containerId ?? existing.container_id ?? ''),
-                  containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
-                })
-                return
-              }
+      try {
+        const result = await typedFetch(
+          '/api/processes',
+          {
+            method: 'POST',
+            body: JSON.stringify(input),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          CreateProcessResponseSchema,
+        )
+        setIsCreateDialogOpen(false)
+        const newId = result.process?.id
+        if (newId) navigate(`/shipments/${newId}`)
+      } catch (err) {
+        if (err instanceof TypedFetchError && err.status === 409) {
+          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()).parse, null)
+          if (body && 'existing' in body) {
+            const existing = safeParseOrDefault(
+              body.existing,
+              z.record(z.string(), z.unknown()).parse,
+              null,
+            )
+            if (existing) {
+              const processId = String(existing.processId ?? existing.process_id ?? '')
+              setIsCreateDialogOpen(false)
+              setCreateError({
+                message: String(body.error ?? 'Container already exists'),
+                processId,
+                containerId: String(existing.containerId ?? existing.container_id ?? ''),
+                containerNumber: String(
+                  existing.containerNumber ?? existing.container_number ?? '',
+                ),
+              })
+              return
             }
           }
-          throw err
         }
+        throw err
+      }
     } catch (err) {
       console.error('Failed to create process:', err)
       setIsCreateDialogOpen(false)
@@ -196,9 +202,13 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         setIsEditOpen(false)
       } catch (err) {
         if (err instanceof TypedFetchError && err.status === 409) {
-            const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()).parse, null)
-            if (body && 'existing' in body) {
-            const existing = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()).parse, null)
+          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()).parse, null)
+          if (body && 'existing' in body) {
+            const existing = safeParseOrDefault(
+              body.existing,
+              z.record(z.string(), z.unknown()).parse,
+              null,
+            )
             if (existing) {
               const processId = String(existing.processId ?? existing.process_id ?? '')
               setIsEditOpen(false)
@@ -206,7 +216,9 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                 message: String(body.error ?? 'Container already exists'),
                 processId,
                 containerId: String(existing.containerId ?? existing.container_id ?? ''),
-                containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
+                containerNumber: String(
+                  existing.containerNumber ?? existing.container_number ?? '',
+                ),
               })
               return
             }
@@ -214,13 +226,17 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         }
         throw err
       }
-        } catch (err) {
+    } catch (err) {
       console.error('Failed to update process:', err)
       // Show structured existing conflict if present
       if (err && typeof err === 'object') {
         const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()).parse, null)
         if (body && 'existing' in body) {
-          const ex = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()).parse, null)
+          const ex = safeParseOrDefault(
+            body.existing,
+            z.record(z.string(), z.unknown()).parse,
+            null,
+          )
           if (ex) {
             setCreateError({
               message: String((body as any).message ?? 'Container already exists'),

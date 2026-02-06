@@ -1,7 +1,9 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
+import z from 'zod'
 import { useTranslation } from '~/i18n'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
 import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
@@ -19,8 +21,6 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '~/shared/ui'
-import z from 'zod'
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -207,7 +207,11 @@ export function Dashboard(): JSX.Element {
       if (err && typeof err === 'object') {
         const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()).parse, null)
         if (body && 'existing' in body) {
-          const ex = safeParseOrDefault((body as any).existing, z.record(z.string(), z.unknown()).parse, null)
+          const ex = safeParseOrDefault(
+            (body as any).existing,
+            z.record(z.string(), z.unknown()).parse,
+            null,
+          )
           if (ex) {
             const processId = String(ex.processId ?? ex.process_id ?? '')
             const containerId = String(ex.containerId ?? ex.container_id ?? '')
@@ -258,7 +262,7 @@ export function Dashboard(): JSX.Element {
               if (body && typeof (body as any).message === 'string') return (body as any).message
               return ''
             })()}
-              existing={(() => {
+            existing={(() => {
               const v = createError()
               const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
               if (body) {

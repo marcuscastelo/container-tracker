@@ -11,7 +11,6 @@ import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 
-
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
 
