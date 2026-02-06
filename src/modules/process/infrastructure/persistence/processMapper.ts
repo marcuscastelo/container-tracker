@@ -7,7 +7,6 @@ import {
   ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
 import type { Database } from '~/shared/supabase/database.types'
-import { isRecord } from '~/shared/utils/typeGuards'
 
 type ProcessRow = Database['public']['Tables']['processes']['Row']
 type ContainerRow = Database['public']['Tables']['containers']['Row']
