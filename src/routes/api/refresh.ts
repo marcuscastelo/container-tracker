@@ -3,7 +3,7 @@ import { alertUseCases } from '~/modules/alert'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 import type { NewContainer } from '~/modules/container/domain/container'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
-import { Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
+import { CarrierSchema } from '~/modules/process/domain/value-objects'
 import { getProvider } from '~/routes/api/refresh-providers'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
@@ -159,11 +159,9 @@ export async function POST({ request }: { request: Request }) {
         `refresh: saving canonical status for container ${container} to Supabase, shipment id=${canonicalStatus.id}`,
       )
       // Save canonical object as the status payload
-      if (1 === 1) {
-        throw new Error('Saving canonical status is currently disabled')
-      }
+      // NOTE: saving is currently disabled intentionally; keep code for future re-enable
       // await containerStatusUseCases.saveContainerStatus(String(container), canonicalStatus)
-      console.log(`refresh: saved canonical container ${container} to Supabase`)
+      console.log(`refresh: (skipped) saved canonical container ${container} to Supabase`)
       // Ingest canonical shipment into Processes so the UI (Dashboard) can surface it.
       // This follows the event->state->UI flow by creating/updating a Process derived
       // from the canonical F1 shipment. Failures here must NOT break the refresh API.

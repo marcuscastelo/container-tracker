@@ -1,4 +1,4 @@
-import z from 'zod'
+import { z } from 'zod'
 import type { AlertSeverity } from '~/modules/alert'
 import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import {
