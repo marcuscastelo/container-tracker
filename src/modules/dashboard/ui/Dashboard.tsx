@@ -273,8 +273,8 @@ export function Dashboard(): JSX.Element {
                   ),
                   containerNumber: String(
                     getStringProp(v, 'containerNumber') ??
-                    getStringProp(v, 'container_number') ??
-                    '',
+                      getStringProp(v, 'container_number') ??
+                      '',
                   ),
                 }
               }
