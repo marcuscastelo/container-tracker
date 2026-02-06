@@ -7,7 +7,8 @@ import {
 } from '~/modules/process/domain/value-objects'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
-import { getStringProp, isRecord } from '~/shared/utils/typeGuards'
+import z from 'zod'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 // Backwards-compatible alias for tests and other callers
 export type ProcessApiResponse = ProcessDetailResponse
@@ -126,15 +127,25 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
 
             const raw = ev.raw
             // Safely pick description/activity from raw carrier payloads
-            const rawDescription = isRecord(raw)
-              ? (getStringProp(raw, 'Description') ??
-                getStringProp(raw, 'description') ??
-                getStringProp(raw, 'Activity') ??
-                getStringProp(raw, 'activity'))
+            const rawObj = safeParseOrDefault(raw, z.record(z.string(), z.unknown()).parse, null)
+            const rawDescription = rawObj
+              ? (typeof rawObj['Description'] === 'string'
+                ? rawObj['Description']
+                : typeof rawObj['description'] === 'string'
+                  ? rawObj['description']
+                  : typeof rawObj['Activity'] === 'string'
+                    ? rawObj['Activity']
+                    : typeof rawObj['activity'] === 'string'
+                      ? rawObj['activity']
+                      : undefined)
               : undefined
 
-            const rawLocation = isRecord(raw)
-              ? (getStringProp(raw, 'Location') ?? getStringProp(raw, 'location'))
+            const rawLocation = rawObj
+              ? (typeof rawObj['Location'] === 'string'
+                ? rawObj['Location']
+                : typeof rawObj['location'] === 'string'
+                  ? rawObj['location']
+                  : undefined)
               : undefined
 
             return {

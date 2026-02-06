@@ -1,7 +1,8 @@
 import type { Resource } from 'i18next'
 import i18next from 'i18next'
 import { createSignal } from 'solid-js'
-import { isRecord } from '~/shared/utils/typeGuards'
+import z from 'zod'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 // Dynamically load all locale JSON files from ./locales folder.
 // This makes adding a new locale seamless: drop a new JSON file and it will be picked up.
@@ -19,9 +20,15 @@ for (const path of Object.keys(modules)) {
   // modules[path] may be `{ default: {...} }` when using eager import, or the object itself.
   const mod: unknown = modules[path]
   let translation: Record<string, unknown> | undefined = undefined
-  if (isRecord(mod)) {
-    if ('default' in mod && isRecord(mod.default)) translation = mod.default
-    else translation = mod
+  // Use zod to safely parse module shape (some bundlers return { default: {...} })
+  const modRec = safeParseOrDefault(mod, z.record(z.string(), z.unknown()).parse, null)
+  if (modRec) {
+    if ('default' in modRec && typeof (modRec as any).default === 'object' && (modRec as any).default !== null) {
+      const def = safeParseOrDefault((modRec as any).default, z.record(z.string(), z.unknown()).parse, null)
+      if (def) translation = def
+    } else {
+      translation = modRec
+    }
   }
   if (translation) resources[key] = { translation }
   availableLocales.push(key)

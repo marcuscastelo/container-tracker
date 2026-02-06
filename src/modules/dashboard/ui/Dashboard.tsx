@@ -19,7 +19,8 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '~/shared/ui'
-import { getStringProp, isRecord } from '~/shared/utils/typeGuards'
+import z from 'zod'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -203,30 +204,25 @@ export function Dashboard(): JSX.Element {
     } catch (err) {
       console.error('Failed to create process:', err)
       // Type guard for the structured API conflict payload
-      const isExisting = (
-        obj: unknown,
-      ): obj is { status: number; message?: string; existing?: Record<string, unknown> } => {
-        if (!isRecord(obj)) return false
-        const r = obj
-        if (!('existing' in r) || !isRecord(r.existing)) return false
-        const ex = r.existing
-        return typeof ex.processId === 'string' || typeof ex.process_id === 'string'
+      if (err && typeof err === 'object') {
+        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()).parse, null)
+        if (body && 'existing' in body) {
+          const ex = safeParseOrDefault((body as any).existing, z.record(z.string(), z.unknown()).parse, null)
+          if (ex) {
+            const processId = String(ex.processId ?? ex.process_id ?? '')
+            const containerId = String(ex.containerId ?? ex.container_id ?? '')
+            const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
+            setCreateError({
+              message: String((body as any).message ?? 'Container already exists'),
+              processId,
+              containerId,
+              containerNumber,
+            })
+            return
+          }
+        }
       }
-
-      if (isExisting(err)) {
-        const ex = err.existing ?? {}
-        const processId = String(ex.processId ?? ex.process_id ?? '')
-        const containerId = String(ex.containerId ?? ex.container_id ?? '')
-        const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
-        setCreateError({
-          message: String(err.message ?? 'Container already exists'),
-          processId,
-          containerId,
-          containerNumber,
-        })
-      } else {
-        setCreateError(err instanceof Error ? err.message : 'Failed to create process')
-      }
+      setCreateError(err instanceof Error ? err.message : 'Failed to create process')
     }
   }
 
@@ -258,24 +254,18 @@ export function Dashboard(): JSX.Element {
             message={(() => {
               const v = createError()
               if (typeof v === 'string') return v
-              if (isRecord(v) && typeof v.message === 'string') return v.message
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
+              if (body && typeof (body as any).message === 'string') return (body as any).message
               return ''
             })()}
-            existing={(() => {
+              existing={(() => {
               const v = createError()
-              if (v && typeof v === 'object' && isRecord(v)) {
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
+              if (body) {
                 return {
-                  processId: String(
-                    getStringProp(v, 'processId') ?? getStringProp(v, 'process_id') ?? '',
-                  ),
-                  containerId: String(
-                    getStringProp(v, 'containerId') ?? getStringProp(v, 'container_id') ?? '',
-                  ),
-                  containerNumber: String(
-                    getStringProp(v, 'containerNumber') ??
-                    getStringProp(v, 'container_number') ??
-                    '',
-                  ),
+                  processId: String(body.processId ?? body.process_id ?? ''),
+                  containerId: String(body.containerId ?? body.container_id ?? ''),
+                  containerNumber: String(body.containerNumber ?? body.container_number ?? ''),
                 }
               }
               return undefined

@@ -10,7 +10,7 @@ import { processMappers } from '~/modules/process/infrastructure/persistence/pro
 import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
-import { isRecord } from '~/shared/utils/typeGuards'
+
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'

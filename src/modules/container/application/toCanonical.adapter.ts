@@ -2,7 +2,8 @@ import {
   type F1Shipment,
   F1ShipmentSchema,
 } from '~/modules/container/domain/schemas/canonical.schema'
-import { isRecord } from '~/shared/utils/typeGuards'
+import z from 'zod'
+import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 
 function upperTrim(v: unknown): string {
   if (!v && v !== 0) return ''
@@ -25,7 +26,11 @@ export function mapParsedStatusToF1(
     }
 
     // Attempt to read common fields from parsed payload
-    const p: Record<string, unknown> = isRecord(parsed) ? parsed : {}
+    const p: Record<string, unknown> = safeParseOrDefault(
+      parsed,
+      z.record(z.string(), z.unknown()).parse,
+      {},
+    )
     const shipmentId = String(p?.process_id ?? p?.process ?? `ship-${normalizedContainerNumber}`)
 
     const origin = p?.origin ?? p?.origin_display ?? undefined
@@ -34,16 +39,17 @@ export function mapParsedStatusToF1(
     // Find container info if present
     let c: Record<string, unknown> | null = null
     const containersRaw = p?.containers
-    if (Array.isArray(containersRaw) && containersRaw.length > 0) {
+      if (Array.isArray(containersRaw) && containersRaw.length > 0) {
       const arr = containersRaw
       c =
         (arr.find((ci) => {
-          if (!isRecord(ci)) return false
+          const ciRec = safeParseOrDefault(ci, z.record(z.string(), z.unknown()).parse, null)
+          if (!ciRec) return false
           const num = upperTrim(
-            ci?.container_number ?? ci?.container_no ?? ci?.ContainerNumber ?? '',
+            ciRec?.container_number ?? ciRec?.container_no ?? ciRec?.ContainerNumber ?? '',
           )
           return num === normalizedContainerNumber
-        }) satisfies Record<string, unknown> | undefined) ?? (isRecord(arr[0]) ? arr[0] : null)
+        }) satisfies Record<string, unknown> | undefined) ?? safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()).parse, null)
     }
     // fallback to top-level fields
     if (!c) c = p
@@ -117,7 +123,7 @@ export function mapParsedStatusToF1(
 
     const eventsMapped = Array.isArray(events)
       ? events.map((ev) => {
-          const evObj: Record<string, unknown> = isRecord(ev) ? ev : {}
+          const evObj: Record<string, unknown> = safeParseOrDefault(ev, z.record(z.string(), z.unknown()).parse, {})
           const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
           const eventTimeTypeRaw = evObj?.event_time_type ?? evObj?.EventTimeType ?? undefined
           const eventTimeType =
@@ -178,8 +184,9 @@ export function mapParsedStatusToF1(
       // p is a loose object; safely read nested source.api if present
       carrier: (() => {
         const src = p?.source
-        if (isRecord(src)) {
-          const apiVal = src['api']
+          const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()).parse, null)
+          if (srcRec) {
+          const apiVal = srcRec['api']
           if (typeof apiVal === 'string') return apiVal
         }
         return provider ?? null

@@ -3,6 +3,7 @@ import type { Process, ProcessContainer } from '~/modules/process/domain'
 import {
   CarrierSchema,
   OperationTypeSchema,
+  PlannedLocation,
   ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
 import type { Database } from '~/shared/supabase/database.types'
@@ -18,8 +19,8 @@ export const processMappers = {
       id: String(row.id),
       reference: row.reference == null ? null : String(row.reference),
       operation_type: safeParseOrDefault(row.operation_type, OperationTypeSchema.parse, 'unknown'),
-      origin: isRecord(row.origin) ? row.origin : null,
-      destination: isRecord(row.destination) ? row.destination : null,
+      origin: safeParseOrDefault(row.origin, PlannedLocation.parse, null),
+      destination: safeParseOrDefault(row.destination, PlannedLocation.parse, null),
       carrier: safeParseOrDefault(row.carrier, CarrierSchema.parse, null),
       bill_of_lading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
       booking_reference: row.booking_reference == null ? null : String(row.booking_reference),
