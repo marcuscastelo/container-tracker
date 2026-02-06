@@ -1,16 +1,24 @@
 import z from 'zod/v4'
 
 // Operation type enum - explicit choice, defaults to 'unknown'
-export const OperationType = z.enum(['import', 'export', 'transshipment', 'unknown'])
-export type OperationType = z.infer<typeof OperationType>
+export const OperationTypeSchema = z.enum(['import', 'export', 'transshipment', 'unknown'])
+export type OperationType = z.infer<typeof OperationTypeSchema>
 
 // Source of the process data
-export const ProcessSource = z.enum(['manual', 'api', 'import'])
-export type ProcessSource = z.infer<typeof ProcessSource>
+export const ProcessSourceSchema = z.enum(['manual', 'api', 'import'])
+export type ProcessSource = z.infer<typeof ProcessSourceSchema>
 
 // Carrier enum (extensible)
-export const Carrier = z.enum(['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'])
-export type Carrier = z.infer<typeof Carrier>
+export const CarrierSchema = z.enum([
+  'maersk',
+  'msc',
+  'cmacgm',
+  'hapag',
+  'one',
+  'evergreen',
+  'unknown',
+])
+export type Carrier = z.infer<typeof CarrierSchema>
 // Location for planned route (intentional, not observed)
 export const PlannedLocation = z.object({
   display_name: z.string().nullable().optional(), // Free text like "Santos" or "BRSSZ"

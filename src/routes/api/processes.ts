@@ -71,7 +71,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     try {
       await alertUseCases.createProcessCreatedAlerts({
         process_id: result.process.id,
-        container_ids: result.process.containers.map((c) => c.id),
+        container_ids: result.containers.map((c) => c.id),
       })
     } catch (alertErr) {
       console.warn('Failed to create initial alerts:', alertErr)
@@ -90,12 +90,10 @@ export async function POST({ request }: { request: Request }): Promise<Response>
         source: result.process.source,
         created_at: result.process.created_at.toISOString(),
         updated_at: result.process.updated_at.toISOString(),
-        containers: result.process.containers.map((c) => ({
+        containers: result.containers.map((c) => ({
           id: c.id,
           container_number: c.container_number,
           carrier_code: c.carrier_code,
-          container_type: c.container_type,
-          container_size: c.container_size,
         })),
       },
       warnings: result.warnings,

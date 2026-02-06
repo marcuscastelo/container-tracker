@@ -1,8 +1,8 @@
-import type { Carrier, OperationType, Process } from '~/modules/process/domain'
-import type { ProcessRepository } from '~/modules/process/domain/processRepository'
+import type { Container, NewContainer } from '~/modules/container/domain/container'
+import type { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/supabaseContainerRepository'
+import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type {
   CreateProcessInput,
-  ProcessContainer,
   ProcessWithContainers,
 } from '~/modules/process/domain/processStuff'
 import {
@@ -10,7 +10,12 @@ import {
   findDuplicateContainers,
   validateContainerNumber,
 } from '~/modules/process/domain/processStuff'
-import { getStringProp, isRecord } from '~/shared/utils/typeGuards'
+import type { Carrier, OperationType } from '~/modules/process/domain/value-objects'
+import type { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+
+// Ad-hoc "interface". For now more abstraction would be over-engineering.
+type ProcessRepository = typeof supabaseProcessRepository
+type ContainerRepository = typeof supabaseContainerRepository
 
 // Input shape used by updateProcess - UI-friendly field names
 export type UpdateProcessInput = {
@@ -28,92 +33,31 @@ export type UpdateProcessInput = {
   }>
 }
 
-/**
- * Process Use Cases
- *
- * Application layer that orchestrates domain logic and repository calls.
- */
-export type ProcessUseCases = {
-  /**
-   * Get all processes (without containers)
-   */
-  getAllProcesses: () => Promise<readonly Process[]>
-
-  /**
-   * Get all processes with their containers
-   */
-  getAllProcessesWithContainers: () => Promise<readonly ProcessWithContainers[]>
-
-  /**
-   * Get a single process by ID
-   */
-  getProcess: (processId: string) => Promise<Process | null>
-
-  /**
-   * Get a process with its containers
-   */
-  getProcessWithContainers: (processId: string) => Promise<ProcessWithContainers | null>
-
-  /**
-   * Create a new process with containers
-   * Validates container numbers and checks for duplicates
-   */
-  createProcess: (input: CreateProcessInput) => Promise<{
-    process: ProcessWithContainers
-    warnings: readonly string[]
-  }>
-
-  /**
-   * Add a container to an existing process
-   */
-  addContainer: (
-    processId: string,
-    container: {
-      container_number: string
-      container_type?: string | null
-      container_size?: string | null
-      carrier_code?: string | null
-    },
-  ) => Promise<{
-    container: ProcessContainer
-    warnings: readonly string[]
-  }>
-
-  /**
-   * Delete a process and all its containers
-   */
-  deleteProcess: (processId: string) => Promise<void>
-
-  /**
-   * Remove a container from a process
-   */
-  removeContainer: (containerId: string, processId: string) => Promise<void>
-
-  /**
-   * Update a process and reconcile its containers (add/remove)
-   */
-  updateProcess: (processId: string, input: UpdateProcessInput) => Promise<ProcessWithContainers>
-}
-
-export function createProcessUseCases(repository: ProcessRepository): ProcessUseCases {
+export function createProcessUseCases({
+  processRepository,
+  containerRepository,
+}: {
+  processRepository: ProcessRepository
+  containerRepository: ContainerRepository
+}) {
   return {
-    async getAllProcesses() {
-      return repository.fetchAll()
+    async getAllProcesses(): Promise<readonly Process[]> {
+      return processRepository.fetchAll()
     },
 
-    async getAllProcessesWithContainers() {
-      return repository.fetchAllWithContainers()
+    async getAllProcessesWithContainers(): Promise<readonly ProcessWithContainers[]> {
+      return processRepository.fetchAllWithContainers()
     },
 
-    async getProcess(processId) {
-      return repository.fetchById(processId)
+    async getProcess(processId: string): Promise<Process | null> {
+      return processRepository.fetchById(processId)
     },
 
-    async getProcessWithContainers(processId) {
-      return repository.fetchByIdWithContainers(processId)
+    async getProcessWithContainers(processId: string): Promise<ProcessWithContainers | null> {
+      return processRepository.fetchByIdWithContainers(processId)
     },
 
-    async createProcess(input) {
+    async createProcess(input: CreateProcessInput) {
       const warnings: string[] = []
 
       // Validate container numbers
@@ -133,7 +77,7 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
 
       // Check for existing containers in the system
       for (const c of input.containers) {
-        const exists = await repository.containerExists(c.container_number)
+        const exists = await processRepository.containerExists(c.container_number)
         if (exists) {
           throw new Error(
             `Container ${c.container_number.toUpperCase()} already exists in the system`,
@@ -142,13 +86,39 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       }
 
       // Create the process
-      const { process, containers } = createProcess(input)
-      const created = await repository.create(process, containers)
+      const newProcess: NewProcess = createProcess(input)
+      const processResult = await processRepository.create(newProcess)
+      if (!processResult.success) {
+        throw new Error(
+          `Failed to create process: ${processResult.error?.message ?? 'Unknown error'}`,
+        )
+      }
+      const process: Process = processResult.data
 
-      return { process: created, warnings }
+      const newContainers = input.containers.map(
+        (c) =>
+          ({
+            carrier_code: c.carrier_code,
+            container_number: c.container_number.toUpperCase().trim(),
+            process_id: process.id,
+          }) satisfies NewContainer,
+      )
+
+      const containerResult = await containerRepository.insertMany(newContainers)
+      if (!containerResult.success) {
+        throw new Error(
+          `Failed to add containers to process: ${containerResult.error?.message ?? 'Unknown error'}`,
+        )
+      }
+      const containers = containerResult.data
+
+      return { process, containers, warnings }
     },
 
-    async addContainer(processId, container) {
+    async addContainer(container: NewContainer): Promise<{
+      container: Container
+      warnings: string[]
+    }> {
       const warnings: string[] = []
 
       // Validate container number
@@ -158,79 +128,62 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       }
 
       // Check if container exists
-      const exists = await repository.containerExists(container.container_number)
+      // TODO: Allow DB to enforce uniqueness and handle conflict error instead of pre-checking? Which one is cheaper at scale?
+      const exists = await processRepository.containerExists(container.container_number)
       if (exists) {
         throw new Error(
           `Container ${container.container_number.toUpperCase()} already exists in the system`,
         )
       }
 
-      // Add the container
-      const created = await repository.addContainer(processId, {
+      const result = await containerRepository.insert({
+        process_id: container.process_id,
         container_number: container.container_number.toUpperCase().trim(),
-        carrier_code: container.carrier_code ?? null,
-        container_type: container.container_type ?? null,
-        container_size: container.container_size ?? null,
+        carrier_code: container.carrier_code,
       })
+      if (!result.success) {
+        throw new Error(`Failed to add container: ${result.error?.message ?? 'Unknown error'}`)
+      }
+      const created = result.data
 
       return { container: created, warnings }
     },
 
-    async deleteProcess(processId) {
-      return repository.delete(processId)
+    async deleteProcess(processId: string) {
+      return processRepository.delete(processId)
     },
 
-    async removeContainer(containerId, processId) {
+    async removeContainer(containerId: string, processId: string) {
       // Check if this is the last container
-      const containers = await repository.fetchContainersByProcessId(processId)
+      const containers = await processRepository.fetchContainersByProcessId(processId)
       if (containers.length <= 1) {
         throw new Error('Cannot remove the last container from a process')
       }
 
-      return repository.removeContainer(containerId)
+      return processRepository.removeContainer(containerId)
     },
 
-    async updateProcess(processId, input) {
+    async updateProcess(processId: string, input: Partial<CreateProcessInput>) {
       // Reconcile containers if provided
       if (input.containers) {
-        const existing = await repository.fetchContainersByProcessId(processId)
+        const existing = await processRepository.fetchContainersByProcessId(processId)
         const existingByNumber = new Map(existing.map((c) => [c.container_number.toUpperCase(), c]))
 
         // Normalize incoming containers (accept either UI shape or API shape)
-        const incoming = (Array.isArray(input.containers) ? input.containers : []).map((c) => {
-          const item = isRecord(c) ? c : undefined
-          const containerNumber = String(
-            getStringProp(item, 'containerNumber') ?? getStringProp(item, 'container_number') ?? '',
-          )
-            .toUpperCase()
-            .trim()
-          const _ct1 = getStringProp(item, 'container_type')
-          const _ct2 = getStringProp(item, 'containerType')
-          const container_type = _ct1 ?? _ct2 ?? null
-
-          const _cs1 = getStringProp(item, 'container_size')
-          const _cs2 = getStringProp(item, 'containerSize')
-          const container_size = _cs1 ?? _cs2 ?? null
-
-          const carrier_code = getStringProp(item, 'carrier_code') ?? null
-          return {
-            containerNumber,
-            container_type,
-            container_size,
-            carrier_code,
-          }
-        })
+        const incoming = (Array.isArray(input.containers) ? input.containers : []).map((item) => ({
+          containerNumber: item.container_number.toUpperCase().trim(),
+          carrier_code: item.carrier_code ?? null,
+        }))
 
         const incomingNumbers = incoming.map((c) => c.containerNumber)
 
         // Add new containers
         for (const inc of incoming) {
           if (!existingByNumber.has(inc.containerNumber)) {
-            await repository.addContainer(processId, {
+            await containerRepository.insert({
+              carrier_code: inc.carrier_code,
               container_number: inc.containerNumber,
-              carrier_code: inc.carrier_code ?? null,
-              container_type: inc.container_type ?? null,
-              container_size: inc.container_size ?? null,
+              process_id: processId,
             })
           }
         }
@@ -239,12 +192,12 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
         for (const ex of existing) {
           if (!incomingNumbers.includes(ex.container_number.toUpperCase())) {
             // Ensure we don't remove last container
-            const all = await repository.fetchContainersByProcessId(processId)
+            const all = await processRepository.fetchContainersByProcessId(processId)
             if (all.length <= 1) {
               // skip removal to avoid leaving process without containers
               continue
             }
-            await repository.removeContainer(ex.id)
+            await processRepository.removeContainer(ex.id)
           }
         }
       }
@@ -252,20 +205,20 @@ export function createProcessUseCases(repository: ProcessRepository): ProcessUse
       // Map field names from CreateProcessInput -> repository update shape
       const updates: Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>> = {}
       if (input.reference !== undefined) updates.reference = input.reference
-      if (input.operationType !== undefined) updates.operation_type = input.operationType
+      if (input.operation_type !== undefined) updates.operation_type = input.operation_type
       if (input.origin !== undefined) updates.origin = input.origin
       if (input.destination !== undefined) updates.destination = input.destination
       if (input.carrier !== undefined) updates.carrier = input.carrier
-      if (input.billOfLading !== undefined) updates.bill_of_lading = input.billOfLading
+      if (input.bill_of_lading !== undefined) updates.bill_of_lading = input.bill_of_lading
       console.debug('processUseCases.updateProcess: full input', input)
       console.debug('processUseCases.updateProcess: updates to apply', updates)
       // Call repository.update for provided fields
       if (Object.keys(updates).length > 0) {
         // repository.update expects partial Process fields with repository naming
-        await repository.update(processId, updates)
+        await processRepository.update(processId, updates)
       }
 
-      const updated = await repository.fetchByIdWithContainers(processId)
+      const updated = await processRepository.fetchByIdWithContainers(processId)
       if (!updated) throw new Error('Process not found after update')
       return updated
     },

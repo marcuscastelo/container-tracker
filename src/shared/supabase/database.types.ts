@@ -63,9 +63,50 @@ export type Database = {
         }
         Relationships: []
       }
+      'container-events': {
+        Row: {
+          actuality: string
+          container_number: string
+          created_at: string
+          event_time: string
+          id: string
+          source: Json
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          actuality: string
+          container_number: string
+          created_at?: string
+          event_time: string
+          id: string
+          source: Json
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          actuality?: string
+          container_number?: string
+          created_at?: string
+          event_time?: string
+          id?: string
+          source?: Json
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'container-events_container_number_fkey'
+            columns: ['container_number']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['container_number']
+          },
+        ]
+      }
       containers: {
         Row: {
-          carrier_code: string | null
+          carrier_code: string
           container_number: string
           container_size: string | null
           container_type: string | null
@@ -75,7 +116,7 @@ export type Database = {
           removed_at: string | null
         }
         Insert: {
-          carrier_code?: string | null
+          carrier_code: string
           container_number: string
           container_size?: string | null
           container_type?: string | null
@@ -85,7 +126,7 @@ export type Database = {
           removed_at?: string | null
         }
         Update: {
-          carrier_code?: string | null
+          carrier_code?: string
           container_number?: string
           container_size?: string | null
           container_type?: string | null
@@ -100,124 +141,6 @@ export type Database = {
             columns: ['process_id']
             isOneToOne: false
             referencedRelation: 'processes'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      container_tracking_snapshots: {
-        Row: {
-          id: string
-          container_id: string
-          carrier_code: string
-          fetched_at: string
-          raw_payload: Json
-        }
-        Insert: {
-          id?: string
-          container_id: string
-          carrier_code: string
-          fetched_at?: string
-          raw_payload: Json
-        }
-        Update: {
-          id?: string
-          container_id?: string
-          carrier_code?: string
-          fetched_at?: string
-          raw_payload?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'container_tracking_snapshots_container_id_fkey'
-            columns: ['container_id']
-            isOneToOne: false
-            referencedRelation: 'containers'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      container_observations: {
-        Row: {
-          fingerprint: string
-          container_id: string
-          activity_code: string
-          event_time: string
-          location_code: string | null
-          first_seen_at: string
-          last_seen_at: string
-          source_snapshot_id: string | null
-        }
-        Insert: {
-          fingerprint: string
-          container_id: string
-          activity_code: string
-          event_time: string
-          location_code?: string | null
-          first_seen_at?: string
-          last_seen_at?: string
-          source_snapshot_id?: string | null
-        }
-        Update: {
-          fingerprint?: string
-          container_id?: string
-          activity_code?: string
-          event_time?: string
-          location_code?: string | null
-          first_seen_at?: string
-          last_seen_at?: string
-          source_snapshot_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'container_observations_container_id_fkey'
-            columns: ['container_id']
-            isOneToOne: false
-            referencedRelation: 'containers'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'container_observations_source_snapshot_id_fkey'
-            columns: ['source_snapshot_id']
-            isOneToOne: false
-            referencedRelation: 'container_tracking_snapshots'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      container_events: {
-        Row: {
-          id: string
-          container_id: string
-          event_type: string
-          event_time: string
-          source: string
-          derived_from_fingerprint: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          container_id: string
-          event_type: string
-          event_time: string
-          source: string
-          derived_from_fingerprint?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          container_id?: string
-          event_type?: string
-          event_time?: string
-          source?: string
-          derived_from_fingerprint?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'container_events_container_id_fkey'
-            columns: ['container_id']
-            isOneToOne: false
-            referencedRelation: 'containers'
             referencedColumns: ['id']
           },
         ]

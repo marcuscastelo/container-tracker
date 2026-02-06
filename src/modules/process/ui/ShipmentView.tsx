@@ -176,7 +176,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         bill_of_lading: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          container_type: c.isoType || null,
+          carrier_code: formData.carrier || null,
         })),
       }
 

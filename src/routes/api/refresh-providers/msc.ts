@@ -42,7 +42,8 @@ export async function fetchStatus(
       responseType: 'arraybuffer',
     })
   } catch (err) {
-    throw new Error(`msc.fetchStatus: network error: ${String((<Error>err)?.message ?? err)}`)
+    // @ts-expect-error: forced typing
+    throw new Error(`msc.fetchStatus: network error: ${String(err?.message ?? err)}`)
   }
 
   const data = resp.data

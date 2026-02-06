@@ -119,7 +119,7 @@ export const F1ShipmentSchema = z.object({
   id: z.string(),
   origin: LocationSchema.optional(),
   destination: LocationSchema.optional(),
-  carrier: z.string().nullable().optional(),
+  carrier: z.string(),
   created_at: DateLike,
   source: z.union([
     z.literal('manual'),

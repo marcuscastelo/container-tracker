@@ -1,11 +1,12 @@
 import type { Alert, AlertState } from '~/modules/alert/domain/alert'
 import { AlertSchema } from '~/modules/alert/domain/alert'
 import type { AlertRepository } from '~/modules/alert/domain/alertRepository'
-import type { Json } from '~/shared/supabase/database.types'
+import type { Database } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 
-const TABLE_NAME = 'alerts'
+const TABLE_NAME: keyof Database['public']['Tables'] = 'alerts'
 
+// TODO: Use SupabaseResult
 /**
  * Supabase-backed implementation of AlertRepository.
  */

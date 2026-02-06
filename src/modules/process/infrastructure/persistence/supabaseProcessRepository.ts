@@ -1,27 +1,26 @@
-import type { Process } from '~/modules/process/domain/process'
-import type { ProcessRepository } from '~/modules/process/domain/processRepository'
+import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
 import type {
   Carrier,
   OperationType,
   PlannedLocation,
-  ProcessSource,
+  ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
+import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
 import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 import { isRecord } from '~/shared/utils/typeGuards'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
 
-type ProcessRow = Database['public']['Tables']['processes']['Row']
-type ContainerRow = Database['public']['Tables']['containers']['Row']
-
+// TODO: Use SupabaseResult
 /**
  * Supabase-backed implementation of ProcessRepository.
  * Uses the `processes` and `process_containers` tables.
  */
-export const supabaseProcessRepository: ProcessRepository = {
+export const supabaseProcessRepository = {
   async fetchAll(): Promise<readonly Process[]> {
     const { data, error } = await supabase
       .from(PROCESSES_TABLE)
@@ -33,7 +32,7 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to fetch processes: ${error.message}`)
     }
 
-    return (data ?? []).map(rowToProcess)
+    return data.map(processMappers.rowToProcess)
   },
 
   async fetchAllWithContainers(): Promise<readonly ProcessWithContainers[]> {
@@ -47,12 +46,12 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to fetch processes with containers: ${error.message}`)
     }
 
-    return (data ?? []).map((row) => {
-      const process = rowToProcess(row)
+    return data.map((row) => {
+      const process = processMappers.rowToProcess(row)
       const containers = row[CONTAINERS_TABLE] ?? []
       return {
         ...process,
-        containers: containers.map(rowToContainer),
+        containers: containers.map(processMappers.rowToContainer),
       }
     })
   },
@@ -70,7 +69,7 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to fetch process ${processId}: ${error.message}`)
     }
 
-    return data ? rowToProcess(data) : null
+    return processMappers.rowToProcess(data)
   },
 
   async fetchByIdWithContainers(processId: string): Promise<ProcessWithContainers | null> {
@@ -88,11 +87,11 @@ export const supabaseProcessRepository: ProcessRepository = {
 
     if (!data) return null
 
-    const process = rowToProcess(data)
+    const process = processMappers.rowToProcess(data)
     const containers = data[CONTAINERS_TABLE] ?? []
     return {
       ...process,
-      containers: containers.map(rowToContainer),
+      containers: containers.map(processMappers.rowToContainer),
     }
   },
 
@@ -108,7 +107,7 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to fetch containers for process ${processId}: ${error.message}`)
     }
 
-    return (data ?? []).map(rowToContainer)
+    return data.map(processMappers.rowToContainer)
   },
 
   async containerExists(containerNumber: string): Promise<boolean> {
@@ -141,16 +140,10 @@ export const supabaseProcessRepository: ProcessRepository = {
     }
 
     if (!data || data.length === 0) return null
-    return rowToContainer(data[0])
+    return processMappers.rowToContainer(data[0])
   },
 
-  async create(
-    process: Omit<Process, 'id' | 'created_at' | 'updated_at'>,
-    containers: readonly Omit<
-      ProcessContainer,
-      'id' | 'process_id' | 'created_at' | 'updated_at'
-    >[],
-  ): Promise<ProcessWithContainers> {
+  async create(process: NewProcess): Promise<SupabaseResult<Process>> {
     // Create process first
     const now = new Date().toISOString()
     const { data: processData, error: processError } = await supabase
@@ -179,62 +172,7 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error('Failed to create process: no data returned')
     }
 
-    const createdProcess = rowToProcess(processData)
-
-    // Create containers
-    const containerInserts = containers.map((c) => ({
-      process_id: createdProcess.id,
-      container_number: c.container_number.toUpperCase().trim(),
-      carrier_code: c.carrier_code ?? null,
-      container_type: c.container_type ?? null,
-      container_size: c.container_size ?? null,
-      created_at: now,
-      removed_at: null,
-    }))
-
-    const { data: containersData, error: containersError } = await supabase
-      .from(CONTAINERS_TABLE)
-      .insert(containerInserts)
-      .select()
-
-    if (containersError) {
-      // Rollback: delete the process
-      await supabase.from(PROCESSES_TABLE).delete().eq('id', createdProcess.id)
-      console.error('supabaseProcessRepository.create containers error:', containersError)
-      throw new Error(`Failed to create containers: ${containersError.message}`)
-    }
-
-    return {
-      ...createdProcess,
-      containers: (containersData ?? []).map(rowToContainer),
-    }
-  },
-
-  async addContainer(
-    processId: string,
-    container: Omit<ProcessContainer, 'id' | 'process_id' | 'created_at' | 'updated_at'>,
-  ): Promise<ProcessContainer> {
-    const now = new Date().toISOString()
-    const { data, error } = await supabase
-      .from(CONTAINERS_TABLE)
-      .insert({
-        process_id: processId,
-        container_number: container.container_number.toUpperCase().trim(),
-        carrier_code: container.carrier_code ?? null,
-        container_type: container.container_type ?? null,
-        container_size: container.container_size ?? null,
-        created_at: now,
-        removed_at: null,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('supabaseProcessRepository.addContainer error:', error)
-      throw new Error(`Failed to add container: ${error.message}`)
-    }
-
-    return rowToContainer(data)
+    return { success: true, data: processMappers.rowToProcess(processData), error: null }
   },
 
   async update(
@@ -258,7 +196,7 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to update process ${processId}: ${error.message}`)
     }
 
-    return rowToProcess(data)
+    return processMappers.rowToProcess(data)
   },
 
   async delete(processId: string): Promise<void> {
@@ -279,34 +217,4 @@ export const supabaseProcessRepository: ProcessRepository = {
       throw new Error(`Failed to remove container ${containerId}: ${error.message}`)
     }
   },
-}
-
-// Helper functions to convert database rows to domain types
-function rowToProcess(row: ProcessRow): Process {
-  return {
-    id: String(row.id),
-    reference: row.reference == null ? null : String(row.reference),
-    operation_type: <OperationType>(row.operation_type ?? 'unknown'), // FIXME: Replace assertion with proper parsing
-    origin: isRecord(row.origin) ? row.origin : null,
-    destination: isRecord(row.destination) ? row.destination : null,
-    carrier: row.carrier == null ? null : <Carrier>String(row.carrier), // FIXME: Replace assertion with proper parsing
-    bill_of_lading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
-    booking_reference: row.booking_reference == null ? null : String(row.booking_reference),
-    source: <ProcessSource>row.source ?? 'manual', // FIXME: Replace assertion with proper parsing
-    created_at: new Date(String(row.created_at)),
-    updated_at: new Date(String(row.updated_at)),
-  } satisfies Process
-}
-
-function rowToContainer(row: ContainerRow): ProcessContainer {
-  return {
-    id: String(row.id),
-    process_id: String(row.process_id),
-    container_number: String(row.container_number),
-    carrier_code: row.carrier_code == null ? null : String(row.carrier_code),
-    container_type: row.container_type == null ? null : String(row.container_type),
-    container_size: row.container_size == null ? null : String(row.container_size),
-    created_at: new Date(String(row.created_at)),
-    removed_at: row.removed_at ? new Date(String(row.removed_at)) : null,
-  }
 }

@@ -16,8 +16,9 @@ class LocalStorageMock {
     this.store = {}
   }
 }
-// biome-ignore lint/suspicious/noExplicitAny: tests
-;(<any>globalThis).localStorage = new LocalStorageMock()
+
+// @ts-expect-error: globalThis typing
+globalThis.localStorage = new LocalStorageMock()
 
 // Provide default VITE_* env variables expected by zod checks in tests
 process.env.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY =

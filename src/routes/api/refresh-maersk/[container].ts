@@ -2,7 +2,6 @@ import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
-import { containerStatusUseCases } from '~/modules/container'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
@@ -336,7 +335,8 @@ async function handleMaersk({ params, request }: APIEvent) {
               telemetry = await page.evaluate(() => {
                 try {
                   // access global telemetry object if present without using type assertions
-                  const b = (<any>window)['bmak'] ?? (<any>window)['bmak']
+                  // @ts-expect-error: dynamic access
+                  const b = window['bmak']
                   if (b && typeof b.get_telemetry === 'function') return b.get_telemetry()
                 } catch (_e) {}
                 return null
@@ -429,8 +429,10 @@ async function handleMaersk({ params, request }: APIEvent) {
           // check for existence of bmak telemetry function without type assertions
           () =>
             typeof window !== 'undefined' &&
-            (<any>window)['bmak'] &&
-            typeof (<any>window)['bmak'].get_telemetry === 'function',
+            // @ts-expect-error: dynamic access
+            window['bmak'] &&
+            // @ts-expect-error: dynamic access
+            typeof window['bmak'].get_telemetry === 'function',
           { timeout: 10000 },
         )
         await delay(2000)
@@ -556,23 +558,33 @@ async function handleMaersk({ params, request }: APIEvent) {
     try {
       console.debug('[maersk-refresh] Saving to Supabase payload summary:', {
         container,
-        hasContainers: Array.isArray(statusData && (<any>statusData).containers)
-          ? (<any>statusData).containers.length
+        // @ts-expect-error: forced typing
+        hasContainers: Array.isArray(statusData && statusData.containers)
+          ? // @ts-expect-error: forced typing
+            statusData.containers.length
           : 0,
-        firstContainerEvents: Array.isArray(statusData && (<any>statusData).containers)
-          ? ((<any>statusData).containers[0]?.events ?? null)
+        // @ts-expect-error: forced typing
+        firstContainerEvents: Array.isArray(statusData && statusData.containers)
+          ? // @ts-expect-error: forced typing
+            (statusData.containers[0]?.events ?? null)
           : null,
       })
       if (typeof statusData === 'object' && statusData !== null) {
         // statusData is an object-like value
-        await containerStatusUseCases.saveContainerStatus(
-          String(container),
-          <Record<string, unknown>>statusData,
-        )
+        if (1 === 1) {
+          throw new Error('Saving canonical status is currently disabled')
+        }
+        // await containerStatusUseCases.saveContainerStatus(
+        //   String(container),
+        //   <Record<string, unknown>>statusData,
+        // )
       } else {
-        await containerStatusUseCases.saveContainerStatus(String(container), {
-          raw: String(statusData),
-        })
+        if (1 === 1) {
+          throw new Error('Saving raw status is currently disabled')
+        }
+        // await containerStatusUseCases.saveContainerStatus(String(container), {
+        //   raw: String(statusData),
+        // })
       }
       console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
     } catch (err) {
@@ -637,7 +649,8 @@ async function handleMaersk({ params, request }: APIEvent) {
     return new Response(
       JSON.stringify({
         error: String(err),
-        stack: (<Error>err)?.stack ?? null,
+        // @ts-expect-error: forced typing
+        stack: err?.stack ?? null,
       }),
       { status: 500 },
     )

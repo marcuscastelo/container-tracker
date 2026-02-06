@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
-import { containerStatusUseCases } from '~/modules/container'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
+import type { NewContainer } from '~/modules/container/domain/container'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
-import { Carrier } from '~/modules/process/domain/value-objects'
+import { Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
 import { getProvider } from '~/routes/api/refresh-providers'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
@@ -139,7 +139,8 @@ export async function POST({ request }: { request: Request }) {
       return v
     }
 
-    parsedStatus = <typeof parsedStatus>sanitizeValue(parsedStatus)
+    // @ts-expect-error: forced typing
+    parsedStatus = sanitizeValue(parsedStatus)
 
     try {
       // Map parsedStatus to canonical F1 shape before saving
@@ -158,14 +159,17 @@ export async function POST({ request }: { request: Request }) {
         `refresh: saving canonical status for container ${container} to Supabase, shipment id=${canonicalStatus.id}`,
       )
       // Save canonical object as the status payload
-      await containerStatusUseCases.saveContainerStatus(String(container), canonicalStatus)
+      if (1 === 1) {
+        throw new Error('Saving canonical status is currently disabled')
+      }
+      // await containerStatusUseCases.saveContainerStatus(String(container), canonicalStatus)
       console.log(`refresh: saved canonical container ${container} to Supabase`)
       // Ingest canonical shipment into Processes so the UI (Dashboard) can surface it.
       // This follows the event->state->UI flow by creating/updating a Process derived
       // from the canonical F1 shipment. Failures here must NOT break the refresh API.
       try {
         const shipment = canonicalStatus
-        const containers = Array.isArray(shipment.containers) ? shipment.containers : []
+        const containers = shipment.containers
 
         if (containers.length > 0) {
           const createInput: CreateProcessInput = {
@@ -175,16 +179,19 @@ export async function POST({ request }: { request: Request }) {
             destination: shipment.destination
               ? { display_name: shipment.destination.city ?? null }
               : null,
-            carrier: Carrier.safeParse(shipment.carrier).success
-              ? Carrier.parse(shipment.carrier)
+            carrier: CarrierSchema.safeParse(shipment.carrier).success
+              ? CarrierSchema.parse(shipment.carrier)
               : 'unknown',
             bill_of_lading: null,
-            containers: containers.map((c: any) => ({
-              container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
-              container_type: c.iso_code ?? c.container_type ?? null,
-              container_size: c.size ?? null,
-              carrier_code: shipment.carrier ? String(shipment.carrier) : null,
-            })),
+            containers: containers.map(
+              (c: any) =>
+                ({
+                  container_number: String(
+                    c.container_number ?? c.container_no ?? '',
+                  ).toUpperCase(),
+                  carrier_code: shipment.carrier,
+                }) satisfies Omit<NewContainer, 'process_id'>,
+            ),
           }
 
           try {
@@ -194,7 +201,7 @@ export async function POST({ request }: { request: Request }) {
               // create initial alerts similarly to API process creation
               await alertUseCases.createProcessCreatedAlerts({
                 process_id: res.process.id,
-                container_ids: res.process.containers.map((c) => c.id),
+                container_ids: res.containers.map((c) => c.id),
               })
             } catch (ae) {
               console.warn('refresh: failed to create initial alerts for imported process', ae)

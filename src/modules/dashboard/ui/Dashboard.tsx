@@ -186,7 +186,7 @@ export function Dashboard(): JSX.Element {
         bill_of_lading: data.billOfLading || null,
         containers: data.containers.map((c) => ({
           container_number: c.containerNumber,
-          container_type: c.isoType || null,
+          carrier_code: data.carrier || null,
         })),
       }
 
@@ -273,8 +273,8 @@ export function Dashboard(): JSX.Element {
                   ),
                   containerNumber: String(
                     getStringProp(v, 'containerNumber') ??
-                      getStringProp(v, 'container_number') ??
-                      '',
+                    getStringProp(v, 'container_number') ??
+                    '',
                   ),
                 }
               }

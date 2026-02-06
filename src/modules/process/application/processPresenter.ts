@@ -1,9 +1,10 @@
 import type { AlertSeverity } from '~/modules/alert'
-import type { Carrier, OperationType } from '~/modules/process/domain'
 import {
-  Carrier as CarrierSchema,
-  OperationType as OperationTypeSchema,
-} from '~/modules/process/domain'
+  type Carrier,
+  CarrierSchema,
+  type OperationType,
+  OperationTypeSchema,
+} from '~/modules/process/domain/value-objects'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
 import { getStringProp, isRecord } from '~/shared/utils/typeGuards'

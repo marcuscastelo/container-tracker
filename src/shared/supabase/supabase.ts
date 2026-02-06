@@ -60,13 +60,19 @@ export function registerSubapabaseRealtimeCallback<T>(
   const handleCallback = (payload: unknown) => {
     console.debug(`SUPABASE_REALTIME - ${table} -> payload=`, payload)
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const payloadData = <
-      {
-        eventType: 'INSERT' | 'UPDATE' | 'DELETE'
-        old?: unknown
-        new?: unknown
-      }
-    >payload
+    const result = z
+      .object({
+        eventType: z.enum(['INSERT', 'UPDATE', 'DELETE']),
+        old: z.unknown().optional(),
+        new: z.unknown().optional(),
+      })
+      .safeParse(payload)
+
+    if (!result.success) {
+      console.error('SUPABASE_REALTIME - Invalid payload structure', result.error)
+      return
+    }
+    const payloadData = result.data
 
     const eventType = payloadData.eventType
 

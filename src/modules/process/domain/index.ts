@@ -1,7 +1,6 @@
 // Domain surface for the `process` module.
 
 export { type Process, ProcessSchema } from '~/modules/process/domain/process'
-export { type ProcessRepository } from '~/modules/process/domain/processRepository'
 export {
   type CreateProcessInput,
   CreateProcessInputSchema,
@@ -15,9 +14,9 @@ export {
 } from '~/modules/process/domain/processStuff'
 
 export {
-  Carrier,
+  CarrierSchema,
   ContainerInitialStatus,
-  OperationType,
+  OperationTypeSchema,
   PlannedLocation,
-  ProcessSource,
+  ProcessSourceSchema as ProcessSource,
 } from '~/modules/process/domain/value-objects'

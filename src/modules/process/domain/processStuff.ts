@@ -1,10 +1,13 @@
 import { z } from 'zod'
-import { type Process, ProcessSchema } from '~/modules/process/domain/process'
+import type { Container, NewContainer } from '~/modules/container/domain/container'
+import { type NewProcess, type Process, ProcessSchema } from '~/modules/process/domain/process'
 import {
   Carrier,
+  CarrierSchema,
   ContainerInitialStatus,
   OperationType,
-  ProcessSource,
+  OperationTypeSchema,
+  ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
 
 export const ProcessContainerSchema = z.object({
@@ -27,7 +30,7 @@ export type ProcessContainer = z.infer<typeof ProcessContainerSchema>
  */
 export const CreateProcessInputSchema = z.object({
   reference: z.string().nullable().optional(),
-  operation_type: OperationType.optional(),
+  operation_type: OperationTypeSchema.optional(),
   origin: z
     .object({
       display_name: z.string().nullable().optional(),
@@ -40,13 +43,13 @@ export const CreateProcessInputSchema = z.object({
     })
     .nullable()
     .optional(),
-  carrier: Carrier.nullable().optional(),
+  carrier: CarrierSchema,
   bill_of_lading: z.string().nullable().optional(),
   containers: z
     .array(
       z.object({
         container_number: z.string().min(1),
-        carrier_code: z.string().nullable().optional(),
+        carrier_code: z.string(),
         container_type: z.string().nullable().optional(),
         container_size: z.string().nullable().optional(),
       }),
@@ -111,29 +114,19 @@ export function findDuplicateContainers(containerNumbers: readonly string[]): re
 /**
  * Factory function to create a new Process entity
  */
-export function createProcess(input: CreateProcessInput): {
-  process: Omit<Process, 'id' | 'created_at' | 'updated_at'>
-  containers: readonly Omit<ProcessContainer, 'id' | 'process_id' | 'created_at' | 'updated_at'>[]
-} {
-  const process: Omit<Process, 'id' | 'created_at' | 'updated_at'> = {
-    reference: input.reference ?? null,
+export function createProcess(input: CreateProcessInput): NewProcess {
+  const process: NewProcess = {
+    reference: input.reference,
     operation_type: input.operation_type ?? 'unknown',
     origin: input.origin?.display_name ? { display_name: input.origin.display_name } : null,
     destination: input.destination?.display_name
       ? { display_name: input.destination.display_name }
       : null,
-    carrier: input.carrier ?? null,
-    bill_of_lading: input.bill_of_lading ?? null,
+    carrier: input.carrier,
+    bill_of_lading: input.bill_of_lading,
     booking_reference: null,
     source: 'manual',
-  }
+  } satisfies NewProcess
 
-  const containers = input.containers.map((c) => ({
-    container_number: c.container_number.toUpperCase().trim(),
-    carrier_code: c.carrier_code ?? null,
-    container_type: c.container_type ?? null,
-    container_size: c.container_size ?? null,
-  }))
-
-  return { process, containers }
+  return process
 }
