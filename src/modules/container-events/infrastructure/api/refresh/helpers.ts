@@ -61,7 +61,8 @@ export async function fetchAndSanitizeStatus(
   return { parsedStatus }
 }
 
-const CanonicalShipmentSchema = z.object({
+// TODO: Review canonicall shipment schema, probably deprecated
+export const CanonicalShipmentSchema = z.object({
   containers: z.array(
     z.object({
       container_number: z.string().optional(),
@@ -77,34 +78,8 @@ function hasMessage(e: unknown): e is { message?: unknown } {
   return typeof e === 'object' && e !== null && 'message' in e
 }
 
-export async function ingestCanonicalShipment(canonicalStatus: unknown, container: string) {
-  try {
-    const parsed = CanonicalShipmentSchema.safeParse(canonicalStatus)
-    if (!parsed.success) {
-      console.warn('refresh: canonical shipment schema validation failed', parsed.error.format())
-      return
-    }
-    const shipment = parsed.data
-    const containers = shipment.containers
-
-    if (containers.length > 0) {
-      const createInput = buildCreateProcessInput(shipment, container)
-      try {
-        const res = await processUseCases.createProcess(createInput)
-        console.log(`refresh: created process ${res.process.id} for container ${container}`)
-        await createInitialAlerts(res.process.id, res.containers)
-      } catch (createErr: unknown) {
-        await reconcileProcessOnCreateError(createErr, container, createInput)
-      }
-    }
-  } catch (ingestErr) {
-    console.warn('refresh: ingesting canonical shipment into processes failed', ingestErr)
-  }
-}
-
-function buildCreateProcessInput(
+export function buildCreateProcessInput(
   shipment: z.infer<typeof CanonicalShipmentSchema>,
-  container: string,
 ): CreateProcessInput {
   return {
     reference: null,
@@ -125,7 +100,7 @@ function buildCreateProcessInput(
   }
 }
 
-async function createInitialAlerts(processId: string, containers: readonly NewContainer[]) {
+export async function createInitialAlerts(processId: string, containers: readonly NewContainer[]) {
   try {
     await alertUseCases.createProcessCreatedAlerts({
       process_id: processId,
@@ -136,7 +111,7 @@ async function createInitialAlerts(processId: string, containers: readonly NewCo
   }
 }
 
-async function reconcileProcessOnCreateError(
+export async function reconcileProcessOnCreateError(
   createErr: unknown,
   container: string,
   createInput: CreateProcessInput,

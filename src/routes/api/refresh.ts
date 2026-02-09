@@ -1,8 +1,9 @@
 import type z4 from 'zod/v4'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
+import type { F1Shipment } from '~/modules/container/domain/schemas/canonical.schema'
+import { ingestCanonicalShipment } from '~/modules/container-events/infrastructure/api/refresh/api'
 import {
   fetchAndSanitizeStatus,
-  ingestCanonicalShipment,
   respondWithSchema,
 } from '~/modules/container-events/infrastructure/api/refresh/helpers'
 import { getProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
@@ -20,18 +21,12 @@ function handleMaerskRedirect(container: string) {
 // --- Main Handlers ---
 export async function POST({ request }: { request: Request }) {
   try {
-    let parsedReqData: z4.infer<typeof RefreshSchemas.request>
-    try {
-      parsedReqData = await parseBody(request, RefreshSchemas.request)
-    } catch (err) {
-      return jsonResponse(
-        { error: `invalid request: ${String(err)}` },
-        400,
-        RefreshSchemas.responses.error,
-      )
+    const parsedReqData = await parseRequestData(request)
+    if (!parsedReqData.ok) {
+      return parsedReqData.response
     }
-    const container = parsedReqData.container
-    const provider = parsedReqData.carrier || 'unknown'
+
+    const { container, provider } = parsedReqData.data
 
     if (provider === 'maersk') {
       return handleMaerskRedirect(container)
@@ -52,25 +47,13 @@ export async function POST({ request }: { request: Request }) {
       return respondWithSchema({ error: fetchError }, RefreshSchemas.responses.error, 502)
     }
 
-    try {
-      const mapped = mapParsedStatusToF1(parsedStatus, String(container), provider)
-      if (!mapped.ok) {
-        console.error('refresh: mapping to canonical failed', mapped.error)
-        return respondWithSchema(
-          { error: `mapping to canonical failed: ${mapped.error}` },
-          RefreshSchemas.responses.error,
-          500,
-        )
-      }
+    const mappedResult = mapStatusToCanonical(parsedStatus, container, provider)
+    if (!mappedResult.ok) {
+      return mappedResult.response
+    }
 
-      const canonicalStatus = mapped.shipment
-      console.log(
-        `refresh: saving canonical status for container ${container} to Supabase, shipment id=${canonicalStatus.id}`,
-      )
-      // NOTE: saving is currently disabled intentionally; keep code for future re-enable
-      // await containerStatusUseCases.saveContainerStatus(String(container), canonicalStatus)
-      console.log(`refresh: (skipped) saved canonical container ${container} to Supabase`)
-      await ingestCanonicalShipment(canonicalStatus, container)
+    try {
+      await ingestCanonicalShipment(mappedResult.shipment, container)
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
       return respondWithSchema(
@@ -89,6 +72,57 @@ export async function POST({ request }: { request: Request }) {
     console.error('refresh error', err)
     return respondWithSchema({ error: String(err) }, RefreshSchemas.responses.error, 500)
   }
+}
+
+// --- Modularized helpers ---
+
+async function parseRequestData(
+  request: Request,
+): Promise<
+  { ok: true; data: { container: string; provider: string } } | { ok: false; response: Response }
+> {
+  try {
+    const parsedReqData: z4.infer<typeof RefreshSchemas.request> = await parseBody(
+      request,
+      RefreshSchemas.request,
+    )
+    return {
+      ok: true,
+      data: {
+        container: parsedReqData.container,
+        provider: parsedReqData.carrier || 'unknown',
+      },
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      response: jsonResponse(
+        { error: `invalid request: ${String(err)}` },
+        400,
+        RefreshSchemas.responses.error,
+      ),
+    }
+  }
+}
+
+function mapStatusToCanonical(
+  parsedStatus: unknown,
+  container: string,
+  provider: string,
+): { ok: true; shipment: F1Shipment } | { ok: false; response: Response } {
+  const mapped = mapParsedStatusToF1(parsedStatus, String(container), provider)
+  if (!mapped.ok) {
+    console.error('refresh: mapping to canonical failed', mapped.error)
+    return {
+      ok: false,
+      response: respondWithSchema(
+        { error: `mapping to canonical failed: ${mapped.error}` },
+        RefreshSchemas.responses.error,
+        500,
+      ),
+    }
+  }
+  return { ok: true, shipment: mapped.shipment }
 }
 
 export const GET = () => respondWithSchema({ ok: true }, RefreshSchemas.responses.health, 200)
