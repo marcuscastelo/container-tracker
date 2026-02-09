@@ -16,8 +16,8 @@ export function parseWithStack<T extends z.core.$ZodType>(schema: T, data: unkno
       const error = new Error(err.message)
       error.stack = err.stack // preserve original stack trace
       // Attach Zod issues for debugging
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-assertions
-      ;(error as any).issues = err.issues
+      // @ts-expect-error: Forced typing
+      error.issues = err.issues
       throw error
     }
     throw err

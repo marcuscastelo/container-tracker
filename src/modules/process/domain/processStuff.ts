@@ -1,10 +1,13 @@
 import { z } from 'zod'
-import { type Process, ProcessSchema } from '~/modules/process/domain/process'
+import type { Container, NewContainer } from '~/modules/container/domain/container'
+import { type NewProcess, type Process, ProcessSchema } from '~/modules/process/domain/process'
 import {
   Carrier,
+  CarrierSchema,
   ContainerInitialStatus,
   OperationType,
-  ProcessSource,
+  OperationTypeSchema,
+  ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
 
 export const ProcessContainerSchema = z.object({
@@ -14,11 +17,11 @@ export const ProcessContainerSchema = z.object({
     .string()
     .min(1)
     .transform((v) => v.toUpperCase().trim()),
-  iso_type: z.string().nullable().optional(), // e.g., "40HC", "20GP"
-  initial_status: ContainerInitialStatus.default('unknown'),
-  source: ProcessSource.default('manual'),
+  carrier_code: z.string().nullable().optional(),
+  container_type: z.string().nullable().optional(), // e.g., "40HC", "20GP"
+  container_size: z.string().nullable().optional(),
   created_at: z.date(),
-  updated_at: z.date(),
+  removed_at: z.date().nullable().optional(),
 })
 export type ProcessContainer = z.infer<typeof ProcessContainerSchema>
 
@@ -27,7 +30,7 @@ export type ProcessContainer = z.infer<typeof ProcessContainerSchema>
  */
 export const CreateProcessInputSchema = z.object({
   reference: z.string().nullable().optional(),
-  operation_type: OperationType.optional(),
+  operation_type: OperationTypeSchema.optional(),
   origin: z
     .object({
       display_name: z.string().nullable().optional(),
@@ -40,14 +43,15 @@ export const CreateProcessInputSchema = z.object({
     })
     .nullable()
     .optional(),
-  carrier: Carrier.nullable().optional(),
-  bl_reference: z.string().nullable().optional(),
+  carrier: CarrierSchema,
+  bill_of_lading: z.string().nullable().optional(),
   containers: z
     .array(
       z.object({
         container_number: z.string().min(1),
-        iso_type: z.string().nullable().optional(),
-        initial_status: ContainerInitialStatus.optional(),
+        carrier_code: z.string(),
+        container_type: z.string().nullable().optional(),
+        container_size: z.string().nullable().optional(),
       }),
     )
     .min(1, 'At least one container is required'),
@@ -110,29 +114,19 @@ export function findDuplicateContainers(containerNumbers: readonly string[]): re
 /**
  * Factory function to create a new Process entity
  */
-export function createProcess(input: CreateProcessInput): {
-  process: Omit<Process, 'id' | 'created_at' | 'updated_at'>
-  containers: readonly Omit<ProcessContainer, 'id' | 'process_id' | 'created_at' | 'updated_at'>[]
-} {
-  const process: Omit<Process, 'id' | 'created_at' | 'updated_at'> = {
-    reference: input.reference ?? null,
+export function createProcess(input: CreateProcessInput): NewProcess {
+  const process: NewProcess = {
+    reference: input.reference,
     operation_type: input.operation_type ?? 'unknown',
     origin: input.origin?.display_name ? { display_name: input.origin.display_name } : null,
     destination: input.destination?.display_name
       ? { display_name: input.destination.display_name }
       : null,
-    carrier: input.carrier ?? null,
-    bl_reference: input.bl_reference ?? null,
+    carrier: input.carrier,
+    bill_of_lading: input.bill_of_lading,
     booking_reference: null,
     source: 'manual',
-  }
+  } satisfies NewProcess
 
-  const containers = input.containers.map((c) => ({
-    container_number: c.container_number.toUpperCase().trim(),
-    iso_type: c.iso_type ?? null,
-    initial_status: c.initial_status ?? ('unknown' as const),
-    source: 'manual' as const,
-  }))
-
-  return { process, containers }
+  return process
 }

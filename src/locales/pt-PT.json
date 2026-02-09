@@ -38,9 +38,8 @@
   },
   "shipmentView": {
     "backToList": "Voltar para Expedições",
+    "backToDashboard": "Voltar para o Painel",
     "header": "Processo",
-    "origin": "Origem",
-    "destination": "Destino",
     "carrier": "Armador",
     "status": "Estado",
     "eta": "ETA",
@@ -60,9 +59,12 @@
     "loading": "A carregar...",
     "notFound": "Processo não encontrado",
     "noEvents": "Nenhum evento registado ainda",
-    "processCreated": "Processo criado",
     "internalIdMessage": "Este processo está a ser mostrado com um ID interno porque não foi fornecida uma referência. Pode adicionar uma referência personalizada para facilitar a identificação.",
-    "internalIdCTA": "Adicionar referência"
+    "internalIdCTA": "Adicionar referência",
+    "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
+    "refreshCarrierUnknownMessage": "Esta expedição não tem um armador selecionado, por isso não é possível executar um refresh automático. Pode editar o processo e escolher o armador correto para habilitar o refresh.",
+    "refreshCarrierUnknownEditCTA": "Editar processo",
+    "refreshCarrierUnknownCancelCTA": "Cancelar"
   },
   "createProcess": {
     "description": "Defina uma nova expedição para rastrear um ou mais contentores.",
@@ -90,9 +92,10 @@
       "isoTypePlaceholder": "ex. 40HC, 20GP",
       "carrier": "Armador",
       "carrierPlaceholder": "Selecione o armador",
-      "blReference": "BL / Referência de Booking",
+      "blReference": "Bill of Lading (BL)",
       "blReferencePlaceholder": "ex. MAEU123456789"
     },
+    "unknownCarrierWarning": "Se 'Desconhecido', não haverá atualizações automáticas do armador.",
     "operationType": {
       "import": "Importação",
       "export": "Exportação",

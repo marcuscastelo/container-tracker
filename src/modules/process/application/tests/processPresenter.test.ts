@@ -12,7 +12,7 @@ describe('processPresenter', () => {
       operation_type: 'import',
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
-      carrier: 'Maersk',
+      carrier: 'maersk',
       bl_reference: null,
       source: 'api',
       created_at: new Date().toISOString(),
@@ -21,8 +21,8 @@ describe('processPresenter', () => {
         {
           id: 'c1',
           container_number: 'MRKU1234567',
-          iso_type: '40HC',
-          initial_status: 'booked',
+          container_type: '40HC',
+          carrier_code: 'MAERSK',
           eta: null,
           events: [
             {

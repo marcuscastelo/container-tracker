@@ -1,43 +1,16 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { alertUseCases } from '~/modules/alert'
 import {
   CreateProcessInputSchema,
   processUseCases,
   supabaseProcessRepository,
 } from '~/modules/process'
-
-// Response schemas
-const ProcessResponseSchema = z.object({
-  id: z.string(),
-  reference: z.string().nullable(),
-  operation_type: z.string(),
-  origin: z.any().nullable(),
-  destination: z.any().nullable(),
-  carrier: z.string().nullable(),
-  bl_reference: z.string().nullable(),
-  source: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
-  containers: z.array(
-    z.object({
-      id: z.string(),
-      container_number: z.string(),
-      iso_type: z.string().nullable(),
-      initial_status: z.string(),
-    }),
-  ),
-})
-
-const ProcessListResponseSchema = z.array(ProcessResponseSchema)
-
-const ErrorResponseSchema = z.object({
-  error: z.string(),
-})
-
-const CreateProcessResponseSchema = z.object({
-  process: ProcessResponseSchema,
-  warnings: z.array(z.string()),
-})
+import {
+  CreateProcessResponseSchema,
+  ErrorResponseSchema,
+  ProcessListResponseSchema,
+  ProcessResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {
@@ -52,24 +25,28 @@ export async function GET(): Promise<Response> {
   try {
     const processes = await processUseCases.getAllProcessesWithContainers()
 
-    const response = processes.map((p) => ({
-      id: p.id,
-      reference: p.reference,
-      operation_type: p.operation_type,
-      origin: p.origin,
-      destination: p.destination,
-      carrier: p.carrier,
-      bl_reference: p.bl_reference,
-      source: p.source,
-      created_at: p.created_at.toISOString(),
-      updated_at: p.updated_at.toISOString(),
-      containers: p.containers.map((c) => ({
-        id: c.id,
-        container_number: c.container_number,
-        iso_type: c.iso_type,
-        initial_status: c.initial_status,
-      })),
-    }))
+    const response = processes.map(
+      (p) =>
+        ({
+          id: p.id,
+          reference: p.reference,
+          operation_type: p.operation_type,
+          origin: p.origin,
+          destination: p.destination,
+          carrier: p.carrier,
+          bill_of_lading: p.bill_of_lading,
+          source: p.source,
+          created_at: p.created_at.toISOString(),
+          updated_at: p.updated_at.toISOString(),
+          containers: p.containers.map((c) => ({
+            id: c.id,
+            container_number: c.container_number,
+            carrier_code: c.carrier_code,
+            container_type: c.container_type,
+            container_size: c.container_size,
+          })),
+        }) satisfies z.infer<typeof ProcessResponseSchema>,
+    )
 
     return jsonResponse(response)
   } catch (err) {
@@ -94,7 +71,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     try {
       await alertUseCases.createProcessCreatedAlerts({
         process_id: result.process.id,
-        container_ids: result.process.containers.map((c) => c.id),
+        container_ids: result.containers.map((c) => c.id),
       })
     } catch (alertErr) {
       console.warn('Failed to create initial alerts:', alertErr)
@@ -109,19 +86,18 @@ export async function POST({ request }: { request: Request }): Promise<Response>
         origin: result.process.origin,
         destination: result.process.destination,
         carrier: result.process.carrier,
-        bl_reference: result.process.bl_reference,
+        bill_of_lading: result.process.bill_of_lading,
         source: result.process.source,
         created_at: result.process.created_at.toISOString(),
         updated_at: result.process.updated_at.toISOString(),
-        containers: result.process.containers.map((c) => ({
+        containers: result.containers.map((c) => ({
           id: c.id,
           container_number: c.container_number,
-          iso_type: c.iso_type,
-          initial_status: c.initial_status,
+          carrier_code: c.carrier_code,
         })),
       },
       warnings: result.warnings,
-    }
+    } satisfies z.infer<typeof CreateProcessResponseSchema>
 
     return jsonResponse(response, 201)
   } catch (err) {

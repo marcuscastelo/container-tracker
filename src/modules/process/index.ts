@@ -1,23 +1,17 @@
 // Domain
 
 // Application
+export { createProcessUseCases } from '~/modules/process/application/processUseCases'
 export {
-  createProcessUseCases,
-  type ProcessUseCases,
-} from '~/modules/process/application/processUseCases'
-export {
-  type Carrier,
   type ContainerInitialStatus,
   type CreateProcessInput,
   CreateProcessInputSchema,
   createProcess,
   findDuplicateContainers,
-  type OperationType,
   type PlannedLocation,
   type Process,
   type ProcessContainer,
   ProcessContainerSchema,
-  type ProcessRepository,
   ProcessSchema,
   type ProcessSource,
   type ProcessWithContainers,
@@ -26,13 +20,17 @@ export {
 } from '~/modules/process/domain'
 
 // Infrastructure
-export { supabaseProcessRepository } from '~/modules/process/infrastructure/supabaseProcessRepository'
+export { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 
 // UI
 export { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 
+import { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/supabaseContainerRepository'
 // Default use cases instance (using Supabase repository)
 import { createProcessUseCases } from '~/modules/process/application/processUseCases'
-import { supabaseProcessRepository } from '~/modules/process/infrastructure/supabaseProcessRepository'
+import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 
-export const processUseCases = createProcessUseCases(supabaseProcessRepository)
+export const processUseCases = createProcessUseCases({
+  processRepository: supabaseProcessRepository,
+  containerRepository: supabaseContainerRepository,
+})

@@ -3,8 +3,8 @@ import type { StatusVariant } from '~/shared/ui/StatusBadge'
 export type ProcessSummary = {
   readonly id: string
   readonly reference: string | null
-  readonly origin: { display_name?: string | null } | null
-  readonly destination: { display_name?: string | null } | null
+  readonly origin?: { display_name?: string | null } | null
+  readonly destination?: { display_name?: string | null } | null
   readonly containerCount: number
   readonly status: StatusVariant
   readonly statusLabel: string
@@ -14,33 +14,34 @@ export type ProcessSummary = {
 
 export type ProcessApiResponse = {
   id: string
-  reference: string | null
+  reference?: string | null
   operation_type: string
-  origin: { display_name?: string | null } | null
-  destination: { display_name?: string | null } | null
-  carrier: string | null
-  bl_reference: string | null
+  origin?: { display_name?: string | null } | null
+  destination?: { display_name?: string | null } | null
+  carrier?: string | null
+  bill_of_lading?: string | null
   source: string
   created_at: string
   updated_at: string
   containers: Array<{
     id: string
     container_number: string
-    iso_type: string | null
-    initial_status: string
+    carrier_code?: string | null
+    container_type?: string | null
+    container_size?: string | null
   }>
 }
 
 export function presentProcessList(data: ProcessApiResponse[]): readonly ProcessSummary[] {
   return data.map((p) => ({
     id: p.id,
-    reference: p.reference,
+    reference: p.reference ?? null,
     origin: p.origin,
     destination: p.destination,
     containerCount: p.containers.length,
     status: 'unknown',
     statusLabel: 'Aguardando dados',
     eta: null,
-    carrier: p.carrier,
+    carrier: p.carrier ?? null,
   }))
 }

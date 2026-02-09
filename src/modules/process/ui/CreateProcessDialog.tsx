@@ -1,53 +1,11 @@
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { useTranslation } from '~/i18n'
 import { findDuplicateContainers } from '~/modules/process/domain/processStuff'
+import type { Carrier, OperationType } from '~/modules/process/domain/value-objects'
+import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
-
-const keys = {
-  title: 'createProcess.title',
-  titleEdit: 'createProcess.titleEdit',
-  description: 'createProcess.description',
-  // Section: Identification
-  sectionIdentification: 'createProcess.section.identification',
-  reference: 'createProcess.field.reference',
-  referencePlaceholder: 'createProcess.field.referencePlaceholder',
-  operationType: 'createProcess.field.operationType',
-  operationTypePlaceholder: 'createProcess.field.operationTypePlaceholder',
-  opImport: 'createProcess.operationType.import',
-  opExport: 'createProcess.operationType.export',
-  opTransshipment: 'createProcess.operationType.transshipment',
-  opUnknown: 'createProcess.operationType.unknown',
-  // Section: Route
-  sectionRoute: 'createProcess.section.route',
-  routeHelper: 'createProcess.section.routeHelper',
-  origin: 'createProcess.field.origin',
-  originPlaceholder: 'createProcess.field.originPlaceholder',
-  destination: 'createProcess.field.destination',
-  destinationPlaceholder: 'createProcess.field.destinationPlaceholder',
-  // Section: Containers
-  sectionContainers: 'createProcess.section.containers',
-  containerNumber: 'createProcess.field.containerNumber',
-  containerNumberPlaceholder: 'createProcess.field.containerNumberPlaceholder',
-  containerNumberRequired: 'createProcess.validation.containerNumberRequired',
-  duplicateContainer: 'createProcess.validation.duplicateContainer',
-  isoType: 'createProcess.field.isoType',
-  isoTypePlaceholder: 'createProcess.field.isoTypePlaceholder',
-  addContainer: 'createProcess.action.addContainer',
-  removeContainer: 'createProcess.action.removeContainer',
-  // Section: Source
-  sectionSource: 'createProcess.section.source',
-  carrier: 'createProcess.field.carrier',
-  carrierPlaceholder: 'createProcess.field.carrierPlaceholder',
-  blReference: 'createProcess.field.blReference',
-  blReferencePlaceholder: 'createProcess.field.blReferencePlaceholder',
-  // Actions
-  create: 'createProcess.action.create',
-  update: 'createProcess.action.update',
-  cancel: 'createProcess.action.cancel',
-}
 
 export type ContainerInput = {
   readonly id: string
@@ -55,23 +13,26 @@ export type ContainerInput = {
   isoType: string
 }
 
-export type FormData = {
+export type CreateProcessDialogFormData = {
   reference: string
-  operationType: string
+  operationType: OperationType
   origin: string
   destination: string
   containers: ContainerInput[]
-  carrier: string
-  blReference: string
+  carrier: Carrier
+  billOfLading: string
 }
 
 type Props = {
   readonly open: boolean
   readonly onClose: () => void
-  readonly onSubmit?: (data: FormData) => void
-  readonly initialData?: FormData | null
+  readonly onSubmit?: (data: CreateProcessDialogFormData) => void
+  readonly initialData?: CreateProcessDialogFormData | null
   readonly mode?: 'create' | 'edit'
-  readonly focusReference?: boolean
+  // Optional field to autofocus when the dialog opens. If omitted, no special focus is applied.
+  // Allowed values: 'reference' | 'carrier'
+  // which field should receive focus when the dialog opens (optional)
+  readonly focus?: 'reference' | 'carrier' | null | undefined
 }
 
 function generateId(): string {
@@ -83,20 +44,31 @@ function createEmptyContainer(): ContainerInput {
 }
 
 export function CreateProcessDialog(props: Props): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
 
   // Form state
   const [reference, setReference] = createSignal('')
-  const [operationType, setOperationType] = createSignal('')
+  const [operationType, setOperationType] = createSignal<OperationType>('unknown')
   const [origin, setOrigin] = createSignal('')
   const [destination, setDestination] = createSignal('')
   const [containers, setContainers] = createStore<ContainerInput[]>([createEmptyContainer()])
-  const [carrier, setCarrier] = createSignal('')
-  const [blReference, setBlReference] = createSignal('')
+  // carrier can be an empty string while the user hasn't chosen a carrier yet.
+  // We use a narrow type here and guard before submitting so the rest of the app
+  // still works with the strict `Carrier` type.
+  const [carrier, setCarrier] = createSignal<Carrier | ''>('')
+  const [billOfLading, setBillOfLading] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
   const [serverErrors, setServerErrors] = createSignal<
     Record<string, { message: string; link?: string }>
   >({})
+
+  // Set of container numbers that were present when the dialog was opened (edit initial state)
+  const initialContainerNumbersSet = createMemo(
+    () =>
+      new Set<string>(
+        (props.initialData?.containers ?? []).map((c) => c.containerNumber.toUpperCase().trim()),
+      ),
+  )
 
   // Populate form when editing
   createEffect(() => {
@@ -105,8 +77,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       setOperationType(props.initialData.operationType || '')
       setOrigin(props.initialData.origin || '')
       setDestination(props.initialData.destination || '')
-      setCarrier(props.initialData.carrier || '')
-      setBlReference(props.initialData.blReference || '')
+      // When editing, populate carrier; otherwise keep empty so user must choose.
+      setCarrier(props.initialData.carrier ?? '')
+      setBillOfLading(props.initialData.billOfLading || '')
       setContainers(
         props.initialData.containers.length
           ? props.initialData.containers.map((c) => ({
@@ -117,19 +90,26 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           : [createEmptyContainer()],
       )
 
-      // Optionally autofocus the reference input when requested by the caller
-      if (props.focusReference) {
-        // schedule after next tick so input is mounted
+      // Optionally autofocus a specific field when requested by the caller
+      if (props.focus) {
+        // schedule after next tick so input/select is mounted
         setTimeout(() => {
           try {
-            const el = document.getElementById('reference') as HTMLInputElement | null
-            if (el) {
-              el.focus()
-              // select existing text for convenience
-              try {
-                el.select()
-              } catch {
-                /* ignore */
+            if (props.focus === 'reference') {
+              const el = document.getElementById('reference')
+              if (el instanceof HTMLInputElement) {
+                el.focus()
+                // select existing text for convenience
+                try {
+                  el.select()
+                } catch {
+                  /* ignore */
+                }
+              }
+            } else if (props.focus === 'carrier') {
+              const el = document.getElementById('carrier')
+              if (el instanceof HTMLSelectElement) {
+                el.focus()
               }
             }
           } catch {
@@ -140,18 +120,22 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     }
   })
 
+  // Narrowing guard so TypeScript knows a string value is a valid Carrier
+  const isCarrier = (v: string): v is Carrier =>
+    ['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'].includes(v)
+
   const operationOptions = () => [
-    { value: 'import', label: t(keys.opImport) },
-    { value: 'export', label: t(keys.opExport) },
-    { value: 'transshipment', label: t(keys.opTransshipment) },
-    { value: 'unknown', label: t(keys.opUnknown) },
+    { value: 'import', label: t(keys.createProcess.operationType.import) },
+    { value: 'export', label: t(keys.createProcess.operationType.export) },
+    { value: 'transshipment', label: t(keys.createProcess.operationType.transshipment) },
+    { value: 'unknown', label: t(keys.createProcess.operationType.unknown) },
   ]
 
   const carrierOptions = () => [
     { value: 'maersk', label: 'Maersk' },
     { value: 'msc', label: 'MSC' },
     { value: 'cmacgm', label: 'CMA CGM' },
-    { value: 'unknown', label: t(keys.opUnknown) },
+    { value: 'unknown', label: t(keys.createProcess.operationType.unknown) },
   ]
 
   const updateContainer = (id: string, field: 'containerNumber' | 'isoType', value: string) => {
@@ -175,7 +159,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     const fieldKey = `container-${container.id}`
     if (!touched()[fieldKey]) return undefined
     if (!container.containerNumber.trim()) {
-      return t(keys.containerNumberRequired)
+      return t(keys.createProcess.validation.containerNumberRequired)
     }
     // Prefer server-side error if present for this container
     const srv = serverErrors()[fieldKey]
@@ -194,7 +178,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     const thisNum = container.containerNumber.toUpperCase().trim()
     if (thisNum && counts[thisNum] > 1) {
       // include the number for clarity
-      return `${t(keys.duplicateContainer)} (${thisNum})`
+      return `${t(keys.createProcess.validation.duplicateContainer)} (${thisNum})`
     }
     return undefined
   }
@@ -229,12 +213,42 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       return
     }
 
-    // Fail-fast server-side check: ask backend if any of these container numbers already exist
-    const containerNumbersForCheck = containerNumbers.map((n) => n.toUpperCase().trim())
+    // Fail-fast server-side check: ask backend if any of these container numbers already exist.
+    // IMPORTANT: when editing, skip checking container numbers that were already present in
+    // the initial process (they are allowed to remain). Only check new or changed numbers.
+    const entries = containerNumbers.map((n, i) => ({
+      num: n.toUpperCase().trim(),
+      id: containers[i].id,
+    }))
+    const entriesToCheck = entries.filter((e) => !initialContainerNumbersSet().has(e.num))
+    const containerNumbersForCheck = entriesToCheck.map((e) => e.num)
     ;(async () => {
       try {
         // Reset previous server errors
         setServerErrors({})
+
+        // If nothing to check (e.g., editing without adding new containers), skip server check
+        if (containerNumbersForCheck.length === 0) {
+          // proceed with submit
+          // Ensure carrier is a valid Carrier value before submitting
+          const carrierValue = carrier()
+          if (!isCarrier(carrierValue)) return
+
+          const data: CreateProcessDialogFormData = {
+            reference: reference(),
+            operationType: operationType(),
+            origin: origin(),
+            destination: destination(),
+            containers: containers.filter((c) => c.containerNumber.trim()),
+            carrier: carrierValue,
+            billOfLading: billOfLading(),
+          }
+
+          props.onSubmit?.(data)
+          handleClose()
+          return
+        }
+
         const res = await fetch('/api/processes/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -268,12 +282,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           // Map conflicts to per-field errors and mark touched so they show inline
           const errs: Record<string, { message: string; link?: string }> = {}
           for (const c of conflicts) {
-            // find matching container id in current form
-            const idx = containerNumbersForCheck.findIndex(
-              (n) => n === c.containerNumber.toUpperCase(),
-            )
-            const fieldKey =
-              idx >= 0 ? `container-${containers[idx].id}` : `container-${c.containerNumber}`
+            // find matching entry in the entriesToCheck array
+            const match = entriesToCheck.find((e) => e.num === c.containerNumber.toUpperCase())
+            const fieldKey = match ? `container-${match.id}` : `container-${c.containerNumber}`
             errs[fieldKey] = {
               message: c.message ?? `Container ${c.containerNumber} already exists`,
               link: c.link,
@@ -286,14 +297,17 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         }
 
         // No conflicts -> proceed with submit
-        const data: FormData = {
+        const carrierValue = carrier()
+        if (!isCarrier(carrierValue)) return
+
+        const data: CreateProcessDialogFormData = {
           reference: reference(),
           operationType: operationType(),
           origin: origin(),
           destination: destination(),
           containers: containers.filter((c) => c.containerNumber.trim()),
-          carrier: carrier(),
-          blReference: blReference(),
+          carrier: carrierValue,
+          billOfLading: billOfLading(),
         }
 
         props.onSubmit?.(data)
@@ -319,12 +333,13 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const handleClose = () => {
     // Reset form
     setReference('')
-    setOperationType('')
+    setOperationType('unknown')
     setOrigin('')
     setDestination('')
     setContainers([createEmptyContainer()])
+    // Reset to the initial placeholder state so user must re-select a carrier
     setCarrier('')
-    setBlReference('')
+    setBillOfLading('')
     setTouched({})
     props.onClose()
   }
@@ -340,6 +355,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     // disable when no valid containers or duplicates present
     if (!hasValidContainers()) return true
     if ((duplicateList() ?? []).length > 0) return true
+    // require carrier to be explicitly chosen (placeholder is empty string)
+    if (carrier() === '') return true
     // disable when server-side errors are present
     if (Object.keys(serverErrors() ?? {}).length > 0) return true
     return false
@@ -350,15 +367,17 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     if (!isSubmitDisabled()) return ''
     const dups = duplicateList()
     if (dups && dups.length > 0) {
-      return `${t(keys.duplicateContainer)} (${dups[0]})`
+      return `${t(keys.createProcess.validation.duplicateContainer)} (${dups[0]})`
     }
     // show server-side error if present
     const srvKeys = Object.keys(serverErrors() ?? {})
     if (srvKeys.length > 0) {
       return serverErrors()[srvKeys[0]]?.message ?? ''
     }
+    // require carrier selection
+    if (carrier() === '') return t(keys.createProcess.field.carrierPlaceholder)
     if (!hasValidContainers()) {
-      return t(keys.containerNumberRequired)
+      return t(keys.createProcess.validation.containerNumberRequired)
     }
     return ''
   })
@@ -367,31 +386,31 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     <Dialog
       open={props.open}
       onClose={handleClose}
-      title={t(props.mode === 'edit' ? keys.titleEdit : keys.title)}
-      description={t(keys.description)}
+      title={t(props.mode === 'edit' ? keys.createProcess.titleEdit : keys.createProcess.title)}
+      description={t(keys.createProcess.description)}
       maxWidth="xl"
     >
       <form onSubmit={handleSubmit} class="space-y-8">
         {/* Section: Identification */}
         <section>
           <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.sectionIdentification)}
+            {t(keys.createProcess.section.identification)}
           </h3>
           <div class="grid gap-4 sm:grid-cols-2">
             <FormInput
-              label={t(keys.reference)}
+              label={t(keys.createProcess.field.reference)}
               name="reference"
               value={reference()}
               onInput={setReference}
-              placeholder={t(keys.referencePlaceholder)}
+              placeholder={t(keys.createProcess.field.referencePlaceholder)}
             />
             <FormSelect
-              label={t(keys.operationType)}
+              label={t(keys.createProcess.field.operationType)}
               name="operationType"
               value={operationType()}
               onInput={setOperationType}
               options={operationOptions()}
-              placeholder={t(keys.operationTypePlaceholder)}
+              placeholder={t(keys.createProcess.field.operationTypePlaceholder)}
             />
           </div>
         </section>
@@ -399,23 +418,23 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         {/* Section: Planned Route */}
         <section>
           <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.sectionRoute)}
+            {t(keys.createProcess.section.route)}
           </h3>
-          <p class="mb-4 text-xs text-slate-400">{t(keys.routeHelper)}</p>
+          <p class="mb-4 text-xs text-slate-400">{t(keys.createProcess.section.routeHelper)}</p>
           <div class="grid gap-4 sm:grid-cols-2">
             <FormInput
-              label={t(keys.origin)}
+              label={t(keys.createProcess.field.origin)}
               name="origin"
               value={origin()}
               onInput={setOrigin}
-              placeholder={t(keys.originPlaceholder)}
+              placeholder={t(keys.createProcess.field.originPlaceholder)}
             />
             <FormInput
-              label={t(keys.destination)}
+              label={t(keys.createProcess.field.destination)}
               name="destination"
               value={destination()}
               onInput={setDestination}
-              placeholder={t(keys.destinationPlaceholder)}
+              placeholder={t(keys.createProcess.field.destinationPlaceholder)}
             />
           </div>
         </section>
@@ -423,7 +442,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         {/* Section: Containers */}
         <section>
           <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.sectionContainers)}
+            {t(keys.createProcess.section.containers)}
           </h3>
           <div class="space-y-3">
             <For each={containers}>
@@ -432,7 +451,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                   <div class="grid flex-1 gap-4 sm:grid-cols-2">
                     <div>
                       <FormInput
-                        label={`${t(keys.containerNumber)} ${index() + 1}`}
+                        label={`${t(keys.createProcess.field.containerNumber)} ${index() + 1}`}
                         name={`container-${container.id}`}
                         value={container.containerNumber}
                         onInput={(v) => updateContainer(container.id, 'containerNumber', v)}
@@ -441,6 +460,12 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                           const val = container.containerNumber.trim()
                           // only check non-empty container numbers
                           if (!val) return
+
+                          // When editing an existing process, skip server-side check for
+                          // container numbers that were already present in the initial data
+                          const normalized = val.toUpperCase().trim()
+                          if (initialContainerNumbersSet().has(normalized)) return
+
                           try {
                             // reset any previous server error for this field
                             setServerErrors((prev) => {
@@ -487,7 +512,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                             }))
                           }
                         }}
-                        placeholder={t(keys.containerNumberPlaceholder)}
+                        placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
                         error={getContainerError(container) ?? getDuplicateError(container)}
                         required
                       />
@@ -517,11 +542,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
 
                     <div>
                       <FormInput
-                        label={t(keys.isoType)}
+                        label={t(keys.createProcess.field.isoType)}
                         name={`iso-${container.id}`}
                         value={container.isoType}
                         onInput={(v) => updateContainer(container.id, 'isoType', v)}
-                        placeholder={t(keys.isoTypePlaceholder)}
+                        placeholder={t(keys.createProcess.field.isoTypePlaceholder)}
                       />
                     </div>
                   </div>
@@ -530,7 +555,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                       type="button"
                       onClick={() => removeContainer(container.id)}
                       class="mt-7 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
-                      aria-label={t(keys.removeContainer)}
+                      aria-label={t(keys.createProcess.action.removeContainer)}
                     >
                       <svg
                         class="h-5 w-5"
@@ -571,30 +596,38 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            {t(keys.addContainer)}
+            {t(keys.createProcess.action.addContainer)}
           </button>
         </section>
 
         {/* Section: Source / Integration */}
         <section>
           <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.sectionSource)}
+            {t(keys.createProcess.section.source)}
           </h3>
           <div class="grid gap-4 sm:grid-cols-2">
-            <FormSelect
-              label={t(keys.carrier)}
-              name="carrier"
-              value={carrier()}
-              onInput={setCarrier}
-              options={carrierOptions()}
-              placeholder={t(keys.carrierPlaceholder)}
-            />
+            <div>
+              <FormSelect
+                label={t(keys.createProcess.field.carrier)}
+                name="carrier"
+                value={carrier()}
+                onInput={setCarrier}
+                options={carrierOptions()}
+                placeholder={t(keys.createProcess.field.carrierPlaceholder)}
+                required
+              />
+              <Show when={carrier() === 'unknown'}>
+                <p class="mt-2 text-xs text-slate-500">
+                  {t(keys.createProcess.unknownCarrierWarning)}
+                </p>
+              </Show>
+            </div>
             <FormInput
-              label={t(keys.blReference)}
+              label={t(keys.createProcess.field.blReference)}
               name="blReference"
-              value={blReference()}
-              onInput={setBlReference}
-              placeholder={t(keys.blReferencePlaceholder)}
+              value={billOfLading()}
+              onInput={setBillOfLading}
+              placeholder={t(keys.createProcess.field.blReferencePlaceholder)}
             />
           </div>
         </section>
@@ -606,7 +639,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             onClick={handleClose}
             class="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
           >
-            {t(keys.cancel)}
+            {t(keys.createProcess.action.cancel)}
           </button>
           <button
             type="submit"
@@ -619,7 +652,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                 : 'hover:bg-slate-800'
             }`}
           >
-            {t(props.mode === 'edit' ? keys.update : keys.create)}
+            {t(
+              props.mode === 'edit'
+                ? keys.createProcess.action.update
+                : keys.createProcess.action.create,
+            )}
           </button>
         </div>
       </form>

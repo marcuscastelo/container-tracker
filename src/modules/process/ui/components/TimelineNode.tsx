@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import type { TimelineEvent } from '~/modules/process/application/processPresenter'
+import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 
@@ -10,6 +11,7 @@ export function TimelineNode(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
 }): JSX.Element {
+  const { t } = useTranslation()
   const nodeStyles = (): { dot: string; line: string; text: string } => {
     switch (props.event.status) {
       case 'completed':
@@ -41,6 +43,7 @@ export function TimelineNode(props: {
 
   const styles = nodeStyles()
   const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
+  const href = typeof trackUrl === 'string' ? trackUrl : undefined
 
   return (
     <div class="flex gap-4">
@@ -66,17 +69,21 @@ export function TimelineNode(props: {
               when={props.event.date}
               fallback={
                 <Show when={props.event.expectedDate}>
-                  <p class="text-xs text-slate-400">Est. {props.event.expectedDate}</p>
+                  <p class="text-xs text-slate-400">
+                    {t('shipmentView.timeline.expected')} {props.event.expectedDate}
+                  </p>
                 </Show>
               }
             >
               <div class="flex items-center justify-end gap-2">
-                <p class="text-xs text-slate-600">{props.event.date}</p>
-
+                <p class="text-xs text-slate-600">
+                  <span class="sr-only">{t('shipmentView.timeline.actual')}</span>
+                  {props.event.date}
+                </p>
                 {/* Small neutral badge linking to carrier tracking (rarely used) */}
-                <Show when={trackUrl}>
+                <Show when={href}>
                   <a
-                    href={trackUrl as string}
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
                     title="View on carrier site"
@@ -91,7 +98,7 @@ export function TimelineNode(props: {
                       } finally {
                         // open carrier link in new tab
                         try {
-                          window.open(trackUrl as string, '_blank')
+                          if (typeof href === 'string') window.open(href, '_blank')
                         } catch {
                           // ignore
                         }

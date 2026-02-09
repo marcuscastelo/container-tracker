@@ -95,7 +95,6 @@ export const F1ContainerSchema = z.object({
   shipment_id: z.string(),
   // status uses canonical enum when available
   status: ContainerStatusEnum.nullable().optional(),
-  initial_status: z.enum(['UNKNOWN', 'BOOKED']).nullable().optional(),
   eta: DateLike.optional(),
   flags: FlagsSchema.optional(),
   // optional list of events belonging to the container
@@ -120,7 +119,7 @@ export const F1ShipmentSchema = z.object({
   id: z.string(),
   origin: LocationSchema.optional(),
   destination: LocationSchema.optional(),
-  carrier: z.string().nullable().optional(),
+  carrier: z.string(),
   created_at: DateLike,
   source: z.union([
     z.literal('manual'),

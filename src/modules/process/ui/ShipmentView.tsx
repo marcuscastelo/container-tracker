@@ -1,42 +1,27 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, Show } from 'solid-js'
-import { useTranslation } from '~/i18n'
-import { CreateProcessDialog } from '~/modules/process'
-import type { FormData as ProcessFormData } from '~/modules/process/ui/CreateProcessDialog'
+import z from 'zod'
+import { CreateProcessDialog, type CreateProcessInput } from '~/modules/process'
+import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
+import {
+  CreateProcessResponseSchema,
+  ProcessResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
+import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader, ExistingProcessError } from '~/shared/ui'
-
-const keys = {
-  backToList: 'shipmentView.backToList',
-  shipmentHeader: 'shipmentView.header',
-  origin: 'shipmentView.origin',
-  destination: 'shipmentView.destination',
-  status: 'shipmentView.status',
-  eta: 'shipmentView.eta',
-  containersTitle: 'shipmentView.containers.title',
-  timelineTitle: 'shipmentView.timeline.title',
-  timelineExpected: 'shipmentView.timeline.expected',
-  timelineActual: 'shipmentView.timeline.actual',
-  alertsTitle: 'shipmentView.alerts.title',
-  alertsEmpty: 'shipmentView.alerts.empty',
-  carrier: 'shipmentView.carrier',
-  etaMissing: 'shipmentView.etaMissing',
-  loading: 'shipmentView.loading',
-  notFound: 'shipmentView.notFound',
-  noEvents: 'shipmentView.noEvents',
-  processCreated: 'shipmentView.processCreated',
-  internalIdMessage: 'shipmentView.internalIdMessage',
-  internalIdCTA: 'shipmentView.internalIdCTA',
-}
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
     () => params.id,
@@ -44,6 +29,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   )
 
   const [isRefreshing, setIsRefreshing] = createSignal(false)
+  const [refreshError, setRefreshError] = createSignal<string | null>(null)
 
   async function triggerRefresh() {
     const data = shipment()
@@ -71,7 +57,35 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       // Wait for all refreshes to finish (failures will reject)
       await Promise.all(promises)
     } catch (err) {
-      console.error('Failed to refresh containers:', err)
+      // Improve client-side logging and show a compact banner for the user
+      try {
+        const msg = err instanceof Error ? err.message : String(err)
+
+        // Attempt a simple regex to extract a useful nested `message` field
+        // This handles cases where the server returned a JSON string (possibly escaped).
+        let niceMessage = msg
+        const m = msg.match(/"message"\s*:\s*"([^"]+)"/)
+        if (m && m[1]) {
+          niceMessage = m[1]
+        } else {
+          // Fallback: try to show only the part after the HTTP status code
+          const afterStatus = msg.replace(/^.*?:\s*\d{3}\s*/, '')
+          if (afterStatus && afterStatus.length > 0 && afterStatus.length < msg.length) {
+            niceMessage = afterStatus.trim()
+          }
+        }
+
+        console.error('Failed to refresh containers (readable):', {
+          original: err,
+          message: niceMessage,
+        })
+
+        // Show a small banner to the user with a short message
+        setRefreshError(niceMessage || 'Refresh failed')
+      } catch (loggingErr) {
+        console.error('Failed to refresh containers (fallback):', err, loggingErr)
+        setRefreshError('Refresh failed')
+      }
     } finally {
       setIsRefreshing(false)
       // After syncing with external APIs, refetch the process data
@@ -85,8 +99,11 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
   // Edit dialog state
   const [isEditOpen, setIsEditOpen] = createSignal(false)
-  const [editInitialData, setEditInitialData] = createSignal<ProcessFormData | null>(null)
-  const [focusReferenceOnOpen, setFocusReferenceOnOpen] = createSignal(false)
+  const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
+    null,
+  )
+  // which field should receive focus when opening the edit dialog (null = none)
+  const [focusFieldOnOpen, setFocusFieldOnOpen] = createSignal<'reference' | 'carrier' | null>(null)
 
   // Create dialog state (header "Create process" button uses this)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
@@ -99,7 +116,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
   // Copy button state is handled by shared `CopyButton` component
 
-  const handleCreateSubmit = async (formData: ProcessFormData) => {
+  const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
       // Map UI form data to API shape
       const input: Record<string, unknown> = {
@@ -108,109 +125,133 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.blReference || null,
+        bl_reference: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          iso_type: c.isoType || null,
+          container_type: c.isoType || null,
         })),
       }
 
-      const res = await fetch('/api/processes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      })
-
-      if (!res.ok) {
-        const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
-        const asObj = json as Record<string, unknown>
-        if (res.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
-          const existing = asObj.existing as Record<string, unknown>
-          const processId = String(existing.processId ?? existing.process_id ?? '')
-          setIsCreateDialogOpen(false)
-          // Show banner with link instead of auto-navigating so user sees the message
-          setCreateError({
-            message: String(asObj.error ?? asObj.message ?? 'Container already exists'),
-            processId,
-            containerId: String(existing.containerId ?? existing.container_id ?? ''),
-            containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
-          })
-          return
-        }
-        throw new Error(
-          String((asObj && (asObj.error ?? asObj.message)) ?? 'Failed to create process'),
+      try {
+        const result = await typedFetch(
+          '/api/processes',
+          {
+            method: 'POST',
+            body: JSON.stringify(input),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          CreateProcessResponseSchema,
         )
+        setIsCreateDialogOpen(false)
+        const newId = result.process?.id
+        if (newId) navigate(`/shipments/${newId}`)
+      } catch (err) {
+        if (err instanceof TypedFetchError && err.status === 409) {
+          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()), null)
+          if (body && 'existing' in body) {
+            const existing = safeParseOrDefault(
+              body.existing,
+              z.record(z.string(), z.unknown()),
+              null,
+            )
+            if (existing) {
+              const processId = String(existing.processId ?? existing.process_id ?? '')
+              setIsCreateDialogOpen(false)
+              setCreateError({
+                message: String(body.error ?? 'Container already exists'),
+                processId,
+                containerId: String(existing.containerId ?? existing.container_id ?? ''),
+                containerNumber: String(
+                  existing.containerNumber ?? existing.container_number ?? '',
+                ),
+              })
+              return
+            }
+          }
+        }
+        throw err
       }
-
-      const result = await res.json().catch(() => null)
-      setIsCreateDialogOpen(false)
-
-      // Navigate to the created process if we have an id
-      const newId = result?.process?.id ?? result?.id
-      if (newId) navigate(`/shipments/${newId}`)
     } catch (err) {
       console.error('Failed to create process:', err)
       setIsCreateDialogOpen(false)
     }
   }
 
-  const handleEditSubmit = async (formData: ProcessFormData) => {
+  const handleEditSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
       // Map UI form data to API shape
-      const input: Record<string, unknown> = {
+      const input: CreateProcessInput = {
         reference: formData.reference || null,
         operation_type: formData.operationType || undefined,
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.blReference || null,
+        bill_of_lading: formData.billOfLading || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          iso_type: c.isoType || null,
+          carrier_code: formData.carrier || null,
         })),
       }
 
-      const res = await fetch(`/api/processes/${params.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      })
+      try {
+        await typedFetch(
+          `/api/processes/${params.id}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify(input),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          ProcessResponseSchema,
+        )
 
-      if (!res.ok) {
-        // Try to surface structured conflict info (existing container) to the UI
-        const json: unknown = await res.json().catch(() => ({ error: res.statusText }))
-        const asObj = json as Record<string, unknown>
-        if (res.status === 409 && asObj && asObj.existing && typeof asObj.existing === 'object') {
-          const existing = asObj.existing as Record<string, unknown>
-          const processId = String(existing.processId ?? existing.process_id ?? '')
-          setIsEditOpen(false)
-          setCreateError({
-            message: String(asObj.error ?? asObj.message ?? 'Container already exists'),
-            processId,
-            containerId: String(existing.containerId ?? existing.container_id ?? ''),
-            containerNumber: String(existing.containerNumber ?? existing.container_number ?? ''),
-          })
-          return
+        // Refresh data
+        await refetch()
+        setIsEditOpen(false)
+      } catch (err) {
+        if (err instanceof TypedFetchError && err.status === 409) {
+          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()), null)
+          if (body && 'existing' in body) {
+            const existing = safeParseOrDefault(
+              body.existing,
+              z.record(z.string(), z.unknown()),
+              null,
+            )
+            if (existing) {
+              const processId = String(existing.processId ?? existing.process_id ?? '')
+              setIsEditOpen(false)
+              setCreateError({
+                message: String(body.error ?? 'Container already exists'),
+                processId,
+                containerId: String(existing.containerId ?? existing.container_id ?? ''),
+                containerNumber: String(
+                  existing.containerNumber ?? existing.container_number ?? '',
+                ),
+              })
+              return
+            }
+          }
         }
-        throw new Error(`Failed to update process: ${res.statusText}`)
+        throw err
       }
-
-      // Refresh data
-      await refetch()
-      setIsEditOpen(false)
     } catch (err) {
       console.error('Failed to update process:', err)
       // Show structured existing conflict if present
       if (err && typeof err === 'object') {
-        const r = err as Record<string, unknown>
-        if (r.existing && typeof r.existing === 'object') {
-          const ex = r.existing as Record<string, unknown>
-          setCreateError({
-            message: String(r.message ?? 'Container already exists'),
-            processId: String(ex.processId ?? ex.process_id ?? ''),
-            containerId: String(ex.containerId ?? ex.container_id ?? ''),
-            containerNumber: String(ex.containerNumber ?? ex.container_number ?? ''),
-          })
+        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()), null)
+        if (body && 'existing' in body) {
+          const ex = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
+          if (ex) {
+            setCreateError({
+              message: String(
+                isRecord(body) && typeof body['message'] === 'string'
+                  ? body['message']
+                  : 'Container already exists',
+              ),
+              processId: String(ex.processId ?? ex.process_id ?? ''),
+              containerId: String(ex.processId ?? ex.container_id ?? ''),
+              containerNumber: String(ex.containerNumber ?? ex.container_number ?? ''),
+            })
+          }
         }
       }
       // Could show other UI error; for now just log and close
@@ -246,16 +287,34 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
     <div class="min-h-screen bg-slate-50">
       <AppHeader onCreateProcess={() => setIsCreateDialogOpen(true)} />
 
+      {/* Inline compact banner for refresh errors (appears after a failed refresh) */}
+      <Show when={refreshError()}>
+        <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div class="flex items-start justify-between gap-4">
+              <div>{refreshError()}</div>
+              <button
+                class="ml-4 text-red-700 underline"
+                aria-label="Dismiss error"
+                onClick={() => setRefreshError(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      </Show>
+
       {/* Edit process dialog (when editing current shipment) */}
       <CreateProcessDialog
         open={isEditOpen()}
         onClose={() => {
           setIsEditOpen(false)
-          setFocusReferenceOnOpen(false)
+          setFocusFieldOnOpen(null)
         }}
         initialData={editInitialData()}
         mode="edit"
-        focusReference={focusReferenceOnOpen()}
+        focus={focusFieldOnOpen() ?? undefined}
         onSubmit={handleEditSubmit}
       />
 
@@ -274,27 +333,30 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           class="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
         >
           <ChevronLeftIcon />
-          {t(keys.backToList)}
+          {t(keys.shipmentView.backToList)}
         </A>
 
         {/* Show conflict banner when create/edit results in an existing-container conflict */}
         <Show when={createError()}>
           <ExistingProcessError
-            message={
-              typeof createError() === 'string'
-                ? (createError() as string)
-                : String((createError() as Record<string, unknown>).message ?? '')
-            }
-            existing={
-              createError() && typeof createError() === 'object'
-                ? {
-                    processId: String((createError() as Record<string, unknown>).processId ?? ''),
-                    containerId: String(
-                      (createError() as Record<string, unknown>).containerId ?? '',
-                    ),
-                  }
-                : undefined
-            }
+            message={(() => {
+              const v = createError()
+              if (typeof v === 'string') return v
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
+              if (body && typeof body.message === 'string') return body.message
+              return ''
+            })()}
+            existing={(() => {
+              const v = createError()
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
+              if (body) {
+                return {
+                  processId: String(body.processId ?? body.process_id ?? ''),
+                  containerId: String(body.containerId ?? body.container_id ?? ''),
+                }
+              }
+              return undefined
+            })()}
             onAcknowledge={() => setCreateError(null)}
           />
         </Show>
@@ -302,16 +364,16 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         {/* Loading state */}
         <Show when={shipment.loading}>
           <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-slate-500">Loading...</p>
+            <p class="text-slate-500">{t(keys.shipmentView.loading)}</p>
           </div>
         </Show>
 
         {/* Error/Not found state */}
         <Show when={shipment.error || (shipment() === null && !shipment.loading)}>
           <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-red-500">Process not found</p>
+            <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
             <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
-              Back to dashboard
+              {t(keys.shipmentView.backToDashboard)}
             </A>
           </div>
         </Show>
@@ -321,17 +383,15 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           {(data) => (
             <>
               <ShipmentHeader
-                t={t}
-                keys={keys}
                 data={data()}
                 isRefreshing={isRefreshing()}
                 onTriggerRefresh={() => triggerRefresh()}
-                onOpenEdit={(focusReference?: boolean) => {
+                onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) => {
                   const d = data()
                   if (!d) return
                   const initial = {
                     reference: d.reference ?? '',
-                    operationType: d.operationType ?? '',
+                    operationType: d.operationType ?? 'unknown',
                     origin: d.origin || '',
                     destination: d.destination || '',
                     containers: d.containers.map((c) => ({
@@ -339,11 +399,14 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                       containerNumber: c.number,
                       isoType: c.isoType ?? '',
                     })),
-                    carrier: d.carrier || '',
-                    blReference: d.bl_reference ?? '',
-                  }
+                    carrier: d.carrier ?? 'unknown',
+                    billOfLading: d.bl_reference ?? '',
+                  } satisfies CreateProcessDialogFormData
                   setEditInitialData(initial)
-                  setFocusReferenceOnOpen(!!focusReference)
+                  // Interpret incoming focus hint
+                  if (focus === 'carrier') setFocusFieldOnOpen('carrier')
+                  else if (focus === 'reference') setFocusFieldOnOpen('reference')
+                  else setFocusFieldOnOpen(null)
                   setIsEditOpen(true)
                 }}
               />
@@ -360,7 +423,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                 </div>
 
                 <div>
-                  <AlertsPanel alerts={data().alerts} t={t} keys={keys} />
+                  <AlertsPanel alerts={data().alerts} />
                 </div>
               </div>
             </>

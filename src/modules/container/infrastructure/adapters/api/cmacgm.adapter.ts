@@ -14,7 +14,7 @@ type Move = NonNullable<CmaCgmApi['CurrentMoves']>[number]
 export function cmacgmToNormalized(payload: unknown): NormShipment {
   const parsed = Cma.CmaCgmApiSchema.parse(payload)
 
-  const shipment: Partial<NormShipment> = {
+  const shipment: NormShipment = {
     source: { api: 'cmacgm', fetched_at: new Date(), raw: payload },
     origin: parsed.PlaceOfLoading ? { city: parsed.PlaceOfLoading } : undefined,
     destination: parsed.LastDischargePort ? { city: parsed.LastDischargePort } : undefined,
@@ -23,7 +23,7 @@ export function cmacgmToNormalized(payload: unknown): NormShipment {
     raw: payload,
   }
 
-  const container: Partial<NormContainer> = {
+  const container: NormContainer = {
     container_number: parsed.ContainerReference ?? 'unknown',
     container_size: parsed.LaraContainerCode ?? null,
     container_type: null,
@@ -36,41 +36,79 @@ export function cmacgmToNormalized(payload: unknown): NormShipment {
     status: null,
     status_code: parsed.ContainerStatus ?? null,
     last_update_time: parsed.ABPExportDate ? parseDate(parsed.ABPExportDate) : null,
+    service_type_origin: undefined,
+    service_type_destination: undefined,
     raw: parsed,
   }
 
   const pushMove = (m: Move | undefined) => {
     if (!m) return
-    const ev: Partial<NormEvent> = {
+    const ev: NormEvent = {
       id: null,
       eventType: 'MOVE',
       activity: m.StatusDescription ?? null,
       event_time: m.Date ? parseDate(m.Date) : null,
       event_time_type: null,
-      vessel: { vessel_name: m.Vessel ?? null, voyage_num: m.Voyage ?? null },
-      location: { city: m.Location ?? null, location_code: m.LocationCode ?? null, raw: m },
+      vessel: {
+        vessel_name: m.Vessel ?? null,
+        voyage_num: m.Voyage ?? null,
+        vessel_num: null,
+        imo: undefined,
+        built: undefined,
+        flag: undefined,
+        flagName: undefined,
+        raw: undefined,
+      },
+      location: {
+        terminal: null,
+        geo_site: undefined,
+        city: m.Location ?? null,
+        state: undefined,
+        country: null,
+        country_code: undefined,
+        geoid_city: undefined,
+        site_type: undefined,
+        location_code: m.LocationCode ?? null,
+        raw: m,
+      },
       status_code: m.Status ?? null,
       status_description: m.StatusDescription ?? null,
+      detail: null,
+      order: null,
       sourceEvent: m,
     }
-    ;(container.locations as Array<Partial<NormLocation> & { events?: NormEvent[] }>).push({
+    const locs: NormLocation[] = Array.isArray(container.locations) ? container.locations : []
+    const newLoc: NormLocation & { events?: NormEvent[] } = {
+      terminal: null,
+      geo_site: undefined,
       city: m.Location ?? null,
-      events: [ev as NormEvent],
+      state: undefined,
+      country: null,
+      country_code: undefined,
+      geoid_city: undefined,
+      site_type: undefined,
+      location_code: m.LocationCode ?? null,
+      events: [ev],
       raw: m,
-    })
+    }
+    locs.push(newLoc)
+    container.locations = locs
   }
 
   ;(parsed.ProvisionalMoves ?? []).forEach(pushMove)
   ;(parsed.CurrentMoves ?? []).forEach(pushMove)
   ;(parsed.PastMoves ?? []).forEach(pushMove)
 
-  ;(shipment.containers as Array<Partial<NormContainer>>).push(container)
+  // append container to shipment.containers
+  if (!Array.isArray(shipment.containers)) shipment.containers = []
+  shipment.containers.push(container)
 
   try {
-    Normalized.ShipmentSchema.parse(shipment)
+    // attempt to validate and return the parsed normalized shipment
+    return Normalized.ShipmentSchema.parse(shipment)
   } catch (err) {
     console.warn('Normalized schema parse warning (cmacgm):', err)
+    // fallback: coerce to any-shaped object and return to preserve previous behavior
+    return shipment
   }
-
-  return shipment as NormShipment
 }

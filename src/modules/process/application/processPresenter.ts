@@ -1,4 +1,17 @@
+import { z } from 'zod'
+import type { AlertSeverity } from '~/modules/alert'
+import {
+  type Carrier,
+  CarrierSchema,
+  type OperationType,
+  OperationTypeSchema,
+} from '~/modules/process/domain/value-objects'
+import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
+
+// Backwards-compatible alias for tests and other callers
+export type ProcessApiResponse = ProcessDetailResponse
 
 // Presenter: convert ProcessApiResponse (API) into ShipmentDetail (UI shape)
 export type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
@@ -34,8 +47,10 @@ export type ShipmentDetail = {
   readonly id: string
   readonly processRef: string
   readonly reference?: string | null
-  readonly operationType?: string
-  readonly carrier?: string | null
+  readonly operationType?: OperationType
+  readonly carrier?: Carrier | null
+  // TODO: ShipmentDetail is duplicated throughout the codebase, unify in api schemas with zod and proper typesbill_of_lading
+  // TODO: Once unified, change all references from bl_reference to bill_of_lading or billOfLading
   readonly bl_reference?: string | null
   readonly origin: string
   readonly destination: string
@@ -44,45 +59,6 @@ export type ShipmentDetail = {
   readonly eta: string | null
   readonly containers: readonly ContainerDetail[]
   readonly alerts: readonly AlertDisplay[]
-}
-
-// Input shape from /api/processes/:id
-export type ProcessApiResponse = {
-  id: string
-  reference: string | null
-  operation_type: string
-  origin: { display_name?: string | null } | null
-  destination: { display_name?: string | null } | null
-  carrier: string | null
-  bl_reference: string | null
-  source: string
-  created_at: string
-  updated_at: string
-  containers: Array<{
-    id: string
-    container_number: string
-    iso_type: string | null
-    initial_status: string
-    eta?: string | null
-    events?: Array<{
-      id?: string
-      activity?: string
-      event_time?: string | null
-      event_time_type?: string | null
-      location?: string | null
-      raw?: Record<string, unknown>
-    }>
-  }>
-  alerts: Array<{
-    id: string
-    category: string
-    code: string
-    severity: string
-    title: string
-    description: string | null
-    state: string
-    created_at: string
-  }>
 }
 
 function mapAlertType(code: string): AlertDisplay['type'] {
@@ -105,7 +81,7 @@ function formatRelativeTime(dateString: string): string {
   return `${diffDays}d ago`
 }
 
-export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
+export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const createdAt = new Date(data.created_at)
   const createdEvent: TimelineEvent = {
     id: 'system-created',
@@ -115,12 +91,21 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
     status: 'completed',
   }
 
+  const operationTypeResult = OperationTypeSchema.safeParse(data.operation_type)
+  const operationType: OperationType | undefined = operationTypeResult.success
+    ? operationTypeResult.data
+    : undefined
+
+  const carrierResult = CarrierSchema.safeParse(data.carrier)
+  const carrier: Carrier | 'unknown' | null =
+    data.carrier === null ? null : carrierResult.success ? carrierResult.data : 'unknown'
+
   return {
     id: data.id,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference,
-    operationType: data.operation_type,
-    carrier: data.carrier,
+    operationType,
+    carrier,
     bl_reference: data.bl_reference,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
@@ -130,7 +115,7 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
     containers: data.containers.map((c) => {
       let timeline: TimelineEvent[] = [createdEvent]
       if (Array.isArray(c.events) && c.events.length > 0) {
-        const mapped = c.events
+        const mapped = (c.events ?? [])
           .map((ev, idx) => {
             const evDate = ev.event_time ? new Date(ev.event_time) : null
             const dateStr = evDate ? evDate.toLocaleDateString() : null
@@ -139,19 +124,38 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
                 ? new Date(ev.event_time).toLocaleDateString()
                 : null
             const status: EventStatus = ev.event_time_type === 'ACTUAL' ? 'completed' : 'expected'
+
+            const raw = ev.raw
+            // Safely pick description/activity from raw carrier payloads
+            const rawObj = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
+            const rawDescription = rawObj
+              ? typeof rawObj['Description'] === 'string'
+                ? rawObj['Description']
+                : typeof rawObj['description'] === 'string'
+                  ? rawObj['description']
+                  : typeof rawObj['Activity'] === 'string'
+                    ? rawObj['Activity']
+                    : typeof rawObj['activity'] === 'string'
+                      ? rawObj['activity']
+                      : undefined
+              : undefined
+
+            const rawLocation = rawObj
+              ? typeof rawObj['Location'] === 'string'
+                ? rawObj['Location']
+                : typeof rawObj['location'] === 'string'
+                  ? rawObj['location']
+                  : undefined
+              : undefined
+
             return {
               id: ev.id ?? `ev-${idx}`,
-              label:
-                ev.activity ??
-                (((ev.raw as Record<string, unknown>) || {})['Description'] as string) ??
-                'Event',
-              location:
-                ev.location ??
-                ((((ev.raw as Record<string, unknown>) || {})['Location'] as string) || undefined),
+              label: ev.activity ?? rawDescription ?? 'Event',
+              location: ev.location ?? rawLocation ?? undefined,
               date: dateStr,
               expectedDate,
               status,
-            } as TimelineEvent
+            } satisfies TimelineEvent
           })
           .filter(Boolean)
 
@@ -161,21 +165,28 @@ export function presentProcess(data: ProcessApiResponse): ShipmentDetail {
       return {
         id: c.id,
         number: c.container_number,
-        isoType: c.iso_type ?? null,
+        isoType: c.container_type ?? null,
         status: 'unknown',
-        statusLabel: c.initial_status === 'booked' ? 'Booked' : 'Unknown',
+        statusLabel: 'Unknown',
         eta: c.eta ?? null,
         timeline,
       }
     }),
-    alerts: data.alerts
+    alerts: (data.alerts ?? [])
       .filter((a) => a.state === 'active')
-      .map((a) => ({
-        id: a.id,
-        type: mapAlertType(a.code),
-        severity: a.severity as AlertDisplay['severity'],
-        message: a.description || a.title,
-        timestamp: formatRelativeTime(a.created_at),
-      })),
+      .map((a) => {
+        const sev = ((): AlertSeverity => {
+          const s = a.severity
+          if (s === 'info' || s === 'success' || s === 'warning' || s === 'danger') return s
+          return 'info'
+        })()
+        return {
+          id: a.id,
+          type: mapAlertType(a.code),
+          severity: sev,
+          message: a.description || a.title,
+          timestamp: formatRelativeTime(a.created_at),
+        }
+      }),
   }
 }

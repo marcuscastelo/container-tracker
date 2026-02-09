@@ -1,3 +1,7 @@
+---
+applyTo: '**/*.{ts,tsx}**'
+description: "High-level instructions and operational rules for GitHub Copilot / auxiliary LLMs
+---
 # Copilot Instructions — Container Tracker
 
 Este documento define **instruções de alto nível e regras operacionais** para uso do GitHub Copilot / LLMs auxiliares no projeto **Container Tracker**.
@@ -83,6 +87,7 @@ Copilot deve **recusar** colocar regras de derivação dentro da UI.
 * `any` é proibido
 * Preferir `unknown` + type guards
 * Usar `readonly` sempre que possível
+* O uso de assertions de tipo com o operador `as` é absolutamente PROIBIDO em QUALQUER circunstância. A única exceção permitida é o literal `as const` (por exemplo para tuplas/const assertions). Nunca use `as` para forçar tipos em tempo de compilação — em vez disso, use guards, validação com Zod ou reescreva a tipagem.
 
 ### 4.2 Tipos Canônicos
 
@@ -278,6 +283,47 @@ Sempre prefira esse padrão em vez de usar literais de string diretamente em cha
 * Lógica de negócio em componentes
 * Estados mágicos não rastreáveis
 
+Exemplos explícitos a evitar:
+
+* ❌ Persistir eventos externos (raw) como a única fonte de verdade sem normalização
+* ❌ Deduplicar observações apenas por timestamp ou event_id do carrier
+* ❌ Usar `as` para forçar tipagem em validação de payloads (exceto `as const`)
+* ❌ Derivar status na UI ou em componentes de apresentação
+* ❌ Gerar alertas de monitoring retroativamente a partir de backfills
+
+## 13. Perguntas que o LLM deve sempre se fazer
+
+Ao gerar código ou regras, o Copilot/LLM deve executar um checklist mental:
+
+1. Isso é um snapshot, uma observation ou um status/projeção?
+2. Isso é um fato (observation) ou uma projeção (status/alerta de monitoring)?
+3. Estou preservando o payload raw e metadados de confiança?
+4. O que acontece se a API do carrier contradizer o histórico? (preservar ambos, marcar incerteza)
+5. Estou usando guards/validação em vez de `as` para todas as formas externas?
+
+## 14. Heurística de decisão rápida
+
+Regras práticas para decisões automáticas do LLM:
+
+* Se a API contradiz o histórico → preserve ambos os registros e marque incerteza.
+* Se o usuário adicionar dados retroativamente (onboarding/backfill) → gerar fact-based alerts retroativos, marcá-los como `retroactive: true` e `historical` na UI.
+* Se houver dúvida entre um event verbatim e um fato semântico → criar uma Observation marcada como `uncertain` e gerar um Alert[data] para revisão manual.
+* Nunca gerar monitoring alerts (time-based) retroativamente.
+
+## 15. Regras Adicionais: Alertas Retroativos
+
+* Alertas retroativos são permitidos somente para fatos (fact-based alerts) e devem sempre conter metadados: `retroactive: true`, `detected_at` (data do fato) e `triggered_at` (data da geração do alerta).
+* UI deve indicar claramente que o alerta é histórico e que não representa um estado em tempo real.
+
+## 16. Ownership (Quem deve fazer o quê)
+
+Para evitar ambiguidade, lembre-se:
+
+* Domain: regras de derivação puras (Observations → Timeline → Status) e tipos canônicos.
+* Application: orquestra pipelines, coordena fetchers/backfills, persiste snapshots e observations.
+* Infrastructure: conectores, fetchers, adaptações para transformar payloads brutos em um formato validável.
+* UI: apresentação, explicitação de incertezas e ações do usuário (ack/dismiss).
+
 ---
 
 ## 13. Checklist Mental do Copilot
@@ -293,3 +339,10 @@ Antes de gerar código, o Copilot deve se perguntar:
 ---
 
 **Se houver dúvida, priorize clareza, rastreabilidade e fidelidade operacional.**
+
+Use o seguinte documento como referência canônica para decisões de implementação, arquitetura e UX. Ele é a “bíblia” do projeto e deve ser seguido rigorosamente para garantir consistência e qualidade.
+[Container Tracking Platform — Master Technical & Product Document (0209)](../docs/master-consolidated-0209.md)
+
+Para consulta, temos o roadmap atual [Roadmap Consolidado (0209)](../docs/roadmap-consolidated-0209.md) que detalha as fases de desenvolvimento, entregáveis e critérios de aceite.
+
+Outros documentos, potencialmente desatualizados, estão disponíveis na pasta [docs](../docs/0204) para referência histórica, mas o foco deve ser no documento master consolidado.

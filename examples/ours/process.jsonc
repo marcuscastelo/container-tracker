@@ -1,0 +1,27 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "reference": "2024-601",
+  "reference_import": "IMP1234567",
+  "operation_type": "import",
+  "origin": {
+    "display_name": "Santos Port",
+    "unlocode": "BRSSZ",
+    "city": "Santos",
+    "country_code": "BR"
+  },
+  "destination": {
+    "display_name": "Port of New York",
+    "unlocode": "USNYC",
+    "city": "New York",
+    "country_code": "US"
+  },
+  "carrier": "maersk",
+  "bill_of_lading": "BL1234567890",
+  "booking_reference": "BK1234567",
+  "source": "manual",
+  "created_at": "2024-06-01T12:00:00Z",
+  "updated_at": "2024-06-02T15:30:00Z"
+
+  // FK N to 1 (virtual relationship, does not actually exist in the database, but is a convenient way to represent the relationship in the domain model)
+  // "containers": Container[] -> Each container has a process_id that references this process
+}

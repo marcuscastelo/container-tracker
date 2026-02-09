@@ -1,0 +1,311 @@
+import type { Event } from '~/modules/container/domain/schemas/containerStatus.schema'
+import type { CmaCgmApi } from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
+import type { MaerskApi } from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
+import type { MscApi } from '~/modules/container/infrastructure/schemas/api/msc.api.schema'
+
+type Result<T> = { ok: true; data: T } | { ok: false; response: Response }
+
+export type ProviderContainerEvents =
+  | ({ provider: 'maersk' } & MaerskApi)
+  | ({ provider: 'cmacgm' } & CmaCgmApi)
+  | ({ provider: 'msc' } & MscApi)
+
+export type CanonnicalContainerEvents = {
+  container_number: string
+  events: Event[]
+}
+
+// Basic ISO 6346 validation (4 letters + 7 digits)
+export const isIso6346 = (s: string) => /^[A-Z]{4}\d{7}$/.test(s)
+
+export function mapApiToCanonnicalEvents(
+  apiEvents: ProviderContainerEvents,
+): Result<CanonnicalContainerEvents> {
+  return {
+    ok: false,
+    response: new Response(JSON.stringify({ error: 'mapping not implemented yet' }), {
+      status: 500,
+    }),
+  }
+}
+
+// export function getShipmentId(
+//   parsedPayload: ProviderApiPayload,
+//   normalizedContainerNumber: string,
+// ): string {
+//   const pick = z
+//     .object({ process_id: z.string().optional(), process: z.string().optional() })
+//     .safeParse(parsedPayload)
+//   if (pick.success) {
+//     return String(pick.data.process_id ?? pick.data.process ?? `ship-${normalizedContainerNumber}`)
+//   }
+//   return `ship-${normalizedContainerNumber}`
+// }
+
+// function getOrigin(
+//   parsedPayload: ProviderApiPayload,
+// ): Record<string, unknown> | string | undefined {
+//   const pick = z
+//     .object({ origin: z.any().optional(), origin_display: z.any().optional() })
+//     .safeParse(parsedPayload)
+//   const raw = pick.success ? (pick.data.origin ?? pick.data.origin_display) : undefined
+//   if (raw == null) return undefined
+//   if (typeof raw === 'string') return raw
+//   const parsed = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
+//   return parsed ?? undefined
+// }
+
+// function getDestination(
+//   parsedPayload: ProviderApiPayload,
+// ): Record<string, unknown> | string | undefined {
+//   const pick = z
+//     .object({ destination: z.any().optional(), destination_display: z.any().optional() })
+//     .safeParse(parsedPayload)
+//   const raw = pick.success ? (pick.data.destination ?? pick.data.destination_display) : undefined
+//   if (raw == null) return undefined
+//   if (typeof raw === 'string') return raw
+//   const parsed = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
+//   return parsed ?? undefined
+// }
+
+// function findContainerInfo(
+//   parsedPayload: ProviderApiPayload,
+//   normalizedContainerNumber: string,
+// ): Record<string, unknown> | null {
+//   const pick = z.object({ containers: z.array(z.any()).optional() }).safeParse(parsedPayload)
+//   const containersRaw = pick.success ? pick.data.containers : undefined
+//   if (Array.isArray(containersRaw) && containersRaw.length > 0) {
+//     const arr = containersRaw
+//     const found =
+//       (arr.find((ci) => {
+//         const ciRec = safeParseOrDefault(ci, z.record(z.string(), z.unknown()), null)
+//         if (!ciRec) return false
+//         const num = upperTrim(
+//           ciRec?.container_number ?? ciRec?.container_no ?? ciRec?.ContainerNumber ?? '',
+//         )
+//         return num === normalizedContainerNumber
+//       }) satisfies Record<string, unknown> | undefined) ??
+//       safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()), null)
+//     if (found) return found
+//   }
+//   // fallback to top-level fields
+//   return safeParseOrDefault(parsedPayload, z.record(z.string(), z.unknown()), null)
+// }
+
+// function extractEta(
+//   containerInfo: Record<string, unknown> | null,
+//   parsedPayload: ProviderApiPayload,
+// ): Date | null {
+//   const pick = z
+//     .object({ eta: z.any().optional(), EstimatedTimeOfArrival: z.any().optional() })
+//     .safeParse(parsedPayload)
+//   const etaRaw =
+//     containerInfo?.eta_final_delivery ??
+//     containerInfo?.eta ??
+//     (pick.success ? (pick.data.eta ?? pick.data.EstimatedTimeOfArrival) : null) ??
+//     null
+//   if (etaRaw) {
+//     if (typeof etaRaw === 'string' || typeof etaRaw === 'number' || etaRaw instanceof Date) {
+//       let d: Date
+//       if (typeof etaRaw === 'number') d = new Date(etaRaw)
+//       else d = new Date(String(etaRaw))
+//       if (!Number.isNaN(d.getTime())) return d
+//     }
+//   }
+//   return null
+// }
+
+// const canonicalStatuses = new Set([
+//   'UNKNOWN',
+//   'AWAITING_DATA',
+//   'GATE_IN',
+//   'LOADED_ON_VESSEL',
+//   'DEPARTED',
+//   'IN_TRANSIT',
+//   'ARRIVED_AT_POD',
+//   'DISCHARGED',
+//   'CUSTOMS_HOLD',
+//   'CUSTOMS_RELEASED',
+//   'AVAILABLE_FOR_PICKUP',
+//   'DELIVERED',
+//   'EMPTY_RETURNED',
+//   'CANCELLED',
+// ])
+
+// function mapStatusToCanonical(s: unknown): string | null {
+//   if (!s && s !== 0) return null
+//   const raw = String(s).toUpperCase().replace(/\s+/g, '_')
+//   if (canonicalStatuses.has(raw)) return raw
+//   if (raw === 'AVAILABLE') return 'AVAILABLE_FOR_PICKUP'
+//   if (raw === 'LOADED') return 'LOADED_ON_VESSEL'
+//   if (raw === 'GATEIN' || raw === 'GATE-IN') return 'GATE_IN'
+//   if (raw === 'GATEOUT' || raw === 'GATE-OUT') return 'UNKNOWN'
+//   return null
+// }
+
+// function extractEvents(
+//   containerInfo: Record<string, unknown> | null,
+//   parsedPayload: ProviderApiPayload,
+// ): Record<string, unknown>[] | undefined {
+//   const pick = z
+//     .object({ events: z.array(z.any()).optional(), Events: z.array(z.any()).optional() })
+//     .safeParse(parsedPayload)
+//   const eventsRaw =
+//     containerInfo?.events ??
+//     containerInfo?.Events ??
+//     (pick.success ? (pick.data.events ?? pick.data.Events) : null)
+//   if (Array.isArray(eventsRaw)) {
+//     return eventsRaw.map(mapEvent)
+//   } else if (Array.isArray(containerInfo?.locations)) {
+//     const locs = containerInfo.locations
+//     const flat: Record<string, unknown>[] = []
+//     for (const L of locs) {
+//       if (!L) continue
+//       if (Array.isArray(L.events)) {
+//         for (const ev of L.events) flat.push(mapEvent(ev))
+//       }
+//       if (Array.isArray(L.Events)) {
+//         for (const ev of L.Events) flat.push(mapEvent(ev))
+//       }
+//     }
+//     if (flat.length > 0) return flat
+//   }
+//   return undefined
+// }
+
+// function mapEvent(ev: unknown): Record<string, unknown> {
+//   const evObj: Record<string, unknown> = safeParseOrDefault(
+//     ev,
+//     z.record(z.string(), z.unknown()),
+//     {},
+//   )
+//   const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
+//   const eventTimeTypeRaw = evObj?.event_time_type ?? evObj?.EventTimeType ?? undefined
+//   const eventTimeType =
+//     typeof eventTimeTypeRaw === 'string' ? String(eventTimeTypeRaw).toUpperCase() : undefined
+
+//   const rawActivity = String(
+//     evObj?.activity ?? evObj?.Activity ?? evObj?.StatusDescription ?? 'OTHER',
+//   ).toUpperCase()
+//   let activityMapped: string = 'OTHER'
+//   if (/DEPART/.test(rawActivity)) activityMapped = 'DEPARTURE'
+//   else if (/ARRIV|ARRIVED/.test(rawActivity)) activityMapped = 'ARRIVAL'
+//   else if (/LOAD|LOADED/.test(rawActivity)) activityMapped = 'LOAD'
+//   else if (/DISCHARG|DISCHARGED/.test(rawActivity)) activityMapped = 'DISCHARGE'
+//   else if (/GATE_IN|GATEIN/.test(rawActivity)) activityMapped = 'GATE_IN'
+//   else if (/GATE_OUT|GATEOUT/.test(rawActivity)) activityMapped = 'GATE_OUT'
+//   else if (/CUSTOMS/.test(rawActivity)) activityMapped = 'CUSTOMS_HOLD'
+
+//   const idRaw = evObj?.id ?? evObj?.Id ?? evObj?.EventId ?? undefined
+//   const idStr = idRaw == null ? undefined : String(idRaw)
+//   const evtTimeType = typeof eventTimeType === 'string' ? eventTimeType : undefined
+
+//   return {
+//     id: idStr,
+//     activity: activityMapped,
+//     event_time: rawEventTime,
+//     event_time_type: evtTimeType,
+//     location: evObj?.location ?? evObj?.Location ?? undefined,
+//     sourceEvent: evObj,
+//   }
+// }
+
+// const BuildContainerSchema = z.object({
+//   shipmentId: z.string(),
+//   normalizedContainerNumber: z.string(),
+//   status: z.string().nullable(),
+//   eta: z.date().nullable(),
+//   events: z.array(z.record(z.string(), z.unknown())).optional(),
+//   provider: z.string(),
+//   now: z.date(),
+//   rawEvents: z.record(z.string(), z.unknown()),
+//   containerInfo: z.record(z.string(), z.unknown()).nullable(),
+// })
+// type BuildContainerParams = z.infer<typeof BuildContainerSchema>
+
+// function buildContainer(params: BuildContainerParams) {
+//   return {
+//     id: `${params.shipmentId}-${params.normalizedContainerNumber}`,
+//     container_number: params.normalizedContainerNumber,
+//     shipment_id: params.shipmentId,
+//     status: params.status ?? null,
+//     eta: params.eta ?? undefined,
+//     flags: { missing_eta: !params.eta, stale_data: false },
+//     events: params.events,
+//     source: {
+//       type: 'api' as const,
+//       api: params.provider,
+//       fetched_at: params.now,
+//       raw: params.rawEvents,
+//     },
+//     created_at: params.now,
+//     raw: params.containerInfo ?? params.rawEvents,
+//   }
+// }
+
+// const BuildShipmentSchema = z.object({
+//   shipmentId: z.string(),
+//   origin: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
+//   destination: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
+//   provider: z.string(),
+//   now: z.date(),
+//   rawEvents: ProviderPayloadSchema,
+//   parsedPayload: ProviderPayloadSchema,
+//   container: z.object({
+//     id: z.string(),
+//     container_number: z.string(),
+//     shipment_id: z.string(),
+//     status: z.string().nullable(),
+//     eta: z.date().optional(),
+//     flags: z.object({
+//       missing_eta: z.boolean(),
+//       stale_data: z.boolean(),
+//     }),
+//     events: z.array(z.record(z.string(), z.unknown())).optional(),
+//     source: z.object({
+//       type: z.literal('api'),
+//       api: z.string(),
+//       fetched_at: z.date(),
+//       raw: ProviderPayloadSchema,
+//     }),
+//     created_at: z.date(),
+//     raw: ProviderPayloadSchema,
+//   }),
+// })
+// type BuildShipmentParams = z.infer<typeof BuildShipmentSchema>
+
+// function buildShipment(params: BuildShipmentParams) {
+//   return {
+//     id: params.shipmentId,
+//     origin:
+//       typeof params.origin === 'object'
+//         ? params.origin
+//         : params.origin
+//           ? { city: String(params.origin) }
+//           : undefined,
+//     destination:
+//       typeof params.destination === 'object'
+//         ? params.destination
+//         : params.destination
+//           ? { city: String(params.destination) }
+//           : undefined,
+//     carrier: (() => {
+//       const src = params.parsedPayload['source']
+//       const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()), null)
+//       if (srcRec) {
+//         const apiVal = srcRec['api']
+//         if (typeof apiVal === 'string') return apiVal
+//       }
+//       return params.provider ?? null
+//     })(),
+//     created_at: params.now,
+//     source: {
+//       type: 'api' as const,
+//       api: params.provider,
+//       fetched_at: params.now,
+//       raw: params.rawEvents,
+//     },
+//     containers: [params.container],
+//     raw: params.rawEvents,
+//   }
+// }

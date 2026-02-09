@@ -1,0 +1,23 @@
+{
+  "id": "12345678-90ab-cdef-1234-567890abcdef",
+  "actuality": "actual", // "actual" or "expected", depending on whether the event is based on actual data or a prediction
+  "activity": {
+    "type": "gate-out"
+    /*
+    POSSIBLE TYPES:
+    FIRST PORT: GATE-IN, GATE-OUT, LOAD, CONTAINER-DEPARTURE
+
+    */
+    // TDB
+  },
+  "event_time": "2024-06-03T10:00:00Z",
+  "location": {
+    // TDB
+  },
+  "vessel": {
+    // TDB
+  },
+  "source": {
+    // TDB
+  }
+}

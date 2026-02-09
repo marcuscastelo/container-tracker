@@ -63,58 +63,81 @@ export type Database = {
         }
         Relationships: []
       }
-      'container-status': {
+      'container-events': {
         Row: {
-          carrier: string
-          container_id: string
-          status: Json
-        }
-        Insert: {
-          carrier?: string
-          container_id: string
-          status: Json
-        }
-        Update: {
-          carrier?: string
-          container_id?: string
-          status?: Json
-        }
-        Relationships: []
-      }
-      process_containers: {
-        Row: {
-          container_number: string | null
+          actuality: string
+          container_number: string
           created_at: string
+          event_time: string
           id: string
-          initial_status: string
-          iso_type: string | null
-          process_id: string | null
-          source: string
+          source: Json
+          type: string
           updated_at: string
         }
         Insert: {
-          container_number?: string | null
+          actuality: string
+          container_number: string
           created_at?: string
-          id?: string
-          initial_status: string
-          iso_type?: string | null
-          process_id?: string | null
-          source: string
+          event_time: string
+          id: string
+          source: Json
+          type: string
           updated_at?: string
         }
         Update: {
-          container_number?: string | null
+          actuality?: string
+          container_number?: string
           created_at?: string
+          event_time?: string
           id?: string
-          initial_status?: string
-          iso_type?: string | null
-          process_id?: string | null
-          source?: string
+          source?: Json
+          type?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'process_containers_process_id_fkey'
+            foreignKeyName: 'container-events_container_number_fkey'
+            columns: ['container_number']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['container_number']
+          },
+        ]
+      }
+      containers: {
+        Row: {
+          carrier_code: string
+          container_number: string
+          container_size: string | null
+          container_type: string | null
+          created_at: string
+          id: string
+          process_id: string
+          removed_at: string | null
+        }
+        Insert: {
+          carrier_code: string
+          container_number: string
+          container_size?: string | null
+          container_type?: string | null
+          created_at?: string
+          id?: string
+          process_id?: string
+          removed_at?: string | null
+        }
+        Update: {
+          carrier_code?: string
+          container_number?: string
+          container_size?: string | null
+          container_type?: string | null
+          created_at?: string
+          id?: string
+          process_id?: string
+          removed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'containers_process_id_fkey'
             columns: ['process_id']
             isOneToOne: false
             referencedRelation: 'processes'
@@ -124,41 +147,62 @@ export type Database = {
       }
       processes: {
         Row: {
-          bl_reference: string | null
+          archived_at: string | null
+          bill_of_lading: string | null
+          booking_number: string | null
           booking_reference: string | null
           carrier: string | null
+          client_id: string | null
           created_at: string | null
+          deleted_at: string | null
           destination: Json | null
+          exporter_name: string | null
           id: string
+          importer_name: string | null
           operation_type: string
           origin: Json | null
           reference: string | null
+          reference_importer: string | null
           source: string
           updated_at: string | null
         }
         Insert: {
-          bl_reference?: string | null
+          archived_at?: string | null
+          bill_of_lading?: string | null
+          booking_number?: string | null
           booking_reference?: string | null
           carrier?: string | null
+          client_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           destination?: Json | null
+          exporter_name?: string | null
           id?: string
+          importer_name?: string | null
           operation_type: string
           origin?: Json | null
           reference?: string | null
+          reference_importer?: string | null
           source: string
           updated_at?: string | null
         }
         Update: {
-          bl_reference?: string | null
+          archived_at?: string | null
+          bill_of_lading?: string | null
+          booking_number?: string | null
           booking_reference?: string | null
           carrier?: string | null
+          client_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           destination?: Json | null
+          exporter_name?: string | null
           id?: string
+          importer_name?: string | null
           operation_type?: string
           origin?: Json | null
           reference?: string | null
+          reference_importer?: string | null
           source?: string
           updated_at?: string | null
         }

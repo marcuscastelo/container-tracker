@@ -9,9 +9,10 @@ const envSchema = z.object({
 })
 
 const getEnvVars = (): z.input<typeof envSchema> => {
-  const importMetaEnv = import.meta.env as Record<string, string | undefined>
+  const importMetaEnv = import.meta.env
+  // @ts-expect-error: Forced typing
   return Object.fromEntries(
-    (Object.keys(envSchema.shape) as Array<keyof typeof envSchema.shape>).map((key) => {
+    Object.keys(envSchema.shape).map((key) => {
       const importMetaValue = importMetaEnv[key]
       const processEnvValue = process.env[key]
       const value =
@@ -22,7 +23,7 @@ const getEnvVars = (): z.input<typeof envSchema> => {
             : undefined
       return [key, value]
     }),
-  ) as z.input<typeof envSchema>
+  )
 }
 
 const env = parseWithStack(envSchema, getEnvVars())

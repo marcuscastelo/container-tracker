@@ -13,7 +13,7 @@ describe('copyToClipboard util', () => {
   it('uses navigator.clipboard.writeText when available', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     // stub global navigator
-    vi.stubGlobal('navigator', { clipboard: { writeText } } as any)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
 
     await expect(copyToClipboard('abc')).resolves.toBeUndefined()
     expect(writeText).toHaveBeenCalledWith('abc')
@@ -21,7 +21,7 @@ describe('copyToClipboard util', () => {
 
   it('falls back gracefully when clipboard API is not available', async () => {
     // stub navigator without clipboard
-    vi.stubGlobal('navigator', {} as any)
+    vi.stubGlobal('navigator', {})
 
     // call should not throw even if execCommand is not supported
     await expect(copyToClipboard('fallback-test')).resolves.toBeUndefined()
