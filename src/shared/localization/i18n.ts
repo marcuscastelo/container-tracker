@@ -1,27 +1,59 @@
-// Initialize i18next with discovered resources
 import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
 import { createRoot, createSignal, onMount } from 'solid-js'
 import { loadProjectResources } from '~/shared/localization/resources'
 
-// If the user previously selected a language, prefer that (persisted in localStorage)
-const storedLang = typeof window !== 'undefined' ? (localStorage.getItem('locale') ?? null) : null
+// --- Constants ---
+
+const DEFAULT_LOCALE = 'pt-BR'
+
+// --- Utilities ---
+
+function getStoredLang(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('locale') ?? null
+}
+
+function getInitialLanguage(
+  availableLocales: readonly string[],
+  storedLang: string | null,
+): string {
+  if (storedLang && availableLocales.includes(storedLang)) return storedLang
+  if (availableLocales.includes(i18next.language)) return i18next.language
+  return availableLocales[0] ?? DEFAULT_LOCALE
+}
+
+function getFallbackLanguage(availableLocales: readonly string[]): string {
+  return availableLocales.includes(DEFAULT_LOCALE)
+    ? DEFAULT_LOCALE
+    : (availableLocales[0] ?? DEFAULT_LOCALE)
+}
+
+function persistLocale(lng: string): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('locale', lng)
+    } catch {
+      console.warn('Could not persist locale selection')
+    }
+  }
+}
+
+// --- i18n Root ---
 
 const localeRoot = createRoot(() => {
   const { resources, availableLocales } = loadProjectResources()
-  const initialLng =
-    storedLang && availableLocales.includes(storedLang)
-      ? storedLang
-      : availableLocales.includes(i18next.language)
-        ? i18next.language
-        : (availableLocales[0] ?? 'pt-BR')
+  const storedLang = getStoredLang()
+  const initialLng = getInitialLanguage(availableLocales, storedLang)
+  const fallbackLng = getFallbackLanguage(availableLocales)
 
   const initOptions: InitOptions = {
     resources,
     lng: initialLng,
-    fallbackLng: availableLocales.includes('pt-BR') ? 'pt-BR' : (availableLocales[0] ?? 'pt-BR'),
+    fallbackLng,
     interpolation: { escapeValue: false },
   }
+
   const [locale, setLocale] = createSignal(initialLng)
 
   onMount(() => {
@@ -34,25 +66,18 @@ const localeRoot = createRoot(() => {
   return { locale, availableLocales }
 })
 
+// --- API ---
+
 export function useTranslation() {
   const { locale, availableLocales } = localeRoot
   return {
-    // make t reactive by reading the `locale` signal inside; this ensures Solid re-renders
-    // components that call `t(...)` whenever the language changes
     t: (...args: Parameters<typeof i18next.t>) => {
-      locale()
+      locale() // ensure we track locale changes in this scope
       return i18next.t(...args)
     },
     locale,
     setLocale: async (lng: string) => {
-      // persist choice in localStorage (client only) and change i18next language
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('locale', lng)
-        } catch {
-          console.warn('Could not persist locale selection') // ignore storage errors (quota/private mode)
-        }
-      }
+      persistLocale(lng)
       return i18next.changeLanguage(lng)
     },
     availableLocales,
