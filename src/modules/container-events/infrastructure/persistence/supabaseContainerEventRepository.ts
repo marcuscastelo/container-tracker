@@ -18,6 +18,7 @@ export const supabaseContainerEventRepository = {
 
     if (error) {
       // TODO: better error handling - maybe throw an error or return a Result type instead of just logging and returning empty array
+      // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/5
       console.error(`Error fetching events for container ${containerNumber} from supabase:`, error)
       return { success: false, data: null, error }
     }

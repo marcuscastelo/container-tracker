@@ -35,6 +35,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       destination: process.destination,
       carrier: process.carrier,
       // TODO: Rename to bill_of_lading in the future, with type safe zod schema and typescript refactor
+      // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/14
       bl_reference: process.bill_of_lading,
       source: process.source,
       created_at: process.created_at.toISOString(),

@@ -7,6 +7,7 @@ import { supabase } from '~/shared/supabase/supabase'
 const TABLE_NAME: keyof Database['public']['Tables'] = 'alerts'
 
 // TODO: Use SupabaseResult
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/2
 /**
  * Supabase-backed implementation of AlertRepository.
  */

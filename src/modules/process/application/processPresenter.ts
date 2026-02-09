@@ -50,7 +50,9 @@ export type ShipmentDetail = {
   readonly operationType?: OperationType
   readonly carrier?: Carrier | null
   // TODO: ShipmentDetail is duplicated throughout the codebase, unify in api schemas with zod and proper typesbill_of_lading
+  // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/11
   // TODO: Once unified, change all references from bl_reference to bill_of_lading or billOfLading
+  // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/10
   readonly bl_reference?: string | null
   readonly origin: string
   readonly destination: string

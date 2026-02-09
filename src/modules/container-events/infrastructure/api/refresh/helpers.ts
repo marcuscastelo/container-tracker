@@ -25,6 +25,7 @@ export function respondWithSchema<T>(
 }
 
 // TODO: Test if sanitizeValue is actually needed or if we can remove it
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/4
 function sanitizeValue<T>(v: T): T {
   if (typeof v === 'string') {
     // Remove literal backslash-u0000 sequences and actual NUL characters
@@ -75,6 +76,7 @@ export async function fetchAndSanitizeApiEvents(
 }
 
 // TODO: Review canonicall shipment schema, probably deprecated
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/3
 export const CanonicalShipmentSchema = z.object({
   containers: z.array(
     z.object({
