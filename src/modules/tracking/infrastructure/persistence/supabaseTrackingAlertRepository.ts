@@ -1,7 +1,8 @@
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import { TrackingAlertSchema } from '~/modules/tracking/domain/trackingAlert'
 import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
-import type { Json, Tables } from '~/shared/supabase/database.types'
+import { stringsToJson } from '~/modules/tracking/infrastructure/persistence/toJson'
+import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 
 const TABLE = 'tracking_alerts' as const
@@ -52,7 +53,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       message: a.message,
       detected_at: a.detected_at,
       triggered_at: a.triggered_at,
-      source_observation_fingerprints: a.source_observation_fingerprints as Json,
+      source_observation_fingerprints: stringsToJson(a.source_observation_fingerprints),
       retroactive: a.retroactive,
       provider: a.provider,
       acked_at: a.acked_at,

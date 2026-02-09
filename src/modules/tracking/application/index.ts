@@ -5,3 +5,9 @@ export {
   type PipelineResult,
   processSnapshot,
 } from '~/modules/tracking/application/pipeline'
+export { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
+export {
+  createTrackingUseCases,
+  type TrackingUseCases,
+  type TrackingUseCasesDeps,
+} from '~/modules/tracking/application/trackingUseCases'

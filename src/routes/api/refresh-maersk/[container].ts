@@ -2,8 +2,8 @@ import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
-import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
-import { mapApiToCanonnicalEvents } from '~/modules/container-events/application/toCanonical.adapter'
+import { supabaseProcessRepository } from '~/modules/process'
+import { trackingUseCases } from '~/modules/tracking'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -529,57 +529,24 @@ async function handleMaersk({ params, request }: APIEvent) {
     }
 
     // Prefer saving canonical F1 shipment like the generic /api/refresh route.
-    // parsedJson is the JSON payload intercepted from Maersk; try to map
-    // it to the canonical shape so the DB stores consistent objects.
-    let statusData: unknown = parsedJson || { raw: captured.body }
-    if (parsedJson) {
-      try {
-        // try to coerce into Maersk API schema before calling mapper
-        const p = MaerskApiSchemas.MaerskApiSchema.safeParse(parsedJson)
-        const payloadToPass = p.success ? p.data : parsedJson
-        const mapResult = mapApiToCanonnicalEvents(payloadToPass)
-        if (mapResult.ok) {
-          statusData = mapResult.data
-        } else {
-          return mapResult.response
-        }
-      } catch (mapErr) {
-        console.warn('[maersk-refresh] mapping to canonical threw error:', String(mapErr))
-      }
-    }
+    // parsedJson is the JSON payload intercepted from Maersk; save it as a snapshot.
+    const statusData: unknown = parsedJson || { raw: captured.body }
 
     try {
-      console.debug('[maersk-refresh] Saving to Supabase payload summary:', {
-        container,
-        // @ts-expect-error: forced typing
-        hasContainers: Array.isArray(statusData && statusData.containers)
-          ? // @ts-expect-error: forced typing
-            statusData.containers.length
-          : 0,
-        // @ts-expect-error: forced typing
-        firstContainerEvents: Array.isArray(statusData && statusData.containers)
-          ? // @ts-expect-error: forced typing
-            (statusData.containers[0]?.events ?? null)
-          : null,
-      })
-      if (typeof statusData === 'object' && statusData !== null) {
-        // statusData is an object-like value
-        if (1 === 1) {
-          throw new Error('Saving canonical status is currently disabled')
-        }
-        // await containerStatusUseCases.saveContainerStatus(
-        //   String(container),
-        //   <Record<string, unknown>>statusData,
-        // )
+      // Look up the container in our DB to get its UUID
+      const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
+
+      if (containerRecord) {
+        const snapshot = await trackingUseCases.saveRawSnapshot(
+          containerRecord.id,
+          'maersk',
+          statusData,
+          null,
+        )
+        console.log(`[maersk-refresh] Saved snapshot ${snapshot.id} for container ${container}`)
       } else {
-        if (1 === 1) {
-          throw new Error('Saving raw status is currently disabled')
-        }
-        // await containerStatusUseCases.saveContainerStatus(String(container), {
-        //   raw: String(statusData),
-        // })
+        console.warn(`[maersk-refresh] Container ${container} not found in DB, snapshot not saved`)
       }
-      console.log(`[maersk-refresh] Saved container ${container} to Supabase`)
     } catch (err) {
       console.error('[maersk-refresh] Supabase save failed:', err)
       return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), {

@@ -1,6 +1,7 @@
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
 import { SnapshotSchema } from '~/modules/tracking/domain/snapshot'
 import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
+import { toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 
@@ -33,7 +34,7 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
         container_id: snapshot.container_id,
         provider: snapshot.provider,
         fetched_at: snapshot.fetched_at,
-        payload: snapshot.payload as Tables<'container_snapshots'>['payload'],
+        payload: toJson(snapshot.payload),
         parse_error: snapshot.parse_error ?? null,
       })
       .select('*')

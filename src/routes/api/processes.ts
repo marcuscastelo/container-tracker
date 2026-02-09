@@ -1,5 +1,4 @@
 import type { z } from 'zod'
-import { alertUseCases } from '~/modules/alert'
 import {
   CreateProcessInputSchema,
   processUseCases,
@@ -66,17 +65,6 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     const result = await processUseCases.createProcess(parsed.data)
-
-    // Create initial alerts for the new process
-    try {
-      await alertUseCases.createProcessCreatedAlerts({
-        process_id: result.process.id,
-        container_ids: result.containers.map((c) => c.id),
-      })
-    } catch (alertErr) {
-      console.warn('Failed to create initial alerts:', alertErr)
-      // Don't fail the process creation if alerts fail
-    }
 
     const response = {
       process: {

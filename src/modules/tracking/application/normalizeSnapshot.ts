@@ -1,6 +1,8 @@
 import type { ObservationDraft } from '~/modules/tracking/domain/observationDraft'
 import type { Provider } from '~/modules/tracking/domain/provider'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
+import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/adapters/cmacgmNormalizer'
+import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/adapters/maerskNormalizer'
 import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/adapters/mscNormalizer'
 
 /**
@@ -11,18 +13,8 @@ import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/adapters
  */
 const NORMALIZERS: Record<Provider, (snapshot: Snapshot) => ObservationDraft[]> = {
   msc: normalizeMscSnapshot,
-
-  // TODO: Implement Maersk normalizer (reuse existing maersk.adapter.ts logic)
-  maersk: (_snapshot) => {
-    // Placeholder — will be implemented when Maersk adapter is wired.
-    return []
-  },
-
-  // TODO: Implement CMA-CGM normalizer (reuse existing cmacgm.adapter.ts logic)
-  cmacgm: (_snapshot) => {
-    // Placeholder — will be implemented when CMA-CGM adapter is wired.
-    return []
-  },
+  maersk: normalizeMaerskSnapshot,
+  cmacgm: normalizeCmaCgmSnapshot,
 
   // TODO: Implement remaining provider normalizers
   hapag: (_snapshot) => [],

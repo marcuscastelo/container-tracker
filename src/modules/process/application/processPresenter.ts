@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { AlertSeverity } from '~/modules/alert'
 import {
   type Carrier,
   CarrierSchema,
@@ -9,6 +8,9 @@ import {
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
+
+/** Alert severity — inlined from the old alert module. */
+type AlertSeverity = 'info' | 'success' | 'warning' | 'danger'
 
 // Backwards-compatible alias for tests and other callers
 export type ProcessApiResponse = ProcessDetailResponse

@@ -1,5 +1,4 @@
 import type { APIEvent } from '@solidjs/start/server'
-import { alertUseCases } from '~/modules/alert'
 import {
   type CreateProcessInput,
   CreateProcessInputSchema,
@@ -25,7 +24,17 @@ export async function GET({ params }: APIEvent): Promise<Response> {
     }
 
     // Get alerts for this process
-    const alerts = await alertUseCases.getAlertsForProcess(processId)
+    // TODO: Wire up tracking_alerts when alert derivation is implemented
+    const alerts: {
+      id: string
+      category: string
+      code: string
+      severity: string
+      title: string
+      description: string | null
+      state: string
+      created_at: string
+    }[] = []
 
     const response = {
       id: process.id,
@@ -58,7 +67,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
         title: a.title,
         description: a.description,
         state: a.state,
-        created_at: a.created_at.toISOString(),
+        created_at: a.created_at,
       })),
     }
 

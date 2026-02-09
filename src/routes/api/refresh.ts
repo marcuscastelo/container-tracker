@@ -1,23 +1,12 @@
-import { ZodError } from 'zod'
-import type z4 from 'zod/v4'
-import type { F1Shipment } from '~/modules/container/domain/schemas/canonical.schema'
-import * as CmaApiSchemas from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
-import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
-import * as MscApiSchemas from '~/modules/container/infrastructure/schemas/api/msc.api.schema'
-import {
-  mapApiToCanonnicalEvents,
-  type ProviderContainerEvents,
-} from '~/modules/container-events/application/toCanonical.adapter'
-import { ingestCanonicalShipment } from '~/modules/container-events/infrastructure/api/refresh/api'
-import {
-  fetchAndSanitizeApiEvents,
-  respondWithSchema,
-} from '~/modules/container-events/infrastructure/api/refresh/helpers'
-import { getRestProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
-import { RefreshSchemas } from '~/modules/container-events/infrastructure/api/refresh/schemas'
-import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
+import { supabaseProcessRepository } from '~/modules/process'
+import { trackingUseCases } from '~/modules/tracking'
+import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
+import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
+import { ProviderSchema } from '~/modules/tracking/domain/provider'
+import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers'
+import { parseBody } from '~/shared/api/typedRoute'
 
-function handleMaerskRedirect(container: string) {
+function handleMaerskRedirect(container: string): Response {
   const redirectPath = `/api/refresh-maersk/${encodeURIComponent(container)}`
   const payload = { redirect: redirectPath }
   return respondWithSchema(payload, RefreshSchemas.responses.redirect, 307, {
@@ -25,97 +14,87 @@ function handleMaerskRedirect(container: string) {
   })
 }
 
-// --- Main Handlers ---
-export async function POST({ request }: { request: Request }) {
+// --- Main Handler ---
+export async function POST({ request }: { request: Request }): Promise<Response> {
   try {
-    const parsedReqData = await parseRequestData(request)
-    if (!parsedReqData.ok) {
-      return parsedReqData.response
+    const parsedReq = await parseRequestData(request)
+    if (!parsedReq.ok) {
+      return parsedReq.response
     }
 
-    const { container, provider } = parsedReqData.data
+    const { container, provider } = parsedReq.data
 
+    // Maersk uses Puppeteer — redirect to the dedicated route
     if (provider === 'maersk') {
       return handleMaerskRedirect(container)
     }
 
-    let handler
-    try {
-      handler = getRestProvider(String(provider))
-    } catch (err) {
-      // Zod parsing or other provider lookup errors can be noisy; log a concise message
-      if (err instanceof ZodError) {
-        try {
-          console.error(`refresh: invalid provider value='${provider}'`, err.format())
-        } catch {
-          console.error(`refresh: invalid provider value='${provider}'`, String(err))
-        }
-      } else {
-        console.error(`refresh: failed to resolve provider='${provider}'`, err)
-      }
+    // Validate provider
+    const providerResult = ProviderSchema.safeParse(provider)
+    if (!providerResult.success) {
       return respondWithSchema(
-        { error: `invalid carrier/provider: ${String(provider)}` },
+        { error: `invalid carrier/provider: ${provider}` },
         RefreshSchemas.responses.error,
         400,
       )
     }
 
-    const fetchResult = await fetchAndSanitizeApiEvents(handler, container)
-    if (!fetchResult.ok) {
-      return fetchResult.response
-    }
-    if (!fetchResult.data.apiEvents) {
-      console.error('refresh: no events fetched')
-      return respondWithSchema({ error: 'no events fetched' }, RefreshSchemas.responses.error, 502)
-    }
+    const validProvider = providerResult.data
 
-    console.debug(`refresh: fetched events for provider='${provider}' container='${container}'`)
-    const mappedResult = mapApiToCanonnicalEvents(fetchResult.data.apiEvents)
-    if (!mappedResult.ok) {
-      console.error('refresh: mapping to canonical failed', mappedResult.response)
-      return mappedResult.response
-    }
-    console.debug(
-      `refresh: mapped to canonical for provider='${provider}' container='${container}'`,
-    )
-    console.debug(`refresh: cannonical shipment:`, mappedResult.data)
-
-    try {
-      await ingestCanonicalShipment(mappedResult.data, container)
-    } catch (err) {
-      console.error('refresh: Supabase save failed', err)
+    if (!isRestCarrier(validProvider)) {
       return respondWithSchema(
-        { error: `Supabase save failed: ${String(err)}` },
+        { error: `no REST fetcher for carrier: ${validProvider}` },
         RefreshSchemas.responses.error,
-        500,
+        400,
       )
     }
 
+    // Look up the container in our DB to get its UUID
+    const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
+    if (!containerRecord) {
+      return respondWithSchema(
+        { error: `container ${container} not found in the system. Create a process first.` },
+        RefreshSchemas.responses.error,
+        404,
+      )
+    }
+
+    // Fetch from carrier API and save as snapshot
+    const snapshot = await trackingUseCases.fetchAndSaveSnapshot(
+      containerRecord.id,
+      container,
+      validProvider,
+    )
+
+    if (!snapshot) {
+      return respondWithSchema(
+        { error: 'fetch failed: no snapshot created' },
+        RefreshSchemas.responses.error,
+        502,
+      )
+    }
+
+    // Sanitize payload for response logging
+    if (snapshot.payload) {
+      sanitizePayload(snapshot.payload)
+    }
+
+    console.log(
+      `refresh: saved snapshot ${snapshot.id} for container ${container} (provider=${validProvider})`,
+    )
+
     return respondWithSchema(
-      { ok: true, container: String(container) },
+      { ok: true, container: String(container), snapshotId: snapshot.id },
       RefreshSchemas.responses.success,
       200,
     )
   } catch (err) {
-    // Improve server-side error logging: prefer structured outputs for Zod errors
-    try {
-      if (err instanceof ZodError) {
-        console.error('refresh error (validation):', err.format())
-      } else if (err instanceof Error) {
-        console.error('refresh error:', err.message)
-        console.error(err.stack)
-      } else {
-        console.error('refresh error (unknown):', err)
-      }
-    } catch (loggingErr) {
-      console.error('refresh error (failed while logging):', err, loggingErr)
-    }
-
+    console.error('refresh error:', err)
     return respondWithSchema({ error: String(err) }, RefreshSchemas.responses.error, 500)
   }
 }
 
-// --- Modularized helpers ---
+// --- Helpers ---
 
 async function parseRequestData(
   request: Request,
@@ -123,27 +102,26 @@ async function parseRequestData(
   { ok: true; data: { container: string; provider: string } } | { ok: false; response: Response }
 > {
   try {
-    const parsedReqData: z4.infer<typeof RefreshSchemas.request> = await parseBody(
-      request,
-      RefreshSchemas.request,
-    )
+    const body = await parseBody(request, RefreshSchemas.request)
     return {
       ok: true,
       data: {
-        container: parsedReqData.container,
-        provider: parsedReqData.carrier || 'unknown',
+        container: body.container,
+        provider: body.carrier ?? 'unknown',
       },
     }
   } catch (err) {
     return {
       ok: false,
-      response: jsonResponse(
+      response: respondWithSchema(
         { error: `invalid request: ${String(err)}` },
-        400,
         RefreshSchemas.responses.error,
+        400,
       ),
     }
   }
 }
 
-export const GET = () => respondWithSchema({ ok: true }, RefreshSchemas.responses.health, 200)
+export function GET(): Response {
+  return respondWithSchema({ ok: true }, RefreshSchemas.responses.health, 200)
+}
