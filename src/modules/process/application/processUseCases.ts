@@ -129,6 +129,7 @@ export function createProcessUseCases({
 
       // Check if container exists
       // TODO: Allow DB to enforce uniqueness and handle conflict error instead of pre-checking? Which one is cheaper at scale?
+      // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/12
       const exists = await processRepository.containerExists(container.container_number)
       if (exists) {
         throw new Error(

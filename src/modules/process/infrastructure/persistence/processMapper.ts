@@ -12,6 +12,7 @@ type ProcessRow = Database['public']['Tables']['processes']['Row']
 type ContainerRow = Database['public']['Tables']['containers']['Row']
 
 // TODO: Replace assertions with safeParseOrDefault using Zod schemas
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
   rowToProcess(row: ProcessRow): Process {
     return {

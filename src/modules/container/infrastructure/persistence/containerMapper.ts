@@ -18,7 +18,9 @@ export const containerMappers = {
     container_number: container.container_number,
     process_id: container.process_id,
     container_size: null, // TODO: Implement container size and type inference based on events or external data
+                          // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/9
     container_type: null, // TODO: Implement container size and type inference based on events or external data
+                          // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/8
   }),
 
   toUpdate: (container: NewContainer): ContainerUpdate => ({
@@ -26,6 +28,8 @@ export const containerMappers = {
     container_number: container.container_number,
     process_id: container.process_id,
     container_size: null, // TODO: Implement container size and type inference based on events or external data
+                          // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/7
     container_type: null, // TODO: Implement container size and type inference based on events or external data
+                          // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/6
   }),
 }
