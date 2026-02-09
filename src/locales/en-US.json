@@ -63,7 +63,11 @@
     "noEvents": "No events recorded yet",
     "processCreated": "Process created",
     "internalIdMessage": "This process is shown with an internal ID because no reference was provided. You can add a custom reference to make it easier to identify.",
-    "internalIdCTA": "Add reference"
+    "internalIdCTA": "Add reference",
+    "refreshCarrierUnknownTitle": "Cannot refresh — unknown carrier",
+    "refreshCarrierUnknownMessage": "This shipment has no carrier selected, so an automatic refresh cannot be performed. You can edit the process and choose the correct carrier to enable refresh.",
+    "refreshCarrierUnknownEditCTA": "Edit process",
+    "refreshCarrierUnknownCancelCTA": "Cancel"
   },
   "createProcess": {
     "description": "Define a new shipment to track one or more containers.",
@@ -94,6 +98,7 @@
       "blReference": "Bill of Lading (BL)",
       "blReferencePlaceholder": "e.g. MAEU123456789"
     },
+    "unknownCarrierWarning": "If 'Unknown', automatic carrier updates won't be available.",
     "operationType": {
       "import": "Import",
       "export": "Export",

@@ -1,8 +1,10 @@
+import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import type { ShipmentDetail } from '~/modules/process/application/processPresenter'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { StatusBadge } from '~/shared/ui'
+import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
   t: (k: string) => string
@@ -10,12 +12,13 @@ type Props = {
   data: ShipmentDetail
   isRefreshing: boolean
   onTriggerRefresh: () => void
-  // when called with true, the parent should focus the reference field when opening the edit dialog
-  onOpenEdit: (focusReference?: boolean) => void
+  // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
+  onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
 }
 
 export function ShipmentHeader(props: Props): JSX.Element {
   const [showInternalIdInfo, setShowInternalIdInfo] = createSignal(false)
+  const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   return (
     <section class="mb-6 rounded-lg border border-slate-200 bg-white p-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -34,9 +37,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 </button>
 
                 <div
-                  class={`absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg ${
-                    showInternalIdInfo() ? '' : 'hidden'
-                  }`}
+                  class={clsx(
+                    'absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg',
+                    { hidden: !showInternalIdInfo() },
+                  )}
                   role="dialog"
                   aria-hidden={!showInternalIdInfo()}
                 >
@@ -47,8 +51,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
                       type="button"
                       class="rounded outline bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
                       onClick={() => {
-                        // open edit dialog from parent
-                        props.onOpenEdit(true)
+                        props.onOpenEdit('reference')
                         setShowInternalIdInfo(false)
                       }}
                     >
@@ -85,10 +88,16 @@ export function ShipmentHeader(props: Props): JSX.Element {
           <div class="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => props.onTriggerRefresh()}
-              class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${
-                props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
-              }`}
+              onClick={() => {
+                // If carrier is explicitly 'unknown', open an informative modal and suggest editing
+                if (props.data.carrier === 'unknown') {
+                  setShowUnknownCarrierDialog(true)
+                  return
+                }
+                props.onTriggerRefresh()
+              }}
+              class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
+                }`}
               title="Refresh"
               aria-busy={props.isRefreshing}
               disabled={props.isRefreshing}
@@ -114,6 +123,33 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 </svg>
               )}
             </button>
+
+            <Dialog
+              open={showUnknownCarrierDialog()}
+              onClose={() => setShowUnknownCarrierDialog(false)}
+              title={props.t(props.keys.refreshCarrierUnknownTitle)}
+              description={props.t(props.keys.refreshCarrierUnknownMessage)}
+            >
+              <div class="flex justify-end gap-3">
+                <button
+                  type="button"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  onClick={() => setShowUnknownCarrierDialog(false)}
+                >
+                  {props.t(props.keys.refreshCarrierUnknownCancelCTA)}
+                </button>
+                <button
+                  type="button"
+                  class="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                  onClick={() => {
+                    setShowUnknownCarrierDialog(false)
+                    props.onOpenEdit('carrier')
+                  }}
+                >
+                  {props.t(props.keys.refreshCarrierUnknownEditCTA)}
+                </button>
+              </div>
+            </Dialog>
 
             <button
               type="button"

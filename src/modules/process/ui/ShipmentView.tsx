@@ -42,6 +42,10 @@ const keys = {
   processCreated: 'shipmentView.processCreated',
   internalIdMessage: 'shipmentView.internalIdMessage',
   internalIdCTA: 'shipmentView.internalIdCTA',
+  refreshCarrierUnknownTitle: 'shipmentView.refreshCarrierUnknownTitle',
+  refreshCarrierUnknownMessage: 'shipmentView.refreshCarrierUnknownMessage',
+  refreshCarrierUnknownEditCTA: 'shipmentView.refreshCarrierUnknownEditCTA',
+  refreshCarrierUnknownCancelCTA: 'shipmentView.refreshCarrierUnknownCancelCTA',
 }
 
 export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
@@ -126,7 +130,8 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
     null,
   )
-  const [focusReferenceOnOpen, setFocusReferenceOnOpen] = createSignal(false)
+  // which field should receive focus when opening the edit dialog (null = none)
+  const [focusFieldOnOpen, setFocusFieldOnOpen] = createSignal<'reference' | 'carrier' | null>(null)
 
   // Create dialog state (header "Create process" button uses this)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
@@ -312,22 +317,20 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
       {/* Inline compact banner for refresh errors (appears after a failed refresh) */}
       <Show when={refreshError()}>
-        {(m) => (
-          <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-              <div class="flex items-start justify-between gap-4">
-                <div>{m}</div>
-                <button
-                  class="ml-4 text-red-700 underline"
-                  aria-label="Dismiss error"
-                  onClick={() => setRefreshError(null)}
-                >
-                  Dismiss
-                </button>
-              </div>
+        <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div class="flex items-start justify-between gap-4">
+              <div>{refreshError()}</div>
+              <button
+                class="ml-4 text-red-700 underline"
+                aria-label="Dismiss error"
+                onClick={() => setRefreshError(null)}
+              >
+                Dismiss
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </Show>
 
       {/* Edit process dialog (when editing current shipment) */}
@@ -335,11 +338,11 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         open={isEditOpen()}
         onClose={() => {
           setIsEditOpen(false)
-          setFocusReferenceOnOpen(false)
+          setFocusFieldOnOpen(null)
         }}
         initialData={editInitialData()}
         mode="edit"
-        focusReference={focusReferenceOnOpen()}
+        focus={focusFieldOnOpen() ?? undefined}
         onSubmit={handleEditSubmit}
       />
 
@@ -413,7 +416,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                 data={data()}
                 isRefreshing={isRefreshing()}
                 onTriggerRefresh={() => triggerRefresh()}
-                onOpenEdit={(focusReference?: boolean) => {
+                onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) => {
                   const d = data()
                   if (!d) return
                   const initial = {
@@ -430,7 +433,10 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                     billOfLading: d.bl_reference ?? '',
                   } satisfies CreateProcessDialogFormData
                   setEditInitialData(initial)
-                  setFocusReferenceOnOpen(!!focusReference)
+                  // Interpret incoming focus hint
+                  if (focus === 'carrier') setFocusFieldOnOpen('carrier')
+                  else if (focus === 'reference') setFocusFieldOnOpen('reference')
+                  else setFocusFieldOnOpen(null)
                   setIsEditOpen(true)
                 }}
               />

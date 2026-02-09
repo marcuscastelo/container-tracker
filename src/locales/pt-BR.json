@@ -63,7 +63,11 @@
     "noEvents": "Nenhum evento registrado ainda",
     "processCreated": "Processo criado",
     "internalIdMessage": "Esse processo está sendo exibido com um ID interno porque não foi fornecida uma referência. Você pode adicionar uma referência personalizada para facilitar a identificação.",
-    "internalIdCTA": "Adicionar referência"
+    "internalIdCTA": "Adicionar referência",
+    "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
+    "refreshCarrierUnknownMessage": "Este processo não tem um armador selecionado, portanto não é possível executar um refresh automático. Você pode editar o processo e escolher o armador correto para habilitar o refresh.",
+    "refreshCarrierUnknownEditCTA": "Editar processo",
+    "refreshCarrierUnknownCancelCTA": "Cancelar"
   },
   "createProcess": {
     "description": "Defina um novo embarque para rastrear um ou mais containers.",
@@ -94,6 +98,7 @@
       "blReference": "Bill of Lading (BL)",
       "blReferencePlaceholder": "ex. MAEU123456789"
     },
+    "unknownCarrierWarning": "Se 'Desconhecido', não haverá atualizações automáticas do armador.",
     "operationType": {
       "import": "Importação",
       "export": "Exportação",
