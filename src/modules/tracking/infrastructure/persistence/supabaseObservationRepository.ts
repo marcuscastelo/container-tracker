@@ -4,24 +4,12 @@ import type { ObservationRepository } from '~/modules/tracking/domain/observatio
 import type { Tables, TablesInsert } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import { formatParseError } from '~/shared/utils/formatParseError'
+import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
 
 const TABLE = 'container_observations' as const
 
 type ObservationRow = Tables<'container_observations'>
 type ObservationInsertRow = TablesInsert<'container_observations'>
-
-// TODO: Deduplicate date normalization logic with supabaseSnapshotRepository. Maybe a shared utility for normalizing timestamptz values from Supabase?
-// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/19
-function normalizeDatetime(value: unknown): string | null {
-  if (value instanceof Date) return value.toISOString()
-  if (typeof value === 'number') return new Date(value).toISOString()
-  if (typeof value === 'string') {
-    const d = new Date(value)
-    if (!Number.isNaN(d.getTime())) return d.toISOString()
-    return value
-  }
-  return null
-}
 
 function rowToObservation(row: ObservationRow): Observation {
   const result = ObservationSchema.safeParse({
@@ -31,7 +19,7 @@ function rowToObservation(row: ObservationRow): Observation {
     container_number: row.container_number,
     event_time_type: row.event_time_type,
     type: row.type,
-    event_time: normalizeDatetime(row.event_time),
+    event_time: normalizeTimestamptz(row.event_time),
     location_code: row.location_code,
     location_display: row.location_display,
     vessel_name: row.vessel_name,
@@ -40,7 +28,7 @@ function rowToObservation(row: ObservationRow): Observation {
     confidence: row.confidence,
     provider: row.provider,
     created_from_snapshot_id: row.created_from_snapshot_id,
-    created_at: normalizeDatetime(row.created_at),
+    created_at: normalizeTimestamptz(row.created_at),
     retroactive: row.retroactive,
   } satisfies { [K in keyof Observation]: unknown })
 
@@ -61,7 +49,8 @@ export const supabaseObservationRepository: ObservationRepository = {
           container_id: obs.container_id,
           container_number: obs.container_number,
           type: obs.type,
-          event_time: obs.event_time == null ? obs.event_time : normalizeDatetime(obs.event_time),
+          event_time:
+            obs.event_time == null ? obs.event_time : normalizeTimestamptz(obs.event_time),
           location_code: obs.location_code,
           location_display: obs.location_display,
           vessel_name: obs.vessel_name,

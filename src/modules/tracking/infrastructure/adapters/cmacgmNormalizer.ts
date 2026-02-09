@@ -6,6 +6,7 @@ import type {
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/schemas/api/cmacgm.api.schema'
+import { parseIsoOrRfcString, parseMsDateString } from '~/shared/utils/parseDate'
 
 /**
  * Maps CMA-CGM `StatusDescription` strings to canonical ObservationType.
@@ -71,23 +72,20 @@ function parseCmaCgmDate(
   dateField: string | null | undefined,
   dateStringField: string | null | undefined,
 ): string | null {
-  // Try DateString first (human-readable)
+  // Try DateString first (human-readable ISO/RFC) — many CMA-CGM endpoints provide ISO strings here
   if (dateStringField) {
-    const d = new Date(dateStringField)
-    if (!Number.isNaN(d.getTime())) return d.toISOString()
+    const d = parseIsoOrRfcString(dateStringField)
+    if (d) return d.toISOString()
   }
 
   // Try MS date format: /Date(1234567890000)/
   if (dateField) {
-    const msMatch = dateField.match(/\/Date\((-?\d+)\)\//)
-    if (msMatch?.[1]) {
-      const ts = Number(msMatch[1])
-      if (!Number.isNaN(ts)) return new Date(ts).toISOString()
-    }
+    const ms = parseMsDateString(dateField)
+    if (ms) return ms.toISOString()
 
-    // Try as plain ISO date
-    const d = new Date(dateField)
-    if (!Number.isNaN(d.getTime())) return d.toISOString()
+    // Fallback: try ISO/RFC parsing on the field
+    const d = parseIsoOrRfcString(dateField)
+    if (d) return d.toISOString()
   }
 
   return null

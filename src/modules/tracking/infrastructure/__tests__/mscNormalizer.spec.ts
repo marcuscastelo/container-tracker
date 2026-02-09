@@ -21,9 +21,9 @@ function makeSnapshot(payload: unknown, fetchedAt: string = '2025-11-17T00:00:00
 
 describe('normalizeMscSnapshot', () => {
   describe('initial load fixture', () => {
-    it('should produce 2 observation drafts', () => {
+    it('should produce 3 observation drafts', () => {
       const drafts = normalizeMscSnapshot(makeSnapshot(initialLoad))
-      expect(drafts).toHaveLength(2)
+      expect(drafts).toHaveLength(3)
     })
 
     it('should map "Export received at CY" to GATE_IN', () => {
@@ -52,9 +52,9 @@ describe('normalizeMscSnapshot', () => {
   })
 
   describe('transshipment fixture', () => {
-    it('should produce 5 observation drafts', () => {
+    it('should produce 6 observation drafts', () => {
       const drafts = normalizeMscSnapshot(makeSnapshot(transshipment))
-      expect(drafts).toHaveLength(5)
+      expect(drafts).toHaveLength(6)
     })
 
     it('should map "Export Loaded on Vessel" to LOAD', () => {

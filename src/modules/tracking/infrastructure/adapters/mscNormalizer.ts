@@ -6,7 +6,7 @@ import type {
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/schemas/api/msc.api.schema'
-import { parseDate } from '~/shared/utils/parseDate'
+import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
 /**
  * Maps MSC event Description strings to canonical ObservationType.
@@ -94,14 +94,14 @@ function determineEventTimeType(
   // If no event date, treat as EXPECTED (provisional)
   if (!eventDate) return 'EXPECTED'
 
-  // Parse event date
-  const parsedEventDate = parseDate(eventDate)
+  // Parse event date (MSC uses dd/MM/yyyy)
+  const parsedEventDate = parseDateDDMMYYYYString(eventDate)
   if (!parsedEventDate) return 'EXPECTED'
 
   // Determine reference date (current date from payload or snapshot fetch time)
   let referenceDate: Date
   if (currentDate) {
-    const parsedCurrentDate = parseDate(currentDate)
+    const parsedCurrentDate = parseDateDDMMYYYYString(currentDate)
     if (parsedCurrentDate) {
       referenceDate = parsedCurrentDate
     } else {
@@ -166,7 +166,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       // Process historical/confirmed events from Events array
       for (const event of events) {
         const type = mapMscDescription(event.Description)
-        const parsedDate = event.Date ? parseDate(event.Date) : null
+        const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
         const eventTime = parsedDate ? parsedDate.toISOString() : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
@@ -208,7 +208,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       // Generate EXPECTED observation from PodEtaDate if present and future
       const podEtaDate = containerInfo.PodEtaDate
       if (podEtaDate && podEtaDate.trim() !== '') {
-        const parsedEta = parseDate(podEtaDate)
+        const parsedEta = parseDateDDMMYYYYString(podEtaDate)
         if (parsedEta) {
           // Determine if this ETA is in the future
           const etaTimeType = determineEventTimeType(podEtaDate, currentDate, snapshot.fetched_at)
