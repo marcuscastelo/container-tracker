@@ -3,7 +3,6 @@ import type { JSX } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 import { LanguageSwitch } from '.'
 
-
 type Props = {
   readonly onCreateProcess?: () => void
 }

@@ -19,7 +19,9 @@ export function AlertsPanel(props: Props): JSX.Element {
         <Show
           when={props.alerts.length > 0}
           fallback={
-            <p class="py-4 text-center text-sm text-slate-500">{t(keys.shipmentView.alerts.empty)}</p>
+            <p class="py-4 text-center text-sm text-slate-500">
+              {t(keys.shipmentView.alerts.empty)}
+            </p>
           }
         >
           <ul class="space-y-3">

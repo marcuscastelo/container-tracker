@@ -11,7 +11,7 @@ export function TimelineNode(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
 }): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t } = useTranslation()
   const nodeStyles = (): { dot: string; line: string; text: string } => {
     switch (props.event.status) {
       case 'completed':

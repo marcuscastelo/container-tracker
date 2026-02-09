@@ -23,7 +23,6 @@ import {
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-
 // Domain types for the dashboard - derived from API response
 type ProcessSummary = {
   readonly id: string
@@ -320,7 +319,9 @@ export function Dashboard(): JSX.Element {
                       <th class="px-6 py-3">{t(keys.dashboard.table.col.carrier)}</th>
                       <th class="px-6 py-3">{t(keys.dashboard.table.col.client)}</th>
                       <th class="px-6 py-3">{t(keys.dashboard.table.col.route)}</th>
-                      <th class="px-6 py-3 text-center">{t(keys.dashboard.table.col.containers)}</th>
+                      <th class="px-6 py-3 text-center">
+                        {t(keys.dashboard.table.col.containers)}
+                      </th>
                       <th class="px-6 py-3">{t(keys.dashboard.table.col.status)}</th>
                       <th class="px-6 py-3">{t(keys.dashboard.table.col.eta)}</th>
                     </tr>

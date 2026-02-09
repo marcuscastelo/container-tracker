@@ -29,7 +29,9 @@ export function TimelinePanel(props: Props): JSX.Element {
       <div class="p-6">
         <Show
           when={timeline().length > 0}
-          fallback={<p class="py-4 text-center text-sm text-slate-500">{t('shipmentView.noEvents')}</p>}
+          fallback={
+            <p class="py-4 text-center text-sm text-slate-500">{t('shipmentView.noEvents')}</p>
+          }
         >
           <div>
             <For each={timeline()}>

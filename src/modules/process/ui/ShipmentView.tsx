@@ -20,7 +20,6 @@ import { AppHeader, ExistingProcessError } from '~/shared/ui'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-
 export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
   const { t, keys } = useTranslation()
 
@@ -420,10 +419,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                     onSelect={(id) => setSelectedContainerId(id)}
                   />
 
-                  <TimelinePanel
-                    selectedContainer={selectedContainer()}
-                    carrier={data().carrier}
-                  />
+                  <TimelinePanel selectedContainer={selectedContainer()} carrier={data().carrier} />
                 </div>
 
                 <div>

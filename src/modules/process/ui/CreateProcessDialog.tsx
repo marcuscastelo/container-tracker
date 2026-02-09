@@ -7,7 +7,6 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 
-
 export type ContainerInput = {
   readonly id: string
   containerNumber: string
@@ -84,10 +83,10 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       setContainers(
         props.initialData.containers.length
           ? props.initialData.containers.map((c) => ({
-            id: c.id,
-            containerNumber: c.containerNumber,
-            isoType: c.isoType,
-          }))
+              id: c.id,
+              containerNumber: c.containerNumber,
+              isoType: c.isoType,
+            }))
           : [createEmptyContainer()],
       )
 
@@ -223,81 +222,15 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     }))
     const entriesToCheck = entries.filter((e) => !initialContainerNumbersSet().has(e.num))
     const containerNumbersForCheck = entriesToCheck.map((e) => e.num)
-      ; (async () => {
-        try {
-          // Reset previous server errors
-          setServerErrors({})
+    ;(async () => {
+      try {
+        // Reset previous server errors
+        setServerErrors({})
 
-          // If nothing to check (e.g., editing without adding new containers), skip server check
-          if (containerNumbersForCheck.length === 0) {
-            // proceed with submit
-            // Ensure carrier is a valid Carrier value before submitting
-            const carrierValue = carrier()
-            if (!isCarrier(carrierValue)) return
-
-            const data: CreateProcessDialogFormData = {
-              reference: reference(),
-              operationType: operationType(),
-              origin: origin(),
-              destination: destination(),
-              containers: containers.filter((c) => c.containerNumber.trim()),
-              carrier: carrierValue,
-              billOfLading: billOfLading(),
-            }
-
-            props.onSubmit?.(data)
-            handleClose()
-            return
-          }
-
-          const res = await fetch('/api/processes/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ containers: containerNumbersForCheck }),
-          })
-
-          if (!res.ok) {
-            // Unexpected error from check endpoint - surface generic message
-            const txt = await res.text().catch(() => '')
-            setServerErrors(
-              Object.fromEntries(
-                containerNumbers.map((n, i) => [
-                  `container-${containers[i].id}`,
-                  { message: txt || 'Failed to validate container' },
-                ]),
-              ),
-            )
-            return
-          }
-
-          const json = await res.json().catch(() => ({}))
-          const conflicts: {
-            containerNumber: string
-            processId?: string
-            containerId?: string
-            link?: string
-            message?: string
-          }[] = json.conflicts || []
-
-          if (conflicts.length > 0) {
-            // Map conflicts to per-field errors and mark touched so they show inline
-            const errs: Record<string, { message: string; link?: string }> = {}
-            for (const c of conflicts) {
-              // find matching entry in the entriesToCheck array
-              const match = entriesToCheck.find((e) => e.num === c.containerNumber.toUpperCase())
-              const fieldKey = match ? `container-${match.id}` : `container-${c.containerNumber}`
-              errs[fieldKey] = {
-                message: c.message ?? `Container ${c.containerNumber} already exists`,
-                link: c.link,
-              }
-            }
-            // Mark touched for all containers so errors are visible
-            for (const c of containers) markTouched(`container-${c.id}`)
-            setServerErrors(errs)
-            return
-          }
-
-          // No conflicts -> proceed with submit
+        // If nothing to check (e.g., editing without adding new containers), skip server check
+        if (containerNumbersForCheck.length === 0) {
+          // proceed with submit
+          // Ensure carrier is a valid Carrier value before submitting
           const carrierValue = carrier()
           if (!isCarrier(carrierValue)) return
 
@@ -313,20 +246,86 @@ export function CreateProcessDialog(props: Props): JSX.Element {
 
           props.onSubmit?.(data)
           handleClose()
-        } catch (err) {
-          console.error('Failed to check containers before submit:', err)
-          // In case of unexpected failures just block submit and show generic errors
-          for (const c of containers) markTouched(`container-${c.id}`)
+          return
+        }
+
+        const res = await fetch('/api/processes/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ containers: containerNumbersForCheck }),
+        })
+
+        if (!res.ok) {
+          // Unexpected error from check endpoint - surface generic message
+          const txt = await res.text().catch(() => '')
           setServerErrors(
             Object.fromEntries(
               containerNumbers.map((n, i) => [
                 `container-${containers[i].id}`,
-                { message: 'Failed to validate container' },
+                { message: txt || 'Failed to validate container' },
               ]),
             ),
           )
+          return
         }
-      })()
+
+        const json = await res.json().catch(() => ({}))
+        const conflicts: {
+          containerNumber: string
+          processId?: string
+          containerId?: string
+          link?: string
+          message?: string
+        }[] = json.conflicts || []
+
+        if (conflicts.length > 0) {
+          // Map conflicts to per-field errors and mark touched so they show inline
+          const errs: Record<string, { message: string; link?: string }> = {}
+          for (const c of conflicts) {
+            // find matching entry in the entriesToCheck array
+            const match = entriesToCheck.find((e) => e.num === c.containerNumber.toUpperCase())
+            const fieldKey = match ? `container-${match.id}` : `container-${c.containerNumber}`
+            errs[fieldKey] = {
+              message: c.message ?? `Container ${c.containerNumber} already exists`,
+              link: c.link,
+            }
+          }
+          // Mark touched for all containers so errors are visible
+          for (const c of containers) markTouched(`container-${c.id}`)
+          setServerErrors(errs)
+          return
+        }
+
+        // No conflicts -> proceed with submit
+        const carrierValue = carrier()
+        if (!isCarrier(carrierValue)) return
+
+        const data: CreateProcessDialogFormData = {
+          reference: reference(),
+          operationType: operationType(),
+          origin: origin(),
+          destination: destination(),
+          containers: containers.filter((c) => c.containerNumber.trim()),
+          carrier: carrierValue,
+          billOfLading: billOfLading(),
+        }
+
+        props.onSubmit?.(data)
+        handleClose()
+      } catch (err) {
+        console.error('Failed to check containers before submit:', err)
+        // In case of unexpected failures just block submit and show generic errors
+        for (const c of containers) markTouched(`container-${c.id}`)
+        setServerErrors(
+          Object.fromEntries(
+            containerNumbers.map((n, i) => [
+              `container-${containers[i].id}`,
+              { message: 'Failed to validate container' },
+            ]),
+          ),
+        )
+      }
+    })()
 
     // Submission will continue from the async check above; no synchronous submit here
   }
@@ -618,7 +617,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                 required
               />
               <Show when={carrier() === 'unknown'}>
-                <p class="mt-2 text-xs text-slate-500">{t(keys.createProcess.unknownCarrierWarning)}</p>
+                <p class="mt-2 text-xs text-slate-500">
+                  {t(keys.createProcess.unknownCarrierWarning)}
+                </p>
               </Show>
             </div>
             <FormInput
@@ -645,12 +646,17 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             disabled={isSubmitDisabled()}
             aria-disabled={isSubmitDisabled()}
             title={isSubmitDisabled() ? submitTooltip() : undefined}
-            class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${isSubmitDisabled()
-              ? 'opacity-50 cursor-not-allowed hover:bg-slate-900'
-              : 'hover:bg-slate-800'
-              }`}
+            class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${
+              isSubmitDisabled()
+                ? 'opacity-50 cursor-not-allowed hover:bg-slate-900'
+                : 'hover:bg-slate-800'
+            }`}
           >
-            {t(props.mode === 'edit' ? keys.createProcess.action.update : keys.createProcess.action.create)}
+            {t(
+              props.mode === 'edit'
+                ? keys.createProcess.action.update
+                : keys.createProcess.action.create,
+            )}
           </button>
         </div>
       </form>
