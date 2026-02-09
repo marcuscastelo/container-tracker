@@ -530,7 +530,7 @@ async function handleMaersk({ params, request }: APIEvent) {
 
     // Prefer saving canonical F1 shipment like the generic /api/refresh route.
     // parsedJson is the JSON payload intercepted from Maersk; save it as a snapshot.
-    const statusData: unknown = parsedJson || { raw: captured.body }
+    const payload: unknown = parsedJson || { raw: captured.body }
 
     try {
       // Look up the container in our DB to get its UUID
@@ -541,7 +541,7 @@ async function handleMaersk({ params, request }: APIEvent) {
           containerRecord.id,
           container,
           'maersk',
-          statusData,
+          payload,
           null,
         )
         console.log(
