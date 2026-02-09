@@ -39,15 +39,11 @@ export function loadProjectResources() {
     const mod: unknown = modules[path]
     let translation: Record<string, unknown> | undefined = undefined
     // Use zod to safely parse module shape (some bundlers return { default: {...} })
-    const modRec = safeParseOrDefault(mod, referenceSchema.parse, null)
+    const modRec = safeParseOrDefault(mod, referenceSchema, null)
     if (modRec) {
       // modRec may be a record or an object with a `default` property depending on bundler
       if (hasDefaultProp(modRec) && typeof modRec.default === 'object' && modRec.default !== null) {
-        const def = safeParseOrDefault(
-          modRec.default,
-          z.record(z.string(), z.unknown()).parse,
-          null,
-        )
+        const def = safeParseOrDefault(modRec.default, z.record(z.string(), z.unknown()), null)
         if (def) translation = def
       } else if (isRecord(modRec)) {
         translation = modRec

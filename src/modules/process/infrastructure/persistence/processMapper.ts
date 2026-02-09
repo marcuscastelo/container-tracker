@@ -17,13 +17,13 @@ export const processMappers = {
     return {
       id: String(row.id),
       reference: row.reference == null ? null : String(row.reference),
-      operation_type: safeParseOrDefault(row.operation_type, OperationTypeSchema.parse, 'unknown'),
-      origin: safeParseOrDefault(row.origin, PlannedLocation.parse, null),
-      destination: safeParseOrDefault(row.destination, PlannedLocation.parse, null),
-      carrier: safeParseOrDefault(row.carrier, CarrierSchema.parse, null),
+      operation_type: safeParseOrDefault(row.operation_type, OperationTypeSchema, 'unknown'),
+      origin: safeParseOrDefault(row.origin, PlannedLocation, null),
+      destination: safeParseOrDefault(row.destination, PlannedLocation, null),
+      carrier: safeParseOrDefault(row.carrier, CarrierSchema, null),
       bill_of_lading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
       booking_reference: row.booking_reference == null ? null : String(row.booking_reference),
-      source: safeParseOrDefault(row.source, ProcessSourceSchema.parse, 'manual'),
+      source: safeParseOrDefault(row.source, ProcessSourceSchema, 'manual'),
       created_at: new Date(String(row.created_at)),
       updated_at: new Date(String(row.updated_at)),
     } satisfies Process

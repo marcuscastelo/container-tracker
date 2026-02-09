@@ -28,7 +28,7 @@ export function mapParsedStatusToF1(
     // Attempt to read common fields from parsed payload
     const p: Record<string, unknown> = safeParseOrDefault(
       parsed,
-      z.record(z.string(), z.unknown()).parse,
+      z.record(z.string(), z.unknown()),
       {},
     )
     const shipmentId = String(p?.process_id ?? p?.process ?? `ship-${normalizedContainerNumber}`)
@@ -43,14 +43,14 @@ export function mapParsedStatusToF1(
       const arr = containersRaw
       c =
         (arr.find((ci) => {
-          const ciRec = safeParseOrDefault(ci, z.record(z.string(), z.unknown()).parse, null)
+          const ciRec = safeParseOrDefault(ci, z.record(z.string(), z.unknown()), null)
           if (!ciRec) return false
           const num = upperTrim(
             ciRec?.container_number ?? ciRec?.container_no ?? ciRec?.ContainerNumber ?? '',
           )
           return num === normalizedContainerNumber
         }) satisfies Record<string, unknown> | undefined) ??
-        safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()).parse, null)
+        safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()), null)
     }
     // fallback to top-level fields
     if (!c) c = p
@@ -126,7 +126,7 @@ export function mapParsedStatusToF1(
       ? events.map((ev) => {
           const evObj: Record<string, unknown> = safeParseOrDefault(
             ev,
-            z.record(z.string(), z.unknown()).parse,
+            z.record(z.string(), z.unknown()),
             {},
           )
           const rawEventTime = evObj?.event_time ?? evObj?.Date ?? evObj?.DateString ?? undefined
@@ -189,7 +189,7 @@ export function mapParsedStatusToF1(
       // p is a loose object; safely read nested source.api if present
       carrier: (() => {
         const src = p?.source
-        const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()).parse, null)
+        const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()), null)
         if (srcRec) {
           const apiVal = srcRec['api']
           if (typeof apiVal === 'string') return apiVal

@@ -127,7 +127,7 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
 
             const raw = ev.raw
             // Safely pick description/activity from raw carrier payloads
-            const rawObj = safeParseOrDefault(raw, z.record(z.string(), z.unknown()).parse, null)
+            const rawObj = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
             const rawDescription = rawObj
               ? typeof rawObj['Description'] === 'string'
                 ? rawObj['Description']

@@ -206,13 +206,9 @@ export function Dashboard(): JSX.Element {
       console.error('Failed to create process:', err)
       // Type guard for the structured API conflict payload
       if (err && typeof err === 'object') {
-        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()).parse, null)
+        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()), null)
         if (body && 'existing' in body && isRecord(body)) {
-          const ex = safeParseOrDefault(
-            body['existing'],
-            z.record(z.string(), z.unknown()).parse,
-            null,
-          )
+          const ex = safeParseOrDefault(body['existing'], z.record(z.string(), z.unknown()), null)
           if (ex) {
             const processId = String(ex.processId ?? ex.process_id ?? '')
             const containerId = String(ex.containerId ?? ex.container_id ?? '')
@@ -263,14 +259,14 @@ export function Dashboard(): JSX.Element {
             message={(() => {
               const v = createError()
               if (typeof v === 'string') return v
-              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
               if (body && isRecord(body) && typeof body['message'] === 'string')
                 return String(body['message'])
               return ''
             })()}
             existing={(() => {
               const v = createError()
-              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
               if (body) {
                 return {
                   processId: String(body.processId ?? body.process_id ?? ''),

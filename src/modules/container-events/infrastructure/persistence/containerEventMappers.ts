@@ -7,18 +7,19 @@ import type { Database } from '~/shared/supabase/database.types'
 type ContainerEventRow = Database['public']['Tables']['container-events']['Row']
 type ContainerEventInsert = Database['public']['Tables']['container-events']['Insert']
 
-// TODO: Move to type utils
+type SafeParseResult<T> = { success: true; data: T } | { success: false; error: unknown }
+
 export function safeParseOrDefault<T>(
   value: unknown,
-  parser: (v: unknown) => T,
+  schema: { safeParse: (v: unknown) => SafeParseResult<T> },
   defaultValue: T,
 ): T {
-  try {
-    return parser(value)
-  } catch (e) {
-    console.warn('Failed to parse value, using default:', { value, error: e })
-    return defaultValue
-  }
+  const result = schema.safeParse(value)
+  if (result && result.success) return result.data
+
+  // Keep a helpful warning for debugging but avoid throwing
+  console.warn('Failed to parse value, using default:', { value, error: (result as any)?.error })
+  return defaultValue
 }
 
 export const containerEventMappers = {
@@ -35,12 +36,12 @@ export const containerEventMappers = {
     id: row.id,
     container_number: row.container_number,
     event_time: row.event_time,
-    type: safeParseOrDefault(row.type, EventTypeSchema.parse, 'INVALID'),
-    source: safeParseOrDefault(row.source, EventSourceSchema.parse, {
+    type: safeParseOrDefault(row.type, EventTypeSchema, 'INVALID'),
+    source: safeParseOrDefault(row.source, EventSourceSchema, {
       type: 'error',
       details: `Row could not be parsed into valid EventSource: ${JSON.stringify(row)}`,
     }),
-    actuality: safeParseOrDefault(row.actuality, EventActualitySchema.parse, 'UNKNOWN'),
+    actuality: safeParseOrDefault(row.actuality, EventActualitySchema, 'UNKNOWN'),
   }),
 
   fromRows: (rows: ContainerEventRow[]): ContainerEvent[] =>

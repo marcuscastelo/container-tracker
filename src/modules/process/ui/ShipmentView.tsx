@@ -141,13 +141,9 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         if (newId) navigate(`/shipments/${newId}`)
       } catch (err) {
         if (err instanceof TypedFetchError && err.status === 409) {
-          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()).parse, null)
+          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()), null)
           if (body && 'existing' in body) {
-            const existing = safeParseOrDefault(
-              body.existing,
-              z.record(z.string(), z.unknown()).parse,
-              null,
-            )
+            const existing = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
             if (existing) {
               const processId = String(existing.processId ?? existing.process_id ?? '')
               setIsCreateDialogOpen(false)
@@ -203,13 +199,9 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         setIsEditOpen(false)
       } catch (err) {
         if (err instanceof TypedFetchError && err.status === 409) {
-          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()).parse, null)
+          const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()), null)
           if (body && 'existing' in body) {
-            const existing = safeParseOrDefault(
-              body.existing,
-              z.record(z.string(), z.unknown()).parse,
-              null,
-            )
+            const existing = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
             if (existing) {
               const processId = String(existing.processId ?? existing.process_id ?? '')
               setIsEditOpen(false)
@@ -231,13 +223,9 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       console.error('Failed to update process:', err)
       // Show structured existing conflict if present
       if (err && typeof err === 'object') {
-        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()).parse, null)
+        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()), null)
         if (body && 'existing' in body) {
-          const ex = safeParseOrDefault(
-            body.existing,
-            z.record(z.string(), z.unknown()).parse,
-            null,
-          )
+          const ex = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
           if (ex) {
             setCreateError({
               message: String(
@@ -322,13 +310,13 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
             message={(() => {
               const v = createError()
               if (typeof v === 'string') return v
-              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
               if (body && typeof body.message === 'string') return body.message
               return ''
             })()}
             existing={(() => {
               const v = createError()
-              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
+              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
               if (body) {
                 return {
                   processId: String(body.processId ?? body.process_id ?? ''),
