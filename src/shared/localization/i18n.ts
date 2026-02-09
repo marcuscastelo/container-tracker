@@ -1,7 +1,7 @@
 // Initialize i18next with discovered resources
 import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
-import { createRoot, createSignal } from 'solid-js'
+import { createRoot, createSignal, onMount } from 'solid-js'
 import { loadProjectResources } from '~/shared/localization/resources'
 
 // If the user previously selected a language, prefer that (persisted in localStorage)
@@ -23,13 +23,19 @@ const localeRoot = createRoot(() => {
     interpolation: { escapeValue: false },
   }
   const [locale, setLocale] = createSignal(initialLng)
-  i18next.init(initOptions)
-  i18next.on('languageChanged', (lng) => setLocale(lng))
-  return { locale, setLocale, availableLocales }
+
+  onMount(() => {
+    console.debug('Initializing i18next with options', initOptions)
+    console.debug('Available locales:', availableLocales)
+    i18next.init(initOptions)
+    i18next.on('languageChanged', (lng) => setLocale(lng))
+  })
+
+  return { locale, availableLocales }
 })
 
 export function useTranslation() {
-  const { locale, setLocale, availableLocales } = localeRoot
+  const { locale, availableLocales } = localeRoot
   return {
     // make t reactive by reading the `locale` signal inside; this ensures Solid re-renders
     // components that call `t(...)` whenever the language changes
@@ -42,10 +48,9 @@ export function useTranslation() {
       // persist choice in localStorage (client only) and change i18next language
       if (typeof window !== 'undefined') {
         try {
-          setLocale(lng)
           localStorage.setItem('locale', lng)
         } catch {
-          // ignore storage errors (quota/private mode)
+          console.warn('Could not persist locale selection') // ignore storage errors (quota/private mode)
         }
       }
       return i18next.changeLanguage(lng)
