@@ -2,8 +2,8 @@ import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
-import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
+import { mapApiToCanonnicalEvents } from '~/modules/container-events/application/toCanonical.adapter'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -537,22 +537,11 @@ async function handleMaersk({ params, request }: APIEvent) {
         // try to coerce into Maersk API schema before calling mapper
         const p = MaerskApiSchemas.MaerskApiSchema.safeParse(parsedJson)
         const payloadToPass = p.success ? p.data : parsedJson
-        const mapped = mapParsedStatusToF1(payloadToPass, String(container), 'maersk')
-        if (mapped.ok) {
-          statusData = mapped.shipment
-          console.debug('[maersk-refresh] Mapped parsed JSON to canonical shipment', {
-            container,
-            shipmentId: mapped.shipment.id,
-            containers: Array.isArray(mapped.shipment.containers)
-              ? mapped.shipment.containers.length
-              : 0,
-            firstContainerEvents:
-              Array.isArray(mapped.shipment.containers) && mapped.shipment.containers[0]?.events
-                ? mapped.shipment.containers[0].events.length
-                : 0,
-          })
+        const mapResult = mapApiToCanonnicalEvents(payloadToPass)
+        if (mapResult.ok) {
+          statusData = mapResult.data
         } else {
-          console.warn('[maersk-refresh] Could not map parsed JSON to canonical:', mapped.error)
+          return mapResult.response
         }
       } catch (mapErr) {
         console.warn('[maersk-refresh] mapping to canonical threw error:', String(mapErr))

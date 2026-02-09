@@ -1,12 +1,11 @@
 import z4 from 'zod/v4'
+import type { ProviderContainerEvents } from '~/modules/container-events/application/toCanonical.adapter'
 import * as cmacgm from '~/modules/container-events/infrastructure/api/refresh/refresh-providers/cmacgm'
 import * as msc from '~/modules/container-events/infrastructure/api/refresh/refresh-providers/msc'
 
 export type ProviderHandler = {
   name: string
-  fetchStatus: (
-    container: string,
-  ) => Promise<{ parsedStatus?: Record<string, unknown>; raw?: string }>
+  fetchStatus: (container: string) => Promise<{ apiEvents?: ProviderContainerEvents; raw?: string }>
 }
 
 const PROVIDERS = {

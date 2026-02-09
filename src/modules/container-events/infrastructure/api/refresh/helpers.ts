@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type z4 from 'zod/v4'
 import { alertUseCases } from '~/modules/alert'
 import type { NewContainer } from '~/modules/container/domain/container'
+import type { ProviderContainerEvents } from '~/modules/container-events/application/toCanonical.adapter'
 import type { getRestProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
 import { CarrierSchema } from '~/modules/process/domain/value-objects'
@@ -24,27 +25,32 @@ export function respondWithSchema<T>(
 }
 
 // TODO: Test if sanitizeValue is actually needed or if we can remove it
-function sanitizeValue(v: unknown): unknown {
+function sanitizeValue<T>(v: T): T {
   if (typeof v === 'string') {
     // Remove literal backslash-u0000 sequences and actual NUL characters
+    // @ts-expect-error
     return v.replace(/\\u0000/g, '').replace(/\u0000/g, '')
   }
+  // @ts-expect-error
   if (Array.isArray(v)) return v.map(sanitizeValue)
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {}
     for (const [k, val] of Object.entries(v)) {
       out[k] = sanitizeValue(val)
     }
+    // @ts-expect-error
     return out
   }
   return v
 }
 
-export async function fetchAndSanitizeContainerEvents(
+type Result<T> = { ok: true; data: T } | { ok: false; response: Response }
+
+export async function fetchAndSanitizeApiEvents(
   handler: NonNullable<ReturnType<typeof getRestProvider>>,
   container: string,
-) {
-  let result: { parsedEvents?: Record<string, unknown>; raw?: string } | undefined
+): Promise<Result<{ apiEvents?: ProviderContainerEvents; raw?: string }>> {
+  let result: { apiEvents?: ProviderContainerEvents; raw?: string } | undefined
   try {
     console.debug(
       `refresh: invoking handler for provider='${handler.name}' container='${container}'`,
@@ -52,18 +58,20 @@ export async function fetchAndSanitizeContainerEvents(
     result = await handler.fetchStatus(String(container))
   } catch (err) {
     console.error('refresh: provider fetch failed', err)
-    return { error: `provider fetch failed: ${String(err)}` }
+    return {
+      ok: false,
+      response: new Response(JSON.stringify({ error: 'provider fetch failed' }), { status: 502 }),
+    }
   }
 
-  const sanitized = sanitizeValue(
-    result?.parsedEvents ?? (typeof result?.raw === 'string' ? { raw: result.raw } : { raw: '' }),
-  )
+  let sanitized: ProviderContainerEvents | undefined = undefined
+  if (result?.apiEvents) {
+    sanitized = sanitizeValue(result.apiEvents)
+  }
 
-  // Ensure we return a record (parsed payload). sanitizeValue may return nested arrays/values,
-  // so coerce safely to a record using zod via safeParseOrDefault to avoid leaking 'unknown'.
-  const parsedEvents = safeParseOrDefault(sanitized, z.record(z.string(), z.unknown()), {})
+  let raw = result?.raw
 
-  return { parsedEvents }
+  return { ok: true, data: { apiEvents: sanitized, raw } }
 }
 
 // TODO: Review canonicall shipment schema, probably deprecated

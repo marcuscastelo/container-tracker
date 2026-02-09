@@ -1,13 +1,15 @@
 import type z4 from 'zod/v4'
-import type { ProviderApiPayload } from '~/modules/container/application/toCanonical.adapter'
-import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 import type { F1Shipment } from '~/modules/container/domain/schemas/canonical.schema'
 import * as CmaApiSchemas from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
 import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
 import * as MscApiSchemas from '~/modules/container/infrastructure/schemas/api/msc.api.schema'
+import {
+  mapApiToCanonnicalEvents,
+  type ProviderContainerEvents,
+} from '~/modules/container-events/application/toCanonical.adapter'
 import { ingestCanonicalShipment } from '~/modules/container-events/infrastructure/api/refresh/api'
 import {
-  fetchAndSanitizeContainerEvents,
+  fetchAndSanitizeApiEvents,
   respondWithSchema,
 } from '~/modules/container-events/infrastructure/api/refresh/helpers'
 import { getRestProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
@@ -46,20 +48,17 @@ export async function POST({ request }: { request: Request }) {
       )
     }
 
-    const { parsedEvents: rawEvents, error: fetchError } = await fetchAndSanitizeContainerEvents(
-      handler,
-      container,
-    )
-    if (fetchError) {
-      return respondWithSchema({ error: fetchError }, RefreshSchemas.responses.error, 502)
+    const fetchResult = await fetchAndSanitizeApiEvents(handler, container)
+    if (!fetchResult.ok) {
+      return fetchResult.response
     }
-    if (!rawEvents) {
+    if (!fetchResult.data.apiEvents) {
       console.error('refresh: no events fetched')
       return respondWithSchema({ error: 'no events fetched' }, RefreshSchemas.responses.error, 502)
     }
 
     console.debug(`refresh: fetched events for provider='${provider}' container='${container}'`)
-    const mappedResult = mapStatusToCanonical(rawEvents, container, provider)
+    const mappedResult = mapApiToCanonnicalEvents(fetchResult.data.apiEvents)
     if (!mappedResult.ok) {
       console.error('refresh: mapping to canonical failed', mappedResult.response)
       return mappedResult.response
@@ -67,10 +66,10 @@ export async function POST({ request }: { request: Request }) {
     console.debug(
       `refresh: mapped to canonical for provider='${provider}' container='${container}'`,
     )
-    console.debug(`refresh: cannonical shipment:`, mappedResult.shipment)
+    console.debug(`refresh: cannonical shipment:`, mappedResult.data)
 
     try {
-      await ingestCanonicalShipment(mappedResult.shipment, container)
+      await ingestCanonicalShipment(mappedResult.data, container)
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
       return respondWithSchema(
@@ -120,46 +119,6 @@ async function parseRequestData(
       ),
     }
   }
-}
-
-function mapStatusToCanonical(
-  rawEvents: Record<string, unknown>,
-  container: string,
-  provider: string,
-): { ok: true; shipment: F1Shipment } | { ok: false; response: Response } {
-  const parsed = rawEvents ?? {}
-
-  let payloadToPass: ProviderApiPayload | Record<string, unknown> = parsed
-
-  try {
-    if (provider === 'maersk') {
-      const p = MaerskApiSchemas.MaerskApiSchema.safeParse(parsed)
-      if (p.success) payloadToPass = p.data
-    } else if (provider === 'msc') {
-      const p = MscApiSchemas.MscApiSchema.safeParse(parsed)
-      if (p.success) payloadToPass = p.data
-    } else if (provider === 'cmacgm' || provider === 'cma-cgm') {
-      const p = CmaApiSchemas.CmaCgmApiSchema.safeParse(parsed)
-      if (p.success) payloadToPass = p.data
-    }
-  } catch {
-    // swallow parsing errors and fall back to raw parsed payload
-    payloadToPass = parsed
-  }
-
-  const mapped = mapParsedStatusToF1(payloadToPass, String(container), provider)
-  if (!mapped.ok) {
-    console.error('refresh: mapping to canonical failed', mapped.error)
-    return {
-      ok: false,
-      response: respondWithSchema(
-        { error: `mapping to canonical failed: ${mapped.error}` },
-        RefreshSchemas.responses.error,
-        500,
-      ),
-    }
-  }
-  return { ok: true, shipment: mapped.shipment }
 }
 
 export const GET = () => respondWithSchema({ ok: true }, RefreshSchemas.responses.health, 200)
