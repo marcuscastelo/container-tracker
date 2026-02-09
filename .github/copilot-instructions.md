@@ -298,3 +298,6 @@ Antes de gerar código, o Copilot deve se perguntar:
 ---
 
 **Se houver dúvida, priorize clareza, rastreabilidade e fidelidade operacional.**
+
+Use o seguinte documento como referência canônica para decisões de implementação, arquitetura e UX. Ele é a “bíblia” do projeto e deve ser seguido rigorosamente para garantir consistência e qualidade.
+[Container Tracking Platform — Master Technical & Product Document (0209)](../docs/master-consolidated-0209.md)
