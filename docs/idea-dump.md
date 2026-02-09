@@ -1,6 +1,7 @@
 # Ideas
 Assim que o processo for criado e ele redirecionado, o usuario poderia ver algo como "ultima edicao há 1s, 2s, 3s etc" para ter o feedback imediato de que a criacao foi bem sucedida. As vezes o usuario nao tem certeza se trocou de processo, principalmente se o processo novo for parecido com o anterior, e isso daria um feedback visual imediato.
 Plano futuro: deixar templates de email prontos para serem preenchidos para alertas específicos, como transbordo, atraso, etc. para facilitar a comunicação com os clientes, terminal, etc.
+Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar identificar o armador, testando APIs em ordem de probabilidade (maersk, then hapag, etc) e caso o container seja encontrado em alguma delas, atualizar o processo com o armador identificado e os dados retornados. Risco: Processo com containers de 2 armadores diferentes, mas isso hoje é tratado como impossível. Revisar.
 
 # Refine
 
