@@ -8,6 +8,17 @@ import { formatParseError } from '~/shared/utils/formatParseError'
 const TABLE = 'container_observations' as const
 
 type ObservationRow = Tables<'container_observations'>
+// TODO: Deduplicate date normalization logic with supabaseSnapshotRepository. Maybe a shared utility for normalizing timestamptz values from Supabase?
+function normalizeDatetime(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'number') return new Date(value).toISOString()
+  if (typeof value === 'string') {
+    const d = new Date(value)
+    if (!Number.isNaN(d.getTime())) return d.toISOString()
+    return value
+  }
+  return value
+}
 
 function rowToObservation(row: ObservationRow): Observation {
   const result = ObservationSchema.safeParse({
@@ -16,7 +27,7 @@ function rowToObservation(row: ObservationRow): Observation {
     container_id: row.container_id,
     container_number: row.container_number,
     type: row.type,
-    event_time: row.event_time,
+    event_time: normalizeDatetime(row.event_time),
     location_code: row.location_code,
     location_display: row.location_display,
     vessel_name: row.vessel_name,
@@ -25,7 +36,7 @@ function rowToObservation(row: ObservationRow): Observation {
     confidence: row.confidence,
     provider: row.provider,
     created_from_snapshot_id: row.created_from_snapshot_id,
-    created_at: row.created_at,
+    created_at: normalizeDatetime(row.created_at),
     retroactive: row.retroactive,
   })
 
@@ -39,13 +50,12 @@ function rowToObservation(row: ObservationRow): Observation {
 export const supabaseObservationRepository: ObservationRepository = {
   async insertMany(observations: readonly NewObservation[]): Promise<readonly Observation[]> {
     if (observations.length === 0) return []
-
     const rows = observations.map((obs) => ({
       fingerprint: obs.fingerprint,
       container_id: obs.container_id,
       container_number: obs.container_number,
       type: obs.type,
-      event_time: obs.event_time,
+      event_time: obs.event_time == null ? obs.event_time : normalizeDatetime(obs.event_time),
       location_code: obs.location_code,
       location_display: obs.location_display,
       vessel_name: obs.vessel_name,
