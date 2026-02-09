@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
+import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -533,7 +534,10 @@ async function handleMaersk({ params, request }: APIEvent) {
     let statusData: unknown = parsedJson || { raw: captured.body }
     if (parsedJson) {
       try {
-        const mapped = mapParsedStatusToF1(parsedJson, String(container), 'maersk')
+        // try to coerce into Maersk API schema before calling mapper
+        const p = MaerskApiSchemas.MaerskApiSchema.safeParse(parsedJson)
+        const payloadToPass = p.success ? p.data : parsedJson
+        const mapped = mapParsedStatusToF1(payloadToPass, String(container), 'maersk')
         if (mapped.ok) {
           statusData = mapped.shipment
           console.debug('[maersk-refresh] Mapped parsed JSON to canonical shipment', {

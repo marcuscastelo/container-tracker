@@ -4,6 +4,7 @@ import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical
 import { cmacgmToNormalized } from '~/modules/container/infrastructure/adapters/api/cmacgm.adapter'
 import { maerskToNormalized } from '~/modules/container/infrastructure/adapters/api/maersk.adapter'
 import { mscToNormalized } from '~/modules/container/infrastructure/adapters/api/msc.adapter'
+import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
 
 function loadExample(name: string) {
   const p = path.resolve(process.cwd(), 'examples', name)
@@ -47,7 +48,10 @@ async function run() {
   // toCanonical: use maersk example as parsed payload for mapParsedStatusToF1
   try {
     const parsed = loadExample('maersk.json')
-    const res = mapParsedStatusToF1(parsed, 'MNBU3094033', 'maersk')
+    // try to coerce the example into the Maersk API schema before calling the mapper
+    const p = MaerskApiSchemas.MaerskApiSchema.safeParse(parsed)
+    const payloadToPass = p.success ? p.data : parsed
+    const res = mapParsedStatusToF1(payloadToPass, 'MNBU3094033', 'maersk')
     console.log('toCanonical result ok:', res.ok)
     if (!res.ok) console.error('toCanonical error:', res.error)
     else console.log('toCanonical containers:', res.shipment.containers.length)

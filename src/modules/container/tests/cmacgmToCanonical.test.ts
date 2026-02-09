@@ -3,6 +3,7 @@ import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 import { cmacgmToNormalized } from '~/modules/container/infrastructure/adapters/api/cmacgm.adapter'
+import * as CmaApiSchemas from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
 
 function loadExample(name: string) {
   const p = path.resolve(process.cwd(), 'examples', name)
@@ -43,8 +44,10 @@ describe('cmacgm provider -> canonical mapping', () => {
       raw: parsedJson,
     }
 
+    const p = CmaApiSchemas.CmaCgmApiSchema.safeParse(parsedStatus)
+    const payloadToPass = p.success ? p.data : parsedStatus
     const res = mapParsedStatusToF1(
-      parsedStatus,
+      payloadToPass,
       String(containers[0]?.container_number ?? 'unknown'),
       'cmacgm',
     )

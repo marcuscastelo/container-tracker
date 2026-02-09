@@ -1,6 +1,10 @@
 import type z4 from 'zod/v4'
+import type { ProviderApiPayload } from '~/modules/container/application/toCanonical.adapter'
 import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical.adapter'
 import type { F1Shipment } from '~/modules/container/domain/schemas/canonical.schema'
+import * as CmaApiSchemas from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
+import * as MaerskApiSchemas from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
+import * as MscApiSchemas from '~/modules/container/infrastructure/schemas/api/msc.api.schema'
 import { ingestCanonicalShipment } from '~/modules/container-events/infrastructure/api/refresh/api'
 import {
   fetchAndSanitizeContainerEvents,
@@ -123,7 +127,27 @@ function mapStatusToCanonical(
   container: string,
   provider: string,
 ): { ok: true; shipment: F1Shipment } | { ok: false; response: Response } {
-  const mapped = mapParsedStatusToF1(rawEvents, String(container), provider)
+  const parsed = rawEvents ?? {}
+
+  let payloadToPass: ProviderApiPayload | Record<string, unknown> = parsed
+
+  try {
+    if (provider === 'maersk') {
+      const p = MaerskApiSchemas.MaerskApiSchema.safeParse(parsed)
+      if (p.success) payloadToPass = p.data
+    } else if (provider === 'msc') {
+      const p = MscApiSchemas.MscApiSchema.safeParse(parsed)
+      if (p.success) payloadToPass = p.data
+    } else if (provider === 'cmacgm' || provider === 'cma-cgm') {
+      const p = CmaApiSchemas.CmaCgmApiSchema.safeParse(parsed)
+      if (p.success) payloadToPass = p.data
+    }
+  } catch {
+    // swallow parsing errors and fall back to raw parsed payload
+    payloadToPass = parsed
+  }
+
+  const mapped = mapParsedStatusToF1(payloadToPass, String(container), provider)
   if (!mapped.ok) {
     console.error('refresh: mapping to canonical failed', mapped.error)
     return {
