@@ -4,6 +4,7 @@ import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepos
 import { toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import { formatParseError } from '~/shared/utils/formatParseError'
 
 const TABLE = 'container_snapshots' as const
 
@@ -20,7 +21,7 @@ function rowToSnapshot(row: SnapshotRow): Snapshot {
   })
 
   if (!result.success) {
-    throw new Error(`Invalid snapshot row: ${JSON.stringify(result.error)}`)
+    throw new Error(`Invalid snapshot row:\n${formatParseError(result.error)}`)
   }
 
   return result.data

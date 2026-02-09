@@ -3,6 +3,7 @@ import { ObservationSchema } from '~/modules/tracking/domain/observation'
 import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import { formatParseError } from '~/shared/utils/formatParseError'
 
 const TABLE = 'container_observations' as const
 
@@ -29,7 +30,7 @@ function rowToObservation(row: ObservationRow): Observation {
   })
 
   if (!result.success) {
-    throw new Error(`Invalid observation row: ${JSON.stringify(result.error)}`)
+    throw new Error(`Invalid observation row:\n${formatParseError(result.error)}`)
   }
 
   return result.data

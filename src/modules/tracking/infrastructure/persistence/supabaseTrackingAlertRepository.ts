@@ -4,6 +4,7 @@ import type { TrackingAlertRepository } from '~/modules/tracking/domain/tracking
 import { stringsToJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import { formatParseError } from '~/shared/utils/formatParseError'
 
 const TABLE = 'tracking_alerts' as const
 
@@ -35,7 +36,7 @@ function rowToAlert(row: TrackingAlertRow): TrackingAlert {
   })
 
   if (!result.success) {
-    throw new Error(`Invalid tracking alert row: ${JSON.stringify(result.error)}`)
+    throw new Error(`Invalid tracking alert row:\n${formatParseError(result.error)}`)
   }
 
   return result.data
