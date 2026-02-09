@@ -1,14 +1,11 @@
 # modules/container
 
-Purpose: container domain (status derivation, canonical mapping, adapters).
+Purpose: container entity types and persistence (CRUD).
 
 Structure:
-- domain/
-- application/
-- infrastructure/
-- index.ts
+- domain/container.ts — Container & NewContainer types
+- infrastructure/persistence/ — Supabase repository & mapper
 
 Notes:
-- Keep domain pure and fully typed.
-- Adapters live under `infrastructure/adapters`.
-- Read tests under `tests/`.
+- Tracking logic (snapshots, observations, alerts, status derivation) lives in `modules/tracking`.
+- Carrier API schemas and normalizers also live in `modules/tracking`.

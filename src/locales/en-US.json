@@ -118,6 +118,50 @@
       "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it"
     }
   },
+  "tracking": {
+    "status": {
+      "UNKNOWN": "Awaiting data",
+      "IN_PROGRESS": "In Progress",
+      "LOADED": "Loaded",
+      "IN_TRANSIT": "In Transit",
+      "ARRIVED_AT_POD": "Arrived at POD",
+      "DISCHARGED": "Discharged",
+      "AVAILABLE_FOR_PICKUP": "Available for Pickup",
+      "DELIVERED": "Delivered",
+      "EMPTY_RETURNED": "Empty Returned"
+    },
+    "observationType": {
+      "GATE_IN": "Gate In",
+      "GATE_OUT": "Gate Out",
+      "LOAD": "Loaded on Vessel",
+      "DEPARTURE": "Vessel Departed",
+      "ARRIVAL": "Arrived at Port",
+      "DISCHARGE": "Discharged from Vessel",
+      "DELIVERY": "Delivered",
+      "EMPTY_RETURN": "Empty Returned",
+      "CUSTOMS_HOLD": "Customs Hold",
+      "CUSTOMS_RELEASE": "Customs Released",
+      "OTHER": "Other"
+    },
+    "alertType": {
+      "TRANSSHIPMENT": "Transshipment Detected",
+      "CUSTOMS_HOLD": "Customs Hold",
+      "PORT_CHANGE": "Port Change",
+      "NO_MOVEMENT": "No Movement",
+      "ETA_PASSED": "ETA Passed",
+      "ETA_MISSING": "ETA Missing",
+      "DATA_INCONSISTENT": "Data Inconsistency"
+    },
+    "alertCategory": {
+      "fact": "Fact",
+      "monitoring": "Monitoring"
+    },
+    "alertSeverity": {
+      "info": "Info",
+      "warning": "Warning",
+      "danger": "Critical"
+    }
+  },
   "about": {
     "page": "About Page"
   },

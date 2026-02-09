@@ -37,6 +37,8 @@ export function AlertIcon(props: { readonly type: AlertDisplay['type'] }): JSX.E
         return 'text-amber-500'
       case 'missing-eta':
         return 'text-amber-500'
+      case 'transshipment':
+        return 'text-orange-500'
       default:
         return 'text-blue-500'
     }

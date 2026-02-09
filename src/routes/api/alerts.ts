@@ -1,5 +1,12 @@
+/**
+ * Alerts API route — powered by the tracking module.
+ *
+ * GET /api/alerts?container_id=<uuid> — List active alerts for a container
+ * PATCH /api/alerts — Acknowledge or dismiss an alert
+ */
+
 import { z } from 'zod'
-import { alertUseCases } from '~/modules/alert'
+import { trackingUseCases } from '~/modules/tracking'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {
@@ -9,75 +16,65 @@ function jsonResponse(data: unknown, status = 200): Response {
   })
 }
 
-// GET /api/alerts - List all active alerts
-export async function GET(): Promise<Response> {
+// GET /api/alerts?container_id=<uuid> - List active alerts for a container
+export async function GET({ request }: { request: Request }): Promise<Response> {
   try {
-    const alerts = await alertUseCases.getActiveAlerts()
+    const url = new URL(request.url)
+    const containerId = url.searchParams.get('container_id')
+    if (!containerId) {
+      return jsonResponse({ error: 'container_id query parameter is required' }, 400)
+    }
 
-    const response = alerts.map((a) => ({
-      id: a.id,
-      process_id: a.process_id,
-      container_id: a.container_id,
-      category: a.category,
-      code: a.code,
-      severity: a.severity,
-      title: a.title,
-      description: a.description,
-      state: a.state,
-      created_at: a.created_at.toISOString(),
-    }))
-
-    return jsonResponse(response)
+    // getContainerSummary needs containerNumber, but for alerts we only need containerId.
+    // We use the tracking alert repository directly via the use case.
+    // For simplicity, return the alerts portion of getContainerSummary with a placeholder containerNumber.
+    const summary = await trackingUseCases.getContainerSummary(containerId, '')
+    return jsonResponse(
+      summary.alerts.map((a) => ({
+        id: a.id,
+        category: a.category,
+        type: a.type,
+        severity: a.severity,
+        message: a.message,
+        detected_at: a.detected_at,
+        triggered_at: a.triggered_at,
+        retroactive: a.retroactive,
+        provider: a.provider,
+        acked_at: a.acked_at,
+        dismissed_at: a.dismissed_at,
+      })),
+    )
   } catch (err) {
     console.error('GET /api/alerts error:', err)
     return jsonResponse({ error: String(err) }, 500)
   }
 }
 
-// PATCH request schema for acknowledging/resolving alerts
-const PatchAlertSchema = z.object({
-  action: z.enum(['acknowledge', 'resolve']),
+const AlertActionSchema = z.object({
   alert_id: z.string(),
+  action: z.enum(['acknowledge', 'dismiss']),
 })
 
-// PATCH /api/alerts - Acknowledge or resolve an alert
+// PATCH /api/alerts - Acknowledge or dismiss an alert
 export async function PATCH({ request }: { request: Request }): Promise<Response> {
   try {
-    const rawBody = await request.json().catch(() => ({}))
-    const parsed = PatchAlertSchema.safeParse(rawBody)
-
+    const raw = await request.json().catch(() => ({}))
+    const parsed = AlertActionSchema.safeParse(raw)
     if (!parsed.success) {
       return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
     }
 
-    const { action, alert_id } = parsed.data
+    const { alert_id, action } = parsed.data
 
-    let alert
     if (action === 'acknowledge') {
-      alert = await alertUseCases.acknowledgeAlert(alert_id)
+      await trackingUseCases.acknowledgeAlert(alert_id)
     } else {
-      alert = await alertUseCases.resolveAlert(alert_id)
+      await trackingUseCases.dismissAlert(alert_id)
     }
 
-    return jsonResponse({
-      id: alert.id,
-      state: alert.state,
-      acknowledged_at: alert.acknowledged_at?.toISOString() ?? null,
-      resolved_at: alert.resolved_at?.toISOString() ?? null,
-    })
+    return jsonResponse({ ok: true, alert_id, action })
   } catch (err) {
     console.error('PATCH /api/alerts error:', err)
-    return jsonResponse({ error: String(err) }, 500)
-  }
-}
-
-// POST /api/alerts/cleanup - Cleanup expired alerts (for cron jobs)
-export async function POST(): Promise<Response> {
-  try {
-    const deletedCount = await alertUseCases.cleanupExpiredAlerts()
-    return jsonResponse({ deleted: deletedCount })
-  } catch (err) {
-    console.error('POST /api/alerts/cleanup error:', err)
     return jsonResponse({ error: String(err) }, 500)
   }
 }

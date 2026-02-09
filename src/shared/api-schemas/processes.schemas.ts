@@ -26,8 +26,45 @@ export const ProcessListResponseSchema = z.array(ProcessResponseSchema)
 
 export const ErrorResponseSchema = z.object({ error: z.string() })
 
+/**
+ * Observation shape as returned in the API.
+ * Maps directly from the tracking domain Observation.
+ */
+export const ObservationResponseSchema = z.object({
+  id: z.string(),
+  fingerprint: z.string(),
+  type: z.string(),
+  event_time: z.string().nullable(),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  is_empty: z.boolean().nullable(),
+  confidence: z.string(),
+  provider: z.string(),
+  retroactive: z.boolean().optional(),
+  created_at: z.string(),
+})
+
+/**
+ * Tracking alert shape as returned in the API.
+ * Maps from the tracking domain TrackingAlert.
+ */
+export const TrackingAlertResponseSchema = z.object({
+  id: z.string(),
+  category: z.string(),
+  type: z.string(),
+  severity: z.string(),
+  message: z.string(),
+  detected_at: z.string(),
+  triggered_at: z.string(),
+  retroactive: z.boolean(),
+  provider: z.string().nullable(),
+  acked_at: z.string().nullable(),
+  dismissed_at: z.string().nullable(),
+})
+
 export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
-  // The detailed view includes richer container info and alerts
   bl_reference: z.string().nullish().optional(),
   containers: z.array(
     z.object({
@@ -36,35 +73,14 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       carrier_code: z.string().nullish(),
       container_type: z.string().nullish(),
       container_size: z.string().nullish(),
-      eta: z.string().nullish().optional(),
-      events: z
-        .array(
-          z.object({
-            id: z.string().optional(),
-            activity: z.string().optional(),
-            event_time: z.string().nullable().optional(),
-            event_time_type: z.string().nullable().optional(),
-            location: z.string().nullable().optional(),
-            raw: z.unknown().optional(),
-          }),
-        )
-        .optional(),
+      /** Derived container status (from tracking pipeline) */
+      status: z.string().optional(),
+      /** Observations for this container (ordered by event_time) */
+      observations: z.array(ObservationResponseSchema).optional(),
     }),
   ),
-  alerts: z
-    .array(
-      z.object({
-        id: z.string(),
-        category: z.string(),
-        code: z.string(),
-        severity: z.string(),
-        title: z.string(),
-        description: z.string().nullable().optional(),
-        state: z.string(),
-        created_at: z.string(),
-      }),
-    )
-    .optional(),
+  /** Tracking alerts for this process (across all containers) */
+  alerts: z.array(TrackingAlertResponseSchema).optional(),
 })
 
 export const CreateProcessResponseSchema = z.object({
@@ -76,3 +92,5 @@ export type ProcessResponse = z.infer<typeof ProcessResponseSchema>
 export type ProcessListResponse = z.infer<typeof ProcessListResponseSchema>
 export type CreateProcessResponse = z.infer<typeof CreateProcessResponseSchema>
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>
+export type ObservationResponse = z.infer<typeof ObservationResponseSchema>
+export type TrackingAlertResponse = z.infer<typeof TrackingAlertResponseSchema>

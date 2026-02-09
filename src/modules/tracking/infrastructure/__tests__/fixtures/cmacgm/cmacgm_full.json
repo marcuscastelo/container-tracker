@@ -1,0 +1,159 @@
+{
+  "ContainerReference": "FSCU4565494",
+  "EstimatedTimeOfArrival": "/Date(1770092040000)/",
+  "PlaceOfLoading": "BARCELONA (ES)",
+  "LastDischargePort": "ITAGUAI, RJ (BR)",
+  "ContainerStatus": 12,
+  "PastMoves": [
+    {
+      "Date": "/Date(1764659520000)/",
+      "State": "DONE",
+      "Status": 16,
+      "Vessel": "",
+      "Voyage": "",
+      "Location": "ZARAGOZA",
+      "LocationCode": "ESZAZ",
+      "ModeOfTransport": "TRUCK",
+      "LocationTerminal": "TMZ ZARAGOZA",
+      "StatusDescription": "Empty to shipper",
+      "DateString": "Tuesday,02-DEC-2025",
+      "TimeString": "08:12 AM"
+    },
+    {
+      "Date": "/Date(1764679680000)/",
+      "State": "DONE",
+      "Status": 32,
+      "Vessel": "",
+      "Voyage": "",
+      "Location": "ZARAGOZA",
+      "LocationCode": "ESZAZ",
+      "ModeOfTransport": "TRUCK",
+      "LocationTerminal": "TMZ ZARAGOZA",
+      "StatusDescription": "Received for export transfer",
+      "DateString": "Tuesday,02-DEC-2025",
+      "TimeString": "01:48 PM"
+    },
+    {
+      "Date": "/Date(1765887180000)/",
+      "State": "DONE",
+      "Status": 2,
+      "Vessel": "CMA CGM VOLTAIRE",
+      "Voyage": "0DVNTS1MA",
+      "Location": "BARCELONA",
+      "LocationCode": "ESBCN",
+      "ModeOfTransport": "VESSEL",
+      "LocationTerminal": "BARCELONA EUROPE SOUTH TER BEST",
+      "StatusDescription": "Loaded on board",
+      "DateString": "Tuesday,16-DEC-2025",
+      "TimeString": "01:13 PM"
+    },
+    {
+      "Date": "/Date(1765919400000)/",
+      "State": "DONE",
+      "Status": 51,
+      "Vessel": "CMA CGM VOLTAIRE",
+      "Voyage": "0DVNTS1MA",
+      "Location": "BARCELONA",
+      "LocationCode": "ESBCN",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Vessel Departure",
+      "DateString": "Tuesday,16-DEC-2025",
+      "TimeString": "10:10 PM"
+    },
+    {
+      "Date": "/Date(1766448240000)/",
+      "State": "DONE",
+      "Status": 50,
+      "Vessel": "CMA CGM VOLTAIRE",
+      "Voyage": "0DVNTS1MA",
+      "Location": "TANGER MED",
+      "LocationCode": "MAPTM",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Vessel Arrival",
+      "DateString": "Tuesday,23-DEC-2025",
+      "TimeString": "01:04 AM"
+    },
+    {
+      "Date": "/Date(1766472840000)/",
+      "State": "DONE",
+      "Status": 13,
+      "Vessel": "CMA CGM VOLTAIRE",
+      "Voyage": "0DVNTS1MA",
+      "Location": "TANGER MED",
+      "LocationCode": "MAPTM",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Discharged in transhipment",
+      "DateString": "Tuesday,23-DEC-2025",
+      "TimeString": "07:54 AM"
+    },
+    {
+      "Date": "/Date(1768290780000)/",
+      "State": "DONE",
+      "Status": 4,
+      "Vessel": "CMA CGM LISA MARIE",
+      "Voyage": "0NSMJS1MA",
+      "Location": "TANGER MED",
+      "LocationCode": "MAPTM",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Loaded on board",
+      "DateString": "Tuesday,13-JAN-2026",
+      "TimeString": "08:53 AM"
+    },
+    {
+      "Date": "/Date(1768315080000)/",
+      "State": "DONE",
+      "Status": 51,
+      "Vessel": "CMA CGM LISA MARIE",
+      "Voyage": "0NSMJS1MA",
+      "Location": "TANGER MED",
+      "LocationCode": "MAPTM",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Vessel Departure",
+      "DateString": "Tuesday,13-JAN-2026",
+      "TimeString": "03:38 PM"
+    },
+    {
+      "Date": "/Date(1770092040000)/",
+      "State": "DONE",
+      "Status": 50,
+      "Vessel": "CMA CGM LISA MARIE",
+      "Voyage": "0NSMKN1MA",
+      "Location": "ITAGUAI, RJ",
+      "LocationCode": "BRIGI",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Vessel Arrival",
+      "DateString": "Tuesday,03-FEB-2026",
+      "TimeString": "05:14 AM"
+    }
+  ],
+  "CurrentMoves": [
+    {
+      "Date": "/Date(1770114300000)/",
+      "State": "CURRENT",
+      "Status": 12,
+      "Vessel": "CMA CGM LISA MARIE",
+      "Voyage": "0NSMKN1MA",
+      "Location": "ITAGUAI, RJ",
+      "LocationCode": "BRIGI",
+      "ModeOfTransport": "VESSEL",
+      "StatusDescription": "Discharged",
+      "DateString": "Tuesday,03-FEB-2026",
+      "TimeString": "11:25 AM"
+    }
+  ],
+  "ProvisionalMoves": [
+    {
+      "Date": "/Date(1764662400000)/",
+      "State": "NONE",
+      "Status": 57,
+      "Vessel": "",
+      "Voyage": "",
+      "Location": "TUDELA",
+      "LocationCode": "ESTUD",
+      "ModeOfTransport": "RAIL",
+      "StatusDescription": "Train Departure",
+      "DateString": "Tuesday,02-DEC-2025",
+      "TimeString": "09:00 AM"
+    }
+  ]
+}

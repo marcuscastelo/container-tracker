@@ -118,6 +118,50 @@
       "existingProcessSame": "O container {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele"
     }
   },
+  "tracking": {
+    "status": {
+      "UNKNOWN": "Aguardando dados",
+      "IN_PROGRESS": "Em Andamento",
+      "LOADED": "Carregado",
+      "IN_TRANSIT": "Em Trânsito",
+      "ARRIVED_AT_POD": "Chegou ao Porto",
+      "DISCHARGED": "Descarregado",
+      "AVAILABLE_FOR_PICKUP": "Disponível para Retirada",
+      "DELIVERED": "Entregue",
+      "EMPTY_RETURNED": "Vazio Devolvido"
+    },
+    "observationType": {
+      "GATE_IN": "Entrada no Terminal",
+      "GATE_OUT": "Saída do Terminal",
+      "LOAD": "Carregado no Navio",
+      "DEPARTURE": "Navio Partiu",
+      "ARRIVAL": "Chegada ao Porto",
+      "DISCHARGE": "Descarregado do Navio",
+      "DELIVERY": "Entregue",
+      "EMPTY_RETURN": "Vazio Devolvido",
+      "CUSTOMS_HOLD": "Retenção Alfandegária",
+      "CUSTOMS_RELEASE": "Liberação Alfandegária",
+      "OTHER": "Outro"
+    },
+    "alertType": {
+      "TRANSSHIPMENT": "Transbordo Detectado",
+      "CUSTOMS_HOLD": "Retenção Alfandegária",
+      "PORT_CHANGE": "Mudança de Porto",
+      "NO_MOVEMENT": "Sem Movimentação",
+      "ETA_PASSED": "ETA Ultrapassado",
+      "ETA_MISSING": "ETA Ausente",
+      "DATA_INCONSISTENT": "Inconsistência de Dados"
+    },
+    "alertCategory": {
+      "fact": "Fato",
+      "monitoring": "Monitoramento"
+    },
+    "alertSeverity": {
+      "info": "Informação",
+      "warning": "Aviso",
+      "danger": "Crítico"
+    }
+  },
   "about": {
     "page": "Sobre"
   },
