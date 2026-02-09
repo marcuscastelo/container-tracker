@@ -96,7 +96,10 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const [origin, setOrigin] = createSignal('')
   const [destination, setDestination] = createSignal('')
   const [containers, setContainers] = createStore<ContainerInput[]>([createEmptyContainer()])
-  const [carrier, setCarrier] = createSignal<Carrier>('unknown')
+  // carrier can be an empty string while the user hasn't chosen a carrier yet.
+  // We use a narrow type here and guard before submitting so the rest of the app
+  // still works with the strict `Carrier` type.
+  const [carrier, setCarrier] = createSignal<Carrier | ''>('')
   const [billOfLading, setBillOfLading] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
   const [serverErrors, setServerErrors] = createSignal<
@@ -118,7 +121,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       setOperationType(props.initialData.operationType || '')
       setOrigin(props.initialData.origin || '')
       setDestination(props.initialData.destination || '')
-      setCarrier(props.initialData.carrier || '')
+      // When editing, populate carrier; otherwise keep empty so user must choose.
+      setCarrier(props.initialData.carrier ?? '')
       setBillOfLading(props.initialData.billOfLading || '')
       setContainers(
         props.initialData.containers.length
@@ -159,6 +163,10 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       }
     }
   })
+
+  // Narrowing guard so TypeScript knows a string value is a valid Carrier
+  const isCarrier = (v: string): v is Carrier =>
+    ['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'].includes(v)
 
   const operationOptions = () => [
     { value: 'import', label: t(keys.opImport) },
@@ -266,13 +274,17 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           // If nothing to check (e.g., editing without adding new containers), skip server check
           if (containerNumbersForCheck.length === 0) {
             // proceed with submit
+            // Ensure carrier is a valid Carrier value before submitting
+            const carrierValue = carrier()
+            if (!isCarrier(carrierValue)) return
+
             const data: CreateProcessDialogFormData = {
               reference: reference(),
               operationType: operationType(),
               origin: origin(),
               destination: destination(),
               containers: containers.filter((c) => c.containerNumber.trim()),
-              carrier: carrier(),
+              carrier: carrierValue,
               billOfLading: billOfLading(),
             }
 
@@ -329,13 +341,16 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           }
 
           // No conflicts -> proceed with submit
+          const carrierValue = carrier()
+          if (!isCarrier(carrierValue)) return
+
           const data: CreateProcessDialogFormData = {
             reference: reference(),
             operationType: operationType(),
             origin: origin(),
             destination: destination(),
             containers: containers.filter((c) => c.containerNumber.trim()),
-            carrier: carrier(),
+            carrier: carrierValue,
             billOfLading: billOfLading(),
           }
 
@@ -366,7 +381,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     setOrigin('')
     setDestination('')
     setContainers([createEmptyContainer()])
-    setCarrier('unknown')
+    // Reset to the initial placeholder state so user must re-select a carrier
+    setCarrier('')
     setBillOfLading('')
     setTouched({})
     props.onClose()
@@ -383,6 +399,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     // disable when no valid containers or duplicates present
     if (!hasValidContainers()) return true
     if ((duplicateList() ?? []).length > 0) return true
+    // require carrier to be explicitly chosen (placeholder is empty string)
+    if (carrier() === '') return true
     // disable when server-side errors are present
     if (Object.keys(serverErrors() ?? {}).length > 0) return true
     return false
@@ -400,6 +418,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     if (srvKeys.length > 0) {
       return serverErrors()[srvKeys[0]]?.message ?? ''
     }
+    // require carrier selection
+    if (carrier() === '') return t(keys.carrierPlaceholder)
     if (!hasValidContainers()) {
       return t(keys.containerNumberRequired)
     }
@@ -638,6 +658,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                 onInput={setCarrier}
                 options={carrierOptions()}
                 placeholder={t(keys.carrierPlaceholder)}
+                required
               />
               <Show when={carrier() === 'unknown'}>
                 <p class="mt-2 text-xs text-slate-500">{t(keys.unknownCarrierWarning)}</p>
