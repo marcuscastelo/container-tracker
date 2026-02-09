@@ -15,11 +15,6 @@ const NORMALIZERS: Record<Provider, (snapshot: Snapshot) => ObservationDraft[]> 
   msc: normalizeMscSnapshot,
   maersk: normalizeMaerskSnapshot,
   cmacgm: normalizeCmaCgmSnapshot,
-
-  // TODO: Implement remaining provider normalizers
-  hapag: (_snapshot) => [],
-  one: (_snapshot) => [],
-  evergreen: (_snapshot) => [],
 }
 
 /**

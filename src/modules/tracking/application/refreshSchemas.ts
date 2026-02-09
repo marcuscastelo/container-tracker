@@ -1,4 +1,5 @@
 import z from 'zod/v4'
+import { ProviderSchema } from '~/modules/tracking/domain'
 
 /**
  * Request/Response schemas for the tracking refresh API.
@@ -9,7 +10,7 @@ import z from 'zod/v4'
 export const RefreshRequestSchema = z
   .object({
     container: z.string(),
-    carrier: z.string().optional().nullable(),
+    carrier: ProviderSchema,
   })
   .strict()
 

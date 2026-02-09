@@ -2,7 +2,7 @@ import { supabaseProcessRepository } from '~/modules/process'
 import { trackingUseCases } from '~/modules/tracking'
 import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
 import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
-import { ProviderSchema } from '~/modules/tracking/domain/provider'
+import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
 import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers'
 import { parseBody } from '~/shared/api/typedRoute'
 
@@ -17,12 +17,11 @@ function handleMaerskRedirect(container: string): Response {
 // --- Main Handler ---
 export async function POST({ request }: { request: Request }): Promise<Response> {
   try {
-    const parsedReq = await parseRequestData(request)
-    if (!parsedReq.ok) {
-      return parsedReq.response
+    const extractResult = await extractContainerAndProvider(request)
+    if (!extractResult.ok) {
+      return extractResult.response
     }
-
-    const { container, provider } = parsedReq.data
+    const { container, provider } = extractResult.data
 
     // Maersk uses Puppeteer — redirect to the dedicated route
     if (provider === 'maersk') {
@@ -96,10 +95,10 @@ export async function POST({ request }: { request: Request }): Promise<Response>
 
 // --- Helpers ---
 
-async function parseRequestData(
+async function extractContainerAndProvider(
   request: Request,
 ): Promise<
-  { ok: true; data: { container: string; provider: string } } | { ok: false; response: Response }
+  { ok: true; data: { container: string; provider: Provider } } | { ok: false; response: Response }
 > {
   try {
     const body = await parseBody(request, RefreshSchemas.request)
@@ -107,7 +106,7 @@ async function parseRequestData(
       ok: true,
       data: {
         container: body.container,
-        provider: body.carrier ?? 'unknown',
+        provider: body.carrier,
       },
     }
   } catch (err) {
