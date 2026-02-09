@@ -11,7 +11,7 @@ export function TimelineNode(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
 }): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
   const nodeStyles = (): { dot: string; line: string; text: string } => {
     switch (props.event.status) {
       case 'completed':
@@ -72,7 +72,7 @@ export function TimelineNode(props: {
                   class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600"
                   title="This is a predicted event, not yet confirmed"
                 >
-                  {t('shipmentView.timeline.expected')}
+                  {t(keys.shipmentView.timeline.expected)}
                 </span>
               </Show>
             </div>
@@ -86,14 +86,14 @@ export function TimelineNode(props: {
               fallback={
                 <Show when={props.event.expectedDate}>
                   <p class="text-xs text-slate-400">
-                    {t('shipmentView.timeline.expected')} {props.event.expectedDate}
+                    {t(keys.shipmentView.timeline.expected)} {props.event.expectedDate}
                   </p>
                 </Show>
               }
             >
               <div class="flex items-center justify-end gap-2">
                 <p class="text-xs text-slate-600">
-                  <span class="sr-only">{t('shipmentView.timeline.actual')}</span>
+                  <span class="sr-only">{t(keys.shipmentView.timeline.actual)}</span>
                   {props.event.date}
                 </p>
                 {/* Small neutral badge linking to carrier tracking (rarely used) */}
