@@ -21,6 +21,7 @@ import {
   StatusBadge,
   type StatusVariant,
 } from '~/shared/ui'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 const keys = {
   pageTitle: 'dashboard.pageTitle',
@@ -206,9 +207,9 @@ export function Dashboard(): JSX.Element {
       // Type guard for the structured API conflict payload
       if (err && typeof err === 'object') {
         const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()).parse, null)
-        if (body && 'existing' in body) {
+        if (body && 'existing' in body && isRecord(body)) {
           const ex = safeParseOrDefault(
-            (body as any).existing,
+            body['existing'],
             z.record(z.string(), z.unknown()).parse,
             null,
           )
@@ -217,7 +218,11 @@ export function Dashboard(): JSX.Element {
             const containerId = String(ex.containerId ?? ex.container_id ?? '')
             const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
             setCreateError({
-              message: String((body as any).message ?? 'Container already exists'),
+              message: String(
+                isRecord(body) && typeof body['message'] === 'string'
+                  ? body['message']
+                  : 'Container already exists',
+              ),
               processId,
               containerId,
               containerNumber,
@@ -259,7 +264,8 @@ export function Dashboard(): JSX.Element {
               const v = createError()
               if (typeof v === 'string') return v
               const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()).parse, null)
-              if (body && typeof (body as any).message === 'string') return (body as any).message
+              if (body && isRecord(body) && typeof body['message'] === 'string')
+                return String(body['message'])
               return ''
             })()}
             existing={(() => {

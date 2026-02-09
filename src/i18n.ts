@@ -3,6 +3,7 @@ import i18next from 'i18next'
 import { createSignal } from 'solid-js'
 import z from 'zod'
 import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
+import { hasDefaultProp, isRecord } from '~/shared/utils/typeGuards'
 
 // Dynamically load all locale JSON files from ./locales folder.
 // This makes adding a new locale seamless: drop a new JSON file and it will be picked up.
@@ -23,18 +24,11 @@ for (const path of Object.keys(modules)) {
   // Use zod to safely parse module shape (some bundlers return { default: {...} })
   const modRec = safeParseOrDefault(mod, z.record(z.string(), z.unknown()).parse, null)
   if (modRec) {
-    if (
-      'default' in modRec &&
-      typeof (modRec as any).default === 'object' &&
-      (modRec as any).default !== null
-    ) {
-      const def = safeParseOrDefault(
-        (modRec as any).default,
-        z.record(z.string(), z.unknown()).parse,
-        null,
-      )
+    // modRec may be a record or an object with a `default` property depending on bundler
+    if (hasDefaultProp(modRec) && typeof modRec.default === 'object' && modRec.default !== null) {
+      const def = safeParseOrDefault(modRec.default, z.record(z.string(), z.unknown()).parse, null)
       if (def) translation = def
-    } else {
+    } else if (isRecord(modRec)) {
       translation = modRec
     }
   }

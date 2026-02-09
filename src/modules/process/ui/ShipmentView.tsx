@@ -18,6 +18,7 @@ import {
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { AppHeader, ExistingProcessError } from '~/shared/ui'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 const keys = {
   backToList: 'shipmentView.backToList',
@@ -239,7 +240,11 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           )
           if (ex) {
             setCreateError({
-              message: String((body as any).message ?? 'Container already exists'),
+              message: String(
+                isRecord(body) && typeof body['message'] === 'string'
+                  ? body['message']
+                  : 'Container already exists',
+              ),
               processId: String(ex.processId ?? ex.process_id ?? ''),
               containerId: String(ex.processId ?? ex.container_id ?? ''),
               containerNumber: String(ex.containerNumber ?? ex.container_number ?? ''),
