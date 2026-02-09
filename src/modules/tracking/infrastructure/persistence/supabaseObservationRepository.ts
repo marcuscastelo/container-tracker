@@ -1,48 +1,31 @@
 import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
 import { ObservationSchema } from '~/modules/tracking/domain/observation'
 import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
-import { fromUntypedTable } from '~/modules/tracking/infrastructure/persistence/supabaseUntypedTable'
+import type { Tables } from '~/shared/supabase/database.types'
+import { supabase } from '~/shared/supabase/supabase'
 
-// Table name — will be created by the user in Supabase.
-// Expected columns:
-//   id: uuid (PK, default gen_random_uuid())
-//   fingerprint: text (unique per container)
-//   container_id: uuid (FK to containers)
-//   container_number: text
-//   type: text
-//   event_time: timestamptz nullable
-//   location_code: text nullable
-//   location_display: text nullable
-//   vessel_name: text nullable
-//   voyage: text nullable
-//   is_empty: boolean nullable
-//   confidence: text
-//   provider: text
-//   created_from_snapshot_id: uuid (FK to container_snapshots)
-//   created_at: timestamptz (default now())
-//   retroactive: boolean (default false)
-const TABLE = 'container_observations'
+const TABLE = 'container_observations' as const
 
-function rowToObservation(row: unknown): Observation {
-  // fromUntypedTable returns untyped data — we validate everything through Zod
-  const r = row as Record<string, unknown>
+type ObservationRow = Tables<'container_observations'>
+
+function rowToObservation(row: ObservationRow): Observation {
   const result = ObservationSchema.safeParse({
-    id: r.id,
-    fingerprint: r.fingerprint,
-    container_id: r.container_id,
-    container_number: r.container_number,
-    type: r.type,
-    event_time: r.event_time,
-    location_code: r.location_code,
-    location_display: r.location_display,
-    vessel_name: r.vessel_name,
-    voyage: r.voyage,
-    is_empty: r.is_empty,
-    confidence: r.confidence,
-    provider: r.provider,
-    created_from_snapshot_id: r.created_from_snapshot_id,
-    created_at: r.created_at,
-    retroactive: (r.retroactive as boolean | null) ?? false,
+    id: row.id,
+    fingerprint: row.fingerprint,
+    container_id: row.container_id,
+    container_number: row.container_number,
+    type: row.type,
+    event_time: row.event_time,
+    location_code: row.location_code,
+    location_display: row.location_display,
+    vessel_name: row.vessel_name,
+    voyage: row.voyage,
+    is_empty: row.is_empty,
+    confidence: row.confidence,
+    provider: row.provider,
+    created_from_snapshot_id: row.created_from_snapshot_id,
+    created_at: row.created_at,
+    retroactive: row.retroactive,
   })
 
   if (!result.success) {
@@ -73,17 +56,18 @@ export const supabaseObservationRepository: ObservationRepository = {
       retroactive: obs.retroactive ?? false,
     }))
 
-    const { data, error } = await fromUntypedTable(TABLE).insert(rows).select('*')
+    const { data, error } = await supabase.from(TABLE).insert(rows).select('*')
 
     if (error) {
       throw new Error(`Failed to insert observations: ${error.message}`)
     }
 
-    return ((data ?? []) as unknown[]).map(rowToObservation)
+    return (data ?? []).map(rowToObservation)
   },
 
   async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
-    const { data, error } = await fromUntypedTable(TABLE)
+    const { data, error } = await supabase
+      .from(TABLE)
       .select('*')
       .eq('container_id', containerId)
       .order('event_time', { ascending: true, nullsFirst: false })
@@ -92,11 +76,12 @@ export const supabaseObservationRepository: ObservationRepository = {
       throw new Error(`Failed to fetch observations: ${error.message}`)
     }
 
-    return ((data ?? []) as unknown[]).map(rowToObservation)
+    return (data ?? []).map(rowToObservation)
   },
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
-    const { data, error } = await fromUntypedTable(TABLE)
+    const { data, error } = await supabase
+      .from(TABLE)
       .select('fingerprint')
       .eq('container_id', containerId)
 
@@ -105,10 +90,8 @@ export const supabaseObservationRepository: ObservationRepository = {
     }
 
     const fingerprints = new Set<string>()
-    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-      if (typeof row.fingerprint === 'string') {
-        fingerprints.add(row.fingerprint)
-      }
+    for (const row of data ?? []) {
+      fingerprints.add(row.fingerprint)
     }
     return fingerprints
   },

@@ -1,51 +1,36 @@
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import { TrackingAlertSchema } from '~/modules/tracking/domain/trackingAlert'
 import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
-import { fromUntypedTable } from '~/modules/tracking/infrastructure/persistence/supabaseUntypedTable'
+import type { Json, Tables } from '~/shared/supabase/database.types'
+import { supabase } from '~/shared/supabase/supabase'
 
-// Table name — will be created by the user in Supabase.
-// Expected columns:
-//   id: uuid (PK, default gen_random_uuid())
-//   container_id: uuid (FK to containers)
-//   category: text ('fact' or 'monitoring')
-//   type: text
-//   severity: text
-//   message: text
-//   detected_at: timestamptz
-//   triggered_at: timestamptz
-//   source_observation_fingerprints: jsonb (array of strings)
-//   retroactive: boolean (default false)
-//   provider: text nullable
-//   acked_at: timestamptz nullable
-//   dismissed_at: timestamptz nullable
-const TABLE = 'tracking_alerts'
+const TABLE = 'tracking_alerts' as const
 
-function rowToAlert(row: unknown): TrackingAlert {
-  // fromUntypedTable returns untyped data — we validate everything through Zod
-  const r = row as Record<string, unknown>
+type TrackingAlertRow = Tables<'tracking_alerts'>
 
+function rowToAlert(row: TrackingAlertRow): TrackingAlert {
   // Parse source_observation_fingerprints from jsonb
   let fingerprints: string[] = []
-  if (Array.isArray(r.source_observation_fingerprints)) {
-    fingerprints = r.source_observation_fingerprints.filter(
+  if (Array.isArray(row.source_observation_fingerprints)) {
+    fingerprints = row.source_observation_fingerprints.filter(
       (v): v is string => typeof v === 'string',
     )
   }
 
   const result = TrackingAlertSchema.safeParse({
-    id: r.id,
-    container_id: r.container_id,
-    category: r.category,
-    type: r.type,
-    severity: r.severity,
-    message: r.message,
-    detected_at: r.detected_at,
-    triggered_at: r.triggered_at,
+    id: row.id,
+    container_id: row.container_id,
+    category: row.category,
+    type: row.type,
+    severity: row.severity,
+    message: row.message,
+    detected_at: row.detected_at,
+    triggered_at: row.triggered_at,
     source_observation_fingerprints: fingerprints,
-    retroactive: (r.retroactive as boolean | null) ?? false,
-    provider: r.provider,
-    acked_at: r.acked_at,
-    dismissed_at: r.dismissed_at,
+    retroactive: row.retroactive,
+    provider: row.provider,
+    acked_at: row.acked_at,
+    dismissed_at: row.dismissed_at,
   })
 
   if (!result.success) {
@@ -67,24 +52,25 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       message: a.message,
       detected_at: a.detected_at,
       triggered_at: a.triggered_at,
-      source_observation_fingerprints: a.source_observation_fingerprints,
+      source_observation_fingerprints: a.source_observation_fingerprints as Json,
       retroactive: a.retroactive,
       provider: a.provider,
       acked_at: a.acked_at,
       dismissed_at: a.dismissed_at,
     }))
 
-    const { data, error } = await fromUntypedTable(TABLE).insert(rows).select('*')
+    const { data, error } = await supabase.from(TABLE).insert(rows).select('*')
 
     if (error) {
       throw new Error(`Failed to insert tracking alerts: ${error.message}`)
     }
 
-    return ((data ?? []) as unknown[]).map(rowToAlert)
+    return (data ?? []).map(rowToAlert)
   },
 
   async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
-    const { data, error } = await fromUntypedTable(TABLE)
+    const { data, error } = await supabase
+      .from(TABLE)
       .select('*')
       .eq('container_id', containerId)
       .is('acked_at', null)
@@ -95,11 +81,12 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       throw new Error(`Failed to fetch active tracking alerts: ${error.message}`)
     }
 
-    return ((data ?? []) as unknown[]).map(rowToAlert)
+    return (data ?? []).map(rowToAlert)
   },
 
   async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
-    const { data, error } = await fromUntypedTable(TABLE)
+    const { data, error } = await supabase
+      .from(TABLE)
       .select('type')
       .eq('container_id', containerId)
       .is('acked_at', null)
@@ -110,16 +97,14 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const types = new Set<string>()
-    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-      if (typeof row.type === 'string') {
-        types.add(row.type)
-      }
+    for (const row of data ?? []) {
+      types.add(row.type)
     }
     return types
   },
 
   async acknowledge(alertId: string, ackedAt: string): Promise<void> {
-    const { error } = await fromUntypedTable(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
+    const { error } = await supabase.from(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
 
     if (error) {
       throw new Error(`Failed to acknowledge alert ${alertId}: ${error.message}`)
@@ -127,7 +112,8 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   },
 
   async dismiss(alertId: string, dismissedAt: string): Promise<void> {
-    const { error } = await fromUntypedTable(TABLE)
+    const { error } = await supabase
+      .from(TABLE)
       .update({ dismissed_at: dismissedAt })
       .eq('id', alertId)
 

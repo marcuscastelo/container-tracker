@@ -9,98 +9,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      alerts: {
+      container_observations: {
         Row: {
-          acknowledged_at: string | null
-          category: string
-          code: string
-          container_id: string | null
-          created_at: string
-          description: string | null
-          expires_at: string | null
-          id: string
-          process_id: string | null
-          related_event_ids: Json | null
-          resolved_at: string | null
-          severity: string
-          state: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          acknowledged_at?: string | null
-          category: string
-          code: string
-          container_id?: string | null
-          created_at?: string
-          description?: string | null
-          expires_at?: string | null
-          id?: string
-          process_id?: string | null
-          related_event_ids?: Json | null
-          resolved_at?: string | null
-          severity: string
-          state: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          acknowledged_at?: string | null
-          category?: string
-          code?: string
-          container_id?: string | null
-          created_at?: string
-          description?: string | null
-          expires_at?: string | null
-          id?: string
-          process_id?: string | null
-          related_event_ids?: Json | null
-          resolved_at?: string | null
-          severity?: string
-          state?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      'container-events': {
-        Row: {
-          actuality: string
+          confidence: string
+          container_id: string
           container_number: string
           created_at: string
-          event_time: string
+          created_from_snapshot_id: string
+          event_time: string | null
+          fingerprint: string
           id: string
-          source: Json
+          is_empty: boolean | null
+          location_code: string | null
+          location_display: string | null
+          provider: string
+          retroactive: boolean
           type: string
-          updated_at: string
+          vessel_name: string | null
+          voyage: string | null
         }
         Insert: {
-          actuality: string
+          confidence: string
+          container_id: string
           container_number: string
           created_at?: string
-          event_time: string
-          id: string
-          source: Json
+          created_from_snapshot_id: string
+          event_time?: string | null
+          fingerprint: string
+          id?: string
+          is_empty?: boolean | null
+          location_code?: string | null
+          location_display?: string | null
+          provider: string
+          retroactive?: boolean
           type: string
-          updated_at?: string
+          vessel_name?: string | null
+          voyage?: string | null
         }
         Update: {
-          actuality?: string
+          confidence?: string
+          container_id?: string
           container_number?: string
           created_at?: string
-          event_time?: string
+          created_from_snapshot_id?: string
+          event_time?: string | null
+          fingerprint?: string
           id?: string
-          source?: Json
+          is_empty?: boolean | null
+          location_code?: string | null
+          location_display?: string | null
+          provider?: string
+          retroactive?: boolean
           type?: string
-          updated_at?: string
+          vessel_name?: string | null
+          voyage?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'container-events_container_number_fkey'
-            columns: ['container_number']
+            foreignKeyName: 'container_observations_container_id_fkey'
+            columns: ['container_id']
             isOneToOne: false
             referencedRelation: 'containers'
-            referencedColumns: ['container_number']
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'container_observations_created_from_snapshot_id_fkey'
+            columns: ['created_from_snapshot_id']
+            isOneToOne: false
+            referencedRelation: 'container_snapshots'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      container_snapshots: {
+        Row: {
+          container_id: string
+          fetched_at: string
+          id: string
+          parse_error: string | null
+          payload: Json
+          provider: string
+        }
+        Insert: {
+          container_id?: string
+          fetched_at: string
+          id?: string
+          parse_error?: string | null
+          payload: Json
+          provider: string
+        }
+        Update: {
+          container_id?: string
+          fetched_at?: string
+          id?: string
+          parse_error?: string | null
+          payload?: Json
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'container_snapshots_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
           },
         ]
       }
@@ -207,6 +219,65 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      tracking_alerts: {
+        Row: {
+          acked_at: string | null
+          category: string
+          container_id: string
+          created_at: string
+          detected_at: string
+          dismissed_at: string | null
+          id: string
+          message: string
+          provider: string | null
+          retroactive: boolean
+          severity: string
+          source_observation_fingerprints: Json
+          triggered_at: string
+          type: string
+        }
+        Insert: {
+          acked_at?: string | null
+          category: string
+          container_id?: string
+          created_at?: string
+          detected_at: string
+          dismissed_at?: string | null
+          id?: string
+          message: string
+          provider?: string | null
+          retroactive: boolean
+          severity: string
+          source_observation_fingerprints: Json
+          triggered_at: string
+          type: string
+        }
+        Update: {
+          acked_at?: string | null
+          category?: string
+          container_id?: string
+          created_at?: string
+          detected_at?: string
+          dismissed_at?: string | null
+          id?: string
+          message?: string
+          provider?: string | null
+          retroactive?: boolean
+          severity?: string
+          source_observation_fingerprints?: Json
+          triggered_at?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_alerts_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: {

@@ -11,7 +11,7 @@ Objetivos principais
 - Normalizar fatos operacionais em Observations idempotentes e deduplicáveis.
 - Construir Timeline ordenada e derivar Status monotônico.
 - Gerar Alertas explicáveis (fact vs monitoring). Retroatividade apenas para fact alerts.
-- Manter validação forte com Zod e evitar `any`/`as` (exceto em pontos documentados onde a tipagem depende de tabelas DB que ainda não existem).
+- Manter validação forte com Zod e evitar `any`/`as`. Repositórios são totalmente type-safe via `Tables<>` de `database.types.ts`.
 
 Onde estão os arquivos
 
@@ -24,14 +24,13 @@ Onde estão os arquivos
 - Infrastructure
   - `src/modules/tracking/infrastructure/` — adaptadores por provider (ex.: `mscNormalizer.ts`) e implementações de persistência
   - Repositórios Supabase: `supabaseSnapshotRepository.ts`, `supabaseObservationRepository.ts`, `supabaseTrackingAlertRepository.ts`
-  - `supabaseUntypedTable.ts` — helper temporário para tabelas que ainda não existem em `shared/supabase/database.types.ts`
 
 Princípios e convenções
 
 - Tipagem forte
   - Use `zod/v4` para os schemas do tracking module (consistente com outros módulos novos).
   - Somente `as const` é permitido para assertions literais; evite `as` em outros locais.
-  - Sempre usamos `safeParse` ao consumir dados externos / retornos do banco para transformar `unknown` → tipos canônicos.
+  - Repositórios de persistência usam `Tables<'table_name'>` de `database.types.ts` para tipagem dos rows, com `safeParse` como safety net para validação runtime.
 - Imutabilidade e idempotência
   - Snapshots são imutáveis.
   - Observations possuem `fingerprint` determinístico para deduplicação.
@@ -145,7 +144,6 @@ pnpm type-check
 
 Notas operacionais / TODOs
 
-- `src/modules/tracking/infrastructure/persistence/supabaseUntypedTable.ts` é uma shim temporária para permitir desenvolvimento antes de gerar `database.types.ts` com as novas tabelas. Depois de aplicar as migrations, gere os types do Supabase e remova este arquivo, alterando os repositórios para usar `supabase.from('table_name')` diretamente.
 - Ao adicionar novas chaves i18n ou mensagens de alerta, siga a regra do projeto e atualize `src/locales/*` imediatamente.
 - Evite lógica de domínio na UI — todas as derivações devem ocorrer no domain/application.
 
