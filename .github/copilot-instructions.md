@@ -342,3 +342,7 @@ Antes de gerar código, o Copilot deve se perguntar:
 
 Use o seguinte documento como referência canônica para decisões de implementação, arquitetura e UX. Ele é a “bíblia” do projeto e deve ser seguido rigorosamente para garantir consistência e qualidade.
 [Container Tracking Platform — Master Technical & Product Document (0209)](../docs/master-consolidated-0209.md)
+
+Para consulta, temos o roadmap atual [Roadmap Consolidado (0209)](../docs/roadmap-consolidated-0209.md) que detalha as fases de desenvolvimento, entregáveis e critérios de aceite.
+
+Outros documentos, potencialmente desatualizados, estão disponíveis na pasta [docs](../docs/0204) para referência histórica, mas o foco deve ser no documento master consolidado.
