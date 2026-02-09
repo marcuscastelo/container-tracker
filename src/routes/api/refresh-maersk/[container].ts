@@ -537,13 +537,19 @@ async function handleMaersk({ params, request }: APIEvent) {
       const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
 
       if (containerRecord) {
-        const snapshot = await trackingUseCases.saveRawSnapshot(
+        const result = await trackingUseCases.saveAndProcess(
           containerRecord.id,
+          container,
           'maersk',
           statusData,
           null,
         )
-        console.log(`[maersk-refresh] Saved snapshot ${snapshot.id} for container ${container}`)
+        console.log(
+          `[maersk-refresh] Saved snapshot ${result.snapshot.id} for container ${container}, ` +
+            `new observations: ${result.pipeline.newObservations.length}, ` +
+            `new alerts: ${result.pipeline.newAlerts.length}, ` +
+            `status: ${result.pipeline.status}`,
+        )
       } else {
         console.warn(`[maersk-refresh] Container ${container} not found in DB, snapshot not saved`)
       }

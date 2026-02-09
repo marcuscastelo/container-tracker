@@ -1,16 +1,15 @@
-import { z } from 'zod'
 import {
   type Carrier,
   CarrierSchema,
   type OperationType,
   OperationTypeSchema,
 } from '~/modules/process/domain/value-objects'
-import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
+import type {
+  ObservationResponse,
+  ProcessDetailResponse,
+  TrackingAlertResponse,
+} from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
-import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
-
-/** Alert severity — inlined from the old alert module. */
-type AlertSeverity = 'info' | 'success' | 'warning' | 'danger'
 
 // Backwards-compatible alias for tests and other callers
 export type ProcessApiResponse = ProcessDetailResponse
@@ -29,10 +28,12 @@ export type TimelineEvent = {
 
 export type AlertDisplay = {
   readonly id: string
-  readonly type: 'delay' | 'customs' | 'missing-eta' | 'info'
-  readonly severity: 'info' | 'success' | 'warning' | 'danger'
+  readonly type: 'delay' | 'customs' | 'missing-eta' | 'transshipment' | 'info'
+  readonly severity: 'info' | 'warning' | 'danger'
   readonly message: string
   readonly timestamp: string
+  readonly category: 'fact' | 'monitoring'
+  readonly retroactive: boolean
 }
 
 export type ContainerDetail = {
@@ -51,8 +52,6 @@ export type ShipmentDetail = {
   readonly reference?: string | null
   readonly operationType?: OperationType
   readonly carrier?: Carrier | null
-  // TODO: ShipmentDetail is duplicated throughout the codebase, unify in api schemas with zod and proper typesbill_of_lading
-  // TODO: Once unified, change all references from bl_reference to bill_of_lading or billOfLading
   readonly bl_reference?: string | null
   readonly origin: string
   readonly destination: string
@@ -63,10 +62,114 @@ export type ShipmentDetail = {
   readonly alerts: readonly AlertDisplay[]
 }
 
-function mapAlertType(code: string): AlertDisplay['type'] {
-  if (code.startsWith('ETA_')) return 'missing-eta'
-  if (code.includes('DELAY') || code.includes('PASSED')) return 'delay'
-  if (code.includes('CUSTOMS')) return 'customs'
+/**
+ * Map domain ContainerStatus (from tracking pipeline) to UI StatusVariant.
+ */
+function containerStatusToVariant(status: string | undefined): StatusVariant {
+  switch (status) {
+    case 'IN_TRANSIT':
+      return 'in-transit'
+    case 'LOADED':
+      return 'loaded'
+    case 'ARRIVED_AT_POD':
+    case 'DISCHARGED':
+    case 'AVAILABLE_FOR_PICKUP':
+      return 'released'
+    case 'DELIVERED':
+    case 'EMPTY_RETURNED':
+      return 'delivered'
+    case 'IN_PROGRESS':
+      return 'pending'
+    case 'UNKNOWN':
+    default:
+      return 'unknown'
+  }
+}
+
+/**
+ * Map domain ContainerStatus to a human-readable label.
+ */
+function containerStatusLabel(status: string | undefined): string {
+  switch (status) {
+    case 'IN_TRANSIT':
+      return 'In Transit'
+    case 'LOADED':
+      return 'Loaded'
+    case 'ARRIVED_AT_POD':
+      return 'Arrived at POD'
+    case 'DISCHARGED':
+      return 'Discharged'
+    case 'AVAILABLE_FOR_PICKUP':
+      return 'Available for Pickup'
+    case 'DELIVERED':
+      return 'Delivered'
+    case 'EMPTY_RETURNED':
+      return 'Empty Returned'
+    case 'IN_PROGRESS':
+      return 'In Progress'
+    case 'UNKNOWN':
+    default:
+      return 'Awaiting data'
+  }
+}
+
+/**
+ * Map ObservationType to a human-readable label for timeline display.
+ */
+function observationTypeLabel(type: string): string {
+  switch (type) {
+    case 'GATE_IN':
+      return 'Gate In'
+    case 'GATE_OUT':
+      return 'Gate Out'
+    case 'LOAD':
+      return 'Loaded on Vessel'
+    case 'DEPARTURE':
+      return 'Vessel Departed'
+    case 'ARRIVAL':
+      return 'Arrived at Port'
+    case 'DISCHARGE':
+      return 'Discharged from Vessel'
+    case 'DELIVERY':
+      return 'Delivered'
+    case 'EMPTY_RETURN':
+      return 'Empty Returned'
+    case 'CUSTOMS_HOLD':
+      return 'Customs Hold'
+    case 'CUSTOMS_RELEASE':
+      return 'Customs Released'
+    case 'OTHER':
+    default:
+      return type
+  }
+}
+
+/**
+ * Map TrackingAlertType to AlertDisplay type.
+ */
+function alertTypeToDisplay(type: string): AlertDisplay['type'] {
+  switch (type) {
+    case 'TRANSSHIPMENT':
+      return 'transshipment'
+    case 'CUSTOMS_HOLD':
+      return 'customs'
+    case 'ETA_MISSING':
+    case 'ETA_PASSED':
+      return 'missing-eta'
+    case 'NO_MOVEMENT':
+      return 'delay'
+    default:
+      return 'info'
+  }
+}
+
+/**
+ * Map TrackingAlertSeverity to AlertDisplay severity.
+ */
+function alertSeverityToDisplay(severity: string): AlertDisplay['severity'] {
+  if (severity === 'warning' || severity === 'danger' || severity === 'info') {
+    return severity
+  }
   return 'info'
 }
 
@@ -83,16 +186,91 @@ function formatRelativeTime(dateString: string): string {
   return `${diffDays}d ago`
 }
 
-export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
-  const createdAt = new Date(data.created_at)
-  const createdEvent: TimelineEvent = {
-    id: 'system-created',
-    label: 'Process registered in the system',
-    location: undefined,
-    date: createdAt.toLocaleDateString(),
-    status: 'completed',
+/**
+ * Convert an observation (from API) into a TimelineEvent for the UI.
+ */
+function observationToTimelineEvent(obs: ObservationResponse, index: number): TimelineEvent {
+  const evDate = obs.event_time ? new Date(obs.event_time) : null
+  const dateStr = evDate ? evDate.toLocaleDateString() : null
+  const isExpected = obs.confidence === 'expected'
+  const expectedDate = isExpected && evDate ? evDate.toLocaleDateString() : undefined
+
+  // Build location display
+  const location = obs.location_display ?? obs.location_code ?? undefined
+
+  // Build label with vessel info if available
+  let label = observationTypeLabel(obs.type)
+  if (obs.vessel_name) {
+    label += ` — ${obs.vessel_name}`
+    if (obs.voyage) label += ` (${obs.voyage})`
   }
 
+  const status: EventStatus = isExpected ? 'expected' : 'completed'
+
+  return {
+    id: obs.id ?? `obs-${index}`,
+    label,
+    location,
+    date: isExpected ? null : dateStr,
+    expectedDate,
+    status,
+  }
+}
+
+/**
+ * Convert a TrackingAlertResponse into an AlertDisplay for the UI.
+ */
+function alertToDisplay(alert: TrackingAlertResponse): AlertDisplay {
+  return {
+    id: alert.id,
+    type: alertTypeToDisplay(alert.type),
+    severity: alertSeverityToDisplay(alert.severity),
+    message: alert.message,
+    timestamp: formatRelativeTime(alert.triggered_at),
+    category: alert.category === 'fact' ? 'fact' : 'monitoring',
+    retroactive: alert.retroactive,
+  }
+}
+
+/**
+ * Derive the highest-dominance status from all containers.
+ * Uses the same dominance logic as the tracking domain.
+ */
+function deriveProcessStatus(containers: readonly { status?: string }[]): {
+  variant: StatusVariant
+  label: string
+} {
+  const dominance = [
+    'UNKNOWN',
+    'IN_PROGRESS',
+    'LOADED',
+    'IN_TRANSIT',
+    'ARRIVED_AT_POD',
+    'DISCHARGED',
+    'AVAILABLE_FOR_PICKUP',
+    'DELIVERED',
+    'EMPTY_RETURNED',
+  ]
+
+  let highest = 'UNKNOWN'
+  let highestIdx = 0
+
+  for (const c of containers) {
+    const s = c.status ?? 'UNKNOWN'
+    const idx = dominance.indexOf(s)
+    if (idx > highestIdx) {
+      highest = s
+      highestIdx = idx
+    }
+  }
+
+  return {
+    variant: containerStatusToVariant(highest),
+    label: containerStatusLabel(highest),
+  }
+}
+
+export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const operationTypeResult = OperationTypeSchema.safeParse(data.operation_type)
   const operationType: OperationType | undefined = operationTypeResult.success
     ? operationTypeResult.data
@@ -101,6 +279,43 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const carrierResult = CarrierSchema.safeParse(data.carrier)
   const carrier: Carrier | 'unknown' | null =
     data.carrier === null ? null : carrierResult.success ? carrierResult.data : 'unknown'
+
+  const containers: ContainerDetail[] = data.containers.map((c) => {
+    // Build timeline from observations (new pipeline)
+    const observations = c.observations ?? []
+    const timeline: TimelineEvent[] = observations.map((obs, idx) =>
+      observationToTimelineEvent(obs, idx),
+    )
+
+    // If no observations, show a "process registered" placeholder
+    if (timeline.length === 0) {
+      timeline.push({
+        id: 'system-created',
+        label: 'Process registered in the system',
+        location: undefined,
+        date: new Date(data.created_at).toLocaleDateString(),
+        status: 'completed',
+      })
+    }
+
+    return {
+      id: c.id,
+      number: c.container_number,
+      isoType: c.container_type ?? null,
+      status: containerStatusToVariant(c.status),
+      statusLabel: containerStatusLabel(c.status),
+      eta: null, // ETA will be derived from timeline in future iterations
+      timeline,
+    }
+  })
+
+  // Derive process-level status from container statuses
+  const processStatus = deriveProcessStatus(data.containers)
+
+  // Map alerts — filter out dismissed/acked
+  const alerts: AlertDisplay[] = (data.alerts ?? [])
+    .filter((a) => a.acked_at === null && a.dismissed_at === null)
+    .map(alertToDisplay)
 
   return {
     id: data.id,
@@ -111,84 +326,10 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
     bl_reference: data.bl_reference,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
-    status: 'unknown',
-    statusLabel: 'Aguardando dados',
-    eta: null,
-    containers: data.containers.map((c) => {
-      let timeline: TimelineEvent[] = [createdEvent]
-      if (Array.isArray(c.events) && c.events.length > 0) {
-        const mapped = (c.events ?? [])
-          .map((ev, idx) => {
-            const evDate = ev.event_time ? new Date(ev.event_time) : null
-            const dateStr = evDate ? evDate.toLocaleDateString() : null
-            const expectedDate =
-              ev.event_time_type === 'EXPECTED' && ev.event_time
-                ? new Date(ev.event_time).toLocaleDateString()
-                : null
-            const status: EventStatus = ev.event_time_type === 'ACTUAL' ? 'completed' : 'expected'
-
-            const raw = ev.raw
-            // Safely pick description/activity from raw carrier payloads
-            const rawObj = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
-            const rawDescription = rawObj
-              ? typeof rawObj['Description'] === 'string'
-                ? rawObj['Description']
-                : typeof rawObj['description'] === 'string'
-                  ? rawObj['description']
-                  : typeof rawObj['Activity'] === 'string'
-                    ? rawObj['Activity']
-                    : typeof rawObj['activity'] === 'string'
-                      ? rawObj['activity']
-                      : undefined
-              : undefined
-
-            const rawLocation = rawObj
-              ? typeof rawObj['Location'] === 'string'
-                ? rawObj['Location']
-                : typeof rawObj['location'] === 'string'
-                  ? rawObj['location']
-                  : undefined
-              : undefined
-
-            return {
-              id: ev.id ?? `ev-${idx}`,
-              label: ev.activity ?? rawDescription ?? 'Event',
-              location: ev.location ?? rawLocation ?? undefined,
-              date: dateStr,
-              expectedDate,
-              status,
-            } satisfies TimelineEvent
-          })
-          .filter(Boolean)
-
-        if (mapped.length > 0) timeline = mapped
-      }
-
-      return {
-        id: c.id,
-        number: c.container_number,
-        isoType: c.container_type ?? null,
-        status: 'unknown',
-        statusLabel: 'Unknown',
-        eta: c.eta ?? null,
-        timeline,
-      }
-    }),
-    alerts: (data.alerts ?? [])
-      .filter((a) => a.state === 'active')
-      .map((a) => {
-        const sev = ((): AlertSeverity => {
-          const s = a.severity
-          if (s === 'info' || s === 'success' || s === 'warning' || s === 'danger') return s
-          return 'info'
-        })()
-        return {
-          id: a.id,
-          type: mapAlertType(a.code),
-          severity: sev,
-          message: a.description || a.title,
-          timestamp: formatRelativeTime(a.created_at),
-        }
-      }),
+    status: processStatus.variant,
+    statusLabel: processStatus.label,
+    eta: null, // ETA derivation is a future iteration
+    containers,
+    alerts,
   }
 }

@@ -1,7 +1,7 @@
-import { MaerskApiSchema } from '~/modules/container/infrastructure/schemas/api/maersk.api.schema'
 import type { Confidence, ObservationDraft } from '~/modules/tracking/domain/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
+import { MaerskApiSchema } from '~/modules/tracking/infrastructure/schemas/api/maersk.api.schema'
 
 /**
  * Maps Maersk event `activity` strings to canonical ObservationType.

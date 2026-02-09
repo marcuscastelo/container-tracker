@@ -58,32 +58,35 @@ export async function POST({ request }: { request: Request }): Promise<Response>
       )
     }
 
-    // Fetch from carrier API and save as snapshot
-    const snapshot = await trackingUseCases.fetchAndSaveSnapshot(
+    // Fetch from carrier API, save snapshot, and run the full pipeline
+    const result = await trackingUseCases.fetchAndProcess(
       containerRecord.id,
       container,
       validProvider,
     )
 
-    if (!snapshot) {
+    if (!result) {
       return respondWithSchema(
-        { error: 'fetch failed: no snapshot created' },
+        { error: 'fetch failed: no result created' },
         RefreshSchemas.responses.error,
         502,
       )
     }
 
     // Sanitize payload for response logging
-    if (snapshot.payload) {
-      sanitizePayload(snapshot.payload)
+    if (result.snapshot.payload) {
+      sanitizePayload(result.snapshot.payload)
     }
 
     console.log(
-      `refresh: saved snapshot ${snapshot.id} for container ${container} (provider=${validProvider})`,
+      `refresh: saved snapshot ${result.snapshot.id} for container ${container} (provider=${validProvider}), ` +
+        `new observations: ${result.pipeline.newObservations.length}, ` +
+        `new alerts: ${result.pipeline.newAlerts.length}, ` +
+        `status: ${result.pipeline.status}`,
     )
 
     return respondWithSchema(
-      { ok: true, container: String(container), snapshotId: snapshot.id },
+      { ok: true, container: String(container), snapshotId: result.snapshot.id },
       RefreshSchemas.responses.success,
       200,
     )

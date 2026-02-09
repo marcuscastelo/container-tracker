@@ -4,13 +4,14 @@ import {
   CreateProcessInputSchema,
   processUseCases,
 } from '~/modules/process'
+import { trackingUseCases } from '~/modules/tracking'
 import { jsonResponse as typedJsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 
-// GET /api/processes/[id] - Get a single process with containers
+// GET /api/processes/[id] - Get a single process with containers, observations and alerts
 export async function GET({ params }: APIEvent): Promise<Response> {
   try {
     const processId = params.id
@@ -23,18 +24,60 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       return typedJsonResponse({ error: 'Process not found' }, 404)
     }
 
-    // Get alerts for this process
-    // TODO: Wire up tracking_alerts when alert derivation is implemented
-    const alerts: {
-      id: string
-      category: string
-      code: string
-      severity: string
-      title: string
-      description: string | null
-      state: string
-      created_at: string
-    }[] = []
+    // For each container, get tracking summary (observations, status, alerts)
+    const containersWithTracking = await Promise.all(
+      process.containers.map(async (c) => {
+        try {
+          const summary = await trackingUseCases.getContainerSummary(c.id, c.container_number)
+          return {
+            id: c.id,
+            container_number: c.container_number,
+            carrier_code: c.carrier_code ?? null,
+            container_type: c.container_type ?? null,
+            container_size: null,
+            status: summary.status,
+            observations: summary.observations.map((obs) => ({
+              id: obs.id,
+              fingerprint: obs.fingerprint,
+              type: obs.type,
+              event_time: obs.event_time,
+              location_code: obs.location_code,
+              location_display: obs.location_display,
+              vessel_name: obs.vessel_name,
+              voyage: obs.voyage,
+              is_empty: obs.is_empty,
+              confidence: obs.confidence,
+              provider: obs.provider,
+              retroactive: obs.retroactive,
+              created_at: obs.created_at,
+            })),
+          }
+        } catch (err) {
+          console.error(`Failed to get tracking summary for container ${c.id}:`, err)
+          return {
+            id: c.id,
+            container_number: c.container_number,
+            carrier_code: c.carrier_code ?? null,
+            container_type: c.container_type ?? null,
+            container_size: null,
+            status: 'UNKNOWN',
+            observations: [],
+          }
+        }
+      }),
+    )
+
+    // Gather alerts across all containers
+    const allAlerts = await Promise.all(
+      process.containers.map(async (c) => {
+        try {
+          const { alerts } = await trackingUseCases.getContainerSummary(c.id, c.container_number)
+          return alerts
+        } catch {
+          return []
+        }
+      }),
+    ).then((results) => results.flat())
 
     const response = {
       id: process.id,
@@ -43,31 +86,23 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       origin: process.origin,
       destination: process.destination,
       carrier: process.carrier,
-      // TODO: Rename to bill_of_lading in the future, with type safe zod schema and typescript refactor
       bl_reference: process.bill_of_lading,
       source: process.source,
       created_at: process.created_at.toISOString(),
       updated_at: process.updated_at.toISOString(),
-      containers: await Promise.all(
-        process.containers.map(async (c) => {
-          return {
-            id: c.id,
-            container_number: c.container_number,
-            carrier_code: c.carrier_code ?? null,
-            container_type: c.container_type ?? null,
-            container_size: null,
-          }
-        }),
-      ),
-      alerts: alerts.map((a) => ({
+      containers: containersWithTracking,
+      alerts: allAlerts.map((a) => ({
         id: a.id,
         category: a.category,
-        code: a.code,
+        type: a.type,
         severity: a.severity,
-        title: a.title,
-        description: a.description,
-        state: a.state,
-        created_at: a.created_at,
+        message: a.message,
+        detected_at: a.detected_at,
+        triggered_at: a.triggered_at,
+        retroactive: a.retroactive,
+        provider: a.provider,
+        acked_at: a.acked_at,
+        dismissed_at: a.dismissed_at,
       })),
     }
 

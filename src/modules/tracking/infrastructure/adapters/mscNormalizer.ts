@@ -1,7 +1,7 @@
-import { MscApiSchema } from '~/modules/container/infrastructure/schemas/api/msc.api.schema'
 import type { Confidence, ObservationDraft } from '~/modules/tracking/domain/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
+import { MscApiSchema } from '~/modules/tracking/infrastructure/schemas/api/msc.api.schema'
 import { parseDate } from '~/shared/utils/parseDate'
 
 /**

@@ -39,8 +39,11 @@ export function presentProcessList(data: ProcessApiResponse[]): readonly Process
     origin: p.origin,
     destination: p.destination,
     containerCount: p.containers.length,
+    // Dashboard list view doesn't have observation data yet.
+    // Status will remain 'unknown' until we add a summary endpoint
+    // or include derived status in the process list API response.
     status: 'unknown',
-    statusLabel: 'Aguardando dados',
+    statusLabel: 'Awaiting data',
     eta: null,
     carrier: p.carrier ?? null,
   }))

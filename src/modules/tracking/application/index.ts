@@ -7,7 +7,9 @@ export {
 } from '~/modules/tracking/application/pipeline'
 export { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
 export {
+  type ContainerTrackingSummary,
   createTrackingUseCases,
+  type FetchAndProcessResult,
   type TrackingUseCases,
   type TrackingUseCasesDeps,
 } from '~/modules/tracking/application/trackingUseCases'

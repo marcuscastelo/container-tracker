@@ -1,6 +1,14 @@
+import { type PipelineResult, processSnapshot } from '~/modules/tracking/application/pipeline'
+import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
+import type { Observation } from '~/modules/tracking/domain/observation'
+import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
 import type { Provider } from '~/modules/tracking/domain/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
 import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
+import type { Timeline } from '~/modules/tracking/domain/timeline'
+import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
+import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
 import { getRestFetcher } from '~/modules/tracking/infrastructure/fetchers'
 import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
 
@@ -9,35 +17,68 @@ import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/msc
  */
 export type TrackingUseCasesDeps = {
   readonly snapshotRepository: SnapshotRepository
+  readonly observationRepository: ObservationRepository
+  readonly trackingAlertRepository: TrackingAlertRepository
+}
+
+/**
+ * Result of a fetch-and-process operation.
+ */
+export type FetchAndProcessResult = {
+  readonly snapshot: Snapshot
+  readonly pipeline: PipelineResult
+}
+
+/**
+ * Container tracking summary — derived data for a single container.
+ */
+export type ContainerTrackingSummary = {
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly observations: readonly Observation[]
+  readonly timeline: Timeline
+  readonly status: ContainerStatus
+  readonly transshipment: TransshipmentInfo
+  readonly alerts: readonly TrackingAlert[]
 }
 
 /**
  * Creates the tracking use cases with injected dependencies.
  *
- * Current scope (MVP):
- * - fetchAndSaveSnapshot: Fetch from carrier API and persist as snapshot
- * - saveRawSnapshot: Persist a pre-fetched payload as snapshot (for Maersk/Puppeteer)
- *
- * Future scope (when observations/alerts are wired):
- * - Will call processSnapshot pipeline after saving snapshot
+ * After saving snapshots, the full pipeline is executed:
+ *   snapshot → normalize → diff → persist observations → derive timeline/status/alerts → persist alerts
  */
 export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
-  const { snapshotRepository } = deps
+  const { snapshotRepository, observationRepository, trackingAlertRepository } = deps
+
+  const pipelineDeps = { snapshotRepository, observationRepository, trackingAlertRepository }
+
+  /**
+   * Run the pipeline on a persisted snapshot.
+   */
+  async function runPipeline(
+    snapshot: Snapshot,
+    containerId: string,
+    containerNumber: string,
+    isBackfill: boolean = false,
+  ): Promise<PipelineResult> {
+    return processSnapshot(snapshot, containerId, containerNumber, pipelineDeps, isBackfill)
+  }
 
   return {
     /**
-     * Fetch tracking data from a REST-based carrier and save as snapshot.
+     * Fetch tracking data from a REST-based carrier, save as snapshot, and run the full pipeline.
      *
      * @param containerId - UUID of the container in our DB
      * @param containerNumber - The physical container number (e.g. MNBU3094033)
      * @param provider - Carrier identifier
-     * @returns The persisted Snapshot, or null if the carrier has no REST fetcher
+     * @returns The persisted Snapshot + pipeline result, or null if the carrier has no REST fetcher
      */
-    async fetchAndSaveSnapshot(
+    async fetchAndProcess(
       containerId: string,
       containerNumber: string,
       provider: Provider,
-    ): Promise<Snapshot | null> {
+    ): Promise<FetchAndProcessResult | null> {
       const fetcher = getRestFetcher(provider)
       if (!fetcher) {
         return null
@@ -55,7 +96,9 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
           payload: null,
           parse_error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}`,
         }
-        return snapshotRepository.insert(errorSnapshot)
+        const snapshot = await snapshotRepository.insert(errorSnapshot)
+        const pipeline = await runPipeline(snapshot, containerId, containerNumber)
+        return { snapshot, pipeline }
       }
 
       const newSnapshot: NewSnapshot = {
@@ -66,27 +109,31 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         parse_error: null,
       }
 
-      return snapshotRepository.insert(newSnapshot)
+      const snapshot = await snapshotRepository.insert(newSnapshot)
+      const pipeline = await runPipeline(snapshot, containerId, containerNumber)
+      return { snapshot, pipeline }
     },
 
     /**
-     * Save a pre-fetched payload as a snapshot.
+     * Save a pre-fetched payload as a snapshot and run the full pipeline.
      *
      * Used by Maersk (Puppeteer) flow where the fetch is done externally
      * and we just need to persist the captured JSON.
      *
      * @param containerId - UUID of the container in our DB
+     * @param containerNumber - The physical container number
      * @param provider - Carrier identifier
      * @param payload - The raw API response to persist
      * @param parseError - Optional error message if parsing failed upstream
-     * @returns The persisted Snapshot
+     * @returns The persisted Snapshot + pipeline result
      */
-    async saveRawSnapshot(
+    async saveAndProcess(
       containerId: string,
+      containerNumber: string,
       provider: Provider,
       payload: unknown,
       parseError: string | null = null,
-    ): Promise<Snapshot> {
+    ): Promise<FetchAndProcessResult> {
       const newSnapshot: NewSnapshot = {
         container_id: containerId,
         provider,
@@ -95,7 +142,54 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         parse_error: parseError,
       }
 
-      return snapshotRepository.insert(newSnapshot)
+      const snapshot = await snapshotRepository.insert(newSnapshot)
+      const pipeline = await runPipeline(snapshot, containerId, containerNumber)
+      return { snapshot, pipeline }
+    },
+
+    /**
+     * Get the full tracking summary for a container (observations, timeline, status, alerts).
+     */
+    async getContainerSummary(
+      containerId: string,
+      containerNumber: string,
+    ): Promise<ContainerTrackingSummary> {
+      const { deriveTimeline } = await import('~/modules/tracking/domain/deriveTimeline')
+      const { deriveStatus } = await import('~/modules/tracking/domain/deriveStatus')
+      const { deriveTransshipment } = await import('~/modules/tracking/domain/deriveAlerts')
+
+      const [observations, alerts] = await Promise.all([
+        observationRepository.findAllByContainerId(containerId),
+        trackingAlertRepository.findActiveByContainerId(containerId),
+      ])
+
+      const timeline = deriveTimeline(containerId, containerNumber, observations)
+      const status = deriveStatus(timeline)
+      const transshipment = deriveTransshipment(timeline)
+
+      return {
+        containerId,
+        containerNumber,
+        observations,
+        timeline,
+        status,
+        transshipment,
+        alerts,
+      }
+    },
+
+    /**
+     * Acknowledge a tracking alert.
+     */
+    async acknowledgeAlert(alertId: string): Promise<void> {
+      return trackingAlertRepository.acknowledge(alertId, new Date().toISOString())
+    },
+
+    /**
+     * Dismiss a tracking alert.
+     */
+    async dismissAlert(alertId: string): Promise<void> {
+      return trackingAlertRepository.dismiss(alertId, new Date().toISOString())
     },
 
     /**

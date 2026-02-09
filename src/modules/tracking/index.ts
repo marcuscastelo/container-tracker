@@ -3,12 +3,14 @@
 // This module owns the full tracking lifecycle:
 // - Fetching carrier data (REST and Puppeteer)
 // - Persisting snapshots
-// - Normalizing snapshots into observations (future)
-// - Deriving status and alerts (future)
+// - Normalizing snapshots into observations
+// - Deriving timeline, status and alerts
 
 // Application (use cases, pipeline, schemas)
 export {
+  type ContainerTrackingSummary,
   createTrackingUseCases,
+  type FetchAndProcessResult,
   RefreshSchemas,
   type TrackingUseCases,
   type TrackingUseCasesDeps,
@@ -62,8 +64,14 @@ export {
 
 // Default use cases singleton (wired with Supabase repositories)
 import { createTrackingUseCases } from '~/modules/tracking/application'
-import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure'
+import {
+  supabaseObservationRepository,
+  supabaseSnapshotRepository,
+  supabaseTrackingAlertRepository,
+} from '~/modules/tracking/infrastructure'
 
 export const trackingUseCases = createTrackingUseCases({
   snapshotRepository: supabaseSnapshotRepository,
+  observationRepository: supabaseObservationRepository,
+  trackingAlertRepository: supabaseTrackingAlertRepository,
 })
