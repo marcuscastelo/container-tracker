@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import type { AlertSeverity } from '~/modules/alert'
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import {
   type Carrier,
   CarrierSchema,
@@ -9,6 +8,7 @@ import {
 } from '~/modules/process/domain/value-objects'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 
 // Backwards-compatible alias for tests and other callers
 export type ProcessApiResponse = ProcessDetailResponse

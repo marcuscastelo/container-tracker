@@ -3,24 +3,10 @@ import { EventActualitySchema } from '~/modules/container-events/domain/EventAcu
 import { EventSourceSchema } from '~/modules/container-events/domain/EventSource'
 import { EventTypeSchema } from '~/modules/container-events/domain/EventType'
 import type { Database } from '~/shared/supabase/database.types'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 
 type ContainerEventRow = Database['public']['Tables']['container-events']['Row']
 type ContainerEventInsert = Database['public']['Tables']['container-events']['Insert']
-
-type SafeParseResult<T> = { success: true; data: T } | { success: false; error: unknown }
-
-export function safeParseOrDefault<T>(
-  value: unknown,
-  schema: { safeParse: (v: unknown) => SafeParseResult<T> },
-  defaultValue: T,
-): T {
-  const result = schema.safeParse(value)
-  if (result && result.success) return result.data
-
-  // Keep a helpful warning for debugging but avoid throwing
-  console.warn('Failed to parse value, using default:', { value, error: (result as any)?.error })
-  return defaultValue
-}
 
 export const containerEventMappers = {
   toRow: (event: ContainerEvent): ContainerEventInsert => ({

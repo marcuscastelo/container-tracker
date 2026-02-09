@@ -4,7 +4,7 @@ import z from 'zod'
 // This makes adding a new locale seamless: drop a new JSON file and it will be picked up.
 // Vite's import.meta.glob is used with eager import to obtain the parsed JSON at build time.
 import * as reference from '~/locales/pt-BR.json' // ensure at least one locale is included in the bundle
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { hasDefaultProp, isRecord } from '~/shared/utils/typeGuards'
 
 const modules = import.meta.glob('~/locales/*.json', { eager: true })

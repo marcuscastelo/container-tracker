@@ -2,7 +2,6 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import z from 'zod'
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import { CreateProcessDialog, type CreateProcessInput } from '~/modules/process'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
@@ -18,6 +17,7 @@ import {
 } from '~/shared/api-schemas/processes.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader, ExistingProcessError } from '~/shared/ui'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
 const keys = {
@@ -143,7 +143,11 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         if (err instanceof TypedFetchError && err.status === 409) {
           const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()), null)
           if (body && 'existing' in body) {
-            const existing = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
+            const existing = safeParseOrDefault(
+              body.existing,
+              z.record(z.string(), z.unknown()),
+              null,
+            )
             if (existing) {
               const processId = String(existing.processId ?? existing.process_id ?? '')
               setIsCreateDialogOpen(false)
@@ -201,7 +205,11 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         if (err instanceof TypedFetchError && err.status === 409) {
           const body = safeParseOrDefault(err.body, z.record(z.string(), z.unknown()), null)
           if (body && 'existing' in body) {
-            const existing = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
+            const existing = safeParseOrDefault(
+              body.existing,
+              z.record(z.string(), z.unknown()),
+              null,
+            )
             if (existing) {
               const processId = String(existing.processId ?? existing.process_id ?? '')
               setIsEditOpen(false)

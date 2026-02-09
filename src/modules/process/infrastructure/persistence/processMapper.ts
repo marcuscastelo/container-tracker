@@ -1,4 +1,3 @@
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import type { Process, ProcessContainer } from '~/modules/process/domain'
 import {
   CarrierSchema,
@@ -7,6 +6,7 @@ import {
   ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
 import type { Database } from '~/shared/supabase/database.types'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 
 type ProcessRow = Database['public']['Tables']['processes']['Row']
 type ContainerRow = Database['public']['Tables']['containers']['Row']

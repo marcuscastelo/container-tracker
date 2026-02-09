@@ -3,7 +3,7 @@ import {
   type F1Shipment,
   F1ShipmentSchema,
 } from '~/modules/container/domain/schemas/canonical.schema'
-import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 
 function upperTrim(v: unknown): string {
   if (!v && v !== 0) return ''
