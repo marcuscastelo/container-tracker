@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type z4 from 'zod/v4'
 import { alertUseCases } from '~/modules/alert'
 import type { NewContainer } from '~/modules/container/domain/container'
-import type { getProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
+import type { getRestProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
 import { CarrierSchema } from '~/modules/process/domain/value-objects'
 
@@ -39,11 +39,11 @@ function sanitizeValue(v: unknown): unknown {
   return v
 }
 
-export async function fetchAndSanitizeStatus(
-  handler: NonNullable<ReturnType<typeof getProvider>>,
+export async function fetchAndSanitizeContainerEvents(
+  handler: NonNullable<ReturnType<typeof getRestProvider>>,
   container: string,
 ) {
-  let result: { parsedStatus?: Record<string, unknown>; raw?: string } | undefined
+  let result: { parsedEvents?: Record<string, unknown>; raw?: string } | undefined
   try {
     console.debug(
       `refresh: invoking handler for provider='${handler.name}' container='${container}'`,
@@ -54,11 +54,11 @@ export async function fetchAndSanitizeStatus(
     return { error: `provider fetch failed: ${String(err)}` }
   }
 
-  const parsedStatus = sanitizeValue(
-    result?.parsedStatus ?? (typeof result?.raw === 'string' ? { raw: result.raw } : { raw: '' }),
+  const parsedEvents = sanitizeValue(
+    result?.parsedEvents ?? (typeof result?.raw === 'string' ? { raw: result.raw } : { raw: '' }),
   )
 
-  return { parsedStatus }
+  return { parsedEvents }
 }
 
 // TODO: Review canonicall shipment schema, probably deprecated

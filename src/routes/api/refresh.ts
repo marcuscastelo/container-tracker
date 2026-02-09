@@ -3,10 +3,10 @@ import { mapParsedStatusToF1 } from '~/modules/container/application/toCanonical
 import type { F1Shipment } from '~/modules/container/domain/schemas/canonical.schema'
 import { ingestCanonicalShipment } from '~/modules/container-events/infrastructure/api/refresh/api'
 import {
-  fetchAndSanitizeStatus,
+  fetchAndSanitizeContainerEvents,
   respondWithSchema,
 } from '~/modules/container-events/infrastructure/api/refresh/helpers'
-import { getProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
+import { getRestProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
 import { RefreshSchemas } from '~/modules/container-events/infrastructure/api/refresh/schemas'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
@@ -32,7 +32,7 @@ export async function POST({ request }: { request: Request }) {
       return handleMaerskRedirect(container)
     }
 
-    const handler = getProvider(String(provider))
+    const handler = getRestProvider(String(provider))
     if (!handler) {
       console.error(`refresh: no handler for carrier '${provider}'`)
       return respondWithSchema(
@@ -42,12 +42,15 @@ export async function POST({ request }: { request: Request }) {
       )
     }
 
-    const { parsedStatus, error: fetchError } = await fetchAndSanitizeStatus(handler, container)
+    const { parsedEvents: rawEvents, error: fetchError } = await fetchAndSanitizeContainerEvents(
+      handler,
+      container,
+    )
     if (fetchError) {
       return respondWithSchema({ error: fetchError }, RefreshSchemas.responses.error, 502)
     }
 
-    const mappedResult = mapStatusToCanonical(parsedStatus, container, provider)
+    const mappedResult = mapStatusToCanonical(rawEvents, container, provider)
     if (!mappedResult.ok) {
       return mappedResult.response
     }
@@ -106,11 +109,11 @@ async function parseRequestData(
 }
 
 function mapStatusToCanonical(
-  parsedStatus: unknown,
+  rawEvents: unknown,
   container: string,
   provider: string,
 ): { ok: true; shipment: F1Shipment } | { ok: false; response: Response } {
-  const mapped = mapParsedStatusToF1(parsedStatus, String(container), provider)
+  const mapped = mapParsedStatusToF1(rawEvents, String(container), provider)
   if (!mapped.ok) {
     console.error('refresh: mapping to canonical failed', mapped.error)
     return {

@@ -14,7 +14,7 @@ function upperTrim(v: unknown): string {
 const isIso6346 = (s: string) => /^[A-Z]{4}\d{7}$/.test(s)
 
 export function mapParsedStatusToF1(
-  parsed: unknown,
+  rawEvents: unknown,
   containerId: string,
   provider: string,
 ): { ok: true; shipment: F1Shipment } | { ok: false; error: string } {
@@ -26,22 +26,25 @@ export function mapParsedStatusToF1(
     }
 
     // Attempt to read common fields from parsed payload
-    const p: Record<string, unknown> = safeParseOrDefault(
-      parsed,
+    const parsedPayload: Record<string, unknown> = safeParseOrDefault(
+      rawEvents,
       z.record(z.string(), z.unknown()),
       {},
     )
-    const shipmentId = String(p?.process_id ?? p?.process ?? `ship-${normalizedContainerNumber}`)
+    const shipmentId = String(
+      parsedPayload?.process_id ?? parsedPayload?.process ?? `ship-${normalizedContainerNumber}`,
+    )
 
-    const origin = p?.origin ?? p?.origin_display ?? undefined
-    const destination = p?.destination ?? p?.destination_display ?? undefined
+    const origin = parsedPayload?.origin ?? parsedPayload?.origin_display ?? undefined
+    const destination =
+      parsedPayload?.destination ?? parsedPayload?.destination_display ?? undefined
 
     // Find container info if present
-    let c: Record<string, unknown> | null = null
-    const containersRaw = p?.containers
+    let containerInfo: Record<string, unknown> | null = null
+    const containersRaw = parsedPayload?.containers
     if (Array.isArray(containersRaw) && containersRaw.length > 0) {
       const arr = containersRaw
-      c =
+      containerInfo =
         (arr.find((ci) => {
           const ciRec = safeParseOrDefault(ci, z.record(z.string(), z.unknown()), null)
           if (!ciRec) return false
@@ -53,9 +56,14 @@ export function mapParsedStatusToF1(
         safeParseOrDefault(arr[0], z.record(z.string(), z.unknown()), null)
     }
     // fallback to top-level fields
-    if (!c) c = p
+    if (!containerInfo) containerInfo = parsedPayload
 
-    const etaRaw = c?.eta_final_delivery ?? c?.eta ?? p?.eta ?? p?.EstimatedTimeOfArrival ?? null
+    const etaRaw =
+      containerInfo?.eta_final_delivery ??
+      containerInfo?.eta ??
+      parsedPayload?.eta ??
+      parsedPayload?.EstimatedTimeOfArrival ??
+      null
     let eta: Date | null = null
     if (etaRaw) {
       // Accept strings, numbers or Date instances — guard against object literals
@@ -67,7 +75,8 @@ export function mapParsedStatusToF1(
       }
     }
 
-    const statusRaw = c?.status ?? p?.current_status ?? p?.status ?? null
+    const statusRaw =
+      containerInfo?.status ?? parsedPayload?.current_status ?? parsedPayload?.status ?? null
     // Normalize status into canonical ContainerStatusEnum when possible
     const canonicalStatuses = new Set([
       'UNKNOWN',
@@ -101,13 +110,18 @@ export function mapParsedStatusToF1(
     // events may be present in multiple shapes: top-level c.events or nested inside
     // container.locations[].events (common for CMA-CGM normalized output). Try several
     // fallbacks to extract an array of event objects.
-    const eventsRaw = c?.events ?? c?.Events ?? p?.events ?? p?.Events ?? null
+    const eventsRaw =
+      containerInfo?.events ??
+      containerInfo?.Events ??
+      parsedPayload?.events ??
+      parsedPayload?.Events ??
+      null
     let events: unknown[] | undefined = undefined
     if (Array.isArray(eventsRaw)) {
       events = eventsRaw
-    } else if (Array.isArray(c?.locations)) {
+    } else if (Array.isArray(containerInfo?.locations)) {
       // flatten location.events arrays into events
-      const locs = c.locations
+      const locs = containerInfo.locations
       const flat: unknown[] = []
       for (const L of locs) {
         if (!L) continue
@@ -172,9 +186,9 @@ export function mapParsedStatusToF1(
       eta: eta ?? undefined,
       flags: { missing_eta: !eta, stale_data: false },
       events: eventsMapped,
-      source: { type: 'api' as const, api: provider, fetched_at: now, raw: parsed },
+      source: { type: 'api' as const, api: provider, fetched_at: now, raw: rawEvents },
       created_at: now,
-      raw: c ?? parsed,
+      raw: containerInfo ?? rawEvents,
     }
 
     const shipment = {
@@ -188,7 +202,7 @@ export function mapParsedStatusToF1(
             : undefined,
       // p is a loose object; safely read nested source.api if present
       carrier: (() => {
-        const src = p?.source
+        const src = parsedPayload?.source
         const srcRec = safeParseOrDefault(src, z.record(z.string(), z.unknown()), null)
         if (srcRec) {
           const apiVal = srcRec['api']
@@ -197,9 +211,9 @@ export function mapParsedStatusToF1(
         return provider ?? null
       })(),
       created_at: now,
-      source: { type: 'api' as const, api: provider, fetched_at: now, raw: parsed },
+      source: { type: 'api' as const, api: provider, fetched_at: now, raw: rawEvents },
       containers: [container],
-      raw: parsed,
+      raw: rawEvents,
     }
 
     // validate via zod
