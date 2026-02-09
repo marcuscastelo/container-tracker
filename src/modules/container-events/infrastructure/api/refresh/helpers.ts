@@ -54,19 +54,10 @@ export async function fetchAndSanitizeStatus(
     return { error: `provider fetch failed: ${String(err)}` }
   }
 
-  let parsedStatus: Record<string, unknown> = {}
-  if (!result) {
-    parsedStatus = { raw: '' }
-  } else if (result.parsedStatus) {
-    parsedStatus = result.parsedStatus
-  } else if (typeof result.raw === 'string') {
-    parsedStatus = { raw: result.raw }
-  } else {
-    parsedStatus = { raw: '' }
-  }
+  const parsedStatus = sanitizeValue(
+    result?.parsedStatus ?? (typeof result?.raw === 'string' ? { raw: result.raw } : { raw: '' }),
+  )
 
-  // @ts-expect-error: forced typing
-  parsedStatus = sanitizeValue(parsedStatus)
   return { parsedStatus }
 }
 
