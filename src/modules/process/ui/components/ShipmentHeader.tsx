@@ -3,12 +3,11 @@ import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import type { ShipmentDetail } from '~/modules/process/application/processPresenter'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
+import { useTranslation } from '~/shared/localization/i18n'
 import { StatusBadge } from '~/shared/ui'
 import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
-  t: (k: string) => string
-  keys: Record<string, string>
   data: ShipmentDetail
   isRefreshing: boolean
   onTriggerRefresh: () => void
@@ -17,6 +16,7 @@ type Props = {
 }
 
 export function ShipmentHeader(props: Props): JSX.Element {
+  const { t, keys } = useTranslation()
   const [showInternalIdInfo, setShowInternalIdInfo] = createSignal(false)
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   return (
@@ -24,12 +24,12 @@ export function ShipmentHeader(props: Props): JSX.Element {
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-xl font-semibold text-slate-900">
-            {props.t(props.keys.shipmentHeader)} {props.data.processRef}
+            {t(keys.shipmentView.header)} {props.data.processRef}
             <Show when={!props.data.reference}>
               <span class="relative inline-block ml-2">
                 <button
                   type="button"
-                  aria-label={props.t(props.keys.internalIdMessage)}
+                  aria-label={t(keys.shipmentView.internalIdMessage)}
                   class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-blue-600 text-xs font-medium hover:bg-slate-200 animate-pulse hover:cursor-pointer hover:scale-110 transition-transform"
                   onClick={() => setShowInternalIdInfo((s) => !s)}
                 >
@@ -44,7 +44,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
                   role="dialog"
                   aria-hidden={!showInternalIdInfo()}
                 >
-                  <p class="text-xs text-slate-700">{props.t(props.keys.internalIdMessage)}</p>
+                  <p class="text-xs text-slate-700">{t(keys.shipmentView.internalIdMessage)}</p>
 
                   <div class="mt-2 text-right">
                     <button
@@ -55,7 +55,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
                         setShowInternalIdInfo(false)
                       }}
                     >
-                      {props.t(props.keys.internalIdCTA)}
+                      {t(keys.shipmentView.internalIdCTA)}
                     </button>
                   </div>
                 </div>
@@ -71,17 +71,17 @@ export function ShipmentHeader(props: Props): JSX.Element {
 
         <div class="flex items-center gap-6">
           <div class="text-right">
-            <p class="text-xs uppercase text-slate-500">{props.t(props.keys.status)}</p>
+            <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.status)}</p>
             <StatusBadge variant={props.data.status} label={props.data.statusLabel} />
           </div>
           <div class="text-center">
-            <p class="text-xs uppercase text-slate-500">{props.t(props.keys.carrier)}</p>
+            <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.carrier)}</p>
             <p class="text-sm font-medium text-slate-900">{props.data.carrier ?? '—'}</p>
           </div>
           <div class="text-right">
-            <p class="text-xs uppercase text-slate-500">{props.t(props.keys.eta)}</p>
+            <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.eta)}</p>
             <p class="text-sm font-medium text-slate-900">
-              {props.data.eta ?? props.t(props.keys.etaMissing)}
+              {props.data.eta ?? t(keys.shipmentView.etaMissing)}
             </p>
           </div>
 
@@ -127,8 +127,8 @@ export function ShipmentHeader(props: Props): JSX.Element {
             <Dialog
               open={showUnknownCarrierDialog()}
               onClose={() => setShowUnknownCarrierDialog(false)}
-              title={props.t(props.keys.refreshCarrierUnknownTitle)}
-              description={props.t(props.keys.refreshCarrierUnknownMessage)}
+              title={t(keys.shipmentView.refreshCarrierUnknownTitle)}
+              description={t(keys.shipmentView.refreshCarrierUnknownMessage)}
             >
               <div class="flex justify-end gap-3">
                 <button
@@ -136,7 +136,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
                   class="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
                   onClick={() => setShowUnknownCarrierDialog(false)}
                 >
-                  {props.t(props.keys.refreshCarrierUnknownCancelCTA)}
+                  {t(keys.shipmentView.refreshCarrierUnknownCancelCTA)}
                 </button>
                 <button
                   type="button"
@@ -146,7 +146,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
                     props.onOpenEdit('carrier')
                   }}
                 >
-                  {props.t(props.keys.refreshCarrierUnknownEditCTA)}
+                  {t(keys.shipmentView.refreshCarrierUnknownEditCTA)}
                 </button>
               </div>
             </Dialog>

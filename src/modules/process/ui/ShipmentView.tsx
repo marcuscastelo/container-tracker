@@ -20,36 +20,9 @@ import { AppHeader, ExistingProcessError } from '~/shared/ui'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-const keys = {
-  backToList: 'shipmentView.backToList',
-  shipmentHeader: 'shipmentView.header',
-  origin: 'shipmentView.origin',
-  destination: 'shipmentView.destination',
-  status: 'shipmentView.status',
-  eta: 'shipmentView.eta',
-  containersTitle: 'shipmentView.containers.title',
-  timelineTitle: 'shipmentView.timeline.title',
-  timelineExpected: 'shipmentView.timeline.expected',
-  timelineActual: 'shipmentView.timeline.actual',
-  alertsTitle: 'shipmentView.alerts.title',
-  alertsEmpty: 'shipmentView.alerts.empty',
-  carrier: 'shipmentView.carrier',
-  etaMissing: 'shipmentView.etaMissing',
-  loading: 'shipmentView.loading',
-  notFound: 'shipmentView.notFound',
-  backToDashboard: 'shipmentView.backToDashboard',
-  noEvents: 'shipmentView.noEvents',
-  processCreated: 'shipmentView.processCreated',
-  internalIdMessage: 'shipmentView.internalIdMessage',
-  internalIdCTA: 'shipmentView.internalIdCTA',
-  refreshCarrierUnknownTitle: 'shipmentView.refreshCarrierUnknownTitle',
-  refreshCarrierUnknownMessage: 'shipmentView.refreshCarrierUnknownMessage',
-  refreshCarrierUnknownEditCTA: 'shipmentView.refreshCarrierUnknownEditCTA',
-  refreshCarrierUnknownCancelCTA: 'shipmentView.refreshCarrierUnknownCancelCTA',
-}
 
 export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
     () => params.id,
@@ -361,7 +334,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           class="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
         >
           <ChevronLeftIcon />
-          {t(keys.backToList)}
+          {t(keys.shipmentView.backToList)}
         </A>
 
         {/* Show conflict banner when create/edit results in an existing-container conflict */}
@@ -392,16 +365,16 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         {/* Loading state */}
         <Show when={shipment.loading}>
           <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-slate-500">{t(keys.loading)}</p>
+            <p class="text-slate-500">{t(keys.shipmentView.loading)}</p>
           </div>
         </Show>
 
         {/* Error/Not found state */}
         <Show when={shipment.error || (shipment() === null && !shipment.loading)}>
           <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-red-500">{t(keys.notFound)}</p>
+            <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
             <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
-              {t(keys.backToDashboard)}
+              {t(keys.shipmentView.backToDashboard)}
             </A>
           </div>
         </Show>
@@ -411,8 +384,6 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           {(data) => (
             <>
               <ShipmentHeader
-                t={t}
-                keys={keys}
                 data={data()}
                 isRefreshing={isRefreshing()}
                 onTriggerRefresh={() => triggerRefresh()}
@@ -449,11 +420,14 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                     onSelect={(id) => setSelectedContainerId(id)}
                   />
 
-                  <TimelinePanel selectedContainer={selectedContainer()} carrier={data().carrier} />
+                  <TimelinePanel
+                    selectedContainer={selectedContainer()}
+                    carrier={data().carrier}
+                  />
                 </div>
 
                 <div>
-                  <AlertsPanel alerts={data().alerts} t={t} keys={keys} />
+                  <AlertsPanel alerts={data().alerts} />
                 </div>
               </div>
             </>

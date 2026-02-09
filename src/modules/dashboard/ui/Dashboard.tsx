@@ -23,26 +23,6 @@ import {
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-const keys = {
-  pageTitle: 'dashboard.pageTitle',
-  activeShipments: 'dashboard.metrics.activeShipments',
-  inTransit: 'dashboard.metrics.inTransit',
-  delays: 'dashboard.metrics.delays',
-  arrivalsToday: 'dashboard.metrics.arrivalsToday',
-  tableTitle: 'dashboard.table.title',
-  colProcess: 'dashboard.table.col.process',
-  colCarrier: 'dashboard.table.col.carrier',
-  colClient: 'dashboard.table.col.client',
-  colRoute: 'dashboard.table.col.route',
-  colContainers: 'dashboard.table.col.containers',
-  colStatus: 'dashboard.table.col.status',
-  colEta: 'dashboard.table.col.eta',
-  emptyTitle: 'dashboard.empty.title',
-  emptyDescription: 'dashboard.empty.description',
-  emptyAction: 'dashboard.empty.action',
-  loading: 'dashboard.loading',
-  error: 'dashboard.error',
-}
 
 // Domain types for the dashboard - derived from API response
 type ProcessSummary = {
@@ -144,7 +124,7 @@ function CheckIcon(): JSX.Element {
 }
 
 export function Dashboard(): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
   const navigate = useNavigate()
   const [processes, { refetch }] = createResource(fetchProcesses)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
@@ -284,23 +264,23 @@ export function Dashboard(): JSX.Element {
         <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             icon={<ShipIcon />}
-            label={t(keys.activeShipments)}
+            label={t(keys.dashboard.metrics.activeShipments)}
             value={metrics().activeCount}
           />
           <MetricCard
             icon={<ContainerIcon />}
-            label={t(keys.inTransit)}
+            label={t(keys.dashboard.metrics.inTransit)}
             value={metrics().inTransitCount}
           />
           <MetricCard
             icon={<AlertIcon />}
-            label={t(keys.delays)}
+            label={t(keys.dashboard.metrics.delays)}
             value={metrics().delayCount}
             variant={metrics().delayCount > 0 ? 'warning' : 'default'}
           />
           <MetricCard
             icon={<CheckIcon />}
-            label={t(keys.arrivalsToday)}
+            label={t(keys.dashboard.metrics.arrivalsToday)}
             value={metrics().arrivingToday}
             variant={metrics().arrivingToday > 0 ? 'success' : 'default'}
           />
@@ -309,7 +289,7 @@ export function Dashboard(): JSX.Element {
         {/* Shipments Table */}
         <section class="rounded-lg border border-slate-200 bg-white">
           <header class="border-b border-slate-200 px-6 py-4">
-            <h2 class="text-lg font-semibold text-slate-900">{t(keys.tableTitle)}</h2>
+            <h2 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.table.title)}</h2>
           </header>
 
           <Show when={processes.loading}>
@@ -325,9 +305,9 @@ export function Dashboard(): JSX.Element {
               when={(processes() ?? []).length > 0}
               fallback={
                 <EmptyState
-                  title={t(keys.emptyTitle)}
-                  description={t(keys.emptyDescription)}
-                  actionLabel={t(keys.emptyAction)}
+                  title={t(keys.dashboard.empty.title)}
+                  description={t(keys.dashboard.empty.description)}
+                  actionLabel={t(keys.dashboard.empty.action)}
                   onAction={handleCreateProcess}
                 />
               }
@@ -336,13 +316,13 @@ export function Dashboard(): JSX.Element {
                 <table class="w-full">
                   <thead>
                     <tr class="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                      <th class="px-6 py-3">{t(keys.colProcess)}</th>
-                      <th class="px-6 py-3">{t(keys.colCarrier)}</th>
-                      <th class="px-6 py-3">{t(keys.colClient)}</th>
-                      <th class="px-6 py-3">{t(keys.colRoute)}</th>
-                      <th class="px-6 py-3 text-center">{t(keys.colContainers)}</th>
-                      <th class="px-6 py-3">{t(keys.colStatus)}</th>
-                      <th class="px-6 py-3">{t(keys.colEta)}</th>
+                      <th class="px-6 py-3">{t(keys.dashboard.table.col.process)}</th>
+                      <th class="px-6 py-3">{t(keys.dashboard.table.col.carrier)}</th>
+                      <th class="px-6 py-3">{t(keys.dashboard.table.col.client)}</th>
+                      <th class="px-6 py-3">{t(keys.dashboard.table.col.route)}</th>
+                      <th class="px-6 py-3 text-center">{t(keys.dashboard.table.col.containers)}</th>
+                      <th class="px-6 py-3">{t(keys.dashboard.table.col.status)}</th>
+                      <th class="px-6 py-3">{t(keys.dashboard.table.col.eta)}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">

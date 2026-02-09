@@ -2,6 +2,8 @@ import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
 import { createRoot, createSignal, onMount } from 'solid-js'
 import { loadProjectResources } from '~/shared/localization/resources'
+import type { TranslationKeys, TypedTFunction } from './translationTypes'
+import { referenceLocale } from './translationTypes'
 
 // --- Constants ---
 
@@ -70,11 +72,28 @@ const localeRoot = createRoot(() => {
 
 export function useTranslation() {
   const { locale, availableLocales } = localeRoot
+  // build a keys object from the reference locale (memoized at module/runtime)
+  function buildKeys(obj: any, prefix = ''): any {
+    const out: Record<string, any> = {}
+    for (const [k, v] of Object.entries(obj)) {
+      const p = prefix ? `${prefix}.${k}` : k
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        out[k] = buildKeys(v, p)
+      } else {
+        out[k] = p
+      }
+    }
+    return out
+  }
+
+  const keys = buildKeys(referenceLocale) as TranslationKeys
+
   return {
     t: (...args: Parameters<typeof i18next.t>) => {
       locale() // ensure we track locale changes in this scope
       return i18next.t(...args)
     },
+    keys,
     locale,
     setLocale: async (lng: string) => {
       persistLocale(lng)

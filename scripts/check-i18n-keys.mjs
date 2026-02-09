@@ -70,76 +70,149 @@ async function main() {
 
   // only consider string literals that look like i18n keys (contain a dot)
   // match t('...') but avoid matching other identifiers like alert(...)
-  const literalRegex = /\bt\s*\(\s*['"`]([^'"`]+)['"`]/g
-  // capture any local const object used as keys, e.g. `const keys = { ... }` or `const asdf = { ... }`
+  const literalRegex = /\bt\s*\(\s*['"`]{1}([^'"`]+)['"`]{1}/g
+  // capture any const object used as keys across the codebase, e.g. `const keys = { ... }`
   const constObjRegex = /const\s+([A-Za-z0-9_]+)\s*=\s*{([\s\S]*?)}\s*;?/gm
-  const keyEntryRegex = /([A-Za-z0-9_]+)\s*:\s*['"`]([^'"`]+)['"`]/g
+  const keyEntryRegex = /([A-Za-z0-9_]+)\s*:\s*['"`]{1}([^'"`]+)['"`]{1}/g
 
-  // usages like t(someVar.someKey) or more complex expressions like
-  // t(condition ? someVar.someKey : someVar.otherKey)
-  // We'll first match the whole t(...) call and then search inside the
-  // argument expression for occurrences of localVar.prop so we don't miss
-  // usages embedded in ternaries or longer expressions.
-  const keysUsageRegex = /\bt\s*\(\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\)/g
+  // Build a global map of key-objects defined anywhere in the source tree.
+  // This lets us detect usages where the object is passed as a prop (e.g. props.keys)
+  // or referenced via a chain like props.keys.someKey in other files.
+  const globalKeyMap = {}
+  for (const file of files) {
+    const content = await readFile(file, 'utf8')
+    let m
+    while ((m = constObjRegex.exec(content))) {
+      const varName = m[1]
+      const body = m[2]
+      let e
+      while ((e = keyEntryRegex.exec(body))) {
+        if (e[2] && e[2].includes('.')) {
+          globalKeyMap[varName] = globalKeyMap[varName] || {}
+          globalKeyMap[varName][e[1]] = e[2]
+        }
+      }
+    }
+  }
+
+  // Additionally, detect local variables that receive `keys` via destructuring from useTranslation(),
+  // e.g. `const { t, keys } = useTranslation()` or `const { keys: k } = useTranslation()`.
+  // We'll record per-file which local identifiers are the translation-keys object so we can
+  // map usages like `t(keys.shipmentView.header)` to the dotted key `shipmentView.header`.
+  function findLocalKeysVars(content) {
+    const res = new Set()
+    // match const { ... } = useTranslation()
+    const destructRegex = /const\s*{\s*([^}]+)\s*}\s*=\s*useTranslation\s*\(\s*\)/g
+    let d
+    while ((d = destructRegex.exec(content))) {
+      const inner = d[1]
+      const parts = inner.split(',').map((s) => s.trim())
+      for (const p of parts) {
+        // p can be 'keys' or 'keys: alias' or 't' or 't: tr'
+        if (p.startsWith('keys')) {
+          const colon = p.indexOf(':')
+          if (colon >= 0) {
+            const alias = p.slice(colon + 1).trim()
+            if (alias) res.add(alias)
+          } else {
+            res.add('keys')
+          }
+        }
+      }
+    }
+    return res
+  }
+
+  // helper to record a used key
+  function markUsed(mapped, file) {
+    usedKeys.add(mapped)
+    usedKeyLocations[mapped] = usedKeyLocations[mapped] || new Set()
+    usedKeyLocations[mapped].add(file)
+  }
+
+  // Now scan files for usages. We try multiple strategies:
+  // 1) literal t('...') calls
+  // 2) t(someChain.prop) where some segment of someChain matches a var in globalKeyMap
+  // 3) generic t(...) calls where the argument contains expressions like keys.prop inside
   const tCallRegex = /\bt\s*\(\s*([^)]*?)\s*\)/g
+  const chainPropRegex = /([A-Za-z0-9_\.]+)\.([A-Za-z0-9_]+)/g
 
   for (const file of files) {
     const content = await readFile(file, 'utf8')
+
+    // detect local key-var names coming from useTranslation() in this file
+    const localKeysVars = findLocalKeysVars(content)
 
     let m
     while ((m = literalRegex.exec(content))) {
       const cand = m[1].trim()
       // only accept candidates that look like i18n keys (e.g. contain a dot)
       if (cand.includes('.')) {
-        usedKeys.add(cand)
-        usedKeyLocations[cand] = usedKeyLocations[cand] || new Set()
-        usedKeyLocations[cand].add(file)
+        markUsed(cand, file)
       }
     }
 
-    // map local const objects that look like key maps (not just `keys` literal)
-    const localMap = {}
-    while ((m = constObjRegex.exec(content))) {
-      const varName = m[1]
-      const body = m[2]
-      let e
-      while ((e = keyEntryRegex.exec(body))) {
-        // only map values that look like i18n keys (contain a dot)
-        if (e[2] && e[2].includes('.')) {
-          localMap[varName] = localMap[varName] || {}
-          localMap[varName][e[1]] = e[2]
+    // match any t(...) calls and search inside for chain.prop occurrences
+    while ((m = tCallRegex.exec(content))) {
+      const arg = m[1]
+      let inner
+      while ((inner = chainPropRegex.exec(arg))) {
+        const varChain = inner[1]
+        const prop = inner[2]
+        // split chain and try to find any segment that maps to a global key object
+        const segments = varChain.split('.')
+        let matched = false
+        for (const seg of segments) {
+          if (seg in globalKeyMap && prop in globalKeyMap[seg]) {
+            markUsed(globalKeyMap[seg][prop], file)
+            matched = true
+            break
+          }
+        }
+        if (matched) continue
+
+        // if this chain references a local keys var (from useTranslation),
+        // e.g. `keys.shipmentView` or `k.shipmentView`, map to dotted key
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i]
+          if (localKeysVars.has(seg)) {
+            const remaining = segments.slice(i + 1)
+            // combined dotted key is remaining + prop
+            const mapped = [...remaining, prop].filter(Boolean).join('.')
+            if (mapped) {
+              markUsed(mapped, file)
+            }
+            break
+          }
         }
       }
     }
 
-    // usages like t(someVar.someKey)
-    while ((m = keysUsageRegex.exec(content))) {
-      const varName = m[1]
-      const prop = m[2]
-      if (varName in localMap && localMap[varName] && prop in localMap[varName]) {
-        const mapped = localMap[varName][prop]
-        usedKeys.add(mapped)
-        usedKeyLocations[mapped] = usedKeyLocations[mapped] || new Set()
-        usedKeyLocations[mapped].add(file)
+    // also handle direct usages like props.keys.shipmentHeader outside of t(...) by
+    // scanning the whole file for chain.prop patterns and mapping any that we can
+    let ch
+    while ((ch = chainPropRegex.exec(content))) {
+      const varChain = ch[1]
+      const prop = ch[2]
+      const segments = varChain.split('.')
+      let handled = false
+      for (const seg of segments) {
+        if (seg in globalKeyMap && prop in globalKeyMap[seg]) {
+          markUsed(globalKeyMap[seg][prop], file)
+          handled = true
+          break
+        }
       }
-      // if not found, ignore — avoids false positives when keys object is imported or built dynamically
-    }
+      if (handled) continue
 
-    // Also match any t(...) calls and look for localVar.prop occurrences inside
-    // the argument expression. This handles ternary expressions and other
-    // non-trivial usages like: t(props.mode === 'edit' ? keys.titleEdit : keys.title)
-    while ((m = tCallRegex.exec(content))) {
-      const arg = m[1]
-      let inner
-      const innerRegex = /([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)/g
-      while ((inner = innerRegex.exec(arg))) {
-        const varName = inner[1]
-        const prop = inner[2]
-        if (varName in localMap && localMap[varName] && prop in localMap[varName]) {
-          const mapped = localMap[varName][prop]
-          usedKeys.add(mapped)
-          usedKeyLocations[mapped] = usedKeyLocations[mapped] || new Set()
-          usedKeyLocations[mapped].add(file)
+      // Map direct chains that start from a local keys var (from useTranslation)
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i]
+        if (localKeysVars.has(seg)) {
+          const remaining = segments.slice(i + 1)
+          const mapped = [...remaining, prop].filter(Boolean).join('.')
+          if (mapped) markUsed(mapped, file)
+          break
         }
       }
     }

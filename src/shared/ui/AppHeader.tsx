@@ -3,20 +3,13 @@ import type { JSX } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 import { LanguageSwitch } from '.'
 
-const keys = {
-  brand: 'header.brand',
-  dashboard: 'header.nav.dashboard',
-  shipments: 'header.nav.shipments',
-  containers: 'header.nav.containers',
-  createProcess: 'header.createProcess',
-}
 
 type Props = {
   readonly onCreateProcess?: () => void
 }
 
 export function AppHeader(props: Props): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
 
   return (
     <header class="border-b border-slate-200 bg-slate-900">
@@ -38,7 +31,7 @@ export function AppHeader(props: Props): JSX.Element {
                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
               />
             </svg>
-            <span class="text-lg font-semibold">{t(keys.brand)}</span>
+            <span class="text-lg font-semibold">{t(keys.header.brand)}</span>
           </A>
 
           {/* Navigation */}
@@ -48,21 +41,21 @@ export function AppHeader(props: Props): JSX.Element {
               class="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
               activeClass="bg-slate-800 text-white"
             >
-              {t(keys.dashboard)}
+              {t(keys.header.nav.dashboard)}
             </A>
             <A
               href="/shipments"
               class="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
               activeClass="bg-slate-800 text-white"
             >
-              {t(keys.shipments)}
+              {t(keys.header.nav.shipments)}
             </A>
             <A
               href="/containers"
               class="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
               activeClass="bg-slate-800 text-white"
             >
-              {t(keys.containers)}
+              {t(keys.header.nav.containers)}
             </A>
           </nav>
         </div>
@@ -89,7 +82,7 @@ export function AppHeader(props: Props): JSX.Element {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            {t(keys.createProcess)}
+            {t(keys.header.createProcess)}
           </button>
         </div>
       </div>
