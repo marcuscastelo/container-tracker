@@ -30,6 +30,7 @@ try {
               alert(`delegated handler: refreshing ${container}...`)
             } catch (_err) {}
             // TODO: Validate container and provider on the client side as well to avoid unnecessary requests
+            // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/18
             fetch('/api/refresh', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

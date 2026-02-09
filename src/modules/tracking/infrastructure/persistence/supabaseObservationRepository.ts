@@ -9,6 +9,7 @@ const TABLE = 'container_observations' as const
 
 type ObservationRow = Tables<'container_observations'>
 // TODO: Deduplicate date normalization logic with supabaseSnapshotRepository. Maybe a shared utility for normalizing timestamptz values from Supabase?
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/19
 function normalizeDatetime(value: unknown): string | null {
   if (value instanceof Date) return value.toISOString()
   if (typeof value === 'number') return new Date(value).toISOString()
