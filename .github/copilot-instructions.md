@@ -83,6 +83,7 @@ Copilot deve **recusar** colocar regras de derivação dentro da UI.
 * `any` é proibido
 * Preferir `unknown` + type guards
 * Usar `readonly` sempre que possível
+* O uso de assertions de tipo com o operador `as` é absolutamente PROIBIDO em QUALQUER circunstância. A única exceção permitida é o literal `as const` (por exemplo para tuplas/const assertions). Nunca use `as` para forçar tipos em tempo de compilação — em vez disso, use guards, validação com Zod ou reescreva a tipagem.
 
 ### 4.2 Tipos Canônicos
 
