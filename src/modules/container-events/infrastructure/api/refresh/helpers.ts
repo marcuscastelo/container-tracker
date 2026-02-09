@@ -88,64 +88,78 @@ export async function ingestCanonicalShipment(canonicalStatus: unknown, containe
     const containers = shipment.containers
 
     if (containers.length > 0) {
-      const createInput: CreateProcessInput = {
-        reference: null,
-        operation_type: 'import',
-        origin: shipment.origin ? { display_name: shipment.origin.city ?? null } : null,
-        destination: shipment.destination
-          ? { display_name: shipment.destination.city ?? null }
-          : null,
-        carrier: CarrierSchema.safeParse(shipment.carrier).success
-          ? CarrierSchema.parse(shipment.carrier)
-          : 'unknown',
-        bill_of_lading: null,
-        containers: containers.map(
-          (c) =>
-            ({
-              container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
-              carrier_code: shipment.carrier,
-            }) satisfies Omit<NewContainer, 'process_id'>,
-        ),
-      }
-
+      const createInput = buildCreateProcessInput(shipment, container)
       try {
         const res = await processUseCases.createProcess(createInput)
         console.log(`refresh: created process ${res.process.id} for container ${container}`)
-        try {
-          await alertUseCases.createProcessCreatedAlerts({
-            process_id: res.process.id,
-            container_ids: res.containers.map((c) => c.id),
-          })
-        } catch (ae) {
-          console.warn('refresh: failed to create initial alerts for imported process', ae)
-        }
+        await createInitialAlerts(res.process.id, res.containers)
       } catch (createErr: unknown) {
-        const msg = hasMessage(createErr)
-          ? String(createErr.message ?? createErr)
-          : String(createErr)
-        console.warn('refresh: createProcess failed, attempting reconciliation:', msg)
-        try {
-          const all = await processUseCases.getAllProcessesWithContainers()
-          const normalized = String(container).toUpperCase().trim()
-          const found = all.find((p) => p.containers.some((c) => c.container_number === normalized))
-          if (found) {
-            const updates: Record<string, unknown> = {}
-            if (!found.carrier && createInput.carrier) updates.carrier = createInput.carrier
-            if ((!found.origin || !found.origin.display_name) && createInput.origin)
-              updates.origin = createInput.origin
-            if ((!found.destination || !found.destination.display_name) && createInput.destination)
-              updates.destination = createInput.destination
-            if (Object.keys(updates).length > 0) {
-              await processUseCases.updateProcess(found.id, updates)
-              console.log(`refresh: reconciled process ${found.id} for container ${container}`)
-            }
-          }
-        } catch (recErr) {
-          console.warn('refresh: reconciliation attempt failed', recErr)
-        }
+        await reconcileProcessOnCreateError(createErr, container, createInput)
       }
     }
   } catch (ingestErr) {
     console.warn('refresh: ingesting canonical shipment into processes failed', ingestErr)
+  }
+}
+
+function buildCreateProcessInput(
+  shipment: z.infer<typeof CanonicalShipmentSchema>,
+  container: string,
+): CreateProcessInput {
+  return {
+    reference: null,
+    operation_type: 'import',
+    origin: shipment.origin ? { display_name: shipment.origin.city ?? null } : null,
+    destination: shipment.destination ? { display_name: shipment.destination.city ?? null } : null,
+    carrier: CarrierSchema.safeParse(shipment.carrier).success
+      ? CarrierSchema.parse(shipment.carrier)
+      : 'unknown',
+    bill_of_lading: null,
+    containers: shipment.containers.map(
+      (c) =>
+        ({
+          container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
+          carrier_code: shipment.carrier,
+        }) satisfies Omit<NewContainer, 'process_id'>,
+    ),
+  }
+}
+
+async function createInitialAlerts(processId: string, containers: readonly NewContainer[]) {
+  try {
+    await alertUseCases.createProcessCreatedAlerts({
+      process_id: processId,
+      container_ids: containers.map((c) => c.container_number),
+    })
+  } catch (ae) {
+    console.warn('refresh: failed to create initial alerts for imported process', ae)
+  }
+}
+
+async function reconcileProcessOnCreateError(
+  createErr: unknown,
+  container: string,
+  createInput: CreateProcessInput,
+) {
+  const msg = hasMessage(createErr) ? String(createErr.message ?? createErr) : String(createErr)
+  console.warn('refresh: createProcess failed, attempting reconciliation:', msg)
+  try {
+    const all = await processUseCases.getAllProcessesWithContainers()
+    const normalized = String(container).toUpperCase().trim()
+    const found = all.find((p) => p.containers.some((c) => c.container_number === normalized))
+    if (found) {
+      const updates: Record<string, unknown> = {}
+      if (!found.carrier && createInput.carrier) updates.carrier = createInput.carrier
+      if ((!found.origin || !found.origin.display_name) && createInput.origin)
+        updates.origin = createInput.origin
+      if ((!found.destination || !found.destination.display_name) && createInput.destination)
+        updates.destination = createInput.destination
+      if (Object.keys(updates).length > 0) {
+        await processUseCases.updateProcess(found.id, updates)
+        console.log(`refresh: reconciled process ${found.id} for container ${container}`)
+      }
+    }
+  } catch (recErr) {
+    console.warn('refresh: reconciliation attempt failed', recErr)
   }
 }
