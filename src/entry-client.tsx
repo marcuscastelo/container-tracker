@@ -22,13 +22,13 @@ try {
             // mark as handled so component handler can skip duplicate
             try {
               btn.dataset.delegateHandled = '1'
-            } catch (_err) {}
+            } catch (_err) { }
             const container = btn.getAttribute('data-container') || ''
             const carrier = btn.getAttribute('data-carrier') || 'unknown'
             console.debug('entry-client: delegated refresh click for', container)
             try {
               alert(`delegated handler: refreshing ${container}...`)
-            } catch (_err) {}
+            } catch (_err) { }
             fetch('/api/refresh', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -38,25 +38,25 @@ try {
                 let j = null
                 try {
                   j = await res.json()
-                } catch (_e) {}
+                } catch (_e) { }
                 if (!res.ok) {
                   try {
                     alert(`Refresh failed: ${res.status} ${res.statusText}\n${j?.error ?? ''}`)
-                  } catch (_err) {}
+                  } catch (_err) { }
                 } else {
                   try {
                     alert(`Refresh OK — updated: ${j?.updatedPath ?? 'unknown'}`)
-                  } catch (_err) {}
+                  } catch (_err) { }
                 }
               })
               .catch((err) => {
                 console.error('delegated refresh error', err)
                 try {
                   alert(`Refresh error: ${String(err)}`)
-                } catch (_e) {}
+                } catch (_e) { }
               })
           }
-        } catch (_err) {}
+        } catch (_err) { }
       },
       { capture: true },
     )

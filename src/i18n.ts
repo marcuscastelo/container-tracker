@@ -56,9 +56,8 @@ const initOptions: InitOptions = {
   interpolation: { escapeValue: false },
 }
 
-i18next.init(initOptions)
-
 const [locale, setLocale] = createSignal(initialLng)
+i18next.init(initOptions)
 i18next.on('languageChanged', (lng) => setLocale(lng))
 
 export function useTranslation() {
