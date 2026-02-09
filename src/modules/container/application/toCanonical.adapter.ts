@@ -14,7 +14,7 @@ function upperTrim(v: unknown): string {
 const isIso6346 = (s: string) => /^[A-Z]{4}\d{7}$/.test(s)
 
 export function mapParsedStatusToF1(
-  rawEvents: unknown,
+  rawEvents: Record<string, unknown>,
   containerId: string,
   provider: string,
 ): { ok: true; shipment: F1Shipment } | { ok: false; error: string } {
@@ -32,10 +32,14 @@ export function mapParsedStatusToF1(
 
     const containerInfo = findContainerInfo(parsedPayload, normalizedContainerNumber)
     const eta = extractEta(containerInfo, parsedPayload)
+
     const status = mapStatusToCanonical(
       containerInfo?.status ?? parsedPayload?.current_status ?? parsedPayload?.status ?? null,
     )
     const events = extractEvents(containerInfo, parsedPayload)
+    console.debug(
+      `toCanonical: mapped container '${containerId}' to shipment '${shipmentId}' with status '${status}' and eta '${eta}'`,
+    )
 
     const container = buildContainer({
       shipmentId,
@@ -48,6 +52,9 @@ export function mapParsedStatusToF1(
       rawEvents,
       containerInfo,
     })
+    console.debug(
+      `toCanonical: built container for shipment '${shipmentId}' with container number '${normalizedContainerNumber}'`,
+    )
 
     const shipment = buildShipment({
       shipmentId,
@@ -59,6 +66,9 @@ export function mapParsedStatusToF1(
       parsedPayload,
       container,
     })
+    console.debug(
+      `toCanonical: built shipment '${shipmentId}' with origin '${origin}' and destination '${destination}'`,
+    )
 
     // validate via zod
     const parsedShipment = F1ShipmentSchema.safeParse(shipment)
@@ -69,6 +79,7 @@ export function mapParsedStatusToF1(
         error: `canonical validation failed: ${JSON.stringify(parsedShipment.error.format())}`,
       }
     }
+    console.debug(`toCanonical: successfully mapped to canonical shipment '${shipmentId}'`)
 
     return { ok: true, shipment: parsedShipment.data }
   } catch (err) {
@@ -76,7 +87,7 @@ export function mapParsedStatusToF1(
   }
 }
 
-function parsePayload(rawEvents: unknown): Record<string, unknown> {
+function parsePayload(rawEvents: Record<string, unknown>): Record<string, unknown> {
   return safeParseOrDefault(rawEvents, z.record(z.string(), z.unknown()), {})
 }
 
@@ -89,12 +100,24 @@ function getShipmentId(
   )
 }
 
-function getOrigin(parsedPayload: Record<string, unknown>): unknown {
-  return parsedPayload?.origin ?? parsedPayload?.origin_display ?? undefined
+function getOrigin(
+  parsedPayload: Record<string, unknown>,
+): Record<string, unknown> | string | undefined {
+  const raw = parsedPayload?.origin ?? parsedPayload?.origin_display
+  if (raw == null) return undefined
+  if (typeof raw === 'string') return raw
+  const parsed = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
+  return parsed ?? undefined
 }
 
-function getDestination(parsedPayload: Record<string, unknown>): unknown {
-  return parsedPayload?.destination ?? parsedPayload?.destination_display ?? undefined
+function getDestination(
+  parsedPayload: Record<string, unknown>,
+): Record<string, unknown> | string | undefined {
+  const raw = parsedPayload?.destination ?? parsedPayload?.destination_display
+  if (raw == null) return undefined
+  if (typeof raw === 'string') return raw
+  const parsed = safeParseOrDefault(raw, z.record(z.string(), z.unknown()), null)
+  return parsed ?? undefined
 }
 
 function findContainerInfo(
@@ -172,7 +195,7 @@ function mapStatusToCanonical(s: unknown): string | null {
 function extractEvents(
   containerInfo: Record<string, unknown> | null,
   parsedPayload: Record<string, unknown>,
-): unknown[] | undefined {
+): Record<string, unknown>[] | undefined {
   const eventsRaw =
     containerInfo?.events ??
     containerInfo?.Events ??
@@ -183,7 +206,7 @@ function extractEvents(
     return eventsRaw.map(mapEvent)
   } else if (Array.isArray(containerInfo?.locations)) {
     const locs = containerInfo.locations
-    const flat: unknown[] = []
+    const flat: Record<string, unknown>[] = []
     for (const L of locs) {
       if (!L) continue
       if (Array.isArray(L.events)) {
@@ -235,17 +258,18 @@ function mapEvent(ev: unknown): Record<string, unknown> {
   }
 }
 
-type BuildContainerParams = {
-  shipmentId: string
-  normalizedContainerNumber: string
-  status: string | null
-  eta: Date | null
-  events: unknown[] | undefined
-  provider: string
-  now: Date
-  rawEvents: unknown
-  containerInfo: Record<string, unknown> | null
-}
+const BuildContainerSchema = z.object({
+  shipmentId: z.string(),
+  normalizedContainerNumber: z.string(),
+  status: z.string().nullable(),
+  eta: z.date().nullable(),
+  events: z.array(z.record(z.string(), z.unknown())).optional(),
+  provider: z.string(),
+  now: z.date(),
+  rawEvents: z.record(z.string(), z.unknown()),
+  containerInfo: z.record(z.string(), z.unknown()).nullable(),
+})
+type BuildContainerParams = z.infer<typeof BuildContainerSchema>
 
 function buildContainer(params: BuildContainerParams) {
   return {
@@ -267,16 +291,36 @@ function buildContainer(params: BuildContainerParams) {
   }
 }
 
-type BuildShipmentParams = {
-  shipmentId: string
-  origin: unknown
-  destination: unknown
-  provider: string
-  now: Date
-  rawEvents: unknown
-  parsedPayload: Record<string, unknown>
-  container: ReturnType<typeof buildContainer>
-}
+const BuildShipmentSchema = z.object({
+  shipmentId: z.string(),
+  origin: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
+  destination: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
+  provider: z.string(),
+  now: z.date(),
+  rawEvents: z.record(z.string(), z.unknown()),
+  parsedPayload: z.record(z.string(), z.unknown()),
+  container: z.object({
+    id: z.string(),
+    container_number: z.string(),
+    shipment_id: z.string(),
+    status: z.string().nullable(),
+    eta: z.date().optional(),
+    flags: z.object({
+      missing_eta: z.boolean(),
+      stale_data: z.boolean(),
+    }),
+    events: z.array(z.record(z.string(), z.unknown())).optional(),
+    source: z.object({
+      type: z.literal('api'),
+      api: z.string(),
+      fetched_at: z.date(),
+      raw: z.record(z.string(), z.unknown()),
+    }),
+    created_at: z.date(),
+    raw: z.record(z.string(), z.unknown()),
+  }),
+})
+type BuildShipmentParams = z.infer<typeof BuildShipmentSchema>
 
 function buildShipment(params: BuildShipmentParams) {
   return {

@@ -49,10 +49,15 @@ export async function POST({ request }: { request: Request }) {
     if (fetchError) {
       return respondWithSchema({ error: fetchError }, RefreshSchemas.responses.error, 502)
     }
+    if (!rawEvents) {
+      console.error('refresh: no events fetched')
+      return respondWithSchema({ error: 'no events fetched' }, RefreshSchemas.responses.error, 502)
+    }
 
     console.debug(`refresh: fetched events for provider='${provider}' container='${container}'`)
     const mappedResult = mapStatusToCanonical(rawEvents, container, provider)
     if (!mappedResult.ok) {
+      console.error('refresh: mapping to canonical failed', mappedResult.response)
       return mappedResult.response
     }
     console.debug(
@@ -114,7 +119,7 @@ async function parseRequestData(
 }
 
 function mapStatusToCanonical(
-  rawEvents: unknown,
+  rawEvents: Record<string, unknown>,
   container: string,
   provider: string,
 ): { ok: true; shipment: F1Shipment } | { ok: false; response: Response } {

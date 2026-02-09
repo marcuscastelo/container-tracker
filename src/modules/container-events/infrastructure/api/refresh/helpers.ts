@@ -5,6 +5,7 @@ import type { NewContainer } from '~/modules/container/domain/container'
 import type { getRestProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
 import { type CreateProcessInput, processUseCases } from '~/modules/process'
 import { CarrierSchema } from '~/modules/process/domain/value-objects'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 
 // --- Helpers ---
 export function respondWithSchema<T>(
@@ -54,9 +55,13 @@ export async function fetchAndSanitizeContainerEvents(
     return { error: `provider fetch failed: ${String(err)}` }
   }
 
-  const parsedEvents = sanitizeValue(
+  const sanitized = sanitizeValue(
     result?.parsedEvents ?? (typeof result?.raw === 'string' ? { raw: result.raw } : { raw: '' }),
   )
+
+  // Ensure we return a record (parsed payload). sanitizeValue may return nested arrays/values,
+  // so coerce safely to a record using zod via safeParseOrDefault to avoid leaking 'unknown'.
+  const parsedEvents = safeParseOrDefault(sanitized, z.record(z.string(), z.unknown()), {})
 
   return { parsedEvents }
 }
