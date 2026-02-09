@@ -62,23 +62,71 @@ function computeConfidence(
   eventTime: string | null,
   locationCode: string | null | undefined,
   type: ObservationType,
+  eventTimeType: EventTimeType,
 ): Confidence {
   if (!eventTime) return 'low'
+  if (eventTimeType === 'EXPECTED') return 'medium'
   if (!locationCode && type !== 'OTHER') return 'medium'
   return 'high'
 }
 
 /**
- * Map MSC event to EventTimeType.
+ * Determine EventTimeType for an MSC event.
  *
- * MSC does not explicitly provide ACTUAL vs EXPECTED in their API.
- * Default to EXPECTED as per the canonical rules.
+ * MSC does not explicitly provide ACTUAL vs EXPECTED, so we infer it:
  *
- * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
+ * Rules:
+ *   1. If event.Date is present and <= snapshot.Data.CurrentDate → ACTUAL (confirmed past event)
+ *   2. If event.Date is present and > snapshot.Data.CurrentDate → EXPECTED (future prediction)
+ *   3. If event.Date is missing → EXPECTED (uncertain, treat as provisional)
+ *   4. Fallback: if CurrentDate missing, use snapshot.fetched_at for comparison
+ *
+ * @param eventDate - Event date string (dd/MM/yyyy format from MSC)
+ * @param currentDate - CurrentDate from snapshot payload (dd/MM/yyyy)
+ * @param snapshotFetchedAt - Fallback date if CurrentDate is missing
+ * @returns 'ACTUAL' | 'EXPECTED'
  */
-function mapMscEventTimeType(): EventTimeType {
-  // MSC doesn't provide explicit event_time_type
-  // According to the issue: if carrier doesn't explicitly indicate, use EXPECTED
+function determineEventTimeType(
+  eventDate: string | null | undefined,
+  currentDate: string | null | undefined,
+  snapshotFetchedAt: string,
+): EventTimeType {
+  // If no event date, treat as EXPECTED (provisional)
+  if (!eventDate) return 'EXPECTED'
+
+  // Parse event date
+  const parsedEventDate = parseDate(eventDate)
+  if (!parsedEventDate) return 'EXPECTED'
+
+  // Determine reference date (current date from payload or snapshot fetch time)
+  let referenceDate: Date
+  if (currentDate) {
+    const parsedCurrentDate = parseDate(currentDate)
+    if (parsedCurrentDate) {
+      referenceDate = parsedCurrentDate
+    } else {
+      referenceDate = new Date(snapshotFetchedAt)
+    }
+  } else {
+    referenceDate = new Date(snapshotFetchedAt)
+  }
+
+  // Compare dates (normalize to date-only to avoid time-of-day issues)
+  const eventDateOnly = new Date(
+    parsedEventDate.getUTCFullYear(),
+    parsedEventDate.getUTCMonth(),
+    parsedEventDate.getUTCDate(),
+  )
+  const referenceDateOnly = new Date(
+    referenceDate.getUTCFullYear(),
+    referenceDate.getUTCMonth(),
+    referenceDate.getUTCDate(),
+  )
+
+  if (eventDateOnly <= referenceDateOnly) {
+    return 'ACTUAL'
+  }
+
   return 'EXPECTED'
 }
 
@@ -88,10 +136,13 @@ function mapMscEventTimeType(): EventTimeType {
  * This is a pure function — no side effects, no persistence.
  * It validates the payload with Zod and extracts semantic observations.
  *
+ * New: infers ACTUAL vs EXPECTED based on event date vs CurrentDate.
+ *
  * @param snapshot - The snapshot record (must have provider='msc')
  * @returns Array of ObservationDraft (may be empty if parsing fails)
  *
  * @see docs/master-consolidated-0209.md §4.1 — normalizeSnapshot step
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
 export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
   const parseResult = MscApiSchema.safeParse(snapshot.payload)
@@ -101,6 +152,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
   }
 
   const mscData = parseResult.data
+  const currentDate = mscData.Data?.CurrentDate ?? null
   const bills = mscData.Data?.BillOfLadings ?? []
   const drafts: ObservationDraft[] = []
 
@@ -111,6 +163,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         containerInfo.ContainerNumber ?? mscData.Data?.TrackingNumber ?? 'UNKNOWN'
       const events = containerInfo.Events ?? []
 
+      // Process historical/confirmed events from Events array
       for (const event of events) {
         const type = mapMscDescription(event.Description)
         const parsedDate = event.Date ? parseDate(event.Date) : null
@@ -128,8 +181,10 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const finalVesselName = isVesselEvent ? vesselName : null
         const finalVoyage = isVesselEvent ? voyage : null
 
-        const confidence = computeConfidence(eventTime, locationCode, type)
-        const eventTimeType = mapMscEventTimeType()
+        // Determine ACTUAL vs EXPECTED based on date comparison
+        const eventTimeType = determineEventTimeType(event.Date, currentDate, snapshot.fetched_at)
+
+        const confidence = computeConfidence(eventTime, locationCode, type, eventTimeType)
 
         const draft: ObservationDraft = {
           container_number: containerNumber,
@@ -148,6 +203,40 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         }
 
         drafts.push(draft)
+      }
+
+      // Generate EXPECTED observation from PodEtaDate if present and future
+      const podEtaDate = containerInfo.PodEtaDate
+      if (podEtaDate && podEtaDate.trim() !== '') {
+        const parsedEta = parseDate(podEtaDate)
+        if (parsedEta) {
+          // Determine if this ETA is in the future
+          const etaTimeType = determineEventTimeType(podEtaDate, currentDate, snapshot.fetched_at)
+
+          // Only create EXPECTED observation if it's truly in the future
+          if (etaTimeType === 'EXPECTED') {
+            const podLocation = bill.GeneralTrackingInfo?.PortOfDischarge ?? null
+            const podLocationCode = null // MSC doesn't provide POD UN/LOCODE in PodEtaDate context
+
+            const etaDraft: ObservationDraft = {
+              container_number: containerNumber,
+              type: 'ARRIVAL', // ETA implies arrival at POD
+              event_time: parsedEta.toISOString(),
+              event_time_type: 'EXPECTED',
+              location_code: podLocationCode,
+              location_display: podLocation,
+              vessel_name: null,
+              voyage: null,
+              is_empty: null,
+              confidence: 'medium', // ETA is provisional
+              provider: 'msc',
+              snapshot_id: snapshot.id,
+              raw_event: { source: 'PodEtaDate', value: podEtaDate },
+            }
+
+            drafts.push(etaDraft)
+          }
+        }
       }
     }
   }

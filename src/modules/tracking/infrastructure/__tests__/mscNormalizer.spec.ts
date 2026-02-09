@@ -123,4 +123,181 @@ describe('normalizeMscSnapshot', () => {
       expect(drafts).toEqual([])
     })
   })
+
+  describe('ACTUAL vs EXPECTED differentiation', () => {
+    it('should mark events with Date <= CurrentDate as ACTUAL', () => {
+      // transshipment fixture has CurrentDate='30/11/2025'
+      // Event with Date='30/11/2025' should be ACTUAL
+      const snapshot = makeSnapshot(transshipment, '2025-12-01T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      const event = drafts.find((d) => d.type === 'LOAD' && d.location_code === 'ITLIV')
+      expect(event).toBeDefined()
+      expect(event?.event_time_type).toBe('ACTUAL')
+    })
+
+    it('should mark events with Date > CurrentDate as EXPECTED', () => {
+      // If we have a future event (mock scenario), it should be EXPECTED
+      const futurePayload = {
+        Data: {
+          CurrentDate: '01/12/2025',
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  Events: [
+                    {
+                      Date: '15/12/2025', // Future date
+                      Description: 'Full Transshipment Loaded',
+                      UnLocationCode: 'ITLIV',
+                      Location: 'LEGHORN, IT',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }
+      const snapshot = makeSnapshot(futurePayload, '2025-12-01T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('EXPECTED')
+    })
+
+    it('should mark events without Date as EXPECTED', () => {
+      const payloadNoDate = {
+        Data: {
+          CurrentDate: '01/12/2025',
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  Events: [
+                    {
+                      Date: null, // No date
+                      Description: 'Export received at CY',
+                      UnLocationCode: 'ITNAP',
+                      Location: 'NAPLES, IT',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }
+      const snapshot = makeSnapshot(payloadNoDate, '2025-12-01T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('EXPECTED')
+    })
+
+    it('should generate EXPECTED observation from PodEtaDate when future', () => {
+      // transshipment fixture has PodEtaDate='15/02/2026' and CurrentDate='30/11/2025'
+      const snapshot = makeSnapshot(transshipment, '2025-11-30T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      const etaDraft = drafts.find((d) => d.type === 'ARRIVAL' && d.event_time_type === 'EXPECTED')
+      expect(etaDraft).toBeDefined()
+      expect(etaDraft?.location_display).toBe('ITAPOA, BR')
+      expect(etaDraft?.confidence).toBe('medium')
+    })
+
+    it('should NOT generate EXPECTED observation from PodEtaDate if it is in the past', () => {
+      // Create a scenario where PodEtaDate is in the past
+      const pastEtaPayload = {
+        Data: {
+          CurrentDate: '20/02/2026', // After the ETA
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  PodEtaDate: '15/02/2026', // Past ETA
+                  Events: [],
+                },
+              ],
+              GeneralTrackingInfo: {
+                PortOfDischarge: 'ITAPOA, BR',
+              },
+            },
+          ],
+        },
+      }
+      const snapshot = makeSnapshot(pastEtaPayload, '2026-02-20T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      // Should NOT have an ARRIVAL/EXPECTED draft from PodEtaDate
+      const etaDraft = drafts.find((d) => d.type === 'ARRIVAL' && d.event_time_type === 'EXPECTED')
+      expect(etaDraft).toBeUndefined()
+    })
+
+    it('should use snapshot.fetched_at as fallback when CurrentDate is missing', () => {
+      const payloadNoCurrentDate = {
+        Data: {
+          // No CurrentDate field
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  Events: [
+                    {
+                      Date: '01/12/2025',
+                      Description: 'Export received at CY',
+                      UnLocationCode: 'ITNAP',
+                      Location: 'NAPLES, IT',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }
+      // Snapshot fetched on 05/12/2025 — event is in the past
+      const snapshot = makeSnapshot(payloadNoCurrentDate, '2025-12-05T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+    })
+
+    it('should set confidence to medium for EXPECTED events', () => {
+      const futurePayload = {
+        Data: {
+          CurrentDate: '01/12/2025',
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  Events: [
+                    {
+                      Date: '15/12/2025', // Future
+                      Description: 'Full Transshipment Loaded',
+                      UnLocationCode: 'ITLIV',
+                      Location: 'LEGHORN, IT',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }
+      const snapshot = makeSnapshot(futurePayload, '2025-12-01T00:00:00.000Z')
+      const drafts = normalizeMscSnapshot(snapshot)
+
+      expect(drafts[0]?.event_time_type).toBe('EXPECTED')
+      expect(drafts[0]?.confidence).toBe('medium')
+    })
+  })
 })

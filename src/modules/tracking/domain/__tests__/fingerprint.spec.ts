@@ -117,4 +117,10 @@ describe('computeFingerprint', () => {
     const fp2 = computeFingerprint(makeDraft({ vessel_name: 'msc paris' }))
     expect(fp1).toBe(fp2)
   })
+
+  it('should differ when event_time_type changes (ACTUAL vs EXPECTED)', () => {
+    const fp1 = computeFingerprint(makeDraft({ event_time_type: 'ACTUAL' }))
+    const fp2 = computeFingerprint(makeDraft({ event_time_type: 'EXPECTED' }))
+    expect(fp1).not.toBe(fp2)
+  })
 })
