@@ -5,6 +5,7 @@ import type { TimelineEvent } from '~/modules/process/application/processPresent
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
+import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 export function TimelineNode(props: {
   readonly event: TimelineEvent
@@ -12,7 +13,15 @@ export function TimelineNode(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
 }): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
+  const isoTooltip = (iso?: string | null): string | undefined => {
+    if (!iso) return undefined
+    // capture up to seconds: YYYY-MM-DDTHH:MM:SS
+    const m = iso.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/)
+    if (m) return m[1]
+    // fallback: strip milliseconds and trailing Z/offset
+    return iso.replace(/\.\d+Z?$/, '').replace(/Z$/, '')
+  }
   const nodeStyles = (): { dot: string; line: string; text: string } => {
     switch (props.event.status) {
       case 'completed':
@@ -85,15 +94,27 @@ export function TimelineNode(props: {
                 when={props.event.date}
                 fallback={
                   <Show when={props.event.expectedDate}>
-                    <p class="text-xs text-slate-400">
-                      {t(keys.shipmentView.timeline.expected)} {props.event.expectedDate}
+                    <p
+                      class="text-xs text-slate-400"
+                      title={isoTooltip(props.event.expectedDate_iso ?? props.event.expectedDate)}
+                    >
+                      {t(keys.shipmentView.timeline.expected)}{' '}
+                      {/* prefer ISO field so we reformat reactively */}
+                      {props.event.expectedDate_iso
+                        ? formatDateForLocale(props.event.expectedDate_iso, locale())
+                        : props.event.expectedDate}
                     </p>
                   </Show>
                 }
               >
-                <p class="text-xs text-slate-600">
+                <p
+                  class="text-xs text-slate-600"
+                  title={isoTooltip(props.event.date_iso ?? props.event.date)}
+                >
                   <span class="sr-only">{t(keys.shipmentView.timeline.actual)}</span>
-                  {props.event.date}
+                  {props.event.date_iso
+                    ? formatDateForLocale(props.event.date_iso, locale())
+                    : props.event.date}
                 </p>
               </Show>
               {/* Small neutral badge linking to carrier tracking (rarely used) */}
