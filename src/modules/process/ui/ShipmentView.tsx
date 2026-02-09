@@ -53,6 +53,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   )
 
   const [isRefreshing, setIsRefreshing] = createSignal(false)
+  const [refreshError, setRefreshError] = createSignal<string | null>(null)
 
   async function triggerRefresh() {
     const data = shipment()
@@ -80,7 +81,35 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       // Wait for all refreshes to finish (failures will reject)
       await Promise.all(promises)
     } catch (err) {
-      console.error('Failed to refresh containers:', err)
+      // Improve client-side logging and show a compact banner for the user
+      try {
+        const msg = err instanceof Error ? err.message : String(err)
+
+        // Attempt a simple regex to extract a useful nested `message` field
+        // This handles cases where the server returned a JSON string (possibly escaped).
+        let niceMessage = msg
+        const m = msg.match(/"message"\s*:\s*"([^"]+)"/)
+        if (m && m[1]) {
+          niceMessage = m[1]
+        } else {
+          // Fallback: try to show only the part after the HTTP status code
+          const afterStatus = msg.replace(/^.*?:\s*\d{3}\s*/, '')
+          if (afterStatus && afterStatus.length > 0 && afterStatus.length < msg.length) {
+            niceMessage = afterStatus.trim()
+          }
+        }
+
+        console.error('Failed to refresh containers (readable):', {
+          original: err,
+          message: niceMessage,
+        })
+
+        // Show a small banner to the user with a short message
+        setRefreshError(niceMessage || 'Refresh failed')
+      } catch (loggingErr) {
+        console.error('Failed to refresh containers (fallback):', err, loggingErr)
+        setRefreshError('Refresh failed')
+      }
     } finally {
       setIsRefreshing(false)
       // After syncing with external APIs, refetch the process data
@@ -280,6 +309,26 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   return (
     <div class="min-h-screen bg-slate-50">
       <AppHeader onCreateProcess={() => setIsCreateDialogOpen(true)} />
+
+      {/* Inline compact banner for refresh errors (appears after a failed refresh) */}
+      <Show when={refreshError()}>
+        {(m) => (
+          <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <div class="flex items-start justify-between gap-4">
+                <div>{m}</div>
+                <button
+                  class="ml-4 text-red-700 underline"
+                  aria-label="Dismiss error"
+                  onClick={() => setRefreshError(null)}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Show>
 
       {/* Edit process dialog (when editing current shipment) */}
       <CreateProcessDialog

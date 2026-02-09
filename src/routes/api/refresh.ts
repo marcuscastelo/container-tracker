@@ -1,3 +1,4 @@
+import { ZodError } from 'zod'
 import type z4 from 'zod/v4'
 import type { F1Shipment } from '~/modules/container/domain/schemas/canonical.schema'
 import * as CmaApiSchemas from '~/modules/container/infrastructure/schemas/api/cmacgm.api.schema'
@@ -38,11 +39,22 @@ export async function POST({ request }: { request: Request }) {
       return handleMaerskRedirect(container)
     }
 
-    const handler = getRestProvider(String(provider))
-    if (!handler) {
-      console.error(`refresh: no handler for carrier '${provider}'`)
+    let handler
+    try {
+      handler = getRestProvider(String(provider))
+    } catch (err) {
+      // Zod parsing or other provider lookup errors can be noisy; log a concise message
+      if (err instanceof ZodError) {
+        try {
+          console.error(`refresh: invalid provider value='${provider}'`, err.format())
+        } catch {
+          console.error(`refresh: invalid provider value='${provider}'`, String(err))
+        }
+      } else {
+        console.error(`refresh: failed to resolve provider='${provider}'`, err)
+      }
       return respondWithSchema(
-        { error: `no handler for carrier ${provider}` },
+        { error: `invalid carrier/provider: ${String(provider)}` },
         RefreshSchemas.responses.error,
         400,
       )
@@ -85,7 +97,20 @@ export async function POST({ request }: { request: Request }) {
       200,
     )
   } catch (err) {
-    console.error('refresh error', err)
+    // Improve server-side error logging: prefer structured outputs for Zod errors
+    try {
+      if (err instanceof ZodError) {
+        console.error('refresh error (validation):', err.format())
+      } else if (err instanceof Error) {
+        console.error('refresh error:', err.message)
+        console.error(err.stack)
+      } else {
+        console.error('refresh error (unknown):', err)
+      }
+    } catch (loggingErr) {
+      console.error('refresh error (failed while logging):', err, loggingErr)
+    }
+
     return respondWithSchema({ error: String(err) }, RefreshSchemas.responses.error, 500)
   }
 }
