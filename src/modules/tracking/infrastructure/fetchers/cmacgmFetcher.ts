@@ -13,9 +13,9 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
     'https://www.cma-cgm.com/ebusiness/tracking/search',
     new URLSearchParams({
       __RequestVerificationToken:
-        'LXDaegidzJ7-SGQfrRDUDGSyU7iz97NftbpPpk1gW7EniJHdlbPcnJjCn4ZguciOiXDTcCixp-t9U-ASsTrXVNCcvz4uyhtCmqqH3o0XkyE1',
+        'WSKXu5mATqHpEopOTqNHnfZdedqy3gil1IV1XMncr66exbjY5Ks6KO4ekvCROhP42Lkh9F3zegXkzFIPlO2aRnDgxFaIQU61qzAI_9dNZtc1',
       'SearchViewModel.SearchBy': 'Container',
-      'SearchViewModel.Reference': containerNumber,
+      'SearchViewModel.Reference': 'FSCU4565494',
       'SearchViewModel.FromHome': 'true',
       search: '',
     }),
@@ -33,6 +33,8 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
         'Sec-GPC': '1',
         'Alt-Used': 'www.cma-cgm.com',
         Connection: 'keep-alive',
+        Cookie:
+          'datadome=F4C3piYK84t_34olK3LkOba3h0iWGmhXKlZa51JSvQmBWRd5iyiy2~zZkfLDt3bsQEv5RQQqkzXiZ65kQRDQ0UX8aSfy4dYURaY~HTFsNcHROHWDkSZMnjmW8D6VEPYk; __RequestVerificationToken=64dS2BI8rYboYSq-JMaZn8dlXYijOkaLdFJIT0yXutdjqNzUCLbsLr61l1KUejvvPx1wCOqIFdpoh3vDBPBgt1B2j80asuEgtNeRpz0H2lI1; dtCookie=v_4_srv_2_sn_786CC8D9A19CFA6CC105F857BA5985D7_perc_100000_ol_0_mul_1_app-3A0b422508580a7b79_0_rcs-3Acss_0; Human_Search=1; MustRelease=22.0.4.0',
         'Upgrade-Insecure-Requests': '1',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
@@ -47,6 +49,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
   )
 
   const html: string = response.data
+  console.debug('Fetched CMA-CGM HTML response:', html.slice(0, 2000)) // Log the raw HTML for debugging (truncated to avoid huge logs)
   const payload = extractResponseData(html)
 
   return {

@@ -37,6 +37,10 @@ export function loadProjectResources() {
     const key = match[1]
     // modules[path] may be `{ default: {...} }` when using eager import, or the object itself.
     const mod: unknown = modules[path]
+    if (mod == null) {
+      console.warn(`Locale module ${path} is null/undefined, skipping`)
+      continue
+    }
     let translation: Record<string, unknown> | undefined = undefined
     // Use zod to safely parse module shape (some bundlers return { default: {...} })
     const modRec = safeParseOrDefault(mod, referenceSchema, null)
@@ -50,6 +54,15 @@ export function loadProjectResources() {
       } else {
         console.warn(`Locale module ${path} has an unexpected shape and will be skipped`)
       }
+    }
+    // Fallback: try the module's `default` export directly even when referenceSchema validation failed
+    if (!translation && typeof mod === 'object' && mod !== null) {
+      const defaultExport =
+        hasDefaultProp(mod) && typeof mod.default === 'object' && mod.default !== null
+          ? mod.default
+          : mod
+      const fallback = safeParseOrDefault(defaultExport, z.record(z.string(), z.unknown()), null)
+      if (fallback) translation = fallback
     }
     if (translation) resources[key] = { translation }
     availableLocales.push(key)

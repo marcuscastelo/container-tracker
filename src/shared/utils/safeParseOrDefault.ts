@@ -15,8 +15,10 @@ export function safeParseOrDefault<T>(
   try {
     const result: SafeParseResult<T> = schema.safeParse(value)
     if (result && result.success) return result.data
-    console.warn('Failed to parse value, using default:', value)
-    console.warn('Parse error details:', formatParseError(result?.error))
+    // Use debug level — callers use this function as a "try parse, else fallback"
+    // pattern, so failures are expected and should not clutter production logs.
+    console.debug('Failed to parse value, using default:', value)
+    console.debug('Parse error details:', formatParseError(result?.error))
     return defaultValue
   } catch (e) {
     // If safeParse unexpectedly throws, fallback to default

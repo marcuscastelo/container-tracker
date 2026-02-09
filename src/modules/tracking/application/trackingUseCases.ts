@@ -88,13 +88,15 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       try {
         fetchResult = await fetcher(containerNumber)
       } catch (err) {
-        // Save a snapshot with parse_error so we have a record of the failure
+        // Save a snapshot with parse_error so we have a record of the failure.
+        // payload must be non-null (DB constraint), so we store an error marker object.
+        const errorMessage = err instanceof Error ? err.message : String(err)
         const errorSnapshot: NewSnapshot = {
           container_id: containerId,
           provider,
           fetched_at: new Date().toISOString(),
-          payload: null,
-          parse_error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+          payload: { _error: true, message: errorMessage },
+          parse_error: `Fetch failed: ${errorMessage}`,
         }
         const snapshot = await snapshotRepository.insert(errorSnapshot)
         const pipeline = await runPipeline(snapshot, containerId, containerNumber)

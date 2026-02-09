@@ -18,21 +18,37 @@ import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/schemas/api/c
  * This mapping will grow as we see more CMA-CGM event types.
  */
 const CMACGM_STATUS_MAP: Record<string, ObservationType> = {
+  // Gate / yard events
   'gate in': 'GATE_IN',
   'gate out': 'GATE_OUT',
+  'empty to shipper': 'GATE_OUT',
+  'received for export transfer': 'GATE_IN',
+  'ready to be loaded': 'GATE_IN',
+
+  // Load / discharge
   'loaded on board': 'LOAD',
   load: 'LOAD',
   loaded: 'LOAD',
   discharged: 'DISCHARGE',
   discharge: 'DISCHARGE',
+  'discharged in transhipment': 'DISCHARGE',
+
+  // Departure / arrival
   departure: 'DEPARTURE',
+  'vessel departure': 'DEPARTURE',
+  'train departure': 'DEPARTURE',
   arrival: 'ARRIVAL',
+  'vessel arrival': 'ARRIVAL',
+  'train arrival': 'ARRIVAL',
+
+  // Delivery / return
   delivered: 'DELIVERY',
   delivery: 'DELIVERY',
+  'empty return': 'EMPTY_RETURN',
+
+  // Customs
   'customs hold': 'CUSTOMS_HOLD',
   'customs release': 'CUSTOMS_RELEASE',
-  'empty return': 'EMPTY_RETURN',
-  'empty to shipper': 'GATE_OUT',
 }
 
 function mapCmaCgmDescription(description: string | null | undefined): ObservationType {

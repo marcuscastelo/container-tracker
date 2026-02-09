@@ -1,0 +1,169 @@
+{
+  "origin": {
+    "city": "PORT SAID EAST",
+    "state": null,
+    "country": "EGYPT",
+    "geo_site": "0FYKXUTLQUD49",
+    "terminal": "EAST PORT SAID TERMINAL",
+    "site_type": "TERMINAL",
+    "geoid_city": "0FYKXUTLQUD49",
+    "country_code": "EG",
+    "location_code": "EGPSDTM"
+  },
+  "containers": [
+    {
+      "status": "IN_PROGRESS",
+      "iso_code": "45R1",
+      "operator": "MAEU",
+      "locations": [
+        {
+          "city": "PORT SAID EAST",
+          "state": null,
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "actfor": "EXP",
+              "eventId": "14217733446",
+              "stempty": true,
+              "activity": "GATE-OUT",
+              "event_time": "2026-01-13T20:15:00.000",
+              "locationCode": "EGPSDTM",
+              "transport_mode": "MVS",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "actfor": "EXP",
+              "eventId": "14227060087",
+              "stempty": false,
+              "activity": "GATE-IN",
+              "event_time": "2026-01-15T10:28:00.000",
+              "locationCode": "EGPSDTM",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "eventId": "14235786925",
+              "stempty": false,
+              "activity": "LOAD",
+              "event_time": "2026-01-17T04:06:00.000",
+              "vessel_num": "830",
+              "voyage_num": "603S",
+              "vessel_name": "MAERSK BROWNSVILLE",
+              "locationCode": "EGPSDTM",
+              "transport_mode": "MVS",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "eventId": "55e3353f-41f1-3849-aa20-87b98d766d5d",
+              "stempty": false,
+              "activity": "CONTAINER DEPARTURE",
+              "event_time": "2026-01-17T12:01:00.000",
+              "vessel_num": "830",
+              "voyage_num": "603S",
+              "vessel_name": "MAERSK BROWNSVILLE",
+              "locationCode": "EGPSDTM",
+              "transport_mode": "MVS",
+              "event_time_type": "ACTUAL"
+            }
+          ],
+          "country": "EGYPT",
+          "geo_site": "0FYKXUTLQUD49",
+          "terminal": "EAST PORT SAID TERMINAL",
+          "site_type": "TERMINAL",
+          "geoid_city": "0FYKXUTLQUD49",
+          "country_code": "EG",
+          "location_code": "EGPSDTM"
+        },
+        {
+          "city": "PORT TANGIER MEDITERRANEE",
+          "state": null,
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "eventId": "29383855-dc57-36ba-bb00-c5abc65b1092",
+              "stempty": false,
+              "activity": "CONTAINER ARRIVAL",
+              "event_time": "2026-02-03T14:02:00.000",
+              "vessel_num": "830",
+              "voyage_num": "603S",
+              "vessel_name": "MAERSK BROWNSVILLE",
+              "locationCode": "MAPTM02",
+              "transport_mode": "MVS",
+              "event_time_type": "ACTUAL"
+            },
+            {
+              "type": "EQUIPMENT",
+              "stempty": false,
+              "activity": "CONTAINER DEPARTURE",
+              "event_time": "2026-02-07T14:00:00.000",
+              "vessel_num": "L4K",
+              "voyage_num": "605S",
+              "vessel_name": "CMA CGM RODOLPHE",
+              "locationCode": "MAPTM02",
+              "transport_mode": "MVS",
+              "event_time_type": "EXPECTED"
+            }
+          ],
+          "country": "MOROCCO",
+          "geo_site": "CDQYK28YV7BKN",
+          "terminal": "TANGER MED 2",
+          "site_type": "TERMINAL",
+          "geoid_city": "CDQYK28YV7BKN",
+          "country_code": "MA",
+          "location_code": "MAPTM02"
+        },
+        {
+          "city": "SANTOS",
+          "state": "SP",
+          "events": [
+            {
+              "type": "EQUIPMENT",
+              "stempty": false,
+              "activity": "CONTAINER ARRIVAL",
+              "event_time": "2026-02-20T19:00:00.000",
+              "vessel_num": "L4K",
+              "voyage_num": "605S",
+              "vessel_name": "CMA CGM RODOLPHE",
+              "locationCode": "BRSSZ01",
+              "transport_mode": "MVS",
+              "event_time_type": "EXPECTED"
+            }
+          ],
+          "country": "BRAZIL",
+          "geo_site": "13PE88BJNFZ4D",
+          "terminal": "SANTOS, SANTOS BRASIL TERMINAL",
+          "site_type": "TERMINAL",
+          "geoid_city": "13PE88BJNFZ4D",
+          "country_code": "BR",
+          "location_code": "BRSSZ01"
+        }
+      ],
+      "container_num": "MNBU3094033",
+      "container_size": "40",
+      "container_type": "REEF",
+      "last_update_time": "2026-02-03T15:15:23.772Z",
+      "eta_final_delivery": "2026-02-20T19:00:00.000",
+      "service_type_origin": "CONTAINER_YARD",
+      "service_type_destination": "CONTAINER_YARD"
+    }
+  ],
+  "destination": {
+    "city": "SANTOS",
+    "state": "SP",
+    "country": "BRAZIL",
+    "geo_site": "13PE88BJNFZ4D",
+    "terminal": "SANTOS, SANTOS BRASIL TERMINAL",
+    "site_type": "TERMINAL",
+    "geoid_city": "13PE88BJNFZ4D",
+    "country_code": "BR",
+    "location_code": "BRSSZ01"
+  },
+  "last_update_time": "2026-02-03T15:15:23.000Z",
+  "has_import_shipment": false,
+  "is_container_search": true,
+  "is_cancelled_shipment": false,
+  "unassigned_containers": 0,
+  "is_split_combine_part_load": false
+}
