@@ -1,3 +1,7 @@
+---
+applyTo: '**/*.{ts,tsx}**'
+description: "High-level instructions and operational rules for GitHub Copilot / auxiliary LLMs
+---
 # Copilot Instructions — Container Tracker
 
 Este documento define **instruções de alto nível e regras operacionais** para uso do GitHub Copilot / LLMs auxiliares no projeto **Container Tracker**.
