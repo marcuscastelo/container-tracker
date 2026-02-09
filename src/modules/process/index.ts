@@ -1,5 +1,12 @@
 // Domain
 
+export {
+  CannotRemoveLastContainerError,
+  ContainerAlreadyExistsError,
+  DuplicateContainersError,
+  parseContainerExistsError,
+  resolveContainerOwner,
+} from '~/modules/process/application/errors'
 // Application
 export { createProcessUseCases } from '~/modules/process/application/processUseCases'
 export {

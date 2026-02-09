@@ -52,15 +52,15 @@ export function TimelineNode(props: {
   return (
     <div class={clsx('flex items-start gap-6', { 'opacity-60': isExpected() })}>
       {/* Timeline node and connector */}
-      < div class="flex flex-col items-center" >
+      <div class="flex flex-col items-center">
         <div class={`h-3 w-3 rounded-full ${styles.dot}`} />
         <Show when={!props.isLast}>
           <div class={`w-0.5 flex-1 min-h-12 ${styles.line}`} />
         </Show>
-      </div >
+      </div>
 
       {/* Event content */}
-      < div class="flex-1 pb-6" >
+      <div class="flex-1 pb-6">
         <div class="flex items-start justify-between">
           <div>
             <div class="flex items-center gap-2">
@@ -80,7 +80,6 @@ export function TimelineNode(props: {
             </Show>
           </div>
           <div class="text-right">
-
             <div class="flex items-center justify-end gap-2">
               <Show
                 when={props.event.date}
@@ -135,7 +134,7 @@ export function TimelineNode(props: {
             </div>
           </div>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   )
 }

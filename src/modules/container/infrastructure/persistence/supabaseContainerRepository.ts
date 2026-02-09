@@ -49,4 +49,57 @@ export const supabaseContainerRepository = {
     console.log(`Successfully inserted multiple containers into supabase:`, data)
     return { success: true, data: data.map(containerMappers.fromRow), error: null }
   },
+
+  async existsMany(containerNumbers: string[]): Promise<SupabaseResult<Map<string, boolean>>> {
+    if (containerNumbers.length === 0) {
+      return { success: true, data: new Map(), error: null }
+    }
+
+    const normalized = containerNumbers.map((n) => n.toUpperCase().trim())
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select('container_number')
+      .in('container_number', normalized)
+
+    if (error) {
+      console.error(`Error checking container existence in batch:`, error)
+      return { success: false, data: null, error }
+    }
+
+    const existingSet = new Set(data.map((row) => row.container_number.toUpperCase().trim()))
+    const resultMap = new Map<string, boolean>()
+    for (const num of normalized) {
+      resultMap.set(num, existingSet.has(num))
+    }
+
+    return { success: true, data: resultMap, error: null }
+  },
+
+  async findByNumbers(containerNumbers: string[]): Promise<SupabaseResult<Container[]>> {
+    if (containerNumbers.length === 0) {
+      return { success: true, data: [], error: null }
+    }
+
+    const normalized = containerNumbers.map((n) => n.toUpperCase().trim())
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select('*')
+      .in('container_number', normalized)
+
+    if (error) {
+      console.error(`Error finding containers by numbers:`, error)
+      return { success: false, data: null, error }
+    }
+
+    return { success: true, data: data.map(containerMappers.fromRow), error: null }
+  },
+
+  async delete(containerId: string): Promise<void> {
+    const { error } = await supabase.from(TABLE_NAME).delete().eq('id', containerId)
+
+    if (error) {
+      console.error(`Error deleting container ${containerId}:`, error)
+      throw new Error(`Failed to delete container: ${error.message}`)
+    }
+  },
 }

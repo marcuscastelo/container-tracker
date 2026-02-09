@@ -16,7 +16,9 @@ export function TimelinePanel(props: Props): JSX.Element {
   return (
     <section class="rounded-lg border border-slate-200 bg-white">
       <header class="border-b border-slate-200 px-6 py-4">
-        <h2 class="text-base font-semibold text-slate-900">{t(keys.shipmentView.timeline.title)}</h2>
+        <h2 class="text-base font-semibold text-slate-900">
+          {t(keys.shipmentView.timeline.title)}
+        </h2>
         <Show when={props.selectedContainer}>
           <p class="mt-1 text-xs text-slate-500">
             {props.selectedContainer?.number} •{' '}
