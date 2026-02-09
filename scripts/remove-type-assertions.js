@@ -22,10 +22,10 @@ function stripFile(file) {
 
   // Remove ` as Type` assertions (simple heuristic)
   // This will remove occurrences like `x as Foo` or `(x as Foo)` or `x as Foo | null`
-  src = src.replace(/\s+as\s+[A-Za-z0-9_\[\]<>\|'"\s:|&?]+/g, '')
+  src = src.replace(/\s+as\s+[A-Za-z0-9_[\]<>|'"\s:|&?]+/g, '')
 
   // Also remove triple-cast patterns like `as unknown as Type` leaving the expression before first as
-  src = src.replace(/\s+as\s+unknown\s+as\s+[A-Za-z0-9_\[\]<>\|'"\s:|&?]+/g, '')
+  src = src.replace(/\s+as\s+unknown\s+as\s+[A-Za-z0-9_[\]<>|'"\s:|&?]+/g, '')
 
   if (src !== original) {
     fs.writeFileSync(file, src, 'utf8')

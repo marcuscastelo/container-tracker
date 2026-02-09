@@ -39,10 +39,10 @@ function processFile(filePath) {
   const fileDir = path.dirname(filePath)
 
   const patterns = [
-    /(from\s+['\"])(\.\.?\/[^'\"]+)(['\"])/g,
-    /(require\(\s*['\"])(\.\.?\/[^'\"]+)(['\"]\s*\))/g,
-    /(import\s+['\"])(\.\.?\/[^'\"]+)(['\"])/g, // side-effect imports: import '~/scripts/styles.css'
-    /(import\(\s*['\"])(\.\.?\/[^'\"]+)(['\"]\s*\))/g, // dynamic import('...')
+    /(from\s+['"])(\.\.?\/[^'"]+)(['"])/g,
+    /(require\(\s*['"])(\.\.?\/[^'"]+)(['"]\s*\))/g,
+    /(import\s+['"])(\.\.?\/[^'"]+)(['"])/g, // side-effect imports: import '~/scripts/styles.css'
+    /(import\(\s*['"])(\.\.?\/[^'"]+)(['"]\s*\))/g, // dynamic import('...')
   ]
 
   let out = src

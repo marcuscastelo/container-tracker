@@ -43,8 +43,8 @@ function processFile(filePath) {
 
   // Patterns to replace: import X from '~/scripts/foo' or "../bar" ; export ... from '~/scripts/x' ; require('~/scripts/x')
   const patterns = [
-    /(from\s+['\"])(\.\.?\/[^'\"]+)(['\"])/g,
-    /(require\(\s*['\"])(\.\.?\/[^'\"]+)(['\"]\s*\))/g,
+    /(from\s+['"])(\.\.?\/[^'"]+)(['"])/g,
+    /(require\(\s*['"])(\.\.?\/[^'"]+)(['"]\s*\))/g,
   ]
 
   let out = src
