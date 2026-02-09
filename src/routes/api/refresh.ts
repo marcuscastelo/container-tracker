@@ -50,10 +50,15 @@ export async function POST({ request }: { request: Request }) {
       return respondWithSchema({ error: fetchError }, RefreshSchemas.responses.error, 502)
     }
 
+    console.debug(`refresh: fetched events for provider='${provider}' container='${container}'`)
     const mappedResult = mapStatusToCanonical(rawEvents, container, provider)
     if (!mappedResult.ok) {
       return mappedResult.response
     }
+    console.debug(
+      `refresh: mapped to canonical for provider='${provider}' container='${container}'`,
+    )
+    console.debug(`refresh: cannonical shipment:`, mappedResult.shipment)
 
     try {
       await ingestCanonicalShipment(mappedResult.shipment, container)

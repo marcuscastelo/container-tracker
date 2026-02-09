@@ -6,6 +6,7 @@ export function safeParseOrDefault<T>(
   schema: { safeParse: (v: unknown) => SafeParseResult<T> },
   defaultValue: T,
 ): T
+
 export function safeParseOrDefault<T>(value: unknown, schemaOrParser: any, defaultValue: T): T {
   // If a function was passed (legacy .parse functions), call it and catch exceptions
   if (typeof schemaOrParser === 'function') {
