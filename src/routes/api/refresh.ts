@@ -7,7 +7,7 @@ import { CarrierSchema } from '~/modules/process/domain/value-objects'
 import { getProvider } from '~/routes/api/refresh-providers'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
-// Explicit request/response schemas for this API
+// --- Schemas ---
 const RefreshRequestSchema = z
   .object({
     container: z.string(),
@@ -38,7 +38,7 @@ export type RefreshErrorResponse = z.infer<typeof RefreshErrorResponseSchema>
 export const RefreshHealthResponseSchema = z.object({ ok: z.literal(true) })
 export type RefreshHealthResponse = z.infer<typeof RefreshHealthResponseSchema>
 
-// Helper to validate payloads against schemas and return Response
+// --- Helpers ---
 function respondWithSchema<T>(
   payload: T,
   schema: z.ZodTypeAny,
@@ -54,6 +54,134 @@ function respondWithSchema<T>(
   return new Response(JSON.stringify(parsed.data), { status, headers })
 }
 
+function sanitizeValue(v: unknown): unknown {
+  if (typeof v === 'string') {
+    // Remove literal backslash-u0000 sequences and actual NUL characters
+    return v.replace(/\\u0000/g, '').replace(/\u0000/g, '')
+  }
+  if (Array.isArray(v)) return v.map(sanitizeValue)
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v)) {
+      out[k] = sanitizeValue(val)
+    }
+    return out
+  }
+  return v
+}
+
+async function handleMaerskRedirect(container: string) {
+  const redirectPath = `/api/refresh-maersk/${encodeURIComponent(String(container))}`
+  const redirectPayload = { redirect: redirectPath }
+  if (RefreshRedirectResponseSchema.safeParse(redirectPayload).success) {
+    return new Response(JSON.stringify(redirectPayload), {
+      status: 307,
+      headers: {
+        Location: redirectPath,
+        'Content-Type': 'application/json',
+      },
+    })
+  }
+  return respondWithSchema(redirectPayload, RefreshRedirectResponseSchema, 307, {
+    Location: redirectPath,
+  })
+}
+
+async function fetchAndSanitizeStatus(handler: ReturnType<typeof getProvider>, container: string) {
+  let result: { parsedStatus?: Record<string, unknown>; raw?: string } | undefined
+  try {
+    console.debug(
+      `refresh: invoking handler for provider='${handler?.name}' container='${container}'`,
+    )
+    result = await handler.fetchStatus(String(container))
+  } catch (err) {
+    console.error('refresh: provider fetch failed', err)
+    return { error: `provider fetch failed: ${String(err)}` }
+  }
+
+  let parsedStatus: Record<string, unknown> = {}
+  if (!result) {
+    parsedStatus = { raw: '' }
+  } else if (result.parsedStatus) {
+    parsedStatus = result.parsedStatus
+  } else if (typeof result.raw === 'string') {
+    parsedStatus = { raw: result.raw }
+  } else {
+    parsedStatus = { raw: '' }
+  }
+
+  // @ts-expect-error: forced typing
+  parsedStatus = sanitizeValue(parsedStatus)
+  return { parsedStatus }
+}
+
+async function ingestCanonicalShipment(canonicalStatus: any, container: string) {
+  try {
+    const shipment = canonicalStatus
+    const containers = shipment.containers
+
+    if (containers.length > 0) {
+      const createInput: CreateProcessInput = {
+        reference: null,
+        operation_type: 'import',
+        origin: shipment.origin ? { display_name: shipment.origin.city ?? null } : null,
+        destination: shipment.destination
+          ? { display_name: shipment.destination.city ?? null }
+          : null,
+        carrier: CarrierSchema.safeParse(shipment.carrier).success
+          ? CarrierSchema.parse(shipment.carrier)
+          : 'unknown',
+        bill_of_lading: null,
+        containers: containers.map(
+          (c: any) =>
+            ({
+              container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
+              carrier_code: shipment.carrier,
+            }) satisfies Omit<NewContainer, 'process_id'>,
+        ),
+      }
+
+      try {
+        const res = await processUseCases.createProcess(createInput)
+        console.log(`refresh: created process ${res.process.id} for container ${container}`)
+        try {
+          await alertUseCases.createProcessCreatedAlerts({
+            process_id: res.process.id,
+            container_ids: res.containers.map((c) => c.id),
+          })
+        } catch (ae) {
+          console.warn('refresh: failed to create initial alerts for imported process', ae)
+        }
+      } catch (createErr: any) {
+        const msg = String(createErr?.message ?? createErr)
+        console.warn('refresh: createProcess failed, attempting reconciliation:', msg)
+        try {
+          const all = await processUseCases.getAllProcessesWithContainers()
+          const normalized = String(container).toUpperCase().trim()
+          const found = all.find((p) => p.containers.some((c) => c.container_number === normalized))
+          if (found) {
+            const updates: Record<string, unknown> = {}
+            if (!found.carrier && createInput.carrier) updates.carrier = createInput.carrier
+            if ((!found.origin || !found.origin.display_name) && createInput.origin)
+              updates.origin = createInput.origin
+            if ((!found.destination || !found.destination.display_name) && createInput.destination)
+              updates.destination = createInput.destination
+            if (Object.keys(updates).length > 0) {
+              await processUseCases.updateProcess(found.id, updates)
+              console.log(`refresh: reconciled process ${found.id} for container ${container}`)
+            }
+          }
+        } catch (recErr) {
+          console.warn('refresh: reconciliation attempt failed', recErr)
+        }
+      }
+    }
+  } catch (ingestErr) {
+    console.warn('refresh: ingesting canonical shipment into processes failed', ingestErr)
+  }
+}
+
+// --- Main Handlers ---
 export async function POST({ request }: { request: Request }) {
   try {
     let parsedReqData: z.infer<typeof RefreshRequestSchema>
@@ -69,24 +197,10 @@ export async function POST({ request }: { request: Request }) {
     const container = parsedReqData.container
     const provider = parsedReqData.carrier || 'unknown'
 
-    // If provider is Maersk we keep the existing redirect to the puppeteer handler
     if (provider === 'maersk') {
-      const redirectPath = `/api/refresh-maersk/${encodeURIComponent(String(container))}`
-      const redirectPayload = { redirect: redirectPath }
-      if (RefreshRedirectResponseSchema.safeParse(redirectPayload).success) {
-        return new Response(JSON.stringify(redirectPayload), {
-          status: 307,
-          headers: {
-            Location: redirectPath,
-            'Content-Type': 'application/json',
-          },
-        })
-      }
-      return respondWithSchema(redirectPayload, RefreshRedirectResponseSchema, 307, {
-        Location: redirectPath,
-      })
+      return handleMaerskRedirect(container)
     }
-    // Lookup provider handler and invoke it to get a parsed status object.
+
     const handler = getProvider(String(provider))
     if (!handler) {
       console.error(`refresh: no handler for carrier '${provider}'`)
@@ -97,53 +211,12 @@ export async function POST({ request }: { request: Request }) {
       )
     }
 
-    let result: { parsedStatus?: Record<string, unknown>; raw?: string } | undefined
-    try {
-      console.debug(`refresh: invoking handler for provider='${provider}' container='${container}'`)
-      result = await handler.fetchStatus(String(container))
-    } catch (err) {
-      console.error('refresh: provider fetch failed', err)
-      return respondWithSchema(
-        { error: `provider fetch failed: ${String(err)}` },
-        RefreshErrorResponseSchema,
-        502,
-      )
+    const { parsedStatus, error: fetchError } = await fetchAndSanitizeStatus(handler, container)
+    if (fetchError) {
+      return respondWithSchema({ error: fetchError }, RefreshErrorResponseSchema, 502)
     }
-
-    let parsedStatus: Record<string, unknown> = {}
-    if (!result) {
-      parsedStatus = { raw: '' }
-    } else if (result.parsedStatus) {
-      parsedStatus = result.parsedStatus
-    } else if (typeof result.raw === 'string') {
-      parsedStatus = { raw: result.raw }
-    } else {
-      parsedStatus = { raw: '' }
-    }
-
-    // Sanitize strings to avoid Postgres errors when inserting JSON/text
-    // (e.g. unsupported Unicode escape sequences such as \u0000 or actual NUL bytes).
-    function sanitizeValue(v: unknown): unknown {
-      if (typeof v === 'string') {
-        // Remove literal backslash-u0000 sequences and actual NUL characters
-        return v.replace(/\\u0000/g, '').replace(/\u0000/g, '')
-      }
-      if (Array.isArray(v)) return v.map(sanitizeValue)
-      if (v && typeof v === 'object') {
-        const out: Record<string, unknown> = {}
-        for (const [k, val] of Object.entries(v)) {
-          out[k] = sanitizeValue(val)
-        }
-        return out
-      }
-      return v
-    }
-
-    // @ts-expect-error: forced typing
-    parsedStatus = sanitizeValue(parsedStatus)
 
     try {
-      // Map parsedStatus to canonical F1 shape before saving
       const mapped = mapParsedStatusToF1(parsedStatus, String(container), provider)
       if (!mapped.ok) {
         console.error('refresh: mapping to canonical failed', mapped.error)
@@ -158,87 +231,10 @@ export async function POST({ request }: { request: Request }) {
       console.log(
         `refresh: saving canonical status for container ${container} to Supabase, shipment id=${canonicalStatus.id}`,
       )
-      // Save canonical object as the status payload
       // NOTE: saving is currently disabled intentionally; keep code for future re-enable
       // await containerStatusUseCases.saveContainerStatus(String(container), canonicalStatus)
       console.log(`refresh: (skipped) saved canonical container ${container} to Supabase`)
-      // Ingest canonical shipment into Processes so the UI (Dashboard) can surface it.
-      // This follows the event->state->UI flow by creating/updating a Process derived
-      // from the canonical F1 shipment. Failures here must NOT break the refresh API.
-      try {
-        const shipment = canonicalStatus
-        const containers = shipment.containers
-
-        if (containers.length > 0) {
-          const createInput: CreateProcessInput = {
-            reference: null,
-            operation_type: 'import',
-            origin: shipment.origin ? { display_name: shipment.origin.city ?? null } : null,
-            destination: shipment.destination
-              ? { display_name: shipment.destination.city ?? null }
-              : null,
-            carrier: CarrierSchema.safeParse(shipment.carrier).success
-              ? CarrierSchema.parse(shipment.carrier)
-              : 'unknown',
-            bill_of_lading: null,
-            containers: containers.map(
-              (c: any) =>
-                ({
-                  container_number: String(
-                    c.container_number ?? c.container_no ?? '',
-                  ).toUpperCase(),
-                  carrier_code: shipment.carrier,
-                }) satisfies Omit<NewContainer, 'process_id'>,
-            ),
-          }
-
-          try {
-            const res = await processUseCases.createProcess(createInput)
-            console.log(`refresh: created process ${res.process.id} for container ${container}`)
-            try {
-              // create initial alerts similarly to API process creation
-              await alertUseCases.createProcessCreatedAlerts({
-                process_id: res.process.id,
-                container_ids: res.containers.map((c) => c.id),
-              })
-            } catch (ae) {
-              console.warn('refresh: failed to create initial alerts for imported process', ae)
-            }
-          } catch (createErr: any) {
-            // If creation failed because container already exists, try to reconcile by
-            // finding the existing process and updating it (non-blocking).
-            const msg = String(createErr?.message ?? createErr)
-            console.warn('refresh: createProcess failed, attempting reconciliation:', msg)
-            try {
-              const all = await processUseCases.getAllProcessesWithContainers()
-              const normalized = String(container).toUpperCase().trim()
-              const found = all.find((p) =>
-                p.containers.some((c) => c.container_number === normalized),
-              )
-              if (found) {
-                // Attempt to update missing metadata (carrier/origin/destination) if empty
-                const updates: Record<string, unknown> = {}
-                if (!found.carrier && createInput.carrier) updates.carrier = createInput.carrier
-                if ((!found.origin || !found.origin.display_name) && createInput.origin)
-                  updates.origin = createInput.origin
-                if (
-                  (!found.destination || !found.destination.display_name) &&
-                  createInput.destination
-                )
-                  updates.destination = createInput.destination
-                if (Object.keys(updates).length > 0) {
-                  await processUseCases.updateProcess(found.id, updates)
-                  console.log(`refresh: reconciled process ${found.id} for container ${container}`)
-                }
-              }
-            } catch (recErr) {
-              console.warn('refresh: reconciliation attempt failed', recErr)
-            }
-          }
-        }
-      } catch (ingestErr) {
-        console.warn('refresh: ingesting canonical shipment into processes failed', ingestErr)
-      }
+      await ingestCanonicalShipment(canonicalStatus, container)
     } catch (err) {
       console.error('refresh: Supabase save failed', err)
       return respondWithSchema(
