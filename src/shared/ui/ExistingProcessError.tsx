@@ -1,7 +1,7 @@
 import { A, useLocation } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import { useTranslation } from '~/i18n'
+import { useTranslation } from '~/shared/localization/i18n'
 
 type ExistingInfo = {
   processId?: string

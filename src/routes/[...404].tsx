@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router'
-import { useTranslation } from '~/i18n'
+import { useTranslation } from '~/shared/localization/i18n'
 
 const keys = {
   notFound: 'notfound.title',

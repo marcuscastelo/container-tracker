@@ -2,7 +2,6 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import z from 'zod'
-import { useTranslation } from '~/i18n'
 import { safeParseOrDefault } from '~/modules/container-events/infrastructure/persistence/containerEventMappers'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
 import { CreateProcessDialog } from '~/modules/process'
@@ -13,6 +12,7 @@ import {
   CreateProcessResponseSchema,
   ProcessListResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+import { useTranslation } from '~/shared/localization/i18n'
 import {
   AppHeader,
   EmptyState,

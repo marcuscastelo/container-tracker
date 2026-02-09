@@ -1,9 +1,9 @@
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { useTranslation } from '~/i18n'
 import { findDuplicateContainers } from '~/modules/process/domain/processStuff'
 import type { Carrier, OperationType } from '~/modules/process/domain/value-objects'
+import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 
@@ -652,8 +652,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
             aria-disabled={isSubmitDisabled()}
             title={isSubmitDisabled() ? submitTooltip() : undefined}
             class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${isSubmitDisabled()
-              ? 'opacity-50 cursor-not-allowed hover:bg-slate-900'
-              : 'hover:bg-slate-800'
+                ? 'opacity-50 cursor-not-allowed hover:bg-slate-900'
+                : 'hover:bg-slate-800'
               }`}
           >
             {t(props.mode === 'edit' ? keys.update : keys.create)}
