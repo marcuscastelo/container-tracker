@@ -13,6 +13,8 @@ export {
   NewObservationSchema,
   type Observation,
   ObservationSchema,
+  type EventTimeType,
+  EventTimeTypeSchema,
 } from '~/modules/tracking/domain/observation'
 
 export {

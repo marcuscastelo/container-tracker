@@ -4,6 +4,21 @@ import { ObservationTypeSchema } from '~/modules/tracking/domain/observationType
 import { ProviderSchema } from '~/modules/tracking/domain/provider'
 
 /**
+ * EventTimeType — differentiates between confirmed facts and predictions.
+ *
+ * ACTUAL: A confirmed, factual event that has occurred.
+ *         Only ACTUAL events can advance container status definitively.
+ *
+ * EXPECTED: A prediction, estimate, or planned event.
+ *           Can be used for ETA calculations and monitoring alerts,
+ *           but does NOT advance container status.
+ *
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
+ */
+export const EventTimeTypeSchema = z.enum(['ACTUAL', 'EXPECTED'])
+export type EventTimeType = z.infer<typeof EventTimeTypeSchema>
+
+/**
  * Observation — a persisted, deduplicated semantic fact.
  *
  * Observations are the atoms of truth in the system.
@@ -34,6 +49,17 @@ export const ObservationSchema = z.object({
 
   /** When the event occurred (UTC ISO), null if unknown */
   event_time: z.iso.datetime().nullable(),
+
+  /**
+   * Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event.
+   * Defaults to EXPECTED if carrier data doesn't explicitly indicate.
+   *
+   * Rules:
+   * - ACTUAL events can advance container status
+   * - EXPECTED events are informational only (ETA, predictions)
+   * - If uncertain, adapters should use EXPECTED and generate Alert[data]
+   */
+  event_time_type: EventTimeTypeSchema,
 
   /** UN/LOCODE */
   location_code: z.string().nullable(),

@@ -1,4 +1,4 @@
-import type { Confidence, ObservationDraft } from '~/modules/tracking/domain/observationDraft'
+import type { Confidence, ObservationDraft, EventTimeType } from '~/modules/tracking/domain/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/schemas/api/msc.api.schema'
@@ -65,6 +65,20 @@ function computeConfidence(
 }
 
 /**
+ * Map MSC event to EventTimeType.
+ *
+ * MSC does not explicitly provide ACTUAL vs EXPECTED in their API.
+ * Default to EXPECTED as per the canonical rules.
+ *
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
+ */
+function mapMscEventTimeType(): EventTimeType {
+  // MSC doesn't provide explicit event_time_type
+  // According to the issue: if carrier doesn't explicitly indicate, use EXPECTED
+  return 'EXPECTED'
+}
+
+/**
  * Normalize an MSC snapshot payload into ObservationDrafts.
  *
  * This is a pure function — no side effects, no persistence.
@@ -111,11 +125,13 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const finalVoyage = isVesselEvent ? voyage : null
 
         const confidence = computeConfidence(eventTime, locationCode, type)
+        const eventTimeType = mapMscEventTimeType()
 
         const draft: ObservationDraft = {
           container_number: containerNumber,
           type,
           event_time: eventTime,
+          event_time_type: eventTimeType,
           location_code: locationCode,
           location_display: locationDisplay,
           vessel_name: finalVesselName,

@@ -1,4 +1,4 @@
-import type { Confidence, ObservationDraft } from '~/modules/tracking/domain/observationDraft'
+import type { Confidence, ObservationDraft, EventTimeType } from '~/modules/tracking/domain/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
 import { MaerskApiSchema } from '~/modules/tracking/infrastructure/schemas/api/maersk.api.schema'
@@ -41,6 +41,21 @@ function mapMaerskActivity(activity: string | null | undefined): ObservationType
   if (!activity) return 'OTHER'
   const key = activity.toLowerCase().trim()
   return MAERSK_ACTIVITY_MAP[key] ?? 'OTHER'
+}
+
+/**
+ * Map Maersk event_time_type to canonical EventTimeType.
+ *
+ * Maersk uses: "ACTUAL" | "EXPECTED" (case-insensitive)
+ * We map explicitly; if uncertain or null → EXPECTED (safe default).
+ *
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
+ */
+function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeType {
+  if (!eventTimeType) return 'EXPECTED'
+  const upper = eventTimeType.toUpperCase().trim()
+  if (upper === 'ACTUAL') return 'ACTUAL'
+  return 'EXPECTED'
 }
 
 function computeConfidence(
@@ -93,11 +108,13 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
         const finalVoyage = isVesselEvent ? voyage : null
 
         const confidence = computeConfidence(eventTime, event.event_time_type, locationCode)
+        const eventTimeType = mapEventTimeType(event.event_time_type)
 
         const draft: ObservationDraft = {
           container_number: containerNumber,
           type,
           event_time: eventTime,
+          event_time_type: eventTimeType,
           location_code: locationCode,
           location_display: locationDisplay,
           vessel_name: finalVesselName,

@@ -64,39 +64,49 @@ export function deriveAlerts(
   const nowIso = now.toISOString()
 
   // === FACT-BASED ALERTS ===
+  // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
   // 1. Transshipment detection
   const transshipment = deriveTransshipment(timeline)
   if (transshipment.hasTransshipment && !existingAlertTypes.has('TRANSSHIPMENT')) {
-    // Find the observations that indicate transshipment
+    // Find the ACTUAL observations that indicate transshipment
     const transshipmentObs = timeline.observations.filter(
-      (o) => (o.type === 'LOAD' || o.type === 'DISCHARGE') && o.location_code !== null,
+      (o) =>
+        o.event_time_type === 'ACTUAL' &&
+        (o.type === 'LOAD' || o.type === 'DISCHARGE') &&
+        o.location_code !== null,
     )
-    const fingerprints = transshipmentObs.map((o) => o.fingerprint)
 
-    // For fact alerts, detected_at = time of the earliest transshipment evidence
-    const earliestTime = transshipmentObs
-      .filter((o) => o.event_time !== null)
-      .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))[0]?.event_time
+    // Only create alert if we have ACTUAL evidence
+    if (transshipmentObs.length > 0) {
+      const fingerprints = transshipmentObs.map((o) => o.fingerprint)
 
-    alerts.push({
-      container_id: timeline.container_id,
-      category: 'fact',
-      type: 'TRANSSHIPMENT',
-      severity: 'warning',
-      message: `Transshipment detected: ${transshipment.transshipmentCount} intermediate port(s) — ${transshipment.ports.join(', ')}`,
-      detected_at: earliestTime ?? nowIso,
-      triggered_at: nowIso,
-      source_observation_fingerprints: fingerprints,
-      retroactive: isBackfill,
-      provider: null,
-      acked_at: null,
-      dismissed_at: null,
-    })
+      // For fact alerts, detected_at = time of the earliest transshipment evidence
+      const earliestTime = transshipmentObs
+        .filter((o) => o.event_time !== null)
+        .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))[0]?.event_time
+
+      alerts.push({
+        container_id: timeline.container_id,
+        category: 'fact',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        message: `Transshipment detected: ${transshipment.transshipmentCount} intermediate port(s) — ${transshipment.ports.join(', ')}`,
+        detected_at: earliestTime ?? nowIso,
+        triggered_at: nowIso,
+        source_observation_fingerprints: fingerprints,
+        retroactive: isBackfill,
+        provider: null,
+        acked_at: null,
+        dismissed_at: null,
+      })
+    }
   }
 
-  // 2. Customs hold
-  const customsHoldObs = timeline.observations.filter((o) => o.type === 'CUSTOMS_HOLD')
+  // 2. Customs hold - only ACTUAL customs holds should trigger alerts
+  const customsHoldObs = timeline.observations.filter(
+    (o) => o.type === 'CUSTOMS_HOLD' && o.event_time_type === 'ACTUAL',
+  )
   if (customsHoldObs.length > 0 && !existingAlertTypes.has('CUSTOMS_HOLD')) {
     const firstHold = customsHoldObs[0]
     alerts.push({
