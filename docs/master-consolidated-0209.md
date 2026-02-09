@@ -83,6 +83,13 @@ Observations:
 * são deduplicáveis
 * são internas
 
+Definição operacional (importante):
+
+* Uma Observation representa um fato semântico normalizado derivado de um ou mais registros brutos do carrier — é uma unidade de verdade (C), não um verbatim event (A) nem apenas um estado técnico (B).
+* Observations são frases/tuplas semânticas (ex.: "LOADED_on_vessel_X_at_port_Y") que permitem raciocínio e comparações determinísticas.
+* Observations devem incluir um fingerprint determinístico que permita deduplicação segura. O fingerprint deve ser calculado a partir dos campos semânticos relevantes e deve ignorar campos instáveis (ex.: event_id do carrier, timestamps de ingestão, campos de debug).
+* Observations preservam o payload raw referenciado (link para snapshot) e armazenam metadados de confiança/uncertainty quando aplicável.
+
 ---
 
 ### 2.5 Timeline
@@ -110,6 +117,8 @@ Exemplos:
 * IN_TRANSIT
 * ARRIVED_AT_POD
 * DISCHARGED
+
+Nota importante: a Timeline pode repetir, voltar ou conter sinais contraditórios (por exemplo em backfills ou APIs inconsistentes). Isso é aceitável. O Status, por definição, é monotônico (não volta) — o contraste entre Timeline (histórico de fatos) e Status (projeção) deve ser preservado e exibido claramente na UI.
 
 ---
 
@@ -147,6 +156,11 @@ Características:
 * Podem ser retroativos
 * Disparam no onboarding
 * Importantes para compliance
+
+Regra de contenção para retroatividade (MVP):
+
+* Alertas retroativos serão permitidos apenas para alertas do tipo "fact". Alertas de monitoring NÃO devem ser gerados retroativamente.
+* Alertas retroativos devem ser marcados com um metadado `retroactive: true` e um rótulo `historical` na UI para evitar confusão e spam. Implementações futuras podem oferecer filtros/compactação para backfills.
 
 #### B) Alertas de Monitoramento (monitoring)
 
@@ -229,6 +243,14 @@ persist(newObs)
 
 * Deduplicação por fingerprint
 * Nunca removemos observações antigas
+
+#### 4.2.1 Fingerprint e deduplicação (regras)
+
+* Cada Observation deve expor um `fingerprint` determinístico usado para deduplicação e comparações.
+* O fingerprint NÃO é um hash do snapshot completo. Deve ser derivado apenas dos campos semânticos relevantes (por exemplo: tipo de observation, container_number, porto, vessel, event_datetime normalizado) e explicitamente ignorar campos instáveis (ex.: event_id do carrier, ingest_timestamp, debug).
+* Fingerprints devem ser estáveis entre execuções e independentes de metadados de ingestão.
+* A deduplicação é feita comparando fingerprints; quando um fingerprint novo aparece, persiste-se a Observation e linka-se ao snapshot de origem.
+* Em caso de dúvida (fingerprint collision ou campos conflitantes), preservar ambos os registros e criar um `Alert[data]` indicando conflito para revisão humana.
 
 ---
 
@@ -330,6 +352,13 @@ Regras:
 * UI nunca deriva status
 * Domain não conhece infra
 * Adapters são isolados
+
+Responsabilidade (ownership) — quem faz o quê:
+
+* Domain: contém regras puras de derivação de Observations → Timeline → Status; validações canônicas; tipos fechados.
+* Application: orquestra pipelines (fetch → snapshot → normalize → persist → derive alerts); aplica versionamento e coordenação entre adaptadores; coordena retries e backfills.
+* Infrastructure: implementa fetchers, connectors, persistência e adaptação de payloads brutos. Não contém regras de negócio além de transformação/normalização e validação.
+* UI: apresenta projeções derivadas (Status) e histórico (Timeline/Observations) com metadados de incerteza; nunca calcula regras de domínio.
 
 ---
 

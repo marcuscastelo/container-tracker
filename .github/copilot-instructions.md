@@ -283,6 +283,47 @@ Sempre prefira esse padrão em vez de usar literais de string diretamente em cha
 * Lógica de negócio em componentes
 * Estados mágicos não rastreáveis
 
+Exemplos explícitos a evitar:
+
+* ❌ Persistir eventos externos (raw) como a única fonte de verdade sem normalização
+* ❌ Deduplicar observações apenas por timestamp ou event_id do carrier
+* ❌ Usar `as` para forçar tipagem em validação de payloads (exceto `as const`)
+* ❌ Derivar status na UI ou em componentes de apresentação
+* ❌ Gerar alertas de monitoring retroativamente a partir de backfills
+
+## 13. Perguntas que o LLM deve sempre se fazer
+
+Ao gerar código ou regras, o Copilot/LLM deve executar um checklist mental:
+
+1. Isso é um snapshot, uma observation ou um status/projeção?
+2. Isso é um fato (observation) ou uma projeção (status/alerta de monitoring)?
+3. Estou preservando o payload raw e metadados de confiança?
+4. O que acontece se a API do carrier contradizer o histórico? (preservar ambos, marcar incerteza)
+5. Estou usando guards/validação em vez de `as` para todas as formas externas?
+
+## 14. Heurística de decisão rápida
+
+Regras práticas para decisões automáticas do LLM:
+
+* Se a API contradiz o histórico → preserve ambos os registros e marque incerteza.
+* Se o usuário adicionar dados retroativamente (onboarding/backfill) → gerar fact-based alerts retroativos, marcá-los como `retroactive: true` e `historical` na UI.
+* Se houver dúvida entre um event verbatim e um fato semântico → criar uma Observation marcada como `uncertain` e gerar um Alert[data] para revisão manual.
+* Nunca gerar monitoring alerts (time-based) retroativamente.
+
+## 15. Regras Adicionais: Alertas Retroativos
+
+* Alertas retroativos são permitidos somente para fatos (fact-based alerts) e devem sempre conter metadados: `retroactive: true`, `detected_at` (data do fato) e `triggered_at` (data da geração do alerta).
+* UI deve indicar claramente que o alerta é histórico e que não representa um estado em tempo real.
+
+## 16. Ownership (Quem deve fazer o quê)
+
+Para evitar ambiguidade, lembre-se:
+
+* Domain: regras de derivação puras (Observations → Timeline → Status) e tipos canônicos.
+* Application: orquestra pipelines, coordena fetchers/backfills, persiste snapshots e observations.
+* Infrastructure: conectores, fetchers, adaptações para transformar payloads brutos em um formato validável.
+* UI: apresentação, explicitação de incertezas e ações do usuário (ack/dismiss).
+
 ---
 
 ## 13. Checklist Mental do Copilot
