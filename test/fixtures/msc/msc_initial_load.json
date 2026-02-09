@@ -1,0 +1,57 @@
+{
+  "Data": {
+    "CurrentDate": "17/11/2025",
+    "TrackingType": "Container",
+    "BillOfLadings": [
+      {
+        "Delivered": false,
+        "ContainersInfo": [
+          {
+            "Events": [
+              {
+                "Date": "17/11/2025",
+                "Order": 1,
+                "Detail": ["LADEN"],
+                "Vessel": { "IMO": "", "Flag": "", "Built": "", "FlagName": "" },
+                "Location": "NAPLES, IT",
+                "Description": "Export received at CY",
+                "UnLocationCode": "ITNAP",
+                "EquipmentHandling": null,
+                "IntermediaryPortCalls": null
+              },
+              {
+                "Date": "17/11/2025",
+                "Order": 0,
+                "Detail": ["EMPTY"],
+                "Vessel": { "IMO": "", "Flag": "", "Built": "", "FlagName": "" },
+                "Location": "NAPLES, IT",
+                "Description": "Empty to Shipper",
+                "UnLocationCode": "ITNAP",
+                "EquipmentHandling": null,
+                "IntermediaryPortCalls": null
+              }
+            ],
+            "Delivered": false,
+            "LatestMove": "NAPLES, IT",
+            "PodEtaDate": "15/02/2026",
+            "ContainerType": "40' HIGH CUBE",
+            "ContainerNumber": "CXDU2058677"
+          }
+        ],
+        "BillOfLadingNumber": "MEDUK9307522",
+        "NumberOfContainers": 1,
+        "GeneralTrackingInfo": {
+          "ShippedTo": "ITAPOA, BR",
+          "PortOfLoad": "NAPLES, IT",
+          "ShippedFrom": "NAPLES, IT",
+          "Transshipments": [],
+          "FinalPodEtaDate": "15/02/2026",
+          "PortOfDischarge": "ITAPOA, BR"
+        }
+      }
+    ],
+    "TrackingTitle": "CONTAINER NUMBER:",
+    "TrackingNumber": "CXDU2058677"
+  },
+  "IsSuccess": true
+}
