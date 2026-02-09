@@ -45,8 +45,13 @@ export function TimelineNode(props: {
   const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
   const href = typeof trackUrl === 'string' ? trackUrl : undefined
 
+  // Determine if this is an EXPECTED event
+  const isExpected = props.event.eventTimeType === 'EXPECTED'
+  // Apply reduced opacity for EXPECTED events
+  const eventOpacity = isExpected ? 'opacity-60' : ''
+
   return (
-    <div class="flex gap-4">
+    <div class={`flex gap-4 ${eventOpacity}`}>
       {/* Timeline node and connector */}
       <div class="flex flex-col items-center">
         <div class={`h-3 w-3 rounded-full ${styles.dot}`} />
@@ -59,7 +64,18 @@ export function TimelineNode(props: {
       <div class="flex-1 pb-6">
         <div class="flex items-start justify-between">
           <div>
-            <p class={`text-sm ${styles.text}`}>{props.event.label}</p>
+            <div class="flex items-center gap-2">
+              <p class={`text-sm ${styles.text}`}>{props.event.label}</p>
+              {/* Badge for EXPECTED events */}
+              <Show when={isExpected}>
+                <span
+                  class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600"
+                  title="This is a predicted event, not yet confirmed"
+                >
+                  {t('shipmentView.timeline.expected')}
+                </span>
+              </Show>
+            </div>
             <Show when={props.event.location}>
               <p class="text-xs text-slate-500 mt-0.5">{props.event.location}</p>
             </Show>

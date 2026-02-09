@@ -24,6 +24,8 @@ export type TimelineEvent = {
   readonly date: string | null
   readonly expectedDate?: string | null
   readonly status: EventStatus
+  /** Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event */
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
 }
 
 export type AlertDisplay = {
@@ -192,7 +194,8 @@ function formatRelativeTime(dateString: string): string {
 function observationToTimelineEvent(obs: ObservationResponse, index: number): TimelineEvent {
   const evDate = obs.event_time ? new Date(obs.event_time) : null
   const dateStr = evDate ? evDate.toLocaleDateString() : null
-  const isExpected = obs.confidence === 'expected'
+  const eventTimeType = obs.event_time_type ?? 'EXPECTED'
+  const isExpected = eventTimeType === 'EXPECTED'
   const expectedDate = isExpected && evDate ? evDate.toLocaleDateString() : undefined
 
   // Build location display
@@ -214,6 +217,7 @@ function observationToTimelineEvent(obs: ObservationResponse, index: number): Ti
     date: isExpected ? null : dateStr,
     expectedDate,
     status,
+    eventTimeType,
   }
 }
 
@@ -295,6 +299,7 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
         location: undefined,
         date: new Date(data.created_at).toLocaleDateString(),
         status: 'completed',
+        eventTimeType: 'ACTUAL', // System-generated event is ACTUAL
       })
     }
 

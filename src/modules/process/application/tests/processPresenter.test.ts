@@ -30,6 +30,7 @@ describe('processPresenter', () => {
               fingerprint: 'abc123',
               type: 'LOAD',
               event_time: new Date().toISOString(),
+              event_time_type: 'ACTUAL',
               location_code: 'CNSHA',
               location_display: 'Shanghai',
               vessel_name: 'MAERSK SEVILLE',

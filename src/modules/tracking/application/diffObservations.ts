@@ -43,6 +43,7 @@ export function diffObservations(
       container_number: draft.container_number,
       type: draft.type,
       event_time: draft.event_time,
+      event_time_type: draft.event_time_type,
       location_code: draft.location_code,
       location_display: draft.location_display,
       vessel_name: draft.vessel_name,
