@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type z4 from 'zod/v4'
 import { alertUseCases } from '~/modules/alert'
 import type { NewContainer } from '~/modules/container/domain/container'
@@ -69,9 +70,30 @@ export async function fetchAndSanitizeStatus(
   return { parsedStatus }
 }
 
-export async function ingestCanonicalShipment(canonicalStatus: any, container: string) {
+const CanonicalShipmentSchema = z.object({
+  containers: z.array(
+    z.object({
+      container_number: z.string().optional(),
+      container_no: z.string().optional(),
+    }),
+  ),
+  origin: z.object({ city: z.string().optional() }).optional(),
+  destination: z.object({ city: z.string().optional() }).optional(),
+  carrier: CarrierSchema,
+})
+
+function hasMessage(e: unknown): e is { message?: unknown } {
+  return typeof e === 'object' && e !== null && 'message' in e
+}
+
+export async function ingestCanonicalShipment(canonicalStatus: unknown, container: string) {
   try {
-    const shipment = canonicalStatus
+    const parsed = CanonicalShipmentSchema.safeParse(canonicalStatus)
+    if (!parsed.success) {
+      console.warn('refresh: canonical shipment schema validation failed', parsed.error.format())
+      return
+    }
+    const shipment = parsed.data
     const containers = shipment.containers
 
     if (containers.length > 0) {
@@ -87,7 +109,7 @@ export async function ingestCanonicalShipment(canonicalStatus: any, container: s
           : 'unknown',
         bill_of_lading: null,
         containers: containers.map(
-          (c: any) =>
+          (c) =>
             ({
               container_number: String(c.container_number ?? c.container_no ?? '').toUpperCase(),
               carrier_code: shipment.carrier,
@@ -106,8 +128,10 @@ export async function ingestCanonicalShipment(canonicalStatus: any, container: s
         } catch (ae) {
           console.warn('refresh: failed to create initial alerts for imported process', ae)
         }
-      } catch (createErr: any) {
-        const msg = String(createErr?.message ?? createErr)
+      } catch (createErr: unknown) {
+        const msg = hasMessage(createErr)
+          ? String(createErr.message ?? createErr)
+          : String(createErr)
         console.warn('refresh: createProcess failed, attempting reconciliation:', msg)
         try {
           const all = await processUseCases.getAllProcessesWithContainers()
