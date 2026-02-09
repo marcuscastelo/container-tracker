@@ -11,11 +11,31 @@ const TABLE = 'container_snapshots' as const
 type SnapshotRow = Tables<'container_snapshots'>
 
 function rowToSnapshot(row: SnapshotRow): Snapshot {
+  // The DB driver (Supabase) may return various representations for timestamptz
+  // columns: JS Date, numeric epoch, or ISO-like strings. Our domain expects an
+  // ISO datetime string (z.iso.datetime()). Normalize common types to an
+  // ISO UTC string to make validation deterministic.
+  function normalizeFetchedAt(value: unknown): unknown {
+    if (value instanceof Date) return value.toISOString()
+    if (typeof value === 'number') return new Date(value).toISOString()
+    if (typeof value === 'string') {
+      // Try to parse the string — if it produces a valid Date, convert to ISO
+      const d = new Date(value)
+      if (!Number.isNaN(d.getTime())) return d.toISOString()
+      // leave invalid strings as-is so the schema validation fails with a
+      // helpful error message
+      return value
+    }
+    return value
+  }
+
+  const fetchedAt = normalizeFetchedAt(row.fetched_at)
+
   const result = SnapshotSchema.safeParse({
     id: row.id,
     container_id: row.container_id,
     provider: row.provider,
-    fetched_at: row.fetched_at,
+    fetched_at: fetchedAt,
     payload: row.payload,
     parse_error: row.parse_error,
   })
