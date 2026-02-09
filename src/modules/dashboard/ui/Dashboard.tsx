@@ -47,8 +47,8 @@ const keys = {
 type ProcessSummary = {
   readonly id: string
   readonly reference: string | null
-  readonly origin: { display_name?: string | null } | null
-  readonly destination: { display_name?: string | null } | null
+  readonly origin?: { display_name?: string | null } | null
+  readonly destination?: { display_name?: string | null } | null
   readonly containerCount: number
   readonly status: StatusVariant
   readonly statusLabel: string

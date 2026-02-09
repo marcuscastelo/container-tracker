@@ -3,8 +3,8 @@ import type { StatusVariant } from '~/shared/ui/StatusBadge'
 export type ProcessSummary = {
   readonly id: string
   readonly reference: string | null
-  readonly origin: { display_name?: string | null } | null
-  readonly destination: { display_name?: string | null } | null
+  readonly origin?: { display_name?: string | null } | null
+  readonly destination?: { display_name?: string | null } | null
   readonly containerCount: number
   readonly status: StatusVariant
   readonly statusLabel: string
@@ -16,8 +16,8 @@ export type ProcessApiResponse = {
   id: string
   reference?: string | null
   operation_type: string
-  origin: { display_name?: string | null } | null
-  destination: { display_name?: string | null } | null
+  origin?: { display_name?: string | null } | null
+  destination?: { display_name?: string | null } | null
   carrier?: string | null
   bill_of_lading?: string | null
   source: string
