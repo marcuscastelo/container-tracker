@@ -1,29 +1,36 @@
-import { z } from 'zod/v4'
+import z4 from 'zod/v4'
 
-export const RefreshRequestSchema = z
-  .object({
-    container: z.string(),
-    carrier: z.string().optional().nullable(),
-  })
+// Request Schemas
+const RefreshRequestSchema = z4
+  .object({ container: z4.string(), carrier: z4.string().optional().nullable() })
   .strict()
 
-export const RefreshSuccessResponseSchema = z.object({
-  ok: z.literal(true),
-  container: z.string(),
-})
-export const RefreshRedirectResponseSchema = z.object({ redirect: z.string() })
+export type RefreshRequest = z4.infer<typeof RefreshRequestSchema>
 
-export const RefreshResponseSchema = z.union([
+// Response Schemas
+const RefreshSuccessResponseSchema = z4.object({ ok: z4.literal(true), container: z4.string() })
+const RefreshRedirectResponseSchema = z4.object({ redirect: z4.string() })
+const RefreshResponseSchema = z4.union([
   RefreshSuccessResponseSchema,
   RefreshRedirectResponseSchema,
 ])
 
-export const RefreshErrorResponseSchema = z.object({ error: z.string() })
+export type RefreshResponse = z4.infer<typeof RefreshResponseSchema>
+const RefreshErrorResponseSchema = z4.object({ error: z4.string() })
+export type RefreshErrorResponse = z4.infer<typeof RefreshErrorResponseSchema>
 
-export type RefreshRequest = z.infer<typeof RefreshRequestSchema>
-export type RefreshResponse = z.infer<typeof RefreshResponseSchema>
-export type RefreshErrorResponse = z.infer<typeof RefreshErrorResponseSchema>
+// Health Schemas
+const RefreshHealthResponseSchema = z4.object({ ok: z4.literal(true) })
+export type RefreshHealthResponse = z4.infer<typeof RefreshHealthResponseSchema>
 
-// Health response schema for GET
-export const RefreshHealthResponseSchema = z.object({ ok: z.literal(true) })
-export type RefreshHealthResponse = z.infer<typeof RefreshHealthResponseSchema>
+// Internal exports for composition/testing
+export const RefreshSchemas = {
+  request: RefreshRequestSchema,
+  response: RefreshResponseSchema,
+  responses: {
+    error: RefreshErrorResponseSchema,
+    health: RefreshHealthResponseSchema,
+    success: RefreshSuccessResponseSchema,
+    redirect: RefreshRedirectResponseSchema,
+  },
+}

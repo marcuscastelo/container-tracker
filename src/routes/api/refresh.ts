@@ -6,19 +6,13 @@ import {
   respondWithSchema,
 } from '~/modules/container-events/infrastructure/api/refresh/helpers'
 import { getProvider } from '~/modules/container-events/infrastructure/api/refresh/refresh-providers'
-import {
-  RefreshErrorResponseSchema,
-  RefreshHealthResponseSchema,
-  RefreshRedirectResponseSchema,
-  RefreshRequestSchema,
-  RefreshSuccessResponseSchema,
-} from '~/modules/container-events/infrastructure/api/refresh/schemas'
+import { RefreshSchemas } from '~/modules/container-events/infrastructure/api/refresh/schemas'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
 function handleMaerskRedirect(container: string) {
   const redirectPath = `/api/refresh-maersk/${encodeURIComponent(container)}`
   const payload = { redirect: redirectPath }
-  return respondWithSchema(payload, RefreshRedirectResponseSchema, 307, {
+  return respondWithSchema(payload, RefreshSchemas.responses.redirect, 307, {
     Location: redirectPath,
   })
 }
@@ -26,14 +20,14 @@ function handleMaerskRedirect(container: string) {
 // --- Main Handlers ---
 export async function POST({ request }: { request: Request }) {
   try {
-    let parsedReqData: z4.infer<typeof RefreshRequestSchema>
+    let parsedReqData: z4.infer<typeof RefreshSchemas.request>
     try {
-      parsedReqData = await parseBody(request, RefreshRequestSchema)
+      parsedReqData = await parseBody(request, RefreshSchemas.request)
     } catch (err) {
       return jsonResponse(
         { error: `invalid request: ${String(err)}` },
         400,
-        RefreshErrorResponseSchema,
+        RefreshSchemas.responses.error,
       )
     }
     const container = parsedReqData.container
@@ -48,14 +42,14 @@ export async function POST({ request }: { request: Request }) {
       console.error(`refresh: no handler for carrier '${provider}'`)
       return respondWithSchema(
         { error: `no handler for carrier ${provider}` },
-        RefreshErrorResponseSchema,
+        RefreshSchemas.responses.error,
         400,
       )
     }
 
     const { parsedStatus, error: fetchError } = await fetchAndSanitizeStatus(handler, container)
     if (fetchError) {
-      return respondWithSchema({ error: fetchError }, RefreshErrorResponseSchema, 502)
+      return respondWithSchema({ error: fetchError }, RefreshSchemas.responses.error, 502)
     }
 
     try {
@@ -64,7 +58,7 @@ export async function POST({ request }: { request: Request }) {
         console.error('refresh: mapping to canonical failed', mapped.error)
         return respondWithSchema(
           { error: `mapping to canonical failed: ${mapped.error}` },
-          RefreshErrorResponseSchema,
+          RefreshSchemas.responses.error,
           500,
         )
       }
@@ -81,20 +75,20 @@ export async function POST({ request }: { request: Request }) {
       console.error('refresh: Supabase save failed', err)
       return respondWithSchema(
         { error: `Supabase save failed: ${String(err)}` },
-        RefreshErrorResponseSchema,
+        RefreshSchemas.responses.error,
         500,
       )
     }
 
     return respondWithSchema(
       { ok: true, container: String(container) },
-      RefreshSuccessResponseSchema,
+      RefreshSchemas.responses.success,
       200,
     )
   } catch (err) {
     console.error('refresh error', err)
-    return respondWithSchema({ error: String(err) }, RefreshErrorResponseSchema, 500)
+    return respondWithSchema({ error: String(err) }, RefreshSchemas.responses.error, 500)
   }
 }
 
-export const GET = () => respondWithSchema({ ok: true }, RefreshHealthResponseSchema, 200)
+export const GET = () => respondWithSchema({ ok: true }, RefreshSchemas.responses.health, 200)
