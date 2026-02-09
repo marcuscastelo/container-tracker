@@ -1,4 +1,8 @@
-import type { Confidence, ObservationDraft, EventTimeType } from '~/modules/tracking/domain/observationDraft'
+import type {
+  Confidence,
+  EventTimeType,
+  ObservationDraft,
+} from '~/modules/tracking/domain/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/schemas/api/cmacgm.api.schema'
