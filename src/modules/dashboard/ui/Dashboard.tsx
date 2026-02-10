@@ -190,15 +190,15 @@ export function Dashboard(): JSX.Element {
       if (err && typeof err === 'object') {
         const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()), null)
         if (body && 'existing' in body && isRecord(body)) {
-          const ex = safeParseOrDefault(body['existing'], z.record(z.string(), z.unknown()), null)
+          const ex = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
           if (ex) {
             const processId = String(ex.processId ?? ex.process_id ?? '')
             const containerId = String(ex.containerId ?? ex.container_id ?? '')
             const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
             setCreateError({
               message: String(
-                isRecord(body) && typeof body['message'] === 'string'
-                  ? body['message']
+                isRecord(body) && typeof body.message === 'string'
+                  ? body.message
                   : 'Container already exists',
               ),
               processId,
@@ -242,8 +242,8 @@ export function Dashboard(): JSX.Element {
               const v = createError()
               if (typeof v === 'string') return v
               const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
-              if (body && isRecord(body) && typeof body['message'] === 'string')
-                return String(body['message'])
+              if (body && isRecord(body) && typeof body.message === 'string')
+                return String(body.message)
               return ''
             })()}
             existing={(() => {
