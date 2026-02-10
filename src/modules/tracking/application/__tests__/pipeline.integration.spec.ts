@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
+import { processSnapshot } from '~/modules/tracking/application/pipeline'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
 import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
@@ -7,7 +8,6 @@ import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepos
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
 import maerskPayload from '~/modules/tracking/infrastructure/__tests__/fixtures/maersk/maersk_full.json'
-import { processSnapshot } from '../pipeline'
 
 /**
  * In-memory implementation of SnapshotRepository for testing.
@@ -101,7 +101,6 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
       const newAlert: TrackingAlert = {
         ...alert,
         id: randomUUID(),
-        created_at: new Date().toISOString(),
       }
       this.alerts.set(newAlert.id, newAlert)
       inserted.push(newAlert)
@@ -190,10 +189,14 @@ describe('Pipeline Integration Tests - Maersk', () => {
     // Assert - Timeline is sorted by event_time
     const times = result.timeline.observations
       .filter((o) => o.event_time !== null)
-      .map((o) => o.event_time as string)
+      .map((o) => o.event_time)
     for (let i = 1; i < times.length; i++) {
-      // Use string comparison for ISO datetime strings
-      expect(times[i] >= (times[i - 1] as string)).toBe(true)
+      const current = times[i]
+      const previous = times[i - 1]
+      if (current !== null && previous !== null) {
+        // Use string comparison for ISO datetime strings
+        expect(current >= previous).toBe(true)
+      }
     }
 
     // Assert - Status was derived
