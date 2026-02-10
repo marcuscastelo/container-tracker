@@ -15,8 +15,16 @@ import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
 export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
   const ports = new Set<string>()
 
+  // Consider LOAD/DISCHARGE events as primary indicators, but also include
+  // ARRIVAL/DEPARTURE observations when they carry a location_code. Some
+  // carriers (Maersk, etc.) may not emit explicit LOAD/DISCHARGE pairs for
+  // transshipment legs — they only show ARRIVAL/DEPARTURE on different
+  // vessels. Including these types improves transshipment detection for
+  // real-world carrier data while remaining conservative (we still require
+  // ACTUAL evidence when creating a fact alert below).
   for (const obs of timeline.observations) {
-    if ((obs.type === 'LOAD' || obs.type === 'DISCHARGE') && obs.location_code) {
+    const relevantTypes = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
+    if (relevantTypes.includes(obs.type) && obs.location_code) {
       ports.add(obs.location_code.toUpperCase())
     }
   }
