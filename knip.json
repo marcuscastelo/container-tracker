@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "tags": [
+    "-lintignore"
+  ],
+  "entry": [
+    "src/app.{js,ts,tsx}",
+    "src/entry-client.{js,ts,tsx}",
+    "src/entry-server.{js,ts,tsx}",
+    "src/routes/**/*.{js,ts,tsx}",
+    "scripts/**/*.{js,ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{js,ts,tsx}",
+    "scripts/**/*.{js,ts,tsx}"
+  ],
+  "ignore": [
+    "src/shared/supabase/database.types.ts",
+    "src/routes/**/*",
+    "src/i18n/**/*"
+  ],
+  "ignoreDependencies": [
+    "@msviderok/base-ui-solid",
+    "@opentelemetry/api",
+    "@eslint/js",
+    "@tailwindcss/vite",
+    "@types/i18next",
+    "biome-plugin-no-type-assertion",
+    "playwright",
+    "solid-toast",
+    "tailwind-merge",
+    "tailwindcss"
+  ],
+  "ignoreBinaries": [
+    "supabase"
+  ],
+  "biome": true,
+  "eslint": true,
+  "tailwind": true,
+  "tsx": true
+}

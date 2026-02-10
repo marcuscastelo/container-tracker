@@ -15,8 +15,7 @@ import { ProviderSchema } from '~/modules/tracking/domain/provider'
  *
  * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
-export const EventTimeTypeSchema = z.enum(['ACTUAL', 'EXPECTED'])
-export type EventTimeType = z.infer<typeof EventTimeTypeSchema>
+const EventTimeTypeSchema = z.enum(['ACTUAL', 'EXPECTED'])
 
 /**
  * Observation — a persisted, deduplicated semantic fact.

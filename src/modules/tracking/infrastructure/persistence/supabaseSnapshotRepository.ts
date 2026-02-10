@@ -4,7 +4,7 @@ import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepos
 import { toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { SupabaseNullableResult, SupabaseResult } from '~/shared/supabase/supabaseResult'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 import { formatParseError } from '~/shared/utils/formatParseError'
 import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
 
@@ -64,7 +64,7 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
     return { success: true, data: parsed.data, error: null }
   },
 
-  async findLatestByContainerId(containerId: string): Promise<SupabaseNullableResult<Snapshot>> {
+  async findLatestByContainerId(containerId: string): Promise<SupabaseResult<Snapshot | null>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')

@@ -18,7 +18,7 @@ import { getRestFetcher } from '~/modules/tracking/infrastructure/fetchers/restF
 /**
  * Dependencies for tracking use cases.
  */
-export type TrackingUseCasesDeps = {
+type TrackingUseCasesDeps = {
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
@@ -27,7 +27,7 @@ export type TrackingUseCasesDeps = {
 /**
  * Result of a fetch-and-process operation.
  */
-export type FetchAndProcessResult = {
+type FetchAndProcessResult = {
   readonly snapshot: Snapshot
   readonly pipeline: PipelineResult
 }
@@ -35,7 +35,7 @@ export type FetchAndProcessResult = {
 /**
  * Container tracking summary — derived data for a single container.
  */
-export type ContainerTrackingSummary = {
+type ContainerTrackingSummary = {
   readonly containerId: string
   readonly containerNumber: string
   readonly observations: readonly Observation[]
@@ -228,5 +228,3 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     },
   }
 }
-
-export type TrackingUseCases = ReturnType<typeof createTrackingUseCases>

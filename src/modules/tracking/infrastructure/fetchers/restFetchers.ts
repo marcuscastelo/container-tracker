@@ -7,7 +7,7 @@ import {
 import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
 import { fetchMscStatus } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
 
-export type CarrierFetcher = (containerNumber: string) => Promise<FetchResult>
+type CarrierFetcher = (containerNumber: string) => Promise<FetchResult>
 
 const REST_FETCHERS: Record<RestCarrier, CarrierFetcher> = {
   msc: fetchMscStatus,

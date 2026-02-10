@@ -46,12 +46,13 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-export type RealtimeEvent<T = unknown> = {
+ type RealtimeEvent<T = unknown> = {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE'
   old?: T
   new?: T
 }
 
+/** @public */
 export function registerSubapabaseRealtimeCallback<T>(
   table: string,
   validator: z.ZodType<T>,

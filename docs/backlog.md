@@ -8,30 +8,6 @@ Cada issue é **isolada**, tem **escopo fechado** e pode ser executada por human
 
 ## P1 — Robustez e Correção de Contratos
 
-### ISSUE 3 — Fortalecer mappers com Zod (safeParseOrDefault)
-
-**Problema**
-Mappers usam asserts e casts inseguros ao converter dados do DB.
-
-**Escopo**
-
-* `processMapper.ts`
-* `containerMapper.ts`
-* `supabaseObservationRepository.ts`
-
-**Ações**
-
-* Substituir asserts por `safeParseOrDefault`
-* Adicionar testes com rows inválidas/corrompidas
-* Migrar **um mapper por PR**
-
-**Critério de aceite**
-
-* Nenhum cast inseguro remanescente
-* Mappers toleram dados inválidos sem crash
-
----
-
 ### ISSUE 4 — Remover `any` / `as` perigosos na i18n
 
 **Problema**
@@ -56,29 +32,6 @@ Helpers de i18n usam `any` e `as`, enfraquecendo contratos de tradução.
 ---
 
 ## P2 — Higiene e Manutenibilidade
-
-### ISSUE 5 — Deprecar e remover `idUtils`
-
-**Problema**
-Utilitário de geração de ID está marcado como deprecated, mas ainda em uso.
-
-**Escopo**
-
-* `src/shared/utils/idUtils.ts`
-* Consumers encontrados por busca
-
-**Ações**
-
-* Identificar consumidores
-* Migrar para IDs gerados pelo DB
-* Remover utilitário após migração
-
-**Critério de aceite**
-
-* Nenhum import de `idUtils`
-* Arquivo removido ou isolado como legacy
-
----
 
 ### ISSUE 6 — Eliminar silent catches e alertas no client
 

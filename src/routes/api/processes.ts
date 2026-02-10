@@ -7,10 +7,8 @@ import { CreateProcessInputSchema } from '~/modules/process/domain/processStuff'
 import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 import { processUseCases } from '~/modules/process/processUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
-import {
+import type {
   CreateProcessResponseSchema,
-  ErrorResponseSchema,
-  ProcessListResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 
@@ -124,11 +122,4 @@ export async function POST({ request }: { request: Request }): Promise<Response>
 
     return mapErrorToResponse(err)
   }
-}
-
-export {
-  ProcessResponseSchema,
-  ProcessListResponseSchema,
-  ErrorResponseSchema,
-  CreateProcessResponseSchema,
 }

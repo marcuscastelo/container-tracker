@@ -1,3 +1,4 @@
+/** @public */
 export type SafeParseResult<T> = { success: true; data: T } | { success: false; error: unknown }
 
 import { formatParseError } from '~/shared/utils/formatParseError'

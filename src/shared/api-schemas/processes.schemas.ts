@@ -27,8 +27,6 @@ export const ProcessResponseSchema = z.object({
 
 export const ProcessListResponseSchema = z.array(ProcessResponseSchema)
 
-export const ErrorResponseSchema = z.object({ error: z.string() })
-
 /**
  * Observation shape as returned in the API.
  * Maps directly from the tracking domain Observation.
@@ -89,9 +87,6 @@ export const CreateProcessResponseSchema = z.object({
   warnings: z.array(z.string()).readonly(),
 })
 
-export type ProcessResponse = z.infer<typeof ProcessResponseSchema>
-export type ProcessListResponse = z.infer<typeof ProcessListResponseSchema>
-export type CreateProcessResponse = z.infer<typeof CreateProcessResponseSchema>
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>
 export type ObservationResponse = z.infer<typeof ObservationResponseSchema>
 export type TrackingAlertResponse = z.infer<typeof TrackingAlertResponseSchema>

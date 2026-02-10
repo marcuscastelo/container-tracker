@@ -23,7 +23,7 @@ export type ContainerInput = {
 /**
  * Result of container creation with validation warnings
  */
-export type CreateContainerResult = {
+type CreateContainerResult = {
   container: Container
   warnings: string[]
 }
@@ -31,7 +31,7 @@ export type CreateContainerResult = {
 /**
  * Result of batch container creation
  */
-export type CreateManyContainersResult = {
+type CreateManyContainersResult = {
   containers: Container[]
   warnings: string[]
 }
@@ -39,14 +39,14 @@ export type CreateManyContainersResult = {
 /**
  * Normalizes a container number to uppercase and trim
  */
-export function normalizeContainerNumber(containerNumber: string): string {
+function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.toUpperCase().trim()
 }
 
 /**
  * Validates a container number and returns warnings if any
  */
-export function validateAndWarn(containerNumber: string): string[] {
+function validateAndWarn(containerNumber: string): string[] {
   const warnings: string[] = []
   const validation = validateContainerNumber(containerNumber)
   if (validation.message) {
