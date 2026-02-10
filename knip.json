@@ -4,6 +4,7 @@
     "-lintignore"
   ],
   "entry": [
+    "src/app.{js,ts,tsx}",
     "src/entry-client.{js,ts,tsx}",
     "src/entry-server.{js,ts,tsx}",
     "src/routes/**/*.{js,ts,tsx}",
