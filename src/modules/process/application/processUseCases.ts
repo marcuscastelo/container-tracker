@@ -39,7 +39,11 @@ export function createProcessUseCases({
     },
 
     async getProcess(processId: string): Promise<Process | null> {
-      return processRepository.fetchById(processId)
+      const result = await processRepository.fetchById(processId)
+      if (!result.success) {
+        throw result.error
+      }
+      return result.data
     },
 
     async getProcessWithContainers(processId: string): Promise<ProcessWithContainers | null> {

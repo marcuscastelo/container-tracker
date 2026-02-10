@@ -9,7 +9,7 @@ import type {
 import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
 import type { Database, Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
+import type { SupabaseNullableResult, SupabaseResult } from '~/shared/supabase/supabaseResult'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
@@ -55,7 +55,7 @@ export const supabaseProcessRepository = {
     })
   },
 
-  async fetchById(processId: string): Promise<Process | null> {
+  async fetchById(processId: string): Promise<SupabaseNullableResult<Process>> {
     const { data, error } = await supabase
       .from(PROCESSES_TABLE)
       .select('*')
@@ -63,12 +63,18 @@ export const supabaseProcessRepository = {
       .single()
 
     if (error) {
-      if (error.code === 'PGRST116') return null
+      if (error.code === 'PGRST116') {
+        return { success: true, data: null, error: null }
+      }
       console.error('supabaseProcessRepository.fetchById error:', error)
-      throw new Error(`Failed to fetch process ${processId}: ${error.message}`)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch process ${processId}: ${error.message}`),
+      }
     }
 
-    return processMappers.rowToProcess(data)
+    return { success: true, data: processMappers.rowToProcess(data), error: null }
   },
 
   async fetchByIdWithContainers(processId: string): Promise<ProcessWithContainers | null> {
@@ -164,11 +170,19 @@ export const supabaseProcessRepository = {
 
     if (processError) {
       console.error('supabaseProcessRepository.create process error:', processError)
-      throw new Error(`Failed to create process: ${processError.message}`)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to create process: ${processError.message}`),
+      }
     }
 
     if (!processData) {
-      throw new Error('Failed to create process: no data returned')
+      return {
+        success: false,
+        data: null,
+        error: new Error('Failed to create process: no data returned'),
+      }
     }
 
     return { success: true, data: processMappers.rowToProcess(processData), error: null }

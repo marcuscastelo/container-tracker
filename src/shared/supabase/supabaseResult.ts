@@ -10,3 +10,16 @@ export type SupabaseResult<T extends {}> =
       data: null
       error: Error
     }
+
+// Helper type for nullable results (e.g., findById that may not find anything)
+export type SupabaseNullableResult<T extends {}> =
+  | {
+      success: true
+      data: T | null
+      error: null
+    }
+  | {
+      success: false
+      data: null
+      error: Error
+    }
