@@ -15,7 +15,7 @@ export default function App() {
                 console.error('Uncaught render error in App root:', err)
               } catch (_e) { }
               return (
-                <div style={{ "padding": "24px" }}>
+                <div style={{ padding: '24px' }}>
                   An unexpected error occurred. Check the console for details.
                 </div>
               )

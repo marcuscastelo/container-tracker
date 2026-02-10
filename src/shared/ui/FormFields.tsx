@@ -48,7 +48,7 @@ export function FormInput(props: InputProps): JSX.Element {
         name={local.name}
         value={local.value}
         onInput={(e) => local.onInput(e.currentTarget.value)}
-        onBlur={local.onBlur}
+        onBlur={() => local.onBlur?.()}
         placeholder={local.placeholder}
         disabled={local.disabled}
         required={local.required}

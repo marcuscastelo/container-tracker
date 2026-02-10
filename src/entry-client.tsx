@@ -23,10 +23,8 @@ if (typeof window !== 'undefined') {
   })
   window.addEventListener('unhandledrejection', (ev) => {
     try {
-
       console.error('unhandledrejection captured in entry-client', ev.reason)
     } catch (e) {
-
       console.error('failed to log unhandledrejection', e)
     }
   })

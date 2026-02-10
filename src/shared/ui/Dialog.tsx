@@ -49,7 +49,7 @@ export function Dialog(props: Props): JSX.Element {
           {/* Backdrop */}
           <div
             class="fixed inset-0 bg-slate-900/50 transition-opacity"
-            onClick={props.onClose}
+            onClick={() => props.onClose?.()}
             aria-hidden="true"
           />
 
@@ -75,7 +75,7 @@ export function Dialog(props: Props): JSX.Element {
                   </div>
                   <button
                     type="button"
-                    onClick={props.onClose}
+                    onClick={() => props.onClose?.()}
                     class="-m-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-500"
                     aria-label="Close"
                   >
