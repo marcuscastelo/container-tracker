@@ -110,8 +110,6 @@ try {
   console.error('entry-client: initialization failed', err)
 }
 
-// biome-ignore lint/style/noNonNullAssertion: SolidJS entry point
-// biome-ignore lint/style/noNonNullAssertion: SolidJS entry point
 try {
   const root = document.getElementById('app')
   if (!root) {
