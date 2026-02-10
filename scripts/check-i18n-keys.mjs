@@ -135,7 +135,7 @@ async function main() {
   // 2) t(someChain.prop) where some segment of someChain matches a var in globalKeyMap
   // 3) generic t(...) calls where the argument contains expressions like keys.prop inside
   const tCallRegex = /\bt\s*\(\s*([^)]*?)\s*\)/g
-  const chainPropRegex = /([A-Za-z0-9_\.]+)\.([A-Za-z0-9_]+)/g
+  const chainPropRegex = /([A-Za-z0-9_.]+)\.([A-Za-z0-9_]+)/g
 
   for (const file of files) {
     const content = await readFile(file, 'utf8')
