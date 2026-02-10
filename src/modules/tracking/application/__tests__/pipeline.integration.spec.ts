@@ -8,6 +8,7 @@ import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepos
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
 import maerskPayload from '~/modules/tracking/infrastructure/__tests__/fixtures/maersk/maersk_full.json'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 
 /**
  * In-memory implementation of SnapshotRepository for testing.
@@ -16,26 +17,27 @@ import maerskPayload from '~/modules/tracking/infrastructure/__tests__/fixtures/
 class InMemorySnapshotRepository implements SnapshotRepository {
   private snapshots: Map<string, Snapshot> = new Map()
 
-  async insert(snapshot: NewSnapshot): Promise<Snapshot> {
+  async insert(snapshot: NewSnapshot): Promise<SupabaseResult<Snapshot>> {
     const newSnapshot: Snapshot = {
       ...snapshot,
       id: randomUUID(),
     }
     this.snapshots.set(newSnapshot.id, newSnapshot)
-    return newSnapshot
+    return { success: true, data: newSnapshot, error: null }
   }
 
-  async findLatestByContainerId(containerId: string): Promise<Snapshot | null> {
+  async findLatestByContainerId(containerId: string): Promise<SupabaseResult<Snapshot | null>> {
     const containerSnapshots = Array.from(this.snapshots.values())
       .filter((s) => s.container_id === containerId)
       .sort((a, b) => b.fetched_at.localeCompare(a.fetched_at))
-    return containerSnapshots[0] ?? null
+    return { success: true, data: containerSnapshots[0] ?? null, error: null }
   }
 
-  async findAllByContainerId(containerId: string): Promise<readonly Snapshot[]> {
-    return Array.from(this.snapshots.values())
+  async findAllByContainerId(containerId: string): Promise<SupabaseResult<readonly Snapshot[]>> {
+    const list = Array.from(this.snapshots.values())
       .filter((s) => s.container_id === containerId)
       .sort((a, b) => b.fetched_at.localeCompare(a.fetched_at))
+    return { success: true, data: list, error: null }
   }
 }
 
@@ -46,7 +48,9 @@ class InMemorySnapshotRepository implements SnapshotRepository {
 class InMemoryObservationRepository implements ObservationRepository {
   private observations: Map<string, Observation> = new Map()
 
-  async insertMany(newObservations: readonly NewObservation[]): Promise<readonly Observation[]> {
+  async insertMany(
+    newObservations: readonly NewObservation[],
+  ): Promise<SupabaseResult<readonly Observation[]>> {
     const inserted: Observation[] = []
     for (const obs of newObservations) {
       const newObs: Observation = {
@@ -57,11 +61,11 @@ class InMemoryObservationRepository implements ObservationRepository {
       this.observations.set(newObs.id, newObs)
       inserted.push(newObs)
     }
-    return inserted
+    return { success: true, data: inserted, error: null }
   }
 
-  async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
-    return Array.from(this.observations.values())
+  async findAllByContainerId(containerId: string): Promise<SupabaseResult<readonly Observation[]>> {
+    const list = Array.from(this.observations.values())
       .filter((o) => o.container_id === containerId)
       .sort((a, b) => {
         // Same sort logic as deriveTimeline
@@ -78,13 +82,16 @@ class InMemoryObservationRepository implements ObservationRepository {
 
         return a.created_at.localeCompare(b.created_at)
       })
+    return { success: true, data: list, error: null }
   }
 
-  async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
+  async findFingerprintsByContainerId(
+    containerId: string,
+  ): Promise<SupabaseResult<ReadonlySet<string>>> {
     const fingerprints = Array.from(this.observations.values())
       .filter((o) => o.container_id === containerId)
       .map((o) => o.fingerprint)
-    return new Set(fingerprints)
+    return { success: true, data: new Set(fingerprints), error: null }
   }
 }
 
@@ -95,7 +102,9 @@ class InMemoryObservationRepository implements ObservationRepository {
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts: Map<string, TrackingAlert> = new Map()
 
-  async insertMany(newAlerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
+  async insertMany(
+    newAlerts: readonly NewTrackingAlert[],
+  ): Promise<SupabaseResult<readonly TrackingAlert[]>> {
     const inserted: TrackingAlert[] = []
     for (const alert of newAlerts) {
       const newAlert: TrackingAlert = {
@@ -105,34 +114,41 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
       this.alerts.set(newAlert.id, newAlert)
       inserted.push(newAlert)
     }
-    return inserted
+    return { success: true, data: inserted, error: null }
   }
 
-  async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
-    return Array.from(this.alerts.values()).filter(
+  async findActiveByContainerId(
+    containerId: string,
+  ): Promise<SupabaseResult<readonly TrackingAlert[]>> {
+    const list = Array.from(this.alerts.values()).filter(
       (a) => a.container_id === containerId && !a.dismissed_at && !a.acked_at,
     )
+    return { success: true, data: list, error: null }
   }
 
-  async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
+  async findActiveTypesByContainerId(
+    containerId: string,
+  ): Promise<SupabaseResult<ReadonlySet<string>>> {
     const types = Array.from(this.alerts.values())
       .filter((a) => a.container_id === containerId && !a.dismissed_at && !a.acked_at)
       .map((a) => a.type)
-    return new Set(types)
+    return { success: true, data: new Set(types), error: null }
   }
 
-  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+  async acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<object>> {
     const alert = this.alerts.get(alertId)
     if (alert) {
       this.alerts.set(alertId, { ...alert, acked_at: ackedAt })
     }
+    return { success: true, data: {}, error: null }
   }
 
-  async dismiss(alertId: string, dismissedAt: string): Promise<void> {
+  async dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<object>> {
     const alert = this.alerts.get(alertId)
     if (alert) {
       this.alerts.set(alertId, { ...alert, dismissed_at: dismissedAt })
     }
+    return { success: true, data: {}, error: null }
   }
 }
 
