@@ -3,7 +3,7 @@ import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/
 import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
 import type { Database } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { SupabaseNullableResult, SupabaseResult } from '~/shared/supabase/supabaseResult'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
@@ -60,7 +60,7 @@ export const supabaseProcessRepository = {
     return { success: true, data: result, error: null }
   },
 
-  async fetchById(processId: string): Promise<SupabaseNullableResult<Process>> {
+  async fetchById(processId: string): Promise<SupabaseResult<Process | null>> {
     const { data, error } = await supabase
       .from(PROCESSES_TABLE)
       .select('*')
@@ -86,7 +86,7 @@ export const supabaseProcessRepository = {
 
   async fetchByIdWithContainers(
     processId: string,
-  ): Promise<SupabaseNullableResult<ProcessWithContainers>> {
+  ): Promise<SupabaseResult<ProcessWithContainers | null>> {
     const { data, error } = await supabase
       .from(PROCESSES_TABLE)
       .select(`*, ${CONTAINERS_TABLE}(*)`)
@@ -166,7 +166,7 @@ export const supabaseProcessRepository = {
 
   async fetchContainerByNumber(
     containerNumber: string,
-  ): Promise<SupabaseNullableResult<ProcessContainer>> {
+  ): Promise<SupabaseResult<ProcessContainer | null>> {
     const normalized = containerNumber.toUpperCase().trim()
     const { data, error } = await supabase
       .from(CONTAINERS_TABLE)
