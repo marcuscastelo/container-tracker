@@ -17,7 +17,6 @@ export const processMappers = {
     return {
       id: String(row.id),
       reference: row.reference == null ? null : String(row.reference),
-      // operation_type is LEGACY - not used in domain but may exist in DB
       origin: safeParseOrDefault(row.origin, PlannedLocation, null),
       destination: safeParseOrDefault(row.destination, PlannedLocation, null),
       carrier: safeParseOrDefault(row.carrier, CarrierSchema, null),
@@ -26,8 +25,9 @@ export const processMappers = {
       importer_name: row.importer_name == null ? null : String(row.importer_name),
       exporter_name: row.exporter_name == null ? null : String(row.exporter_name),
       reference_importer: row.reference_importer == null ? null : String(row.reference_importer),
-      product: null, // TODO: Add to DB schema
-      redestination_number: null, // TODO: Add to DB schema
+      product: row.product == null ? null : String(row.product),
+      redestination_number:
+        row.redestination_number == null ? null : String(row.redestination_number),
       source: safeParseOrDefault(row.source, ProcessSourceSchema, 'manual'),
       created_at: new Date(String(row.created_at)),
       updated_at: new Date(String(row.updated_at)),

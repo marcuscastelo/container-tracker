@@ -148,7 +148,8 @@ export const supabaseProcessRepository = {
       .from(PROCESSES_TABLE)
       .insert({
         reference: process.reference,
-        // operation_type is LEGACY - not persisting from domain
+        // operation_type is LEGACY - DB requires it for now, set default 'import'
+        operation_type: 'import',
         origin: process.origin ?? null,
         destination: process.destination ?? null,
         carrier: process.carrier,
@@ -157,7 +158,8 @@ export const supabaseProcessRepository = {
         importer_name: process.importer_name,
         exporter_name: process.exporter_name,
         reference_importer: process.reference_importer,
-        // product and redestination_number - TODO: add to DB schema
+        product: process.product ?? null,
+        redestination_number: process.redestination_number ?? null,
         source: process.source,
         created_at: now,
         updated_at: now,

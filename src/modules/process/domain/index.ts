@@ -16,7 +16,6 @@ export {
 export {
   CarrierSchema,
   ContainerInitialStatus,
-  OperationTypeSchema,
   PlannedLocation,
   ProcessSourceSchema as ProcessSource,
 } from '~/modules/process/domain/value-objects'

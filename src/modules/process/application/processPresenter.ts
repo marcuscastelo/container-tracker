@@ -1,7 +1,4 @@
-import {
-  type Carrier,
-  CarrierSchema,
-} from '~/modules/process/domain/value-objects'
+import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
 import type {
   ObservationResponse,
   ProcessDetailResponse,

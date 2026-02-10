@@ -135,9 +135,11 @@ export function createProcessUseCases({
       if (input.booking_number !== undefined) updates.booking_number = input.booking_number
       if (input.importer_name !== undefined) updates.importer_name = input.importer_name
       if (input.exporter_name !== undefined) updates.exporter_name = input.exporter_name
-      if (input.reference_importer !== undefined) updates.reference_importer = input.reference_importer
+      if (input.reference_importer !== undefined)
+        updates.reference_importer = input.reference_importer
       if (input.product !== undefined) updates.product = input.product
-      if (input.redestination_number !== undefined) updates.redestination_number = input.redestination_number
+      if (input.redestination_number !== undefined)
+        updates.redestination_number = input.redestination_number
 
       // Call repository.update for provided fields
       if (Object.keys(updates).length > 0) {

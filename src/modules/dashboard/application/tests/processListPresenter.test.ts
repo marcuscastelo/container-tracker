@@ -18,9 +18,7 @@ describe('presentProcessList', () => {
         source: 'api',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        containers: [
-          { id: 'c1', container_number: 'MRKU1111111', carrier_code: null },
-        ],
+        containers: [{ id: 'c1', container_number: 'MRKU1111111', carrier_code: null }],
       },
     ]
 

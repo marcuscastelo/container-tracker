@@ -163,9 +163,11 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     if (parsed.data.booking_number !== undefined) input.booking_number = parsed.data.booking_number
     if (parsed.data.importer_name !== undefined) input.importer_name = parsed.data.importer_name
     if (parsed.data.exporter_name !== undefined) input.exporter_name = parsed.data.exporter_name
-    if (parsed.data.reference_importer !== undefined) input.reference_importer = parsed.data.reference_importer
+    if (parsed.data.reference_importer !== undefined)
+      input.reference_importer = parsed.data.reference_importer
     if (parsed.data.product !== undefined) input.product = parsed.data.product
-    if (parsed.data.redestination_number !== undefined) input.redestination_number = parsed.data.redestination_number
+    if (parsed.data.redestination_number !== undefined)
+      input.redestination_number = parsed.data.redestination_number
     if (parsed.data.containers !== undefined) {
       input.containers = parsed.data.containers.map((c: any) => ({
         container_number: c.container_number,

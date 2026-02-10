@@ -176,6 +176,8 @@ export type Database = {
           importer_name: string | null
           operation_type: string
           origin: Json | null
+          product: string | null
+          redestination_number: string | null
           reference: string | null
           reference_importer: string | null
           source: string
@@ -196,6 +198,8 @@ export type Database = {
           importer_name?: string | null
           operation_type: string
           origin?: Json | null
+          product?: string | null
+          redestination_number?: string | null
           reference?: string | null
           reference_importer?: string | null
           source: string
@@ -216,6 +220,8 @@ export type Database = {
           importer_name?: string | null
           operation_type?: string
           origin?: Json | null
+          product?: string | null
+          redestination_number?: string | null
           reference?: string | null
           reference_importer?: string | null
           source?: string
