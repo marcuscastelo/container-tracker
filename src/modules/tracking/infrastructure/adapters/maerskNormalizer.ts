@@ -29,6 +29,7 @@ const MAERSK_ACTIVITY_MAP: Record<string, ObservationType> = {
   loaded: 'LOAD',
   discharge: 'DISCHARGE',
   discharged: 'DISCHARGE',
+  discharg: 'DISCHARGE',
   'container arrival': 'ARRIVAL',
   arrival: 'ARRIVAL',
   'container departure': 'DEPARTURE',
