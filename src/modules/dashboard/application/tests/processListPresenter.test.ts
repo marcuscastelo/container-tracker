@@ -10,16 +10,16 @@ describe('presentProcessList', () => {
       {
         id: 'p1',
         reference: 'REF1',
-        operation_type: 'import',
         origin: { display_name: 'Shanghai' },
         destination: { display_name: 'Santos' },
         carrier: 'Maersk',
         bill_of_lading: null,
+        booking_number: null,
         source: 'api',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [
-          { id: 'c1', container_number: 'MRKU1111111', carrier_code: null, container_type: null },
+          { id: 'c1', container_number: 'MRKU1111111', carrier_code: null },
         ],
       },
     ]

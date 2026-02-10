@@ -1,8 +1,6 @@
 import {
   type Carrier,
   CarrierSchema,
-  type OperationType,
-  OperationTypeSchema,
 } from '~/modules/process/domain/value-objects'
 import type {
   ObservationResponse,
@@ -48,16 +46,20 @@ export type ContainerDetail = {
   readonly statusLabel: string
   readonly eta: string | null
   readonly timeline: readonly TimelineEvent[]
-  readonly isoType?: string | null
 }
 
 export type ShipmentDetail = {
   readonly id: string
   readonly processRef: string
   readonly reference?: string | null
-  readonly operationType?: OperationType
   readonly carrier?: Carrier | null
-  readonly bl_reference?: string | null
+  readonly bill_of_lading?: string | null
+  readonly booking_number?: string | null
+  readonly importer_name?: string | null
+  readonly exporter_name?: string | null
+  readonly reference_importer?: string | null
+  readonly product?: string | null
+  readonly redestination_number?: string | null
   readonly origin: string
   readonly destination: string
   readonly status: StatusVariant
@@ -283,11 +285,6 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
 }
 
 export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
-  const operationTypeResult = OperationTypeSchema.safeParse(data.operation_type)
-  const operationType: OperationType | undefined = operationTypeResult.success
-    ? operationTypeResult.data
-    : undefined
-
   const carrierResult = CarrierSchema.safeParse(data.carrier)
   const carrier: Carrier | 'unknown' | null =
     data.carrier === null ? null : carrierResult.success ? carrierResult.data : 'unknown'
@@ -315,7 +312,6 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
     return {
       id: c.id,
       number: c.container_number,
-      isoType: c.container_type ?? null,
       status: containerStatusToVariant(c.status),
       statusLabel: containerStatusLabel(c.status),
       eta: null, // ETA will be derived from timeline in future iterations
@@ -335,9 +331,14 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
     id: data.id,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference,
-    operationType,
     carrier,
-    bl_reference: data.bl_reference,
+    bill_of_lading: data.bill_of_lading,
+    booking_number: data.booking_number,
+    importer_name: data.importer_name,
+    exporter_name: data.exporter_name,
+    reference_importer: data.reference_importer,
+    product: data.product,
+    redestination_number: data.redestination_number,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processStatus.variant,

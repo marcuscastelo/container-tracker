@@ -121,14 +121,19 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       // Map UI form data to API shape
       const input: Record<string, unknown> = {
         reference: formData.reference || null,
-        operation_type: formData.operationType || undefined,
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.billOfLading || null,
+        bill_of_lading: formData.billOfLading || null,
+        booking_number: formData.bookingNumber || null,
+        importer_name: formData.importerName || null,
+        exporter_name: formData.exporterName || null,
+        reference_importer: formData.referenceImporter || null,
+        product: formData.product || null,
+        redestination_number: formData.redestinationNumber || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          container_type: c.isoType || null,
+          carrier_code: formData.carrier || null,
         })),
       }
 
@@ -182,11 +187,16 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       // Map UI form data to API shape
       const input: CreateProcessInput = {
         reference: formData.reference || null,
-        operation_type: formData.operationType || undefined,
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
         bill_of_lading: formData.billOfLading || null,
+        booking_number: formData.bookingNumber || null,
+        importer_name: formData.importerName || null,
+        exporter_name: formData.exporterName || null,
+        reference_importer: formData.referenceImporter || null,
+        product: formData.product || null,
+        redestination_number: formData.redestinationNumber || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
           carrier_code: formData.carrier || null,
@@ -391,16 +401,20 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                   if (!d) return
                   const initial = {
                     reference: d.reference ?? '',
-                    operationType: d.operationType ?? 'unknown',
                     origin: d.origin || '',
                     destination: d.destination || '',
                     containers: d.containers.map((c) => ({
                       id: c.id,
                       containerNumber: c.number,
-                      isoType: c.isoType ?? '',
                     })),
                     carrier: d.carrier ?? 'unknown',
-                    billOfLading: d.bl_reference ?? '',
+                    billOfLading: d.bill_of_lading ?? '',
+                    bookingNumber: d.booking_number ?? '',
+                    importerName: d.importer_name ?? '',
+                    exporterName: d.exporter_name ?? '',
+                    referenceImporter: d.reference_importer ?? '',
+                    product: d.product ?? '',
+                    redestinationNumber: d.redestination_number ?? '',
                   } satisfies CreateProcessDialogFormData
                   setEditInitialData(initial)
                   // Interpret incoming focus hint

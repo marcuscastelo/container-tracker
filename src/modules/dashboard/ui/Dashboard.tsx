@@ -158,13 +158,16 @@ export function Dashboard(): JSX.Element {
       // Transform UI form data to API input format
       const input: CreateProcessInput = {
         reference: data.reference || null,
-        // data.operationType is already strongly typed in the form's type; pass it through
-        operation_type: data.operationType || undefined,
         origin: data.origin ? { display_name: data.origin } : null,
         destination: data.destination ? { display_name: data.destination } : null,
-        // carrier from the form is already typed
         carrier: data.carrier || null,
         bill_of_lading: data.billOfLading || null,
+        booking_number: data.bookingNumber || null,
+        importer_name: data.importerName || null,
+        exporter_name: data.exporterName || null,
+        reference_importer: data.referenceImporter || null,
+        product: data.product || null,
+        redestination_number: data.redestinationNumber || null,
         containers: data.containers.map((c) => ({
           container_number: c.containerNumber,
           carrier_code: data.carrier || null,
