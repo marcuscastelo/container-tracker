@@ -1,8 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "tags": [
-    "-lintignore"
-  ],
+  "tags": ["-lintignore"],
   "entry": [
     "src/app.{js,ts,tsx}",
     "src/entry-client.{js,ts,tsx}",
@@ -10,15 +8,8 @@
     "src/routes/**/*.{js,ts,tsx}",
     "scripts/**/*.{js,ts,tsx}"
   ],
-  "project": [
-    "src/**/*.{js,ts,tsx}",
-    "scripts/**/*.{js,ts,tsx}"
-  ],
-  "ignore": [
-    "src/shared/supabase/database.types.ts",
-    "src/routes/**/*",
-    "src/i18n/**/*"
-  ],
+  "project": ["src/**/*.{js,ts,tsx}", "scripts/**/*.{js,ts,tsx}"],
+  "ignore": ["src/shared/supabase/database.types.ts", "src/routes/**/*", "src/i18n/**/*"],
   "ignoreDependencies": [
     "@msviderok/base-ui-solid",
     "@opentelemetry/api",
@@ -31,9 +22,7 @@
     "tailwind-merge",
     "tailwindcss"
   ],
-  "ignoreBinaries": [
-    "supabase"
-  ],
+  "ignoreBinaries": ["supabase"],
   "biome": true,
   "eslint": true,
   "tailwind": true,

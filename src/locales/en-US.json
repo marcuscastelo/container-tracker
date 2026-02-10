@@ -131,7 +131,8 @@
       "dismiss": "Dismiss",
       "dismissError": "Dismiss error",
       "existingProcessError": "Container {{container}} already exists in the system",
-      "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it"
+      "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it",
+      "confirmLoseProgress": "You will lose form progress. Continue?"
     },
     "error": {
       "failed": "Failed to create process"
@@ -198,5 +199,12 @@
   },
   "dialog": {
     "close": "Close"
+  },
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "languageSwitch": {
+    "label": "Language"
   }
 }

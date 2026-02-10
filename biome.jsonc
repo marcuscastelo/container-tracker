@@ -4,6 +4,25 @@
   "css": {
     "parser": { "tailwindDirectives": true }
   },
+  "files": {
+    "includes": [
+      "**",
+      "!marucs-src",
+      "!node_modules",
+      "!src/sections/datepicker",
+      "!.vercel",
+      "!.vinxi",
+      "!.vinxi",
+      "!dist",
+      "!build",
+      "!out",
+      "!.output",
+      "!coverage",
+      "!public",
+      "!out",
+      "!.output"
+    ]
+  },
   "linter": {
     "domains": {
       "solid": "all"
@@ -64,24 +83,7 @@
           }
         }
       }
-    },
-    "includes": [
-      "**",
-      "!marucs-src/**",
-      "!node_modules/**",
-      "!src/sections/datepicker",
-      "!.vercel",
-      "!.vinxi",
-      "!.vinxi/**",
-      "!dist",
-      "!build",
-      "!out/**",
-      "!.output/**",
-      "!coverage",
-      "!public",
-      "!out",
-      "!.output"
-    ]
+    }
   },
   "formatter": {
     "lineWidth": 100,

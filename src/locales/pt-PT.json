@@ -142,7 +142,8 @@
       "dismiss": "Fechar",
       "dismissError": "Fechar erro",
       "existingProcessError": "Contentor {{container}} já existe no sistema",
-      "existingProcessSame": "O contentor {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele"
+      "existingProcessSame": "O contentor {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele",
+      "confirmLoseProgress": "Perderá o progresso do formulário. Deseja continuar?"
     },
     "error": {
       "failed": "Falha ao criar processo"
@@ -198,5 +199,12 @@
   "notfound": {
     "title": "Não Encontrado",
     "learn": "Visite"
+  },
+  "common": {
+    "copy": "Copiar",
+    "copied": "Copiado"
+  },
+  "languageSwitch": {
+    "label": "Idioma"
   }
 }
