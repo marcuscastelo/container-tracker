@@ -1,12 +1,7 @@
 import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
-import type {
-  Carrier,
-  PlannedLocation,
-  ProcessSourceSchema,
-} from '~/modules/process/domain/value-objects'
 import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
-import type { Database, Json } from '~/shared/supabase/database.types'
+import type { Database } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import type { SupabaseNullableResult, SupabaseResult } from '~/shared/supabase/supabaseResult'
 
@@ -268,7 +263,7 @@ export const supabaseProcessRepository = {
     return { success: true, data: processMappers.rowToProcess(data), error: null }
   },
 
-  async delete(processId: string): Promise<SupabaseResult<{}>> {
+  async delete(processId: string): Promise<SupabaseResult<object>> {
     // Containers are deleted via cascade in the database
     const { error } = await supabase.from(PROCESSES_TABLE).delete().eq('id', processId)
 
@@ -284,7 +279,7 @@ export const supabaseProcessRepository = {
     }
     return { success: true, data: {}, error: null }
   },
-  async removeContainer(containerId: string): Promise<SupabaseResult<{}>> {
+  async removeContainer(containerId: string): Promise<SupabaseResult<object>> {
     const { error } = await supabase.from(CONTAINERS_TABLE).delete().eq('id', containerId)
 
     if (error) {

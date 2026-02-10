@@ -228,7 +228,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     }))
     const entriesToCheck = entries.filter((e) => !initialContainerNumbersSet().has(e.num))
     const containerNumbersForCheck = entriesToCheck.map((e) => e.num)
-    ;(async () => {
+    void (async () => {
       try {
         // Reset previous server errors
         setServerErrors({})
@@ -271,7 +271,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           const txt = await res.text().catch(() => '')
           setServerErrors(
             Object.fromEntries(
-              containerNumbers.map((n, i) => [
+              containerNumbers.map((_n, i) => [
                 `container-${containers[i].id}`,
                 { message: txt || 'Failed to validate container' },
               ]),
@@ -334,7 +334,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         for (const c of containers) markTouched(`container-${c.id}`)
         setServerErrors(
           Object.fromEntries(
-            containerNumbers.map((n, i) => [
+            containerNumbers.map((_n, i) => [
               `container-${containers[i].id}`,
               { message: 'Failed to validate container' },
             ]),
@@ -502,7 +502,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                       name={`container-${container.id}`}
                       value={container.containerNumber}
                       onInput={(v) => updateContainer(container.id, 'containerNumber', v)}
-                      onBlur={async () => {
+                      onBlur={() => {
                         markTouched(`container-${container.id}`)
                         const val = container.containerNumber.trim()
                         // only check non-empty container numbers
@@ -513,51 +513,53 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                         const normalized = val.toUpperCase().trim()
                         if (initialContainerNumbersSet().has(normalized)) return
 
-                        try {
-                          // reset any previous server error for this field
-                          setServerErrors((prev) => {
-                            const copy = { ...prev }
-                            delete copy[`container-${container.id}`]
-                            return copy
-                          })
+                        void (async () => {
+                          try {
+                            // reset any previous server error for this field
+                            setServerErrors((prev) => {
+                              const copy = { ...prev }
+                              delete copy[`container-${container.id}`]
+                              return copy
+                            })
 
-                          const res = await fetch('/api/processes/check', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ containers: [val.toUpperCase().trim()] }),
-                          })
-                          if (!res.ok) {
-                            const txt = await res.text().catch(() => '')
+                            const res = await fetch('/api/processes/check', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ containers: [val.toUpperCase().trim()] }),
+                            })
+                            if (!res.ok) {
+                              const txt = await res.text().catch(() => '')
+                              setServerErrors((prev) => ({
+                                ...prev,
+                                [`container-${container.id}`]: {
+                                  message: txt || 'Failed to validate container',
+                                },
+                              }))
+                              return
+                            }
+                            const json = await res.json().catch(() => ({}))
+                            const conflicts = json.conflicts || []
+                            if (conflicts.length > 0) {
+                              const c = conflicts[0]
+                              setServerErrors((prev) => ({
+                                ...prev,
+                                [`container-${container.id}`]: {
+                                  message:
+                                    c.message ?? `Container ${c.containerNumber} already exists`,
+                                  link: c.link,
+                                },
+                              }))
+                            }
+                          } catch (err) {
+                            console.error('onBlur check failed', err)
                             setServerErrors((prev) => ({
                               ...prev,
                               [`container-${container.id}`]: {
-                                message: txt || 'Failed to validate container',
-                              },
-                            }))
-                            return
-                          }
-                          const json = await res.json().catch(() => ({}))
-                          const conflicts = json.conflicts || []
-                          if (conflicts.length > 0) {
-                            const c = conflicts[0]
-                            setServerErrors((prev) => ({
-                              ...prev,
-                              [`container-${container.id}`]: {
-                                message:
-                                  c.message ?? `Container ${c.containerNumber} already exists`,
-                                link: c.link,
+                                message: 'Failed to validate container',
                               },
                             }))
                           }
-                        } catch (err) {
-                          console.error('onBlur check failed', err)
-                          setServerErrors((prev) => ({
-                            ...prev,
-                            [`container-${container.id}`]: {
-                              message: 'Failed to validate container',
-                            },
-                          }))
-                        }
+                        })()
                       }}
                       placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
                       error={getContainerError(container) ?? getDuplicateError(container)}

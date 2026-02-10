@@ -17,7 +17,7 @@ export function respondWithSchema<T>(
     console.error('refresh: response validation failed', parsed.error)
     return new Response(JSON.stringify({ error: 'response validation failed' }), { status: 500 })
   }
-  const headers = Object.assign({ 'Content-Type': 'application/json' }, extraHeaders ?? {})
+  const headers = { 'Content-Type': 'application/json', ...(extraHeaders ?? {}) }
   return new Response(JSON.stringify(parsed.data), { status, headers })
 }
 

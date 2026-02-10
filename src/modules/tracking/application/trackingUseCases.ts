@@ -12,8 +12,8 @@ import type { Timeline } from '~/modules/tracking/domain/timeline'
 import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
-import { getRestFetcher } from '~/modules/tracking/infrastructure/fetchers'
 import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
+import { getRestFetcher } from '~/modules/tracking/infrastructure/fetchers/restFetchers'
 
 /**
  * Dependencies for tracking use cases.

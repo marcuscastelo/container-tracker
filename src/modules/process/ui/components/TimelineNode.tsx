@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
-import { Show } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import type { TimelineEvent } from '~/modules/process/application/processPresenter'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
@@ -22,7 +22,7 @@ export function TimelineNode(props: {
     // fallback: strip milliseconds and trailing Z/offset
     return iso.replace(/\.\d+Z?$/, '').replace(/Z$/, '')
   }
-  const nodeStyles = (): { dot: string; line: string; text: string } => {
+  const styles = createMemo((): { dot: string; line: string; text: string } => {
     switch (props.event.status) {
       case 'completed':
         return {
@@ -49,11 +49,12 @@ export function TimelineNode(props: {
           text: 'text-slate-500',
         }
     }
-  }
+  })
 
-  const styles = nodeStyles()
-  const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
-  const href = typeof trackUrl === 'string' ? trackUrl : undefined
+  const href = createMemo(() => {
+    const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
+    return typeof trackUrl === 'string' ? trackUrl : undefined
+  })
 
   // Determine if this is an EXPECTED event
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
@@ -62,9 +63,9 @@ export function TimelineNode(props: {
     <div class={clsx('flex items-start gap-6', { 'opacity-60': isExpected() })}>
       {/* Timeline node and connector */}
       <div class="flex flex-col items-center">
-        <div class={`h-3 w-3 rounded-full ${styles.dot}`} />
+        <div class={`h-3 w-3 rounded-full ${styles().dot}`} />
         <Show when={!props.isLast}>
-          <div class={`w-0.5 flex-1 min-h-12 ${styles.line}`} />
+          <div class={`w-0.5 flex-1 min-h-12 ${styles().line}`} />
         </Show>
       </div>
 
@@ -73,7 +74,7 @@ export function TimelineNode(props: {
         <div class="flex items-start justify-between">
           <div>
             <div class="flex items-center gap-2">
-              <p class={`text-sm ${styles.text}`}>{props.event.label}</p>
+              <p class={`text-sm ${styles().text}`}>{props.event.label}</p>
               {/* Badge for EXPECTED events */}
               <Show when={isExpected()}>
                 <span
@@ -118,31 +119,35 @@ export function TimelineNode(props: {
                 </p>
               </Show>
               {/* Small neutral badge linking to carrier tracking (rarely used) */}
-              <Show when={href}>
+              <Show when={href()}>
                 <a
-                  href={href}
+                  href={href()}
                   target="_blank"
                   rel="noopener noreferrer"
                   title="View on carrier site"
                   class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-600"
-                  onClick={async (e) => {
-                    try {
-                      e.preventDefault()
-                      // copy container number to clipboard (best-effort)
-                      if (props.containerNumber) await copyToClipboard(props.containerNumber)
-                    } catch {
-                      /* ignore */
-                    } finally {
-                      // open carrier link in new tab
+                  onClick={(e) => {
+                    e.preventDefault()
+                    void (async () => {
                       try {
-                        if (typeof href === 'string') window.open(href, '_blank')
+                        // copy container number to clipboard (best-effort)
+                        if (props.containerNumber) await copyToClipboard(props.containerNumber)
                       } catch {
-                        // ignore
+                        /* ignore */
+                      } finally {
+                        // open carrier link in new tab
+                        try {
+                          const h = href()
+                          if (typeof h === 'string') window.open(h, '_blank')
+                        } catch {
+                          // ignore
+                        }
                       }
-                    }
+                    })()
                   }}
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <title>View on carrier site</title>
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"

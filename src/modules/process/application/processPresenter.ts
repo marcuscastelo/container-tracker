@@ -4,7 +4,7 @@ import type {
   ProcessDetailResponse,
   TrackingAlertResponse,
 } from '~/shared/api-schemas/processes.schemas'
-import type { StatusVariant } from '~/shared/ui'
+import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // Backwards-compatible alias for tests and other callers
@@ -84,7 +84,6 @@ function containerStatusToVariant(status: string | undefined): StatusVariant {
       return 'delivered'
     case 'IN_PROGRESS':
       return 'pending'
-    case 'UNKNOWN':
     default:
       return 'unknown'
   }
@@ -111,7 +110,6 @@ function containerStatusLabel(status: string | undefined): string {
       return 'Empty Returned'
     case 'IN_PROGRESS':
       return 'In Progress'
-    case 'UNKNOWN':
     default:
       return 'Awaiting data'
   }
@@ -142,7 +140,6 @@ function observationTypeLabel(type: string): string {
       return 'Customs Hold'
     case 'CUSTOMS_RELEASE':
       return 'Customs Released'
-    case 'OTHER':
     default:
       return type
   }
@@ -283,8 +280,14 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
 
 export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const carrierResult = CarrierSchema.safeParse(data.carrier)
-  const carrier: Carrier | 'unknown' | null =
-    data.carrier === null ? null : carrierResult.success ? carrierResult.data : 'unknown'
+  let carrier: Carrier | 'unknown' | null
+  if (data.carrier === null) {
+    carrier = null
+  } else if (carrierResult.success) {
+    carrier = carrierResult.data
+  } else {
+    carrier = 'unknown'
+  }
 
   const containers: ContainerDetail[] = data.containers.map((c) => {
     // Build timeline from observations (new pipeline)

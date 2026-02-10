@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { supabaseProcessRepository } from '~/modules/process'
+import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 

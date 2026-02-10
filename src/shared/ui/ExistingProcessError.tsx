@@ -1,6 +1,6 @@
 import { A, useLocation } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { Show } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type ExistingInfo = {
@@ -38,9 +38,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
     return false
   }
 
-  if (!props.message && !props.existing) return <div />
-
-  const same = isCurrentPath(props.existing)
+  const same = createMemo(() => isCurrentPath(props.existing))
 
   const extractContainerFromMessage = (msg?: string) => {
     if (!msg) return ''
@@ -48,18 +46,24 @@ export function ExistingProcessError(props: Props): JSX.Element {
     return m ? m[1] : ''
   }
 
-  const container = props.existing?.containerNumber ?? extractContainerFromMessage(props.message)
+  const container = createMemo(
+    () => props.existing?.containerNumber ?? extractContainerFromMessage(props.message),
+  )
 
-  const message = same
-    ? t(keys.createProcess.action.existingProcessSame, { container })
-    : container
-      ? t(keys.createProcess.action.existingProcessError, { container })
-      : (props.message ?? t(keys.createProcess.action.existingProcessError, { container: '' }))
+  const message = createMemo(() => {
+    if (same()) {
+      return t(keys.createProcess.action.existingProcessSame, { container: container() })
+    } else if (container()) {
+      return t(keys.createProcess.action.existingProcessError, { container: container() })
+    } else {
+      return props.message ?? t(keys.createProcess.action.existingProcessError, { container: '' })
+    }
+  })
 
   return (
     <div class="relative mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
       <div class="flex items-start justify-between">
-        <div class="pr-8">{message}</div>
+        <div class="pr-8">{message()}</div>
 
         {/* Close X that acknowledges the error for SPA parents */}
         <div class="ml-4 shrink-0">
@@ -76,6 +80,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
             }}
           >
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <title>{t(keys.createProcess.action.dismiss) ?? 'Dismiss'}</title>
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -88,7 +93,9 @@ export function ExistingProcessError(props: Props): JSX.Element {
       </div>
 
       <Show
-        when={!same && Boolean(props.existing && (props.existing.processId || props.existing.link))}
+        when={
+          !same() && Boolean(props.existing && (props.existing.processId || props.existing.link))
+        }
       >
         <div class="mt-2">
           <A

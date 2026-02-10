@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/consistent-type-assertions */
 import { z } from 'zod/v4'
 
 import { parseWithStack } from '~/shared/utils/parseWithStack'
@@ -15,12 +14,14 @@ const getEnvVars = (): z.input<typeof envSchema> => {
     Object.keys(envSchema.shape).map((key) => {
       const importMetaValue = importMetaEnv[key]
       const processEnvValue = process.env[key]
-      const value =
-        typeof importMetaValue === 'string'
-          ? importMetaValue
-          : typeof processEnvValue === 'string'
-            ? processEnvValue
-            : undefined
+      let value: string | undefined
+      if (typeof importMetaValue === 'string') {
+        value = importMetaValue
+      } else if (typeof processEnvValue === 'string') {
+        value = processEnvValue
+      } else {
+        value = undefined
+      }
       return [key, value]
     }),
   )

@@ -1,5 +1,5 @@
 import z from 'zod/v4'
-import { ProviderSchema } from '~/modules/tracking/domain'
+import { ProviderSchema } from '~/modules/tracking/domain/provider'
 
 /**
  * Request/Response schemas for the tracking refresh API.

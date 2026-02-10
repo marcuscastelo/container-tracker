@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
-import { LanguageSwitch } from '.'
+import { LanguageSwitch } from '~/shared/ui/LanguageSwitch'
 
 type Props = {
   readonly onCreateProcess?: () => void
@@ -64,7 +64,7 @@ export function AppHeader(props: Props): JSX.Element {
           <LanguageSwitch />
           <button
             type="button"
-            onClick={props.onCreateProcess}
+            onClick={() => props.onCreateProcess?.()}
             class="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-900"
           >
             <svg

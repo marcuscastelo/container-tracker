@@ -1,5 +1,4 @@
 import type { JSX } from 'solid-js'
-import { Match, Switch } from 'solid-js'
 
 export type StatusVariant =
   | 'in-transit'

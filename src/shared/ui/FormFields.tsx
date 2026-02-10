@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { Show, splitProps } from 'solid-js'
+import { For, Show, splitProps } from 'solid-js'
 
 type InputProps = {
   readonly label: string
@@ -48,7 +48,7 @@ export function FormInput(props: InputProps): JSX.Element {
         name={local.name}
         value={local.value}
         onInput={(e) => local.onInput(e.currentTarget.value)}
-        onBlur={local.onBlur}
+        onBlur={() => local.onBlur?.()}
         placeholder={local.placeholder}
         disabled={local.disabled}
         required={local.required}
@@ -119,9 +119,9 @@ export function FormSelect(props: SelectProps): JSX.Element {
             {props.placeholder}
           </option>
         </Show>
-        {props.options.map((option) => (
-          <option value={option.value}>{option.label}</option>
-        ))}
+        <For each={props.options}>
+          {(option) => <option value={option.value}>{option.label}</option>}
+        </For>
       </select>
       <Show when={props.helperText}>
         <p class="text-xs text-slate-500">{props.helperText}</p>

@@ -1,4 +1,5 @@
-import type { Process, ProcessContainer } from '~/modules/process/domain'
+import type { Process } from '~/modules/process/domain/process'
+import type { ProcessContainer } from '~/modules/process/domain/processStuff'
 import {
   CarrierSchema,
   PlannedLocation,

@@ -1,5 +1,5 @@
+import zlib from 'node:zlib'
 import axios from 'axios'
-import zlib from 'zlib'
 import type { Provider } from '~/modules/tracking/domain/provider'
 
 export type FetchResult = {

@@ -60,7 +60,6 @@ export function LanguageSwitch(): JSX.Element {
 
       <Show when={open()}>
         <ul
-          role="listbox"
           class="absolute right-0 mt-2 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
           onMouseLeave={() => setOpen(false)}
         >
@@ -71,7 +70,9 @@ export function LanguageSwitch(): JSX.Element {
                   type="button"
                   class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   onClick={() => {
-                    setLocale(lng)
+                    setLocale(lng).catch(() => {
+                      /* ignore */
+                    })
                     setOpen(false)
                   }}
                 >

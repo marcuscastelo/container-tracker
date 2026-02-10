@@ -1,13 +1,11 @@
 import type { z } from 'zod'
 import {
-  CreateProcessInputSchema,
-  processUseCases,
-  supabaseProcessRepository,
-} from '~/modules/process'
-import {
   ContainerAlreadyExistsError,
   resolveContainerOwner,
 } from '~/modules/process/application/errors'
+import { CreateProcessInputSchema } from '~/modules/process/domain/processStuff'
+import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { processUseCases } from '~/modules/process/processUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import {
   CreateProcessResponseSchema,

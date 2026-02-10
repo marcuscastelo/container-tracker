@@ -59,7 +59,6 @@ export function registerSubapabaseRealtimeCallback<T>(
 ): void {
   const handleCallback = (payload: unknown) => {
     console.debug(`SUPABASE_REALTIME - ${table} -> payload=`, payload)
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const result = z
       .object({
         eventType: z.enum(['INSERT', 'UPDATE', 'DELETE']),
@@ -82,8 +81,8 @@ export function registerSubapabaseRealtimeCallback<T>(
 
     callback({
       eventType,
-      old: oldRecord !== null && oldRecord.success ? oldRecord.data : undefined,
-      new: newRecord !== null && newRecord.success ? newRecord.data : undefined,
+      old: oldRecord?.success ? oldRecord.data : undefined,
+      new: newRecord?.success ? newRecord.data : undefined,
     })
   }
 
