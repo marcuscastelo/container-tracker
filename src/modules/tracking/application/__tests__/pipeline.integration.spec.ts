@@ -355,7 +355,7 @@ describe('Pipeline Integration Tests - Maersk', () => {
     }
   })
 
-  it('should fail when payload structure changes incompatibly', async () => {
+  it('should handle incompatible payload structure by returning no observations', async () => {
     // Arrange
     const containerId = randomUUID()
     const containerNumber = 'MNBU3094033'
