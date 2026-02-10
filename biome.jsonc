@@ -5,6 +5,9 @@
     "parser": { "tailwindDirectives": true }
   },
   "linter": {
+    "domains": {
+      "solid": "all"
+    },
     "rules": {
       "recommended": true,
       "correctness": {
