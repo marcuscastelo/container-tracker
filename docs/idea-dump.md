@@ -11,6 +11,7 @@ Adicionar booking_number no processo (domain).
 Pensar se mantemos unknown ou null para os campos (carrier e operationType) que nao sao obrigatorios, e se sim, padronizar isso em todo o codigo (domain, application, ui). Null gasta menos espaço no banco...
 
 Gerar eventos de transbordo quando o NAVIO A CHEGA, E NAVIO B SAI COM O MESMO CONTAINER (MAERSK, falta checar como outras api reportam isso). Isso vai gerar um alerta para o sistema, para que o operador possa tomar as medidas necessarias, tambem vai atualizar o processo para os importadores terem visibilidade do que esta acontecendo. 
+Tratar casos que o container é removido do processo, seja por erro ou porque o cliente mudou de ideia. Hoje é impossível adicionar um container que foi removido do processo porque a checagem de container já existente é feita nos containers e nao nos processos, entao o sistema assume que o container ja existe e nao deixa adicionar. Melhorar isso para permitir re-adicionar um container que foi removido, e para ter uma checagem mais robusta de containers realmente existentes vs erros de conexao, etc.
 
 # Pedidos do cliente (alguns precisam de mais detalhes)
 Adicionar campo mercadoria (description of goods) no processo.
