@@ -9,11 +9,11 @@ describe('processPresenter', () => {
     const example: ProcessApiResponse = {
       id: 'proc-1',
       reference: 'REF-1',
-      operation_type: 'import',
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
       carrier: 'maersk',
-      bl_reference: null,
+      bill_of_lading: null,
+      booking_number: null,
       source: 'api',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -21,7 +21,6 @@ describe('processPresenter', () => {
         {
           id: 'c1',
           container_number: 'MRKU1234567',
-          container_type: '40HC',
           carrier_code: 'MAERSK',
           status: 'LOADED',
           observations: [
@@ -64,11 +63,11 @@ describe('processPresenter', () => {
     const example: ProcessApiResponse = {
       id: 'proc-2',
       reference: 'REF-2',
-      operation_type: 'import',
       origin: { display_name: 'Rotterdam' },
       destination: { display_name: 'Santos' },
       carrier: 'msc',
-      bl_reference: null,
+      bill_of_lading: null,
+      booking_number: null,
       source: 'api',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -110,7 +109,6 @@ describe('processPresenter', () => {
     const example: ProcessApiResponse = {
       id: 'proc-3',
       reference: null,
-      operation_type: 'import',
       origin: null,
       destination: null,
       carrier: null,
@@ -143,7 +141,6 @@ describe('processPresenter', () => {
     const example: ProcessApiResponse = {
       id: 'proc-4',
       reference: 'EMPTY',
-      operation_type: 'unknown',
       origin: null,
       destination: null,
       carrier: null,

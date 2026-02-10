@@ -3,11 +3,16 @@ import { z } from 'zod'
 export const ProcessResponseSchema = z.object({
   id: z.string(),
   reference: z.string().nullish(),
-  operation_type: z.string(),
   origin: z.object({ display_name: z.string().nullish() }).nullable().optional(),
   destination: z.object({ display_name: z.string().nullish() }).nullable().optional(),
   carrier: z.string().nullish(),
   bill_of_lading: z.string().nullish(),
+  booking_number: z.string().nullish(),
+  importer_name: z.string().nullish(),
+  exporter_name: z.string().nullish(),
+  reference_importer: z.string().nullish(),
+  product: z.string().nullish(),
+  redestination_number: z.string().nullish(),
   source: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -16,8 +21,6 @@ export const ProcessResponseSchema = z.object({
       id: z.string(),
       container_number: z.string(),
       carrier_code: z.string().nullish(),
-      container_type: z.string().nullish(),
-      container_size: z.string().nullish(),
     }),
   ),
 })
@@ -66,14 +69,11 @@ export const TrackingAlertResponseSchema = z.object({
 })
 
 export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
-  bl_reference: z.string().nullish().optional(),
   containers: z.array(
     z.object({
       id: z.string(),
       container_number: z.string(),
       carrier_code: z.string().nullish(),
-      container_type: z.string().nullish(),
-      container_size: z.string().nullish(),
       /** Derived container status (from tracking pipeline) */
       status: z.string().optional(),
       /** Observations for this container (ordered by event_time) */

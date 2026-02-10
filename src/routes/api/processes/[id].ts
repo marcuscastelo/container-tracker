@@ -33,8 +33,6 @@ export async function GET({ params }: APIEvent): Promise<Response> {
             id: c.id,
             container_number: c.container_number,
             carrier_code: c.carrier_code ?? null,
-            container_type: c.container_type ?? null,
-            container_size: null,
             status: summary.status,
             observations: summary.observations.map((obs) => ({
               id: obs.id,
@@ -59,8 +57,6 @@ export async function GET({ params }: APIEvent): Promise<Response> {
             id: c.id,
             container_number: c.container_number,
             carrier_code: c.carrier_code ?? null,
-            container_type: c.container_type ?? null,
-            container_size: null,
             status: 'UNKNOWN',
             observations: [],
           }
@@ -83,11 +79,16 @@ export async function GET({ params }: APIEvent): Promise<Response> {
     const response = {
       id: process.id,
       reference: process.reference,
-      operation_type: process.operation_type,
       origin: process.origin,
       destination: process.destination,
       carrier: process.carrier,
-      bl_reference: process.bill_of_lading,
+      bill_of_lading: process.bill_of_lading,
+      booking_number: process.booking_number,
+      importer_name: process.importer_name,
+      exporter_name: process.exporter_name,
+      reference_importer: process.reference_importer,
+      product: process.product,
+      redestination_number: process.redestination_number,
       source: process.source,
       created_at: process.created_at.toISOString(),
       updated_at: process.updated_at.toISOString(),
@@ -155,16 +156,21 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     // Map incoming containers to UI-friendly shape if present
     const input: Partial<CreateProcessInput> = {}
     if (parsed.data.reference !== undefined) input.reference = parsed.data.reference
-    if (parsed.data.operation_type !== undefined) input.operation_type = parsed.data.operation_type
     if (parsed.data.origin !== undefined) input.origin = parsed.data.origin
     if (parsed.data.destination !== undefined) input.destination = parsed.data.destination
     if (parsed.data.carrier !== undefined) input.carrier = parsed.data.carrier
     if (parsed.data.bill_of_lading !== undefined) input.bill_of_lading = parsed.data.bill_of_lading
+    if (parsed.data.booking_number !== undefined) input.booking_number = parsed.data.booking_number
+    if (parsed.data.importer_name !== undefined) input.importer_name = parsed.data.importer_name
+    if (parsed.data.exporter_name !== undefined) input.exporter_name = parsed.data.exporter_name
+    if (parsed.data.reference_importer !== undefined)
+      input.reference_importer = parsed.data.reference_importer
+    if (parsed.data.product !== undefined) input.product = parsed.data.product
+    if (parsed.data.redestination_number !== undefined)
+      input.redestination_number = parsed.data.redestination_number
     if (parsed.data.containers !== undefined) {
       input.containers = parsed.data.containers.map((c: any) => ({
         container_number: c.container_number,
-        container_type: c.container_type ?? null,
-        container_size: c.container_size ?? null,
         carrier_code: c.carrier_code ?? null,
       }))
     }
@@ -174,11 +180,16 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     const response = {
       id: updated.id,
       reference: updated.reference,
-      operation_type: updated.operation_type,
       origin: updated.origin,
       destination: updated.destination,
       carrier: updated.carrier,
-      bl_reference: updated.bill_of_lading,
+      bill_of_lading: updated.bill_of_lading,
+      booking_number: updated.booking_number,
+      importer_name: updated.importer_name,
+      exporter_name: updated.exporter_name,
+      reference_importer: updated.reference_importer,
+      product: updated.product,
+      redestination_number: updated.redestination_number,
       source: updated.source,
       created_at: updated.created_at.toISOString(),
       updated_at: updated.updated_at.toISOString(),
@@ -186,8 +197,6 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
         id: c.id,
         container_number: c.container_number,
         carrier_code: c.carrier_code ?? null,
-        container_type: c.container_type ?? null,
-        container_size: c.container_size ?? null,
       })),
     }
 

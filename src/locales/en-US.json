@@ -80,28 +80,31 @@
     "field": {
       "reference": "Reference",
       "referencePlaceholder": "e.g. 2024-0512 or PO-12345",
-      "operationType": "Operation Type",
-      "operationTypePlaceholder": "Select operation type",
       "origin": "Origin",
       "originPlaceholder": "e.g. Shanghai, Rotterdam",
       "destination": "Destination",
       "destinationPlaceholder": "e.g. Santos, Los Angeles",
       "containerNumber": "Container",
       "containerNumberPlaceholder": "e.g. MRKU1234567",
-      "isoType": "ISO Type/Size",
-      "isoTypePlaceholder": "e.g. 40HC, 20GP",
       "carrier": "Carrier",
       "carrierPlaceholder": "Select carrier",
-      "blReference": "Bill of Lading (BL)",
-      "blReferencePlaceholder": "e.g. MAEU123456789"
+      "billOfLading": "Bill of Lading (BL)",
+      "billOfLadingPlaceholder": "e.g. MAEU123456789",
+      "bookingNumber": "Booking Number",
+      "bookingNumberPlaceholder": "e.g. BOOK123456",
+      "importerName": "Importer",
+      "importerNamePlaceholder": "e.g. Company ABC",
+      "exporterName": "Exporter",
+      "exporterNamePlaceholder": "e.g. Company XYZ",
+      "referenceImporter": "Importer Reference",
+      "referenceImporterPlaceholder": "e.g. PO-98765",
+      "product": "Product",
+      "productPlaceholder": "e.g. Electronics, Textiles",
+      "redestinationNumber": "Redestination Number",
+      "redestinationNumberPlaceholder": "e.g. RED-001"
     },
     "unknownCarrierWarning": "If 'Unknown', automatic carrier updates won't be available.",
-    "operationType": {
-      "import": "Import",
-      "export": "Export",
-      "transshipment": "Transshipment",
-      "unknown": "Unknown"
-    },
+    "carrierUnknown": "Unknown",
     "validation": {
       "containerNumberRequired": "Container number is required.",
       "duplicateContainer": "Duplicate container number"
