@@ -1,6 +1,23 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "tags": ["-lintignore"],
-  "ignore": ["src/shared/supabase/database.types.ts"],
-  "tsx":true
+  "tags": [
+    "-lintignore"
+  ],
+  "entry": [
+    "src/entry-client.{js,ts,tsx}",
+    "src/entry-server.{js,ts,tsx}",
+    "src/routes/**/*.{js,ts,tsx}",
+    "scripts/**/*.{js,ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{js,ts,tsx}",
+    "scripts/**/*.{js,ts,tsx}"
+  ],
+  "biome": true,
+  "ignore": [
+    "src/shared/supabase/database.types.ts",
+    "src/routes/**/*",
+    "src/i18n/**/*"
+  ],
+  "tsx": true
 }
