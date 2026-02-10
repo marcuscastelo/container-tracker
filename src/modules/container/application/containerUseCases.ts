@@ -236,7 +236,12 @@ export function createContainerUseCases({
           continue
         }
 
-        await containerRepository.delete(container.id)
+        const delResult = await containerRepository.delete(container.id)
+        if (!delResult.success) {
+          throw new Error(
+            `Failed to delete container ${container.id}: ${delResult.error?.message ?? 'Unknown error'}`,
+          )
+        }
         removed.push(container.id)
       }
 
@@ -255,7 +260,12 @@ export function createContainerUseCases({
         throw new Error('Cannot remove the last container from a process')
       }
 
-      await containerRepository.delete(containerId)
+      const delResult = await containerRepository.delete(containerId)
+      if (!delResult.success) {
+        throw new Error(
+          `Failed to delete container ${containerId}: ${delResult.error?.message ?? 'Unknown error'}`,
+        )
+      }
     },
   }
 }
