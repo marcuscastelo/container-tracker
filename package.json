@@ -8,11 +8,13 @@
     "type-check": "tsc --noEmit --skipLibCheck",
     "test": "vitest run",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
+    "i18n:enforce": "node scripts/enforce-i18n-no-hardcoded.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true || true",
-    "lint": "pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
+    "lint": "pnpm exec biome check . --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx . --max-warnings=0",
     "flint": "pnpm run fix && pnpm run lint",
     "check": "run-p flint type-check test",
-    "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"
+    "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix",
+    "knip": "knip"
   },
   "dependencies": {
     "@msviderok/base-ui-solid": "1.0.0-beta.9",
@@ -28,10 +30,16 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.0.7",
     "@types/i18next": "^13.0.0",
+    "@types/node": "^25.2.3",
+    "@typescript-eslint/parser": "^8.55.0",
     "biome-plugin-no-type-assertion": "^1.0.2",
     "clsx": "^2.1.1",
+    "eslint": "10",
+    "eslint-plugin-solid": "^0.14.5",
+    "knip": "^5.83.1",
     "npm-run-all": "^4.1.5",
     "playwright": "^1.58.1",
     "puppeteer": "^24.36.1",
@@ -40,6 +48,7 @@
     "solid-toast": "^0.5.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.0.7",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.2"
   },
   "engines": {

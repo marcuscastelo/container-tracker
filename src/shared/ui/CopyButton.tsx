@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createSignal, onCleanup, Show } from 'solid-js'
+import { useTranslation } from '~/shared/localization/i18n'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 }
 
 export function CopyButton(props: Props): JSX.Element {
+  const { t, keys } = useTranslation()
   const [copied, setCopied] = createSignal(false)
   let timer: number | undefined
 
@@ -32,7 +34,7 @@ export function CopyButton(props: Props): JSX.Element {
   return (
     <button
       type="button"
-      title={props.title ?? 'Copy'}
+      title={props.title ?? t(keys.common.copy)}
       class={`relative inline-flex h-6 w-6 items-center justify-center rounded overflow-hidden transition-colors ${
         copied()
           ? 'bg-emerald-600 text-white'
@@ -44,6 +46,7 @@ export function CopyButton(props: Props): JSX.Element {
         when={copied()}
         fallback={
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <title>{props.title ?? t(keys.common.copy)}</title>
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -59,17 +62,16 @@ export function CopyButton(props: Props): JSX.Element {
           </svg>
         }
       >
-        <>
-          <span class="copy-button-ripple" aria-hidden="true" />
-          <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M20 6L9 17l-5-5"
-            />
-          </svg>
-        </>
+        <span class="copy-button-ripple" aria-hidden="true" />
+        <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <title>{props.title ?? t(keys.common.copied)}</title>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M20 6L9 17l-5-5"
+          />
+        </svg>
       </Show>
     </button>
   )

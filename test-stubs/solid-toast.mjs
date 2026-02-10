@@ -1,4 +1,5 @@
 // Minimal server-friendly stub for solid-toast used in tests
+/** @public */
 // biome-ignore lint/style/noDefaultExport: tests
 export default function toast() {
   return {
@@ -9,7 +10,10 @@ export default function toast() {
   }
 }
 
+/** @public */
 export const toasts = []
+
+/** @public */
 export function createToast() {
   return {
     show: () => {},

@@ -1,16 +1,4 @@
 /**
- * Detailed parsed-date result so callers know exactly what form was parsed.
- */
-export type ParsedDateResult =
-  | { kind: 'null' }
-  | { kind: 'invalid' }
-  | { kind: 'date'; value: Date } // input was already a Date
-  | { kind: 'number'; value: Date } // input was a numeric epoch
-  | { kind: 'msString'; value: Date } // /Date(XXXXX)/ style
-  | { kind: 'ddmmyyyy'; value: Date } // explicit dd/mm/yyyy (noon UTC)
-  | { kind: 'isoString'; value: Date } // ISO / RFC parsable string
-
-/**
  * Parse a string of the form dd/mm/yyyy and return a Date at noon UTC.
  * Returns null if the input doesn't match or creates an invalid date.
  */

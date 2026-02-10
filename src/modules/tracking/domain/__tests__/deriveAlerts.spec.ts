@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/deriveAlerts'
 import { deriveTimeline } from '~/modules/tracking/domain/deriveTimeline'
 import type { Observation } from '~/modules/tracking/domain/observation'

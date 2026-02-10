@@ -9,6 +9,7 @@ type IsRecord<T> = T extends string ? false : T extends Record<string, any> ? tr
 
 type Join<K extends string, P extends string> = P extends '' ? K : `${K}.${P}`
 
+// biome-ignore lint/correctness/noUnusedVariables: KeyPaths is recursively used in its own definition
 type KeyPaths<T> = T extends string
   ? ''
   : {
@@ -32,12 +33,6 @@ export type TranslationSchema = {
             }
       }
 }
-
-// All valid dotted keys from the pt-BR.json reference
-export type TranslationKey = KeyPaths<TranslationSchema> & string
-
-// useful utility: typed function signature for t(key)
-export type TypedTFunction = <K extends TranslationKey>(key: K, options?: any) => string
 
 // export the raw reference in case consumers want to inspect it
 // biome-ignore lint: Assertion is required and low risk since it's only used for typing, not runtime logic

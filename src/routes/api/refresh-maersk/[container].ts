@@ -1,9 +1,13 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import type { APIEvent } from '@solidjs/start/server'
-import fs from 'fs'
-import path from 'path'
+import puppeteerExtra from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { z } from 'zod'
-import { supabaseProcessRepository } from '~/modules/process'
-import { trackingUseCases } from '~/modules/tracking'
+import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -138,7 +142,7 @@ async function handleMaersk({ params, request }: APIEvent) {
     const headless = qParsed.data.headless === '1' || qParsed.data.headless === 'true'
     hold = qParsed.data.hold === '1'
     const timeoutMs = parseInt(qParsed.data.timeout || '60000', 10)
-    let userDataDir = qParsed.data.userDataDir || process.env.CHROME_USER_DATA_DIR || null
+    const userDataDir = qParsed.data.userDataDir || process.env.CHROME_USER_DATA_DIR || null
 
     // Validate userDataDir
     if (userDataDir && !fs.existsSync(userDataDir)) {
@@ -161,27 +165,8 @@ async function handleMaersk({ params, request }: APIEvent) {
       userDataDir: userDataDir || 'ephemeral',
     })
 
-    // Import puppeteer-extra with stealth
-    let puppeteerExtra: any
     try {
-      const pe = await import('puppeteer-extra').catch(() => null)
-      const stealthMod = await import('puppeteer-extra-plugin-stealth').catch(() => null)
-
-      if (!pe || !stealthMod) {
-        return new Response(
-          JSON.stringify({
-            error: 'puppeteer-extra or stealth plugin not installed',
-            hint: 'Run: npm i -D puppeteer puppeteer-extra puppeteer-extra-plugin-stealth',
-          }),
-          { status: 500 },
-        )
-      }
-
-      const peMod: any = pe
-      const stealthWrapped: any = stealthMod
-      puppeteerExtra = peMod?.default || peMod
-      const Stealth = stealthWrapped?.default || stealthWrapped
-      puppeteerExtra.use(Stealth())
+      puppeteerExtra.use(StealthPlugin())
     } catch (e) {
       return new Response(JSON.stringify({ error: 'puppeteer import error', details: String(e) }), {
         status: 500,
@@ -197,7 +182,7 @@ async function handleMaersk({ params, request }: APIEvent) {
       const candidates: string[] = []
 
       if (platform === 'win32') {
-        const programFiles = process.env['PROGRAMFILES'] || 'C:\\Program Files'
+        const programFiles = process.env.PROGRAMFILES || 'C:\\Program Files'
         const programFilesx86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'
         candidates.push(path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'))
         candidates.push(path.join(programFilesx86, 'Google', 'Chrome', 'Application', 'chrome.exe'))
@@ -275,9 +260,9 @@ async function handleMaersk({ params, request }: APIEvent) {
       Object.defineProperty(navigator, 'plugins', {
         get: () => [1, 2, 3, 4, 5],
       })
-      // @ts-ignore
+      // @ts-expect-error
       window.chrome = { runtime: {} }
-      // @ts-ignore
+      // @ts-expect-error
       delete navigator.__proto__.webdriver
     })
 
@@ -293,7 +278,7 @@ async function handleMaersk({ params, request }: APIEvent) {
     cdpClient.on('Network.requestWillBeSent', (evt: any) => {
       try {
         const r = evt.request
-        if (r && r.url) {
+        if (r?.url) {
           reqMap.set(evt.requestId, {
             url: r.url,
             method: r.method,
@@ -310,7 +295,7 @@ async function handleMaersk({ params, request }: APIEvent) {
     cdpClient.on('Network.responseReceived', async (evt: any) => {
       try {
         const respUrl = evt.response?.url
-        if (respUrl && respUrl.includes('/synergy/tracking/') && respUrl.includes(container)) {
+        if (respUrl?.includes('/synergy/tracking/') && respUrl.includes(container)) {
           console.log(
             '[maersk-refresh] CDP captured response:',
             respUrl,
@@ -337,7 +322,7 @@ async function handleMaersk({ params, request }: APIEvent) {
                 try {
                   // access global telemetry object if present without using type assertions
                   // @ts-expect-error: dynamic access
-                  const b = window['bmak']
+                  const b = window.bmak
                   if (b && typeof b.get_telemetry === 'function') return b.get_telemetry()
                 } catch (_e) {}
                 return null
@@ -431,9 +416,9 @@ async function handleMaersk({ params, request }: APIEvent) {
           () =>
             typeof window !== 'undefined' &&
             // @ts-expect-error: dynamic access
-            window['bmak'] &&
+            window.bmak &&
             // @ts-expect-error: dynamic access
-            typeof window['bmak'].get_telemetry === 'function',
+            typeof window.bmak.get_telemetry === 'function',
           { timeout: 10000 },
         )
         await delay(2000)
@@ -486,7 +471,7 @@ async function handleMaersk({ params, request }: APIEvent) {
           domain: c.domain,
         })),
         userAgent: captured.userAgent,
-        telemetry: captured.telemetry ? captured.telemetry.substring(0, 100) + '...' : null,
+        telemetry: captured.telemetry ? `${captured.telemetry.substring(0, 100)}...` : null,
         capturedAt: captured.timestamp,
         source: 'puppeteer-cdp',
         response: {
@@ -534,7 +519,12 @@ async function handleMaersk({ params, request }: APIEvent) {
 
     try {
       // Look up the container in our DB to get its UUID
-      const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
+      const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
+      if (!containerRes.success) {
+        throw containerRes.error
+      }
+
+      const containerRecord = containerRes.data
 
       if (containerRecord) {
         const result = await trackingUseCases.saveAndProcess(
@@ -555,9 +545,8 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     } catch (err) {
       console.error('[maersk-refresh] Supabase save failed:', err)
-      return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), {
-        status: 500,
-      })
+      // Rethrow as an infrastructure error so the outer handler maps it to a proper HTTP response
+      throw new InfrastructureError('Supabase save failed', { cause: err })
     }
 
     // Write diagnostics to file (optional, for debugging)
@@ -573,7 +562,7 @@ async function handleMaersk({ params, request }: APIEvent) {
         domain: c.domain,
       })),
       userAgent: captured.userAgent,
-      telemetry: captured.telemetry ? captured.telemetry.substring(0, 100) + '...' : null,
+      telemetry: captured.telemetry ? `${captured.telemetry.substring(0, 100)}...` : null,
       capturedAt: captured.timestamp,
       source: 'puppeteer-cdp',
       response: {
@@ -612,14 +601,7 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        error: String(err),
-        // @ts-expect-error: forced typing
-        stack: err?.stack ?? null,
-      }),
-      { status: 500 },
-    )
+    return mapErrorToResponse(err)
   }
 }
 

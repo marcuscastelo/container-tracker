@@ -94,12 +94,18 @@ export const supabaseContainerRepository = {
     return { success: true, data: data.map(containerMappers.fromRow), error: null }
   },
 
-  async delete(containerId: string): Promise<void> {
+  async delete(containerId: string): Promise<SupabaseResult<object>> {
     const { error } = await supabase.from(TABLE_NAME).delete().eq('id', containerId)
 
     if (error) {
       console.error(`Error deleting container ${containerId}:`, error)
-      throw new Error(`Failed to delete container: ${error.message}`)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to delete container: ${error.message}`, { cause: error }),
+      }
     }
+
+    return { success: true, data: {}, error: null }
   },
 }

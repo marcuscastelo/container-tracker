@@ -1,9 +1,10 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js'
 import z from 'zod'
-import { CreateProcessDialog, type CreateProcessInput } from '~/modules/process'
+import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
+import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
@@ -16,15 +17,16 @@ import {
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
-import { AppHeader, ExistingProcessError } from '~/shared/ui'
+import { AppHeader } from '~/shared/ui/AppHeader'
+import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
+export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { t, keys } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
-    () => params.id,
+    () => props.params.id,
     (id) => fetchProcess(id),
   )
 
@@ -65,7 +67,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         // This handles cases where the server returned a JSON string (possibly escaped).
         let niceMessage = msg
         const m = msg.match(/"message"\s*:\s*"([^"]+)"/)
-        if (m && m[1]) {
+        if (m?.[1]) {
           niceMessage = m[1]
         } else {
           // Fallback: try to show only the part after the HTTP status code
@@ -121,14 +123,19 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       // Map UI form data to API shape
       const input: Record<string, unknown> = {
         reference: formData.reference || null,
-        operation_type: formData.operationType || undefined,
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
-        bl_reference: formData.billOfLading || null,
+        bill_of_lading: formData.billOfLading || null,
+        booking_number: formData.bookingNumber || null,
+        importer_name: formData.importerName || null,
+        exporter_name: formData.exporterName || null,
+        reference_importer: formData.referenceImporter || null,
+        product: formData.product || null,
+        redestination_number: formData.redestinationNumber || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
-          container_type: c.isoType || null,
+          carrier_code: formData.carrier || null,
         })),
       }
 
@@ -182,11 +189,16 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
       // Map UI form data to API shape
       const input: CreateProcessInput = {
         reference: formData.reference || null,
-        operation_type: formData.operationType || undefined,
         origin: formData.origin ? { display_name: formData.origin } : null,
         destination: formData.destination ? { display_name: formData.destination } : null,
         carrier: formData.carrier || null,
         bill_of_lading: formData.billOfLading || null,
+        booking_number: formData.bookingNumber || null,
+        importer_name: formData.importerName || null,
+        exporter_name: formData.exporterName || null,
+        reference_importer: formData.referenceImporter || null,
+        product: formData.product || null,
+        redestination_number: formData.redestinationNumber || null,
         containers: formData.containers.map((c) => ({
           container_number: c.containerNumber,
           carrier_code: formData.carrier || null,
@@ -195,7 +207,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
       try {
         await typedFetch(
-          `/api/processes/${params.id}`,
+          `/api/processes/${props.params.id}`,
           {
             method: 'PATCH',
             body: JSON.stringify(input),
@@ -243,8 +255,8 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           if (ex) {
             setCreateError({
               message: String(
-                isRecord(body) && typeof body['message'] === 'string'
-                  ? body['message']
+                isRecord(body) && typeof body.message === 'string'
+                  ? body.message
                   : 'Container already exists',
               ),
               processId: String(ex.processId ?? ex.process_id ?? ''),
@@ -276,7 +288,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   })
 
   // Update selected container when data loads
-  createMemo(() => {
+  createEffect(() => {
     const data = shipment()
     if (data && data.containers.length > 0 && !selectedContainerId()) {
       setSelectedContainerId(data.containers[0].id)
@@ -294,11 +306,12 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
             <div class="flex items-start justify-between gap-4">
               <div>{refreshError()}</div>
               <button
+                type="button"
                 class="ml-4 text-red-700 underline"
-                aria-label="Dismiss error"
+                aria-label={t(keys.createProcess.action.dismissError)}
                 onClick={() => setRefreshError(null)}
               >
-                Dismiss
+                {t(keys.createProcess.action.dismiss)}
               </button>
             </div>
           </div>
@@ -391,16 +404,20 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
                   if (!d) return
                   const initial = {
                     reference: d.reference ?? '',
-                    operationType: d.operationType ?? 'unknown',
                     origin: d.origin || '',
                     destination: d.destination || '',
                     containers: d.containers.map((c) => ({
                       id: c.id,
                       containerNumber: c.number,
-                      isoType: c.isoType ?? '',
                     })),
                     carrier: d.carrier ?? 'unknown',
-                    billOfLading: d.bl_reference ?? '',
+                    billOfLading: d.bill_of_lading ?? '',
+                    bookingNumber: d.booking_number ?? '',
+                    importerName: d.importer_name ?? '',
+                    exporterName: d.exporter_name ?? '',
+                    referenceImporter: d.reference_importer ?? '',
+                    product: d.product ?? '',
+                    redestinationNumber: d.redestination_number ?? '',
                   } satisfies CreateProcessDialogFormData
                   setEditInitialData(initial)
                   // Interpret incoming focus hint

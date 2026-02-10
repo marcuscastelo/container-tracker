@@ -46,12 +46,13 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-export type RealtimeEvent<T = unknown> = {
+type RealtimeEvent<T = unknown> = {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE'
   old?: T
   new?: T
 }
 
+/** @public */
 export function registerSubapabaseRealtimeCallback<T>(
   table: string,
   validator: z.ZodType<T>,
@@ -59,7 +60,6 @@ export function registerSubapabaseRealtimeCallback<T>(
 ): void {
   const handleCallback = (payload: unknown) => {
     console.debug(`SUPABASE_REALTIME - ${table} -> payload=`, payload)
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const result = z
       .object({
         eventType: z.enum(['INSERT', 'UPDATE', 'DELETE']),
@@ -82,8 +82,8 @@ export function registerSubapabaseRealtimeCallback<T>(
 
     callback({
       eventType,
-      old: oldRecord !== null && oldRecord.success ? oldRecord.data : undefined,
-      new: newRecord !== null && newRecord.success ? newRecord.data : undefined,
+      old: oldRecord?.success ? oldRecord.data : undefined,
+      new: newRecord?.success ? newRecord.data : undefined,
     })
   }
 

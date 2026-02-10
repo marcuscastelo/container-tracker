@@ -10,7 +10,12 @@ export default function NotFound() {
       </h1>
       <p class="mt-8">
         {t(keys.notfound.learn)}{' '}
-        <a href="https://solidjs.com" target="_blank" class="text-sky-600 hover:underline">
+        <a
+          href="https://solidjs.com"
+          target="_blank"
+          class="text-sky-600 hover:underline"
+          rel="noopener"
+        >
           solidjs.com
         </a>
       </p>

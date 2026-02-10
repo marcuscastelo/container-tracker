@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { supabaseProcessRepository } from '~/modules/process'
+import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
 const BodySchema = z.object({
@@ -21,7 +22,14 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     for (const c of parsed.containers) {
       const normalized = c.toUpperCase().trim()
       try {
-        const container = await supabaseProcessRepository.fetchContainerByNumber(normalized)
+        const res = await supabaseProcessRepository.fetchContainerByNumber(normalized)
+        if (!res.success) {
+          console.warn('check containers: fetchContainerByNumber failed', normalized, res.error)
+          conflicts.push({ containerNumber: normalized, message: 'Failed to check container' })
+          continue
+        }
+
+        const container = res.data
         if (container) {
           conflicts.push({
             containerNumber: normalized,
@@ -41,7 +49,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     return jsonResponse({ conflicts })
   } catch (err) {
     console.error('POST /api/processes/check error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }
 

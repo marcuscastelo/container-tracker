@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
@@ -174,8 +173,9 @@ export type Database = {
           exporter_name: string | null
           id: string
           importer_name: string | null
-          operation_type: string
           origin: Json | null
+          product: string | null
+          redestination_number: string | null
           reference: string | null
           reference_importer: string | null
           source: string
@@ -194,8 +194,9 @@ export type Database = {
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
-          operation_type: string
           origin?: Json | null
+          product?: string | null
+          redestination_number?: string | null
           reference?: string | null
           reference_importer?: string | null
           source: string
@@ -214,8 +215,9 @@ export type Database = {
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
-          operation_type?: string
           origin?: Json | null
+          product?: string | null
+          redestination_number?: string | null
           reference?: string | null
           reference_importer?: string | null
           source?: string

@@ -1,9 +1,10 @@
-import { supabaseProcessRepository } from '~/modules/process'
-import { trackingUseCases } from '~/modules/tracking'
+import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
 import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
 import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
-import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers'
+import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/isRestCarrier'
+import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { parseBody } from '~/shared/api/typedRoute'
 
 function handleMaerskRedirect(container: string): Response {
@@ -49,7 +50,16 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     // Look up the container in our DB to get its UUID
-    const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
+    const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
+    if (!containerRes.success) {
+      return respondWithSchema(
+        { error: `Failed to lookup container: ${containerRes.error?.message ?? 'Unknown error'}` },
+        RefreshSchemas.responses.error,
+        500,
+      )
+    }
+
+    const containerRecord = containerRes.data
     if (!containerRecord) {
       return respondWithSchema(
         { error: `container ${container} not found in the system. Create a process first.` },
@@ -92,7 +102,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     )
   } catch (err) {
     console.error('refresh error:', err)
-    return respondWithSchema({ error: String(err) }, RefreshSchemas.responses.error, 500)
+    return mapErrorToResponse(err)
   }
 }
 

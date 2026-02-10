@@ -1,14 +1,6 @@
 import { z } from 'zod'
-import type { Container, NewContainer } from '~/modules/container/domain/container'
-import { type NewProcess, type Process, ProcessSchema } from '~/modules/process/domain/process'
-import {
-  Carrier,
-  CarrierSchema,
-  ContainerInitialStatus,
-  OperationType,
-  OperationTypeSchema,
-  ProcessSourceSchema,
-} from '~/modules/process/domain/value-objects'
+import { type NewProcess, ProcessSchema } from '~/modules/process/domain/process'
+import { CarrierSchema } from '~/modules/process/domain/value-objects'
 
 export const ProcessContainerSchema = z.object({
   id: z.string().uuid(),
@@ -18,8 +10,6 @@ export const ProcessContainerSchema = z.object({
     .min(1)
     .transform((v) => v.toUpperCase().trim()),
   carrier_code: z.string().nullable().optional(),
-  container_type: z.string().nullable().optional(), // e.g., "40HC", "20GP"
-  container_size: z.string().nullable().optional(),
   created_at: z.date(),
   removed_at: z.date().nullable().optional(),
 })
@@ -30,7 +20,6 @@ export type ProcessContainer = z.infer<typeof ProcessContainerSchema>
  */
 export const CreateProcessInputSchema = z.object({
   reference: z.string().nullable().optional(),
-  operation_type: OperationTypeSchema.optional(),
   origin: z
     .object({
       display_name: z.string().nullable().optional(),
@@ -45,13 +34,17 @@ export const CreateProcessInputSchema = z.object({
     .optional(),
   carrier: CarrierSchema,
   bill_of_lading: z.string().nullable().optional(),
+  booking_number: z.string().nullable().optional(),
+  importer_name: z.string().nullable().optional(),
+  exporter_name: z.string().nullable().optional(),
+  reference_importer: z.string().nullable().optional(),
+  product: z.string().nullable().optional(),
+  redestination_number: z.string().nullable().optional(),
   containers: z
     .array(
       z.object({
         container_number: z.string().min(1),
         carrier_code: z.string(),
-        container_type: z.string().nullable().optional(),
-        container_size: z.string().nullable().optional(),
       }),
     )
     .min(1, 'At least one container is required'),
@@ -117,14 +110,18 @@ export function findDuplicateContainers(containerNumbers: readonly string[]): re
 export function createProcess(input: CreateProcessInput): NewProcess {
   const process: NewProcess = {
     reference: input.reference,
-    operation_type: input.operation_type ?? 'unknown',
     origin: input.origin?.display_name ? { display_name: input.origin.display_name } : null,
     destination: input.destination?.display_name
       ? { display_name: input.destination.display_name }
       : null,
     carrier: input.carrier,
     bill_of_lading: input.bill_of_lading,
-    booking_reference: null,
+    booking_number: input.booking_number,
+    importer_name: input.importer_name,
+    exporter_name: input.exporter_name,
+    reference_importer: input.reference_importer,
+    product: input.product,
+    redestination_number: input.redestination_number,
     source: 'manual',
   } satisfies NewProcess
 

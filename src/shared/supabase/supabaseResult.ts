@@ -1,5 +1,5 @@
-// T is non-nullable object type representing the expected data shape from Supabase
-export type SupabaseResult<T extends {}> =
+// T is the expected data shape from Supabase (use unknown when shape is not important)
+export type SupabaseResult<T = unknown> =
   | {
       success: true
       data: T

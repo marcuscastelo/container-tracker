@@ -40,7 +40,7 @@ function localeToFlag(locale: string): string {
 }
 
 export function LanguageSwitch(): JSX.Element {
-  const { locale, setLocale, availableLocales } = useTranslation()
+  const { t, keys, locale, setLocale, availableLocales } = useTranslation()
   const [open, setOpen] = createSignal(false)
 
   return (
@@ -55,12 +55,11 @@ export function LanguageSwitch(): JSX.Element {
         <span class="text-lg" aria-hidden>
           {localeToFlag(locale())}
         </span>
-        <span class="sr-only">Language</span>
+        <span class="sr-only">{t(keys.languageSwitch.label)}</span>
       </button>
 
       <Show when={open()}>
         <ul
-          role="listbox"
           class="absolute right-0 mt-2 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
           onMouseLeave={() => setOpen(false)}
         >
@@ -71,7 +70,9 @@ export function LanguageSwitch(): JSX.Element {
                   type="button"
                   class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   onClick={() => {
-                    setLocale(lng)
+                    setLocale(lng).catch(() => {
+                      /* ignore */
+                    })
                     setOpen(false)
                   }}
                 >

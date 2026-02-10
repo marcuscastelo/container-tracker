@@ -4,14 +4,63 @@
   "css": {
     "parser": { "tailwindDirectives": true }
   },
+  "files": {
+    "includes": [
+      "**",
+      "!marucs-src",
+      "!node_modules",
+      "!src/sections/datepicker",
+      "!.vercel",
+      "!.vinxi",
+      "!.vinxi",
+      "!dist",
+      "!build",
+      "!out",
+      "!.output",
+      "!coverage",
+      "!public",
+      "!out",
+      "!.output"
+    ]
+  },
   "linter": {
+    "domains": {
+      "solid": "all"
+    },
     "rules": {
-      "recommended": false,
-      "correctness": {},
+      "recommended": true,
+      "correctness": {
+        "noUndeclaredVariables": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "useExhaustiveSwitchCases": "error"
+      },
+      "complexity": {
+        "noUselessStringConcat": "error"
+      },
+      "performance": {
+        "noBarrelFile": "error",
+        "noNamespaceImport": "error",
+        "noReExportAll": "error"
+      },
       "suspicious": {
-        "noExplicitAny": "error"
+        "noExplicitAny": "error",
+        "noImplicitAnyLet": "error",
+        "noIrregularWhitespace": "error",
+        "useAwait": "error",
+        "useAdjacentOverloadSignatures": "error"
       },
       "style": {
+        "noYodaExpression": "error",
+        "useConsistentArrayType": "error",
+        "useConsistentObjectDefinitions": "error",
+        "useShorthandAssign": "error",
+        "useObjectSpread": "error",
+        "useThrowOnlyError": "error",
+        "noNegationElse": "error",
+        "noNestedTernary": "error",
+        "useConsistentBuiltinInstantiation": "error",
         "noDefaultExport": "error",
         "useImportType": "on",
         "noNonNullAssertion": "error",
@@ -35,24 +84,7 @@
           }
         }
       }
-    },
-    "includes": [
-      "**",
-      "!marucs-src/**",
-      "!node_modules/**",
-      "!src/sections/datepicker",
-      "!.vercel",
-      "!.vinxi",
-      "!.vinxi/**",
-      "!dist",
-      "!build",
-      "!out/**",
-      "!.output/**",
-      "!coverage",
-      "!public",
-      "!out",
-      "!.output"
-    ]
+    }
   },
   "formatter": {
     "lineWidth": 100,

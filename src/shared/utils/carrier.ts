@@ -14,5 +14,5 @@ export function carrierTrackUrl(carrier: string | null, containerNumber: string)
     return `https://www.cma-cgm.com/ebusiness/tracking`
   }
 
-  return `https://www.google.com/search?q=${encodeURIComponent(carrier + ' container ' + containerNumber)}`
+  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} container ${containerNumber}`)}`
 }

@@ -11,6 +11,17 @@
     },
     "createProcess": "Criar Processo"
   },
+  "app": {
+    "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes."
+  },
+  "process": {
+    "containerSelector": {
+      "copyContainerNumber": "Copiar número do contentor"
+    }
+  },
+  "dialog": {
+    "close": "Fechar"
+  },
   "dashboard": {
     "metrics": {
       "activeShipments": "Embarques Ativos",
@@ -28,7 +39,12 @@
         "containers": "Containers",
         "status": "Status",
         "eta": "ETA"
-      }
+      },
+      "clientPlaceholder": "<Cliente>"
+    },
+    "loading": "Carregando...",
+    "error": {
+      "loadProcesses": "Falha ao carregar embarques"
     },
     "empty": {
       "title": "Nenhum embarque ainda",
@@ -44,13 +60,20 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Não disponível",
+    "actions": {
+      "refresh": "Atualizar",
+      "edit": "Editar"
+    },
     "containers": {
       "title": "Containers"
     },
     "timeline": {
       "title": "Timeline do Container",
       "expected": "Previsto",
-      "actual": "Real"
+      "actual": "Real",
+      "predictedTooltip": "Este é um evento previsto, ainda não confirmado",
+      "viewOnCarrierSite": "Ver no site da transportadora",
+      "systemCreated": "Processo registrado no sistema"
     },
     "alerts": {
       "title": "Alertas",
@@ -80,28 +103,31 @@
     "field": {
       "reference": "Referência",
       "referencePlaceholder": "ex. 2024-0512 ou PO-12345",
-      "operationType": "Tipo de Operação",
-      "operationTypePlaceholder": "Selecione o tipo de operação",
       "origin": "Origem",
       "originPlaceholder": "ex. Shanghai, Rotterdam",
       "destination": "Destino",
       "destinationPlaceholder": "ex. Santos, Los Angeles",
       "containerNumber": "Container",
       "containerNumberPlaceholder": "ex. MRKU1234567",
-      "isoType": "Tipo/Tamanho ISO",
-      "isoTypePlaceholder": "ex. 40HC, 20GP",
       "carrier": "Armador",
       "carrierPlaceholder": "Selecione o armador",
-      "blReference": "Bill of Lading (BL)",
-      "blReferencePlaceholder": "ex. MAEU123456789"
+      "billOfLading": "Bill of Lading (BL)",
+      "billOfLadingPlaceholder": "ex. MAEU123456789",
+      "bookingNumber": "Número de Booking",
+      "bookingNumberPlaceholder": "ex. BOOK123456",
+      "importerName": "Importador",
+      "importerNamePlaceholder": "ex. Empresa ABC",
+      "exporterName": "Exportador",
+      "exporterNamePlaceholder": "ex. Empresa XYZ",
+      "referenceImporter": "Referência do Importador",
+      "referenceImporterPlaceholder": "ex. PO-98765",
+      "product": "Produto",
+      "productPlaceholder": "ex. Eletrônicos, Têxteis",
+      "redestinationNumber": "Número de Redestinação",
+      "redestinationNumberPlaceholder": "ex. RED-001"
     },
     "unknownCarrierWarning": "Se 'Desconhecido', não haverá atualizações automáticas do armador.",
-    "operationType": {
-      "import": "Importação",
-      "export": "Exportação",
-      "transshipment": "Transbordo",
-      "unknown": "Desconhecido"
-    },
+    "carrierUnknown": "Desconhecido",
     "validation": {
       "containerNumberRequired": "Número do container é obrigatório.",
       "duplicateContainer": "Número de container duplicado"
@@ -114,8 +140,13 @@
       "cancel": "Cancelar",
       "existingProcessLink": "Ver processo existente",
       "dismiss": "Fechar",
+      "dismissError": "Fechar erro",
       "existingProcessError": "Container {{container}} já existe no sistema",
-      "existingProcessSame": "O container {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele"
+      "existingProcessSame": "O container {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele",
+      "confirmLoseProgress": "Você perderá o progresso do formulário. Deseja continuar?"
+    },
+    "error": {
+      "failed": "Falha ao criar processo"
     }
   },
   "tracking": {
@@ -168,5 +199,12 @@
   "notfound": {
     "title": "Não Encontrado",
     "learn": "Visite"
+  },
+  "common": {
+    "copy": "Copiar",
+    "copied": "Copiado"
+  },
+  "languageSwitch": {
+    "label": "Idioma"
   }
 }

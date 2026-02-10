@@ -3,23 +3,20 @@ import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import z from 'zod'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
-import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
+import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   CreateProcessResponseSchema,
   ProcessListResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
-import {
-  AppHeader,
-  EmptyState,
-  ExistingProcessError,
-  MetricCard,
-  StatusBadge,
-  type StatusVariant,
-} from '~/shared/ui'
+import { AppHeader } from '~/shared/ui/AppHeader'
+import { EmptyState } from '~/shared/ui/EmptyState'
+import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
+import { MetricCard } from '~/shared/ui/MetricCard'
+import { StatusBadge, type StatusVariant } from '~/shared/ui/StatusBadge'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
@@ -158,13 +155,16 @@ export function Dashboard(): JSX.Element {
       // Transform UI form data to API input format
       const input: CreateProcessInput = {
         reference: data.reference || null,
-        // data.operationType is already strongly typed in the form's type; pass it through
-        operation_type: data.operationType || undefined,
         origin: data.origin ? { display_name: data.origin } : null,
         destination: data.destination ? { display_name: data.destination } : null,
-        // carrier from the form is already typed
         carrier: data.carrier || null,
         bill_of_lading: data.billOfLading || null,
+        booking_number: data.bookingNumber || null,
+        importer_name: data.importerName || null,
+        exporter_name: data.exporterName || null,
+        reference_importer: data.referenceImporter || null,
+        product: data.product || null,
+        redestination_number: data.redestinationNumber || null,
         containers: data.containers.map((c) => ({
           container_number: c.containerNumber,
           carrier_code: data.carrier || null,
@@ -187,15 +187,15 @@ export function Dashboard(): JSX.Element {
       if (err && typeof err === 'object') {
         const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()), null)
         if (body && 'existing' in body && isRecord(body)) {
-          const ex = safeParseOrDefault(body['existing'], z.record(z.string(), z.unknown()), null)
+          const ex = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
           if (ex) {
             const processId = String(ex.processId ?? ex.process_id ?? '')
             const containerId = String(ex.containerId ?? ex.container_id ?? '')
             const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
             setCreateError({
               message: String(
-                isRecord(body) && typeof body['message'] === 'string'
-                  ? body['message']
+                isRecord(body) && typeof body.message === 'string'
+                  ? body.message
                   : 'Container already exists',
               ),
               processId,
@@ -239,8 +239,8 @@ export function Dashboard(): JSX.Element {
               const v = createError()
               if (typeof v === 'string') return v
               const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
-              if (body && isRecord(body) && typeof body['message'] === 'string')
-                return String(body['message'])
+              if (body && isRecord(body) && typeof body.message === 'string')
+                return String(body.message)
               return ''
             })()}
             existing={(() => {
@@ -292,11 +292,13 @@ export function Dashboard(): JSX.Element {
           </header>
 
           <Show when={processes.loading}>
-            <div class="px-6 py-12 text-center text-slate-500">Loading...</div>
+            <div class="px-6 py-12 text-center text-slate-500">{t(keys.dashboard.loading)}</div>
           </Show>
 
           <Show when={processes.error}>
-            <div class="px-6 py-12 text-center text-red-500">Failed to load processes</div>
+            <div class="px-6 py-12 text-center text-red-500">
+              {t(keys.dashboard.error.loadProcesses)}
+            </div>
           </Show>
 
           <Show when={!processes.loading && !processes.error}>
@@ -344,7 +346,9 @@ export function Dashboard(): JSX.Element {
                               <span class="text-sm text-slate-600">{process.carrier ?? '—'}</span>
                             </td>
                             <td class="px-6 py-4">
-                              <span class="text-sm text-slate-600">{'<Client>'}</span>
+                              <span class="text-sm text-slate-600">
+                                {t(keys.dashboard.table.clientPlaceholder)}
+                              </span>
                             </td>
                             <td class="px-6 py-4">
                               <div class="flex items-center gap-2 text-sm text-slate-600">

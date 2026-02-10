@@ -1,5 +1,4 @@
 import axios from 'axios'
-import type { Provider } from '~/modules/tracking/domain/provider'
 import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
 
 /**
@@ -15,7 +14,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
       __RequestVerificationToken:
         'WSKXu5mATqHpEopOTqNHnfZdedqy3gil1IV1XMncr66exbjY5Ks6KO4ekvCROhP42Lkh9F3zegXkzFIPlO2aRnDgxFaIQU61qzAI_9dNZtc1',
       'SearchViewModel.SearchBy': 'Container',
-      'SearchViewModel.Reference': 'FSCU4565494',
+      'SearchViewModel.Reference': containerNumber,
       'SearchViewModel.FromHome': 'true',
       search: '',
     }),

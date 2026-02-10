@@ -4,6 +4,7 @@ import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepos
 import { toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 import { formatParseError } from '~/shared/utils/formatParseError'
 import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
 
@@ -11,7 +12,9 @@ const TABLE = 'container_snapshots' as const
 
 type SnapshotRow = Tables<'container_snapshots'>
 
-function rowToSnapshot(row: SnapshotRow): Snapshot {
+function rowToSnapshot(
+  row: SnapshotRow,
+): { success: true; data: Snapshot } | { success: false; error: Error } {
   const fetchedAt = normalizeTimestamptz(row.fetched_at)
 
   const result = SnapshotSchema.safeParse({
@@ -24,14 +27,14 @@ function rowToSnapshot(row: SnapshotRow): Snapshot {
   })
 
   if (!result.success) {
-    throw new Error(`Invalid snapshot row:\n${formatParseError(result.error)}`)
+    const err = new Error(`Invalid snapshot row:\n${formatParseError(result.error)}`)
+    return { success: false, error: err }
   }
 
-  return result.data
+  return { success: true, data: result.data }
 }
-
 export const supabaseSnapshotRepository: SnapshotRepository = {
-  async insert(snapshot: NewSnapshot): Promise<Snapshot> {
+  async insert(snapshot: NewSnapshot): Promise<SupabaseResult<Snapshot>> {
     const { data, error } = await supabase
       .from(TABLE)
       .insert({
@@ -45,13 +48,23 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
       .single()
 
     if (error) {
-      throw new Error(`Failed to insert snapshot: ${error.message}`)
+      console.error('supabaseSnapshotRepository.insert error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to insert snapshot: ${error.message}`, { cause: error }),
+      }
     }
 
-    return rowToSnapshot(data)
+    const parsed = rowToSnapshot(data)
+    if (!parsed.success) {
+      console.error('supabaseSnapshotRepository.insert: invalid row', parsed.error)
+      return { success: false, data: null, error: parsed.error }
+    }
+    return { success: true, data: parsed.data, error: null }
   },
 
-  async findLatestByContainerId(containerId: string): Promise<Snapshot | null> {
+  async findLatestByContainerId(containerId: string): Promise<SupabaseResult<Snapshot | null>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
@@ -61,13 +74,24 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
       .maybeSingle()
 
     if (error) {
-      throw new Error(`Failed to fetch latest snapshot: ${error.message}`)
+      console.error('supabaseSnapshotRepository.findLatestByContainerId error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch latest snapshot: ${error.message}`, { cause: error }),
+      }
     }
 
-    return data ? rowToSnapshot(data) : null
+    if (!data) return { success: true, data: null, error: null }
+    const parsed = rowToSnapshot(data)
+    if (!parsed.success) {
+      console.error('supabaseSnapshotRepository.findLatestByContainerId: invalid row', parsed.error)
+      return { success: false, data: null, error: parsed.error }
+    }
+    return { success: true, data: parsed.data, error: null }
   },
 
-  async findAllByContainerId(containerId: string): Promise<readonly Snapshot[]> {
+  async findAllByContainerId(containerId: string): Promise<SupabaseResult<readonly Snapshot[]>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
@@ -75,9 +99,25 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
       .order('fetched_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to fetch snapshots: ${error.message}`)
+      console.error('supabaseSnapshotRepository.findAllByContainerId error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch snapshots: ${error.message}`, { cause: error }),
+      }
     }
 
-    return (data ?? []).map(rowToSnapshot)
+    const mapped: Snapshot[] = []
+    for (const row of data ?? []) {
+      const parsed = rowToSnapshot(row)
+      if (parsed.success) mapped.push(parsed.data)
+      else
+        console.error(
+          'supabaseSnapshotRepository.findAllByContainerId: invalid row skipped',
+          parsed.error,
+        )
+    }
+
+    return { success: true, data: mapped, error: null }
   },
 }

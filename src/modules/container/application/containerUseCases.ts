@@ -1,6 +1,11 @@
 import type { Container, NewContainer } from '~/modules/container/domain/container'
 import type { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/supabaseContainerRepository'
+import {
+  CannotRemoveLastContainerError,
+  DuplicateContainersError,
+} from '~/modules/process/application/errors'
 import { validateContainerNumber } from '~/modules/process/domain/processStuff'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 
 // Ad-hoc "interface". For now more abstraction would be over-engineering.
 type ContainerRepository = typeof supabaseContainerRepository
@@ -18,7 +23,7 @@ export type ContainerInput = {
 /**
  * Result of container creation with validation warnings
  */
-export type CreateContainerResult = {
+type CreateContainerResult = {
   container: Container
   warnings: string[]
 }
@@ -26,7 +31,7 @@ export type CreateContainerResult = {
 /**
  * Result of batch container creation
  */
-export type CreateManyContainersResult = {
+type CreateManyContainersResult = {
   containers: Container[]
   warnings: string[]
 }
@@ -34,14 +39,14 @@ export type CreateManyContainersResult = {
 /**
  * Normalizes a container number to uppercase and trim
  */
-export function normalizeContainerNumber(containerNumber: string): string {
+function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.toUpperCase().trim()
 }
 
 /**
  * Validates a container number and returns warnings if any
  */
-export function validateAndWarn(containerNumber: string): string[] {
+function validateAndWarn(containerNumber: string): string[] {
   const warnings: string[] = []
   const validation = validateContainerNumber(containerNumber)
   if (validation.message) {
@@ -78,7 +83,10 @@ export function createContainerUseCases({
 
       const result = await containerRepository.insert(newContainer)
       if (!result.success) {
-        throw new Error(`Failed to create container: ${result.error?.message ?? 'Unknown error'}`)
+        throw new InfrastructureError(
+          `Failed to create container: ${result.error?.message ?? 'Unknown error'}`,
+          result.error ?? undefined,
+        )
       }
 
       return {
@@ -121,7 +129,7 @@ export function createContainerUseCases({
       }
 
       if (duplicates.length > 0) {
-        throw new Error(`Duplicate container numbers in request: ${duplicates.join(', ')}`)
+        throw new DuplicateContainersError(duplicates)
       }
 
       // Prepare new containers
@@ -133,7 +141,10 @@ export function createContainerUseCases({
 
       const result = await containerRepository.insertMany(newContainers)
       if (!result.success) {
-        throw new Error(`Failed to create containers: ${result.error?.message ?? 'Unknown error'}`)
+        throw new InfrastructureError(
+          `Failed to create containers: ${result.error?.message ?? 'Unknown error'}`,
+          result.error ?? undefined,
+        )
       }
 
       return {
@@ -149,8 +160,9 @@ export function createContainerUseCases({
       const normalized = containerNumbers.map(normalizeContainerNumber)
       const result = await containerRepository.existsMany(normalized)
       if (!result.success) {
-        throw new Error(
+        throw new InfrastructureError(
           `Failed to check container existence: ${result.error?.message ?? 'Unknown error'}`,
+          result.error ?? undefined,
         )
       }
       return result.data
@@ -163,7 +175,10 @@ export function createContainerUseCases({
       const normalized = containerNumbers.map(normalizeContainerNumber)
       const result = await containerRepository.findByNumbers(normalized)
       if (!result.success) {
-        throw new Error(`Failed to find containers: ${result.error?.message ?? 'Unknown error'}`)
+        throw new InfrastructureError(
+          `Failed to find containers: ${result.error?.message ?? 'Unknown error'}`,
+          result.error ?? undefined,
+        )
       }
       return result.data
     },
@@ -214,8 +229,9 @@ export function createContainerUseCases({
 
         const result = await containerRepository.insert(newContainer)
         if (!result.success) {
-          throw new Error(
+          throw new InfrastructureError(
             `Failed to add container ${item.containerNumber}: ${result.error?.message ?? 'Unknown error'}`,
+            result.error ?? undefined,
           )
         }
         added.push(result.data)
@@ -236,7 +252,13 @@ export function createContainerUseCases({
           continue
         }
 
-        await containerRepository.delete(container.id)
+        const delResult = await containerRepository.delete(container.id)
+        if (!delResult.success) {
+          throw new Error(
+            `Failed to delete container ${container.id}: ${delResult.error?.message ?? 'Unknown error'}`,
+            { cause: delResult.error ?? undefined },
+          )
+        }
         removed.push(container.id)
       }
 
@@ -252,10 +274,16 @@ export function createContainerUseCases({
       currentContainers: readonly T[],
     ): Promise<void> {
       if (currentContainers.length <= 1) {
-        throw new Error('Cannot remove the last container from a process')
+        throw new CannotRemoveLastContainerError(processId, containerId)
       }
 
-      await containerRepository.delete(containerId)
+      const delResult = await containerRepository.delete(containerId)
+      if (!delResult.success) {
+        throw new InfrastructureError(
+          `Failed to delete container ${containerId}: ${delResult.error?.message ?? 'Unknown error'}`,
+          delResult.error ?? undefined,
+        )
+      }
     },
   }
 }

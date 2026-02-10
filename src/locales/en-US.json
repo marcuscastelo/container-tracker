@@ -28,7 +28,12 @@
         "containers": "Containers",
         "status": "Status",
         "eta": "ETA"
-      }
+      },
+      "clientPlaceholder": "<Client>"
+    },
+    "loading": "Loading...",
+    "error": {
+      "loadProcesses": "Failed to load processes"
     },
     "empty": {
       "title": "No shipments yet",
@@ -44,13 +49,20 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Not available",
+    "actions": {
+      "refresh": "Refresh",
+      "edit": "Edit"
+    },
     "containers": {
       "title": "Containers"
     },
     "timeline": {
       "title": "Container Timeline",
       "expected": "Expected",
-      "actual": "Actual"
+      "actual": "Actual",
+      "predictedTooltip": "This is a predicted event, not yet confirmed",
+      "viewOnCarrierSite": "View on carrier site",
+      "systemCreated": "Process registered in the system"
     },
     "alerts": {
       "title": "Alerts",
@@ -80,28 +92,31 @@
     "field": {
       "reference": "Reference",
       "referencePlaceholder": "e.g. 2024-0512 or PO-12345",
-      "operationType": "Operation Type",
-      "operationTypePlaceholder": "Select operation type",
       "origin": "Origin",
       "originPlaceholder": "e.g. Shanghai, Rotterdam",
       "destination": "Destination",
       "destinationPlaceholder": "e.g. Santos, Los Angeles",
       "containerNumber": "Container",
       "containerNumberPlaceholder": "e.g. MRKU1234567",
-      "isoType": "ISO Type/Size",
-      "isoTypePlaceholder": "e.g. 40HC, 20GP",
       "carrier": "Carrier",
       "carrierPlaceholder": "Select carrier",
-      "blReference": "Bill of Lading (BL)",
-      "blReferencePlaceholder": "e.g. MAEU123456789"
+      "billOfLading": "Bill of Lading (BL)",
+      "billOfLadingPlaceholder": "e.g. MAEU123456789",
+      "bookingNumber": "Booking Number",
+      "bookingNumberPlaceholder": "e.g. BOOK123456",
+      "importerName": "Importer",
+      "importerNamePlaceholder": "e.g. Company ABC",
+      "exporterName": "Exporter",
+      "exporterNamePlaceholder": "e.g. Company XYZ",
+      "referenceImporter": "Importer Reference",
+      "referenceImporterPlaceholder": "e.g. PO-98765",
+      "product": "Product",
+      "productPlaceholder": "e.g. Electronics, Textiles",
+      "redestinationNumber": "Redestination Number",
+      "redestinationNumberPlaceholder": "e.g. RED-001"
     },
     "unknownCarrierWarning": "If 'Unknown', automatic carrier updates won't be available.",
-    "operationType": {
-      "import": "Import",
-      "export": "Export",
-      "transshipment": "Transshipment",
-      "unknown": "Unknown"
-    },
+    "carrierUnknown": "Unknown",
     "validation": {
       "containerNumberRequired": "Container number is required.",
       "duplicateContainer": "Duplicate container number"
@@ -114,8 +129,13 @@
       "cancel": "Cancel",
       "existingProcessLink": "View existing process",
       "dismiss": "Dismiss",
+      "dismissError": "Dismiss error",
       "existingProcessError": "Container {{container}} already exists in the system",
-      "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it"
+      "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it",
+      "confirmLoseProgress": "You will lose form progress. Continue?"
+    },
+    "error": {
+      "failed": "Failed to create process"
     }
   },
   "tracking": {
@@ -168,5 +188,23 @@
   "notfound": {
     "title": "Not Found",
     "learn": "Visit"
+  },
+  "app": {
+    "unexpectedRenderError": "An unexpected error occurred. Check the console for details."
+  },
+  "process": {
+    "containerSelector": {
+      "copyContainerNumber": "Copy container number"
+    }
+  },
+  "dialog": {
+    "close": "Close"
+  },
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "languageSwitch": {
+    "label": "Language"
   }
 }

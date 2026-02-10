@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs')
-const path = require('path')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
 const exts = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']
@@ -30,7 +30,7 @@ function normalizeImportTarget(importTarget, fileDir) {
     }
   }
   if (rel.startsWith('..')) return null
-  return '~/' + rel
+  return `~/${rel}`
 }
 
 function processFile(filePath) {
@@ -57,7 +57,7 @@ function processFile(filePath) {
   }
 
   if (changed) {
-    fs.writeFileSync(filePath + '.bak', src, 'utf8')
+    fs.writeFileSync(`${filePath}.bak`, src, 'utf8')
     fs.writeFileSync(filePath, out, 'utf8')
     console.log('Updated:', filePath)
   }
