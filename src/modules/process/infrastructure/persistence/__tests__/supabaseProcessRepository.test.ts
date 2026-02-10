@@ -23,12 +23,11 @@ vi.mock('~/modules/process/infrastructure/persistence/processMapper', () => ({
     rowToProcess: vi.fn((row) => ({
       id: row.id,
       reference: row.reference,
-      operation_type: row.operation_type,
       origin: row.origin,
       destination: row.destination,
       carrier: row.carrier,
       bill_of_lading: row.bill_of_lading,
-      booking_reference: row.booking_reference,
+      booking_number: row.booking_number,
       source: row.source,
       created_at: new Date(row.created_at),
       updated_at: new Date(row.updated_at),
@@ -48,12 +47,11 @@ describe('supabaseProcessRepository', () => {
       const mockProcessRow = {
         id: 'test-id-123',
         reference: 'REF-001',
-        operation_type: 'import',
         origin: { unlocode: 'CNSHG' },
         destination: { unlocode: 'USLAX' },
         carrier: 'maersk',
         bill_of_lading: 'BL-001',
-        booking_reference: 'BK-001',
+        booking_number: 'BK-001',
         source: 'manual',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
@@ -79,7 +77,6 @@ describe('supabaseProcessRepository', () => {
         expect.objectContaining({
           id: 'test-id-123',
           reference: 'REF-001',
-          operation_type: 'import',
         }),
       )
       expect(supabase.from).toHaveBeenCalledWith('processes')
@@ -136,24 +133,22 @@ describe('supabaseProcessRepository', () => {
     it('should return SupabaseResult with created process on success', async () => {
       const newProcess: NewProcess = {
         reference: 'REF-002',
-        operation_type: 'export',
         origin: { unlocode: 'USLAX' },
         destination: { unlocode: 'CNSHG' },
         carrier: 'msc',
         bill_of_lading: null,
-        booking_reference: null,
+        booking_number: null,
         source: 'manual',
       }
 
       const mockProcessRow = {
         id: 'created-id-456',
         reference: 'REF-002',
-        operation_type: 'export',
         origin: { unlocode: 'USLAX' },
         destination: { unlocode: 'CNSHG' },
         carrier: 'msc',
         bill_of_lading: null,
-        booking_reference: null,
+        booking_number: null,
         source: 'manual',
         created_at: '2024-01-02T00:00:00Z',
         updated_at: '2024-01-02T00:00:00Z',
@@ -179,7 +174,6 @@ describe('supabaseProcessRepository', () => {
         expect.objectContaining({
           id: 'created-id-456',
           reference: 'REF-002',
-          operation_type: 'export',
         }),
       )
       expect(supabase.from).toHaveBeenCalledWith('processes')
@@ -189,12 +183,11 @@ describe('supabaseProcessRepository', () => {
     it('should return SupabaseResult with error on database insert error', async () => {
       const newProcess: NewProcess = {
         reference: 'REF-003',
-        operation_type: 'import',
         origin: { unlocode: 'CNSHG' },
         destination: { unlocode: 'USLAX' },
         carrier: 'maersk',
         bill_of_lading: null,
-        booking_reference: null,
+        booking_number: null,
         source: 'manual',
       }
 
@@ -226,12 +219,11 @@ describe('supabaseProcessRepository', () => {
     it('should return SupabaseResult with error when no data is returned', async () => {
       const newProcess: NewProcess = {
         reference: 'REF-004',
-        operation_type: 'import',
         origin: { unlocode: 'CNSHG' },
         destination: { unlocode: 'USLAX' },
         carrier: 'maersk',
         bill_of_lading: null,
-        booking_reference: null,
+        booking_number: null,
         source: 'manual',
       }
 
