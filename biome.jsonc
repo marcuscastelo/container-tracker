@@ -46,6 +46,7 @@
       },
       "suspicious": {
         "noExplicitAny": "error",
+        "noImplicitAnyLet": "error",
         "noIrregularWhitespace": "error",
         "useAwait": "error",
         "useAdjacentOverloadSignatures": "error"
