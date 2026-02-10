@@ -15,6 +15,7 @@ import { env } from '~/shared/config/env'
 // Ensure environment is loaded early (fail fast on missing vars)
 void env
 
+/** @public */
 export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
