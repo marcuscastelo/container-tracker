@@ -1,3 +1,3 @@
 // Infrastructure surface for the `process` module.
 
-export type _ProcessInfrastructurePlaceholder = void
+export type _ProcessInfrastructurePlaceholder = undefined

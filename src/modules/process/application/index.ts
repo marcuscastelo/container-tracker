@@ -1,3 +1,3 @@
 // Application surface for the `process` module.
 
-export type _ProcessApplicationPlaceholder = void
+export type _ProcessApplicationPlaceholder = undefined
