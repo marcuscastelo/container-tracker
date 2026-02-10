@@ -6,6 +6,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { z } from 'zod'
 import { supabaseProcessRepository } from '~/modules/process'
 import { trackingUseCases } from '~/modules/tracking'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -543,9 +545,8 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     } catch (err) {
       console.error('[maersk-refresh] Supabase save failed:', err)
-      return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), {
-        status: 500,
-      })
+      // Rethrow as an infrastructure error so the outer handler maps it to a proper HTTP response
+      throw new InfrastructureError('Supabase save failed', { cause: err })
     }
 
     // Write diagnostics to file (optional, for debugging)
@@ -600,14 +601,7 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        error: String(err),
-        // @ts-expect-error: forced typing
-        stack: err?.stack ?? null,
-      }),
-      { status: 500 },
-    )
+    return mapErrorToResponse(err)
   }
 }
 
