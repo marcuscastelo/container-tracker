@@ -2,6 +2,7 @@
 Assim que o processo for criado e ele redirecionado, o usuario poderia ver algo como "ultima edicao há 1s, 2s, 3s etc" para ter o feedback imediato de que a criacao foi bem sucedida. As vezes o usuario nao tem certeza se trocou de processo, principalmente se o processo novo for parecido com o anterior, e isso daria um feedback visual imediato.
 Plano futuro: deixar templates de email prontos para serem preenchidos para alertas específicos, como transbordo, atraso, etc. para facilitar a comunicação com os clientes, terminal, etc.
 Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar identificar o armador, testando APIs em ordem de probabilidade (maersk, then hapag, etc) e caso o container seja encontrado em alguma delas, atualizar o processo com o armador identificado e os dados retornados. Risco: Processo com containers de 2 armadores diferentes, mas isso hoje é tratado como impossível. Revisar.
+No Status, em vez de "Discharged", "Loaded", etc. poderia ter "Discharged (3/7)", "Loaded (5/10)", etc. para dar uma ideia de quantos eventos ainda falta para o "Arrived at destination" acontecer, e dar uma ideia melhor do progresso do container, lembrando que no X/Y X é o ultimo ACTUAL e Y é o último EXPECTED e pode mudar. Talvez seja melhor criar outro campo na UI (progresso?) para permitir futuros filtros por status sem poluir com progresso meramente visual.
 
 # Refine
 
