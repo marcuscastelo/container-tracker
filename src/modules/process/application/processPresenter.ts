@@ -4,7 +4,7 @@ import type {
   ProcessDetailResponse,
   TrackingAlertResponse,
 } from '~/shared/api-schemas/processes.schemas'
-import type { StatusVariant } from '~/shared/ui'
+import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // Backwards-compatible alias for tests and other callers

@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
-import { LanguageSwitch } from '.'
+import { LanguageSwitch } from '~/shared/ui/LanguageSwitch'
 
 type Props = {
   readonly onCreateProcess?: () => void

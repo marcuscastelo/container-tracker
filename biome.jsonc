@@ -17,6 +17,9 @@
       "complexity": {
         "noUselessStringConcat": "error"
       },
+      "performance": {
+        "noBarrelFile": "error"
+      },
       "suspicious": {
         "noExplicitAny": "error",
         "noIrregularWhitespace": "error",

@@ -3,23 +3,20 @@ import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import z from 'zod'
 import { presentProcessList } from '~/modules/dashboard/application/processListPresenter'
-import { CreateProcessDialog } from '~/modules/process'
 import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
+import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   CreateProcessResponseSchema,
   ProcessListResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
-import {
-  AppHeader,
-  EmptyState,
-  ExistingProcessError,
-  MetricCard,
-  StatusBadge,
-  type StatusVariant,
-} from '~/shared/ui'
+import { AppHeader } from '~/shared/ui/AppHeader'
+import { EmptyState } from '~/shared/ui/EmptyState'
+import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
+import { MetricCard } from '~/shared/ui/MetricCard'
+import { StatusBadge, type StatusVariant } from '~/shared/ui/StatusBadge'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 

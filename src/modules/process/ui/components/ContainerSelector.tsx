@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
 import type { ContainerDetail } from '~/modules/process/application/processPresenter'
-import { CopyButton } from '~/shared/ui'
+import { CopyButton } from '~/shared/ui/CopyButton'
 
 export function ContainerSelector(props: {
   containers: readonly ContainerDetail[]

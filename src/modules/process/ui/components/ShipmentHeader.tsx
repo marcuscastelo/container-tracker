@@ -4,8 +4,8 @@ import { createSignal, Show } from 'solid-js'
 import type { ShipmentDetail } from '~/modules/process/application/processPresenter'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { useTranslation } from '~/shared/localization/i18n'
-import { StatusBadge } from '~/shared/ui'
 import { Dialog } from '~/shared/ui/Dialog'
+import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   data: ShipmentDetail

@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod'
-import { trackingUseCases } from '~/modules/tracking'
+import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 
 // Helper to create JSON response

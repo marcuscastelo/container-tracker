@@ -2,9 +2,9 @@ import type { APIEvent } from '@solidjs/start/server'
 import {
   type CreateProcessInput,
   CreateProcessInputSchema,
-  processUseCases,
-} from '~/modules/process'
-import { trackingUseCases } from '~/modules/tracking'
+} from '~/modules/process/domain/processStuff'
+import { processUseCases } from '~/modules/process/processUseCases'
+import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse as typedJsonResponse } from '~/shared/api/typedRoute'
 import {
