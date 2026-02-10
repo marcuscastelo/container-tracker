@@ -2,9 +2,11 @@ import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import { ErrorBoundary, Suspense } from 'solid-js'
 import '~/app.css'
+import { useTranslation } from '~/shared/localization/i18n'
 
 /** @public */
 export default function App() {
+  const { t, keys } = useTranslation()
   return (
     <Router
       root={(props) => (
@@ -15,11 +17,7 @@ export default function App() {
               try {
                 console.error('Uncaught render error in App root:', err)
               } catch (_e) { }
-              return (
-                <div style={{ padding: '24px' }}>
-                  An unexpected error occurred. Check the console for details.
-                </div>
-              )
+              return <div style={{ padding: '24px' }}>{t(keys.app.unexpectedRenderError)}</div>
             }}
           >
             <Suspense>{props.children}</Suspense>

@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
 import { createEffect, onCleanup, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
+import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {
   readonly open: boolean
@@ -20,6 +21,7 @@ const maxWidthClasses = {
 }
 
 export function Dialog(props: Props): JSX.Element {
+  const { t, keys } = useTranslation()
   // Handle escape key
   createEffect(() => {
     if (!props.open) return
@@ -77,7 +79,7 @@ export function Dialog(props: Props): JSX.Element {
                     type="button"
                     onClick={() => props.onClose?.()}
                     class="-m-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-500"
-                    aria-label="Close"
+                    aria-label={t(keys.dialog.close)}
                   >
                     <svg
                       class="h-5 w-5"

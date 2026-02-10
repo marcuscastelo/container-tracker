@@ -74,12 +74,16 @@ export function TimelineNode(props: {
         <div class="flex items-start justify-between">
           <div>
             <div class="flex items-center gap-2">
-              <p class={`text-sm ${styles().text}`}>{props.event.label}</p>
+              <p class={`text-sm ${styles().text}`}>
+                {props.event.labelKey === 'shipmentView.timeline.systemCreated'
+                  ? t(keys.shipmentView.timeline.systemCreated)
+                  : props.event.label}
+              </p>
               {/* Badge for EXPECTED events */}
               <Show when={isExpected()}>
                 <span
                   class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600"
-                  title="This is a predicted event, not yet confirmed"
+                  title={t(keys.shipmentView.timeline.predictedTooltip)}
                 >
                   {t(keys.shipmentView.timeline.expected)}
                 </span>
@@ -124,7 +128,7 @@ export function TimelineNode(props: {
                   href={href()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="View on carrier site"
+                  title={t(keys.shipmentView.timeline.viewOnCarrierSite)}
                   class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-600"
                   onClick={(e) => {
                     e.preventDefault()
@@ -147,7 +151,7 @@ export function TimelineNode(props: {
                   }}
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <title>View on carrier site</title>
+                    <title>{t(keys.shipmentView.timeline.viewOnCarrierSite)}</title>
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"

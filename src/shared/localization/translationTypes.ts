@@ -9,6 +9,7 @@ type IsRecord<T> = T extends string ? false : T extends Record<string, any> ? tr
 
 type Join<K extends string, P extends string> = P extends '' ? K : `${K}.${P}`
 
+// biome-ignore lint/correctness/noUnusedVariables: KeyPaths is recursively used in its own definition
 type KeyPaths<T> = T extends string
   ? ''
   : {

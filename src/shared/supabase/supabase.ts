@@ -46,7 +46,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 })
 
- type RealtimeEvent<T = unknown> = {
+type RealtimeEvent<T = unknown> = {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE'
   old?: T
   new?: T

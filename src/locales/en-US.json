@@ -28,7 +28,12 @@
         "containers": "Containers",
         "status": "Status",
         "eta": "ETA"
-      }
+      },
+      "clientPlaceholder": "<Client>"
+    },
+    "loading": "Loading...",
+    "error": {
+      "loadProcesses": "Failed to load processes"
     },
     "empty": {
       "title": "No shipments yet",
@@ -44,13 +49,20 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Not available",
+    "actions": {
+      "refresh": "Refresh",
+      "edit": "Edit"
+    },
     "containers": {
       "title": "Containers"
     },
     "timeline": {
       "title": "Container Timeline",
       "expected": "Expected",
-      "actual": "Actual"
+      "actual": "Actual",
+      "predictedTooltip": "This is a predicted event, not yet confirmed",
+      "viewOnCarrierSite": "View on carrier site",
+      "systemCreated": "Process registered in the system"
     },
     "alerts": {
       "title": "Alerts",
@@ -117,8 +129,12 @@
       "cancel": "Cancel",
       "existingProcessLink": "View existing process",
       "dismiss": "Dismiss",
+      "dismissError": "Dismiss error",
       "existingProcessError": "Container {{container}} already exists in the system",
       "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it"
+    },
+    "error": {
+      "failed": "Failed to create process"
     }
   },
   "tracking": {
@@ -171,5 +187,16 @@
   "notfound": {
     "title": "Not Found",
     "learn": "Visit"
+  },
+  "app": {
+    "unexpectedRenderError": "An unexpected error occurred. Check the console for details."
+  },
+  "process": {
+    "containerSelector": {
+      "copyContainerNumber": "Copy container number"
+    }
+  },
+  "dialog": {
+    "close": "Close"
   }
 }
