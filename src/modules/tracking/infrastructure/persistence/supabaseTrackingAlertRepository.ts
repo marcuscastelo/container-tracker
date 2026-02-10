@@ -171,7 +171,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     return { success: true, data: types, error: null }
   },
 
-  async acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<{}>> {
+  async acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<object>> {
     const { error } = await supabase.from(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
 
     if (error) {
@@ -188,7 +188,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     return { success: true, data: {}, error: null }
   },
 
-  async dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<{}>> {
+  async dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<object>> {
     const { error } = await supabase
       .from(TABLE)
       .update({ dismissed_at: dismissedAt })

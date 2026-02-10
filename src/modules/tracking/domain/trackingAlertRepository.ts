@@ -15,8 +15,8 @@ export type TrackingAlertRepository = {
   findActiveTypesByContainerId(containerId: string): Promise<SupabaseResult<ReadonlySet<string>>>
 
   /** Acknowledge an alert by id. */
-  acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<{}>>
+  acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<object>>
 
   /** Dismiss an alert by id. */
-  dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<{}>>
+  dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<object>>
 }

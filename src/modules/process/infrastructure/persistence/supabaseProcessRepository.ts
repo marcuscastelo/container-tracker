@@ -263,7 +263,7 @@ export const supabaseProcessRepository = {
     return { success: true, data: processMappers.rowToProcess(data), error: null }
   },
 
-  async delete(processId: string): Promise<SupabaseResult<{}>> {
+  async delete(processId: string): Promise<SupabaseResult<object>> {
     // Containers are deleted via cascade in the database
     const { error } = await supabase.from(PROCESSES_TABLE).delete().eq('id', processId)
 
@@ -279,7 +279,7 @@ export const supabaseProcessRepository = {
     }
     return { success: true, data: {}, error: null }
   },
-  async removeContainer(containerId: string): Promise<SupabaseResult<{}>> {
+  async removeContainer(containerId: string): Promise<SupabaseResult<object>> {
     const { error } = await supabase.from(CONTAINERS_TABLE).delete().eq('id', containerId)
 
     if (error) {
