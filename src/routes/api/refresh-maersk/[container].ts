@@ -142,7 +142,7 @@ async function handleMaersk({ params, request }: APIEvent) {
     const headless = qParsed.data.headless === '1' || qParsed.data.headless === 'true'
     hold = qParsed.data.hold === '1'
     const timeoutMs = parseInt(qParsed.data.timeout || '60000', 10)
-    let userDataDir = qParsed.data.userDataDir || process.env.CHROME_USER_DATA_DIR || null
+    const userDataDir = qParsed.data.userDataDir || process.env.CHROME_USER_DATA_DIR || null
 
     // Validate userDataDir
     if (userDataDir && !fs.existsSync(userDataDir)) {
@@ -260,9 +260,9 @@ async function handleMaersk({ params, request }: APIEvent) {
       Object.defineProperty(navigator, 'plugins', {
         get: () => [1, 2, 3, 4, 5],
       })
-      // @ts-ignore
+      // @ts-expect-error
       window.chrome = { runtime: {} }
-      // @ts-ignore
+      // @ts-expect-error
       delete navigator.__proto__.webdriver
     })
 

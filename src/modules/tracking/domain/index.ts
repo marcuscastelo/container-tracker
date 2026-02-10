@@ -38,7 +38,7 @@ export {
   SnapshotSchema,
 } from '~/modules/tracking/domain/snapshot'
 
-export { type Timeline, type TimelineHole } from '~/modules/tracking/domain/timeline'
+export type { Timeline, TimelineHole } from '~/modules/tracking/domain/timeline'
 
 export {
   type NewTrackingAlert,

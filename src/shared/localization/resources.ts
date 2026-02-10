@@ -42,7 +42,7 @@ export function loadProjectResources() {
       console.warn(`Locale module ${path} is null/undefined, skipping`)
       continue
     }
-    let translation: Record<string, unknown> | undefined = undefined
+    let translation: Record<string, unknown> | undefined
     // Use zod to safely parse module shape (some bundlers return { default: {...} })
     const modRec = safeParseOrDefault(mod, referenceSchema, null)
     if (modRec) {
