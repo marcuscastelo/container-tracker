@@ -23,7 +23,7 @@ Mappers usam asserts e casts inseguros ao converter dados do DB.
 
 * Substituir asserts por `safeParseOrDefault`
 * Adicionar testes com rows inválidas/corrompidas
-* Migrar **um mapper por PR**
+* Migrar **todos os mappers em um único PR**
 
 **Critério de aceite**
 
