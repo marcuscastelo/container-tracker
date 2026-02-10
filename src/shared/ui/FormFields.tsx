@@ -53,8 +53,8 @@ export function FormInput(props: InputProps): JSX.Element {
         disabled={local.disabled}
         required={local.required}
         class={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ${hasError()
-          ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-          : 'border-slate-300 focus:border-slate-500 focus:ring-slate-500'
+            ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+            : 'border-slate-300 focus:border-slate-500 focus:ring-slate-500'
           }`}
         aria-invalid={hasError()}
         aria-describedby={local.helperText || local.error ? `${local.name}-description` : undefined}

@@ -2,7 +2,7 @@ import { supabaseProcessRepository } from '~/modules/process/infrastructure/pers
 import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
 import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
 import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
-import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers'
+import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/isRestCarrier'
 import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { parseBody } from '~/shared/api/typedRoute'
