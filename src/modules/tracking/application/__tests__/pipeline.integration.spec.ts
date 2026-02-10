@@ -363,7 +363,8 @@ describe('Pipeline Integration Tests - Maersk', () => {
     // Simulate a breaking change in the Maersk API response structure
     const incompatiblePayload = {
       ...maerskPayload,
-      containers: undefined, // Breaking change - containers field removed
+      // Breaking change - containers has an incompatible type
+      containers: 'this-should-be-an-array-not-a-string',
     }
 
     const snapshot: Snapshot = {
