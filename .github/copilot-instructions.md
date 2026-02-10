@@ -111,6 +111,21 @@ Copilot deve **recusar** colocar regras de derivação dentro da UI.
 * Sem efeitos colaterais escondidos
 * Regras de domínio devem ser puras
 
+### 4.5 Dynamic imports
+
+* NUNCA use `await import(...)` em código TypeScript (TS/TSX) deste repositório.
+  * Use imports estáticos sempre que possível.
+  * Se precisar de dependência opcional, preferir tornar a dependência explícita (dev/optional) e carregá-la via import estático ou encapsular a lógica de fallback em um módulo adaptador que exponha uma API estável.
+  * A proibição de `await import` ajuda a evitar import dinâmica dispersa e problemas de análise/empacotamento; esta preferência foi adotada pelo time e deve ser seguida por ferramentas automáticas e por sugestões do Copilot.
+
+### 4.6 Exports
+
+* NÃO use `export default` em arquivos TypeScript (TS/TSX) deste repositório.
+  * Use sempre exportações nomeadas (`export const fn = ...` / `export function foo() {}` / `export class Bar {}`).
+  * Motivação: exportações nomeadas facilitam refactors, tornam as importações explícitas, melhoram a compatibilidade com ferramentas de análise estática e evitam ambiguidades na resolução de símbolos.
+  * Quando sugerir código ou modificar arquivos, o Copilot deve preferir e gerar apenas exportações nomeadas. Se uma dependência externa expuser um default, adapte via import específico (`import pkg from 'pkg'`) somente onde necessário, mas internamente preferir named exports.
+
+
 ---
 
 ## 5. BiomeJS / ESLint

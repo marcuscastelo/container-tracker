@@ -7,6 +7,7 @@
 
 import { z } from 'zod'
 import { trackingUseCases } from '~/modules/tracking'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 
 // Helper to create JSON response
 function jsonResponse(data: unknown, status = 200): Response {
@@ -46,7 +47,7 @@ export async function GET({ request }: { request: Request }): Promise<Response> 
     )
   } catch (err) {
     console.error('GET /api/alerts error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }
 
@@ -75,6 +76,6 @@ export async function PATCH({ request }: { request: Request }): Promise<Response
     return jsonResponse({ ok: true, alert_id, action })
   } catch (err) {
     console.error('PATCH /api/alerts error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }

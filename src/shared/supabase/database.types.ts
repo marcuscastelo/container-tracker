@@ -174,7 +174,6 @@ export type Database = {
           exporter_name: string | null
           id: string
           importer_name: string | null
-          operation_type: string
           origin: Json | null
           product: string | null
           redestination_number: string | null
@@ -196,7 +195,6 @@ export type Database = {
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
-          operation_type: string
           origin?: Json | null
           product?: string | null
           redestination_number?: string | null
@@ -218,7 +216,6 @@ export type Database = {
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
-          operation_type?: string
           origin?: Json | null
           product?: string | null
           redestination_number?: string | null

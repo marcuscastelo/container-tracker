@@ -1,5 +1,8 @@
 import { type PipelineResult, processSnapshot } from '~/modules/tracking/application/pipeline'
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
+import { deriveTransshipment } from '~/modules/tracking/domain/deriveAlerts'
+import { deriveStatus } from '~/modules/tracking/domain/deriveStatus'
+import { deriveTimeline } from '~/modules/tracking/domain/deriveTimeline'
 import type { Observation } from '~/modules/tracking/domain/observation'
 import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
 import type { Provider } from '~/modules/tracking/domain/provider'
@@ -98,7 +101,9 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
           payload: { _error: true, message: errorMessage },
           parse_error: `Fetch failed: ${errorMessage}`,
         }
-        const snapshot = await snapshotRepository.insert(errorSnapshot)
+        const snapRes = await snapshotRepository.insert(errorSnapshot)
+        if (!snapRes.success) throw snapRes.error
+        const snapshot = snapRes.data
         const pipeline = await runPipeline(snapshot, containerId, containerNumber)
         return { snapshot, pipeline }
       }
@@ -111,7 +116,9 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         parse_error: null,
       }
 
-      const snapshot = await snapshotRepository.insert(newSnapshot)
+      const snapRes = await snapshotRepository.insert(newSnapshot)
+      if (!snapRes.success) throw snapRes.error
+      const snapshot = snapRes.data
       const pipeline = await runPipeline(snapshot, containerId, containerNumber)
       return { snapshot, pipeline }
     },
@@ -144,7 +151,9 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         parse_error: parseError,
       }
 
-      const snapshot = await snapshotRepository.insert(newSnapshot)
+      const snapRes = await snapshotRepository.insert(newSnapshot)
+      if (!snapRes.success) throw snapRes.error
+      const snapshot = snapRes.data
       const pipeline = await runPipeline(snapshot, containerId, containerNumber)
       return { snapshot, pipeline }
     },
@@ -156,14 +165,16 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerId: string,
       containerNumber: string,
     ): Promise<ContainerTrackingSummary> {
-      const { deriveTimeline } = await import('~/modules/tracking/domain/deriveTimeline')
-      const { deriveStatus } = await import('~/modules/tracking/domain/deriveStatus')
-      const { deriveTransshipment } = await import('~/modules/tracking/domain/deriveAlerts')
-
-      const [observations, alerts] = await Promise.all([
+      const [obsRes, alertsRes] = await Promise.all([
         observationRepository.findAllByContainerId(containerId),
         trackingAlertRepository.findActiveByContainerId(containerId),
       ])
+
+      if (!obsRes.success) throw obsRes.error
+      if (!alertsRes.success) throw alertsRes.error
+
+      const observations = obsRes.data
+      const alerts = alertsRes.data
 
       const timeline = deriveTimeline(containerId, containerNumber, observations)
       const status = deriveStatus(timeline)
@@ -184,28 +195,36 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      * Acknowledge a tracking alert.
      */
     async acknowledgeAlert(alertId: string): Promise<void> {
-      return trackingAlertRepository.acknowledge(alertId, new Date().toISOString())
+      const res = await trackingAlertRepository.acknowledge(alertId, new Date().toISOString())
+      if (!res.success) throw res.error
+      return
     },
 
     /**
      * Dismiss a tracking alert.
      */
     async dismissAlert(alertId: string): Promise<void> {
-      return trackingAlertRepository.dismiss(alertId, new Date().toISOString())
+      const res = await trackingAlertRepository.dismiss(alertId, new Date().toISOString())
+      if (!res.success) throw res.error
+      return
     },
 
     /**
      * Get all snapshots for a container.
      */
     async getSnapshotsForContainer(containerId: string): Promise<readonly Snapshot[]> {
-      return snapshotRepository.findAllByContainerId(containerId)
+      const res = await snapshotRepository.findAllByContainerId(containerId)
+      if (!res.success) throw res.error
+      return res.data
     },
 
     /**
      * Get the latest snapshot for a container.
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
-      return snapshotRepository.findLatestByContainerId(containerId)
+      const res = await snapshotRepository.findLatestByContainerId(containerId)
+      if (!res.success) throw res.error
+      return res.data
     },
   }
 }

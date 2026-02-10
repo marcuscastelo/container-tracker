@@ -15,6 +15,7 @@ import type {
 } from '~/modules/process/domain/processStuff'
 import { createProcess } from '~/modules/process/domain/processStuff'
 import type { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { InfrastructureError, NotFoundError } from '~/shared/errors/httpErrors'
 
 // Ad-hoc "interface". For now more abstraction would be over-engineering.
 type ProcessRepository = typeof supabaseProcessRepository
@@ -31,19 +32,29 @@ export function createProcessUseCases({
 
   return {
     async getAllProcesses(): Promise<readonly Process[]> {
-      return processRepository.fetchAll()
+      const result = await processRepository.fetchAll()
+      if (!result.success) throw result.error
+      return result.data
     },
 
     async getAllProcessesWithContainers(): Promise<readonly ProcessWithContainers[]> {
-      return processRepository.fetchAllWithContainers()
+      const result = await processRepository.fetchAllWithContainers()
+      if (!result.success) throw result.error
+      return result.data
     },
 
     async getProcess(processId: string): Promise<Process | null> {
-      return processRepository.fetchById(processId)
+      const result = await processRepository.fetchById(processId)
+      if (!result.success) {
+        throw result.error
+      }
+      return result.data
     },
 
     async getProcessWithContainers(processId: string): Promise<ProcessWithContainers | null> {
-      return processRepository.fetchByIdWithContainers(processId)
+      const result = await processRepository.fetchByIdWithContainers(processId)
+      if (!result.success) throw result.error
+      return result.data
     },
 
     async createProcess(input: CreateProcessInput) {
@@ -60,8 +71,9 @@ export function createProcessUseCases({
       for (const [containerNumber, exists] of existenceMap.entries()) {
         if (exists) {
           // Fetch the existing container for detailed error
-          const existing = await processRepository.fetchContainerByNumber(containerNumber)
-          throw new ContainerAlreadyExistsError(containerNumber, existing)
+          const existingResult = await processRepository.fetchContainerByNumber(containerNumber)
+          if (!existingResult.success) throw existingResult.error
+          throw new ContainerAlreadyExistsError(containerNumber, existingResult.data)
         }
       }
 
@@ -69,8 +81,9 @@ export function createProcessUseCases({
       const newProcess: NewProcess = createProcess(input)
       const processResult = await processRepository.create(newProcess)
       if (!processResult.success) {
-        throw new Error(
+        throw new InfrastructureError(
           `Failed to create process: ${processResult.error?.message ?? 'Unknown error'}`,
+          processResult.error ?? undefined,
         )
       }
       const process: Process = processResult.data
@@ -89,10 +102,14 @@ export function createProcessUseCases({
       warnings: string[]
     }> {
       // Check if container exists
-      const exists = await processRepository.containerExists(container.container_number)
-      if (exists) {
-        const existing = await processRepository.fetchContainerByNumber(container.container_number)
-        throw new ContainerAlreadyExistsError(container.container_number, existing)
+      const existsResult = await processRepository.containerExists(container.container_number)
+      if (!existsResult.success) throw existsResult.error
+      if (existsResult.data) {
+        const existingResult = await processRepository.fetchContainerByNumber(
+          container.container_number,
+        )
+        if (!existingResult.success) throw existingResult.error
+        throw new ContainerAlreadyExistsError(container.container_number, existingResult.data)
       }
 
       const containerInput: ContainerInput = {
@@ -104,18 +121,23 @@ export function createProcessUseCases({
     },
 
     async deleteProcess(processId: string) {
-      return processRepository.delete(processId)
+      const result = await processRepository.delete(processId)
+      if (!result.success) throw result.error
+      return
     },
 
     async removeContainer(containerId: string, processId: string) {
-      const containers = await processRepository.fetchContainersByProcessId(processId)
-      await containerUseCases.deleteContainer(containerId, processId, containers)
+      const containersResult = await processRepository.fetchContainersByProcessId(processId)
+      if (!containersResult.success) throw containersResult.error
+      await containerUseCases.deleteContainer(containerId, processId, containersResult.data)
     },
 
     async updateProcess(processId: string, input: Partial<CreateProcessInput>) {
       // Reconcile containers if provided
       if (input.containers) {
-        const existing = await processRepository.fetchContainersByProcessId(processId)
+        const existingResult = await processRepository.fetchContainersByProcessId(processId)
+        if (!existingResult.success) throw existingResult.error
+        const existing = existingResult.data
 
         const containerInputs: ContainerInput[] = input.containers.map((c) => ({
           containerNumber: c.container_number,
@@ -143,12 +165,14 @@ export function createProcessUseCases({
 
       // Call repository.update for provided fields
       if (Object.keys(updates).length > 0) {
-        await processRepository.update(processId, updates)
+        const updateResult = await processRepository.update(processId, updates)
+        if (!updateResult.success) throw updateResult.error
       }
 
-      const updated = await processRepository.fetchByIdWithContainers(processId)
-      if (!updated) throw new Error('Process not found after update')
-      return updated
+      const fetched = await processRepository.fetchByIdWithContainers(processId)
+      if (!fetched.success) throw fetched.error
+      if (!fetched.data) throw new NotFoundError('Process not found after update')
+      return fetched.data
     },
   }
 }

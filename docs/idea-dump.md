@@ -6,6 +6,7 @@ Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar ident
 # Refine
 
 # TODO
+Quando o usuario colocar armador errado e o fetch der erro, deve exibir na tela um alerta dizendo "Nao foi possivel encontrar o container, por favor cheque o armador e tente novamente". Hoje ele nao tem feedback do que aconteceu, e pode ficar tentando refresh sem saber o que esta errado. Com o tempo podemos colocar um botao nesse alerta "Tentar identificar armador automaticamente", que ai rodaria a heuristica de testar as APIs em ordem de probabilidade para tentar identificar o armador, como descrito na ideia acima.
 Remover coluna operation_type do banco depois de confirmar que sempre é importacao e transbordo nao é um tipo de operacao, mas um estado do container.
 Adicionar booking_number no processo (domain).
 Pensar se mantemos unknown ou null para os campos (carrier e operationType) que nao sao obrigatorios, e se sim, padronizar isso em todo o codigo (domain, application, ui). Null gasta menos espaço no banco...

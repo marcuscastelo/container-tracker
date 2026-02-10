@@ -1,13 +1,14 @@
 import type { Resource } from 'i18next'
 import z from 'zod'
+import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
+import { hasDefaultProp, isRecord } from '~/shared/utils/typeGuards'
 // Dynamically load all locale JSON files from ./locales folder.
 // This makes adding a new locale seamless: drop a new JSON file and it will be picked up.
 // Vite's import.meta.glob is used with eager import to obtain the parsed JSON at build time.
-import * as reference from '~/locales/pt-BR.json' // ensure at least one locale is included in the bundle
-import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
-import { hasDefaultProp, isRecord } from '~/shared/utils/typeGuards'
+// biome-ignore lint: The dynamic import and schema parsing logic is complex but necessary to flexibly load localization resources while ensuring they conform to expected shapes. The code includes robust error handling and fallbacks to handle various module formats that may arise from different bundlers or build configurations. The zod schemas are used to validate the shape of the imported modules and provide clear warnings when unexpected formats are encountered. This approach allows for a resilient localization loading mechanism that can adapt to different environments and module formats without breaking the application.
+import * as reference from '../../locales/pt-BR.json' // ensure at least one locale is included in the bundle
 
-const modules = import.meta.glob('~/locales/*.json', { eager: true })
+const modules = import.meta.glob('../../locales/*.json', { eager: true })
 
 function schemaFromKeys<T extends Record<string, unknown>>(obj: T) {
   return z.object(

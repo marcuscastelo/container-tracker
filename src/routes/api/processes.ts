@@ -8,6 +8,7 @@ import {
   ContainerAlreadyExistsError,
   resolveContainerOwner,
 } from '~/modules/process/application/errors'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import {
   CreateProcessResponseSchema,
   ErrorResponseSchema,
@@ -57,7 +58,7 @@ export async function GET(): Promise<Response> {
     return jsonResponse(response)
   } catch (err) {
     console.error('GET /api/processes error:', err)
-    return jsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }
 
@@ -103,28 +104,26 @@ export async function POST({ request }: { request: Request }): Promise<Response>
   } catch (err) {
     console.error('POST /api/processes error:', err)
 
-    // Handle ContainerAlreadyExistsError with detailed resolution
+    // TODO: change direct repository calls to an application service / use case / etc method that encapsulates the logic of looking up container ownership, which might include additional checks or logic in the future. For now, we can reuse the existing repository method.
+    // Handle ContainerAlreadyExistsError with detailed resolution (keep special behavior)
     if (err instanceof ContainerAlreadyExistsError) {
       const owner = await resolveContainerOwner(
         err.containerNumber,
-        supabaseProcessRepository.fetchContainerByNumber,
+        async (containerNumber: string) => {
+          const r = await supabaseProcessRepository.fetchContainerByNumber(containerNumber)
+          if (!r.success) return null
+          return r.data
+        },
       )
 
       if (owner) {
-        return jsonResponse(
-          {
-            error: err.message,
-            existing: owner,
-          },
-          409,
-        )
+        return jsonResponse({ error: err.message, existing: owner }, 409)
       }
 
       return jsonResponse({ error: err.message }, 409)
     }
 
-    const message = err instanceof Error ? err.message : String(err)
-    return jsonResponse({ error: message }, 500)
+    return mapErrorToResponse(err)
   }
 }
 

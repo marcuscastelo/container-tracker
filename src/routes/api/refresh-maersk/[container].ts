@@ -1,9 +1,13 @@
 import type { APIEvent } from '@solidjs/start/server'
 import fs from 'fs'
 import path from 'path'
+import puppeteerExtra from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { z } from 'zod'
 import { supabaseProcessRepository } from '~/modules/process'
 import { trackingUseCases } from '~/modules/tracking'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -161,27 +165,8 @@ async function handleMaersk({ params, request }: APIEvent) {
       userDataDir: userDataDir || 'ephemeral',
     })
 
-    // Import puppeteer-extra with stealth
-    let puppeteerExtra: any
     try {
-      const pe = await import('puppeteer-extra').catch(() => null)
-      const stealthMod = await import('puppeteer-extra-plugin-stealth').catch(() => null)
-
-      if (!pe || !stealthMod) {
-        return new Response(
-          JSON.stringify({
-            error: 'puppeteer-extra or stealth plugin not installed',
-            hint: 'Run: npm i -D puppeteer puppeteer-extra puppeteer-extra-plugin-stealth',
-          }),
-          { status: 500 },
-        )
-      }
-
-      const peMod: any = pe
-      const stealthWrapped: any = stealthMod
-      puppeteerExtra = peMod?.default || peMod
-      const Stealth = stealthWrapped?.default || stealthWrapped
-      puppeteerExtra.use(Stealth())
+      puppeteerExtra.use(StealthPlugin())
     } catch (e) {
       return new Response(JSON.stringify({ error: 'puppeteer import error', details: String(e) }), {
         status: 500,
@@ -534,7 +519,12 @@ async function handleMaersk({ params, request }: APIEvent) {
 
     try {
       // Look up the container in our DB to get its UUID
-      const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
+      const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
+      if (!containerRes.success) {
+        throw containerRes.error
+      }
+
+      const containerRecord = containerRes.data
 
       if (containerRecord) {
         const result = await trackingUseCases.saveAndProcess(
@@ -555,9 +545,8 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     } catch (err) {
       console.error('[maersk-refresh] Supabase save failed:', err)
-      return new Response(JSON.stringify({ error: 'Supabase save failed', details: String(err) }), {
-        status: 500,
-      })
+      // Rethrow as an infrastructure error so the outer handler maps it to a proper HTTP response
+      throw new InfrastructureError('Supabase save failed', { cause: err })
     }
 
     // Write diagnostics to file (optional, for debugging)
@@ -612,14 +601,7 @@ async function handleMaersk({ params, request }: APIEvent) {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        error: String(err),
-        // @ts-expect-error: forced typing
-        stack: err?.stack ?? null,
-      }),
-      { status: 500 },
-    )
+    return mapErrorToResponse(err)
   }
 }
 

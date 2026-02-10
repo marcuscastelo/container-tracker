@@ -72,8 +72,11 @@ export async function processSnapshot(
   const drafts = normalizeSnapshot(snapshot)
 
   // Step 3: Diff against existing fingerprints
-  const existingFingerprints =
-    await deps.observationRepository.findFingerprintsByContainerId(containerId)
+  const fpRes = await deps.observationRepository.findFingerprintsByContainerId(containerId)
+  if (!fpRes.success) {
+    throw fpRes.error
+  }
+  const existingFingerprints = fpRes.data
   const newObsToInsert: readonly NewObservation[] = diffObservations(
     existingFingerprints,
     drafts,
@@ -83,19 +86,24 @@ export async function processSnapshot(
   // Step 4: Persist new observations
   let newObservations: readonly Observation[] = []
   if (newObsToInsert.length > 0) {
-    newObservations = await deps.observationRepository.insertMany(newObsToInsert)
+    const insRes = await deps.observationRepository.insertMany(newObsToInsert)
+    if (!insRes.success) throw insRes.error
+    newObservations = insRes.data
   }
 
   // Step 5: Derive Timeline (from ALL observations, not just new ones)
-  const allObservations = await deps.observationRepository.findAllByContainerId(containerId)
+  const allRes = await deps.observationRepository.findAllByContainerId(containerId)
+  if (!allRes.success) throw allRes.error
+  const allObservations = allRes.data
   const timeline = deriveTimeline(containerId, containerNumber, allObservations)
 
   // Step 6: Derive Status
   const status = deriveStatus(timeline)
 
   // Step 7: Derive Alerts
-  const existingAlertTypes =
-    await deps.trackingAlertRepository.findActiveTypesByContainerId(containerId)
+  const atRes = await deps.trackingAlertRepository.findActiveTypesByContainerId(containerId)
+  if (!atRes.success) throw atRes.error
+  const existingAlertTypes = atRes.data
   const newAlertDescriptors: readonly NewTrackingAlert[] = deriveAlerts(
     timeline,
     status,
@@ -106,7 +114,9 @@ export async function processSnapshot(
   // Step 8: Persist new alerts
   let newAlerts: readonly TrackingAlert[] = []
   if (newAlertDescriptors.length > 0) {
-    newAlerts = await deps.trackingAlertRepository.insertMany(newAlertDescriptors)
+    const insAlertsRes = await deps.trackingAlertRepository.insertMany(newAlertDescriptors)
+    if (!insAlertsRes.success) throw insAlertsRes.error
+    newAlerts = insAlertsRes.data
   }
 
   // Derive transshipment info
