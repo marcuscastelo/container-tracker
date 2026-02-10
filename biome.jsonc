@@ -18,7 +18,9 @@
         "noUselessStringConcat": "error"
       },
       "performance": {
-        "noBarrelFile": "error"
+        "noBarrelFile": "error",
+        "noNamespaceImport": "error",
+        "noReExportAll": "error"
       },
       "suspicious": {
         "noExplicitAny": "error",
