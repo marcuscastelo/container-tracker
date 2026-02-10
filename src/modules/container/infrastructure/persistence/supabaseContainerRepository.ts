@@ -102,7 +102,7 @@ export const supabaseContainerRepository = {
       return {
         success: false,
         data: null,
-        error: new Error(`Failed to delete container: ${error.message}`),
+        error: new Error(`Failed to delete container: ${error.message}`, { cause: error }),
       }
     }
 

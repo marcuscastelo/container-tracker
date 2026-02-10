@@ -4,13 +4,16 @@ import type { TrackingAlertRepository } from '~/modules/tracking/domain/tracking
 import { stringsToJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 import { formatParseError } from '~/shared/utils/formatParseError'
 
 const TABLE = 'tracking_alerts' as const
 
 type TrackingAlertRow = Tables<'tracking_alerts'>
 
-function rowToAlert(row: TrackingAlertRow): TrackingAlert {
+function rowToAlert(
+  row: TrackingAlertRow,
+): { success: true; data: TrackingAlert } | { success: false; error: Error } {
   function normalizeIso(value: unknown): string | null {
     if (value === null || value === undefined) return null
     // If it's already a Date, return ISO string
@@ -54,15 +57,17 @@ function rowToAlert(row: TrackingAlertRow): TrackingAlert {
   })
 
   if (!result.success) {
-    throw new Error(`Invalid tracking alert row:\n${formatParseError(result.error)}`)
+    const err = new Error(`Invalid tracking alert row:\n${formatParseError(result.error)}`)
+    return { success: false, error: err }
   }
 
-  return result.data
+  return { success: true, data: result.data }
 }
-
 export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
-  async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
-    if (alerts.length === 0) return []
+  async insertMany(
+    alerts: readonly NewTrackingAlert[],
+  ): Promise<SupabaseResult<readonly TrackingAlert[]>> {
+    if (alerts.length === 0) return { success: true, data: [], error: null }
 
     const rows = alerts.map((a) => ({
       container_id: a.container_id,
@@ -82,13 +87,31 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     const { data, error } = await supabase.from(TABLE).insert(rows).select('*')
 
     if (error) {
-      throw new Error(`Failed to insert tracking alerts: ${error.message}`)
+      console.error('supabaseTrackingAlertRepository.insertMany error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to insert tracking alerts: ${error.message}`, { cause: error }),
+      }
     }
 
-    return (data ?? []).map(rowToAlert)
+    const mapped: TrackingAlert[] = []
+    for (const row of data ?? []) {
+      const parsed = rowToAlert(row)
+      if (parsed.success) mapped.push(parsed.data)
+      else
+        console.error(
+          'supabaseTrackingAlertRepository.insertMany: invalid row skipped',
+          parsed.error,
+        )
+    }
+
+    return { success: true, data: mapped, error: null }
   },
 
-  async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+  async findActiveByContainerId(
+    containerId: string,
+  ): Promise<SupabaseResult<readonly TrackingAlert[]>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
@@ -98,13 +121,33 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .order('triggered_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to fetch active tracking alerts: ${error.message}`)
+      console.error('supabaseTrackingAlertRepository.findActiveByContainerId error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch active tracking alerts: ${error.message}`, {
+          cause: error,
+        }),
+      }
     }
 
-    return (data ?? []).map(rowToAlert)
+    const mapped: TrackingAlert[] = []
+    for (const row of data ?? []) {
+      const parsed = rowToAlert(row)
+      if (parsed.success) mapped.push(parsed.data)
+      else
+        console.error(
+          'supabaseTrackingAlertRepository.findActiveByContainerId: invalid row skipped',
+          parsed.error,
+        )
+    }
+
+    return { success: true, data: mapped, error: null }
   },
 
-  async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
+  async findActiveTypesByContainerId(
+    containerId: string,
+  ): Promise<SupabaseResult<ReadonlySet<string>>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('type')
@@ -113,32 +156,53 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .is('dismissed_at', null)
 
     if (error) {
-      throw new Error(`Failed to fetch active alert types: ${error.message}`)
+      console.error('supabaseTrackingAlertRepository.findActiveTypesByContainerId error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch active alert types: ${error.message}`, { cause: error }),
+      }
     }
 
     const types = new Set<string>()
     for (const row of data ?? []) {
-      types.add(row.type)
+      if (row && typeof row.type === 'string') types.add(row.type)
     }
-    return types
+    return { success: true, data: types, error: null }
   },
 
-  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+  async acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<{}>> {
     const { error } = await supabase.from(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
 
     if (error) {
-      throw new Error(`Failed to acknowledge alert ${alertId}: ${error.message}`)
+      console.error(`supabaseTrackingAlertRepository.acknowledge error:`, error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to acknowledge alert ${alertId}: ${error.message}`, {
+          cause: error,
+        }),
+      }
     }
+
+    return { success: true, data: {}, error: null }
   },
 
-  async dismiss(alertId: string, dismissedAt: string): Promise<void> {
+  async dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<{}>> {
     const { error } = await supabase
       .from(TABLE)
       .update({ dismissed_at: dismissedAt })
       .eq('id', alertId)
 
     if (error) {
-      throw new Error(`Failed to dismiss alert ${alertId}: ${error.message}`)
+      console.error(`supabaseTrackingAlertRepository.dismiss error:`, error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to dismiss alert ${alertId}: ${error.message}`, { cause: error }),
+      }
     }
+
+    return { success: true, data: {}, error: null }
   },
 }

@@ -5,6 +5,7 @@ import {
   processUseCases,
 } from '~/modules/process'
 import { trackingUseCases } from '~/modules/tracking'
+import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse as typedJsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
@@ -111,7 +112,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
     return typedJsonResponse(response, 200, ProcessDetailResponseSchema)
   } catch (err) {
     console.error('GET /api/processes/[id] error:', err)
-    return typedJsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }
 
@@ -134,7 +135,7 @@ export async function DELETE({ params }: APIEvent): Promise<Response> {
     return typedJsonResponse({ success: true, deleted: processId })
   } catch (err) {
     console.error('DELETE /api/processes/[id] error:', err)
-    return typedJsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }
 
@@ -203,6 +204,6 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     return typedJsonResponse(response, 200, ProcessResponseSchema)
   } catch (err) {
     console.error('PATCH /api/processes/[id] error:', err)
-    return typedJsonResponse({ error: String(err) }, 500)
+    return mapErrorToResponse(err)
   }
 }

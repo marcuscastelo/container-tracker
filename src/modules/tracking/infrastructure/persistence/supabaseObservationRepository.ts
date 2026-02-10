@@ -3,6 +3,7 @@ import { ObservationSchema } from '~/modules/tracking/domain/observation'
 import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
 import type { Tables, TablesInsert } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 import { formatParseError } from '~/shared/utils/formatParseError'
 import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
 
@@ -11,7 +12,9 @@ const TABLE = 'container_observations' as const
 type ObservationRow = Tables<'container_observations'>
 type ObservationInsertRow = TablesInsert<'container_observations'>
 
-function rowToObservation(row: ObservationRow): Observation {
+function rowToObservation(
+  row: ObservationRow,
+): { success: true; data: Observation } | { success: false; error: Error } {
   const result = ObservationSchema.safeParse({
     id: row.id,
     fingerprint: row.fingerprint,
@@ -33,15 +36,18 @@ function rowToObservation(row: ObservationRow): Observation {
   } satisfies { [K in keyof Observation]: unknown })
 
   if (!result.success) {
-    throw new Error(`Invalid observation row:\n${formatParseError(result.error)}`)
+    const err = new Error(`Invalid observation row:\n${formatParseError(result.error)}`)
+    return { success: false, error: err }
   }
 
-  return result.data
+  return { success: true, data: result.data }
 }
 
 export const supabaseObservationRepository: ObservationRepository = {
-  async insertMany(observations: readonly NewObservation[]): Promise<readonly Observation[]> {
-    if (observations.length === 0) return []
+  async insertMany(
+    observations: readonly NewObservation[],
+  ): Promise<SupabaseResult<readonly Observation[]>> {
+    if (observations.length === 0) return { success: true, data: [], error: null }
     const rows = observations.map(
       (obs) =>
         ({
@@ -67,13 +73,26 @@ export const supabaseObservationRepository: ObservationRepository = {
     const { data, error } = await supabase.from(TABLE).insert(rows).select('*')
 
     if (error) {
-      throw new Error(`Failed to insert observations: ${error.message}`)
+      console.error('supabaseObservationRepository.insertMany error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to insert observations: ${error.message}`, { cause: error }),
+      }
     }
 
-    return (data ?? []).map(rowToObservation)
+    const mapped: Observation[] = []
+    for (const row of data ?? []) {
+      const parsed = rowToObservation(row)
+      if (parsed.success) mapped.push(parsed.data)
+      else
+        console.error('supabaseObservationRepository.insertMany: invalid row skipped', parsed.error)
+    }
+
+    return { success: true, data: mapped, error: null }
   },
 
-  async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
+  async findAllByContainerId(containerId: string): Promise<SupabaseResult<readonly Observation[]>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
@@ -81,26 +100,49 @@ export const supabaseObservationRepository: ObservationRepository = {
       .order('event_time', { ascending: true, nullsFirst: false })
 
     if (error) {
-      throw new Error(`Failed to fetch observations: ${error.message}`)
+      console.error('supabaseObservationRepository.findAllByContainerId error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch observations: ${error.message}`, { cause: error }),
+      }
     }
 
-    return (data ?? []).map(rowToObservation)
+    const mapped: Observation[] = []
+    for (const row of data ?? []) {
+      const parsed = rowToObservation(row)
+      if (parsed.success) mapped.push(parsed.data)
+      else
+        console.error(
+          'supabaseObservationRepository.findAllByContainerId: invalid row skipped',
+          parsed.error,
+        )
+    }
+
+    return { success: true, data: mapped, error: null }
   },
 
-  async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
+  async findFingerprintsByContainerId(
+    containerId: string,
+  ): Promise<SupabaseResult<ReadonlySet<string>>> {
     const { data, error } = await supabase
       .from(TABLE)
       .select('fingerprint')
       .eq('container_id', containerId)
 
     if (error) {
-      throw new Error(`Failed to fetch fingerprints: ${error.message}`)
+      console.error('supabaseObservationRepository.findFingerprintsByContainerId error:', error)
+      return {
+        success: false,
+        data: null,
+        error: new Error(`Failed to fetch fingerprints: ${error.message}`, { cause: error }),
+      }
     }
 
     const fingerprints = new Set<string>()
     for (const row of data ?? []) {
-      fingerprints.add(row.fingerprint)
+      if (row && typeof row.fingerprint === 'string') fingerprints.add(row.fingerprint)
     }
-    return fingerprints
+    return { success: true, data: fingerprints, error: null }
   },
 }
