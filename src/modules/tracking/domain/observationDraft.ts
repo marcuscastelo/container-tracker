@@ -3,6 +3,13 @@ import { ObservationTypeSchema } from '~/modules/tracking/domain/observationType
 import { ProviderSchema } from '~/modules/tracking/domain/provider'
 
 /**
+ * EventTimeType — differentiates between confirmed facts and predictions.
+ * Imported from observation.ts for consistency.
+ */
+export const EventTimeTypeSchema = z.enum(['ACTUAL', 'EXPECTED'])
+export type EventTimeType = z.infer<typeof EventTimeTypeSchema>
+
+/**
  * Confidence level of an observation.
  * Determined during normalization based on field completeness.
  */
@@ -27,6 +34,14 @@ export const ObservationDraftSchema = z.object({
 
   /** When the event occurred (UTC ISO), null if unknown */
   event_time: z.iso.datetime().nullable(),
+
+  /**
+   * Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event.
+   * Adapters must set this based on explicit carrier data.
+   *
+   * If carrier doesn't explicitly indicate, use EXPECTED as the safe default.
+   */
+  event_time_type: EventTimeTypeSchema,
 
   /** UN/LOCODE or similar location code, null if unknown */
   location_code: z.string().nullable(),

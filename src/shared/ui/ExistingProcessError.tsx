@@ -17,7 +17,7 @@ type Props = {
 }
 
 export function ExistingProcessError(props: Props): JSX.Element {
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
   const loc = useLocation()
 
   // helper: check if current path matches the provided link or processId
@@ -51,10 +51,10 @@ export function ExistingProcessError(props: Props): JSX.Element {
   const container = props.existing?.containerNumber ?? extractContainerFromMessage(props.message)
 
   const message = same
-    ? t('createProcess.action.existingProcessSame', { container })
+    ? t(keys.createProcess.action.existingProcessSame, { container })
     : container
-      ? t('createProcess.action.existingProcessError', { container })
-      : (props.message ?? t('createProcess.action.existingProcessError', { container: '' }))
+      ? t(keys.createProcess.action.existingProcessError, { container })
+      : (props.message ?? t(keys.createProcess.action.existingProcessError, { container: '' }))
 
   return (
     <div class="relative mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -65,7 +65,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
         <div class="ml-4 shrink-0">
           <button
             type="button"
-            aria-label={t('createProcess.action.dismiss') ?? 'Dismiss'}
+            aria-label={t(keys.createProcess.action.dismiss) ?? 'Dismiss'}
             class="rounded-md p-1 text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200"
             onClick={() => {
               try {
@@ -102,7 +102,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
               }
             }}
           >
-            {t('createProcess.action.existingProcessLink')}
+            {t(keys.createProcess.action.existingProcessLink)}
           </A>
         </div>
       </Show>

@@ -11,12 +11,14 @@ type Props = {
 
 export function TimelinePanel(props: Props): JSX.Element {
   const timeline = () => props.selectedContainer?.timeline ?? []
-  const { t } = useTranslation()
+  const { t, keys } = useTranslation()
 
   return (
     <section class="rounded-lg border border-slate-200 bg-white">
       <header class="border-b border-slate-200 px-6 py-4">
-        <h2 class="text-base font-semibold text-slate-900">{t('shipmentView.timeline.title')}</h2>
+        <h2 class="text-base font-semibold text-slate-900">
+          {t(keys.shipmentView.timeline.title)}
+        </h2>
         <Show when={props.selectedContainer}>
           <p class="mt-1 text-xs text-slate-500">
             {props.selectedContainer?.number} •{' '}
@@ -30,7 +32,7 @@ export function TimelinePanel(props: Props): JSX.Element {
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-4 text-center text-sm text-slate-500">{t('shipmentView.noEvents')}</p>
+            <p class="py-4 text-center text-sm text-slate-500">{t(keys.shipmentView.noEvents)}</p>
           }
         >
           <div>

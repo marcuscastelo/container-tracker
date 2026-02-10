@@ -11,6 +11,7 @@ function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft 
     container_number: 'CXDU2058677',
     type: 'LOAD',
     event_time: '2025-11-26T00:00:00.000Z',
+    event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
     vessel_name: 'MSC PARIS',

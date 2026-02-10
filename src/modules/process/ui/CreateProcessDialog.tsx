@@ -534,7 +534,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                               }
                             }}
                           >
-                            {t('createProcess.action.existingProcessLink')}
+                            {t(keys.createProcess.action.existingProcessLink)}
                           </button>
                         </p>
                       </Show>

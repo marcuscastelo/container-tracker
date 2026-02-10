@@ -14,6 +14,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
     event_time: '2025-11-17T00:00:00.000Z',
+    event_time_type: 'ACTUAL', // Default to ACTUAL for tests (confirmed events)
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
     vessel_name: null,

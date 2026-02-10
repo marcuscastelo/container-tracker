@@ -243,7 +243,7 @@ Esse comando falhará localmente (saindo com código de erro) quando existirem c
 
 ### Uso de chaves (guideline importante)
 
-Quando for chamar a função de tradução (`t()`), sempre declare um objeto `const keys = { ... }` no topo do componente e use essas chaves (ex.: `t(keys.save)`).
+Quando for chamar a função de tradução (`t()`), sempre obtenha keys via `const { t, keys } = useTranslation()` e use `t(keys.someKey)` em vez de `t('some.key.path')` diretamente. Isso garante que todas as chaves usadas no componente estejam agrupadas em um objeto `keys` definido no topo do componente, facilitando a manutenção e evitando erros de digitação.
 Vantagens:
 - Facilita refactors (renomear chaves em um único lugar).
 - Mantém chaves agrupadas e legíveis no componente.
@@ -252,12 +252,13 @@ Vantagens:
 Exemplo de padrão em um componente:
 
 ```ts
-const keys = { save: 'buttons.save', cancel: 'buttons.cancel' }
-const { t } = useTranslation()
+const { t, keys } = useTranslation()
 return <button>{t(keys.save)}</button>
 ```
 
 Sempre prefira esse padrão em vez de usar literais de string diretamente em chamadas `t('buttons.save')` espalhadas pelo JSX.
+É ESTRITAMENTE PROIBIDO usar literais de string diretamente em chamadas `t()` sem passar por um objeto de chaves, para garantir consistência e facilitar manutenção.
+NÃO USE `t('buttons.save')` DIRETAMENTE — SEMPRE USE `t(keys.save)` COM UM OBJETO DE CHAVES DEFINIDO NO COMPONENTE.
 
 ---
 

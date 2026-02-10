@@ -6,6 +6,8 @@ import type { Timeline, TimelineHole } from '~/modules/tracking/domain/timeline'
  *
  * Timeline rules:
  *   - Ordered by event_time ascending (nulls last)
+ *   - For equal event_time, ACTUAL observations come before EXPECTED (visual precedence)
+ *   - For ties in both, use created_at as final tiebreaker
  *   - Cycles are allowed (transshipment: LOAD → DISCHARGE → LOAD)
  *   - Holes are detected when there's a gap > 14 days between consecutive events
  *   - Timeline is NOT persisted — it's a runtime projection
@@ -16,13 +18,16 @@ import type { Timeline, TimelineHole } from '~/modules/tracking/domain/timeline'
  * @returns Timeline
  *
  * @see docs/master-consolidated-0209.md §2.5
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
 export function deriveTimeline(
   containerId: string,
   containerNumber: string,
   observations: readonly Observation[],
 ): Timeline {
-  // Sort: event_time ascending, nulls last. For ties, use created_at.
+  // Sort: event_time ascending, nulls last.
+  // For equal times: ACTUAL before EXPECTED (visual precedence).
+  // For ties: use created_at.
   const sorted = [...observations].sort((a, b) => {
     if (a.event_time === null && b.event_time === null) {
       return a.created_at.localeCompare(b.created_at)
@@ -31,6 +36,12 @@ export function deriveTimeline(
     if (b.event_time === null) return -1
     const cmp = a.event_time.localeCompare(b.event_time)
     if (cmp !== 0) return cmp
+
+    // Times are equal — ACTUAL comes before EXPECTED
+    if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
+    if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
+
+    // Both are ACTUAL or both are EXPECTED — use created_at
     return a.created_at.localeCompare(b.created_at)
   })
 

@@ -10,6 +10,7 @@ import type {
   TrackingAlertResponse,
 } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui'
+import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // Backwards-compatible alias for tests and other callers
 export type ProcessApiResponse = ProcessDetailResponse
@@ -22,8 +23,12 @@ export type TimelineEvent = {
   readonly label: string
   readonly location?: string
   readonly date: string | null
+  readonly date_iso?: string | null
   readonly expectedDate?: string | null
+  readonly expectedDate_iso?: string | null
   readonly status: EventStatus
+  /** Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event */
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
 }
 
 export type AlertDisplay = {
@@ -191,9 +196,13 @@ function formatRelativeTime(dateString: string): string {
  */
 function observationToTimelineEvent(obs: ObservationResponse, index: number): TimelineEvent {
   const evDate = obs.event_time ? new Date(obs.event_time) : null
-  const dateStr = evDate ? evDate.toLocaleDateString() : null
-  const isExpected = obs.confidence === 'expected'
-  const expectedDate = isExpected && evDate ? evDate.toLocaleDateString() : undefined
+  const dateStr = evDate ? formatDateForLocale(evDate) : null
+  const eventTimeType = obs.event_time_type ?? 'EXPECTED'
+  const isExpected = eventTimeType === 'EXPECTED'
+  const expectedDate = isExpected && evDate ? formatDateForLocale(evDate) : undefined
+
+  const dateIso = obs.event_time ?? null
+  const expectedDateIso = isExpected && obs.event_time ? obs.event_time : undefined
 
   // Build location display
   const location = obs.location_display ?? obs.location_code ?? undefined
@@ -212,8 +221,11 @@ function observationToTimelineEvent(obs: ObservationResponse, index: number): Ti
     label,
     location,
     date: isExpected ? null : dateStr,
+    date_iso: isExpected ? null : dateIso,
     expectedDate,
+    expectedDate_iso: expectedDateIso,
     status,
+    eventTimeType,
   }
 }
 
@@ -293,8 +305,10 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
         id: 'system-created',
         label: 'Process registered in the system',
         location: undefined,
-        date: new Date(data.created_at).toLocaleDateString(),
+        date: formatDateForLocale(new Date(data.created_at)),
+        date_iso: data.created_at,
         status: 'completed',
+        eventTimeType: 'ACTUAL', // System-generated event is ACTUAL
       })
     }
 

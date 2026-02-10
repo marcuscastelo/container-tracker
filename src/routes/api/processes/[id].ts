@@ -41,6 +41,7 @@ export async function GET({ params }: APIEvent): Promise<Response> {
               fingerprint: obs.fingerprint,
               type: obs.type,
               event_time: obs.event_time,
+              event_time_type: obs.event_time_type,
               location_code: obs.location_code,
               location_display: obs.location_display,
               vessel_name: obs.vessel_name,

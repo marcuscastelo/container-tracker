@@ -10,6 +10,7 @@ import type { ObservationDraft } from '~/modules/tracking/domain/observationDraf
  * Fields used (and why):
  *   - container_number: identifies the physical entity
  *   - type: semantic category of the event
+ *   - event_time_type: ACTUAL vs EXPECTED — different semantic facts
  *   - event_time: when it happened (normalized to date-only UTC to avoid timezone drift)
  *   - location_code: where it happened
  *   - vessel_name: on which vessel (important for LOAD/DISCHARGE)
@@ -18,7 +19,17 @@ import type { ObservationDraft } from '~/modules/tracking/domain/observationDraf
  * Fields EXCLUDED (unstable across snapshots):
  *   - snapshot_id, provider, raw_event, confidence, location_display, is_empty
  *
+ * Why event_time_type is included:
+ *   An EXPECTED ETA and the later ACTUAL arrival are NOT the same fact.
+ *   They must not collide during deduplication.
+ *   Including event_time_type ensures stable differentiation.
+ *
+ * NOTE: This is a breaking change from the previous implementation.
+ *       Existing fingerprints in the database will differ from newly computed ones.
+ *       A migration may be required to recompute fingerprints for historical data.
+ *
  * @see docs/master-consolidated-0209.md §4.2.1
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
 export function computeFingerprint(draft: ObservationDraft): string {
   // Normalize event_time to date-only (YYYY-MM-DD) to handle timezone variations.
@@ -29,6 +40,7 @@ export function computeFingerprint(draft: ObservationDraft): string {
   const parts = [
     draft.container_number.toUpperCase().trim(),
     draft.type,
+    draft.event_time_type, // NEW: differentiate ACTUAL from EXPECTED
     dateOnly,
     (draft.location_code ?? '').toUpperCase().trim(),
     (draft.vessel_name ?? '').toUpperCase().trim(),

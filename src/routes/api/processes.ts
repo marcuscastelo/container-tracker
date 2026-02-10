@@ -5,6 +5,10 @@ import {
   supabaseProcessRepository,
 } from '~/modules/process'
 import {
+  ContainerAlreadyExistsError,
+  resolveContainerOwner,
+} from '~/modules/process/application/errors'
+import {
   CreateProcessResponseSchema,
   ErrorResponseSchema,
   ProcessListResponseSchema,
@@ -90,40 +94,28 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     return jsonResponse(response, 201)
   } catch (err) {
     console.error('POST /api/processes error:', err)
-    const message = err instanceof Error ? err.message : String(err)
 
-    // Check for known error types
-    if (message.includes('already exists')) {
-      // Try to resolve which process owns the container so the UI can link to it
-      try {
-        // Expect message like: "Container MNBU3094033 already exists in the system"
-        const m = message.match(/Container\s+([A-Za-z0-9]+)\s+already exists/i)
-        const containerNumber = m ? m[1] : null
-        if (containerNumber) {
-          const container = await supabaseProcessRepository.fetchContainerByNumber(containerNumber)
-          if (container) {
-            const processLink = `/shipments/${container.process_id}`
-            return jsonResponse(
-              {
-                error: message,
-                existing: {
-                  processId: container.process_id,
-                  containerId: container.id,
-                  containerNumber: container.container_number,
-                  link: processLink,
-                },
-              },
-              409,
-            )
-          }
-        }
-      } catch (resolveErr) {
-        console.warn('Failed to resolve existing container owner:', resolveErr)
+    // Handle ContainerAlreadyExistsError with detailed resolution
+    if (err instanceof ContainerAlreadyExistsError) {
+      const owner = await resolveContainerOwner(
+        err.containerNumber,
+        supabaseProcessRepository.fetchContainerByNumber,
+      )
+
+      if (owner) {
+        return jsonResponse(
+          {
+            error: err.message,
+            existing: owner,
+          },
+          409,
+        )
       }
 
-      return jsonResponse({ error: message }, 409)
+      return jsonResponse({ error: err.message }, 409)
     }
 
+    const message = err instanceof Error ? err.message : String(err)
     return jsonResponse({ error: message }, 500)
   }
 }

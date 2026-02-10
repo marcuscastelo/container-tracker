@@ -9,6 +9,8 @@ export {
 } from '~/modules/tracking/domain/containerStatus'
 
 export {
+  type EventTimeType,
+  EventTimeTypeSchema,
   type NewObservation,
   NewObservationSchema,
   type Observation,

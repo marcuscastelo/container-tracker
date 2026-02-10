@@ -24,26 +24,35 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
  *
  * Status is a MONOTONIC projection — it never regresses.
  * The algorithm finds the highest-dominance status implied by any
- * observation in the timeline.
+ * **ACTUAL** observation in the timeline.
+ *
+ * CRITICAL RULE: Only ACTUAL observations can advance status.
+ * EXPECTED observations are informational only and do NOT affect status.
  *
  * Pseudocode from master doc:
- *   if delivered → DELIVERED
- *   else if discharged_at_final → DISCHARGED
- *   else if arrived_at_final → ARRIVED_AT_POD
- *   else if any_departure → IN_TRANSIT
- *   else if any_load → LOADED
+ *   if delivered (ACTUAL) → DELIVERED
+ *   else if discharged_at_final (ACTUAL) → DISCHARGED
+ *   else if arrived_at_final (ACTUAL) → ARRIVED_AT_POD
+ *   else if any_departure (ACTUAL) → IN_TRANSIT
+ *   else if any_load (ACTUAL) → LOADED
  *   else → IN_PROGRESS
  *
  * @param timeline - Derived timeline for the container
  * @returns The highest-dominance status
  *
  * @see docs/master-consolidated-0209.md §4.3
+ * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
 export function deriveStatus(timeline: Timeline): ContainerStatus {
   let highestStatus: ContainerStatus = 'UNKNOWN'
   let highestIndex = statusDominanceIndex('UNKNOWN')
 
   for (const obs of timeline.observations) {
+    // CRITICAL: Only ACTUAL observations can advance status
+    if (obs.event_time_type !== 'ACTUAL') {
+      continue
+    }
+
     const impliedStatus = OBSERVATION_TO_STATUS[obs.type]
     if (!impliedStatus) continue
 

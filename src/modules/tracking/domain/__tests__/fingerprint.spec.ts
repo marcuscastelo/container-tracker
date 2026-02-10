@@ -7,6 +7,7 @@ function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft 
     container_number: 'CXDU2058677',
     type: 'LOAD',
     event_time: '2025-11-26T00:00:00.000Z',
+    event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
     vessel_name: 'MSC PARIS',
@@ -115,5 +116,11 @@ describe('computeFingerprint', () => {
     const fp1 = computeFingerprint(makeDraft({ vessel_name: 'MSC PARIS' }))
     const fp2 = computeFingerprint(makeDraft({ vessel_name: 'msc paris' }))
     expect(fp1).toBe(fp2)
+  })
+
+  it('should differ when event_time_type changes (ACTUAL vs EXPECTED)', () => {
+    const fp1 = computeFingerprint(makeDraft({ event_time_type: 'ACTUAL' }))
+    const fp2 = computeFingerprint(makeDraft({ event_time_type: 'EXPECTED' }))
+    expect(fp1).not.toBe(fp2)
   })
 })
