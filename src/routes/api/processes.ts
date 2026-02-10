@@ -105,6 +105,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     console.error('POST /api/processes error:', err)
 
     // TODO: change direct repository calls to an application service / use case / etc method that encapsulates the logic of looking up container ownership, which might include additional checks or logic in the future. For now, we can reuse the existing repository method.
+    // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/33
     // Handle ContainerAlreadyExistsError with detailed resolution (keep special behavior)
     if (err instanceof ContainerAlreadyExistsError) {
       const owner = await resolveContainerOwner(
