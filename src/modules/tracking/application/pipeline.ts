@@ -32,7 +32,7 @@ export type PipelineResult = {
 /**
  * Pipeline dependencies — injected repositories.
  */
-export type PipelineDeps = {
+type PipelineDeps = {
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository

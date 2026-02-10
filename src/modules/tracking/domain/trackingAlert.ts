@@ -10,13 +10,10 @@ import { ProviderSchema } from '~/modules/tracking/domain/provider'
  *
  * @see docs/master-consolidated-0209.md §3
  */
-export const TrackingAlertCategorySchema = z.enum(['fact', 'monitoring'])
-export type TrackingAlertCategory = z.infer<typeof TrackingAlertCategorySchema>
+const TrackingAlertCategorySchema = z.enum(['fact', 'monitoring'])
+const TrackingAlertSeveritySchema = z.enum(['info', 'warning', 'danger'])
 
-export const TrackingAlertSeveritySchema = z.enum(['info', 'warning', 'danger'])
-export type TrackingAlertSeverity = z.infer<typeof TrackingAlertSeveritySchema>
-
-export const TrackingAlertTypeSchema = z.enum([
+const TrackingAlertTypeSchema = z.enum([
   /** Transshipment detected */
   'TRANSSHIPMENT',
   /** Customs hold */
@@ -32,8 +29,6 @@ export const TrackingAlertTypeSchema = z.enum([
   /** Data inconsistency detected */
   'DATA_INCONSISTENT',
 ])
-
-export type TrackingAlertType = z.infer<typeof TrackingAlertTypeSchema>
 
 export const TrackingAlertSchema = z.object({
   /** Primary key (UUID) */

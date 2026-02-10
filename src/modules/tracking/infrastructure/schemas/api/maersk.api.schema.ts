@@ -66,5 +66,3 @@ export const MaerskApiSchema = z.object({
   is_container_search: z.boolean().nullable().optional(),
   raw: z.any().optional(),
 })
-
-export type MaerskApi = z.infer<typeof MaerskApiSchema>

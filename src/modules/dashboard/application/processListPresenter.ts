@@ -1,6 +1,6 @@
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
-export type ProcessSummary = {
+type ProcessSummary = {
   readonly id: string
   readonly reference: string | null
   readonly origin?: { display_name?: string | null } | null

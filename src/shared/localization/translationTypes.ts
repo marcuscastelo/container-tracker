@@ -33,12 +33,6 @@ export type TranslationSchema = {
       }
 }
 
-// All valid dotted keys from the pt-BR.json reference
-export type TranslationKey = KeyPaths<TranslationSchema> & string
-
-// useful utility: typed function signature for t(key)
-export type TypedTFunction = <K extends TranslationKey>(key: K, options?: any) => string
-
 // export the raw reference in case consumers want to inspect it
 // biome-ignore lint: Assertion is required and low risk since it's only used for typing, not runtime logic
 export const referenceLocale = ptBR as TranslationSchema

@@ -60,5 +60,3 @@ export const MscApiSchema = z.object({
   IsSuccess: z.boolean().nullable().optional(),
   raw: z.any().optional(),
 })
-
-export type MscApi = z.infer<typeof MscApiSchema>

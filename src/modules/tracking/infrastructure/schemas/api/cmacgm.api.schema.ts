@@ -48,5 +48,3 @@ export const CmaCgmApiSchema = z.object({
   EstimatedTimeOfArrivalString: z.string().nullable().optional(),
   raw: z.any().optional(),
 })
-
-export type CmaCgmApi = z.infer<typeof CmaCgmApiSchema>
