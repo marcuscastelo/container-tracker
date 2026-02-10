@@ -84,7 +84,6 @@ function containerStatusToVariant(status: string | undefined): StatusVariant {
       return 'delivered'
     case 'IN_PROGRESS':
       return 'pending'
-    case 'UNKNOWN':
     default:
       return 'unknown'
   }
@@ -111,7 +110,6 @@ function containerStatusLabel(status: string | undefined): string {
       return 'Empty Returned'
     case 'IN_PROGRESS':
       return 'In Progress'
-    case 'UNKNOWN':
     default:
       return 'Awaiting data'
   }
@@ -142,7 +140,6 @@ function observationTypeLabel(type: string): string {
       return 'Customs Hold'
     case 'CUSTOMS_RELEASE':
       return 'Customs Released'
-    case 'OTHER':
     default:
       return type
   }
