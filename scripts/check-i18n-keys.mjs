@@ -81,12 +81,10 @@ async function main() {
   const globalKeyMap = {}
   for (const file of files) {
     const content = await readFile(file, 'utf8')
-    let m
-    while ((m = constObjRegex.exec(content))) {
+    for (let m = constObjRegex.exec(content); m; m = constObjRegex.exec(content)) {
       const varName = m[1]
       const body = m[2]
-      let e
-      while ((e = keyEntryRegex.exec(body))) {
+      for (let e = keyEntryRegex.exec(body); e; e = keyEntryRegex.exec(body)) {
         if (e[2]?.includes('.')) {
           globalKeyMap[varName] = globalKeyMap[varName] || {}
           globalKeyMap[varName][e[1]] = e[2]
@@ -103,8 +101,7 @@ async function main() {
     const res = new Set()
     // match const { ... } = useTranslation()
     const destructRegex = /const\s*{\s*([^}]+)\s*}\s*=\s*useTranslation\s*\(\s*\)/g
-    let d
-    while ((d = destructRegex.exec(content))) {
+    for (let d = destructRegex.exec(content); d; d = destructRegex.exec(content)) {
       const inner = d[1]
       const parts = inner.split(',').map((s) => s.trim())
       for (const p of parts) {
@@ -143,8 +140,7 @@ async function main() {
     // detect local key-var names coming from useTranslation() in this file
     const localKeysVars = findLocalKeysVars(content)
 
-    let m
-    while ((m = literalRegex.exec(content))) {
+    for (let m = literalRegex.exec(content); m; m = literalRegex.exec(content)) {
       const cand = m[1].trim()
       // only accept candidates that look like i18n keys (e.g. contain a dot)
       if (cand.includes('.')) {
@@ -153,10 +149,9 @@ async function main() {
     }
 
     // match any t(...) calls and search inside for chain.prop occurrences
-    while ((m = tCallRegex.exec(content))) {
+    for (let m = tCallRegex.exec(content); m; m = tCallRegex.exec(content)) {
       const arg = m[1]
-      let inner
-      while ((inner = chainPropRegex.exec(arg))) {
+      for (let inner = chainPropRegex.exec(arg); inner; inner = chainPropRegex.exec(arg)) {
         const varChain = inner[1]
         const prop = inner[2]
         // split chain and try to find any segment that maps to a global key object
@@ -190,8 +185,7 @@ async function main() {
 
     // also handle direct usages like props.keys.shipmentHeader outside of t(...) by
     // scanning the whole file for chain.prop patterns and mapping any that we can
-    let ch
-    while ((ch = chainPropRegex.exec(content))) {
+    for (let ch = chainPropRegex.exec(content); ch; ch = chainPropRegex.exec(content)) {
       const varChain = ch[1]
       const prop = ch[2]
       const segments = varChain.split('.')
