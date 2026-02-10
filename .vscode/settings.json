@@ -6,5 +6,8 @@
   },
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "typescript.preferences.importModuleSpecifierEnding": "auto",
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "biome.lsp.bin": "node_modules/.bin/biome",
+  "biome.configurationPath": "./biome.jsonc"
+
 }
