@@ -7,6 +7,7 @@ import { env } from '~/shared/config/env'
 void env
 
 // TODO: Remove global error handlers once we have better visibility into client-side issues and confidence they won't fail silently. See
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/31
 // Install global error handlers early so any silent failures are visible in the console
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (ev) => {
@@ -32,6 +33,7 @@ if (typeof window !== 'undefined') {
 }
 
 // TODO: Remove delegated click handler once we have better visibility into client-side issues and confidence that Solid's onClick handlers are working consistently. See
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/30
 // Diagnostic logging to ensure client bundle is running and to capture clicks
 try {
   console.debug('entry-client: running')
