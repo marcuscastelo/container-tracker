@@ -96,8 +96,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 }
                 props.onTriggerRefresh()
               }}
-              class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
-                }`}
+              class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${
+                props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
+              }`}
               title="Refresh"
               aria-busy={props.isRefreshing}
               disabled={props.isRefreshing}

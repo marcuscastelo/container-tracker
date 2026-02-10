@@ -40,7 +40,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
 
   if (!props.message && !props.existing) return <div />
 
-  const same = isCurrentPath(props.existing)
+  const same = () => isCurrentPath(props.existing)
 
   const extractContainerFromMessage = (msg?: string) => {
     if (!msg) return ''
@@ -50,16 +50,20 @@ export function ExistingProcessError(props: Props): JSX.Element {
 
   const container = props.existing?.containerNumber ?? extractContainerFromMessage(props.message)
 
-  const message = same
-    ? t(keys.createProcess.action.existingProcessSame, { container })
-    : container
-      ? t(keys.createProcess.action.existingProcessError, { container })
-      : (props.message ?? t(keys.createProcess.action.existingProcessError, { container: '' }))
+  const message = () => {
+    if (same()) {
+      return t(keys.createProcess.action.existingProcessSame, { container })
+    } else if (container) {
+      return t(keys.createProcess.action.existingProcessError, { container })
+    } else {
+      return props.message ?? t(keys.createProcess.action.existingProcessError, { container: '' })
+    }
+  }
 
   return (
     <div class="relative mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
       <div class="flex items-start justify-between">
-        <div class="pr-8">{message}</div>
+        <div class="pr-8">{message()}</div>
 
         {/* Close X that acknowledges the error for SPA parents */}
         <div class="ml-4 shrink-0">

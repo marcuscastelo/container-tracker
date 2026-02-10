@@ -33,10 +33,11 @@ export function CopyButton(props: Props): JSX.Element {
     <button
       type="button"
       title={props.title ?? 'Copy'}
-      class={`relative inline-flex h-6 w-6 items-center justify-center rounded overflow-hidden transition-colors ${copied()
+      class={`relative inline-flex h-6 w-6 items-center justify-center rounded overflow-hidden transition-colors ${
+        copied()
           ? 'bg-emerald-600 text-white'
           : 'bg-white/0 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-        } ${props.class ?? ''}`}
+      } ${props.class ?? ''}`}
       onClick={handleClick}
     >
       <Show

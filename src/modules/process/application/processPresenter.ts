@@ -280,8 +280,14 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
 
 export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const carrierResult = CarrierSchema.safeParse(data.carrier)
-  const carrier: Carrier | 'unknown' | null =
-    data.carrier === null ? null : carrierResult.success ? carrierResult.data : 'unknown'
+  let carrier: Carrier | 'unknown' | null
+  if (data.carrier === null) {
+    carrier = null
+  } else if (carrierResult.success) {
+    carrier = carrierResult.data
+  } else {
+    carrier = 'unknown'
+  }
 
   const containers: ContainerDetail[] = data.containers.map((c) => {
     // Build timeline from observations (new pipeline)

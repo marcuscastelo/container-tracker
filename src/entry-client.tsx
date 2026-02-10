@@ -76,17 +76,17 @@ try {
                 } catch (e) {
                   console.error('entry-client: failed to parse refresh response JSON', e)
                 }
-                if (!res.ok) {
-                  try {
-                    alert(`Refresh failed: ${res.status} ${res.statusText}\n${j?.error ?? ''}`)
-                  } catch (err) {
-                    console.error('entry-client: failed to show refresh failure alert', err)
-                  }
-                } else {
+                if (res.ok) {
                   try {
                     alert(`Refresh OK — updated: ${j?.updatedPath ?? 'unknown'}`)
                   } catch (err) {
                     console.error('entry-client: failed to show refresh success alert', err)
+                  }
+                } else {
+                  try {
+                    alert(`Refresh failed: ${res.status} ${res.statusText}\n${j?.error ?? ''}`)
+                  } catch (err) {
+                    console.error('entry-client: failed to show refresh failure alert', err)
                   }
                 }
               })
@@ -112,10 +112,10 @@ try {
 
 try {
   const root = document.getElementById('app')
-  if (!root) {
-    console.error('entry-client: #app root element not found — mount aborted')
-  } else {
+  if (root) {
     mount(() => <StartClient />, root)
+  } else {
+    console.error('entry-client: #app root element not found — mount aborted')
   }
 } catch (err) {
   console.error('entry-client: mount failed', err)

@@ -9,9 +9,13 @@
       "recommended": true,
       "correctness": {},
       "suspicious": {
-        "noExplicitAny": "error"
+        "noExplicitAny": "error",
+        "noIrregularWhitespace": "error"
       },
       "style": {
+        "noNegationElse": "error",
+        "noNestedTernary": "error",
+        "useConsistentBuiltinInstantiation": "error",
         "noDefaultExport": "error",
         "useImportType": "on",
         "noNonNullAssertion": "error",
