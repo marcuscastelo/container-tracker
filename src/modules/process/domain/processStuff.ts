@@ -1,12 +1,6 @@
 import { z } from 'zod'
-import type { Container, NewContainer } from '~/modules/container/domain/container'
-import { type NewProcess, type Process, ProcessSchema } from '~/modules/process/domain/process'
-import {
-  Carrier,
-  CarrierSchema,
-  ContainerInitialStatus,
-  ProcessSourceSchema,
-} from '~/modules/process/domain/value-objects'
+import { type NewProcess, ProcessSchema } from '~/modules/process/domain/process'
+import { CarrierSchema } from '~/modules/process/domain/value-objects'
 
 export const ProcessContainerSchema = z.object({
   id: z.string().uuid(),

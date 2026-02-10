@@ -4,13 +4,7 @@ import {
   DuplicateContainersError,
 } from '~/modules/process/application/errors'
 import { TypedFetchError } from '~/shared/api/typedFetch'
-import {
-  BadRequestError,
-  ConflictError,
-  HttpError,
-  InfrastructureError,
-  NotFoundError,
-} from '~/shared/errors/httpErrors'
+import { HttpError, InfrastructureError } from '~/shared/errors/httpErrors'
 
 function jsonResponse(body: unknown, status = 500): Response {
   return new Response(JSON.stringify(body), {

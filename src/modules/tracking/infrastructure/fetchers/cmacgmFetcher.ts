@@ -1,5 +1,4 @@
 import axios from 'axios'
-import type { Provider } from '~/modules/tracking/domain/provider'
 import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
 
 /**

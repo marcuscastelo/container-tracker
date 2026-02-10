@@ -4,10 +4,7 @@ import {
 } from '~/modules/container/application/containerUseCases'
 import type { Container, NewContainer } from '~/modules/container/domain/container'
 import type { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/supabaseContainerRepository'
-import {
-  CannotRemoveLastContainerError,
-  ContainerAlreadyExistsError,
-} from '~/modules/process/application/errors'
+import { ContainerAlreadyExistsError } from '~/modules/process/application/errors'
 import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type {
   CreateProcessInput,

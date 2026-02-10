@@ -2,7 +2,6 @@ import type { Container, NewContainer } from '~/modules/container/domain/contain
 import type { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/supabaseContainerRepository'
 import {
   CannotRemoveLastContainerError,
-  ContainerAlreadyExistsError,
   DuplicateContainersError,
 } from '~/modules/process/application/errors'
 import { validateContainerNumber } from '~/modules/process/domain/processStuff'

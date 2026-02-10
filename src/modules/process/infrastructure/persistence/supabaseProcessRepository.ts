@@ -1,12 +1,7 @@
 import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
-import type {
-  Carrier,
-  PlannedLocation,
-  ProcessSourceSchema,
-} from '~/modules/process/domain/value-objects'
 import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
-import type { Database, Json } from '~/shared/supabase/database.types'
+import type { Database } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import type { SupabaseNullableResult, SupabaseResult } from '~/shared/supabase/supabaseResult'
 
