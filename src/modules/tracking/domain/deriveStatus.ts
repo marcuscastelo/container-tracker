@@ -44,29 +44,56 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
  * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
 export function deriveStatus(timeline: Timeline): ContainerStatus {
-  let highestStatus: ContainerStatus = 'UNKNOWN'
-  let highestIndex = statusDominanceIndex('UNKNOWN')
-
-  for (const obs of timeline.observations) {
-    // CRITICAL: Only ACTUAL observations can advance status
-    if (obs.event_time_type !== 'ACTUAL') {
-      continue
-    }
-
-    const impliedStatus = OBSERVATION_TO_STATUS[obs.type]
-    if (!impliedStatus) continue
-
-    const idx = statusDominanceIndex(impliedStatus)
-    if (idx > highestIndex) {
-      highestStatus = impliedStatus
-      highestIndex = idx
+  // Helper: find the final destination location_code inferred from the timeline.
+  // Strategy: walk observations from the end and pick the first observation that
+  // is one of DISCHARGE, ARRIVAL or DELIVERY (these indicate arrival/discharge at a port)
+  // and has a non-null location_code. Fallback to the last observation with a
+  // non-null location_code if none of those types are present.
+  let finalLocation: string | null = null
+  for (let i = timeline.observations.length - 1; i >= 0; i--) {
+    const o = timeline.observations[i]
+    if (o.location_code) {
+      if (o.type === 'DISCHARGE' || o.type === 'ARRIVAL' || o.type === 'DELIVERY') {
+        finalLocation = o.location_code
+        break
+      }
+      // keep as fallback if we don't find a stronger indicator
+      if (!finalLocation) finalLocation = o.location_code
     }
   }
 
-  // If we have any observations at all but nothing mapped, at least IN_PROGRESS
-  if (highestStatus === 'UNKNOWN' && timeline.observations.length > 0) {
-    highestStatus = 'IN_PROGRESS'
-  }
+  // Predicate helpers — only ACTUAL observations are considered for status progression
+  const hasActualOfType = (type: keyof typeof OBSERVATION_TO_STATUS) =>
+    timeline.observations.some((o) => o.event_time_type === 'ACTUAL' && o.type === type)
 
-  return highestStatus
+  const hasActualDischargeAtFinal = () =>
+    finalLocation !== null &&
+    timeline.observations.some(
+      (o) =>
+        o.event_time_type === 'ACTUAL' &&
+        o.type === 'DISCHARGE' &&
+        o.location_code === finalLocation,
+    )
+
+  const hasActualArrivalAtFinal = () =>
+    finalLocation !== null &&
+    timeline.observations.some(
+      (o) =>
+        o.event_time_type === 'ACTUAL' && o.type === 'ARRIVAL' && o.location_code === finalLocation,
+    )
+
+  // Follow the explicit dominance order requested by the product rules.
+  // EMPTY_RETURN should take precedence over DELIVERY when present
+  if (hasActualOfType('EMPTY_RETURN')) return 'EMPTY_RETURNED'
+  if (hasActualOfType('DELIVERY')) return 'DELIVERED'
+  if (hasActualDischargeAtFinal()) return 'DISCHARGED'
+  if (hasActualArrivalAtFinal()) return 'ARRIVED_AT_POD'
+  if (hasActualOfType('DEPARTURE')) return 'IN_TRANSIT'
+  if (hasActualOfType('LOAD')) return 'LOADED'
+  if (hasActualOfType('GATE_IN')) return 'IN_PROGRESS'
+
+  // If there are any observations but none that advance status, report IN_PROGRESS
+  if (timeline.observations.length > 0) return 'IN_PROGRESS'
+
+  return 'UNKNOWN'
 }
