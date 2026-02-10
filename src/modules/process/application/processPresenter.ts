@@ -24,6 +24,8 @@ export type TimelineEvent = {
   readonly status: EventStatus
   /** Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event */
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  /** Optional i18n key for system-generated events that should be translated in UI */
+  readonly labelKey?: string
 }
 
 export type AlertDisplay = {
@@ -300,7 +302,8 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
     if (timeline.length === 0) {
       timeline.push({
         id: 'system-created',
-        label: 'Process registered in the system',
+        label: 'Process registered in the system', // fallback for non-i18n consumers
+        labelKey: 'shipmentView.timeline.systemCreated', // i18n key for UI
         location: undefined,
         date: formatDateForLocale(new Date(data.created_at)),
         date_iso: data.created_at,

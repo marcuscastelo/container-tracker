@@ -308,10 +308,10 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
               <button
                 type="button"
                 class="ml-4 text-red-700 underline"
-                aria-label="Dismiss error"
+                aria-label={t(keys.createProcess.action.dismissError)}
                 onClick={() => setRefreshError(null)}
               >
-                Dismiss
+                {t(keys.createProcess.action.dismiss)}
               </button>
             </div>
           </div>

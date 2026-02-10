@@ -1,5 +1,5 @@
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
-import type {  SupabaseResult } from '~/shared/supabase/supabaseResult'
+import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
 
 /**
  * Repository interface for Snapshot persistence.

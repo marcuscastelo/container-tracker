@@ -56,7 +56,7 @@ try {
             const carrier = btn.getAttribute('data-carrier') || 'unknown'
             console.debug('entry-client: delegated refresh click for', container)
             try {
-              alert(`delegated handler: refreshing ${container}...`)
+              alert(`delegated handler: refreshing ${container}...`) // i18n-enforce-ignore — diagnostic debug handler (see issue #30)
             } catch (err) {
               console.error('entry-client: failed to show delegated alert', err)
             }
@@ -76,13 +76,13 @@ try {
                 }
                 if (res.ok) {
                   try {
-                    alert(`Refresh OK — updated: ${j?.updatedPath ?? 'unknown'}`)
+                    alert(`Refresh OK — updated: ${j?.updatedPath ?? 'unknown'}`) // i18n-enforce-ignore — diagnostic debug handler (see issue #30)
                   } catch (err) {
                     console.error('entry-client: failed to show refresh success alert', err)
                   }
                 } else {
                   try {
-                    alert(`Refresh failed: ${res.status} ${res.statusText}\n${j?.error ?? ''}`)
+                    alert(`Refresh failed: ${res.status} ${res.statusText}\n${j?.error ?? ''}`) // i18n-enforce-ignore — diagnostic debug handler (see issue #30)
                   } catch (err) {
                     console.error('entry-client: failed to show refresh failure alert', err)
                   }
@@ -91,7 +91,7 @@ try {
               .catch((err) => {
                 console.error('delegated refresh error', err)
                 try {
-                  alert(`Refresh error: ${String(err)}`)
+                  alert(`Refresh error: ${String(err)}`) // i18n-enforce-ignore — diagnostic debug handler (see issue #30)
                 } catch (e) {
                   console.error('entry-client: failed to show refresh error alert', e)
                 }

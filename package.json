@@ -8,6 +8,7 @@
     "type-check": "tsc --noEmit --skipLibCheck",
     "test": "vitest run",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
+    "i18n:enforce": "node scripts/enforce-i18n-no-hardcoded.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true || true",
     "lint": "pnpm exec biome check . --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx . --max-warnings=0",
     "flint": "pnpm run fix && pnpm run lint",

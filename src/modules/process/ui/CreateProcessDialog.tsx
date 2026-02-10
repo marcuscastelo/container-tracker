@@ -576,7 +576,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                             const linkUrl = serverErrors()[`container-${container.id}`]?.link
                             if (!linkUrl) return
                             const ok = window.confirm(
-                              'Você perderá o progresso do formulário. Deseja continuar?',
+                              t(keys.createProcess.action.confirmLoseProgress),
                             )
                             if (ok) {
                               window.location.href = linkUrl

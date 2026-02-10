@@ -99,7 +99,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
               class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${
                 props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
               }`}
-              title="Refresh"
+              title={t(keys.shipmentView.actions.refresh)}
               aria-busy={props.isRefreshing}
               disabled={props.isRefreshing}
             >
@@ -110,13 +110,13 @@ export function ShipmentHeader(props: Props): JSX.Element {
                   fill="none"
                   stroke="currentColor"
                 >
-                  <title>Refresh</title>
+                  <title>{t(keys.shipmentView.actions.refresh)}</title>
                   <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
                   <path d="M22 12a10 10 0 00-10-10" stroke-width="2" stroke-linecap="round" />
                 </svg>
               ) : (
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <title>Refresh</title>
+                  <title>{t(keys.shipmentView.actions.refresh)}</title>
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -158,10 +158,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
               type="button"
               onClick={() => props.onOpenEdit()}
               class="rounded-md p-2 text-slate-500 hover:bg-slate-100"
-              title="Edit"
+              title={t(keys.shipmentView.actions.edit)}
             >
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <title>Edit</title>
+                <title>{t(keys.shipmentView.actions.edit)}</title>
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"

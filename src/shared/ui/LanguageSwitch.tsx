@@ -40,7 +40,7 @@ function localeToFlag(locale: string): string {
 }
 
 export function LanguageSwitch(): JSX.Element {
-  const { locale, setLocale, availableLocales } = useTranslation()
+  const { t, keys, locale, setLocale, availableLocales } = useTranslation()
   const [open, setOpen] = createSignal(false)
 
   return (
@@ -55,7 +55,7 @@ export function LanguageSwitch(): JSX.Element {
         <span class="text-lg" aria-hidden>
           {localeToFlag(locale())}
         </span>
-        <span class="sr-only">Language</span>
+        <span class="sr-only">{t(keys.languageSwitch.label)}</span>
       </button>
 
       <Show when={open()}>

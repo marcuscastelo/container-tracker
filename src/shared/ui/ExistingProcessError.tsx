@@ -69,7 +69,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
         <div class="ml-4 shrink-0">
           <button
             type="button"
-            aria-label={t(keys.createProcess.action.dismiss) ?? 'Dismiss'}
+            aria-label={t(keys.createProcess.action.dismiss)}
             class="rounded-md p-1 text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200"
             onClick={() => {
               try {
@@ -80,7 +80,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
             }}
           >
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <title>{t(keys.createProcess.action.dismiss) ?? 'Dismiss'}</title>
+              <title>{t(keys.createProcess.action.dismiss)}</title>
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
