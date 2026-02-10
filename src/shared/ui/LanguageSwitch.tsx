@@ -60,7 +60,6 @@ export function LanguageSwitch(): JSX.Element {
 
       <Show when={open()}>
         <ul
-          role="listbox"
           class="absolute right-0 mt-2 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
           onMouseLeave={() => setOpen(false)}
         >

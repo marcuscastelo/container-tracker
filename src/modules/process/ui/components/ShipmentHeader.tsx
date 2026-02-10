@@ -96,9 +96,8 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 }
                 props.onTriggerRefresh()
               }}
-              class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${
-                props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
-              }`}
+              class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${props.isRefreshing ? 'opacity-60 pointer-events-none' : ''
+                }`}
               title="Refresh"
               aria-busy={props.isRefreshing}
               disabled={props.isRefreshing}
@@ -110,11 +109,13 @@ export function ShipmentHeader(props: Props): JSX.Element {
                   fill="none"
                   stroke="currentColor"
                 >
+                  <title>Refresh</title>
                   <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
                   <path d="M22 12a10 10 0 00-10-10" stroke-width="2" stroke-linecap="round" />
                 </svg>
               ) : (
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <title>Refresh</title>
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -159,6 +160,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
               title="Edit"
             >
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <title>Edit</title>
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"

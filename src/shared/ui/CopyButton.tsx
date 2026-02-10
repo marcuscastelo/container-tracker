@@ -33,17 +33,17 @@ export function CopyButton(props: Props): JSX.Element {
     <button
       type="button"
       title={props.title ?? 'Copy'}
-      class={`relative inline-flex h-6 w-6 items-center justify-center rounded overflow-hidden transition-colors ${
-        copied()
+      class={`relative inline-flex h-6 w-6 items-center justify-center rounded overflow-hidden transition-colors ${copied()
           ? 'bg-emerald-600 text-white'
           : 'bg-white/0 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-      } ${props.class ?? ''}`}
+        } ${props.class ?? ''}`}
       onClick={handleClick}
     >
       <Show
         when={copied()}
         fallback={
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <title>{props.title ?? 'Copy'}</title>
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -59,17 +59,16 @@ export function CopyButton(props: Props): JSX.Element {
           </svg>
         }
       >
-        <>
-          <span class="copy-button-ripple" aria-hidden="true" />
-          <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M20 6L9 17l-5-5"
-            />
-          </svg>
-        </>
+        <span class="copy-button-ripple" aria-hidden="true" />
+        <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <title>{props.title ?? 'Copied'}</title>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M20 6L9 17l-5-5"
+          />
+        </svg>
       </Show>
     </button>
   )

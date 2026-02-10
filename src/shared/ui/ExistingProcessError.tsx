@@ -76,6 +76,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
             }}
           >
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <title>{t(keys.createProcess.action.dismiss) ?? 'Dismiss'}</title>
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"

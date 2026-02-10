@@ -271,7 +271,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           const txt = await res.text().catch(() => '')
           setServerErrors(
             Object.fromEntries(
-              containerNumbers.map((n, i) => [
+              containerNumbers.map((_n, i) => [
                 `container-${containers[i].id}`,
                 { message: txt || 'Failed to validate container' },
               ]),
@@ -334,7 +334,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
         for (const c of containers) markTouched(`container-${c.id}`)
         setServerErrors(
           Object.fromEntries(
-            containerNumbers.map((n, i) => [
+            containerNumbers.map((_n, i) => [
               `container-${containers[i].id}`,
               { message: 'Failed to validate container' },
             ]),

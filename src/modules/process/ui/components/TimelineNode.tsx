@@ -143,6 +143,7 @@ export function TimelineNode(props: {
                   }}
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <title>View on carrier site</title>
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"

@@ -65,7 +65,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
         // This handles cases where the server returned a JSON string (possibly escaped).
         let niceMessage = msg
         const m = msg.match(/"message"\s*:\s*"([^"]+)"/)
-        if (m && m[1]) {
+        if (m?.[1]) {
           niceMessage = m[1]
         } else {
           // Fallback: try to show only the part after the HTTP status code
@@ -253,8 +253,8 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
           if (ex) {
             setCreateError({
               message: String(
-                isRecord(body) && typeof body['message'] === 'string'
-                  ? body['message']
+                isRecord(body) && typeof body.message === 'string'
+                  ? body.message
                   : 'Container already exists',
               ),
               processId: String(ex.processId ?? ex.process_id ?? ''),
@@ -304,6 +304,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
             <div class="flex items-start justify-between gap-4">
               <div>{refreshError()}</div>
               <button
+                type="button"
                 class="ml-4 text-red-700 underline"
                 aria-label="Dismiss error"
                 onClick={() => setRefreshError(null)}
