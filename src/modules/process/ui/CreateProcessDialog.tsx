@@ -228,7 +228,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     }))
     const entriesToCheck = entries.filter((e) => !initialContainerNumbersSet().has(e.num))
     const containerNumbersForCheck = entriesToCheck.map((e) => e.num)
-    ;(async () => {
+    void (async () => {
       try {
         // Reset previous server errors
         setServerErrors({})

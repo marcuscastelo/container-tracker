@@ -7,12 +7,29 @@
   "linter": {
     "rules": {
       "recommended": true,
-      "correctness": {},
+      "correctness": {
+        "noUndeclaredVariables": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "useExhaustiveSwitchCases": "error"
+      },
+      "complexity": {
+        "noUselessStringConcat": "error"
+      },
       "suspicious": {
         "noExplicitAny": "error",
-        "noIrregularWhitespace": "error"
+        "noIrregularWhitespace": "error",
+        "useAwait": "error",
+        "useAdjacentOverloadSignatures": "error"
       },
       "style": {
+        "noYodaExpression": "error",
+        "useConsistentArrayType": "error",
+        "useConsistentObjectDefinitions": "error",
+        "useShorthandAssign": "error",
+        "useObjectSpread": "error",
+        "useThrowOnlyError": "error",
         "noNegationElse": "error",
         "noNestedTernary": "error",
         "useConsistentBuiltinInstantiation": "error",

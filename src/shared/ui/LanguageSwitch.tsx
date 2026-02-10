@@ -70,7 +70,9 @@ export function LanguageSwitch(): JSX.Element {
                   type="button"
                   class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   onClick={() => {
-                    setLocale(lng)
+                    setLocale(lng).catch(() => {
+                      /* ignore */
+                    })
                     setOpen(false)
                   }}
                 >
