@@ -51,8 +51,6 @@ export function createProcessUseCases({
       const containerInputs: ContainerInput[] = input.containers.map((c) => ({
         containerNumber: c.container_number,
         carrier_code: c.carrier_code,
-        container_type: c.container_type,
-        container_size: c.container_size,
       }))
 
       // Check for existing containers in the system (batch check)
@@ -122,8 +120,6 @@ export function createProcessUseCases({
         const containerInputs: ContainerInput[] = input.containers.map((c) => ({
           containerNumber: c.container_number,
           carrier_code: c.carrier_code,
-          container_type: c.container_type,
-          container_size: c.container_size,
         }))
 
         await containerUseCases.reconcileForProcess(processId, existing, containerInputs)
@@ -132,11 +128,16 @@ export function createProcessUseCases({
       // Map field names from CreateProcessInput -> repository update shape
       const updates: Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>> = {}
       if (input.reference !== undefined) updates.reference = input.reference
-      if (input.operation_type !== undefined) updates.operation_type = input.operation_type
       if (input.origin !== undefined) updates.origin = input.origin
       if (input.destination !== undefined) updates.destination = input.destination
       if (input.carrier !== undefined) updates.carrier = input.carrier
       if (input.bill_of_lading !== undefined) updates.bill_of_lading = input.bill_of_lading
+      if (input.booking_number !== undefined) updates.booking_number = input.booking_number
+      if (input.importer_name !== undefined) updates.importer_name = input.importer_name
+      if (input.exporter_name !== undefined) updates.exporter_name = input.exporter_name
+      if (input.reference_importer !== undefined) updates.reference_importer = input.reference_importer
+      if (input.product !== undefined) updates.product = input.product
+      if (input.redestination_number !== undefined) updates.redestination_number = input.redestination_number
 
       // Call repository.update for provided fields
       if (Object.keys(updates).length > 0) {

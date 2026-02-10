@@ -2,7 +2,6 @@ import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
 import type {
   Carrier,
-  OperationType,
   PlannedLocation,
   ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
@@ -149,12 +148,16 @@ export const supabaseProcessRepository = {
       .from(PROCESSES_TABLE)
       .insert({
         reference: process.reference,
-        operation_type: process.operation_type,
+        // operation_type is LEGACY - not persisting from domain
         origin: process.origin ?? null,
         destination: process.destination ?? null,
         carrier: process.carrier,
         bill_of_lading: process.bill_of_lading,
-        booking_reference: process.booking_reference,
+        booking_number: process.booking_number,
+        importer_name: process.importer_name,
+        exporter_name: process.exporter_name,
+        reference_importer: process.reference_importer,
+        // product and redestination_number - TODO: add to DB schema
         source: process.source,
         created_at: now,
         updated_at: now,

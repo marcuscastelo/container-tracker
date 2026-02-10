@@ -1,9 +1,5 @@
 import z from 'zod/v4'
 
-// Operation type enum - explicit choice, defaults to 'unknown'
-export const OperationTypeSchema = z.enum(['import', 'export', 'transshipment', 'unknown'])
-export type OperationType = z.infer<typeof OperationTypeSchema>
-
 // Source of the process data
 export const ProcessSourceSchema = z.enum(['manual', 'api', 'import'])
 export type ProcessSource = z.infer<typeof ProcessSourceSchema>

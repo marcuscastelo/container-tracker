@@ -80,28 +80,31 @@
     "field": {
       "reference": "Referência",
       "referencePlaceholder": "ex. 2024-0512 ou PO-12345",
-      "operationType": "Tipo de Operação",
-      "operationTypePlaceholder": "Selecione o tipo de operação",
       "origin": "Origem",
       "originPlaceholder": "ex. Shanghai, Rotterdam",
       "destination": "Destino",
       "destinationPlaceholder": "ex. Santos, Los Angeles",
       "containerNumber": "Contentor",
       "containerNumberPlaceholder": "ex. MRKU1234567",
-      "isoType": "Tipo/Tamanho ISO",
-      "isoTypePlaceholder": "ex. 40HC, 20GP",
       "carrier": "Armador",
       "carrierPlaceholder": "Selecione o armador",
-      "blReference": "Bill of Lading (BL)",
-      "blReferencePlaceholder": "ex. MAEU123456789"
+      "billOfLading": "Bill of Lading (BL)",
+      "billOfLadingPlaceholder": "ex. MAEU123456789",
+      "bookingNumber": "Número de Booking",
+      "bookingNumberPlaceholder": "ex. BOOK123456",
+      "importerName": "Importador",
+      "importerNamePlaceholder": "ex. Empresa ABC",
+      "exporterName": "Exportador",
+      "exporterNamePlaceholder": "ex. Empresa XYZ",
+      "referenceImporter": "Referência do Importador",
+      "referenceImporterPlaceholder": "ex. PO-98765",
+      "product": "Produto",
+      "productPlaceholder": "ex. Electrónicos, Têxteis",
+      "redestinationNumber": "Número de Redestinação",
+      "redestinationNumberPlaceholder": "ex. RED-001"
     },
     "unknownCarrierWarning": "Se 'Desconhecido', não haverá atualizações automáticas do armador.",
-    "operationType": {
-      "import": "Importação",
-      "export": "Exportação",
-      "transshipment": "Transbordo",
-      "unknown": "Desconhecido"
-    },
+    "carrierUnknown": "Desconhecido",
     "validation": {
       "containerNumberRequired": "O número do contentor é obrigatório.",
       "duplicateContainer": "Número de contentor duplicado"
