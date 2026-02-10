@@ -7,9 +7,6 @@ import type {
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
-// Backwards-compatible alias for tests and other callers
-export type ProcessApiResponse = ProcessDetailResponse
-
 // Presenter: convert ProcessApiResponse (API) into ShipmentDetail (UI shape)
 export type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
 

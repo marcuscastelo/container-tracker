@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import {
-  type ProcessApiResponse,
-  presentProcess,
-} from '~/modules/process/application/processPresenter'
+import { presentProcess } from '~/modules/process/application/processPresenter'
+import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 
 describe('processPresenter', () => {
   it('presents a minimal API payload into shipment detail', () => {
-    const example: ProcessApiResponse = {
+    const example: ProcessDetailResponse = {
       id: 'proc-1',
       reference: 'REF-1',
       origin: { display_name: 'Shanghai' },
@@ -60,7 +58,7 @@ describe('processPresenter', () => {
   })
 
   it('presents process with alerts from tracking pipeline', () => {
-    const example: ProcessApiResponse = {
+    const example: ProcessDetailResponse = {
       id: 'proc-2',
       reference: 'REF-2',
       origin: { display_name: 'Rotterdam' },
@@ -106,7 +104,7 @@ describe('processPresenter', () => {
   })
 
   it('filters out dismissed alerts', () => {
-    const example: ProcessApiResponse = {
+    const example: ProcessDetailResponse = {
       id: 'proc-3',
       reference: null,
       origin: null,
@@ -138,7 +136,7 @@ describe('processPresenter', () => {
   })
 
   it('shows placeholder timeline when no observations', () => {
-    const example: ProcessApiResponse = {
+    const example: ProcessDetailResponse = {
       id: 'proc-4',
       reference: 'EMPTY',
       origin: null,
