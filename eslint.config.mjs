@@ -5,6 +5,10 @@ import solid from 'eslint-plugin-solid/configs/typescript'
 
 // biome-ignore lint/style/noDefaultExport: ESLint configs use default exports
 export default [
+  // Ignore build/output folders from linting
+  {
+    ignores: ['.output/**', '.vinxi/**'],
+  },
   // js.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
