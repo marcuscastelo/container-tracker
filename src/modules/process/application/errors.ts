@@ -37,20 +37,6 @@ export class DuplicateContainersError extends Error {
 }
 
 /**
- * Parse error message to detect container already exists errors
- */
-export function parseContainerExistsError(message: string): {
-  containerNumber: string | null
-  isExistsError: boolean
-} {
-  const match = message.match(/Container\s+([A-Za-z0-9]+)\s+already exists/i)
-  if (match) {
-    return { containerNumber: match[1], isExistsError: true }
-  }
-  return { containerNumber: null, isExistsError: false }
-}
-
-/**
  * Resolve the owner of a container that already exists
  */
 export async function resolveContainerOwner(

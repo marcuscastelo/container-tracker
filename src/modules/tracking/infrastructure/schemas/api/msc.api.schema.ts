@@ -6,7 +6,7 @@ import { z } from 'zod'
   - Dates are in DD/MM/YYYY format in examples and may lack time information
 */
 
-export const MscVesselSchema = z.object({
+const MscVesselSchema = z.object({
   IMO: z.string().nullable().optional(),
   Flag: z.string().nullable().optional(),
   Built: z.string().nullable().optional(),
@@ -14,7 +14,7 @@ export const MscVesselSchema = z.object({
   raw: z.any().optional(),
 })
 
-export const MscEventSchema = z.object({
+const MscEventSchema = z.object({
   Date: z.string().nullable().optional(), // e.g. "02/02/2026"
   Order: z.number().nullable().optional(),
   Detail: z.array(z.string()).nullable().optional(), // often [vesselName, voyage]
@@ -27,7 +27,7 @@ export const MscEventSchema = z.object({
   raw: z.any().optional(),
 })
 
-export const MscContainerInfoSchema = z.object({
+const MscContainerInfoSchema = z.object({
   Events: z.array(MscEventSchema).optional(),
   Delivered: z.boolean().nullable().optional(),
   LatestMove: z.string().nullable().optional(),
@@ -37,7 +37,7 @@ export const MscContainerInfoSchema = z.object({
   raw: z.any().optional(),
 })
 
-export const MscBillOfLadingSchema = z.object({
+const MscBillOfLadingSchema = z.object({
   Delivered: z.boolean().nullable().optional(),
   ContainersInfo: z.array(MscContainerInfoSchema).optional(),
   BillOfLadingNumber: z.string().nullable().optional(),
@@ -46,7 +46,7 @@ export const MscBillOfLadingSchema = z.object({
   raw: z.any().optional(),
 })
 
-export const MscDataSchema = z.object({
+const MscDataSchema = z.object({
   CurrentDate: z.string().nullable().optional(),
   TrackingType: z.string().nullable().optional(),
   BillOfLadings: z.array(MscBillOfLadingSchema).optional(),

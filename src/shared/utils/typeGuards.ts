@@ -9,5 +9,3 @@ export function isRecord(v: unknown): v is Record<string, unknown> {
 export function hasDefaultProp(v: unknown): v is { default: unknown } {
   return isRecord(v) && 'default' in v
 }
-
-export const __deprecated_typeGuards_placeholder = false

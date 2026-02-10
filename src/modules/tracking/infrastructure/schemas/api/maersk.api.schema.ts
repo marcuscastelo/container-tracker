@@ -8,7 +8,7 @@ import { z } from 'zod'
 */
 
 // Top-level origin/destination location
-export const MaerskLocationSchema = z.object({
+const MaerskLocationSchema = z.object({
   city: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
@@ -22,7 +22,7 @@ export const MaerskLocationSchema = z.object({
 })
 
 // Event object inside a container.location.events
-export const MaerskEventSchema = z.object({
+const MaerskEventSchema = z.object({
   type: z.string().nullable().optional(), // often "EQUIPMENT"
   actfor: z.string().nullable().optional(), // e.g. "EXP"
   eventId: z.string().nullable().optional(),
@@ -38,11 +38,11 @@ export const MaerskEventSchema = z.object({
   raw: z.any().optional(),
 })
 
-export const MaerskLocationWithEventsSchema = MaerskLocationSchema.extend({
+const MaerskLocationWithEventsSchema = MaerskLocationSchema.extend({
   events: z.array(MaerskEventSchema).optional(),
 })
 
-export const MaerskContainerSchema = z.object({
+const MaerskContainerSchema = z.object({
   status: z.string().nullable().optional(), // e.g. IN_PROGRESS
   iso_code: z.string().nullable().optional(),
   operator: z.string().nullable().optional(), // carrier code like MAEU

@@ -7,7 +7,7 @@ import { z } from 'zod'
 */
 
 // Move item used in PastMoves / CurrentMoves / ProvisionalMoves
-export const CmaCgmMoveSchema = z.object({
+const CmaCgmMoveSchema = z.object({
   Date: z.string().nullable().optional(), // MS "\/Date(1764659520000)\/" format in examples
   State: z.string().nullable().optional(), // e.g. DONE, CURRENT, NONE
   Status: z.number().nullable().optional(), // numeric provider code

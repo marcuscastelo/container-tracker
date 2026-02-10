@@ -35,7 +35,7 @@ export type ContainerStatus = z.infer<typeof ContainerStatusSchema>
  * Dominance order — higher index means more advanced.
  * Used by deriveStatus to ensure monotonicity.
  */
-export const STATUS_DOMINANCE: readonly ContainerStatus[] = [
+const STATUS_DOMINANCE: readonly ContainerStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
   'LOADED',

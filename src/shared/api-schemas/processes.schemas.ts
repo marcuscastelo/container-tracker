@@ -27,8 +27,6 @@ export const ProcessResponseSchema = z.object({
 
 export const ProcessListResponseSchema = z.array(ProcessResponseSchema)
 
-export const ErrorResponseSchema = z.object({ error: z.string() })
-
 /**
  * Observation shape as returned in the API.
  * Maps directly from the tracking domain Observation.
