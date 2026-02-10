@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "tags": ["-lintignore"],
-  "ignore": ["src/shared/supabase/database.types.ts"]
+  "ignore": ["src/shared/supabase/database.types.ts"],
+  "tsx":true
 }
