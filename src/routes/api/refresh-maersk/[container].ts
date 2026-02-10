@@ -1,6 +1,6 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import type { APIEvent } from '@solidjs/start/server'
-import fs from 'fs'
-import path from 'path'
 import puppeteerExtra from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { z } from 'zod'

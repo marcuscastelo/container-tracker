@@ -1,5 +1,5 @@
-import { copyFile, readdir, readFile, writeFile } from 'fs/promises'
-import path from 'path'
+import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 
 async function readJson(file) {
   const txt = await readFile(file, 'utf8')
@@ -58,7 +58,7 @@ async function main() {
     }
   }
 
-  const refLocale = locales['en'] ? 'en' : Object.keys(locales)[0]
+  const refLocale = locales.en ? 'en' : Object.keys(locales)[0]
   const refKeys = locales[refLocale]
   console.log(`Reference locale: ${refLocale} (${refKeys.size} keys)`)
 
@@ -87,7 +87,7 @@ async function main() {
       const body = m[2]
       let e
       while ((e = keyEntryRegex.exec(body))) {
-        if (e[2] && e[2].includes('.')) {
+        if (e[2]?.includes('.')) {
           globalKeyMap[varName] = globalKeyMap[varName] || {}
           globalKeyMap[varName][e[1]] = e[2]
         }
@@ -295,7 +295,7 @@ async function main() {
         }
 
         // write back formatted JSON
-        await writeFile(f, JSON.stringify(j, null, 2) + '\n', 'utf8')
+        await writeFile(f, `${JSON.stringify(j, null, 2)}\n`, 'utf8')
         console.log(`Wrote ${f} (removed ${toRemove.length} keys). Backup at ${f}.bak`)
       } catch (err) {
         console.error('Failed to update', f, err.message)
@@ -312,7 +312,7 @@ async function main() {
     for (const k of usedButMissing.slice(0, 100)) {
       console.warn('  -', k)
       const locs = usedKeyLocations[k]
-      if (locs && locs.size) {
+      if (locs?.size) {
         for (const l of Array.from(locs).slice(0, 5)) console.warn('      ->', l)
       }
     }
