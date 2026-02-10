@@ -82,8 +82,8 @@ export function registerSubapabaseRealtimeCallback<T>(
 
     callback({
       eventType,
-      old: oldRecord !== null && oldRecord.success ? oldRecord.data : undefined,
-      new: newRecord !== null && newRecord.success ? newRecord.data : undefined,
+      old: oldRecord?.success ? oldRecord.data : undefined,
+      new: newRecord?.success ? newRecord.data : undefined,
     })
   }
 

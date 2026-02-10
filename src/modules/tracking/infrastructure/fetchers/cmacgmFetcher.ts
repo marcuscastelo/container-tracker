@@ -7,7 +7,7 @@ import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/msc
  * CMA-CGM returns HTML with embedded JSON in `options.responseData`.
  * We extract and parse that JSON payload.
  */
-export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchResult> {
+export async function fetchCmaCgmStatus(_containerNumber: string): Promise<FetchResult> {
   const response = await axios.post(
     'https://www.cma-cgm.com/ebusiness/tracking/search',
     new URLSearchParams({
