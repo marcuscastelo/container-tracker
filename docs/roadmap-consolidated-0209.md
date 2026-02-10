@@ -1,6 +1,8 @@
-# Roadmap Técnico — v2 (Consolidado)
+# Roadmap Técnico — v2 (Consolidado com Datas)
 
-Este roadmap consolida **todas as decisões, ideias, feedbacks de cliente e discussões técnicas** até o momento. Ele é orientado a **execução**, não apenas visão. Cada fase descreve objetivos claros, entregáveis verificáveis e critérios de aceite.
+Este roadmap consolida **todas as decisões, ideias, feedbacks de cliente e discussões técnicas** até o momento. Ele é orientado a **execução**, com **entregáveis claros, previsões de data e critérios de aceite**. As datas são **estimativas realistas**, ajustáveis conforme feedback.
+
+> Horizonte considerado: **curto prazo (4–6 semanas)** com validação contínua do cliente.
 
 ---
 
@@ -23,179 +25,202 @@ Este roadmap consolida **todas as decisões, ideias, feedbacks de cliente e disc
 **Objetivo**
 Estabelecer o vocabulário único do sistema.
 
-**Inclui**
-
-* Schemas canônicos (Shipment, Container, Snapshot, Observation, Alert)
-* Zod schemas para payloads externos
-* Exemplos reais de carriers (Maersk, MSC, CMA CGM)
-
-**Critério de aceite**
-
-* Todo payload externo valida ou gera `Alert[data]`
-
 ---
 
-### F0.2 — Motor Canônico de Derivação (PRIORIDADE MÁXIMA)
+### F0.2 — Motor Canônico de Derivação
+
+📅 **Status:** EM AJUSTE FINAL
 
 **Objetivo**
-Converter dados inconsistentes em verdade operacional confiável.
+Converter dados inconsistentes em verdade operacional confiável **com correção de bugs críticos de carriers**.
 
-**Entregas**
+**Entregas (implementadas)**
 
-* Funções puras:
+* Pipeline completo:
 
   * `normalizeSnapshot → ObservationDraft[]`
   * `diffObservations(prev, curr) → Observation[]`
   * `deriveTimeline(observations)`
   * `deriveStatus(timeline)`
   * `deriveAlerts(timeline, status)`
-* Suíte de testes de domínio (golden tests)
+* Diferenciação ACTUAL vs EXPECTED persistida e exibida
+* Normalização robusta de datas (UTC, date-only, carrier quirks)
+* Testes de domínio cobrindo Maersk, CMA CGM e MSC
 
-**Regras chave**
+**Correções de bugs incorporadas ao F0.2**
 
-* Diff ocorre na Application layer
-* Adapters não mantêm estado
-* Fingerprint por tipo de Observation
+* Maersk exibindo `OTHER` indevidamente na timeline
+* CMA CGM marcando `EXPECTED` em excesso
+* Inconsistências de activity mapping entre carriers
+
+**Critério de aceite**
+
+* Timeline e status 100% derivados do domínio (sem UI)
+* Nenhum evento `OTHER` sem justificativa explícita
+* ACTUAL vs EXPECTED consistente entre carriers
+* Casos reais cobertos por testes automatizados
 
 ---
 
-## FASE 1 — Existência Operacional (habilitantes)
+## FASE 1 — Existência Operacional (UX básica)
 
-### F1.1 — Criação Manual de Shipment / Containers (DONE)
+### F1.1 — Campos do Processo + Correções Rápidas
 
-* CreateProcessDialog
-* Validações (ISO 6346 como warning)
-* Persistência no banco
-
----
-
-### F1.2 — Criação Manual de Eventos (PARTIAL)
+📅 **Status:** EM PROGRESSO
 
 **Objetivo**
-Permitir input humano quando APIs falham.
+Padronizar e estabilizar os campos operacionais do processo antes de avançar para alertas e automações.
 
-**Entregas**
+**Entregas (parciais)**
 
-* Form de evento manual
-* Flag `source = manual`
-* Eventos manuais nunca sobrescrevem automáticos
+1. BL único (Bill of Lading) — **OK**
+2. Booking separado (opcional) — **PENDENTE padronização**
+3. Nome do Importador — **PENDENTE padronização**
+4. Nome do Exportador — **PENDENTE padronização**
+5. Ref. Nossa — **PENDENTE padronização**
+6. Ref. do Importador — **PENDENTE padronização**
+7. Produto (descrição simples) — **PENDENTE padronização**
+8. Número da Redestinação — **NÃO IMPLEMENTADO**
+9. Regras de exibição (ordem, rótulos, obrigatoriedade) — **NÃO DEFINIDAS**
+
+**Correções incluídas**
+
+* Remoção do tipo de operação (sempre importação)
+* Remoção de anotações livres
+
+**Pendências explícitas**
+
+* Definir nomenclatura final (PT / EN)
+* Definir quais campos são obrigatórios vs opcionais
+* Garantir consistência entre UI, domínio e persistência
+
+**Critério de aceite**
+
+* Todos os campos 2–9 padronizados e documentados
+* Nenhum campo ambíguo para o usuário final
 
 ---
 
-## FASE 2 — Visualização Operacional
+### F1.2 — Correções Residuais de Carriers
+
+📅 **Status:** DEPOIS DO F0.2
+
+**Objetivo**
+Tratar apenas bugs não críticos ou específicos que não impactam a derivação canônica.
+
+**Escopo**
+
+* Casos raros ou edge cases não bloqueantes
+* Ajustes finos de UI ou labels
+* Correções sem impacto em status / timeline
+
+---
+
+## FASE 2 — Visualização Operacional (em progresso)
 
 ### F2.1 — Dashboard Operacional
+
+📅 **Previsão:** Semana 2
 
 **Entregas**
 
 * Tabela de Shipments
-* Containers: mostrar 1º ID + badge +N
+* Containers: mostrar 1º + badge +N
 * Ícone do armador
-* Status, ETA, alert count
+* Status atual
+* Contador de alertas visível
 
 ---
 
-### F2.2 — Timeline Canônica
+### F2.2 — Timeline Canônica (pré-alertas)
+
+📅 **Status:** EM PROGRESSO
+
+**Entregas já realizadas**
+
+* Timeline baseada exclusivamente em Observations
+* Ordenação consistente por `event_time`
+* Diferenciação ACTUAL vs EXPECTED na UI
+* Exibição de navio por evento
+
+**Pendências**
+
+* Destaque visual explícito para mudança de navio
+* UX final para buracos de timeline
+
+---
+
+## FASE 3 — Transbordo (foco principal do cliente)
+
+### F3.1 — Detecção Canônica de Transbordo
+
+📅 **Status:** PRÓXIMA
+📅 **Previsão:** Semana 3
 
 **Entregas**
 
-* Ordenação por event_time
-* ACTUAL vs EXPECTED
-* Buracos explícitos
-* Links para site do carrier
+* Regra formal de transbordo
+* Flag `hasTransshipment`
+* Contador de transbordos
+* Badge no processo/container
+
+**Critério de aceite**
+
+* Zero falso positivo
+* Detecção retroativa garantida
 
 ---
 
-## FASE 3 — Alertas (foco do cliente)
+### F3.2 — Alertas Fact-based (Transbordo)
 
-### F3.1 — Alertas Fact-based (transbordo prioritário)
+📅 **Status:** BLOQUEADA ATÉ F3.1
+📅 **Previsão:** Semana 3–4
 
-**Inclui**
+**Entregas**
 
-* Detecção de transbordo
-* Alertas retroativos permitidos
-* Marcação como histórico
-* Campos: detected_at, triggered_at
-
----
-
-### F3.2 — Alertas Monitoring
-
-**Inclui**
-
-* Sem movimento X dias
-* Sem ETA
-* Monitoring não retroativo
-
----
-
-### F3.3 — Gestão de Alertas
-
-* Ack / Dismiss
-* Undo temporário
-* Visualização de alertas históricos
+* Alerta `TRANSBORDO`
+* Categoria FACT
+* Severidade alta
+* Disparo único
+* Histórico preservado
+* UI com destaque forte
 
 ---
 
 ## FASE 4 — Notificações
 
-### F4.1 — Email Alerts (MVP)
+### F4.1 — Email Automático (Entrega Final)
 
-* Envio de alertas fact por email
-* Configurável no futuro
+📅 **Previsão:** Semana 4–5
 
----
+**Entregas**
 
-## FASE 5 — Busca, Power-User e Produtividade
-
-### F5.1 — Ctrl+K Command Palette
-
-* Busca global
-* Ações rápidas (novo processo, favoritos)
+* Envio de email em alertas FACT
+* Assunto claro (mudança de navio)
+* Conteúdo objetivo
+* Link direto para o processo
 
 ---
 
-### F5.2 — Exportações
+## FASE 5 — Refinos e Power-user
 
-* Static export (metadata)
-* Full export (events, alerts)
-* CSV / JSON / PDF
+📅 **Previsão:** Semana 5–6
 
----
-
-## FASE 6 — Confiabilidade e Operação
-
-### F6.1 — Observabilidade
-
-* Sentry / OTel
-* Alertas internos de quebra de schema
+* Busca avançada
+* Pequenas automações de produtividade
+* Ajustes finos de UX com base no uso real
 
 ---
 
-### F6.2 — Data Quality Layer
+## Roadmap resumido (executivo)
 
-* Alertas de inconsistência
-* Auditoria de adapters
-
----
-
-## FASE 7 — Débito Técnico e Refino
-
-* Centralizar clipboard utils
-* Refatorar CreateProcessDialog
-* Mover parsing pesado para camada de dados
-* Consolidar mappers duplicados
+1. Motor de derivação
+2. Campos + correções + bugs
+3. Timeline clara
+4. Transbordo detectado
+5. Alerta forte
+6. Email automático
 
 ---
 
-## Roadmap resumido (priorização)
-
-1. **F0.2 — Motor de Derivação**
-2. **F3.1 — Alertas de Transbordo**
-3. **F2.2 — Timeline confiável**
-4. **F4.1 — Email alerts**
-5. **F5 — Power-user features**
-
----
-
-Este roadmap é o **contrato técnico do projeto**. Qualquer nova feature deve se encaixar nele ou justificar claramente sua exceção.
+Este roadmap é o **contrato técnico-operacional do projeto**. Novos pedidos entram como fase ou ajuste explícito, nunca de forma implícita.
