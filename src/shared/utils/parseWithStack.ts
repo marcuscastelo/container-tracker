@@ -9,7 +9,6 @@ import { ZodError, z } from 'zod/v4'
  */
 export function parseWithStack<T extends z.core.$ZodType>(schema: T, data: unknown): z.output<T> {
   try {
-    // eslint-disable-next-line no-restricted-syntax
     return z.parse(schema, data)
   } catch (err) {
     if (err instanceof ZodError) {

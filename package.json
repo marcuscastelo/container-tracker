@@ -9,7 +9,7 @@
     "test": "vitest run",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true || true",
-    "lint": "pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
+    "lint": "pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx . --max-warnings=0",
     "flint": "pnpm run fix && pnpm run lint",
     "check": "run-p flint type-check test",
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix"

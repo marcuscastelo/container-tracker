@@ -6,7 +6,6 @@
  */
 export function jsonParseWithStack<T = unknown>(json: string): T {
   try {
-    // eslint-disable-next-line no-restricted-syntax, @typescript-eslint/consistent-type-assertions
     return <T>JSON.parse(json)
   } catch (err) {
     const error = new Error(err instanceof Error ? err.message : 'Invalid JSON')

@@ -1,6 +1,6 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js'
 import z from 'zod'
 import type { CreateProcessInput } from '~/modules/process/domain/processStuff'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
@@ -22,11 +22,11 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-export function ShipmentView({ params }: { params: { id: string } }): JSX.Element {
+export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { t, keys } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
-    () => params.id,
+    () => props.params.id,
     (id) => fetchProcess(id),
   )
 
@@ -207,7 +207,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
 
       try {
         await typedFetch(
-          `/api/processes/${params.id}`,
+          `/api/processes/${props.params.id}`,
           {
             method: 'PATCH',
             body: JSON.stringify(input),
@@ -288,7 +288,7 @@ export function ShipmentView({ params }: { params: { id: string } }): JSX.Elemen
   })
 
   // Update selected container when data loads
-  createMemo(() => {
+  createEffect(() => {
     const data = shipment()
     if (data && data.containers.length > 0 && !selectedContainerId()) {
       setSelectedContainerId(data.containers[0].id)

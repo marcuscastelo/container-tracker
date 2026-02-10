@@ -13,20 +13,20 @@ if (typeof window !== 'undefined') {
   window.addEventListener('error', (ev) => {
     try {
       // ev.error may be undefined for some browser errors
-      // eslint-disable-next-line no-console
+
       console.error('global error captured in entry-client', ev.error ?? ev.message ?? ev)
     } catch (e) {
       // fallback noop
-      // eslint-disable-next-line no-console
+
       console.error('failed to log global error', e)
     }
   })
   window.addEventListener('unhandledrejection', (ev) => {
     try {
-      // eslint-disable-next-line no-console
+
       console.error('unhandledrejection captured in entry-client', ev.reason)
     } catch (e) {
-      // eslint-disable-next-line no-console
+
       console.error('failed to log unhandledrejection', e)
     }
   })

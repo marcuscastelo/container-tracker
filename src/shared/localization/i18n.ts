@@ -147,13 +147,13 @@ export function useTranslation() {
           try {
             // include a small stack trace to help locate the callsite
             const stack = new Error().stack?.split('\n').slice(2, 6).join('\n') || ''
-            // eslint-disable-next-line no-console
+
             console.warn(
               `[i18n] Missing translation key: '${key}'. Make sure it's present in the reference locale.\n${stack}`,
             )
           } catch {
             // ignore
-            // eslint-disable-next-line no-console
+
             console.warn(
               `[i18n] Missing translation key: '${key}'. Make sure it's present in the reference locale.`,
             )
@@ -183,7 +183,7 @@ export function useTranslation() {
                     break
                   }
                 }
-                // eslint-disable-next-line no-console
+
                 console.warn(
                   `[i18n] Using fallback translation for key '${key}' — missing in '${current}'${provider ? `, found in '${provider}'` : ''}`,
                 )
