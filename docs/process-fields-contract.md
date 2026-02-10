@@ -141,4 +141,4 @@ Same structure as request, plus:
 ## References
 
 - Issue: F1.1 — Padronização dos Campos do Processo (Shipment)
-- Master Document: `docs/Container Tracking Platform — Master Technical & Product Document (0209).md`
+- Master Document: `docs/master-consolidated-0209.md`
