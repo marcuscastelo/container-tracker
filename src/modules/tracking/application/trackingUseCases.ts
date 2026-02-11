@@ -210,3 +210,5 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     },
   }
 }
+
+export type TrackingUseCases = ReturnType<typeof createTrackingUseCases>
