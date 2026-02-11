@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
@@ -22,13 +22,17 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     for (const c of parsed.containers) {
       const normalized = c.toUpperCase().trim()
       try {
-        const container = await supabaseProcessRepository.fetchContainerByNumber(normalized)
+        const container = await containerUseCases
+          .findByNumbers({
+            containerNumbers: [normalized],
+          })
+          .then((result) => result.containers[0] ?? null)
         if (container) {
           conflicts.push({
             containerNumber: normalized,
-            processId: container.process_id,
-            containerId: container.id,
-            link: `/shipments/${container.process_id}`,
+            processId: String(container.processId),
+            containerId: String(container.id),
+            link: `/shipments/${String(container.processId)}`,
             message: `Container ${normalized} already exists in another process`,
           })
         }

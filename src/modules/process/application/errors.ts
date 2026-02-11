@@ -1,4 +1,4 @@
-import type { ProcessContainer } from '~/modules/process/domain/processStuff'
+import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 
 /**
  * Error thrown when a container already exists in the system
@@ -6,7 +6,7 @@ import type { ProcessContainer } from '~/modules/process/domain/processStuff'
 export class ContainerAlreadyExistsError extends Error {
   constructor(
     public readonly containerNumber: string,
-    public readonly existingContainer: ProcessContainer | null = null,
+    public readonly existingContainer: ContainerEntity | null = null,
   ) {
     super(`Container ${containerNumber.toUpperCase()} already exists in the system`)
     this.name = 'ContainerAlreadyExistsError'
@@ -41,7 +41,7 @@ export class DuplicateContainersError extends Error {
  */
 export async function resolveContainerOwner(
   containerNumber: string,
-  fetchContainerByNumber: (containerNumber: string) => Promise<ProcessContainer | null>,
+  fetchContainerByNumber: (containerNumber: string) => Promise<ContainerEntity | null>,
 ): Promise<{
   processId: string
   containerId: string
@@ -53,10 +53,10 @@ export async function resolveContainerOwner(
     if (!container) return null
 
     return {
-      processId: container.process_id,
-      containerId: container.id,
-      containerNumber: container.container_number,
-      link: `/shipments/${container.process_id}`,
+      processId: String(container.processId),
+      containerId: String(container.id),
+      containerNumber: String(container.containerNumber),
+      link: `/shipments/${String(container.processId)}`,
     }
   } catch (err) {
     console.warn('Failed to resolve existing container owner:', err)

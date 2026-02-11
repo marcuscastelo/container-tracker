@@ -97,4 +97,55 @@ export const supabaseContainerRepository: ContainerRepository = {
     // Throw only on real errors; allow null/empty delete result
     unwrapSupabaseSingleOrNull(result, { operation: 'delete', table: TABLE_NAME })
   },
+
+  async listByProcessId(processId: string): Promise<readonly ContainerEntity[]> {
+    const result = await supabase
+      .from(TABLE_NAME)
+      .select('*')
+      .eq('process_id', processId)
+      .order('created_at', { ascending: true })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'listByProcessId',
+      table: TABLE_NAME,
+    })
+
+    return data.map(containerMappers.fromRow)
+  },
+
+  async listByProcessIds(
+    processIds: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly ContainerEntity[]>> {
+    if (processIds.length === 0) {
+      return new Map()
+    }
+
+    const result = await supabase
+      .from(TABLE_NAME)
+      .select('*')
+      .in('process_id', [...processIds])
+      .order('created_at', { ascending: true })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'listByProcessIds',
+      table: TABLE_NAME,
+    })
+
+    const grouped = new Map<string, ContainerEntity[]>()
+    for (const pid of processIds) {
+      grouped.set(pid, [])
+    }
+    for (const row of data) {
+      const entity = containerMappers.fromRow(row)
+      const list = grouped.get(row.process_id)
+      if (list) {
+        list.push(entity)
+      } else {
+        // This should not happen since we initialized the map with all processIds, but just in case:
+        grouped.set(row.process_id, [entity])
+      }
+    }
+
+    return grouped
+  },
 }

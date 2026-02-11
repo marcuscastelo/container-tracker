@@ -1,11 +1,11 @@
 import type { z } from 'zod'
+import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
 import {
   ContainerAlreadyExistsError,
   resolveContainerOwner,
 } from '~/modules/process/application/errors'
-import { CreateProcessInputSchema } from '~/modules/process/domain/processStuff'
 import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
-import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import type {
   CreateProcessResponseSchema,
@@ -32,27 +32,27 @@ export async function GET(): Promise<Response> {
     const processes = result.processes
 
     const response = processes.map(
-      (p) =>
+      (pwc) =>
         ({
-          id: p.id,
-          reference: p.reference,
-          origin: p.origin,
-          destination: p.destination,
-          carrier: p.carrier,
-          bill_of_lading: p.bill_of_lading,
-          booking_number: p.booking_number,
-          importer_name: p.importer_name,
-          exporter_name: p.exporter_name,
-          reference_importer: p.reference_importer,
-          product: p.product,
-          redestination_number: p.redestination_number,
-          source: p.source,
-          created_at: p.created_at.toISOString(),
-          updated_at: p.updated_at.toISOString(),
-          containers: p.containers.map((c) => ({
-            id: c.id,
-            container_number: c.container_number,
-            carrier_code: c.carrier_code,
+          id: pwc.process.id,
+          reference: pwc.process.reference,
+          origin: pwc.process.origin,
+          destination: pwc.process.destination,
+          carrier: pwc.process.carrier,
+          bill_of_lading: pwc.process.bill_of_lading,
+          booking_number: pwc.process.booking_number,
+          importer_name: pwc.process.importer_name,
+          exporter_name: pwc.process.exporter_name,
+          reference_importer: pwc.process.reference_importer,
+          product: pwc.process.product,
+          redestination_number: pwc.process.redestination_number,
+          source: pwc.process.source,
+          created_at: pwc.process.created_at.toISOString(),
+          updated_at: pwc.process.updated_at.toISOString(),
+          containers: pwc.containers.map((c) => ({
+            id: String(c.id),
+            container_number: String(c.containerNumber),
+            carrier_code: String(c.carrierCode),
           })),
         }) satisfies z.infer<typeof ProcessResponseSchema>,
     )
@@ -113,9 +113,9 @@ export async function POST({ request }: { request: Request }): Promise<Response>
         created_at: result.process.created_at.toISOString(),
         updated_at: result.process.updated_at.toISOString(),
         containers: result.containers.map((c) => ({
-          id: c.id,
-          container_number: c.carrierCode,
-          carrier_code: c.carrierCode,
+          id: String(c.id),
+          container_number: String(c.containerNumber),
+          carrier_code: String(c.carrierCode),
         })),
       },
       warnings: result.warnings,
@@ -132,8 +132,9 @@ export async function POST({ request }: { request: Request }): Promise<Response>
       const owner = await resolveContainerOwner(
         err.containerNumber,
         async (containerNumber: string) => {
-          // repository now throws on error and returns the container or null
-          return await supabaseProcessRepository.fetchContainerByNumber(containerNumber)
+          return await containerUseCases
+            .findByNumbers({ containerNumbers: [containerNumber] })
+            .then((result) => result.containers[0] ?? null)
         },
       )
 

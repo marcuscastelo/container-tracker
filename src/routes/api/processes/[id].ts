@@ -1,9 +1,9 @@
 import type { APIEvent } from '@solidjs/start/server'
+import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
 import {
   type CreateProcessInput,
   CreateProcessInputSchema,
-} from '~/modules/process/domain/processStuff'
-import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
+} from '~/modules/process/interface/http/process.schemas'
 import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse as typedJsonResponse } from '~/shared/api/typedRoute'
@@ -33,11 +33,14 @@ export async function GET({ params }: APIEvent): Promise<Response> {
     const containersWithTracking = await Promise.all(
       process.containers.map(async (c) => {
         try {
-          const summary = await trackingUseCases.getContainerSummary(c.id, c.container_number)
+          const summary = await trackingUseCases.getContainerSummary(
+            String(c.id),
+            String(c.containerNumber),
+          )
           return {
-            id: c.id,
-            container_number: c.container_number,
-            carrier_code: c.carrier_code ?? null,
+            id: String(c.id),
+            container_number: String(c.containerNumber),
+            carrier_code: String(c.carrierCode),
             status: summary.status,
             observations: summary.observations.map((obs) => ({
               id: obs.id,
@@ -57,11 +60,11 @@ export async function GET({ params }: APIEvent): Promise<Response> {
             })),
           }
         } catch (err) {
-          console.error(`Failed to get tracking summary for container ${c.id}:`, err)
+          console.error(`Failed to get tracking summary for container ${String(c.id)}:`, err)
           return {
-            id: c.id,
-            container_number: c.container_number,
-            carrier_code: c.carrier_code ?? null,
+            id: String(c.id),
+            container_number: String(c.containerNumber),
+            carrier_code: String(c.carrierCode),
             status: 'UNKNOWN',
             observations: [],
           }
@@ -73,7 +76,10 @@ export async function GET({ params }: APIEvent): Promise<Response> {
     const allAlerts = await Promise.all(
       process.containers.map(async (c) => {
         try {
-          const { alerts } = await trackingUseCases.getContainerSummary(c.id, c.container_number)
+          const { alerts } = await trackingUseCases.getContainerSummary(
+            String(c.id),
+            String(c.containerNumber),
+          )
           return alerts
         } catch {
           return []
@@ -82,21 +88,21 @@ export async function GET({ params }: APIEvent): Promise<Response> {
     ).then((results) => results.flat())
 
     const response = {
-      id: process.id,
-      reference: process.reference,
-      origin: process.origin,
-      destination: process.destination,
-      carrier: process.carrier,
-      bill_of_lading: process.bill_of_lading,
-      booking_number: process.booking_number,
-      importer_name: process.importer_name,
-      exporter_name: process.exporter_name,
-      reference_importer: process.reference_importer,
-      product: process.product,
-      redestination_number: process.redestination_number,
-      source: process.source,
-      created_at: process.created_at.toISOString(),
-      updated_at: process.updated_at.toISOString(),
+      id: process.process.id,
+      reference: process.process.reference,
+      origin: process.process.origin,
+      destination: process.process.destination,
+      carrier: process.process.carrier,
+      bill_of_lading: process.process.bill_of_lading,
+      booking_number: process.process.booking_number,
+      importer_name: process.process.importer_name,
+      exporter_name: process.process.exporter_name,
+      reference_importer: process.process.reference_importer,
+      product: process.process.product,
+      redestination_number: process.process.redestination_number,
+      source: process.process.source,
+      created_at: process.process.created_at.toISOString(),
+      updated_at: process.process.updated_at.toISOString(),
       containers: containersWithTracking,
       alerts: allAlerts.map((a) => ({
         id: a.id,
@@ -178,7 +184,7 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     if (parsed.data.redestination_number !== undefined)
       input.redestination_number = parsed.data.redestination_number
     if (parsed.data.containers !== undefined) {
-      input.containers = parsed.data.containers.map((c: any) => ({
+      input.containers = parsed.data.containers.map((c) => ({
         container_number: c.container_number,
         carrier_code: c.carrier_code ?? null,
       }))
@@ -213,25 +219,25 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
     const updated = result.process
 
     const response = {
-      id: updated.id,
-      reference: updated.reference,
-      origin: updated.origin,
-      destination: updated.destination,
-      carrier: updated.carrier,
-      bill_of_lading: updated.bill_of_lading,
-      booking_number: updated.booking_number,
-      importer_name: updated.importer_name,
-      exporter_name: updated.exporter_name,
-      reference_importer: updated.reference_importer,
-      product: updated.product,
-      redestination_number: updated.redestination_number,
-      source: updated.source,
-      created_at: updated.created_at.toISOString(),
-      updated_at: updated.updated_at.toISOString(),
+      id: updated.process.id,
+      reference: updated.process.reference,
+      origin: updated.process.origin,
+      destination: updated.process.destination,
+      carrier: updated.process.carrier,
+      bill_of_lading: updated.process.bill_of_lading,
+      booking_number: updated.process.booking_number,
+      importer_name: updated.process.importer_name,
+      exporter_name: updated.process.exporter_name,
+      reference_importer: updated.process.reference_importer,
+      product: updated.process.product,
+      redestination_number: updated.process.redestination_number,
+      source: updated.process.source,
+      created_at: updated.process.created_at.toISOString(),
+      updated_at: updated.process.updated_at.toISOString(),
       containers: updated.containers.map((c) => ({
-        id: c.id,
-        container_number: c.container_number,
-        carrier_code: c.carrier_code ?? null,
+        id: String(c.id),
+        container_number: String(c.containerNumber),
+        carrier_code: String(c.carrierCode),
       })),
     }
 

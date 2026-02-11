@@ -22,6 +22,9 @@ function pickContainerUseCasesForProcess(all: ContainerUseCases): ContainerUseCa
     createManyForProcess: all.createManyForProcess,
     reconcileForProcess: all.reconcileForProcess,
     deleteContainer: all.deleteContainer,
+    findByNumbers: all.findByNumbers,
+    listByProcessId: all.listByProcessId,
+    listByProcessIds: all.listByProcessIds,
   }
 }
 

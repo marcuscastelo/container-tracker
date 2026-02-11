@@ -1,15 +1,10 @@
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
+import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { UpdateProcessRecord } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import type { ProcessWithContainers } from '~/modules/process/domain/processStuff'
 
 export type UpdateProcessContainerInput = {
   container_number: string
-  carrier_code: string | null
-}
-
-export type ContainerInput = {
-  containerNumber: string
   carrier_code: string | null
 }
 
@@ -25,24 +20,24 @@ export type UpdateProcessResult = {
 
 export function createUpdateProcessUseCase(deps: {
   repository: ProcessRepository
-  containerUseCases: Pick<ContainerUseCasesForProcess, 'reconcileForProcess'>
+  containerUseCases: Pick<ContainerUseCasesForProcess, 'reconcileForProcess' | 'listByProcessId'>
 }) {
   return async function execute(command: UpdateProcessCommand): Promise<UpdateProcessResult> {
     if (command.containers) {
-      const existing = await deps.repository.fetchContainersByProcessId(command.processId)
-
-      const desired: ContainerInput[] = command.containers.map((c) => ({
-        containerNumber: c.container_number,
-        carrier_code: c.carrier_code,
-      }))
+      const { containers: existing } = await deps.containerUseCases.listByProcessId({
+        processId: command.processId,
+      })
 
       await deps.containerUseCases.reconcileForProcess({
         processId: command.processId,
         existing: existing.map((c) => ({
-          id: c.id,
-          containerNumber: c.container_number,
+          id: String(c.id),
+          containerNumber: String(c.containerNumber),
         })),
-        incoming: desired,
+        incoming: command.containers.map((c) => ({
+          containerNumber: c.container_number,
+          carrierCode: c.carrier_code,
+        })),
       })
     }
 
@@ -50,7 +45,13 @@ export function createUpdateProcessUseCase(deps: {
       await deps.repository.update(command.processId, command.record)
     }
 
-    const process = await deps.repository.fetchByIdWithContainers(command.processId)
-    return { process } // controller decide 404 se null
+    const process = await deps.repository.fetchById(command.processId)
+    if (!process) return { process: null }
+
+    const { containers } = await deps.containerUseCases.listByProcessId({
+      processId: command.processId,
+    })
+
+    return { process: { process, containers } }
   }
 }

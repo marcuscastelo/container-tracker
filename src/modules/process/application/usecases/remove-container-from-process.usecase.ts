@@ -12,12 +12,14 @@ export type RemoveContainerFromProcessResult = {
 
 export function createRemoveContainerFromProcessUseCase(deps: {
   repository: ProcessRepository
-  containerUseCases: Pick<ContainerUseCasesForProcess, 'deleteContainer'>
+  containerUseCases: Pick<ContainerUseCasesForProcess, 'deleteContainer' | 'listByProcessId'>
 }) {
   return async function execute(
     command: RemoveContainerFromProcessCommand,
   ): Promise<RemoveContainerFromProcessResult> {
-    const existing = await deps.repository.fetchContainersByProcessId(command.processId)
+    const { containers: existing } = await deps.containerUseCases.listByProcessId({
+      processId: command.processId,
+    })
     await deps.containerUseCases.deleteContainer({
       containerId: command.containerId,
       processId: command.processId,

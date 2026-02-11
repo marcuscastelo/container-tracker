@@ -19,4 +19,8 @@ export type ContainerRepository = {
   existsMany(numbers: string[]): Promise<Map<string, boolean>>
   findByNumber(containerNumber: string): Promise<ContainerEntity | null>
   findByNumbers(numbers: string[]): Promise<ContainerEntity[]>
+  listByProcessId(processId: string): Promise<readonly ContainerEntity[]>
+  listByProcessIds(
+    processIds: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly ContainerEntity[]>>
 }

@@ -27,11 +27,13 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
   const listProcesses = createListProcessesUseCase({ repository: deps.repository })
   const listProcessesWithContainers = createListProcessesWithContainersUseCase({
     repository: deps.repository,
+    containerUseCases: deps.containerUseCases,
   })
 
   const findProcessById = createFindProcessByIdUseCase({ repository: deps.repository })
   const findProcessByIdWithContainers = createFindProcessByIdWithContainersUseCase({
     repository: deps.repository,
+    containerUseCases: deps.containerUseCases,
   })
 
   const createProcess = createCreateProcessUseCase({

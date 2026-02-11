@@ -5,34 +5,29 @@ import type { InsertProcessRecord } from '~/modules/process/application/process.
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 import type { Process } from '~/modules/process/domain/process'
 
-export type ContainerInputForProcess = {
-  container_number: string
-  carrier_code: string | null
-}
-
-// ajuste se o container module usa outro shape
-export type ContainerInput = {
-  containerNumber: string
-  carrierCode: string | null
-}
-
 export type CreateProcessCommand = {
   record: InsertProcessRecord
-  containers: readonly ContainerInputForProcess[]
+  containers: readonly {
+    container_number: string
+    carrier_code: string | null
+  }[]
 }
 
 export type CreateProcessResult = {
   process: Process
-  containers: readonly ContainerEntity[] // troque pelo tipo real (ContainerEntity) se quiser
+  containers: readonly ContainerEntity[]
   warnings: readonly string[]
 }
 
 export function createCreateProcessUseCase(deps: {
   repository: ProcessRepository
-  containerUseCases: Pick<ContainerUseCasesForProcess, 'checkExistence' | 'createManyForProcess'>
+  containerUseCases: Pick<
+    ContainerUseCasesForProcess,
+    'checkExistence' | 'createManyForProcess' | 'findByNumbers'
+  >
 }) {
   return async function execute(command: CreateProcessCommand): Promise<CreateProcessResult> {
-    const containerInputs: ContainerInput[] = command.containers.map((c) => ({
+    const containerInputs = command.containers.map((c) => ({
       containerNumber: c.container_number,
       carrierCode: c.carrier_code,
     }))
@@ -42,10 +37,18 @@ export function createCreateProcessUseCase(deps: {
       containerNumbers: numbers,
     })
 
-    for (const [containerNumber, exists] of checkResult.existenceMap.entries()) {
-      if (!exists) continue
-      const existing = await deps.repository.fetchContainerByNumber(containerNumber)
-      if (existing) throw new ContainerAlreadyExistsError(containerNumber, existing)
+    const existingNumbers = [...checkResult.existenceMap.entries()]
+      .filter(([, exists]) => exists)
+      .map(([num]) => num)
+
+    if (existingNumbers.length > 0) {
+      const { containers: existingContainers } = await deps.containerUseCases.findByNumbers({
+        containerNumbers: existingNumbers,
+      })
+      const firstExisting = existingContainers[0]
+      if (firstExisting) {
+        throw new ContainerAlreadyExistsError(String(firstExisting.containerNumber), firstExisting)
+      }
     }
 
     const process = await deps.repository.create(command.record)

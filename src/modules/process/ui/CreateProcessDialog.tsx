@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { findDuplicateContainers } from '~/modules/process/domain/processStuff'
+import { findDuplicateContainers } from '~/modules/container/domain/container.validation'
 import type { Carrier } from '~/modules/process/domain/value-objects'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'

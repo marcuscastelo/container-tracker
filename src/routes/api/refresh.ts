@@ -1,4 +1,4 @@
-import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
 import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
 import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
 import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
@@ -50,7 +50,10 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     // Look up the container in our DB to get its UUID
-    const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
+    const containerResult = await containerUseCases.findByNumbers({
+      containerNumbers: [container],
+    })
+    const containerRecord = containerResult.containers[0] ?? null
     if (!containerRecord) {
       return respondWithSchema(
         { error: `container ${container} not found in the system. Create a process first.` },

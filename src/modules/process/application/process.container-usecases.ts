@@ -2,5 +2,11 @@ import type { ContainerUseCases } from '~/modules/container/application/containe
 
 export type ContainerUseCasesForProcess = Pick<
   ContainerUseCases,
-  'checkExistence' | 'createManyForProcess' | 'reconcileForProcess' | 'deleteContainer'
+  | 'checkExistence'
+  | 'createManyForProcess'
+  | 'reconcileForProcess'
+  | 'deleteContainer'
+  | 'findByNumbers'
+  | 'listByProcessId'
+  | 'listByProcessIds'
 >
