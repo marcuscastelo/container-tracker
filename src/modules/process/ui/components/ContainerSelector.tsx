@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
-import type { ContainerDetail } from '~/modules/process/application/processPresenter'
+import type { ContainerDetail } from '~/modules/process/application/uiTypes'
 import { useTranslation } from '~/shared/localization/i18n'
 import { CopyButton } from '~/shared/ui/CopyButton'
 

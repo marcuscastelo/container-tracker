@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
-import type { ContainerDetail } from '~/modules/process/application/processPresenter'
+import type { ContainerDetail } from '~/modules/process/application/uiTypes'
 import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
 import { useTranslation } from '~/shared/localization/i18n'
 

@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import type { ContainerDetail } from '~/modules/process/application/processPresenter'
+import type { ContainerDetail } from '~/modules/process/application/uiTypes'
 import { ContainerSelector } from '~/modules/process/ui/components/ContainerSelector'
 import { useTranslation } from '~/shared/localization/i18n'
 

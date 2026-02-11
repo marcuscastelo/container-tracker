@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import type { AlertDisplay } from '~/modules/process/application/processPresenter'
+import type { AlertDisplay } from '~/modules/process/application/uiTypes'
 
 export function ChevronLeftIcon(): JSX.Element {
   return (
