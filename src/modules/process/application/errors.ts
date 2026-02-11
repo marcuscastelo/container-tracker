@@ -8,7 +8,7 @@ export class ContainerAlreadyExistsError extends Error {
     public readonly containerNumber: string,
     public readonly existingContainer: ContainerEntity | null = null,
   ) {
-    super(`Container ${containerNumber.toUpperCase()} already exists in the system`)
+    super(`Container ${containerNumber.toUpperCase()} already exists in another process`)
     this.name = 'ContainerAlreadyExistsError'
   }
 }

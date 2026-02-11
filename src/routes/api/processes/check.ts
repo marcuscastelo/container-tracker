@@ -10,38 +10,25 @@ const BodySchema = z.object({
 export async function POST({ request }: { request: Request }): Promise<Response> {
   try {
     const parsed = await parseBody(request, BodySchema)
+    const normalized = parsed.containers.map((c) => c.toUpperCase().trim())
 
-    const conflicts: {
-      containerNumber: string
-      processId?: string
-      containerId?: string
-      link?: string
-      message?: string
-    }[] = []
+    const { containers } = await containerUseCases.findByNumbers({ containerNumbers: normalized })
 
-    for (const c of parsed.containers) {
-      const normalized = c.toUpperCase().trim()
-      try {
-        const container = await containerUseCases
-          .findByNumbers({
-            containerNumbers: [normalized],
-          })
-          .then((result) => result.containers[0] ?? null)
-        if (container) {
-          conflicts.push({
-            containerNumber: normalized,
-            processId: String(container.processId),
-            containerId: String(container.id),
-            link: `/shipments/${String(container.processId)}`,
-            message: `Container ${normalized} already exists in another process`,
-          })
+    const byNumber = new Map(containers.map((c) => [String(c.containerNumber), c]))
+
+    const conflicts = normalized
+      .map((containerNumber) => {
+        const existing = byNumber.get(containerNumber)
+        if (!existing) return null
+        return {
+          containerNumber,
+          processId: String(existing.processId),
+          containerId: String(existing.id),
+          link: `/shipments/${String(existing.processId)}`,
+          message: `Container ${containerNumber} already exists in another process`,
         }
-      } catch (err) {
-        console.warn('check containers: failed to check', normalized, err)
-        // on error, include a generic entry so UI can show something
-        conflicts.push({ containerNumber: normalized, message: 'Failed to check container' })
-      }
-    }
+      })
+      .filter(Boolean)
 
     return jsonResponse({ conflicts })
   } catch (err) {
