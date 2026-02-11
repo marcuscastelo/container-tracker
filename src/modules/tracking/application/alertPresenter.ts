@@ -11,6 +11,7 @@ export type AlertDisplay = {
 }
 
 // TODO: Move formatRelativeTime to a shared utility if we need it elsewhere; for now it's only used in alert presentation
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/37
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString)
   const now = new Date()
