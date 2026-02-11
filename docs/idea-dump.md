@@ -15,6 +15,9 @@ Pensar se mantemos unknown ou null para os campos (carrier e operationType) que 
 Gerar eventos de transbordo quando o NAVIO A CHEGA, E NAVIO B SAI COM O MESMO CONTAINER (MAERSK, falta checar como outras api reportam isso). Isso vai gerar um alerta para o sistema, para que o operador possa tomar as medidas necessarias, tambem vai atualizar o processo para os importadores terem visibilidade do que esta acontecendo. 
 Tratar casos que o container é removido do processo, seja por erro ou porque o cliente mudou de ideia. Hoje é impossível adicionar um container que foi removido do processo porque a checagem de container já existente é feita nos containers e nao nos processos, entao o sistema assume que o container ja existe e nao deixa adicionar. Melhorar isso para permitir re-adicionar um container que foi removido, e para ter uma checagem mais robusta de containers realmente existentes vs erros de conexao, etc.
 
+Atualmente, o sistema nao lida bem com promocao de observations EXPECTED para ACTUAL, o que pode acontecer quando um evento esperado acontece de fato. Atualmente o sistema duplica o observation, criando um novo ACTUAL e mantendo o EXPECTED, o que pode gerar confusao e poluir a timeline. Melhorar isso para que quando um evento esperado acontece, ele seja promovido a ACTUAL sem criar um novo registro, ou seja, atualizando o registro existente de EXPECTED para ACTUAL. Isso vai manter a timeline mais limpa e evitar confusao entre eventos duplicados.
+
+
 # Pedidos do cliente (alguns precisam de mais detalhes)
 Adicionar campo mercadoria (description of goods) no processo.
 
