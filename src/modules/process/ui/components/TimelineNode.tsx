@@ -88,7 +88,7 @@ export function TimelineNode(props: {
               {/* Badge for EXPECTED events */}
               <Show when={isExpiredExpected()}>
                 <span
-                  class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 line-through"
+                  class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700"
                   title={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
                 >
                   {t(keys.shipmentView.timeline.expiredExpected)}
