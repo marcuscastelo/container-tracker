@@ -110,9 +110,33 @@ function computeConfidence(
  *
  * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
-function mapCmaCgmEventTimeType(): EventTimeType {
-  // CMA-CGM doesn't provide explicit event_time_type
-  // According to the issue: if carrier doesn't explicitly indicate, use EXPECTED
+function mapCmaCgmEventTimeType(state?: string | null | undefined, eventTime?: string | null): EventTimeType {
+  // CMA-CGM doesn't provide an explicit enum for ACTUAL vs EXPECTED, but
+  // the payload _does_ contain a `State` field with values like
+  // - "DONE" (past/finalized)
+  // - "CURRENT" (currently happening)
+  // - "NONE" (provisional / future)
+  // Use that when present. As a best-effort fallback, also consider the
+  // presence of an event time and whether it's in the past.
+
+  // No event time — treat as predicted/expected
+  if (!eventTime) return 'EXPECTED'
+
+  const s = state?.toUpperCase() ?? ''
+  if (s === 'DONE' || s === 'CURRENT') return 'ACTUAL'
+  if (s === 'NONE') return 'EXPECTED'
+
+  // Fallback: if the event time is in the past (<= now) consider it ACTUAL,
+  // otherwise EXPECTED. This helps when carriers omit the State field.
+  try {
+    const d = new Date(eventTime)
+    if (!isNaN(d.getTime())) {
+      if (d.getTime() <= Date.now()) return 'ACTUAL'
+    }
+  } catch (e) {
+    // ignore and fallthrough to default
+  }
+
   return 'EXPECTED'
 }
 
@@ -154,7 +178,7 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
     const finalVoyage = isVesselEvent ? voyage : null
 
     const confidence = computeConfidence(eventTime, move.State, locationCode)
-    const eventTimeType = mapCmaCgmEventTimeType()
+    const eventTimeType = mapCmaCgmEventTimeType(move.State, eventTime)
 
     const draft: ObservationDraft = {
       container_number: containerNumber,
