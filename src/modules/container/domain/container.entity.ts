@@ -1,4 +1,4 @@
-import { type Brand, toBrand } from '~/modules/container/domain/container.types'
+import { type ContainerBrand, toContainerBrand } from '~/modules/container/domain/container.types'
 import type { CarrierCode } from '~/modules/container/domain/value-objects/carrier-code.vo'
 import type { ContainerId } from '~/modules/container/domain/value-objects/container-id.vo'
 import type { ContainerNumber } from '~/modules/container/domain/value-objects/container-number.vo'
@@ -12,8 +12,10 @@ export type ContainerEntityProps = {
   createdAt: Date
 }
 
-export type ContainerEntity = Brand<Readonly<ContainerEntityProps>, 'ContainerEntity'>
+export type ContainerEntity = ContainerBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>
 
 export function createContainerEntity(props: ContainerEntityProps): ContainerEntity {
-  return Object.freeze(toBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>({ ...props }))
+  return Object.freeze(
+    toContainerBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>({ ...props }),
+  )
 }
