@@ -1,16 +1,16 @@
-import { alertToDisplay } from '~/modules/process/application/alertPresenter'
-import { observationToTimelineEvent } from '~/modules/process/application/observationPresenter'
+import type {
+  ContainerDetail,
+  ShipmentDetail,
+} from '~/modules/process/application/shipmentReadModel'
+import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
+import type { AlertDisplay } from '~/modules/tracking/application/alertPresenter'
+import { alertToDisplay } from '~/modules/tracking/application/alertPresenter'
 import {
   containerStatusLabel,
   containerStatusToVariant,
-} from '~/modules/process/application/statusPresenter'
-import type {
-  AlertDisplay,
-  ContainerDetail,
-  ShipmentDetail,
-  TimelineEvent,
-} from '~/modules/process/application/uiTypes'
-import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
+} from '~/modules/tracking/application/statusPresenter'
+import type { TimelineEvent } from '~/modules/tracking/application/timelinePresenter'
+import { observationToTimelineEvent } from '~/modules/tracking/application/timelinePresenter'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
