@@ -1,6 +1,6 @@
 import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
-import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
+import { processMappers } from '~/modules/process/infrastructure/persistence/process.persistence.mappers'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
 import type { Database } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
@@ -12,7 +12,6 @@ import {
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
 
-// TODO: Use SupabaseResult
 /**
  * Supabase-backed implementation of ProcessRepository.
  * Uses the `processes` and `process_containers` tables.
@@ -23,12 +22,12 @@ export const supabaseProcessRepository = {
       .from(PROCESSES_TABLE)
       .select('*')
       .order('created_at', { ascending: false })
-    const data = unwrapSupabaseResultOrThrow<unknown[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'fetchAll',
       table: PROCESSES_TABLE,
     })
     if (!data) return []
-    return data.map((row: any) => processMappers.rowToProcess(row))
+    return data.map((row) => processMappers.rowToProcess(row))
   },
 
   async fetchAllWithContainers(): Promise<readonly ProcessWithContainers[]> {
@@ -36,12 +35,12 @@ export const supabaseProcessRepository = {
       .from(PROCESSES_TABLE)
       .select(`*, ${CONTAINERS_TABLE}(*)`)
       .order('created_at', { ascending: false })
-    const data = unwrapSupabaseResultOrThrow<unknown[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'fetchAllWithContainers',
       table: PROCESSES_TABLE,
     })
     if (!data) return []
-    return data.map((row: any) => {
+    return data.map((row) => {
       const process = processMappers.rowToProcess(row)
       const containers = row[CONTAINERS_TABLE] ?? []
       return {
@@ -53,7 +52,7 @@ export const supabaseProcessRepository = {
 
   async fetchById(processId: string): Promise<Process | null> {
     const result = await supabase.from(PROCESSES_TABLE).select('*').eq('id', processId).single()
-    const data = unwrapSupabaseSingleOrNull<any>(result, {
+    const data = unwrapSupabaseSingleOrNull(result, {
       operation: 'fetchById',
       table: PROCESSES_TABLE,
     })
@@ -67,7 +66,7 @@ export const supabaseProcessRepository = {
       .select(`*, ${CONTAINERS_TABLE}(*)`)
       .eq('id', processId)
       .single()
-    const data = unwrapSupabaseSingleOrNull<any>(result, {
+    const data = unwrapSupabaseSingleOrNull(result, {
       operation: 'fetchByIdWithContainers',
       table: PROCESSES_TABLE,
     })
@@ -87,12 +86,12 @@ export const supabaseProcessRepository = {
       .select('*')
       .eq('process_id', processId)
       .order('created_at', { ascending: true })
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'fetchContainersByProcessId',
       table: CONTAINERS_TABLE,
     })
     if (!data) return []
-    return data.map((row: any) => processMappers.rowToContainer(row))
+    return data.map((row) => processMappers.rowToContainer(row))
   },
 
   async containerExists(containerNumber: string): Promise<boolean> {
@@ -102,7 +101,7 @@ export const supabaseProcessRepository = {
       .select('id')
       .eq('container_number', normalized)
       .limit(1)
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'containerExists',
       table: CONTAINERS_TABLE,
     })
@@ -116,7 +115,7 @@ export const supabaseProcessRepository = {
       .select('*')
       .eq('container_number', normalized)
       .limit(1)
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'fetchContainerByNumber',
       table: CONTAINERS_TABLE,
     })
@@ -148,7 +147,7 @@ export const supabaseProcessRepository = {
       .select()
       .single()
 
-    const processData = unwrapSupabaseResultOrThrow<any>(result, {
+    const processData = unwrapSupabaseResultOrThrow(result, {
       operation: 'create',
       table: PROCESSES_TABLE,
     })
@@ -172,7 +171,7 @@ export const supabaseProcessRepository = {
       .select()
       .single()
 
-    const data = unwrapSupabaseResultOrThrow<any>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'update',
       table: PROCESSES_TABLE,
     })
