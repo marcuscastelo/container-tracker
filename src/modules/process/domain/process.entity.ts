@@ -7,10 +7,10 @@ import type { ProcessSource } from '~/modules/process/domain/value-objects/proce
 
 export type ProcessEntityProps = {
   id: ProcessId
-  reference: ProcessReference
-  origin: PlannedLocation
-  destination: PlannedLocation
-  carrier: CarrierCode
+  reference: ProcessReference | null
+  origin: string | null
+  destination: string | null
+  carrier: CarrierCode | null
   billOfLading: string | null
   bookingNumber: string | null
   importerName: string | null

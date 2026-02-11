@@ -3,7 +3,8 @@ import type {
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import type { Process } from '~/modules/process/domain/process'
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
+
 import { processMappers } from '~/modules/process/infrastructure/persistence/process.persistence.mappers'
 import { supabase } from '~/shared/supabase/supabase'
 import {
@@ -15,7 +16,7 @@ import {
 const PROCESSES_TABLE = 'processes'
 
 export const supabaseProcessRepository: ProcessRepository = {
-  async fetchAll(): Promise<readonly Process[]> {
+  async fetchAll(): Promise<readonly ProcessEntity[]> {
     const result = await supabase
       .from(PROCESSES_TABLE)
       .select('*')
@@ -27,7 +28,7 @@ export const supabaseProcessRepository: ProcessRepository = {
     return rows.map(processMappers.rowToProcess)
   },
 
-  async fetchById(processId: string): Promise<Process | null> {
+  async fetchById(processId: string): Promise<ProcessEntity | null> {
     const result = await supabase.from(PROCESSES_TABLE).select('*').eq('id', processId).single()
     const row = unwrapSupabaseSingleOrNull(result, {
       operation: 'fetchById',
@@ -36,7 +37,7 @@ export const supabaseProcessRepository: ProcessRepository = {
     return row ? processMappers.rowToProcess(row) : null
   },
 
-  async create(record: InsertProcessRecord): Promise<Process> {
+  async create(record: InsertProcessRecord): Promise<ProcessEntity> {
     const now = new Date().toISOString()
 
     const insertRow = processMappers.insertRecordToRow(record, now)
@@ -47,7 +48,7 @@ export const supabaseProcessRepository: ProcessRepository = {
     return processMappers.rowToProcess(row)
   },
 
-  async update(processId: string, record: UpdateProcessRecord): Promise<Process> {
+  async update(processId: string, record: UpdateProcessRecord): Promise<ProcessEntity> {
     const now = new Date().toISOString()
 
     const updateRow = processMappers.updateRecordToRow(record, now)

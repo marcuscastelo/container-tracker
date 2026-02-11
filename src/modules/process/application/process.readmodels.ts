@@ -1,7 +1,7 @@
 import type { ContainerEntity } from '~/modules/container/domain/container.entity'
-import type { Process } from '~/modules/process/domain/process'
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 
 export type ProcessWithContainers = Readonly<{
-  process: Process
+  process: ProcessEntity
   containers: readonly ContainerEntity[]
 }>

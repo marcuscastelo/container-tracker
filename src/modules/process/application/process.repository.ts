@@ -2,15 +2,15 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
-import type { Process } from '~/modules/process/domain/process'
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 
 // src/modules/process/domain/process.repository.ts
 export type ProcessRepository = {
-  fetchAll(): Promise<readonly Process[]>
-  fetchById(processId: string): Promise<Process | null>
+  fetchAll(): Promise<readonly ProcessEntity[]>
+  fetchById(processId: string): Promise<ProcessEntity | null>
 
-  create(record: InsertProcessRecord): Promise<Process>
-  update(processId: string, record: UpdateProcessRecord): Promise<Process>
+  create(record: InsertProcessRecord): Promise<ProcessEntity>
+  update(processId: string, record: UpdateProcessRecord): Promise<ProcessEntity>
 
   delete(processId: string): Promise<void>
 }

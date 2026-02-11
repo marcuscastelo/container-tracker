@@ -3,7 +3,7 @@ import { ContainerAlreadyExistsError } from '~/modules/process/application/error
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { InsertProcessRecord } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import type { Process } from '~/modules/process/domain/process'
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 
 export type CreateProcessCommand = {
   record: InsertProcessRecord
@@ -14,7 +14,7 @@ export type CreateProcessCommand = {
 }
 
 export type CreateProcessResult = {
-  process: Process
+  process: ProcessEntity
   containers: readonly ContainerEntity[]
   warnings: readonly string[]
 }

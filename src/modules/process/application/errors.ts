@@ -1,7 +1,7 @@
 import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 
 /**
- * Error thrown when a container already exists in the system
+ * Error thrown when a container already exists in another process
  */
 export class ContainerAlreadyExistsError extends Error {
   constructor(

@@ -2,41 +2,39 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
-import type { Process } from '~/modules/process/domain/process'
-import {
-  CarrierSchema,
-  PlannedLocation,
-  ProcessSourceSchema,
-} from '~/modules/process/domain/value-objects'
+import { createProcessEntity, type ProcessEntity } from '~/modules/process/domain/process.entity'
+import { toCarrierCode } from '~/modules/process/domain/value-objects/carrier-code.vo'
+import { toPlannedLocation } from '~/modules/process/domain/value-objects/planned-location.vo'
+import { toProcessId } from '~/modules/process/domain/value-objects/process-id.vo'
+import { toProcessReference } from '~/modules/process/domain/value-objects/process-reference.vo'
+import { toProcessSource } from '~/modules/process/domain/value-objects/process-source.vo'
 import type {
   ProcessInsertRow,
   ProcessRow,
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
-import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 
-// TODO: Replace assertions with safeParseOrDefault using Zod schemas
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
-  rowToProcess(row: ProcessRow): Process {
-    return {
-      id: String(row.id),
-      reference: row.reference == null ? null : String(row.reference),
-      origin: safeParseOrDefault(row.origin, PlannedLocation, null),
-      destination: safeParseOrDefault(row.destination, PlannedLocation, null),
-      carrier: safeParseOrDefault(row.carrier, CarrierSchema, null),
-      bill_of_lading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
-      booking_number: row.booking_number == null ? null : String(row.booking_number),
-      importer_name: row.importer_name == null ? null : String(row.importer_name),
-      exporter_name: row.exporter_name == null ? null : String(row.exporter_name),
-      reference_importer: row.reference_importer == null ? null : String(row.reference_importer),
+  rowToProcess(row: ProcessRow): ProcessEntity {
+    return createProcessEntity({
+      id: toProcessId(row.id),
+      reference: row.reference ? toProcessReference(row.reference) : null,
+      origin: row.origin == null ? null : String(row.origin),
+      destination: row.destination == null ? null : String(row.destination),
+      carrier: row.carrier ? toCarrierCode(row.carrier) : null,
+      billOfLading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
+      bookingNumber: row.booking_number == null ? null : String(row.booking_number),
+      importerName: row.importer_name == null ? null : String(row.importer_name),
+      exporterName: row.exporter_name == null ? null : String(row.exporter_name),
+      referenceImporter: row.reference_importer == null ? null : String(row.reference_importer),
       product: row.product == null ? null : String(row.product),
-      redestination_number:
+      redestinationNumber:
         row.redestination_number == null ? null : String(row.redestination_number),
-      source: safeParseOrDefault(row.source, ProcessSourceSchema, 'manual'),
-      created_at: new Date(String(row.created_at)),
-      updated_at: new Date(String(row.updated_at)),
-    } satisfies Process
+      source: toProcessSource(row.source),
+      createdAt: new Date(String(row.created_at)),
+      updatedAt: new Date(String(row.updated_at)),
+    })
   },
 
   insertRecordToRow(record: InsertProcessRecord, nowIso: string): ProcessInsertRow {

@@ -1,12 +1,12 @@
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import type { Process } from '~/modules/process/domain/process'
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 
 export type FindProcessByIdCommand = {
   processId: string
 }
 
 export type FindProcessByIdResult = {
-  process: Process | null
+  process: ProcessEntity | null
 }
 
 export function createFindProcessByIdUseCase(deps: { repository: ProcessRepository }) {

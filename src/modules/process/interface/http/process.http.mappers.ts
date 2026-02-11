@@ -4,7 +4,8 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
-import type { Process } from '~/modules/process/domain/process'
+
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { Observation } from '~/modules/tracking/domain/observation'
 import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
@@ -75,23 +76,23 @@ function toContainerResponse(c: ContainerEntity) {
   }
 }
 
-function processToResponseFields(p: Process) {
+function processToResponseFields(p: ProcessEntity) {
   return {
     id: p.id,
     reference: p.reference ?? null,
-    origin: p.origin ?? null,
-    destination: p.destination ?? null,
+    origin: p.origin ? { display_name: p.origin } : null,
+    destination: p.destination ? { display_name: p.destination } : null,
     carrier: p.carrier ?? null,
-    bill_of_lading: p.bill_of_lading ?? null,
-    booking_number: p.booking_number ?? null,
-    importer_name: p.importer_name ?? null,
-    exporter_name: p.exporter_name ?? null,
-    reference_importer: p.reference_importer ?? null,
+    bill_of_lading: p.billOfLading ?? null,
+    booking_number: p.bookingNumber ?? null,
+    importer_name: p.importerName ?? null,
+    exporter_name: p.exporterName ?? null,
+    reference_importer: p.referenceImporter ?? null,
     product: p.product ?? null,
-    redestination_number: p.redestination_number ?? null,
+    redestination_number: p.redestinationNumber ?? null,
     source: p.source,
-    created_at: p.created_at.toISOString(),
-    updated_at: p.updated_at.toISOString(),
+    created_at: p.createdAt.toISOString(),
+    updated_at: p.updatedAt.toISOString(),
   }
 }
 
@@ -163,7 +164,7 @@ export function toContainerWithTrackingFallback(c: ContainerEntity) {
   return {
     ...toContainerResponse(c),
     status: 'UNKNOWN',
-    observations: [] as ReturnType<typeof toObservationResponse>[],
+    observations: [],
   }
 }
 
