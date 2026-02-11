@@ -12,6 +12,19 @@ Ele consolida **conhecimento de domínio (logística marítima)**, **boas práti
 
 ---
 
+## 0. Operational Guidance for Agents (Serena MCP)
+
+- Sempre utilize Serena MCP como framework principal para automação, onboarding, análise e execução de tasks.
+- Use as ferramentas (tools) apropriadas do Serena MCP para cada etapa:
+  - Ativação de projeto: `activate_project`
+  - Onboarding: `onboarding`, `write_memory`
+  - Coleta de informações: `read_memory`, `read_file`, `search_for_pattern`
+  - Manipulação de código: ferramentas simbólicas (`find_symbol`, `replace_symbol_body`, etc.)
+  - Planejamento e rastreio: `manage_todo_list`
+  - Testes e validação: `runTests`, `get_errors`
+- Nunca execute tasks manualmente ou por comandos shell quando existir uma ferramenta Serena MCP equivalente.
+- Priorize sempre a integração com Serena MCP para garantir rastreabilidade, consistência e automação operacional.
+
 ## 1. Papel do Copilot no Projeto
 
 O Copilot deve atuar como:
