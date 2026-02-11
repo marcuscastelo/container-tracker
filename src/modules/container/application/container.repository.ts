@@ -1,0 +1,22 @@
+import type { ContainerEntity } from '~/modules/container/domain/container.entity'
+
+export type InsertContainerRecord = {
+  processId: string
+  containerNumber: string
+  carrierCode: string
+}
+
+export type UpdateContainerRecord = {
+  id: string
+  containerNumber: string
+  carrierCode: string
+}
+
+export type ContainerRepository = {
+  insert(record: InsertContainerRecord): Promise<ContainerEntity>
+  insertMany(records: InsertContainerRecord[]): Promise<ContainerEntity[]>
+  delete(id: string): Promise<void>
+  existsMany(numbers: string[]): Promise<Map<string, boolean>>
+  findByNumber(containerNumber: string): Promise<ContainerEntity | null>
+  findByNumbers(numbers: string[]): Promise<ContainerEntity[]>
+}

@@ -1,9 +1,10 @@
 import {
   type ContainerInput,
   createContainerUseCases,
-} from '~/modules/container/application/containerUseCases'
-import type { Container, NewContainer } from '~/modules/container/domain/container'
-import type { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/supabaseContainerRepository'
+} from '~/modules/container/application/container.facade'
+import type { CreateContainerCommand } from '~/modules/container/application/usecases/create-container.usecase'
+import type { ContainerEntity } from '~/modules/container/domain/container.entity'
+import type { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/container.repository.supabase'
 import { ContainerAlreadyExistsError } from '~/modules/process/application/errors'
 import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type {
@@ -94,27 +95,27 @@ export function createProcessUseCases({
       return { process, containers, warnings }
     },
 
-    async addContainer(container: NewContainer): Promise<{
-      container: Container
+    async addContainer(container: CreateContainerCommand): Promise<{
+      container: ContainerEntity
       warnings: string[]
     }> {
       // Check if container exists
-      const existsResult = await processRepository.containerExists(container.container_number)
+      const existsResult = await processRepository.containerExists(container.containerNumber)
       if (!existsResult.success) throw existsResult.error
       if (existsResult.data) {
         const existingResult = await processRepository.fetchContainerByNumber(
-          container.container_number,
+          container.containerNumber,
         )
         if (!existingResult.success) throw existingResult.error
-        throw new ContainerAlreadyExistsError(container.container_number, existingResult.data)
+        throw new ContainerAlreadyExistsError(container.containerNumber, existingResult.data)
       }
 
       const containerInput: ContainerInput = {
-        containerNumber: container.container_number,
-        carrier_code: container.carrier_code,
+        containerNumber: container.containerNumber,
+        carrier_code: container.carrierCode,
       }
 
-      return containerUseCases.createContainer(container.process_id, containerInput)
+      return containerUseCases.createContainer(container.processId, containerInput)
     },
 
     async deleteProcess(processId: string) {

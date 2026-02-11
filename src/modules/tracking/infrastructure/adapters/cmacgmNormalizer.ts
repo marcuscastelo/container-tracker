@@ -110,7 +110,10 @@ function computeConfidence(
  *
  * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
-function mapCmaCgmEventTimeType(state?: string | null | undefined, eventTime?: string | null): EventTimeType {
+function mapCmaCgmEventTimeType(
+  state?: string | null | undefined,
+  eventTime?: string | null,
+): EventTimeType {
   // CMA-CGM doesn't provide an explicit enum for ACTUAL vs EXPECTED, but
   // the payload _does_ contain a `State` field with values like
   // - "DONE" (past/finalized)
@@ -130,10 +133,10 @@ function mapCmaCgmEventTimeType(state?: string | null | undefined, eventTime?: s
   // otherwise EXPECTED. This helps when carriers omit the State field.
   try {
     const d = new Date(eventTime)
-    if (!isNaN(d.getTime())) {
+    if (!Number.isNaN(d.getTime())) {
       if (d.getTime() <= Date.now()) return 'ACTUAL'
     }
-  } catch (e) {
+  } catch (_e) {
     // ignore and fallthrough to default
   }
 

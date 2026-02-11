@@ -89,8 +89,8 @@ export async function POST({ request }: { request: Request }): Promise<Response>
         updated_at: result.process.updated_at.toISOString(),
         containers: result.containers.map((c) => ({
           id: c.id,
-          container_number: c.container_number,
-          carrier_code: c.carrier_code,
+          container_number: c.carrierCode,
+          carrier_code: c.carrierCode,
         })),
       },
       warnings: result.warnings,

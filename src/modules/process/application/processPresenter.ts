@@ -3,7 +3,6 @@ import type {
   ShipmentDetail,
 } from '~/modules/process/application/shipmentReadModel'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
-import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
 import type { AlertDisplay } from '~/modules/tracking/application/alertPresenter'
 import { alertToDisplay } from '~/modules/tracking/application/alertPresenter'
 import {
@@ -12,6 +11,7 @@ import {
 } from '~/modules/tracking/application/statusPresenter'
 import type { TimelineEvent } from '~/modules/tracking/application/timelinePresenter'
 import { observationToTimelineEvent } from '~/modules/tracking/application/timelinePresenter'
+import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
