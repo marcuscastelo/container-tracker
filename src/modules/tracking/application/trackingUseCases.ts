@@ -101,9 +101,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
           payload: { _error: true, message: errorMessage },
           parse_error: `Fetch failed: ${errorMessage}`,
         }
-        const snapRes = await snapshotRepository.insert(errorSnapshot)
-        if (!snapRes.success) throw snapRes.error
-        const snapshot = snapRes.data
+        const snapshot = await snapshotRepository.insert(errorSnapshot)
         const pipeline = await runPipeline(snapshot, containerId, containerNumber)
         return { snapshot, pipeline }
       }
@@ -116,9 +114,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         parse_error: null,
       }
 
-      const snapRes = await snapshotRepository.insert(newSnapshot)
-      if (!snapRes.success) throw snapRes.error
-      const snapshot = snapRes.data
+      const snapshot = await snapshotRepository.insert(newSnapshot)
       const pipeline = await runPipeline(snapshot, containerId, containerNumber)
       return { snapshot, pipeline }
     },
@@ -151,9 +147,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         parse_error: parseError,
       }
 
-      const snapRes = await snapshotRepository.insert(newSnapshot)
-      if (!snapRes.success) throw snapRes.error
-      const snapshot = snapRes.data
+      const snapshot = await snapshotRepository.insert(newSnapshot)
       const pipeline = await runPipeline(snapshot, containerId, containerNumber)
       return { snapshot, pipeline }
     },
@@ -165,16 +159,10 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerId: string,
       containerNumber: string,
     ): Promise<ContainerTrackingSummary> {
-      const [obsRes, alertsRes] = await Promise.all([
+      const [observations, alerts] = await Promise.all([
         observationRepository.findAllByContainerId(containerId),
         trackingAlertRepository.findActiveByContainerId(containerId),
       ])
-
-      if (!obsRes.success) throw obsRes.error
-      if (!alertsRes.success) throw alertsRes.error
-
-      const observations = obsRes.data
-      const alerts = alertsRes.data
 
       const timeline = deriveTimeline(containerId, containerNumber, observations)
       const status = deriveStatus(timeline)
@@ -195,8 +183,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      * Acknowledge a tracking alert.
      */
     async acknowledgeAlert(alertId: string): Promise<void> {
-      const res = await trackingAlertRepository.acknowledge(alertId, new Date().toISOString())
-      if (!res.success) throw res.error
+      await trackingAlertRepository.acknowledge(alertId, new Date().toISOString())
       return
     },
 
@@ -204,8 +191,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      * Dismiss a tracking alert.
      */
     async dismissAlert(alertId: string): Promise<void> {
-      const res = await trackingAlertRepository.dismiss(alertId, new Date().toISOString())
-      if (!res.success) throw res.error
+      await trackingAlertRepository.dismiss(alertId, new Date().toISOString())
       return
     },
 
@@ -213,18 +199,14 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      * Get all snapshots for a container.
      */
     async getSnapshotsForContainer(containerId: string): Promise<readonly Snapshot[]> {
-      const res = await snapshotRepository.findAllByContainerId(containerId)
-      if (!res.success) throw res.error
-      return res.data
+      return await snapshotRepository.findAllByContainerId(containerId)
     },
 
     /**
      * Get the latest snapshot for a container.
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
-      const res = await snapshotRepository.findLatestByContainerId(containerId)
-      if (!res.success) throw res.error
-      return res.data
+      return await snapshotRepository.findLatestByContainerId(containerId)
     },
   }
 }

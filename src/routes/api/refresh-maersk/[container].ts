@@ -519,12 +519,7 @@ async function handleMaersk({ params, request }: APIEvent) {
 
     try {
       // Look up the container in our DB to get its UUID
-      const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
-      if (!containerRes.success) {
-        throw containerRes.error
-      }
-
-      const containerRecord = containerRes.data
+      const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
 
       if (containerRecord) {
         const result = await trackingUseCases.saveAndProcess(

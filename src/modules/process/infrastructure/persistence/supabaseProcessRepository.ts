@@ -1,9 +1,13 @@
 import type { NewProcess, Process } from '~/modules/process/domain/process'
 import type { ProcessContainer, ProcessWithContainers } from '~/modules/process/domain/processStuff'
 import { processMappers } from '~/modules/process/infrastructure/persistence/processMapper'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 import type { Database } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
+import {
+  unwrapSupabaseResultOrThrow,
+  unwrapSupabaseSingleOrNull,
+} from '~/shared/supabase/unwrapSupabaseResult'
 
 const PROCESSES_TABLE = 'processes'
 const CONTAINERS_TABLE = 'containers'
@@ -14,42 +18,30 @@ const CONTAINERS_TABLE = 'containers'
  * Uses the `processes` and `process_containers` tables.
  */
 export const supabaseProcessRepository = {
-  async fetchAll(): Promise<SupabaseResult<readonly Process[]>> {
-    const { data, error } = await supabase
+  async fetchAll(): Promise<readonly Process[]> {
+    const result = await supabase
       .from(PROCESSES_TABLE)
       .select('*')
       .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('supabaseProcessRepository.fetchAll error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch processes: ${error.message}`, { cause: error }),
-      }
-    }
-
-    return { success: true, data: data.map(processMappers.rowToProcess), error: null }
+    const data = unwrapSupabaseResultOrThrow<unknown[]>(result, {
+      operation: 'fetchAll',
+      table: PROCESSES_TABLE,
+    })
+    if (!data) return []
+    return data.map((row: any) => processMappers.rowToProcess(row))
   },
 
-  async fetchAllWithContainers(): Promise<SupabaseResult<readonly ProcessWithContainers[]>> {
-    const { data, error } = await supabase
+  async fetchAllWithContainers(): Promise<readonly ProcessWithContainers[]> {
+    const result = await supabase
       .from(PROCESSES_TABLE)
       .select(`*, ${CONTAINERS_TABLE}(*)`)
       .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('supabaseProcessRepository.fetchAllWithContainers error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch processes with containers: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    const result = data.map((row) => {
+    const data = unwrapSupabaseResultOrThrow<unknown[]>(result, {
+      operation: 'fetchAllWithContainers',
+      table: PROCESSES_TABLE,
+    })
+    if (!data) return []
+    return data.map((row: any) => {
       const process = processMappers.rowToProcess(row)
       const containers = row[CONTAINERS_TABLE] ?? []
       return {
@@ -57,140 +49,85 @@ export const supabaseProcessRepository = {
         containers: containers.map(processMappers.rowToContainer),
       }
     })
-    return { success: true, data: result, error: null }
   },
 
-  async fetchById(processId: string): Promise<SupabaseResult<Process | null>> {
-    const { data, error } = await supabase
-      .from(PROCESSES_TABLE)
-      .select('*')
-      .eq('id', processId)
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return { success: true, data: null, error: null }
-      }
-      console.error('supabaseProcessRepository.fetchById error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch process ${processId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    return { success: true, data: processMappers.rowToProcess(data), error: null }
+  async fetchById(processId: string): Promise<Process | null> {
+    const result = await supabase.from(PROCESSES_TABLE).select('*').eq('id', processId).single()
+    const data = unwrapSupabaseSingleOrNull<any>(result, {
+      operation: 'fetchById',
+      table: PROCESSES_TABLE,
+    })
+    if (!data) return null
+    return processMappers.rowToProcess(data)
   },
 
-  async fetchByIdWithContainers(
-    processId: string,
-  ): Promise<SupabaseResult<ProcessWithContainers | null>> {
-    const { data, error } = await supabase
+  async fetchByIdWithContainers(processId: string): Promise<ProcessWithContainers | null> {
+    const result = await supabase
       .from(PROCESSES_TABLE)
       .select(`*, ${CONTAINERS_TABLE}(*)`)
       .eq('id', processId)
       .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return { success: true, data: null, error: null }
-      }
-      console.error('supabaseProcessRepository.fetchByIdWithContainers error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch process ${processId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    if (!data) return { success: true, data: null, error: null }
+    const data = unwrapSupabaseSingleOrNull<any>(result, {
+      operation: 'fetchByIdWithContainers',
+      table: PROCESSES_TABLE,
+    })
+    if (!data) return null
 
     const process = processMappers.rowToProcess(data)
     const containers = data[CONTAINERS_TABLE] ?? []
     return {
-      success: true,
-      data: {
-        ...process,
-        containers: containers.map(processMappers.rowToContainer),
-      },
-      error: null,
+      ...process,
+      containers: containers.map(processMappers.rowToContainer),
     }
   },
 
-  async fetchContainersByProcessId(
-    processId: string,
-  ): Promise<SupabaseResult<readonly ProcessContainer[]>> {
-    const { data, error } = await supabase
+  async fetchContainersByProcessId(processId: string): Promise<readonly ProcessContainer[]> {
+    const result = await supabase
       .from(CONTAINERS_TABLE)
       .select('*')
       .eq('process_id', processId)
       .order('created_at', { ascending: true })
-
-    if (error) {
-      console.error('supabaseProcessRepository.fetchContainersByProcessId error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch containers for process ${processId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    return { success: true, data: data.map(processMappers.rowToContainer), error: null }
+    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+      operation: 'fetchContainersByProcessId',
+      table: CONTAINERS_TABLE,
+    })
+    if (!data) return []
+    return data.map((row: any) => processMappers.rowToContainer(row))
   },
 
-  async containerExists(containerNumber: string): Promise<SupabaseResult<boolean>> {
+  async containerExists(containerNumber: string): Promise<boolean> {
     const normalized = containerNumber.toUpperCase().trim()
-    const { data, error } = await supabase
+    const result = await supabase
       .from(CONTAINERS_TABLE)
       .select('id')
       .eq('container_number', normalized)
       .limit(1)
-
-    if (error) {
-      console.error('supabaseProcessRepository.containerExists error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to check container existence: ${error.message}`, { cause: error }),
-      }
-    }
-
-    return { success: true, data: (data?.length ?? 0) > 0, error: null }
+    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+      operation: 'containerExists',
+      table: CONTAINERS_TABLE,
+    })
+    return (data?.length ?? 0) > 0
   },
 
-  async fetchContainerByNumber(
-    containerNumber: string,
-  ): Promise<SupabaseResult<ProcessContainer | null>> {
+  async fetchContainerByNumber(containerNumber: string): Promise<ProcessContainer | null> {
     const normalized = containerNumber.toUpperCase().trim()
-    const { data, error } = await supabase
+    const result = await supabase
       .from(CONTAINERS_TABLE)
       .select('*')
       .eq('container_number', normalized)
       .limit(1)
-
-    if (error) {
-      console.error('supabaseProcessRepository.fetchContainerByNumber error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch container by number: ${error.message}`, { cause: error }),
-      }
-    }
-
-    if (!data || data.length === 0) return { success: true, data: null, error: null }
-    return { success: true, data: processMappers.rowToContainer(data[0]), error: null }
+    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+      operation: 'fetchContainerByNumber',
+      table: CONTAINERS_TABLE,
+    })
+    if (!data || data.length === 0) return null
+    return processMappers.rowToContainer(data[0])
   },
 
-  async create(process: NewProcess): Promise<SupabaseResult<Process>> {
+  async create(process: NewProcess): Promise<Process> {
     // Create process first
     const now = new Date().toISOString()
-    const { data: processData, error: processError } = await supabase
+    const result = await supabase
       .from(PROCESSES_TABLE)
       .insert({
         reference: process.reference,
@@ -211,33 +148,19 @@ export const supabaseProcessRepository = {
       .select()
       .single()
 
-    if (processError) {
-      console.error('supabaseProcessRepository.create process error:', processError)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to create process: ${processError.message}`, {
-          cause: processError,
-        }),
-      }
-    }
-
-    if (!processData) {
-      return {
-        success: false,
-        data: null,
-        error: new Error('Failed to create process: no data returned'),
-      }
-    }
-
-    return { success: true, data: processMappers.rowToProcess(processData), error: null }
+    const processData = unwrapSupabaseResultOrThrow<any>(result, {
+      operation: 'create',
+      table: PROCESSES_TABLE,
+    })
+    if (!processData) throw new InfrastructureError('Failed to create process: no data returned')
+    return processMappers.rowToProcess(processData)
   },
 
   async update(
     processId: string,
     updates: Partial<Omit<Process, 'id' | 'created_at' | 'updated_at'>>,
-  ): Promise<SupabaseResult<Process>> {
-    const { data, error } = await supabase
+  ): Promise<Process> {
+    const result = await supabase
       .from(PROCESSES_TABLE)
       .update({
         ...updates,
@@ -249,50 +172,23 @@ export const supabaseProcessRepository = {
       .select()
       .single()
 
-    if (error) {
-      console.error('supabaseProcessRepository.update error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to update process ${processId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    return { success: true, data: processMappers.rowToProcess(data), error: null }
+    const data = unwrapSupabaseResultOrThrow<any>(result, {
+      operation: 'update',
+      table: PROCESSES_TABLE,
+    })
+    if (!data)
+      throw new InfrastructureError(`Failed to update process ${processId}: no data returned`)
+    return processMappers.rowToProcess(data)
   },
 
-  async delete(processId: string): Promise<SupabaseResult<object>> {
+  async delete(processId: string): Promise<void> {
     // Containers are deleted via cascade in the database
-    const { error } = await supabase.from(PROCESSES_TABLE).delete().eq('id', processId)
-
-    if (error) {
-      console.error('supabaseProcessRepository.delete error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to delete process ${processId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-    return { success: true, data: {}, error: null }
+    const result = await supabase.from(PROCESSES_TABLE).delete().eq('id', processId)
+    // unwrap will throw on error but allow null/empty responses
+    unwrapSupabaseSingleOrNull(result, { operation: 'delete', table: PROCESSES_TABLE })
   },
-  async removeContainer(containerId: string): Promise<SupabaseResult<object>> {
-    const { error } = await supabase.from(CONTAINERS_TABLE).delete().eq('id', containerId)
-
-    if (error) {
-      console.error('supabaseProcessRepository.removeContainer error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to remove container ${containerId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    return { success: true, data: {}, error: null }
+  async removeContainer(containerId: string): Promise<void> {
+    const result = await supabase.from(CONTAINERS_TABLE).delete().eq('id', containerId)
+    unwrapSupabaseSingleOrNull(result, { operation: 'removeContainer', table: CONTAINERS_TABLE })
   },
 }

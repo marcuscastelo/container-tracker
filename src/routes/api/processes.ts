@@ -107,9 +107,8 @@ export async function POST({ request }: { request: Request }): Promise<Response>
       const owner = await resolveContainerOwner(
         err.containerNumber,
         async (containerNumber: string) => {
-          const r = await supabaseProcessRepository.fetchContainerByNumber(containerNumber)
-          if (!r.success) return null
-          return r.data
+          // repository now throws on error and returns the container or null
+          return await supabaseProcessRepository.fetchContainerByNumber(containerNumber)
         },
       )
 

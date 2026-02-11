@@ -71,14 +71,7 @@ describe('supabaseProcessRepository', () => {
 
       const result = await supabaseProcessRepository.fetchById('test-id-123')
 
-      expect(result.success).toBe(true)
-      expect(result.error).toBeNull()
-      expect(result.data).toEqual(
-        expect.objectContaining({
-          id: 'test-id-123',
-          reference: 'REF-001',
-        }),
-      )
+      expect(result).toEqual(expect.objectContaining({ id: 'test-id-123', reference: 'REF-001' }))
       expect(supabase.from).toHaveBeenCalledWith('processes')
     })
 
@@ -96,10 +89,7 @@ describe('supabaseProcessRepository', () => {
       vi.mocked(supabase.from).mockReturnValue(mockSupabaseChain)
 
       const result = await supabaseProcessRepository.fetchById('non-existent-id')
-
-      expect(result.success).toBe(true)
-      expect(result.data).toBeNull()
-      expect(result.error).toBeNull()
+      expect(result).toBeNull()
     })
 
     it('should return SupabaseResult with error on database error', async () => {
@@ -117,12 +107,7 @@ describe('supabaseProcessRepository', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const result = await supabaseProcessRepository.fetchById('test-id')
-
-      expect(result.success).toBe(false)
-      expect(result.data).toBeNull()
-      expect(result.error).toBeInstanceOf(Error)
-      expect(result.error?.message).toContain('Failed to fetch process test-id')
+      await expect(() => supabaseProcessRepository.fetchById('test-id')).rejects.toThrow()
       expect(consoleErrorSpy).toHaveBeenCalled()
 
       consoleErrorSpy.mockRestore()
@@ -167,14 +152,8 @@ describe('supabaseProcessRepository', () => {
       vi.mocked(supabase.from).mockReturnValue(mockSupabaseChain)
 
       const result = await supabaseProcessRepository.create(newProcess)
-
-      expect(result.success).toBe(true)
-      expect(result.error).toBeNull()
-      expect(result.data).toEqual(
-        expect.objectContaining({
-          id: 'created-id-456',
-          reference: 'REF-002',
-        }),
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'created-id-456', reference: 'REF-002' }),
       )
       expect(supabase.from).toHaveBeenCalledWith('processes')
       expect(mockSupabaseChain.insert).toHaveBeenCalled()
@@ -205,12 +184,7 @@ describe('supabaseProcessRepository', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const result = await supabaseProcessRepository.create(newProcess)
-
-      expect(result.success).toBe(false)
-      expect(result.data).toBeNull()
-      expect(result.error).toBeInstanceOf(Error)
-      expect(result.error?.message).toContain('Failed to create process')
+      await expect(() => supabaseProcessRepository.create(newProcess)).rejects.toThrow()
       expect(consoleErrorSpy).toHaveBeenCalled()
 
       consoleErrorSpy.mockRestore()
@@ -239,12 +213,7 @@ describe('supabaseProcessRepository', () => {
 
       vi.mocked(supabase.from).mockReturnValue(mockSupabaseChain)
 
-      const result = await supabaseProcessRepository.create(newProcess)
-
-      expect(result.success).toBe(false)
-      expect(result.data).toBeNull()
-      expect(result.error).toBeInstanceOf(Error)
-      expect(result.error?.message).toContain('no data returned')
+      await expect(() => supabaseProcessRepository.create(newProcess)).rejects.toThrow()
     })
   })
 })

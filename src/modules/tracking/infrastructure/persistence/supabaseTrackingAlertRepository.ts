@@ -4,7 +4,10 @@ import type { TrackingAlertRepository } from '~/modules/tracking/domain/tracking
 import { stringsToJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
-import type { SupabaseResult } from '~/shared/supabase/supabaseResult'
+import {
+  unwrapSupabaseResultOrThrow,
+  unwrapSupabaseSingleOrNull,
+} from '~/shared/supabase/unwrapSupabaseResult'
 import { formatParseError } from '~/shared/utils/formatParseError'
 
 const TABLE = 'tracking_alerts' as const
@@ -64,10 +67,8 @@ function rowToAlert(
   return { success: true, data: result.data }
 }
 export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
-  async insertMany(
-    alerts: readonly NewTrackingAlert[],
-  ): Promise<SupabaseResult<readonly TrackingAlert[]>> {
-    if (alerts.length === 0) return { success: true, data: [], error: null }
+  async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
+    if (alerts.length === 0) return []
 
     const rows = alerts.map((a) => ({
       container_id: a.container_id,
@@ -84,16 +85,11 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       dismissed_at: a.dismissed_at,
     }))
 
-    const { data, error } = await supabase.from(TABLE).insert(rows).select('*')
-
-    if (error) {
-      console.error('supabaseTrackingAlertRepository.insertMany error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to insert tracking alerts: ${error.message}`, { cause: error }),
-      }
-    }
+    const result = await supabase.from(TABLE).insert(rows).select('*')
+    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+      operation: 'insertMany',
+      table: TABLE,
+    })
 
     const mapped: TrackingAlert[] = []
     for (const row of data ?? []) {
@@ -106,13 +102,11 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         )
     }
 
-    return { success: true, data: mapped, error: null }
+    return mapped
   },
 
-  async findActiveByContainerId(
-    containerId: string,
-  ): Promise<SupabaseResult<readonly TrackingAlert[]>> {
-    const { data, error } = await supabase
+  async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    const result = await supabase
       .from(TABLE)
       .select('*')
       .eq('container_id', containerId)
@@ -120,16 +114,10 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .is('dismissed_at', null)
       .order('triggered_at', { ascending: false })
 
-    if (error) {
-      console.error('supabaseTrackingAlertRepository.findActiveByContainerId error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch active tracking alerts: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
+    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+      operation: 'findActiveByContainerId',
+      table: TABLE,
+    })
 
     const mapped: TrackingAlert[] = []
     for (const row of data ?? []) {
@@ -142,67 +130,41 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         )
     }
 
-    return { success: true, data: mapped, error: null }
+    return mapped
   },
 
-  async findActiveTypesByContainerId(
-    containerId: string,
-  ): Promise<SupabaseResult<ReadonlySet<string>>> {
-    const { data, error } = await supabase
+  async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
+    const result = await supabase
       .from(TABLE)
       .select('type')
       .eq('container_id', containerId)
       .is('acked_at', null)
       .is('dismissed_at', null)
 
-    if (error) {
-      console.error('supabaseTrackingAlertRepository.findActiveTypesByContainerId error:', error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to fetch active alert types: ${error.message}`, { cause: error }),
-      }
-    }
+    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+      operation: 'findActiveTypesByContainerId',
+      table: TABLE,
+    })
 
     const types = new Set<string>()
     for (const row of data ?? []) {
       if (row && typeof row.type === 'string') types.add(row.type)
     }
-    return { success: true, data: types, error: null }
+    return types
   },
 
-  async acknowledge(alertId: string, ackedAt: string): Promise<SupabaseResult<object>> {
-    const { error } = await supabase.from(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
-
-    if (error) {
-      console.error(`supabaseTrackingAlertRepository.acknowledge error:`, error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to acknowledge alert ${alertId}: ${error.message}`, {
-          cause: error,
-        }),
-      }
-    }
-
-    return { success: true, data: {}, error: null }
+  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+    const result = await supabase.from(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
+    // Only throw on real errors; missing data is OK for this update
+    unwrapSupabaseSingleOrNull(result, { operation: 'acknowledge', table: TABLE })
   },
 
-  async dismiss(alertId: string, dismissedAt: string): Promise<SupabaseResult<object>> {
-    const { error } = await supabase
+  async dismiss(alertId: string, dismissedAt: string): Promise<void> {
+    const result = await supabase
       .from(TABLE)
       .update({ dismissed_at: dismissedAt })
       .eq('id', alertId)
-
-    if (error) {
-      console.error(`supabaseTrackingAlertRepository.dismiss error:`, error)
-      return {
-        success: false,
-        data: null,
-        error: new Error(`Failed to dismiss alert ${alertId}: ${error.message}`, { cause: error }),
-      }
-    }
-
-    return { success: true, data: {}, error: null }
+    // Only throw on real errors; missing data is OK for this update
+    unwrapSupabaseSingleOrNull(result, { operation: 'dismiss', table: TABLE })
   },
 }

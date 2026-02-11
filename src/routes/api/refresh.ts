@@ -50,16 +50,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     // Look up the container in our DB to get its UUID
-    const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
-    if (!containerRes.success) {
-      return respondWithSchema(
-        { error: `Failed to lookup container: ${containerRes.error?.message ?? 'Unknown error'}` },
-        RefreshSchemas.responses.error,
-        500,
-      )
-    }
-
-    const containerRecord = containerRes.data
+    const containerRecord = await supabaseProcessRepository.fetchContainerByNumber(container)
     if (!containerRecord) {
       return respondWithSchema(
         { error: `container ${container} not found in the system. Create a process first.` },

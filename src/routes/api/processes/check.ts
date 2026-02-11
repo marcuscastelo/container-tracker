@@ -22,14 +22,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     for (const c of parsed.containers) {
       const normalized = c.toUpperCase().trim()
       try {
-        const res = await supabaseProcessRepository.fetchContainerByNumber(normalized)
-        if (!res.success) {
-          console.warn('check containers: fetchContainerByNumber failed', normalized, res.error)
-          conflicts.push({ containerNumber: normalized, message: 'Failed to check container' })
-          continue
-        }
-
-        const container = res.data
+        const container = await supabaseProcessRepository.fetchContainerByNumber(normalized)
         if (container) {
           conflicts.push({
             containerNumber: normalized,
