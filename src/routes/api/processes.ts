@@ -4,8 +4,8 @@ import {
   resolveContainerOwner,
 } from '~/modules/process/application/errors'
 import { CreateProcessInputSchema } from '~/modules/process/domain/processStuff'
+import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
 import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
-import { processUseCases } from '~/modules/process/processUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import type {
   CreateProcessResponseSchema,
@@ -23,7 +23,13 @@ function jsonResponse(data: unknown, status = 200): Response {
 // GET /api/processes - List all processes with containers
 export async function GET(): Promise<Response> {
   try {
-    const processes = await processUseCases.getAllProcessesWithContainers()
+    const result = await processUseCases.listProcessesWithContainers()
+
+    if (!result.processes) {
+      return jsonResponse({ error: 'Failed to fetch processes' }, 500)
+    }
+
+    const processes = result.processes
 
     const response = processes.map(
       (p) =>
@@ -68,7 +74,26 @@ export async function POST({ request }: { request: Request }): Promise<Response>
       return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
     }
 
-    const result = await processUseCases.createProcess(parsed.data)
+    const result = await processUseCases.createProcess({
+      record: {
+        reference: parsed.data.reference ?? null,
+        origin: parsed.data.origin?.display_name,
+        destination: parsed.data.destination?.display_name,
+        carrier: parsed.data.carrier,
+        bill_of_lading: parsed.data.bill_of_lading ?? null,
+        booking_number: parsed.data.booking_number ?? null,
+        importer_name: parsed.data.importer_name ?? null,
+        exporter_name: parsed.data.exporter_name ?? null,
+        reference_importer: parsed.data.reference_importer ?? null,
+        product: parsed.data.product ?? undefined,
+        redestination_number: parsed.data.redestination_number ?? undefined,
+        source: 'manual',
+      },
+      containers: parsed.data.containers.map((c) => ({
+        container_number: c.container_number,
+        carrier_code: c.carrier_code ?? null,
+      })),
+    })
 
     const response = {
       process: {

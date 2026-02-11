@@ -1,6 +1,6 @@
-import { createContainerFacade } from '~/modules/container/application/container.facade'
+import { createContainerUseCases } from '~/modules/container/application/container.usecases'
 import { supabaseContainerRepository } from '~/modules/container/infrastructure/persistence/container.repository.supabase'
 
-export const containerFacade = createContainerFacade({
+export const containerUseCases = createContainerUseCases({
   repository: supabaseContainerRepository,
 })

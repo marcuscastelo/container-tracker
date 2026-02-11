@@ -3,7 +3,7 @@ import {
   type CreateProcessInput,
   CreateProcessInputSchema,
 } from '~/modules/process/domain/processStuff'
-import { processUseCases } from '~/modules/process/processUseCases'
+import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
 import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse as typedJsonResponse } from '~/shared/api/typedRoute'
@@ -20,10 +20,14 @@ export async function GET({ params }: APIEvent): Promise<Response> {
       return typedJsonResponse({ error: 'Process ID is required' }, 400)
     }
 
-    const process = await processUseCases.getProcessWithContainers(processId)
-    if (!process) {
+    const result = await processUseCases.findProcessByIdWithContainers({
+      processId,
+    })
+    if (!result.process) {
       return typedJsonResponse({ error: 'Process not found' }, 404)
     }
+
+    const process = result.process
 
     // For each container, get tracking summary (observations, status, alerts)
     const containersWithTracking = await Promise.all(
@@ -125,12 +129,16 @@ export async function DELETE({ params }: APIEvent): Promise<Response> {
     }
 
     // Check if process exists
-    const process = await processUseCases.getProcess(processId)
-    if (!process) {
+    const result = await processUseCases.findProcessById({
+      processId,
+    })
+    if (!result.process) {
       return typedJsonResponse({ error: 'Process not found' }, 404)
     }
 
-    await processUseCases.deleteProcess(processId)
+    await processUseCases.deleteProcess({
+      processId,
+    })
 
     return typedJsonResponse({ success: true, deleted: processId })
   } catch (err) {
@@ -176,7 +184,33 @@ export async function PATCH({ params, request }: APIEvent): Promise<Response> {
       }))
     }
 
-    const updated = await processUseCases.updateProcess(processId, input)
+    const result = await processUseCases.updateProcess({
+      processId,
+      record: {
+        reference: input.reference ?? undefined,
+        origin: input.origin?.display_name,
+        destination: input.destination?.display_name,
+        carrier: input.carrier,
+        bill_of_lading: input.bill_of_lading ?? undefined,
+        booking_number: input.booking_number ?? undefined,
+        importer_name: input.importer_name ?? undefined,
+        exporter_name: input.exporter_name ?? undefined,
+        reference_importer: input.reference_importer ?? undefined,
+        product: input.product ?? undefined,
+        redestination_number: input.redestination_number ?? undefined,
+      },
+      containers: input.containers?.map((c) => ({
+        container_number: c.container_number,
+        carrier_code: c.carrier_code,
+      })),
+    })
+
+    if (!result.process) {
+      // TODO: when 404? currently, 500 for this situation since we assume if process not found after update, it means it was deleted during the update, which is unexpected
+      return typedJsonResponse({ error: 'After update, process not found' }, 500)
+    }
+
+    const updated = result.process
 
     const response = {
       id: updated.id,

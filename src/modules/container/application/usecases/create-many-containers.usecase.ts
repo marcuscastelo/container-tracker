@@ -1,4 +1,5 @@
 import type { ContainerRepository } from '~/modules/container/application/container.repository'
+import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 import {
   normalizeContainerNumber,
   validateContainerWithWarnings,
@@ -14,11 +15,7 @@ export type CreateManyContainersCommand = {
 }
 
 export type CreateManyContainersResult = {
-  containers: {
-    id: string
-    containerNumber: string
-    carrierCode: string
-  }[]
+  containers: ContainerEntity[]
   warnings: string[]
 }
 
