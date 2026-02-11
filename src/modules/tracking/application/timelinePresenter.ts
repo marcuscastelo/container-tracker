@@ -1,3 +1,4 @@
+import type { DerivedObservationState } from '~/modules/tracking/domain/expiredExpected'
 import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -14,11 +15,19 @@ export type TimelineEvent = {
   readonly status: EventStatus
   /** Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event */
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  /** Derived state for timeline rendering: ACTUAL, ACTIVE_EXPECTED, or EXPIRED_EXPECTED */
+  readonly derivedState: DerivedObservationState
   /** Optional i18n key for system-generated events that should be translated in UI */
   readonly labelKey?: string
 }
 
-export function observationToTimelineEvent(obs: ObservationResponse, index: number): TimelineEvent {
+export function observationToTimelineEvent(
+  obs: ObservationResponse,
+  index: number,
+  derivedState: DerivedObservationState = obs.event_time_type === 'ACTUAL'
+    ? 'ACTUAL'
+    : 'ACTIVE_EXPECTED',
+): TimelineEvent {
   const evDate = obs.event_time ? new Date(obs.event_time) : null
   const dateStr = evDate ? formatDateForLocale(evDate) : null
   const eventTimeType = obs.event_time_type ?? 'EXPECTED'
@@ -76,5 +85,6 @@ export function observationToTimelineEvent(obs: ObservationResponse, index: numb
     expectedDate_iso: expectedDateIso,
     status,
     eventTimeType,
+    derivedState,
   }
 }

@@ -61,6 +61,8 @@
       "expected": "Expected",
       "actual": "Actual",
       "predictedTooltip": "This is a predicted event, not yet confirmed",
+      "expiredExpected": "Expired",
+      "expiredExpectedTooltip": "This predicted event was not confirmed and its planned time has passed",
       "viewOnCarrierSite": "View on carrier site",
       "systemCreated": "Process registered in the system"
     },

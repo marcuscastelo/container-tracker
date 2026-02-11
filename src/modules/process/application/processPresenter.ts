@@ -3,6 +3,7 @@ import type {
   ShipmentDetail,
 } from '~/modules/process/application/shipmentReadModel'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
+import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
 import type { AlertDisplay } from '~/modules/tracking/application/alertPresenter'
 import { alertToDisplay } from '~/modules/tracking/application/alertPresenter'
 import {
@@ -68,7 +69,7 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
     // Build timeline from observations (new pipeline)
     const observations = c.observations ?? []
     const timeline: TimelineEvent[] = observations.map((obs, idx) =>
-      observationToTimelineEvent(obs, idx),
+      observationToTimelineEvent(obs, idx, deriveObservationState(obs, observations)),
     )
 
     // If no observations, show a "process registered" placeholder
@@ -82,6 +83,7 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
         date_iso: data.created_at,
         status: 'completed',
         eventTimeType: 'ACTUAL', // System-generated event is ACTUAL
+        derivedState: 'ACTUAL', // System-generated event is ACTUAL
       })
     }
 
