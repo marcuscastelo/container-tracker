@@ -86,7 +86,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }))
 
     const result = await supabase.from(TABLE).insert(rows).select('*')
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'insertMany',
       table: TABLE,
     })
@@ -114,7 +114,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .is('dismissed_at', null)
       .order('triggered_at', { ascending: false })
 
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveByContainerId',
       table: TABLE,
     })
@@ -141,7 +141,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .is('acked_at', null)
       .is('dismissed_at', null)
 
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveTypesByContainerId',
       table: TABLE,
     })

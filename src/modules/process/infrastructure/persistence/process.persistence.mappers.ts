@@ -4,7 +4,6 @@ import type {
 } from '~/modules/process/application/process.records'
 import { createProcessEntity, type ProcessEntity } from '~/modules/process/domain/process.entity'
 import { toCarrierCode } from '~/modules/process/domain/value-objects/carrier-code.vo'
-import { toPlannedLocation } from '~/modules/process/domain/value-objects/planned-location.vo'
 import { toProcessId } from '~/modules/process/domain/value-objects/process-id.vo'
 import { toProcessReference } from '~/modules/process/domain/value-objects/process-reference.vo'
 import { toProcessSource } from '~/modules/process/domain/value-objects/process-source.vo'

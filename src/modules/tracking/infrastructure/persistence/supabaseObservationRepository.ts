@@ -69,7 +69,7 @@ export const supabaseObservationRepository: ObservationRepository = {
     )
 
     const result = await supabase.from(TABLE).insert(rows).select('*')
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'insertMany',
       table: TABLE,
     })
@@ -90,7 +90,7 @@ export const supabaseObservationRepository: ObservationRepository = {
       .eq('container_id', containerId)
       .order('event_time', { ascending: true, nullsFirst: false })
 
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findAllByContainerId',
       table: TABLE,
     })
@@ -111,7 +111,7 @@ export const supabaseObservationRepository: ObservationRepository = {
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
     const result = await supabase.from(TABLE).select('fingerprint').eq('container_id', containerId)
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findFingerprintsByContainerId',
       table: TABLE,
     })

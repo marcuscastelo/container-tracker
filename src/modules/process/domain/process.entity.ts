@@ -1,6 +1,5 @@
 import { type ProcessBrand, toProcessBrand } from '~/modules/process/domain/process.types'
 import type { CarrierCode } from '~/modules/process/domain/value-objects/carrier-code.vo'
-import type { PlannedLocation } from '~/modules/process/domain/value-objects/planned-location.vo'
 import type { ProcessId } from '~/modules/process/domain/value-objects/process-id.vo'
 import type { ProcessReference } from '~/modules/process/domain/value-objects/process-reference.vo'
 import type { ProcessSource } from '~/modules/process/domain/value-objects/process-source.vo'

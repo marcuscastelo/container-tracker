@@ -50,7 +50,7 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
       .select('*')
       .single()
 
-    const data = unwrapSupabaseResultOrThrow<any>(result, { operation: 'insert', table: TABLE })
+    const data = unwrapSupabaseResultOrThrow(result, { operation: 'insert', table: TABLE })
     const parsed = rowToSnapshot(data)
     if (!parsed.success) {
       console.error('supabaseSnapshotRepository.insert: invalid row', parsed.error)
@@ -68,7 +68,7 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
       .limit(1)
       .maybeSingle()
 
-    const data = unwrapSupabaseSingleOrNull<any>(result, {
+    const data = unwrapSupabaseSingleOrNull(result, {
       operation: 'findLatestByContainerId',
       table: TABLE,
     })
@@ -88,7 +88,7 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
       .eq('container_id', containerId)
       .order('fetched_at', { ascending: false })
 
-    const data = unwrapSupabaseResultOrThrow<any[]>(result, {
+    const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findAllByContainerId',
       table: TABLE,
     })

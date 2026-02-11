@@ -10,8 +10,4 @@ export class ContainerAlreadyExistsInAnotherProcessError extends Error {
   }
 }
 
-export class InvalidProcessStateError extends Error {
-  constructor(message: string) {
-    super(message)
-  }
-}
+export class InvalidProcessStateError extends Error {}
