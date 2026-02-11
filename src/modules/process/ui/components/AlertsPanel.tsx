@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import type { AlertDisplay } from '~/modules/process/application/uiTypes'
 import { AlertsList } from '~/modules/process/ui/components/AlertsList'
+import type { AlertDisplay } from '~/modules/tracking/application/alertPresenter'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {

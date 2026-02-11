@@ -1,5 +1,4 @@
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
-import { statusDominanceIndex } from '~/modules/tracking/domain/containerStatus'
 import type { ObservationType } from '~/modules/tracking/domain/observationType'
 import type { Timeline } from '~/modules/tracking/domain/timeline'
 
