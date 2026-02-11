@@ -13,7 +13,7 @@ import type {
 } from '~/modules/process/domain/processStuff'
 import { createProcess } from '~/modules/process/domain/processStuff'
 import type { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
-import { InfrastructureError, NotFoundError } from '~/shared/errors/httpErrors'
+import { NotFoundError } from '~/shared/errors/httpErrors'
 
 // Ad-hoc "interface". For now more abstraction would be over-engineering.
 type ProcessRepository = typeof supabaseProcessRepository

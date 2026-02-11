@@ -1,3 +1,8 @@
+import type { ContainerRow } from '~/modules/container/infrastructure/persistence/container.row'
+import type {
+  InsertProcessRecord,
+  UpdateProcessRecord,
+} from '~/modules/process/application/process.records'
 import type { Process } from '~/modules/process/domain/process'
 import type { ProcessContainer } from '~/modules/process/domain/processStuff'
 import {
@@ -5,11 +10,12 @@ import {
   PlannedLocation,
   ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
-import type { Database } from '~/shared/supabase/database.types'
+import type {
+  ProcessInsertRow,
+  ProcessRow,
+  ProcessUpdateRow,
+} from '~/modules/process/infrastructure/persistence/process.row'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
-
-type ProcessRow = Database['public']['Tables']['processes']['Row']
-type ContainerRow = Database['public']['Tables']['containers']['Row']
 
 // TODO: Replace assertions with safeParseOrDefault using Zod schemas
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
@@ -44,6 +50,57 @@ export const processMappers = {
       // container_type and container_size are LEGACY - not used in domain
       created_at: new Date(String(row.created_at)),
       removed_at: row.removed_at ? new Date(String(row.removed_at)) : null,
+    }
+  },
+
+  insertRecordToRow(record: InsertProcessRecord, nowIso: string): ProcessInsertRow {
+    return {
+      reference: record.reference,
+      origin: record.origin ?? null,
+      destination: record.destination ?? null,
+      carrier: record.carrier,
+      bill_of_lading: record.bill_of_lading,
+      booking_number: record.booking_number,
+      importer_name: record.importer_name,
+      exporter_name: record.exporter_name,
+      reference_importer: record.reference_importer,
+      product: record.product ?? null,
+      redestination_number: record.redestination_number ?? null,
+      source: record.source,
+      created_at: nowIso,
+      updated_at: nowIso,
+    }
+  },
+
+  updateRecordToRow(record: UpdateProcessRecord, nowIso: string): ProcessUpdateRow {
+    return {
+      ...(record.reference !== undefined ? { reference: record.reference } : {}),
+      ...(record.origin !== undefined ? { origin: record.origin ?? null } : {}),
+      ...(record.destination !== undefined ? { destination: record.destination ?? null } : {}),
+      ...(record.carrier !== undefined ? { carrier: record.carrier } : {}),
+      ...(record.bill_of_lading !== undefined ? { bill_of_lading: record.bill_of_lading } : {}),
+      ...(record.booking_number !== undefined ? { booking_number: record.booking_number } : {}),
+      ...(record.importer_name !== undefined ? { importer_name: record.importer_name } : {}),
+      ...(record.exporter_name !== undefined ? { exporter_name: record.exporter_name } : {}),
+      ...(record.reference_importer !== undefined
+        ? { reference_importer: record.reference_importer }
+        : {}),
+      ...(record.product !== undefined ? { product: record.product ?? null } : {}),
+      ...(record.redestination_number !== undefined
+        ? { redestination_number: record.redestination_number ?? null }
+        : {}),
+      ...(record.source !== undefined ? { source: record.source } : {}),
+      updated_at: nowIso,
+    }
+  },
+
+  rowToProcessWithContainers(row: ProcessRow, containerRows: readonly ContainerRow[]) {
+    const process = processMappers.rowToProcess(row)
+    const containers = containerRows.map(processMappers.rowToContainer)
+
+    return {
+      ...process,
+      containers,
     }
   },
 }

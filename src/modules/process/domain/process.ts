@@ -5,6 +5,7 @@ import {
   ProcessSourceSchema,
 } from '~/modules/process/domain/value-objects'
 
+/** @deprecated */
 export const ProcessSchema = z.object({
   id: z.uuid(),
   reference: z.string().nullable().optional(),
@@ -23,11 +24,15 @@ export const ProcessSchema = z.object({
   updated_at: z.date(),
 })
 
+/** @deprecated */
 export const NewProcessSchema = ProcessSchema.omit({
   id: true,
   created_at: true,
   updated_at: true,
 })
 
+/** @deprecated */
 export type Process = z.infer<typeof ProcessSchema>
+
+/** @deprecated */
 export type NewProcess = z.infer<typeof NewProcessSchema>

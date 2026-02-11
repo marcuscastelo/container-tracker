@@ -1,4 +1,3 @@
-import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 import type { ProcessId } from '~/modules/container/domain/value-objects/process-id.vo'
 import { type ProcessBrand, toProcessBrand } from '~/modules/process/domain/process.types'
 import type { CarrierCode } from '~/modules/process/domain/value-objects/carrier-code.vo'
