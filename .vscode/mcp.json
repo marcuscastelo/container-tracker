@@ -41,7 +41,9 @@
         "start-mcp-server",
         "serena==latest",
         "--context",
-        "ide-assistant"
+        "ide",
+        "--project",
+        "${workspaceFolder}"
       ],
       "gallery": "https://api.mcp.github.com",
       "version": "1.0.0"
