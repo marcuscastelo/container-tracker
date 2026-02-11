@@ -72,6 +72,8 @@
       "expected": "Previsto",
       "actual": "Real",
       "predictedTooltip": "Este é um evento previsto, ainda não confirmado",
+      "expiredExpected": "Expirado",
+      "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planeado já passou",
       "viewOnCarrierSite": "Ver no site do armador",
       "systemCreated": "Processo registado no sistema"
     },

@@ -58,9 +58,15 @@ export function TimelineNode(props: {
 
   // Determine if this is an EXPECTED event
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
+  const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
 
   return (
-    <div class={clsx('flex items-start gap-6', { 'opacity-60': isExpected() })}>
+    <div
+      class={clsx('flex items-start gap-6', {
+        'opacity-60': isExpected() && !isExpiredExpected(),
+        'opacity-40': isExpiredExpected(),
+      })}
+    >
       {/* Timeline node and connector */}
       <div class="flex flex-col items-center">
         <div class={`h-3 w-3 rounded-full ${styles().dot}`} />
@@ -80,7 +86,15 @@ export function TimelineNode(props: {
                   : props.event.label}
               </p>
               {/* Badge for EXPECTED events */}
-              <Show when={isExpected()}>
+              <Show when={isExpiredExpected()}>
+                <span
+                  class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700"
+                  title={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
+                >
+                  {t(keys.shipmentView.timeline.expiredExpected)}
+                </span>
+              </Show>
+              <Show when={isExpected() && !isExpiredExpected()}>
                 <span
                   class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600"
                   title={t(keys.shipmentView.timeline.predictedTooltip)}
