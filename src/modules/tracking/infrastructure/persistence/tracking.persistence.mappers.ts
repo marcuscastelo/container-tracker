@@ -226,7 +226,7 @@ export function observationToInsertRow(obs: NewObservation): InsertTrackingObser
     container_id: obs.container_id,
     container_number: obs.container_number,
     type: obs.type,
-    event_time: obs.event_time == null ? obs.event_time : normalizeTimestamptz(obs.event_time),
+    event_time: obs.event_time == null ? null : normalizeTimestamptz(obs.event_time),
     location_code: obs.location_code,
     location_display: obs.location_display,
     vessel_name: obs.vessel_name,
