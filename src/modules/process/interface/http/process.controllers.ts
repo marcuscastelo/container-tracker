@@ -14,7 +14,7 @@ import {
   CheckContainersBodySchema,
   CreateProcessInputSchema,
 } from '~/modules/process/interface/http/process.schemas'
-import type { TrackingUseCases } from '~/modules/tracking/application/trackingUseCases'
+import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 import {

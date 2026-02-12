@@ -7,7 +7,7 @@
  * All logic lives in the controller; the route only delegates.
  */
 
-import { alertsController } from '~/modules/tracking/interface/http/tracking.alerts.controller.bootstrap'
+import { alertsController } from '~/modules/tracking/interface/http/tracking-alerts.controller.bootstrap'
 
 export const GET = alertsController.listAlerts
 export const PATCH = alertsController.handleAlertAction

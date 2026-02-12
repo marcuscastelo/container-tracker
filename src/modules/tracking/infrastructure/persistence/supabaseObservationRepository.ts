@@ -1,6 +1,6 @@
 import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
 import { ObservationSchema } from '~/modules/tracking/domain/observation'
-import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
+import type { ObservationRepository } from '~/modules/tracking/domain/observation.repository'
 import type { Tables, TablesInsert } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'

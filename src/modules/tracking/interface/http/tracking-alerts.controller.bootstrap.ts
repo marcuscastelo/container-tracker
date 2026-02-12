@@ -5,7 +5,7 @@
  * No business logic here — just DI wiring.
  */
 
-import { createAlertsController } from '~/modules/tracking/interface/http/tracking.alerts.controller'
+import { createAlertsController } from '~/modules/tracking/interface/http/tracking-alerts.controller'
 import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 
 export const alertsController = createAlertsController({

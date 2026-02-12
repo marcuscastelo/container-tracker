@@ -8,12 +8,12 @@
  * Pattern: routes → controller → usecase (per architecture guide §10)
  */
 
-import type { TrackingUseCases } from '~/modules/tracking/application/trackingUseCases'
-import { toAlertResponseDto } from '~/modules/tracking/interface/http/tracking.alerts.http.mappers'
+import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
+import { toAlertResponseDto } from '~/modules/tracking/interface/http/tracking-alerts.http.mappers'
 import {
   AlertActionBodySchema,
   ListAlertsQuerySchema,
-} from '~/modules/tracking/interface/http/tracking.alerts.schemas'
+} from '~/modules/tracking/interface/http/tracking-alerts.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 

@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { processSnapshot } from '~/modules/tracking/application/pipeline'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
-import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
+import type { ObservationRepository } from '~/modules/tracking/domain/observation.repository'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
+import type { SnapshotRepository } from '~/modules/tracking/domain/snapshot.repository'
+import type { TrackingAlertRepository } from '~/modules/tracking/domain/tracking-alert.repository'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
-import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
-import maerskPayload from '~/modules/tracking/infrastructure/__tests__/fixtures/maersk/maersk_full.json'
+import maerskPayload from '~/modules/tracking/infrastructure/tests/fixtures/maersk/maersk_full.json'
 
 // Note: repositories now throw on infra errors and return direct types.
 

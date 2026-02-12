@@ -1,6 +1,6 @@
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
 import { SnapshotSchema } from '~/modules/tracking/domain/snapshot'
-import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
+import type { SnapshotRepository } from '~/modules/tracking/domain/snapshot.repository'
 import { toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
+import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/msc.fetcher'
 
 /**
  * Fetch tracking data from CMA-CGM's public tracking endpoint.

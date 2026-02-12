@@ -1,4 +1,4 @@
-import { createTrackingUseCases } from '~/modules/tracking/application/trackingUseCases'
+import { createTrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import { supabaseObservationRepository } from '~/modules/tracking/infrastructure/persistence/supabaseObservationRepository'
 import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository'
 import { supabaseTrackingAlertRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository'

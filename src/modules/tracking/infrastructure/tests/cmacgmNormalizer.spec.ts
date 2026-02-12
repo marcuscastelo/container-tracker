@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-import fullPayload from '~/modules/tracking/infrastructure/__tests__/fixtures/cmacgm/cmacgm_full.json'
-import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/adapters/cmacgmNormalizer'
+import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/adapters/cmacgm.normalizer'
+import fullPayload from '~/modules/tracking/infrastructure/tests/fixtures/cmacgm/cmacgm_full.json'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'

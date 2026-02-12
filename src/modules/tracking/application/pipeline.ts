@@ -5,12 +5,12 @@ import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/der
 import { deriveStatus } from '~/modules/tracking/domain/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/domain/deriveTimeline'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
-import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
+import type { ObservationRepository } from '~/modules/tracking/domain/observation.repository'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
+import type { SnapshotRepository } from '~/modules/tracking/domain/snapshot.repository'
 import type { Timeline } from '~/modules/tracking/domain/timeline'
+import type { TrackingAlertRepository } from '~/modules/tracking/domain/tracking-alert.repository'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
-import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
 
 /**
