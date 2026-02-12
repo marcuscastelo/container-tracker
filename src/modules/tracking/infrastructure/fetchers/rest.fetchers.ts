@@ -1,11 +1,11 @@
 import type { Provider } from '~/modules/tracking/domain/provider'
-import { fetchCmaCgmStatus } from '~/modules/tracking/infrastructure/fetchers/cmacgmFetcher'
+import { fetchCmaCgmStatus } from '~/modules/tracking/infrastructure/fetchers/cmacgm.fetcher'
 import {
   isRestCarrier,
   type RestCarrier,
-} from '~/modules/tracking/infrastructure/fetchers/isRestCarrier'
-import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
-import { fetchMscStatus } from '~/modules/tracking/infrastructure/fetchers/mscFetcher'
+} from '~/modules/tracking/infrastructure/fetchers/is-rest-carrier'
+import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/msc.fetcher'
+import { fetchMscStatus } from '~/modules/tracking/infrastructure/fetchers/msc.fetcher'
 
 type CarrierFetcher = (containerNumber: string) => Promise<FetchResult>
 

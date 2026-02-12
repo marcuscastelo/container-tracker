@@ -1,6 +1,6 @@
+import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import { TrackingAlertSchema } from '~/modules/tracking/domain/trackingAlert'
-import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
 import { stringsToJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type { Tables } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'

@@ -1,9 +1,9 @@
 import type { ObservationDraft } from '~/modules/tracking/domain/observationDraft'
 import type { Provider } from '~/modules/tracking/domain/provider'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/adapters/cmacgmNormalizer'
-import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/adapters/maerskNormalizer'
-import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/adapters/mscNormalizer'
+import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/adapters/cmacgm.normalizer'
+import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/adapters/maersk.normalizer'
+import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/adapters/msc.normalizer'
 
 /**
  * Registry of provider normalizers.

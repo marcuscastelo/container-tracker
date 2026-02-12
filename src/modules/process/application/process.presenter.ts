@@ -1,16 +1,16 @@
 import type {
   ContainerDetail,
   ShipmentDetail,
-} from '~/modules/process/application/shipmentReadModel'
+} from '~/modules/process/application/shipment.readmodel'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
-import type { AlertDisplay } from '~/modules/tracking/application/alertPresenter'
-import { alertToDisplay } from '~/modules/tracking/application/alertPresenter'
+import type { AlertDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
+import { alertToDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
 import {
   containerStatusLabel,
   containerStatusToVariant,
-} from '~/modules/tracking/application/statusPresenter'
-import type { TimelineEvent } from '~/modules/tracking/application/timelinePresenter'
-import { observationToTimelineEvent } from '~/modules/tracking/application/timelinePresenter'
+} from '~/modules/tracking/application/tracking.status.presenter'
+import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
+import { observationToTimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
 import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'

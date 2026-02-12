@@ -5,9 +5,11 @@ import puppeteerExtra from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { z } from 'zod'
 import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
-import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
+import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
+
+const { usecases: trackingUseCases } = bootstrapTrackingModule()
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
