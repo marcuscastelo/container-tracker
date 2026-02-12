@@ -21,11 +21,13 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 // Dependency types
 // ---------------------------------------------------------------------------
 
+export type TrackingUseCasesForAlerts = Pick<
+  TrackingUseCases,
+  'getContainerSummary' | 'acknowledgeAlert' | 'dismissAlert'
+>
+
 export type AlertsControllerDeps = {
-  readonly trackingUseCases: Pick<
-    TrackingUseCases,
-    'getContainerSummary' | 'acknowledgeAlert' | 'dismissAlert'
-  >
+  readonly usecases: TrackingUseCasesForAlerts
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +35,7 @@ export type AlertsControllerDeps = {
 // ---------------------------------------------------------------------------
 
 export function createAlertsController(deps: AlertsControllerDeps) {
-  const { trackingUseCases } = deps
+  const { usecases: trackingUseCases } = deps
 
   // -----------------------------------------------------------------------
   // GET /api/alerts?container_id=<uuid>
