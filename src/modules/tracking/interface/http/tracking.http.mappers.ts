@@ -1,8 +1,9 @@
 import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
-import type { AlertResponseDto } from '~/modules/tracking/interface/http/tracking-alerts.schemas'
+import type { Snapshot } from '~/modules/tracking/domain/snapshot'
+import type { AlertResponseDto, SnapshotResponseDto } from '~/modules/tracking/interface/http/tracking.schemas'
 
 // ---------------------------------------------------------------------------
-// Result → Response DTO mappers
+// Alerts — Result → Response DTO mappers
 // ---------------------------------------------------------------------------
 
 /**
@@ -23,5 +24,22 @@ export function toAlertResponseDto(alert: TrackingAlert): AlertResponseDto {
     provider: alert.provider,
     acked_at: alert.acked_at,
     dismissed_at: alert.dismissed_at,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Snapshots — Result → Response DTO mappers
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps a domain Snapshot to the HTTP response DTO (minimal shape).
+ */
+export function toSnapshotResponseDto(snapshot: Snapshot): SnapshotResponseDto {
+  return {
+    id: snapshot.id,
+    container_id: snapshot.container_id,
+    provider: snapshot.provider,
+    fetched_at: snapshot.fetched_at,
+    parse_error: snapshot.parse_error ?? null,
   }
 }
