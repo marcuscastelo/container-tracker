@@ -9,7 +9,7 @@ import { processUseCases } from '~/modules/process/infrastructure/bootstrap/proc
 import { createProcessControllers } from '~/modules/process/interface/http/process.controllers'
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 
-const { usecases: trackingUseCases } = bootstrapTrackingModule()
+const { trackingUseCases } = bootstrapTrackingModule()
 
 export const processControllers = createProcessControllers({
   processUseCases,

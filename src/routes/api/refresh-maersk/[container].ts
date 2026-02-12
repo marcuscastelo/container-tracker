@@ -9,7 +9,7 @@ import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/boots
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
 
-const { usecases: trackingUseCases } = bootstrapTrackingModule()
+const { trackingUseCases } = bootstrapTrackingModule()
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })

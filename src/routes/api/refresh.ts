@@ -7,7 +7,7 @@ import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/is-res
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { parseBody } from '~/shared/api/typedRoute'
 
-const { usecases: trackingUseCases } = bootstrapTrackingModule()
+const { trackingUseCases } = bootstrapTrackingModule()
 
 function handleMaerskRedirect(container: string): Response {
   const redirectPath = `/api/refresh-maersk/${encodeURIComponent(container)}`

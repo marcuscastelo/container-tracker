@@ -20,7 +20,7 @@ export type TrackingBootstrapOverrides = Partial<{
 }>
 
 export type TrackingModule = {
-  readonly usecases: TrackingUseCases
+  readonly trackingUseCases: TrackingUseCases
 }
 
 /**
@@ -38,11 +38,11 @@ export function bootstrapTrackingModule(
   const trackingAlertRepository =
     overrides.trackingAlertRepository ?? supabaseTrackingAlertRepository
 
-  const usecases = createTrackingUseCases({
+  const trackingUseCases = createTrackingUseCases({
     snapshotRepository,
     observationRepository,
     trackingAlertRepository,
   })
 
-  return { usecases }
+  return { trackingUseCases }
 }
