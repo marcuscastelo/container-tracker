@@ -11,6 +11,10 @@ import {
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import { getLatestSnapshot } from '~/modules/tracking/application/usecases/get-latest-snapshot.usecase'
 import { getSnapshotsForContainer } from '~/modules/tracking/application/usecases/get-snapshots-for-container.usecase'
+import {
+  type ListActiveAlertsByContainerIdResult,
+  listActiveAlertsByContainerId,
+} from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/provider'
@@ -121,6 +125,17 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
       return getLatestSnapshot(deps, { containerId })
+    },
+
+    /**
+     * List active (non-acked, non-dismissed) alerts for a container.
+     *
+     * Use this instead of getContainerSummary when only alerts are needed.
+     */
+    async listActiveAlertsByContainerId(
+      containerId: string,
+    ): Promise<ListActiveAlertsByContainerIdResult> {
+      return listActiveAlertsByContainerId(deps, { containerId })
     },
   }
 }

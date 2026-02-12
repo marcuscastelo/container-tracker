@@ -44,12 +44,9 @@ function createAlertsController(trackingUseCases: TrackingUseCases) {
 
       const containerId = queryResult.data.container_id
 
-      // getContainerSummary needs containerNumber, but for alerts listing
-      // we only care about the alerts portion. Pass empty string as containerNumber
-      // since alerts are fetched by containerId only.
-      const summary = await trackingUseCases.getContainerSummary(containerId, '')
+      const { alerts } = await trackingUseCases.listActiveAlertsByContainerId(containerId)
 
-      const response = summary.alerts.map(toAlertResponseDto)
+      const response = alerts.map(toAlertResponseDto)
       return jsonResponse(response, 200)
     } catch (err) {
       console.error('GET /api/alerts error:', err)
