@@ -12,6 +12,6 @@ export type TrackingControllersBootstrapOverrides = Partial<{
 export function bootstrapTrackingControllers(
   overrides: TrackingControllersBootstrapOverrides = {},
 ): TrackingControllers {
-  const usecases = overrides.usecases ?? bootstrapTrackingModule().usecases
-  return createTrackingControllers({ usecases })
+  const trackingUseCases = overrides.usecases ?? bootstrapTrackingModule().usecases
+  return createTrackingControllers({ trackingUseCases })
 }

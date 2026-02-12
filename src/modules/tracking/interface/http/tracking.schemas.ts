@@ -1,7 +1,7 @@
 import z from 'zod/v4'
 
 // ---------------------------------------------------------------------------
-// Request DTOs
+// Alerts — Request DTOs
 // ---------------------------------------------------------------------------
 
 /**
@@ -22,7 +22,7 @@ export const AlertActionBodySchema = z.object({
 export type AlertActionBody = z.infer<typeof AlertActionBodySchema>
 
 // ---------------------------------------------------------------------------
-// Response DTOs
+// Alerts — Response DTOs
 // ---------------------------------------------------------------------------
 
 /**
@@ -55,3 +55,41 @@ export const AlertActionResponseSchema = z.object({
   action: z.enum(['acknowledge', 'dismiss']),
 })
 export type AlertActionResponse = z.infer<typeof AlertActionResponseSchema>
+
+// ---------------------------------------------------------------------------
+// Snapshots — Request DTOs
+// ---------------------------------------------------------------------------
+
+/**
+ * Path parameters for GET /api/tracking/containers/:containerId/snapshots
+ */
+export const GetSnapshotsForContainerRequestSchema = z.object({
+  containerId: z.string().min(1, 'containerId is required'),
+})
+export type GetSnapshotsForContainerRequest = z.infer<typeof GetSnapshotsForContainerRequestSchema>
+
+/**
+ * Path parameters for GET /api/tracking/containers/:containerId/snapshots/latest
+ */
+export const GetLatestSnapshotRequestSchema = z.object({
+  containerId: z.string().min(1, 'containerId is required'),
+})
+export type GetLatestSnapshotRequest = z.infer<typeof GetLatestSnapshotRequestSchema>
+
+// ---------------------------------------------------------------------------
+// Snapshots — Response DTOs
+// ---------------------------------------------------------------------------
+
+/**
+ * Single snapshot in the API response (minimal DTO).
+ *
+ * payload_json is excluded by default to avoid large responses.
+ */
+export const SnapshotResponseDtoSchema = z.object({
+  id: z.string(),
+  container_id: z.string(),
+  provider: z.string(),
+  fetched_at: z.string(),
+  parse_error: z.string().nullable().optional(),
+})
+export type SnapshotResponseDto = z.infer<typeof SnapshotResponseDtoSchema>
