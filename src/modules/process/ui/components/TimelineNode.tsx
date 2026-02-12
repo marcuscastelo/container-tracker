@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createMemo, Show } from 'solid-js'
-import type { TimelineEvent } from '~/modules/tracking/application/timelinePresenter'
+import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'

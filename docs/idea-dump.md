@@ -5,6 +5,8 @@ Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar ident
 No Status, em vez de "Discharged", "Loaded", etc. poderia ter "Discharged (3/7)", "Loaded (5/10)", etc. para dar uma ideia de quantos eventos ainda falta para o "Arrived at destination" acontecer, e dar uma ideia melhor do progresso do container, lembrando que no X/Y X é o ultimo ACTUAL e Y é o último EXPECTED e pode mudar. Talvez seja melhor criar outro campo na UI (progresso?) para permitir futuros filtros por status sem poluir com progresso meramente visual.
 
 # Refine
+src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
+Usei IDs para containers em vez de container number por achar que havia a possibilidade de um container aparecer em mais de um armador por erro humano em cadastro. Mas pensando bem, talvez seja melhor usar o container numbe como PK, sem IDs. Avaliar possíveis impactos e limitacoes em processos com erro humano que precisa ser representado mesmo "incorretamente" para ser um proceso "legalmente correto" caso containerNumber fosse PK.
 
 # TODO
 Quando o usuario colocar armador errado e o fetch der erro, deve exibir na tela um alerta dizendo "Nao foi possivel encontrar o container, por favor cheque o armador e tente novamente". Hoje ele nao tem feedback do que aconteceu, e pode ficar tentando refresh sem saber o que esta errado. Com o tempo podemos colocar um botao nesse alerta "Tentar identificar armador automaticamente", que ai rodaria a heuristica de testar as APIs em ordem de probabilidade para tentar identificar o armador, como descrito na ideia acima.

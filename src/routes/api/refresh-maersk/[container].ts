@@ -4,10 +4,12 @@ import type { APIEvent } from '@solidjs/start/server'
 import puppeteerExtra from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { z } from 'zod'
-import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
-import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
+import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
+import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
+
+const { usecases: trackingUseCases } = bootstrapTrackingModule()
 
 // Zod schemas and exported types for the Maersk refresh endpoint
 const MaerskRequestParamsSchema = z.object({ container: z.string() })
@@ -519,12 +521,10 @@ async function handleMaersk({ params, request }: APIEvent) {
 
     try {
       // Look up the container in our DB to get its UUID
-      const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
-      if (!containerRes.success) {
-        throw containerRes.error
-      }
-
-      const containerRecord = containerRes.data
+      const containerSearchResult = await containerUseCases.findByNumbers({
+        containerNumbers: [container],
+      })
+      const containerRecord = containerSearchResult.containers[0] ?? null
 
       if (containerRecord) {
         const result = await trackingUseCases.saveAndProcess(

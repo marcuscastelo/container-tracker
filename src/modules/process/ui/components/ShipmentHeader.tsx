@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
-import type { ShipmentDetail } from '~/modules/process/application/shipmentReadModel'
+import type { ShipmentDetail } from '~/modules/process/application/shipment.readmodel'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'

@@ -1,16 +1,16 @@
 import { diffObservations } from '~/modules/tracking/application/diffObservations'
 import { normalizeSnapshot } from '~/modules/tracking/application/normalizeSnapshot'
+import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
+import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
+import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/deriveAlerts'
 import { deriveStatus } from '~/modules/tracking/domain/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/domain/deriveTimeline'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
-import type { ObservationRepository } from '~/modules/tracking/domain/observationRepository'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { SnapshotRepository } from '~/modules/tracking/domain/snapshotRepository'
 import type { Timeline } from '~/modules/tracking/domain/timeline'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
-import type { TrackingAlertRepository } from '~/modules/tracking/domain/trackingAlertRepository'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
 
 /**
@@ -72,11 +72,8 @@ export async function processSnapshot(
   const drafts = normalizeSnapshot(snapshot)
 
   // Step 3: Diff against existing fingerprints
-  const fpRes = await deps.observationRepository.findFingerprintsByContainerId(containerId)
-  if (!fpRes.success) {
-    throw fpRes.error
-  }
-  const existingFingerprints = fpRes.data
+  const existingFingerprints =
+    await deps.observationRepository.findFingerprintsByContainerId(containerId)
   const newObsToInsert: readonly NewObservation[] = diffObservations(
     existingFingerprints,
     drafts,
@@ -86,24 +83,19 @@ export async function processSnapshot(
   // Step 4: Persist new observations
   let newObservations: readonly Observation[] = []
   if (newObsToInsert.length > 0) {
-    const insRes = await deps.observationRepository.insertMany(newObsToInsert)
-    if (!insRes.success) throw insRes.error
-    newObservations = insRes.data
+    newObservations = await deps.observationRepository.insertMany(newObsToInsert)
   }
 
   // Step 5: Derive Timeline (from ALL observations, not just new ones)
-  const allRes = await deps.observationRepository.findAllByContainerId(containerId)
-  if (!allRes.success) throw allRes.error
-  const allObservations = allRes.data
+  const allObservations = await deps.observationRepository.findAllByContainerId(containerId)
   const timeline = deriveTimeline(containerId, containerNumber, allObservations)
 
   // Step 6: Derive Status
   const status = deriveStatus(timeline)
 
   // Step 7: Derive Alerts
-  const atRes = await deps.trackingAlertRepository.findActiveTypesByContainerId(containerId)
-  if (!atRes.success) throw atRes.error
-  const existingAlertTypes = atRes.data
+  const existingAlertTypes =
+    await deps.trackingAlertRepository.findActiveTypesByContainerId(containerId)
   const newAlertDescriptors: readonly NewTrackingAlert[] = deriveAlerts(
     timeline,
     status,
@@ -114,9 +106,7 @@ export async function processSnapshot(
   // Step 8: Persist new alerts
   let newAlerts: readonly TrackingAlert[] = []
   if (newAlertDescriptors.length > 0) {
-    const insAlertsRes = await deps.trackingAlertRepository.insertMany(newAlertDescriptors)
-    if (!insAlertsRes.success) throw insAlertsRes.error
-    newAlerts = insAlertsRes.data
+    newAlerts = await deps.trackingAlertRepository.insertMany(newAlertDescriptors)
   }
 
   // Derive transshipment info

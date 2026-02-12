@@ -1,11 +1,13 @@
-import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
 import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
 import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
 import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
-import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/isRestCarrier'
-import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
+import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
+import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/is-rest-carrier'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { parseBody } from '~/shared/api/typedRoute'
+
+const { usecases: trackingUseCases } = bootstrapTrackingModule()
 
 function handleMaerskRedirect(container: string): Response {
   const redirectPath = `/api/refresh-maersk/${encodeURIComponent(container)}`
@@ -50,16 +52,10 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     // Look up the container in our DB to get its UUID
-    const containerRes = await supabaseProcessRepository.fetchContainerByNumber(container)
-    if (!containerRes.success) {
-      return respondWithSchema(
-        { error: `Failed to lookup container: ${containerRes.error?.message ?? 'Unknown error'}` },
-        RefreshSchemas.responses.error,
-        500,
-      )
-    }
-
-    const containerRecord = containerRes.data
+    const containerResult = await containerUseCases.findByNumbers({
+      containerNumbers: [container],
+    })
+    const containerRecord = containerResult.containers[0] ?? null
     if (!containerRecord) {
       return respondWithSchema(
         { error: `container ${container} not found in the system. Create a process first.` },
