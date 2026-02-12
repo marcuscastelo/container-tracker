@@ -2,10 +2,12 @@ import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/
 import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
 import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
 import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
+import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/is-rest-carrier'
-import { trackingUseCases } from '~/modules/tracking/trackingUseCases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { parseBody } from '~/shared/api/typedRoute'
+
+const { usecases: trackingUseCases } = bootstrapTrackingModule()
 
 function handleMaerskRedirect(container: string): Response {
   const redirectPath = `/api/refresh-maersk/${encodeURIComponent(container)}`
