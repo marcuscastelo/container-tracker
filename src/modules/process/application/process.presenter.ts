@@ -1,7 +1,7 @@
 import type {
   ContainerDetail,
   ShipmentDetail,
-} from '~/modules/process/application/shipmentReadModel'
+} from '~/modules/process/application/shipment.readmodel'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/tracking.alert.presenter'

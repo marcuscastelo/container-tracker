@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { presentProcess } from '~/modules/process/application/processPresenter'
+import { presentProcess } from '~/modules/process/application/process.presenter'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 
 describe('processPresenter', () => {

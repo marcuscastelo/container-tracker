@@ -1,5 +1,5 @@
-import { presentProcess } from '~/modules/process/application/processPresenter'
-import type { ShipmentDetail } from '~/modules/process/application/shipmentReadModel'
+import { presentProcess } from '~/modules/process/application/process.presenter'
+import type { ShipmentDetail } from '~/modules/process/application/shipment.readmodel'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
 
