@@ -48,27 +48,27 @@ describe('observationRowToDomain', () => {
   })
 
   it('should throw for invalid provider', () => {
-    expect(() =>
-      observationRowToDomain({ ...validRow, provider: 'invalid' }),
-    ).toThrow('not a valid provider')
+    expect(() => observationRowToDomain({ ...validRow, provider: 'invalid' })).toThrow(
+      'not a valid provider',
+    )
   })
 
   it('should throw for invalid observation type', () => {
-    expect(() =>
-      observationRowToDomain({ ...validRow, type: 'UNKNOWN' }),
-    ).toThrow('not a valid observation type')
+    expect(() => observationRowToDomain({ ...validRow, type: 'UNKNOWN' })).toThrow(
+      'not a valid observation type',
+    )
   })
 
   it('should throw for invalid event_time_type', () => {
-    expect(() =>
-      observationRowToDomain({ ...validRow, event_time_type: 'MAYBE' }),
-    ).toThrow('not a valid event_time_type')
+    expect(() => observationRowToDomain({ ...validRow, event_time_type: 'MAYBE' })).toThrow(
+      'not a valid event_time_type',
+    )
   })
 
   it('should throw for invalid confidence', () => {
-    expect(() =>
-      observationRowToDomain({ ...validRow, confidence: 'ultra' }),
-    ).toThrow('not a valid confidence')
+    expect(() => observationRowToDomain({ ...validRow, confidence: 'ultra' })).toThrow(
+      'not a valid confidence',
+    )
   })
 
   it('should handle null event_time', () => {
@@ -126,15 +126,15 @@ describe('snapshotRowToDomain', () => {
   })
 
   it('should throw for invalid provider', () => {
-    expect(() =>
-      snapshotRowToDomain({ ...validRow, provider: 'unknown_carrier' }),
-    ).toThrow('not a valid provider')
+    expect(() => snapshotRowToDomain({ ...validRow, provider: 'unknown_carrier' })).toThrow(
+      'not a valid provider',
+    )
   })
 
   it('should throw for invalid timestamp', () => {
-    expect(() =>
-      snapshotRowToDomain({ ...validRow, fetched_at: 'not-a-date' }),
-    ).toThrow('not a valid timestamp')
+    expect(() => snapshotRowToDomain({ ...validRow, fetched_at: 'not-a-date' })).toThrow(
+      'not a valid timestamp',
+    )
   })
 })
 
@@ -186,21 +186,21 @@ describe('alertRowToDomain', () => {
   })
 
   it('should throw for invalid category', () => {
-    expect(() =>
-      alertRowToDomain({ ...validRow, category: 'invalid' }),
-    ).toThrow('not a valid alert category')
+    expect(() => alertRowToDomain({ ...validRow, category: 'invalid' })).toThrow(
+      'not a valid alert category',
+    )
   })
 
   it('should throw for invalid alert type', () => {
-    expect(() =>
-      alertRowToDomain({ ...validRow, type: 'INVALID_TYPE' }),
-    ).toThrow('not a valid alert type')
+    expect(() => alertRowToDomain({ ...validRow, type: 'INVALID_TYPE' })).toThrow(
+      'not a valid alert type',
+    )
   })
 
   it('should throw for invalid severity', () => {
-    expect(() =>
-      alertRowToDomain({ ...validRow, severity: 'extreme' }),
-    ).toThrow('not a valid alert severity')
+    expect(() => alertRowToDomain({ ...validRow, severity: 'extreme' })).toThrow(
+      'not a valid alert severity',
+    )
   })
 
   it('should handle null provider', () => {
