@@ -1,5 +1,5 @@
 import type { Observation } from '~/modules/tracking/domain/observation'
-import type { Timeline, TimelineHole } from '~/modules/tracking/domain/timeline'
+import type { Timeline, TimelineHole, TimelineItem } from '~/modules/tracking/domain/timeline'
 
 /**
  * Compute a semantic group key for reconciliation.
@@ -13,6 +13,29 @@ function semanticGroupKey(obs: Observation): string {
   const location = (obs.location_code ?? '').toUpperCase().trim()
   const vessel = (obs.vessel_name ?? '').toUpperCase().trim()
   return `${type}|${location}|${vessel}`
+}
+
+/**
+ * Build a series key for event series grouping.
+ *
+ * The series key includes:
+ * - activity (canonical type)
+ * - location_code (fallback: normalized location_display)
+ * - vessel_name (nullable)
+ * - voyage (nullable)
+ *
+ * This key determines which observations belong to the same semantic milestone.
+ *
+ * @param obs - Observation to build key for
+ * @returns Deterministic series key string
+ */
+function buildSeriesKey(obs: Observation): string {
+  const activity = obs.type
+  const location =
+    obs.location_code ?? (obs.location_display ?? '').toUpperCase().trim()
+  const vessel = obs.vessel_name ?? ''
+  const voyage = obs.voyage ?? ''
+  return `${activity}|${location}|${vessel}|${voyage}`
 }
 
 /**
@@ -124,6 +147,105 @@ export function reconcileForDisplay(
   }
 
   return sorted.filter((obs) => !excludeIds.has(obs.id))
+}
+
+/**
+ * Derive timeline items with event series grouping.
+ *
+ * This function collapses multiple EXPECTED updates of the same semantic event
+ * into a single visible timeline entry, while preserving full prediction history.
+ *
+ * Rules per series key:
+ *   1. If an ACTUAL exists: primary = most recent ACTUAL, series = all obs for that key
+ *   2. If only EXPECTED exist: primary = most recent non-expired EXPECTED
+ *   3. Expired EXPECTED must NOT become primary (but remain in series history)
+ *   4. Multiple EXPECTED updates: only latest appears as primary
+ *
+ * This is a projection-level enhancement that does NOT modify persistence.
+ *
+ * @param sorted - Observations already sorted by event_time ascending
+ * @param now - Reference time for expiration check (defaults to current time)
+ * @returns Array of TimelineItem (events with optional series history)
+ */
+export function deriveTimelineSeries(
+  sorted: readonly Observation[],
+  now: Date = new Date(),
+): TimelineItem[] {
+  // Group observations by series key
+  const groups = new Map<string, Observation[]>()
+
+  for (const obs of sorted) {
+    const key = buildSeriesKey(obs)
+    const group = groups.get(key)
+    if (group) {
+      group.push(obs)
+    } else {
+      groups.set(key, [obs])
+    }
+  }
+
+  const result: TimelineItem[] = []
+  const nowIso = now.toISOString()
+
+  for (const series of groups.values()) {
+    // Separate ACTUAL and EXPECTED observations
+    const actuals = series.filter((o) => o.event_time_type === 'ACTUAL')
+    const expecteds = series.filter((o) => o.event_time_type === 'EXPECTED')
+
+    let primary: Observation | null = null
+
+    if (actuals.length > 0) {
+      // Rule 1: If ACTUAL exists, use the most recent one
+      primary = actuals[actuals.length - 1] ?? null
+    } else if (expecteds.length > 0) {
+      // Rule 2: Use most recent non-expired EXPECTED
+      // Filter out expired EXPECTED (event_time < now)
+      const activeExpecteds = expecteds.filter((exp) => {
+        if (exp.event_time === null) return true // null event_time is considered active
+        return exp.event_time >= nowIso
+      })
+
+      if (activeExpecteds.length > 0) {
+        primary = activeExpecteds[activeExpecteds.length - 1] ?? null
+      }
+      // If all EXPECTED are expired, primary remains null (won't be shown)
+    }
+
+    if (primary) {
+      result.push({
+        kind: 'event',
+        primary,
+        // Only attach series if there are multiple observations
+        series: series.length > 1 ? series : undefined,
+      })
+    }
+  }
+
+  // Sort result chronologically by primary event_time
+  return result.sort((a, b) => {
+    if (a.kind !== 'event' || b.kind !== 'event') return 0
+
+    const aTime = a.primary.event_time
+    const bTime = b.primary.event_time
+
+    if (aTime === null && bTime === null) {
+      return a.primary.created_at.localeCompare(b.primary.created_at)
+    }
+    if (aTime === null) return 1
+    if (bTime === null) return -1
+
+    const cmp = aTime.localeCompare(bTime)
+    if (cmp !== 0) return cmp
+
+    // For equal times, ACTUAL before EXPECTED
+    if (a.primary.event_time_type === 'ACTUAL' && b.primary.event_time_type === 'EXPECTED')
+      return -1
+    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL')
+      return 1
+
+    // Final tiebreaker: created_at
+    return a.primary.created_at.localeCompare(b.primary.created_at)
+  })
 }
 
 /**
