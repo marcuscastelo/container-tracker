@@ -1,6 +1,9 @@
-import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { AlertResponseDto, SnapshotResponseDto } from '~/modules/tracking/interface/http/tracking.schemas'
+import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type {
+  AlertResponseDto,
+  SnapshotResponseDto,
+} from '~/modules/tracking/interface/http/tracking.schemas'
 
 // ---------------------------------------------------------------------------
 // Alerts — Result → Response DTO mappers
