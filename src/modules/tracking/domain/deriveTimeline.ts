@@ -29,12 +29,61 @@ function semanticGroupKey(obs: Observation): string {
  * @param obs - Observation to build key for
  * @returns Deterministic series key string
  */
-function buildSeriesKey(obs: Observation): string {
+export function buildSeriesKey(obs: {
+  readonly type: string
+  readonly location_code: string | null
+  readonly location_display: string | null
+  readonly vessel_name: string | null
+  readonly voyage: string | null
+}): string {
   const activity = obs.type
   const location = obs.location_code ?? (obs.location_display ?? '').toUpperCase().trim()
   const vessel = obs.vessel_name ?? ''
   const voyage = obs.voyage ?? ''
   return `${activity}|${location}|${vessel}|${voyage}`
+}
+
+/**
+ * Compare two observations for chronological ordering.
+ *
+ * Sort order:
+ * 1. event_time ascending (null last)
+ * 2. ACTUAL before EXPECTED (when event_time equal)
+ * 3. created_at ascending (final tiebreaker)
+ *
+ * @param a - First observation
+ * @param b - Second observation
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+export function compareObservationsChronologically(
+  a: {
+    readonly event_time: string | null
+    readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+    readonly created_at: string
+  },
+  b: {
+    readonly event_time: string | null
+    readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+    readonly created_at: string
+  },
+): number {
+  // Null event_time goes last
+  if (a.event_time === null && b.event_time === null) {
+    return a.created_at.localeCompare(b.created_at)
+  }
+  if (a.event_time === null) return 1
+  if (b.event_time === null) return -1
+
+  // Compare by event_time
+  const timeCmp = a.event_time.localeCompare(b.event_time)
+  if (timeCmp !== 0) return timeCmp
+
+  // Equal times: ACTUAL before EXPECTED
+  if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
+  if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
+
+  // Final tiebreaker: created_at
+  return a.created_at.localeCompare(b.created_at)
 }
 
 /**
@@ -223,26 +272,7 @@ export function deriveTimelineSeries(
   // Sort result chronologically by primary event_time
   return result.sort((a, b) => {
     if (a.kind !== 'event' || b.kind !== 'event') return 0
-
-    const aTime = a.primary.event_time
-    const bTime = b.primary.event_time
-
-    if (aTime === null && bTime === null) {
-      return a.primary.created_at.localeCompare(b.primary.created_at)
-    }
-    if (aTime === null) return 1
-    if (bTime === null) return -1
-
-    const cmp = aTime.localeCompare(bTime)
-    if (cmp !== 0) return cmp
-
-    // For equal times, ACTUAL before EXPECTED
-    if (a.primary.event_time_type === 'ACTUAL' && b.primary.event_time_type === 'EXPECTED')
-      return -1
-    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL') return 1
-
-    // Final tiebreaker: created_at
-    return a.primary.created_at.localeCompare(b.primary.created_at)
+    return compareObservationsChronologically(a.primary, b.primary)
   })
 }
 

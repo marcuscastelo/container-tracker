@@ -173,18 +173,20 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
                             {formatDateForLocale(obs.created_at, locale())}
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                            <Show when={delta() !== null && delta() !== 0}>
+                            <Show when={delta()}>
                               {(deltaValue) => (
-                                <span
-                                  class={clsx(
-                                    'inline-flex items-center',
-                                    deltaValue() > 0 ? 'text-red-600' : 'text-green-600',
-                                  )}
-                                >
-                                  {deltaValue() > 0 ? '+' : ''}
-                                  {deltaValue()}{' '}
-                                  {t(keys.shipmentView.timeline.predictionHistory.days)}
-                                </span>
+                                <Show when={deltaValue() !== 0}>
+                                  <span
+                                    class={clsx(
+                                      'inline-flex items-center',
+                                      deltaValue() > 0 ? 'text-red-600' : 'text-green-600',
+                                    )}
+                                  >
+                                    {deltaValue() > 0 ? '+' : ''}
+                                    {deltaValue()}{' '}
+                                    {t(keys.shipmentView.timeline.predictionHistory.days)}
+                                  </span>
+                                </Show>
                               )}
                             </Show>
                           </td>

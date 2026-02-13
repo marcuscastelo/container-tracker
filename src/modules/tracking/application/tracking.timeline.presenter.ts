@@ -1,3 +1,7 @@
+import {
+  buildSeriesKey,
+  compareObservationsChronologically,
+} from '~/modules/tracking/domain/deriveTimeline'
 import type { DerivedObservationState } from '~/modules/tracking/domain/expiredExpected'
 import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
 import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
@@ -138,14 +142,6 @@ export function deriveTimelineWithSeries(
   if (observations.length === 0) return []
 
   // Group observations by series key
-  const buildSeriesKey = (obs: ObservationResponse): string => {
-    const activity = obs.type
-    const location = obs.location_code ?? (obs.location_display ?? '').toUpperCase().trim()
-    const vessel = obs.vessel_name ?? ''
-    const voyage = obs.voyage ?? ''
-    return `${activity}|${location}|${vessel}|${voyage}`
-  }
-
   const groups = new Map<string, ObservationResponse[]>()
 
   for (const obs of observations) {
@@ -165,22 +161,8 @@ export function deriveTimelineWithSeries(
   const nowIso = now.toISOString()
 
   for (const series of groups.values()) {
-    // Sort series by event_time (ascending), then by created_at
-    series.sort((a, b) => {
-      if (a.event_time === null && b.event_time === null) {
-        return a.created_at.localeCompare(b.created_at)
-      }
-      if (a.event_time === null) return 1
-      if (b.event_time === null) return -1
-      const cmp = a.event_time.localeCompare(b.event_time)
-      if (cmp !== 0) return cmp
-
-      // Times are equal — ACTUAL before EXPECTED
-      if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
-      if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
-
-      return a.created_at.localeCompare(b.created_at)
-    })
+    // Sort series chronologically
+    series.sort(compareObservationsChronologically)
 
     // Separate ACTUAL and EXPECTED observations
     const actuals = series.filter((o) => o.event_time_type === 'ACTUAL')
@@ -212,26 +194,7 @@ export function deriveTimelineWithSeries(
   }
 
   // Sort result chronologically by primary event_time
-  result.sort((a, b) => {
-    const aTime = a.primary.event_time
-    const bTime = b.primary.event_time
-
-    if (aTime === null && bTime === null) {
-      return a.primary.created_at.localeCompare(b.primary.created_at)
-    }
-    if (aTime === null) return 1
-    if (bTime === null) return -1
-
-    const cmp = aTime.localeCompare(bTime)
-    if (cmp !== 0) return cmp
-
-    // For equal times, ACTUAL before EXPECTED
-    if (a.primary.event_time_type === 'ACTUAL' && b.primary.event_time_type === 'EXPECTED')
-      return -1
-    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL') return 1
-
-    return a.primary.created_at.localeCompare(b.primary.created_at)
-  })
+  result.sort((a, b) => compareObservationsChronologically(a.primary, b.primary))
 
   // Convert to TimelineEvents
   return result.map((item, idx) => timelineItemToEvent(item, observations, idx))
