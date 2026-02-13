@@ -64,7 +64,20 @@
       "expiredExpected": "Expired",
       "expiredExpectedTooltip": "This predicted event was not confirmed and its planned time has passed",
       "viewOnCarrierSite": "View on carrier site",
-      "systemCreated": "Process registered in the system"
+      "systemCreated": "Process registered in the system",
+      "viewPredictionHistory": "View prediction history",
+      "predictionHistory": {
+        "title": "Prediction History",
+        "eventType": "Type",
+        "eventTime": "Event Time",
+        "observedAt": "Observed At",
+        "delta": "Change",
+        "confirmed": "Confirmed",
+        "expired": "Expired",
+        "active": "Active",
+        "days": "days",
+        "close": "Close"
+      }
     },
     "alerts": {
       "title": "Alerts",

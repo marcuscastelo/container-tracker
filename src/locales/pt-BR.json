@@ -75,7 +75,20 @@
       "expiredExpected": "Expirado",
       "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planejado já passou",
       "viewOnCarrierSite": "Ver no site da transportadora",
-      "systemCreated": "Processo registrado no sistema"
+      "systemCreated": "Processo registrado no sistema",
+      "viewPredictionHistory": "Ver histórico de previsões",
+      "predictionHistory": {
+        "title": "Histórico de Previsões",
+        "eventType": "Tipo",
+        "eventTime": "Horário do Evento",
+        "observedAt": "Observado Em",
+        "delta": "Mudança",
+        "confirmed": "Confirmado",
+        "expired": "Expirado",
+        "active": "Ativo",
+        "days": "dias",
+        "close": "Fechar"
+      }
     },
     "alerts": {
       "title": "Alertas",

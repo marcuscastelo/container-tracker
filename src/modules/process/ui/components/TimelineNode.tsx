@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
-import { createMemo, Show } from 'solid-js'
+import { createMemo, createSignal, Show } from 'solid-js'
+import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
@@ -14,6 +15,7 @@ export function TimelineNode(props: {
   readonly containerNumber?: string | null
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
+  const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
   const isoTooltip = (iso?: string | null): string | undefined => {
     if (!iso) return undefined
     // capture up to seconds: YYYY-MM-DDTHH:MM:SS
@@ -85,6 +87,26 @@ export function TimelineNode(props: {
                   ? t(keys.shipmentView.timeline.systemCreated)
                   : props.event.label}
               </p>
+              {/* Info icon for prediction history */}
+              <Show when={props.event.series && props.event.series.length > 1}>
+                <button
+                  type="button"
+                  onClick={() => setShowPredictionHistory(true)}
+                  class="inline-flex items-center justify-center h-5 w-5 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title={t(keys.shipmentView.timeline.viewPredictionHistory)}
+                  aria-label={t(keys.shipmentView.timeline.viewPredictionHistory)}
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <title>{t(keys.shipmentView.timeline.viewPredictionHistory)}</title>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
+              </Show>
               {/* Badge for EXPECTED events */}
               <Show when={isExpiredExpected()}>
                 <span
@@ -179,6 +201,18 @@ export function TimelineNode(props: {
           </div>
         </div>
       </div>
+
+      {/* Prediction History Modal */}
+      <Show when={props.event.series}>
+        {(series) => (
+          <PredictionHistoryModal
+            series={series()}
+            activityLabel={props.event.label}
+            isOpen={showPredictionHistory()}
+            onClose={() => setShowPredictionHistory(false)}
+          />
+        )}
+      </Show>
     </div>
   )
 }

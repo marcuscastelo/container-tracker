@@ -308,9 +308,7 @@ describe('deriveTimelineSeries', () => {
     })
 
     it('should handle null event_time as active', () => {
-      const obs = [
-        makeObs({ event_time: null, event_time_type: 'EXPECTED' }),
-      ]
+      const obs = [makeObs({ event_time: null, event_time_type: 'EXPECTED' })]
       const result = deriveTimelineSeries(obs, now)
 
       expect(result).toHaveLength(1)

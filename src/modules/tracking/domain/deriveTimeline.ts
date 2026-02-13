@@ -31,8 +31,7 @@ function semanticGroupKey(obs: Observation): string {
  */
 function buildSeriesKey(obs: Observation): string {
   const activity = obs.type
-  const location =
-    obs.location_code ?? (obs.location_display ?? '').toUpperCase().trim()
+  const location = obs.location_code ?? (obs.location_display ?? '').toUpperCase().trim()
   const vessel = obs.vessel_name ?? ''
   const voyage = obs.voyage ?? ''
   return `${activity}|${location}|${vessel}|${voyage}`
@@ -240,8 +239,7 @@ export function deriveTimelineSeries(
     // For equal times, ACTUAL before EXPECTED
     if (a.primary.event_time_type === 'ACTUAL' && b.primary.event_time_type === 'EXPECTED')
       return -1
-    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL')
-      return 1
+    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL') return 1
 
     // Final tiebreaker: created_at
     return a.primary.created_at.localeCompare(b.primary.created_at)

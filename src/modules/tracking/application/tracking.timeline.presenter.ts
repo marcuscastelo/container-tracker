@@ -228,8 +228,7 @@ export function deriveTimelineWithSeries(
     // For equal times, ACTUAL before EXPECTED
     if (a.primary.event_time_type === 'ACTUAL' && b.primary.event_time_type === 'EXPECTED')
       return -1
-    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL')
-      return 1
+    if (a.primary.event_time_type === 'EXPECTED' && b.primary.event_time_type === 'ACTUAL') return 1
 
     return a.primary.created_at.localeCompare(b.primary.created_at)
   })
