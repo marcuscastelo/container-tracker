@@ -1,6 +1,11 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createMemo, For, Show } from 'solid-js'
+import {
+  classifySeries,
+  getSeriesLabelClass,
+  getSeriesLabelKey,
+} from '~/modules/tracking/domain/seriesClassification'
 import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -15,6 +20,9 @@ type Props = {
 export function PredictionHistoryModal(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
 
+  // Classify series with derived labels
+  const classification = createMemo(() => classifySeries(props.series))
+
   // Calculate delta in days between consecutive EXPECTED observations
   const calculateDelta = (current: string, previous: string | null): number | null => {
     if (!previous) return null
@@ -27,38 +35,6 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
     } catch {
       return null
     }
-  }
-
-  // Determine badge for each observation
-  const getBadge = (
-    obs: ObservationResponse,
-    index: number,
-  ): { label: string; class: string } | null => {
-    if (obs.event_time_type === 'ACTUAL') {
-      return {
-        label: t(keys.shipmentView.timeline.predictionHistory.confirmed),
-        class: 'bg-emerald-100 text-emerald-700',
-      }
-    }
-
-    // Check if it's expired (event_time < now and not the last one)
-    const now = new Date()
-    if (obs.event_time && new Date(obs.event_time) < now && index < props.series.length - 1) {
-      return {
-        label: t(keys.shipmentView.timeline.predictionHistory.expired),
-        class: 'bg-amber-100 text-amber-700',
-      }
-    }
-
-    // Last one or future expected
-    if (index === props.series.length - 1 && obs.event_time_type === 'EXPECTED') {
-      return {
-        label: t(keys.shipmentView.timeline.predictionHistory.active),
-        class: 'bg-blue-100 text-blue-700',
-      }
-    }
-
-    return null
   }
 
   return (
@@ -81,26 +57,58 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div class="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-            <h3 id="prediction-history-title" class="text-lg font-semibold text-slate-900">
-              {t(keys.shipmentView.timeline.predictionHistory.title)} — {props.activityLabel}
-            </h3>
-            <button
-              type="button"
-              onClick={() => props.onClose()}
-              class="text-slate-400 hover:text-slate-600 transition-colors"
-              aria-label={t(keys.shipmentView.timeline.predictionHistory.close)}
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <title>{t(keys.shipmentView.timeline.predictionHistory.close)}</title>
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+          <div class="sticky top-0 bg-white border-b border-slate-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+              <h3 id="prediction-history-title" class="text-lg font-semibold text-slate-900">
+                {t(keys.shipmentView.timeline.predictionHistory.title)} — {props.activityLabel}
+              </h3>
+              <button
+                type="button"
+                onClick={() => props.onClose()}
+                class="text-slate-400 hover:text-slate-600 transition-colors"
+                aria-label={t(keys.shipmentView.timeline.predictionHistory.close)}
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <title>{t(keys.shipmentView.timeline.predictionHistory.close)}</title>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Conflict Warning */}
+            <Show when={classification().hasActualConflict}>
+              <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div class="flex items-start">
+                  <svg
+                    class="h-5 w-5 text-red-600 mr-2 mt-0.5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <title>{t(keys.shipmentView.timeline.predictionHistory.conflictWarning)}</title>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-red-800">
+                      {t(keys.shipmentView.timeline.predictionHistory.conflictWarning)}
+                    </p>
+                    <p class="mt-1 text-sm text-red-700">
+                      {t(keys.shipmentView.timeline.predictionHistory.conflictHelper)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Show>
           </div>
 
           {/* Body */}
@@ -133,22 +141,26 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
                     >
                       {t(keys.shipmentView.timeline.predictionHistory.delta)}
                     </th>
-                    <th scope="col" class="px-4 py-3" />
+                    <th
+                      scope="col"
+                      class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                    >
+                      {t(keys.shipmentView.timeline.predictionHistory.status)}
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-slate-200">
-                  <For each={props.series}>
-                    {(obs, getIndex) => {
+                  <For each={classification().classified}>
+                    {(classifiedObs, getIndex) => {
                       const currentIndex = createMemo(() => getIndex())
                       const prevObs = createMemo(() =>
-                        currentIndex() > 0 ? props.series[currentIndex() - 1] : null,
+                        currentIndex() > 0 ? classification().classified[currentIndex() - 1] : null,
                       )
                       const delta = createMemo(() => {
                         const prev = prevObs()
-                        if (!obs.event_time || !prev?.event_time) return null
-                        return calculateDelta(obs.event_time, prev.event_time)
+                        if (!classifiedObs.event_time || !prev?.event_time) return null
+                        return calculateDelta(classifiedObs.event_time, prev.event_time)
                       })
-                      const badge = createMemo(() => getBadge(obs, currentIndex()))
 
                       return (
                         <tr class="hover:bg-slate-50">
@@ -156,21 +168,23 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
                             <span
                               class={clsx(
                                 'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
-                                obs.event_time_type === 'ACTUAL'
+                                classifiedObs.event_time_type === 'ACTUAL'
                                   ? 'bg-emerald-100 text-emerald-700'
                                   : 'bg-slate-100 text-slate-600',
                               )}
                             >
-                              {obs.event_time_type === 'ACTUAL'
+                              {classifiedObs.event_time_type === 'ACTUAL'
                                 ? t(keys.shipmentView.timeline.actual)
                                 : t(keys.shipmentView.timeline.expected)}
                             </span>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                            {obs.event_time ? formatDateForLocale(obs.event_time, locale()) : '—'}
+                            {classifiedObs.event_time
+                              ? formatDateForLocale(classifiedObs.event_time, locale())
+                              : '—'}
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                            {formatDateForLocale(obs.created_at, locale())}
+                            {formatDateForLocale(classifiedObs.created_at, locale())}
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
                             <Show when={delta()}>
@@ -191,18 +205,14 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
                             </Show>
                           </td>
                           <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
-                            <Show when={badge()}>
-                              {(badgeData) => (
-                                <span
-                                  class={clsx(
-                                    'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
-                                    badgeData().class,
-                                  )}
-                                >
-                                  {badgeData().label}
-                                </span>
+                            <span
+                              class={clsx(
+                                'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
+                                getSeriesLabelClass(classifiedObs.seriesLabel),
                               )}
-                            </Show>
+                            >
+                              {t(getSeriesLabelKey(classifiedObs.seriesLabel))}
+                            </span>
                           </td>
                         </tr>
                       )

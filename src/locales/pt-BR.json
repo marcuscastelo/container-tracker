@@ -81,13 +81,19 @@
         "title": "Histórico de Previsões",
         "eventType": "Tipo",
         "eventTime": "Horário do Evento",
-        "observedAt": "Observado Em",
+        "observedAt": "Observado em",
         "delta": "Mudança",
+        "status": "Status",
         "confirmed": "Confirmado",
         "expired": "Expirado",
         "active": "Ativo",
+        "redundant": "Redundante",
+        "superseded": "Substituído",
+        "conflicting": "Conflitante",
         "days": "dias",
-        "close": "Fechar"
+        "close": "Fechar",
+        "conflictWarning": "Múltiplos eventos reais conflitantes detectados",
+        "conflictHelper": "Por segurança, exibimos o mais recente. Verifique o histórico abaixo."
       }
     },
     "alerts": {

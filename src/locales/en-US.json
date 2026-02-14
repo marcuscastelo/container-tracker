@@ -72,11 +72,17 @@
         "eventTime": "Event Time",
         "observedAt": "Observed At",
         "delta": "Change",
+        "status": "Status",
         "confirmed": "Confirmed",
         "expired": "Expired",
         "active": "Active",
+        "redundant": "Redundant",
+        "superseded": "Superseded",
+        "conflicting": "Conflicting",
         "days": "days",
-        "close": "Close"
+        "close": "Close",
+        "conflictWarning": "Multiple confirmed events detected",
+        "conflictHelper": "For safety, we're showing the most recent event. Please review the history below."
       }
     },
     "alerts": {

@@ -4,6 +4,7 @@ import {
 } from '~/modules/tracking/domain/deriveTimeline'
 import type { DerivedObservationState } from '~/modules/tracking/domain/expiredExpected'
 import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
+import { classifySeries } from '~/modules/tracking/domain/seriesClassification'
 import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -102,6 +103,7 @@ export function observationToTimelineEvent(
  * This function handles the projection from domain TimelineItem to presentation TimelineEvent,
  * preserving series history when present.
  *
+ * @internal Used by deriveTimelineWithSeries and tests
  * @param item - TimelineItem from domain layer
  * @param allObservations - All observations for the container (for deriveObservationState)
  * @param index - Index for fallback ID generation
@@ -131,6 +133,11 @@ export function timelineItemToEvent(
  * to API response objects, collapsing multiple EXPECTED updates of the same
  * semantic event into a single visible entry with full prediction history.
  *
+ * Uses the canonical series classification logic to:
+ * - Select safe-first primary (latest ACTUAL, or latest valid EXPECTED)
+ * - Detect and warn about conflicting ACTUAL entries
+ * - Filter redundant EXPECTED after ACTUAL confirmation
+ *
  * @param observations - Array of observations from API
  * @param now - Reference time for expiration check (defaults to current time)
  * @returns Array of TimelineEvents with series information
@@ -158,36 +165,17 @@ export function deriveTimelineWithSeries(
     primary: ObservationResponse
     series?: readonly ObservationResponse[]
   }> = []
-  const nowIso = now.toISOString()
 
   for (const series of groups.values()) {
     // Sort series chronologically
     series.sort(compareObservationsChronologically)
 
-    // Separate ACTUAL and EXPECTED observations
-    const actuals = series.filter((o) => o.event_time_type === 'ACTUAL')
-    const expecteds = series.filter((o) => o.event_time_type === 'EXPECTED')
+    // Use canonical classification to determine primary
+    const classification = classifySeries(series, now)
 
-    let primary: ObservationResponse | null = null
-
-    if (actuals.length > 0) {
-      // Rule 1: If ACTUAL exists, use the most recent one
-      primary = actuals[actuals.length - 1] ?? null
-    } else if (expecteds.length > 0) {
-      // Rule 2: Use most recent non-expired EXPECTED
-      const activeExpecteds = expecteds.filter((exp) => {
-        if (exp.event_time === null) return true
-        return exp.event_time >= nowIso
-      })
-
-      if (activeExpecteds.length > 0) {
-        primary = activeExpecteds[activeExpecteds.length - 1] ?? null
-      }
-    }
-
-    if (primary) {
+    if (classification.primary) {
       result.push({
-        primary,
+        primary: classification.primary,
         series: series.length > 1 ? series : undefined,
       })
     }
