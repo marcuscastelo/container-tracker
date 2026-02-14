@@ -6,6 +6,7 @@ import type {
 } from '~/modules/process/application/process.records'
 
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
+import type { ProcessOperationalSummary } from '~/modules/process/application/projections/processOperationalSummary'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { Observation } from '~/modules/tracking/domain/observation'
 import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
@@ -100,6 +101,22 @@ export function toProcessResponse(pwc: ProcessWithContainers) {
   return {
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
+  }
+}
+
+export function toProcessResponseWithSummary(
+  pwc: ProcessWithContainers,
+  summary: ProcessOperationalSummary,
+) {
+  return {
+    ...processToResponseFields(pwc.process),
+    containers: pwc.containers.map(toContainerResponse),
+    process_status: summary.process_status,
+    eta: summary.eta,
+    alerts_count: summary.alerts_count,
+    highest_alert_severity: summary.highest_alert_severity,
+    has_transshipment: summary.has_transshipment,
+    last_event_at: summary.last_event_at,
   }
 }
 

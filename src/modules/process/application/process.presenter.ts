@@ -2,6 +2,7 @@ import type {
   ContainerDetail,
   ShipmentDetail,
 } from '~/modules/process/application/shipment.readmodel'
+import { deriveProcessStatusFromContainers } from '~/modules/process/application/projections/deriveProcessStatus'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
@@ -11,41 +12,26 @@ import {
 } from '~/modules/tracking/application/tracking.status.presenter'
 import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
 import { deriveTimelineWithSeries } from '~/modules/tracking/application/tracking.timeline.presenter'
+import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
+import { ContainerStatusSchema } from '~/modules/tracking/domain/containerStatus'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 /**
  * Derive the highest-dominance status from all containers.
- * Uses the same dominance logic as the tracking domain.
+ * Delegates to the shared Application-layer function.
  */
 function deriveProcessStatus(containers: readonly { status?: string }[]): {
   variant: StatusVariant
   label: string
 } {
-  const dominance = [
-    'UNKNOWN',
-    'IN_PROGRESS',
-    'LOADED',
-    'IN_TRANSIT',
-    'ARRIVED_AT_POD',
-    'DISCHARGED',
-    'AVAILABLE_FOR_PICKUP',
-    'DELIVERED',
-    'EMPTY_RETURNED',
-  ]
+  const statuses: ContainerStatus[] = containers.map((c) => {
+    const parsed = ContainerStatusSchema.safeParse(c.status)
+    return parsed.success ? parsed.data : 'UNKNOWN'
+  })
 
-  let highest = 'UNKNOWN'
-  let highestIdx = 0
-
-  for (const c of containers) {
-    const s = c.status ?? 'UNKNOWN'
-    const idx = dominance.indexOf(s)
-    if (idx > highestIdx) {
-      highest = s
-      highestIdx = idx
-    }
-  }
+  const highest = deriveProcessStatusFromContainers(statuses)
 
   return {
     variant: containerStatusToVariant(highest),
