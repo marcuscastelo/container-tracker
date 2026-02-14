@@ -1,5 +1,5 @@
 import type { Observation } from '~/modules/tracking/domain/observation'
-import type { Timeline, TimelineHole, TimelineItem } from '~/modules/tracking/domain/timeline'
+import type { Timeline, TimelineHole } from '~/modules/tracking/domain/timeline'
 
 /**
  * Compute a semantic group key for reconciliation.
@@ -195,85 +195,6 @@ export function reconcileForDisplay(
   }
 
   return sorted.filter((obs) => !excludeIds.has(obs.id))
-}
-
-/**
- * Derive timeline items with event series grouping.
- *
- * This function collapses multiple EXPECTED updates of the same semantic event
- * into a single visible timeline entry, while preserving full prediction history.
- *
- * Rules per series key:
- *   1. If an ACTUAL exists: primary = most recent ACTUAL, series = all obs for that key
- *   2. If only EXPECTED exist: primary = most recent non-expired EXPECTED
- *   3. Expired EXPECTED must NOT become primary (but remain in series history)
- *   4. Multiple EXPECTED updates: only latest appears as primary
- *
- * This is a projection-level enhancement that does NOT modify persistence.
- *
- * @param sorted - Observations already sorted by event_time ascending
- * @param now - Reference time for expiration check (defaults to current time)
- * @returns Array of TimelineItem (events with optional series history)
- */
-export function deriveTimelineSeries(
-  sorted: readonly Observation[],
-  now: Date = new Date(),
-): TimelineItem[] {
-  // Group observations by series key
-  const groups = new Map<string, Observation[]>()
-
-  for (const obs of sorted) {
-    const key = buildSeriesKey(obs)
-    const group = groups.get(key)
-    if (group) {
-      group.push(obs)
-    } else {
-      groups.set(key, [obs])
-    }
-  }
-
-  const result: TimelineItem[] = []
-  const nowIso = now.toISOString()
-
-  for (const series of groups.values()) {
-    // Separate ACTUAL and EXPECTED observations
-    const actuals = series.filter((o) => o.event_time_type === 'ACTUAL')
-    const expecteds = series.filter((o) => o.event_time_type === 'EXPECTED')
-
-    let primary: Observation | null = null
-
-    if (actuals.length > 0) {
-      // Rule 1: If ACTUAL exists, use the most recent one
-      primary = actuals[actuals.length - 1] ?? null
-    } else if (expecteds.length > 0) {
-      // Rule 2: Use most recent non-expired EXPECTED
-      // Filter out expired EXPECTED (event_time < now)
-      const activeExpecteds = expecteds.filter((exp) => {
-        if (exp.event_time === null) return true // null event_time is considered active
-        return exp.event_time >= nowIso
-      })
-
-      if (activeExpecteds.length > 0) {
-        primary = activeExpecteds[activeExpecteds.length - 1] ?? null
-      }
-      // If all EXPECTED are expired, primary remains null (won't be shown)
-    }
-
-    if (primary) {
-      result.push({
-        kind: 'event',
-        primary,
-        // Only attach series if there are multiple observations
-        series: series.length > 1 ? series : undefined,
-      })
-    }
-  }
-
-  // Sort result chronologically by primary event_time
-  return result.sort((a, b) => {
-    if (a.kind !== 'event' || b.kind !== 'event') return 0
-    return compareObservationsChronologically(a.primary, b.primary)
-  })
 }
 
 /**
