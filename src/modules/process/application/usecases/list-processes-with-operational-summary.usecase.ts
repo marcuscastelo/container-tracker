@@ -51,6 +51,7 @@ export function aggregateOperationalSummary(
   carrier: string | null,
   containerCount: number,
   summaries: readonly ContainerTrackingSummary[],
+  now?: string,
 ): ProcessOperationalSummary {
   // --- Process Status ---
   const statuses: ContainerStatus[] = summaries.map((s) => s.status)
@@ -58,12 +59,11 @@ export function aggregateOperationalSummary(
 
   // --- ETA ---
   // Select earliest future ETA among containers
-  // ETA is the latest EXPECTED event_time for observations that represent future events
-  const now = new Date().toISOString()
+  const nowIso = now ?? new Date().toISOString()
   let eta: string | null = null
   for (const s of summaries) {
     for (const obs of s.timeline.observations) {
-      if (obs.event_time && obs.event_time > now) {
+      if (obs.event_time && obs.event_time > nowIso) {
         if (eta === null || obs.event_time < eta) {
           eta = obs.event_time
         }
@@ -130,6 +130,9 @@ export function createListProcessesWithOperationalSummaryUseCase(
       processIds,
     })
 
+    // Calculate 'now' once for consistent ETA comparison across all processes
+    const now = new Date().toISOString()
+
     const processes: ProcessWithOperationalSummary[] = await Promise.all(
       allProcesses.map(async (process) => {
         const containers = containersByProcessId.get(process.id) ?? []
@@ -144,7 +147,10 @@ export function createListProcessesWithOperationalSummaryUseCase(
                 String(c.containerNumber),
               )
             } catch (err) {
-              console.error(`Failed to get tracking summary for container ${String(c.id)}:`, err)
+              console.error(
+                `Failed to get tracking summary for container ${String(c.containerNumber)} (${String(c.id)}):`,
+                err,
+              )
               // Return a minimal fallback summary
               const fallback: ContainerTrackingSummary = {
                 status: 'UNKNOWN',
@@ -162,6 +168,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
           process.carrier ?? null,
           containers.length,
           summaries,
+          now,
         )
 
         return { pwc, summary }
