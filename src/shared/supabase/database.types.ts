@@ -14,7 +14,7 @@ export type Database = {
           container_id: string
           container_number: string
           created_at: string
-          created_from_snapshot_id: string
+          created_from_snapshot_id: string | null
           event_time: string | null
           event_time_type: string
           fingerprint: string
@@ -33,7 +33,7 @@ export type Database = {
           container_id: string
           container_number: string
           created_at?: string
-          created_from_snapshot_id: string
+          created_from_snapshot_id?: string | null
           event_time?: string | null
           event_time_type: string
           fingerprint: string
@@ -52,7 +52,7 @@ export type Database = {
           container_id?: string
           container_number?: string
           created_at?: string
-          created_from_snapshot_id?: string
+          created_from_snapshot_id?: string | null
           event_time?: string | null
           event_time_type?: string
           fingerprint?: string
@@ -228,6 +228,7 @@ export type Database = {
       tracking_alerts: {
         Row: {
           acked_at: string | null
+          alert_fingerprint: string | null
           category: string
           container_id: string
           created_at: string
@@ -244,6 +245,7 @@ export type Database = {
         }
         Insert: {
           acked_at?: string | null
+          alert_fingerprint?: string | null
           category: string
           container_id?: string
           created_at?: string
@@ -260,6 +262,7 @@ export type Database = {
         }
         Update: {
           acked_at?: string | null
+          alert_fingerprint?: string | null
           category?: string
           container_id?: string
           created_at?: string

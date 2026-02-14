@@ -1,6 +1,8 @@
+import { resolveLocationDisplay } from '~/modules/tracking/application/locationDisplayResolver'
+import { computeAlertFingerprint } from '~/modules/tracking/domain/alertFingerprint'
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import type { Timeline } from '~/modules/tracking/domain/timeline'
-import type { NewTrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
 
 /**
@@ -47,14 +49,16 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  * FACT-BASED alerts:
  *   - TRANSSHIPMENT: if hasTransshipment and not already alerted
  *   - CUSTOMS_HOLD: if any CUSTOMS_HOLD observation exists and not already alerted
+ *   - Deduplication: by alert_fingerprint (type + evidence)
  *
  * MONITORING alerts:
  *   - NO_MOVEMENT: if daysSinceLastEvent > threshold (default 7 days)
  *   - ETA_MISSING: no ETA-related data available
+ *   - Deduplication: by TYPE only (legacy behavior)
  *
  * @param timeline - Derived timeline
  * @param status - Current derived status
- * @param existingAlertTypes - Set of alert types already active for this container (to avoid duplicates)
+ * @param existingActiveAlerts - Active alerts for this container (to avoid duplicates)
  * @param isBackfill - Whether this derivation is part of a backfill/onboarding
  * @param now - Current time (injectable for testing)
  * @returns Array of new alert descriptors to persist
@@ -64,19 +68,32 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
 export function deriveAlerts(
   timeline: Timeline,
   status: ContainerStatus,
-  existingAlertTypes: ReadonlySet<string>,
+  existingActiveAlerts: readonly TrackingAlert[],
   isBackfill: boolean = false,
   now: Date = new Date(),
 ): NewTrackingAlert[] {
   const alerts: NewTrackingAlert[] = []
   const nowIso = now.toISOString()
 
+  // Build deduplication sets
+  // - FACT alerts: deduplicate by fingerprint
+  // - MONITORING alerts: deduplicate by type (legacy behavior)
+  const existingFactFingerprints = new Set(
+    existingActiveAlerts
+      .filter((a) => a.category === 'fact' && a.alert_fingerprint !== null)
+      .map((a) => a.alert_fingerprint)
+      .filter((fp): fp is string => fp !== null),
+  )
+  const existingMonitoringTypes = new Set(
+    existingActiveAlerts.filter((a) => a.category === 'monitoring').map((a) => a.type),
+  )
+
   // === FACT-BASED ALERTS ===
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
   // 1. Transshipment detection
   const transshipment = deriveTransshipment(timeline)
-  if (transshipment.hasTransshipment && !existingAlertTypes.has('TRANSSHIPMENT')) {
+  if (transshipment.hasTransshipment) {
     // Find the ACTUAL observations that indicate transshipment
     const transshipmentObs = timeline.observations.filter(
       (o) =>
@@ -88,26 +105,31 @@ export function deriveAlerts(
     // Only create alert if we have ACTUAL evidence
     if (transshipmentObs.length > 0) {
       const fingerprints = transshipmentObs.map((o) => o.fingerprint)
+      const alertFingerprint = computeAlertFingerprint('TRANSSHIPMENT', fingerprints)
 
-      // For fact alerts, detected_at = time of the earliest transshipment evidence
-      const earliestTime = transshipmentObs
-        .filter((o) => o.event_time !== null)
-        .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))[0]?.event_time
+      // Deduplicate by fingerprint (not just TYPE)
+      if (!existingFactFingerprints.has(alertFingerprint)) {
+        // For fact alerts, detected_at = time of the earliest transshipment evidence
+        const earliestTime = transshipmentObs
+          .filter((o) => o.event_time !== null)
+          .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))[0]?.event_time
 
-      alerts.push({
-        container_id: timeline.container_id,
-        category: 'fact',
-        type: 'TRANSSHIPMENT',
-        severity: 'warning',
-        message: `Transshipment detected: ${transshipment.transshipmentCount} intermediate port(s) — ${transshipment.ports.join(', ')}`,
-        detected_at: earliestTime ?? nowIso,
-        triggered_at: nowIso,
-        source_observation_fingerprints: fingerprints,
-        retroactive: isBackfill,
-        provider: null,
-        acked_at: null,
-        dismissed_at: null,
-      })
+        alerts.push({
+          container_id: timeline.container_id,
+          category: 'fact',
+          type: 'TRANSSHIPMENT',
+          severity: 'warning',
+          message: `Transshipment detected: ${transshipment.transshipmentCount} intermediate port(s) — ${transshipment.ports.join(', ')}`,
+          detected_at: earliestTime ?? nowIso,
+          triggered_at: nowIso,
+          source_observation_fingerprints: fingerprints,
+          alert_fingerprint: alertFingerprint,
+          retroactive: isBackfill,
+          provider: null,
+          acked_at: null,
+          dismissed_at: null,
+        })
+      }
     }
   }
 
@@ -115,22 +137,36 @@ export function deriveAlerts(
   const customsHoldObs = timeline.observations.filter(
     (o) => o.type === 'CUSTOMS_HOLD' && o.event_time_type === 'ACTUAL',
   )
-  if (customsHoldObs.length > 0 && !existingAlertTypes.has('CUSTOMS_HOLD')) {
-    const firstHold = customsHoldObs[0]
-    alerts.push({
-      container_id: timeline.container_id,
-      category: 'fact',
-      type: 'CUSTOMS_HOLD',
-      severity: 'danger',
-      message: `Customs hold detected at ${firstHold?.location_display ?? firstHold?.location_code ?? 'unknown location'}`,
-      detected_at: firstHold?.event_time ?? nowIso,
-      triggered_at: nowIso,
-      source_observation_fingerprints: customsHoldObs.map((o) => o.fingerprint),
-      retroactive: isBackfill,
-      provider: null,
-      acked_at: null,
-      dismissed_at: null,
-    })
+  if (customsHoldObs.length > 0) {
+    const fingerprints = customsHoldObs.map((o) => o.fingerprint)
+    const alertFingerprint = computeAlertFingerprint('CUSTOMS_HOLD', fingerprints)
+
+    // Deduplicate by fingerprint (not just TYPE)
+    if (!existingFactFingerprints.has(alertFingerprint)) {
+      const firstHold = customsHoldObs[0]
+      const locationText = firstHold
+        ? resolveLocationDisplay({
+            location_code: firstHold.location_code,
+            location_display: firstHold.location_display,
+          })
+        : 'unknown location'
+
+      alerts.push({
+        container_id: timeline.container_id,
+        category: 'fact',
+        type: 'CUSTOMS_HOLD',
+        severity: 'danger',
+        message: `Customs hold detected at ${locationText}`,
+        detected_at: firstHold?.event_time ?? nowIso,
+        triggered_at: nowIso,
+        source_observation_fingerprints: fingerprints,
+        alert_fingerprint: alertFingerprint,
+        retroactive: isBackfill,
+        provider: null,
+        acked_at: null,
+        dismissed_at: null,
+      })
+    }
   }
 
   // === MONITORING ALERTS (never retroactive) ===
@@ -152,7 +188,7 @@ export function deriveAlerts(
       if (
         daysSinceLastEvent > NO_MOVEMENT_THRESHOLD_DAYS &&
         !isTerminal &&
-        !existingAlertTypes.has('NO_MOVEMENT')
+        !existingMonitoringTypes.has('NO_MOVEMENT')
       ) {
         alerts.push({
           container_id: timeline.container_id,
@@ -163,6 +199,7 @@ export function deriveAlerts(
           detected_at: nowIso,
           triggered_at: nowIso,
           source_observation_fingerprints: [lastEventWithTime.fingerprint],
+          alert_fingerprint: null, // Monitoring alerts don't use fingerprint dedup
           retroactive: false,
           provider: null,
           acked_at: null,
