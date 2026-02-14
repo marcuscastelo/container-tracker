@@ -46,9 +46,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   async function listProcesses(): Promise<Response> {
     try {
       const result = await processUseCases.listProcessesWithOperationalSummary()
-      const response = result.processes.map((p) =>
-        toProcessResponseWithSummary(p.pwc, p.summary),
-      )
+      const response = result.processes.map((p) => toProcessResponseWithSummary(p.pwc, p.summary))
       return jsonResponse(response, 200)
     } catch (err) {
       console.error('GET /api/processes error:', err)

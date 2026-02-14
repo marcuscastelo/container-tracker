@@ -144,10 +144,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
                 String(c.containerNumber),
               )
             } catch (err) {
-              console.error(
-                `Failed to get tracking summary for container ${String(c.id)}:`,
-                err,
-              )
+              console.error(`Failed to get tracking summary for container ${String(c.id)}:`, err)
               // Return a minimal fallback summary
               const fallback: ContainerTrackingSummary = {
                 status: 'UNKNOWN',

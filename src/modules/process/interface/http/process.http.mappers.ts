@@ -4,9 +4,8 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
-
-import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { ProcessOperationalSummary } from '~/modules/process/application/projections/processOperationalSummary'
+import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { Observation } from '~/modules/tracking/domain/observation'
 import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'

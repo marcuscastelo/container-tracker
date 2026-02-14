@@ -10,8 +10,8 @@ import { createFindProcessByIdWithContainersUseCase } from '~/modules/process/ap
 import { createListProcessesUseCase } from '~/modules/process/application/usecases/list-processes.usecase'
 import { createListProcessesWithContainersUseCase } from '~/modules/process/application/usecases/list-processes-with-containers.usecase'
 import {
-  type ListProcessesWithOperationalSummaryDeps,
   createListProcessesWithOperationalSummaryUseCase,
+  type ListProcessesWithOperationalSummaryDeps,
 } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'

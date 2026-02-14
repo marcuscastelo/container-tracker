@@ -1,8 +1,8 @@
+import { deriveProcessStatusFromContainers } from '~/modules/process/application/projections/deriveProcessStatus'
 import type {
   ContainerDetail,
   ShipmentDetail,
 } from '~/modules/process/application/shipment.readmodel'
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/projections/deriveProcessStatus'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
