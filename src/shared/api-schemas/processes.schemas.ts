@@ -23,6 +23,18 @@ export const ProcessResponseSchema = z.object({
       carrier_code: z.string().nullish(),
     }),
   ),
+  /** Derived process status (from tracking pipeline aggregation) */
+  process_status: z.string().optional(),
+  /** Earliest future ETA across containers */
+  eta: z.string().nullish(),
+  /** Total active alerts across containers */
+  alerts_count: z.number().optional(),
+  /** Highest alert severity across containers */
+  highest_alert_severity: z.enum(['info', 'warning', 'danger']).nullish(),
+  /** Whether any container has a transshipment alert */
+  has_transshipment: z.boolean().optional(),
+  /** Latest event time across all container timelines */
+  last_event_at: z.string().nullish(),
 })
 
 export const ProcessListResponseSchema = z.array(ProcessResponseSchema)

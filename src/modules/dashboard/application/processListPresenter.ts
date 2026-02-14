@@ -1,3 +1,7 @@
+import {
+  containerStatusLabel,
+  containerStatusToVariant,
+} from '~/modules/tracking/application/tracking.status.presenter'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 type ProcessSummary = {
@@ -10,6 +14,10 @@ type ProcessSummary = {
   readonly statusLabel: string
   readonly eta: string | null
   readonly carrier: string | null
+  readonly alertsCount: number
+  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly hasTransshipment: boolean
+  readonly lastEventAt: string | null
 }
 
 export type ProcessApiResponse = {
@@ -28,6 +36,12 @@ export type ProcessApiResponse = {
     container_number: string
     carrier_code?: string | null
   }>
+  process_status?: string | null
+  eta?: string | null
+  alerts_count?: number
+  highest_alert_severity?: 'info' | 'warning' | 'danger' | null
+  has_transshipment?: boolean
+  last_event_at?: string | null
 }
 
 export function presentProcessList(data: ProcessApiResponse[]): readonly ProcessSummary[] {
@@ -37,12 +51,13 @@ export function presentProcessList(data: ProcessApiResponse[]): readonly Process
     origin: p.origin,
     destination: p.destination,
     containerCount: p.containers.length,
-    // Dashboard list view doesn't have observation data yet.
-    // Status will remain 'unknown' until we add a summary endpoint
-    // or include derived status in the process list API response.
-    status: 'unknown',
-    statusLabel: 'Awaiting data',
-    eta: null,
+    status: containerStatusToVariant(p.process_status ?? undefined),
+    statusLabel: containerStatusLabel(p.process_status ?? undefined),
+    eta: p.eta ?? null,
     carrier: p.carrier ?? null,
+    alertsCount: p.alerts_count ?? 0,
+    highestAlertSeverity: p.highest_alert_severity ?? null,
+    hasTransshipment: p.has_transshipment ?? false,
+    lastEventAt: p.last_event_at ?? null,
   }))
 }

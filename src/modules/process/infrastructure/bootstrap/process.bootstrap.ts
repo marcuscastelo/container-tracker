@@ -15,6 +15,7 @@ import {
   createProcessUseCases,
 } from '~/modules/process/application/process.usecases'
 import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
+import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 
 function pickContainerUseCasesForProcess(all: ContainerUseCases): ContainerUseCasesForProcess {
   return {
@@ -34,9 +35,13 @@ const containerUseCases = createContainerUseCases({ repository: supabaseContaine
 // Restrict dependency surface: Process only sees what it needs from Container
 const containerDepsForProcess = pickContainerUseCasesForProcess(containerUseCases)
 
+// Tracking module wiring (for operational summary aggregation)
+const { trackingUseCases } = bootstrapTrackingModule()
+
 const deps: CreateProcessUseCasesDeps = {
   repository: supabaseProcessRepository,
   containerUseCases: containerDepsForProcess,
+  trackingUseCases,
 }
 
 export const processUseCases = createProcessUseCases(deps)

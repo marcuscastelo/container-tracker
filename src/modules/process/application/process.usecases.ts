@@ -9,12 +9,17 @@ import { createFindProcessByIdUseCase } from '~/modules/process/application/usec
 import { createFindProcessByIdWithContainersUseCase } from '~/modules/process/application/usecases/find-process-by-id-with-containers.usecase'
 import { createListProcessesUseCase } from '~/modules/process/application/usecases/list-processes.usecase'
 import { createListProcessesWithContainersUseCase } from '~/modules/process/application/usecases/list-processes-with-containers.usecase'
+import {
+  createListProcessesWithOperationalSummaryUseCase,
+  type ListProcessesWithOperationalSummaryDeps,
+} from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
 
 export type CreateProcessUseCasesDeps = {
   repository: ProcessRepository
   containerUseCases: ContainerUseCasesForProcess
+  trackingUseCases: ListProcessesWithOperationalSummaryDeps['trackingUseCases']
 }
 
 /**
@@ -53,9 +58,16 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     containerUseCases: deps.containerUseCases,
   })
 
+  const listProcessesWithOperationalSummary = createListProcessesWithOperationalSummaryUseCase({
+    repository: deps.repository,
+    containerUseCases: deps.containerUseCases,
+    trackingUseCases: deps.trackingUseCases,
+  })
+
   return {
     listProcesses,
     listProcessesWithContainers,
+    listProcessesWithOperationalSummary,
     findProcessById,
     findProcessByIdWithContainers,
     createProcess,

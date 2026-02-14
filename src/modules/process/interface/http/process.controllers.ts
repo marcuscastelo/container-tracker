@@ -8,6 +8,7 @@ import {
   toInsertProcessRecord,
   toProcessDetailResponse,
   toProcessResponse,
+  toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import {
@@ -40,12 +41,12 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   const { processUseCases, containerUseCases, trackingUseCases } = deps
 
   // -----------------------------------------------------------------------
-  // GET /api/processes — list all processes with containers
+  // GET /api/processes — list all processes with containers and operational summary
   // -----------------------------------------------------------------------
   async function listProcesses(): Promise<Response> {
     try {
-      const result = await processUseCases.listProcessesWithContainers()
-      const response = result.processes.map(toProcessResponse)
+      const result = await processUseCases.listProcessesWithOperationalSummary()
+      const response = result.processes.map((p) => toProcessResponseWithSummary(p.pwc, p.summary))
       return jsonResponse(response, 200)
     } catch (err) {
       console.error('GET /api/processes error:', err)
