@@ -1,3 +1,4 @@
+import { resolveLocationDisplay } from '~/modules/tracking/application/locationDisplayResolver'
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import type { Timeline } from '~/modules/tracking/domain/timeline'
 import type { NewTrackingAlert } from '~/modules/tracking/domain/trackingAlert'
@@ -117,12 +118,19 @@ export function deriveAlerts(
   )
   if (customsHoldObs.length > 0 && !existingAlertTypes.has('CUSTOMS_HOLD')) {
     const firstHold = customsHoldObs[0]
+    const locationText = firstHold
+      ? resolveLocationDisplay({
+          location_code: firstHold.location_code,
+          location_display: firstHold.location_display,
+        })
+      : 'unknown location'
+
     alerts.push({
       container_id: timeline.container_id,
       category: 'fact',
       type: 'CUSTOMS_HOLD',
       severity: 'danger',
-      message: `Customs hold detected at ${firstHold?.location_display ?? firstHold?.location_code ?? 'unknown location'}`,
+      message: `Customs hold detected at ${locationText}`,
       detected_at: firstHold?.event_time ?? nowIso,
       triggered_at: nowIso,
       source_observation_fingerprints: customsHoldObs.map((o) => o.fingerprint),

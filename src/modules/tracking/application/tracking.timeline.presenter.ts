@@ -1,3 +1,4 @@
+import { resolveLocationDisplay } from '~/modules/tracking/application/locationDisplayResolver'
 import {
   buildSeriesKey,
   compareObservationsChronologically,
@@ -45,8 +46,11 @@ export function observationToTimelineEvent(
   const dateIso = obs.event_time ?? null
   const expectedDateIso = isExpected && obs.event_time ? obs.event_time : undefined
 
-  // Build location display
-  const location = obs.location_display ?? obs.location_code ?? undefined
+  // Build location display using centralized resolver
+  const location = resolveLocationDisplay({
+    location_code: obs.location_code,
+    location_display: obs.location_display,
+  })
 
   // Build label with vessel info if available
   let label = (() => {
