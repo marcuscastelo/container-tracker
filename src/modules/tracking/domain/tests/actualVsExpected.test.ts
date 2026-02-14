@@ -341,7 +341,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
         ],
         now,
       )
-      const alertsExpected = deriveAlerts(timelineExpected, 'LOADED', new Set())
+      const alertsExpected = deriveAlerts(timelineExpected, 'LOADED', [])
       const transAlertExpected = alertsExpected.find((a) => a.type === 'TRANSSHIPMENT')
       // Should NOT create alert based on EXPECTED observations only
       expect(transAlertExpected).toBeUndefined()
@@ -385,7 +385,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
         ],
         now,
       )
-      const alertsActual = deriveAlerts(timelineActual, 'DISCHARGED', new Set())
+      const alertsActual = deriveAlerts(timelineActual, 'DISCHARGED', [])
       const transAlertActual = alertsActual.find((a) => a.type === 'TRANSSHIPMENT')
       // Should create alert based on ACTUAL observations
       expect(transAlertActual).toBeDefined()
@@ -414,7 +414,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
         ],
         now,
       )
-      const alertsExpected = deriveAlerts(timelineExpected, 'DISCHARGED', new Set())
+      const alertsExpected = deriveAlerts(timelineExpected, 'DISCHARGED', [])
       const customsAlertExpected = alertsExpected.find((a) => a.type === 'CUSTOMS_HOLD')
       // Should NOT create alert for EXPECTED customs hold
       expect(customsAlertExpected).toBeUndefined()
@@ -440,7 +440,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
         ],
         now,
       )
-      const alertsActual = deriveAlerts(timelineActual, 'DISCHARGED', new Set())
+      const alertsActual = deriveAlerts(timelineActual, 'DISCHARGED', [])
       const customsAlertActual = alertsActual.find((a) => a.type === 'CUSTOMS_HOLD')
       // Should create alert for ACTUAL customs hold
       expect(customsAlertActual).toBeDefined()

@@ -169,6 +169,7 @@ describe('alertRowToDomain', () => {
     detected_at: '2026-01-15T10:00:00.000Z',
     triggered_at: '2026-01-15T12:00:00.000Z',
     source_observation_fingerprints: ['fp-1', 'fp-2'],
+    alert_fingerprint: 'TRANSSHIPMENT:fp-1,fp-2',
     retroactive: false,
     provider: 'maersk',
     acked_at: null,
@@ -183,6 +184,7 @@ describe('alertRowToDomain', () => {
     expect(result.type).toBe('TRANSSHIPMENT')
     expect(result.severity).toBe('warning')
     expect(result.source_observation_fingerprints).toEqual(['fp-1', 'fp-2'])
+    expect(result.alert_fingerprint).toBe('TRANSSHIPMENT:fp-1,fp-2')
   })
 
   it('should throw for invalid category', () => {
@@ -211,8 +213,8 @@ describe('alertRowToDomain', () => {
   it('should normalize space-separated timestamps', () => {
     const result = alertRowToDomain({
       ...validRow,
-      detected_at: '2026-01-15 10:00:00',
-      triggered_at: '2026-01-15 12:00:00',
+      detected_at: '2026-01-15 10:00:00+00:00',
+      triggered_at: '2026-01-15 12:00:00+00:00',
     })
     expect(result.detected_at).toBe('2026-01-15T10:00:00.000Z')
     expect(result.triggered_at).toBe('2026-01-15T12:00:00.000Z')
@@ -238,6 +240,7 @@ describe('alertToInsertRow', () => {
       detected_at: '2026-01-15T10:00:00.000Z',
       triggered_at: '2026-01-15T12:00:00.000Z',
       source_observation_fingerprints: ['fp-1'],
+      alert_fingerprint: 'TRANSSHIPMENT:fp-1',
       retroactive: false,
       provider: 'maersk' as const,
       acked_at: null,
@@ -248,5 +251,6 @@ describe('alertToInsertRow', () => {
     expect(row.container_id).toBe(alert.container_id)
     expect(row.category).toBe('fact')
     expect(row.type).toBe('TRANSSHIPMENT')
+    expect(row.alert_fingerprint).toBe('TRANSSHIPMENT:fp-1')
   })
 })

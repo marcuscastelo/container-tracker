@@ -58,6 +58,13 @@ export const TrackingAlertSchema = z.object({
   /** Fingerprints of observations that triggered this alert */
   source_observation_fingerprints: z.array(z.string()),
 
+  /**
+   * Deterministic fingerprint for FACT alerts (used for deduplication).
+   * Nullable for MONITORING alerts (which use TYPE-based dedup only).
+   * @see src/modules/tracking/domain/alertFingerprint.ts
+   */
+  alert_fingerprint: z.string().nullable(),
+
   /** Whether this is a retroactive alert (backfill). Only true for fact alerts. */
   retroactive: z.boolean(),
 
