@@ -4,14 +4,14 @@ import type {
   ShipmentDetail,
 } from '~/modules/process/application/shipment.readmodel'
 import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
-import type { AlertDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
-import { alertToDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
+import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import { alertToDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import {
   containerStatusLabel,
   containerStatusToVariant,
-} from '~/modules/tracking/application/tracking.status.presenter'
-import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
-import { deriveTimelineWithSeries } from '~/modules/tracking/application/tracking.timeline.presenter'
+} from '~/modules/tracking/application/projection/tracking.status.presenter'
+import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
+import { deriveTimelineWithSeries } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import { ContainerStatusSchema } from '~/modules/tracking/domain/containerStatus'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'

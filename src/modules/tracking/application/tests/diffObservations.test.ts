@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { diffObservations } from '~/modules/tracking/application/diffObservations'
+import { diffObservations } from '~/modules/tracking/application/pipeline/diffObservations'
 import { computeFingerprint } from '~/modules/tracking/domain/fingerprint'
 import type { ObservationDraft } from '~/modules/tracking/domain/observationDraft'
 

@@ -1,4 +1,4 @@
-import { resolveLocationDisplay } from '~/modules/tracking/application/locationDisplayResolver'
+import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
 import { computeAlertFingerprint } from '~/modules/tracking/domain/alertFingerprint'
 import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import type { Timeline } from '~/modules/tracking/domain/timeline'

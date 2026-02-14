@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { processSnapshot } from '~/modules/tracking/application/pipeline'
+import { processSnapshot } from '~/modules/tracking/application/pipeline/pipeline'
 import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'

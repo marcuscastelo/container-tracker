@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveLocationDisplay } from '~/modules/tracking/application/locationDisplayResolver'
+import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
 
 describe('resolveLocationDisplay', () => {
   it('should prefer location_display when available', () => {

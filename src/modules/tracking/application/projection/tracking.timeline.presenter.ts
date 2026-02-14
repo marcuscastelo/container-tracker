@@ -1,4 +1,4 @@
-import { resolveLocationDisplay } from '~/modules/tracking/application/locationDisplayResolver'
+import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
 import {
   buildSeriesKey,
   compareObservationsChronologically,

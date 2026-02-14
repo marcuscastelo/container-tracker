@@ -1,7 +1,7 @@
 import {
   containerStatusLabel,
   containerStatusToVariant,
-} from '~/modules/tracking/application/tracking.status.presenter'
+} from '~/modules/tracking/application/projection/tracking.status.presenter'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 type ProcessSummary = {

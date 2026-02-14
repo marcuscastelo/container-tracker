@@ -1,4 +1,7 @@
-import { type PipelineResult, processSnapshot } from '~/modules/tracking/application/pipeline'
+import {
+  type PipelineResult,
+  processSnapshot,
+} from '~/modules/tracking/application/pipeline/pipeline'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'

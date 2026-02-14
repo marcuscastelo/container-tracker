@@ -1,4 +1,4 @@
-import type { PipelineResult } from '~/modules/tracking/application/pipeline'
+import type { PipelineResult } from '~/modules/tracking/application/pipeline/pipeline'
 import { acknowledgeAlert } from '~/modules/tracking/application/usecases/acknowledge-alert.usecase'
 import { dismissAlert } from '~/modules/tracking/application/usecases/dismiss-alert.usecase'
 import {
@@ -19,9 +19,6 @@ import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/provider'
 import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-
-// Re-export the deps type so the singleton wiring file can import it from here.
-export type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.

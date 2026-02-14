@@ -1,5 +1,5 @@
-import { diffObservations } from '~/modules/tracking/application/diffObservations'
-import { normalizeSnapshot } from '~/modules/tracking/application/normalizeSnapshot'
+import { diffObservations } from '~/modules/tracking/application/pipeline/diffObservations'
+import { normalizeSnapshot } from '~/modules/tracking/application/pipeline/normalizeSnapshot'
 import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'

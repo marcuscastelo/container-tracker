@@ -1,6 +1,6 @@
 import type { Carrier } from '~/modules/process/domain/value-objects'
-import type { AlertDisplay } from '~/modules/tracking/application/tracking.alert.presenter'
-import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
+import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type ContainerDetail = {
