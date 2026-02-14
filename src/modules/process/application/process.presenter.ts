@@ -10,8 +10,7 @@ import {
   containerStatusToVariant,
 } from '~/modules/tracking/application/tracking.status.presenter'
 import type { TimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
-import { observationToTimelineEvent } from '~/modules/tracking/application/tracking.timeline.presenter'
-import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
+import { deriveTimelineWithSeries } from '~/modules/tracking/application/tracking.timeline.presenter'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -66,11 +65,9 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   }
 
   const containers: ContainerDetail[] = data.containers.map((c) => {
-    // Build timeline from observations (new pipeline)
+    // Build timeline from observations using event series projection
     const observations = c.observations ?? []
-    const timeline: TimelineEvent[] = observations.map((obs, idx) =>
-      observationToTimelineEvent(obs, idx, deriveObservationState(obs, observations)),
-    )
+    const timeline: TimelineEvent[] = deriveTimelineWithSeries(observations)
 
     // If no observations, show a "process registered" placeholder
     if (timeline.length === 0) {

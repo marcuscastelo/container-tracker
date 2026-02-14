@@ -16,6 +16,77 @@ function semanticGroupKey(obs: Observation): string {
 }
 
 /**
+ * Build a series key for event series grouping.
+ *
+ * The series key includes:
+ * - activity (canonical type)
+ * - location_code (fallback: normalized location_display)
+ * - vessel_name (nullable)
+ * - voyage (nullable)
+ *
+ * This key determines which observations belong to the same semantic milestone.
+ *
+ * @param obs - Observation to build key for
+ * @returns Deterministic series key string
+ */
+export function buildSeriesKey(obs: {
+  readonly type: string
+  readonly location_code: string | null
+  readonly location_display: string | null
+  readonly vessel_name: string | null
+  readonly voyage: string | null
+}): string {
+  const activity = obs.type
+  const location = obs.location_code ?? (obs.location_display ?? '').toUpperCase().trim()
+  const vessel = obs.vessel_name ?? ''
+  const voyage = obs.voyage ?? ''
+  return `${activity}|${location}|${vessel}|${voyage}`
+}
+
+/**
+ * Compare two observations for chronological ordering.
+ *
+ * Sort order:
+ * 1. event_time ascending (null last)
+ * 2. ACTUAL before EXPECTED (when event_time equal)
+ * 3. created_at ascending (final tiebreaker)
+ *
+ * @param a - First observation
+ * @param b - Second observation
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+export function compareObservationsChronologically(
+  a: {
+    readonly event_time: string | null
+    readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+    readonly created_at: string
+  },
+  b: {
+    readonly event_time: string | null
+    readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+    readonly created_at: string
+  },
+): number {
+  // Null event_time goes last
+  if (a.event_time === null && b.event_time === null) {
+    return a.created_at.localeCompare(b.created_at)
+  }
+  if (a.event_time === null) return 1
+  if (b.event_time === null) return -1
+
+  // Compare by event_time
+  const timeCmp = a.event_time.localeCompare(b.event_time)
+  if (timeCmp !== 0) return timeCmp
+
+  // Equal times: ACTUAL before EXPECTED
+  if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
+  if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
+
+  // Final tiebreaker: created_at
+  return a.created_at.localeCompare(b.created_at)
+}
+
+/**
  * Collapse redundant EXPECTED observations for display purposes.
  *
  * This is a projection-level cleanup — it does NOT modify or delete

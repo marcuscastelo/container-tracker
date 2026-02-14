@@ -75,7 +75,26 @@
       "expiredExpected": "Expirado",
       "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planeado já passou",
       "viewOnCarrierSite": "Ver no site do armador",
-      "systemCreated": "Processo registado no sistema"
+      "systemCreated": "Processo registado no sistema",
+      "viewPredictionHistory": "Ver histórico de previsões",
+      "predictionHistory": {
+        "title": "Histórico de Previsões",
+        "eventType": "Tipo",
+        "eventTime": "Horário do Evento",
+        "observedAt": "Observado em",
+        "delta": "Mudança",
+        "status": "Estado",
+        "confirmed": "Confirmado",
+        "expired": "Expirado",
+        "active": "Ativo",
+        "redundant": "Redundante",
+        "superseded": "Substituído",
+        "conflicting": "Conflitante",
+        "days": "dias",
+        "close": "Fechar",
+        "conflictWarning": "Múltiplos eventos reais conflituosos detetados",
+        "conflictHelper": "Por segurança, mostramos o mais recente. Reveja o histórico abaixo."
+      }
     },
     "alerts": {
       "title": "Alertas",
