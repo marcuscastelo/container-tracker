@@ -1,20 +1,17 @@
-import z from 'zod/v4'
-import { ObservationTypeSchema } from '~/modules/tracking/domain/observationType'
-import { ProviderSchema } from '~/modules/tracking/domain/provider'
+import type { ObservationType } from '~/modules/tracking/domain/observationType'
+import type { Provider } from '~/modules/tracking/domain/provider'
 
 /**
  * EventTimeType — differentiates between confirmed facts and predictions.
  * Imported from observation.ts for consistency.
  */
-export const EventTimeTypeSchema = z.enum(['ACTUAL', 'EXPECTED'])
-export type EventTimeType = z.infer<typeof EventTimeTypeSchema>
+export type EventTimeType = 'ACTUAL' | 'EXPECTED'
 
 /**
  * Confidence level of an observation.
  * Determined during normalization based on field completeness.
  */
-export const ConfidenceSchema = z.enum(['high', 'medium', 'low'])
-export type Confidence = z.infer<typeof ConfidenceSchema>
+export type Confidence = 'high' | 'medium' | 'low'
 
 /**
  * ObservationDraft — output of normalizeSnapshot, before deduplication.
@@ -25,15 +22,15 @@ export type Confidence = z.infer<typeof ConfidenceSchema>
  *
  * @see docs/master-consolidated-0209.md §2.4
  */
-export const ObservationDraftSchema = z.object({
+export type ObservationDraft = {
   /** Container number this observation refers to */
-  container_number: z.string(),
+  container_number: string
 
   /** Semantic type of observation */
-  type: ObservationTypeSchema,
+  type: ObservationType
 
   /** When the event occurred (UTC ISO), null if unknown */
-  event_time: z.iso.datetime().nullable(),
+  event_time: string | null
 
   /**
    * Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event.
@@ -41,34 +38,32 @@ export const ObservationDraftSchema = z.object({
    *
    * If carrier doesn't explicitly indicate, use EXPECTED as the safe default.
    */
-  event_time_type: EventTimeTypeSchema,
+  event_time_type: EventTimeType
 
   /** UN/LOCODE or similar location code, null if unknown */
-  location_code: z.string().nullable(),
+  location_code: string | null
 
   /** Human-readable location display (e.g. "SANTOS, BR") */
-  location_display: z.string().nullable(),
+  location_display: string | null
 
   /** Vessel name, null if not applicable */
-  vessel_name: z.string().nullable(),
+  vessel_name: string | null
 
   /** Voyage number, null if not applicable */
-  voyage: z.string().nullable(),
+  voyage: string | null
 
   /** Whether the container was empty at this point */
-  is_empty: z.boolean().nullable(),
+  is_empty: boolean | null
 
   /** Confidence level based on field completeness */
-  confidence: ConfidenceSchema,
+  confidence: Confidence
 
   /** Provider that produced this data */
-  provider: ProviderSchema,
+  provider: Provider
 
   /** ID of the snapshot this draft was extracted from */
-  snapshot_id: z.uuid(),
+  snapshot_id: string
 
   /** Reference to the raw event inside the snapshot payload (for audit) */
-  raw_event: z.unknown().optional(),
-})
-
-export type ObservationDraft = z.infer<typeof ObservationDraftSchema>
+  raw_event?: unknown
+}

@@ -1,10 +1,15 @@
-import z from 'zod/v4'
+/**
+ * Source of the process data.
+ */
+export type ProcessSource = 'manual' | 'api' | 'import'
+export const PROCESS_SOURCES: readonly ProcessSource[] = ['manual', 'api', 'import']
 
-// Source of the process data
-export const ProcessSourceSchema = z.enum(['manual', 'api', 'import'])
-
-// Carrier enum (extensible)
-export const CarrierSchema = z.enum([
+/**
+ * Carrier enum (extensible).
+ * Add new carriers here as they are integrated.
+ */
+export type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
+export const CARRIERS: readonly Carrier[] = [
   'maersk',
   'msc',
   'cmacgm',
@@ -12,5 +17,4 @@ export const CarrierSchema = z.enum([
   'one',
   'evergreen',
   'unknown',
-])
-export type Carrier = z.infer<typeof CarrierSchema>
+]

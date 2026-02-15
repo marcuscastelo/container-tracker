@@ -1,5 +1,3 @@
-import z from 'zod/v4'
-
 /**
  * Canonical observation types — semantic event categories.
  *
@@ -8,29 +6,40 @@ import z from 'zod/v4'
  *
  * @see docs/master-consolidated-0209.md §2.4
  */
-export const ObservationTypeSchema = z.enum([
+export type ObservationType =
   /** Container received at container yard (export) */
-  'GATE_IN',
+  | 'GATE_IN'
   /** Container released from yard */
-  'GATE_OUT',
+  | 'GATE_OUT'
   /** Container loaded onto vessel */
-  'LOAD',
+  | 'LOAD'
   /** Container discharged from vessel */
-  'DISCHARGE',
+  | 'DISCHARGE'
   /** Vessel departed port */
-  'DEPARTURE',
+  | 'DEPARTURE'
   /** Vessel arrived at port */
-  'ARRIVAL',
+  | 'ARRIVAL'
   /** Customs hold event */
-  'CUSTOMS_HOLD',
+  | 'CUSTOMS_HOLD'
   /** Customs release event */
-  'CUSTOMS_RELEASE',
+  | 'CUSTOMS_RELEASE'
   /** Container delivered to consignee */
-  'DELIVERY',
+  | 'DELIVERY'
   /** Empty container returned */
-  'EMPTY_RETURN',
+  | 'EMPTY_RETURN'
   /** Catch-all for unmapped events */
-  'OTHER',
-])
+  | 'OTHER'
 
-export type ObservationType = z.infer<typeof ObservationTypeSchema>
+export const OBSERVATION_TYPES: readonly ObservationType[] = [
+  'GATE_IN',
+  'GATE_OUT',
+  'LOAD',
+  'DISCHARGE',
+  'DEPARTURE',
+  'ARRIVAL',
+  'CUSTOMS_HOLD',
+  'CUSTOMS_RELEASE',
+  'DELIVERY',
+  'EMPTY_RETURN',
+  'OTHER',
+]

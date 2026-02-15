@@ -1,5 +1,4 @@
-import z from 'zod/v4'
-import { ProviderSchema } from '~/modules/tracking/domain/provider'
+import type { Provider } from '~/modules/tracking/domain/provider'
 
 /**
  * Tracking Alert — derived signal from timeline/status analysis.
@@ -10,78 +9,74 @@ import { ProviderSchema } from '~/modules/tracking/domain/provider'
  *
  * @see docs/master-consolidated-0209.md §3
  */
-const TrackingAlertCategorySchema = z.enum(['fact', 'monitoring'])
-const TrackingAlertSeveritySchema = z.enum(['info', 'warning', 'danger'])
+export type TrackingAlertCategory = 'fact' | 'monitoring'
+export type TrackingAlertSeverity = 'info' | 'warning' | 'danger'
 
-const TrackingAlertTypeSchema = z.enum([
+export type TrackingAlertType =
   /** Transshipment detected */
-  'TRANSSHIPMENT',
+  | 'TRANSSHIPMENT'
   /** Customs hold */
-  'CUSTOMS_HOLD',
+  | 'CUSTOMS_HOLD'
   /** Final port changed */
-  'PORT_CHANGE',
+  | 'PORT_CHANGE'
   /** No movement for X days */
-  'NO_MOVEMENT',
+  | 'NO_MOVEMENT'
   /** ETA passed without arrival */
-  'ETA_PASSED',
+  | 'ETA_PASSED'
   /** ETA missing */
-  'ETA_MISSING',
+  | 'ETA_MISSING'
   /** Data inconsistency detected */
-  'DATA_INCONSISTENT',
-])
+  | 'DATA_INCONSISTENT'
 
-export const TrackingAlertSchema = z.object({
+export type TrackingAlert = {
   /** Primary key (UUID) */
-  id: z.uuid(),
+  id: string
 
   /** Container ID (FK) */
-  container_id: z.uuid(),
+  container_id: string
 
   /** Alert category: fact or monitoring */
-  category: TrackingAlertCategorySchema,
+  category: TrackingAlertCategory
 
   /** Specific alert type */
-  type: TrackingAlertTypeSchema,
+  type: TrackingAlertType
 
   /** Severity level */
-  severity: TrackingAlertSeveritySchema,
+  severity: TrackingAlertSeverity
 
   /** Human-readable summary */
-  message: z.string(),
+  message: string
 
   /** When the underlying fact was detected in the timeline (UTC ISO) */
-  detected_at: z.iso.datetime(),
+  detected_at: string
 
   /** When this alert was created/persisted (UTC ISO) */
-  triggered_at: z.iso.datetime(),
+  triggered_at: string
 
   /** Fingerprints of observations that triggered this alert */
-  source_observation_fingerprints: z.array(z.string()),
+  source_observation_fingerprints: string[]
 
   /**
    * Deterministic fingerprint for FACT alerts (used for deduplication).
    * Nullable for MONITORING alerts (which use TYPE-based dedup only).
    * @see src/modules/tracking/domain/alertFingerprint.ts
    */
-  alert_fingerprint: z.string().nullable(),
+  alert_fingerprint: string | null
 
   /** Whether this is a retroactive alert (backfill). Only true for fact alerts. */
-  retroactive: z.boolean(),
+  retroactive: boolean
 
   /** Provider, if attributable */
-  provider: ProviderSchema.nullable(),
+  provider: Provider | null
 
   /** When acknowledged by user (UTC ISO) */
-  acked_at: z.iso.datetime().nullable(),
+  acked_at: string | null
 
   /** When dismissed by user (UTC ISO) */
-  dismissed_at: z.iso.datetime().nullable(),
-})
-
-export type TrackingAlert = z.infer<typeof TrackingAlertSchema>
+  dismissed_at: string | null
+}
 
 /**
  * Shape for inserting a new tracking alert.
  */
-export const NewTrackingAlertSchema = TrackingAlertSchema.omit({ id: true })
-export type NewTrackingAlert = z.infer<typeof NewTrackingAlertSchema>
+export type NewTrackingAlert = Omit<TrackingAlert, 'id'>

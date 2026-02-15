@@ -3,7 +3,7 @@ import type {
   ContainerDetail,
   ShipmentDetail,
 } from '~/modules/process/application/shipment.readmodel'
-import { type Carrier, CarrierSchema } from '~/modules/process/domain/value-objects'
+import { CARRIERS, type Carrier } from '~/modules/process/domain/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import {
@@ -12,11 +12,18 @@ import {
 } from '~/modules/tracking/application/projection/tracking.status.presenter'
 import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
 import { deriveTimelineWithSeries } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
-import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
-import { ContainerStatusSchema } from '~/modules/tracking/domain/containerStatus'
+import { CONTAINER_STATUSES, type ContainerStatus } from '~/modules/tracking/domain/containerStatus'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
+
+function isContainerStatus(s: unknown): s is ContainerStatus {
+  return typeof s === 'string' && CONTAINER_STATUSES.some((cs) => cs === s)
+}
+
+function isCarrier(s: unknown): s is Carrier {
+  return typeof s === 'string' && CARRIERS.some((c) => c === s)
+}
 
 /**
  * Derive the highest-dominance status from all containers.
@@ -27,8 +34,11 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
   label: string
 } {
   const statuses: ContainerStatus[] = containers.map((c) => {
-    const parsed = ContainerStatusSchema.safeParse(c.status)
-    return parsed.success ? parsed.data : 'UNKNOWN'
+    const s = c.status
+    if (isContainerStatus(s)) {
+      return s
+    }
+    return 'UNKNOWN'
   })
 
   const highest = deriveProcessStatusFromContainers(statuses)
@@ -40,12 +50,11 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
 }
 
 export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
-  const carrierResult = CarrierSchema.safeParse(data.carrier)
-  let carrier: Carrier | 'unknown' | null
+  let carrier: Carrier | null
   if (data.carrier === null) {
     carrier = null
-  } else if (carrierResult.success) {
-    carrier = carrierResult.data
+  } else if (isCarrier(data.carrier)) {
+    carrier = data.carrier
   } else {
     carrier = 'unknown'
   }

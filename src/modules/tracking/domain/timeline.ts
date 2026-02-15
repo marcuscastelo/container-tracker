@@ -1,4 +1,3 @@
-import z from 'zod/v4'
 import type { Observation } from '~/modules/tracking/domain/observation'
 
 /**
@@ -9,16 +8,14 @@ import type { Observation } from '~/modules/tracking/domain/observation'
  *
  * @see docs/master-consolidated-0209.md §2.5
  */
-export const TimelineHoleSchema = z.object({
+export type TimelineHole = {
   /** Start of the gap (ISO datetime, null if from beginning) */
-  from: z.iso.datetime().nullable(),
+  from: string | null
   /** End of the gap (ISO datetime, null if to present) */
-  to: z.iso.datetime().nullable(),
+  to: string | null
   /** Reason for the gap */
-  reason: z.enum(['missing_data', 'gap', 'missing_eta']),
-})
-
-export type TimelineHole = z.infer<typeof TimelineHoleSchema>
+  reason: 'missing_data' | 'gap' | 'missing_eta'
+}
 
 /**
  * TimelineItem — projection layer abstraction for timeline entries.

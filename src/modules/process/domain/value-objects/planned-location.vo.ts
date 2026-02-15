@@ -1,23 +1,36 @@
-import z from 'zod/v4'
 import { type ProcessBrand, toProcessBrand } from '~/modules/process/domain/process.types'
 
-// Location for planned route (intentional, not observed)
-const PlannedLocationSchema = z.object({
-  display_name: z.string().nullable().optional(), // Free text like "Santos" or "BRSSZ"
-  unlocode: z.string().nullable().optional(), // UN/LOCODE when known
-  city: z.string().nullable().optional(),
-  country_code: z.string().nullable().optional(),
-})
-type PlannedLocationProps = z.infer<typeof PlannedLocationSchema>
+/**
+ * Props for a planned location (intentional, not observed).
+ */
+type PlannedLocationProps = {
+  display_name?: string | null
+  unlocode?: string | null
+  city?: string | null
+  country_code?: string | null
+}
 
 export type PlannedLocation = ProcessBrand<PlannedLocationProps, 'PlannedLocation'>
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
+function optionalString(v: unknown): string | null {
+  return typeof v === 'string' ? v : null
+}
+
 export function toPlannedLocation(location: unknown): PlannedLocation {
-  const parsed = PlannedLocationSchema.safeParse(location)
-  if (!parsed.success) {
+  if (!isRecord(location)) {
     throw new Error(
-      `Invalid PlannedLocation: ${parsed.error.message}, received: ${JSON.stringify(location)}`,
+      `Invalid PlannedLocation: expected object, received: ${JSON.stringify(location)}`,
     )
   }
-  return toProcessBrand<PlannedLocationProps, 'PlannedLocation'>(parsed.data)
+  const props: PlannedLocationProps = {
+    display_name: optionalString(location.display_name),
+    unlocode: optionalString(location.unlocode),
+    city: optionalString(location.city),
+    country_code: optionalString(location.country_code),
+  }
+  return toProcessBrand<PlannedLocationProps, 'PlannedLocation'>(props)
 }

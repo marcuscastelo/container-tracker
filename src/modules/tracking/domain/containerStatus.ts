@@ -1,5 +1,3 @@
-import z from 'zod/v4'
-
 /**
  * Canonical container tracking status — monotonic projection.
  *
@@ -8,44 +6,46 @@ import z from 'zod/v4'
  *
  * @see docs/master-consolidated-0209.md §2.6, §4.3
  */
-export const ContainerStatusSchema = z.enum([
+export type ContainerStatus =
   /** No data yet */
-  'UNKNOWN',
+  | 'UNKNOWN'
   /** Container exists, minimal info */
-  'IN_PROGRESS',
+  | 'IN_PROGRESS'
   /** Container loaded on vessel */
-  'LOADED',
+  | 'LOADED'
   /** Vessel departed (container in transit) */
-  'IN_TRANSIT',
+  | 'IN_TRANSIT'
   /** Arrived at port of discharge */
-  'ARRIVED_AT_POD',
+  | 'ARRIVED_AT_POD'
   /** Discharged from vessel at final port */
-  'DISCHARGED',
+  | 'DISCHARGED'
   /** Available for pickup at terminal */
-  'AVAILABLE_FOR_PICKUP',
+  | 'AVAILABLE_FOR_PICKUP'
   /** Delivered to consignee */
-  'DELIVERED',
+  | 'DELIVERED'
   /** Empty container returned to depot */
-  'EMPTY_RETURNED',
-])
+  | 'EMPTY_RETURNED'
 
-export type ContainerStatus = z.infer<typeof ContainerStatusSchema>
+/**
+ * All valid container statuses.
+ */
+export const CONTAINER_STATUSES: readonly ContainerStatus[] = [
+  'UNKNOWN',
+  'IN_PROGRESS',
+  'LOADED',
+  'IN_TRANSIT',
+  'ARRIVED_AT_POD',
+  'DISCHARGED',
+  'AVAILABLE_FOR_PICKUP',
+  'DELIVERED',
+  'EMPTY_RETURNED',
+]
 
 /**
  * Dominance order — higher index means more advanced.
  * Used by deriveStatus to ensure monotonicity.
  */
-const STATUS_DOMINANCE: readonly ContainerStatus[] = [
-  'UNKNOWN',
-  'IN_PROGRESS',
-  'LOADED',
-  'IN_TRANSIT',
-  'ARRIVED_AT_POD',
-  'DISCHARGED',
-  'AVAILABLE_FOR_PICKUP',
-  'DELIVERED',
-  'EMPTY_RETURNED',
-] as const
+const STATUS_DOMINANCE: readonly ContainerStatus[] = CONTAINER_STATUSES
 
 /**
  * Returns the dominance index of a status (higher = more advanced).

@@ -1,5 +1,10 @@
 import z from 'zod/v4'
-import { ProviderSchema } from '~/modules/tracking/domain/provider'
+
+/**
+ * Provider Zod schema for HTTP-boundary validation.
+ * This is the interface layer's own schema — domain types are plain.
+ */
+const ProviderSchema = z.enum(['msc', 'maersk', 'cmacgm'])
 
 const RefreshRequestSchema = z
   .object({
