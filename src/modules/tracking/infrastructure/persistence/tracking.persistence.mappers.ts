@@ -8,12 +8,12 @@
  *  - Inconsistencies throw (infra error)
  */
 
-import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
-import type { Confidence } from '~/modules/tracking/domain/observationDraft'
-import type { ObservationType } from '~/modules/tracking/domain/observationType'
-import type { Provider } from '~/modules/tracking/domain/provider'
-import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
+import type { Confidence } from '~/modules/tracking/domain/model/observationDraft'
+import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
+import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 import { stringsToJson, toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type {
   InsertTrackingAlertRow,

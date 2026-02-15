@@ -1,10 +1,10 @@
+import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/projections/deriveProcessStatus'
-import type { ProcessOperationalSummary } from '~/modules/process/application/projections/processOperationalSummary'
-import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
-import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
+import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Minimal tracking summary needed for process-level aggregation.

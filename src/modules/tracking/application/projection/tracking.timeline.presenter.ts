@@ -2,10 +2,10 @@ import { resolveLocationDisplay } from '~/modules/tracking/application/projectio
 import {
   buildSeriesKey,
   compareObservationsChronologically,
-} from '~/modules/tracking/domain/deriveTimeline'
-import type { DerivedObservationState } from '~/modules/tracking/domain/expiredExpected'
-import { deriveObservationState } from '~/modules/tracking/domain/expiredExpected'
-import { classifySeries } from '~/modules/tracking/domain/seriesClassification'
+} from '~/modules/tracking/domain/derive/deriveTimeline'
+import type { DerivedObservationState } from '~/modules/tracking/domain/reconcile/expiredExpected'
+import { deriveObservationState } from '~/modules/tracking/domain/reconcile/expiredExpected'
+import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassification'
 import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 

@@ -1,10 +1,12 @@
 import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
-import { respondWithSchema, sanitizePayload } from '~/modules/tracking/application/apiHelpers'
-import { RefreshSchemas } from '~/modules/tracking/application/refreshSchemas'
-import { type Provider, ProviderSchema } from '~/modules/tracking/domain/provider'
+import { sanitizePayload } from '~/modules/tracking/application/apiHelpers'
+import type { Provider } from '~/modules/tracking/domain/model/provider'
+import { PROVIDERS } from '~/modules/tracking/domain/model/provider'
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
-import { isRestCarrier } from '~/modules/tracking/infrastructure/fetchers/is-rest-carrier'
+import { isRestCarrier } from '~/modules/tracking/infrastructure/carriers/fetchers/is-rest-carrier'
+import { RefreshSchemas } from '~/modules/tracking/interface/http/refresh.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
+import { respondWithSchema } from '~/shared/api/respondWithSchema'
 import { parseBody } from '~/shared/api/typedRoute'
 
 const { trackingUseCases } = bootstrapTrackingModule()
@@ -32,8 +34,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     // Validate provider
-    const providerResult = ProviderSchema.safeParse(provider)
-    if (!providerResult.success) {
+    if (!PROVIDERS.some((p) => p === provider)) {
       return respondWithSchema(
         { error: `invalid carrier/provider: ${provider}` },
         RefreshSchemas.responses.error,
@@ -41,11 +42,9 @@ export async function POST({ request }: { request: Request }): Promise<Response>
       )
     }
 
-    const validProvider = providerResult.data
-
-    if (!isRestCarrier(validProvider)) {
+    if (!isRestCarrier(provider)) {
       return respondWithSchema(
-        { error: `no REST fetcher for carrier: ${validProvider}` },
+        { error: `no REST fetcher for carrier: ${provider}` },
         RefreshSchemas.responses.error,
         400,
       )
@@ -65,11 +64,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     // Fetch from carrier API, save snapshot, and run the full pipeline
-    const result = await trackingUseCases.fetchAndProcess(
-      containerRecord.id,
-      container,
-      validProvider,
-    )
+    const result = await trackingUseCases.fetchAndProcess(containerRecord.id, container, provider)
 
     if (!result) {
       return respondWithSchema(
@@ -85,7 +80,7 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     }
 
     console.log(
-      `refresh: saved snapshot ${result.snapshot.id} for container ${container} (provider=${validProvider}), ` +
+      `refresh: saved snapshot ${result.snapshot.id} for container ${container} (provider=${provider}), ` +
         `new observations: ${result.pipeline.newObservations.length}, ` +
         `new alerts: ${result.pipeline.newAlerts.length}, ` +
         `status: ${result.pipeline.status}`,

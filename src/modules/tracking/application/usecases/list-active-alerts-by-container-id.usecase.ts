@@ -1,5 +1,5 @@
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Command to list active alerts for a container by its ID.

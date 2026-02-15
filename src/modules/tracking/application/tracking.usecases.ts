@@ -1,4 +1,4 @@
-import type { PipelineResult } from '~/modules/tracking/application/pipeline/pipeline'
+import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
 import { acknowledgeAlert } from '~/modules/tracking/application/usecases/acknowledge-alert.usecase'
 import { dismissAlert } from '~/modules/tracking/application/usecases/dismiss-alert.usecase'
 import {
@@ -17,8 +17,8 @@ import {
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { Provider } from '~/modules/tracking/domain/provider'
-import type { Snapshot } from '~/modules/tracking/domain/snapshot'
+import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.

@@ -29,12 +29,12 @@
 
 4. Tipos principais (arquivo / camada)
 
-- `ObservationDraft` — `src/modules/tracking/domain/observationDraft.ts` (Domain input).
+- `ObservationDraft` — `src/modules/tracking/domain/model/observationDraft.ts` (Domain input).
 - `Observation` — `src/modules/tracking/domain/observation.ts` (Domain persisted fact).
 - `fingerprint` — `src/modules/tracking/domain/fingerprint.ts` (determinismo para deduplicação).
-- `ContainerStatus` — `src/modules/tracking/domain/containerStatus.ts`.
-- `Snapshot` — `src/modules/tracking/domain/snapshot.ts`.
-- Alert types — `src/modules/tracking/domain/trackingAlert.ts`.
+- `ContainerStatus` — `src/modules/tracking/domain/model/containerStatus.ts`.
+- `Snapshot` — `src/modules/tracking/domain/model/snapshot.ts`.
+- Alert types — `src/modules/tracking/domain/model/trackingAlert.ts`.
 
 5. Regras arquiteturais do módulo
 

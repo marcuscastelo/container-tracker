@@ -1,5 +1,5 @@
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { Snapshot } from '~/modules/tracking/domain/snapshot'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 
 /**
  * Command to retrieve the latest snapshot for a container.

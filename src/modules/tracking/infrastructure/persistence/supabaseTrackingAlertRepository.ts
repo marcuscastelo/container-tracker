@@ -1,5 +1,5 @@
-import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 import {
   alertRowToDomain,
   alertToInsertRow,

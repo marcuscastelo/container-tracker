@@ -26,7 +26,7 @@ HTTP Request → Controller (interface/http) → validação (Zod) → mapeament
 4. Tipos principais (arquivo / camada)
 
 - `ProcessAggregate` / `ProcessEntity` — `src/modules/process/domain/process.aggregate.ts` / `process.entity.ts` (Domain).
-- Value objects — `src/modules/process/domain/value-objects/*` (ex.: `ProcessId`, `Carrier`).
+- Value objects — `src/modules/process/domain/identity/*` (ex.: `ProcessId`, `Carrier`).
 - Read models / presenters — `src/modules/process/application/*` (`shipment.readmodel`, `process.presenter`).
 - Controllers / DTOs — `src/modules/process/interface/http/*` (Interface layer).
 

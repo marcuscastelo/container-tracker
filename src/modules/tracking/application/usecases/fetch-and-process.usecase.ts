@@ -1,12 +1,12 @@
 import {
   type PipelineResult,
   processSnapshot,
-} from '~/modules/tracking/application/pipeline/pipeline'
+} from '~/modules/tracking/application/orchestration/pipeline'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { Provider } from '~/modules/tracking/domain/provider'
-import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { FetchResult } from '~/modules/tracking/infrastructure/fetchers/msc.fetcher'
-import { getRestFetcher } from '~/modules/tracking/infrastructure/fetchers/rest.fetchers'
+import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
+import { getRestFetcher } from '~/modules/tracking/infrastructure/carriers/fetchers/rest.fetchers'
 
 /**
  * Command to fetch tracking data from a carrier and run the full pipeline.

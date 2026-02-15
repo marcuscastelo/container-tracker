@@ -1,8 +1,8 @@
 import { type ContainerBrand, toContainerBrand } from '~/modules/container/domain/container.types'
-import type { CarrierCode } from '~/modules/container/domain/value-objects/carrier-code.vo'
-import type { ContainerId } from '~/modules/container/domain/value-objects/container-id.vo'
-import type { ContainerNumber } from '~/modules/container/domain/value-objects/container-number.vo'
-import type { ProcessId } from '~/modules/container/domain/value-objects/process-id.vo'
+import type { CarrierCode } from '~/modules/container/domain/identity/carrier-code.vo'
+import type { ContainerId } from '~/modules/container/domain/identity/container-id.vo'
+import type { ContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
+import type { ProcessId } from '~/modules/container/domain/identity/process-id.vo'
 
 export type ContainerEntityProps = {
   id: ContainerId

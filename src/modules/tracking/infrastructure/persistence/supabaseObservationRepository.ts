@@ -1,5 +1,5 @@
-import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
-import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
+import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
+import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
 import {
   observationRowToDomain,
   observationToInsertRow,

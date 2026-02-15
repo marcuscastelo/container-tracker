@@ -5,7 +5,7 @@ import {
   classifySeries,
   getSeriesLabelClass,
   getSeriesLabelKey,
-} from '~/modules/tracking/domain/seriesClassification'
+} from '~/modules/tracking/domain/reconcile/seriesClassification'
 import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'

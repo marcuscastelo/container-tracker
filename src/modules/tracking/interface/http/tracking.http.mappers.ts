@@ -1,5 +1,5 @@
-import type { Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,

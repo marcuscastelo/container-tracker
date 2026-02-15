@@ -1,5 +1,5 @@
-import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'
-import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
+import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
+import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import {
   snapshotRowToDomain,
   snapshotToInsertRow,

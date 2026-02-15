@@ -1,9 +1,9 @@
 // src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts
 
-import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
-import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
+import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 // Ports (agora em application, como você moveu)
-import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'
+import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import {
   createTrackingUseCases,
   type TrackingUseCases,
