@@ -6,10 +6,10 @@ import {
   type ContainerEntity,
   createContainerEntity,
 } from '~/modules/container/domain/container.entity'
-import { toCarrierCode } from '~/modules/container/domain/value-objects/carrier-code.vo'
-import { toContainerId } from '~/modules/container/domain/value-objects/container-id.vo'
-import { toContainerNumber } from '~/modules/container/domain/value-objects/container-number.vo'
-import { toProcessId } from '~/modules/container/domain/value-objects/process-id.vo'
+import { toCarrierCode } from '~/modules/container/domain/identity/carrier-code.vo'
+import { toContainerId } from '~/modules/container/domain/identity/container-id.vo'
+import { toContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
+import { toProcessId } from '~/modules/container/domain/identity/process-id.vo'
 import type {
   ContainerInsert,
   ContainerRow,

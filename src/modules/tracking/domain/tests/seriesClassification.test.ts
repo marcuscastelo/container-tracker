@@ -4,7 +4,7 @@ import {
   classifySeries,
   type ObservationLike,
   type SeriesLabel,
-} from '~/modules/tracking/domain/seriesClassification'
+} from '~/modules/tracking/domain/reconcile/seriesClassification'
 
 // Test helper to create minimal observation
 function makeObs(overrides: Partial<ObservationLike> = {}): ObservationLike {

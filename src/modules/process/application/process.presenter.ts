@@ -1,4 +1,4 @@
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/projections/deriveProcessStatus'
+import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
 import type {
   ContainerDetail,
   ShipmentDetail,
@@ -12,7 +12,10 @@ import {
 } from '~/modules/tracking/application/projection/tracking.status.presenter'
 import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
 import { deriveTimelineWithSeries } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
-import { CONTAINER_STATUSES, type ContainerStatus } from '~/modules/tracking/domain/containerStatus'
+import {
+  CONTAINER_STATUSES,
+  type ContainerStatus,
+} from '~/modules/tracking/domain/model/containerStatus'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'

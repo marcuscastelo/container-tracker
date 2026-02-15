@@ -1,6 +1,6 @@
-import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
-import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
-import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'
+import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
+import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 
 /**
  * Shared dependency type for all tracking use cases.

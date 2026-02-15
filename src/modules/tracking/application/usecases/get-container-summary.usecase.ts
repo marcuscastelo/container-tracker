@@ -1,12 +1,12 @@
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { ContainerStatus } from '~/modules/tracking/domain/containerStatus'
-import { deriveTransshipment } from '~/modules/tracking/domain/deriveAlerts'
-import { deriveStatus } from '~/modules/tracking/domain/deriveStatus'
-import { deriveTimeline } from '~/modules/tracking/domain/deriveTimeline'
-import type { Observation } from '~/modules/tracking/domain/observation'
-import type { Timeline } from '~/modules/tracking/domain/timeline'
-import type { TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
-import type { TransshipmentInfo } from '~/modules/tracking/domain/transshipment'
+import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
+import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
+import { deriveTimeline } from '~/modules/tracking/domain/derive/deriveTimeline'
+import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
+import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
+import type { Observation } from '~/modules/tracking/domain/model/observation'
+import type { Timeline } from '~/modules/tracking/domain/model/timeline'
+import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Command to retrieve the full tracking summary for a container.

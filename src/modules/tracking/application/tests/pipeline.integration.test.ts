@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { processSnapshot } from '~/modules/tracking/application/pipeline/pipeline'
-import type { TrackingAlertRepository } from '~/modules/tracking/application/tracking.alert.repository'
-import type { ObservationRepository } from '~/modules/tracking/application/tracking.observation.repository'
-import type { SnapshotRepository } from '~/modules/tracking/application/tracking.snapshot.repository'
-import type { NewObservation, Observation } from '~/modules/tracking/domain/observation'
-import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/snapshot'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/trackingAlert'
-import maerskPayload from '~/modules/tracking/infrastructure/tests/fixtures/maersk/maersk_full.json'
+import { processSnapshot } from '~/modules/tracking/application/orchestration/pipeline'
+import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
+import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
+import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
+import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 
 // Note: repositories now throw on infra errors and return direct types.
 

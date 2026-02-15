@@ -2,11 +2,11 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
+import { toCarrierCode } from '~/modules/process/domain/identity/carrier-code.vo'
+import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
+import { toProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
+import { toProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { createProcessEntity, type ProcessEntity } from '~/modules/process/domain/process.entity'
-import { toCarrierCode } from '~/modules/process/domain/value-objects/carrier-code.vo'
-import { toProcessId } from '~/modules/process/domain/value-objects/process-id.vo'
-import { toProcessReference } from '~/modules/process/domain/value-objects/process-reference.vo'
-import { toProcessSource } from '~/modules/process/domain/value-objects/process-source.vo'
 import type {
   ProcessInsertRow,
   ProcessRow,
