@@ -6,6 +6,7 @@ import { presentProcessList } from '~/modules/dashboard/application/processListP
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
+import { SearchOverlay } from '~/modules/search/ui/SearchOverlay'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   CreateProcessResponseSchema,
@@ -232,6 +233,11 @@ export function Dashboard(): JSX.Element {
       />
 
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Global Search Bar */}
+        <div class="mb-6 flex justify-center">
+          <SearchOverlay />
+        </div>
+
         {/* Error message */}
         <Show when={createError()}>
           <ExistingProcessError

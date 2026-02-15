@@ -227,5 +227,25 @@
   },
   "languageSwitch": {
     "label": "Idioma"
+  },
+  "search": {
+    "placeholder": "Pesquisar processo, contentor, BL, importador...",
+    "loading": "A pesquisar...",
+    "noResults": "Nenhum resultado encontrado",
+    "hint": "Escreva pelo menos 2 caracteres para pesquisar",
+    "close": "Fechar pesquisa",
+    "clear": "Limpar pesquisa",
+    "groups": {
+      "processes": "Processos",
+      "containers": "Contentores",
+      "importers": "Importadores",
+      "exporters": "Exportadores",
+      "carriers": "Armadores"
+    },
+    "footer": {
+      "navigate": "Navegar",
+      "select": "Selecionar",
+      "close": "Fechar"
+    }
   }
 }
