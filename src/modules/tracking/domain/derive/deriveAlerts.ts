@@ -1,6 +1,6 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
+import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
-import { computeAlertFingerprint } from '~/modules/tracking/domain/model/alertFingerprint'
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/domain/model/timeline'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
