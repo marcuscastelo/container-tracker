@@ -3,7 +3,7 @@ import type {
   ContainerDetail,
   ShipmentDetail,
 } from '~/modules/process/application/shipment.readmodel'
-import { CARRIERS, type Carrier } from '~/modules/process/domain/value-objects'
+import { CARRIERS, type Carrier } from '~/modules/process/domain/identity/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import {
