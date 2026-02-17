@@ -1,4 +1,4 @@
-import { Dashboard } from '~/modules/dashboard/ui/Dashboard'
+import { Dashboard } from '~/modules/process/ui/screens/DashboardScreen'
 
 export default function IndexPage() {
   return <Dashboard />
