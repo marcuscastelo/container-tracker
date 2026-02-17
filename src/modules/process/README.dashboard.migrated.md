@@ -9,18 +9,18 @@
 2. Estrutura interna (presente nesta pasta)
 
 - application/
-  - `processListPresenter.ts` — conversão de payloads da API em `ProcessSummary` para o dashboard.
+  - `processList.presenter.ts` — conversão de payloads da API em `ProcessSummary` para o dashboard.
   - `tests/` — testes unitários dos presenters.
 - ui/
   - componentes e mapeadores que consumirão os view models produzidos por `application`.
 
 3. Fluxo interno (exemplo de listagem)
 
-API Response (process list) → presenter (`application/processListPresenter.ts`) → ProcessSummary ViewModel → UI component
+API Response (process list) → presenter (`application/processList.presenter.ts`) → ProcessSummary ViewModel → UI component
 
 4. Tipos principais (arquivo / camada)
 
-- `ProcessApiResponse` / `ProcessSummary` — `src/modules/dashboard/application/processListPresenter.ts` (application/read-model).
+- `ProcessApiResponse` / `ProcessSummary` — `src/modules/dashboard/application/processList.presenter.ts` (application/read-model).
 
 5. Regras arquiteturais do módulo
 

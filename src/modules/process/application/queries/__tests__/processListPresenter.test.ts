@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type ProcessApiResponse,
   presentProcessList,
-} from '~/modules/dashboard/application/processListPresenter'
+} from '~/modules/process/application/queries/processList.presenter'
 
 describe('presentProcessList', () => {
   it('maps API response to ProcessSummary array', () => {
