@@ -1,377 +1,355 @@
 ---
 applyTo: '**/*.{ts,tsx}**'
-description: "High-level instructions and operational rules for GitHub Copilot / auxiliary LLMs
+description: "High-level instructions and operational rules for GitHub Copilot / auxiliary LLMs"
 ---
+
 # Copilot Instructions — Container Tracker
 
 Este documento define **instruções de alto nível e regras operacionais** para uso do GitHub Copilot / LLMs auxiliares no projeto **Container Tracker**.
 
-Ele consolida **conhecimento de domínio (logística marítima)**, **boas práticas de arquitetura**, **idiomaticidade em TypeScript, SolidJS e TailwindCSS**, **padrões de segurança**, e **uso correto de BiomeJS/ESLint**.
+Ele consolida:
 
-> Regra de ouro: **o domínio manda no código e na UI**. Nunca simplifique a realidade operacional para “facilitar” a implementação.
+- Conhecimento de domínio (logística marítima B2B)
+- Regras de arquitetura (BC vs capability)
+- Invariantes críticas de tracking
+- Políticas de alerta
+- Boas práticas TypeScript / SolidJS
+- Disciplina de camadas
+
+> Regra de ouro: **o domínio manda no código e na UI.**
+> Nunca simplifique a realidade operacional para “facilitar” a implementação.
 
 ---
 
-## 0. Operational Guidance for Agents (Serena MCP)
+# 0. Leitura Obrigatória Antes de Implementar
 
-- Sempre utilize Serena MCP como framework principal para automação, onboarding, análise e execução de tasks.
-- Use as ferramentas (tools) apropriadas do Serena MCP para cada etapa:
-  - Ativação de projeto: `activate_project`
-  - Onboarding: `onboarding`, `write_memory`
-  - Coleta de informações: `read_memory`, `read_file`, `search_for_pattern`
-  - Manipulação de código: ferramentas simbólicas (`find_symbol`, `replace_symbol_body`, etc.)
-  - Planejamento e rastreio: `manage_todo_list`
-  - Testes e validação: `runTests`, `get_errors`
-- Nunca execute tasks manualmente ou por comandos shell quando existir uma ferramenta Serena MCP equivalente.
-- Priorize sempre a integração com Serena MCP para garantir rastreabilidade, consistência e automação operacional.
+Sempre que for implementar algo não trivial, consulte:
 
-## 1. Papel do Copilot no Projeto
+- Produto / modelo conceitual: `docs/MASTER_v2.md`
+- Regras de camadas e tipos: `docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md`
+- Boundaries BC vs capability: `docs/BOUNDARIES.md`
+- Invariantes de tracking: `docs/TRACKING_INVARIANTS.md`
+- Event series: `docs/TRACKING_EVENT_SERIES.md`
+- Política de alertas: `docs/ALERT_POLICY.md`
+- Arquitetura geral: `docs/ARCHITECTURE.md`
+- Roadmap: `docs/ROADMAP.md`
+
+Se houver conflito entre código e documentação, **priorize os documentos canônicos**.
+
+Se o agente não conseguir localizar ou ler algum dos documentos acima,
+deve parar e pedir explicitamente o caminho correto antes de implementar.
+
+---
+
+# 1. Papel do Copilot no Projeto
 
 O Copilot deve atuar como:
 
-* **Assistente técnico de Product + Engineering**
-* Especialista em **Track & Trace marítimo B2B**
-* Guardião de **consistência de domínio, tipagem forte e UX operacional**
+- Assistente técnico de Product + Engineering
+- Guardião de invariantes de domínio
+- Especialista em Track & Trace marítimo
+- Protetor da tipagem forte e boundaries
 
-O Copilot **NÃO** deve:
+O Copilot NÃO deve:
 
-* Inventar dados de carriers
-* Ocultar incertezas (ETAs ausentes, eventos faltantes)
-* Criar abstrações genéricas sem lastro no domínio
-* Introduzir lógica de negócio em componentes de UI
-
----
-
-## 2. Princípios de Arquitetura
-
-### 2.1 Separação de Camadas
-
-Organizar o código em camadas explícitas:
-
-* **Domain**
-
-  * Entidades (Shipment, Container, Event, Alert)
-  * Regras de derivação de estado
-  * Tipos canônicos
-* **Application**
-
-  * Casos de uso
-  * Orquestração de eventos
-  * Normalização de dados de carriers
-* **Infrastructure**
-
-  * Fetchers / scrapers / APIs
-  * Parsers
-  * Persistência
-* **UI (SolidJS)**
-
-  * Componentes puros
-  * Nenhuma regra de domínio pesada
-
-Copilot deve **recusar** colocar regras de derivação dentro da UI.
+- Inventar comportamento de carriers
+- Ocultar incertezas (ETA ausente, conflito de ACTUAL)
+- Mover lógica de domínio para UI
+- Introduzir abstrações genéricas sem lastro no domínio
 
 ---
 
-## 3. Domínio — Regras Invioláveis
+# 2. Arquitetura — Separação Estrutural
 
-### 3.1 Estados são Derivados
+## 2.1 Bounded Contexts (src/modules/*)
 
-* **Nunca persistir estado final**
-* Estado atual = último evento relevante + regras
-* Eventos são fatos imutáveis
+Cada BC:
 
-### 3.2 Dados Incompletos São Válidos
+- Possui seu próprio domínio
+- Define entidades, regras e invariantes
+- Pode expor read models
+- NÃO pode depender de capabilities
 
-* ETA ausente é um estado explícito
-* Timeline pode ter buracos
-* UI deve explicar a ausência
+Módulos principais:
 
-### 3.3 Raw Payload Sempre Preservado
-
-* Nunca descartar payload original do carrier
-* Parsing falho gera `Alert[data]`
+- `process` — agrupamento de containers (Shipment)
+- `container` — identidade física do container
+- `tracking` — snapshots, observations, timeline, alerts
 
 ---
 
-## 4. TypeScript — Boas Práticas Obrigatórias
+## 2.2 Capabilities (src/capabilities/*)
 
-### 4.1 Tipagem Forte Sempre
+Capabilities:
 
-* `any` é proibido
-* Preferir `unknown` + type guards
-* Usar `readonly` sempre que possível
-* O uso de assertions de tipo com o operador `as` é absolutamente PROIBIDO em QUALQUER circunstância. A única exceção permitida é o literal `as const` (por exemplo para tuplas/const assertions). Nunca use `as` para forçar tipos em tempo de compilação — em vez disso, use guards, validação com Zod ou reescreva a tipagem.
+- Orquestram múltiplos BCs
+- Consomem apenas `modules/*/application`
+- Nunca importam `modules/*/domain`
+- Não definem semântica canônica
 
-### 4.2 Tipos Canônicos
+Exemplo:
 
-* Definir enums/union types fechados para:
-
-  * ContainerStatus
-  * EventType
-  * AlertCategory
-  * Severity
-
-### 4.3 Narrowing Explícito
-
-* Nunca assumir forma de dados externos
-* Criar guards como:
-
-  * `isCarrierEvent()`
-  * `isExpectedEvent()`
-
-### 4.4 Funções Pequenas e Determinísticas
-
-* Sem efeitos colaterais escondidos
-* Regras de domínio devem ser puras
-
-### 4.5 Dynamic imports
-
-* NUNCA use `await import(...)` em código TypeScript (TS/TSX) deste repositório.
-  * Use imports estáticos sempre que possível.
-  * Se precisar de dependência opcional, preferir tornar a dependência explícita (dev/optional) e carregá-la via import estático ou encapsular a lógica de fallback em um módulo adaptador que exponha uma API estável.
-  * A proibição de `await import` ajuda a evitar import dinâmica dispersa e problemas de análise/empacotamento; esta preferência foi adotada pelo time e deve ser seguida por ferramentas automáticas e por sugestões do Copilot.
-
-### 4.6 Exports
-
-* NÃO use `export default` em arquivos TypeScript (TS/TSX) deste repositório.
-  * Use sempre exportações nomeadas (`export const fn = ...` / `export function foo() {}` / `export class Bar {}`).
-  * Motivação: exportações nomeadas facilitam refactors, tornam as importações explícitas, melhoram a compatibilidade com ferramentas de análise estática e evitam ambiguidades na resolução de símbolos.
-  * Quando sugerir código ou modificar arquivos, o Copilot deve preferir e gerar apenas exportações nomeadas. Se uma dependência externa expuser um default, adapte via import específico (`import pkg from 'pkg'`) somente onde necessário, mas internamente preferir named exports.
-
+- dashboard
+- search
 
 ---
 
-## 5. BiomeJS / ESLint
+# 3. Domínio — Regras Invioláveis
 
-### 5.1 Biome como Fonte Primária
+## 3.1 Snapshots são Imutáveis
 
-* Formatter + Linter principal
-* Configuração minimalista e explícita
+- Sempre persistir payload raw
+- Nunca atualizar snapshot in-place
 
-### 5.2 Regras Essenciais
+## 3.2 Observations são Append-Only
 
-* No unused vars
-* No implicit any
-* No floating promises
-* Prefer const
-* Explicit return types em funções públicas
+- Nunca deletar
+- Nunca sobrescrever
+- Correções são aditivas
+- Deduplicação por fingerprint determinístico
 
-### 5.3 ESLint Apenas Onde Biome Não Cobre
+## 3.3 Status é Derivado
 
-* Regras específicas de framework
-* Plugins muito específicos
+- Nunca tratar status como verdade primária
+- Status = função(timeline)
+- Timeline = função(observations)
 
-Copilot **não deve** sugerir configs redundantes entre Biome e ESLint.
+## 3.4 Dados Incompletos São Válidos
 
----
-
-## 6. Segurança
-
-### 6.1 Input Não Confiável
-
-* Todo dado externo é hostil
-* Validar payloads com Zod
-
-### 6.2 Scraping / APIs
-
-* Rate limiting explícito
-* Retry controlado
-* Timeouts definidos
-
-### 6.3 UI
-
-* Nunca renderizar HTML bruto
-* Escapar strings externas
+- ETA ausente é estado explícito
+- Buracos na timeline são tolerados
+- UI deve explicar ausência
 
 ---
 
-## 7. SolidJS — Idiomaticidade
+## 3.5 Event Series — Regra Estrutural Obrigatória
 
-### 7.1 Reatividade Correta
+No Tracking:
 
-* Usar `createSignal` para estado local
-* Usar `createMemo` para derivação
-* Nunca derivar estado imperativamente
+- Observations semanticamente relacionadas formam uma **Series**
+- Uma Series gera **EXATAMENTE 1 entry na Timeline**
 
-### 7.2 Efeitos
+Regras:
 
-* `createEffect` apenas para side-effects
-* Nunca para computação
+- Se existir ACTUAL → primary = ACTUAL mais recente
+- Se não existir ACTUAL → primary = EXPECTED válido mais recente
+- EXPECTED anteriores ficam apenas em `series[]`
+- EXPECTED após ACTUAL nunca substitui ACTUAL
+- EXPIRED_EXPECTED é estado derivado de leitura
 
-### 7.3 Componentes
-
-* Componentes devem ser **puros**
-* Props bem tipadas
-* Estados: `loading | empty | error | ready`
-
-### 7.4 Performance
-
-* Evitar reatividade profunda desnecessária
-* Preferir dados normalizados
+A Timeline NUNCA deve exibir múltiplas entries para a mesma série.
 
 ---
 
-## 8. TailwindCSS — Idiomaticidade
+# 4. Tracking Internals — Derive vs Reconcile
 
-### 8.1 Sem CSS Arbitrário
+No módulo `tracking`:
 
-* Usar classes utilitárias
-* Evitar `style={}` inline
+## 4.1 domain/derive/*
 
-### 8.2 Design Operacional
+- Regras puras
+- Determinísticas
+- Sem lógica de exibição
+- Sem dependência implícita de “now”
 
-* UI densa
-* Espaçamento funcional
-* Priorizar legibilidade de tabela
+## 4.2 domain/reconcile/*
 
-### 8.3 Estados Visuais Claros
+- Classificação de séries
+- Safe-first primary
+- EXPIRED_EXPECTED
+- Redundância pós-ACTUAL
+- Conflitos múltiplos ACTUAL
 
-* Status nunca só por cor
-* Ícone + texto
+Reconcile:
 
----
+- Nunca altera fatos
+- Nunca muta observations
+- Apenas classifica para exibição segura
 
-## 9. UI Operacional
-
-### 9.1 Tabelas
-
-* Uma linha = um container/processo
-* Status e ETA sempre visíveis
-* Hover mostra último evento
-
-### 9.2 Alertas
-
-* Alertas são eventos, não flags mágicas
-* Severidade clara
+UI deve consumir read models reconciliados.
 
 ---
 
-## 10. Microcopy e i18n
+# 5. Alert Policy
 
-* Texto curto e operacional
-* Nunca esconder erro
-* Strings sempre via chave i18n
+## 5.1 Fact Alerts
 
-### Adição de novas chaves i18n (regra obrigatória)
+- Derivados de fatos
+- Podem ser retroativos
+- Devem marcar `retroactive: true`
+- Preservam evidência
 
-Sempre que for criar chaves novas no código (ex.: ao adicionar `keys` em um componente), adicione imediatamente as mesmas chaves em todos os arquivos de tradução local presentes em `src/locales` (por exemplo `src/locales/en.json` e `src/locales/pt.json`).
+## 5.2 Monitoring Alerts
 
-Recomendações:
-- Insira valores placeholder curtos (ex.: `"dashboard.table.col.client": "Client"` / `"dashboard.table.col.client": "Cliente"`) quando a tradução final não estiver disponível.
-- Use chaves idênticas em todos os arquivos de locale para evitar regressões em runtime.
-- Commita essas mudanças junto com a alteração do componente que introduziu a nova chave.
+- Dependem de "now"
+- Não podem ser retroativos
+- São temporais
 
-Para garantir que não haja chaves faltando entre os arquivos de locale, sempre rode o verificador de chaves i18n após adicionar novas chaves:
+Nunca deletar fatos para “limpar ruído”.
 
-```bash
+---
+
+# 6. TypeScript — Regras Obrigatórias
+
+## 6.1 Tipagem Forte
+
+- `any` é proibido
+- `unknown` + guards
+- `readonly` sempre que possível
+- `as` proibido (exceto `as const`)
+
+## 6.2 Shapes Não se Misturam
+
+- Row (infra) ≠ Entity (domain)
+- Entity ≠ DTO
+- DTO ≠ ViewModel
+- ViewModel ≠ Row
+
+snake_case só na persistência.
+
+## 6.3 Proibições
+
+- `Partial<Entity>` como input
+- `{ success: boolean }` em repositórios
+- Lógica de domínio em UI
+- Dynamic `await import(...)`
+
+## 6.4 Exports
+
+- Não usar `export default`
+- Apenas named exports
+
+## 6.5 Repositórios
+
+- Repositório não retorna `{ success: boolean }`
+- Repositório não engole erros
+- Repositório não recebe Commands diretamente
+- Mappers infra ↔ domain devem ser explícitos
+
+---
+
+# 7. UI — Responsabilidade Clara
+
+UI pode:
+
+- Formatar datas
+- Aplicar i18n
+- Renderizar estados
+- Exibir incertezas
+
+UI não pode:
+
+- Derivar status
+- Classificar séries
+- Reconciliar conflitos
+- Mutar fatos
+
+
+- Nunca importar `modules/*/domain` a partir da UI
+
+---
+
+# 8. SolidJS — Idiomaticidade
+
+- `createSignal` para estado
+- `createMemo` para derivação
+- `createEffect` só para side-effects
+- Componentes puros
+- Estados explícitos: loading | empty | error | ready
+
+---
+
+# 9. i18n — Regra Estrita
+
+- Nunca usar literal em `t()`
+- Sempre usar `const { t, keys } = useTranslation()`
+- Sempre usar `t(keys.someKey)`
+
+Após adicionar chave nova:
+
+```
 pnpm i18n:check
 ```
 
-Esse comando falhará localmente (saindo com código de erro) quando existirem chaves faltantes ou inconsistentes entre os arquivos em `src/locales`.
-
-### Uso de chaves (guideline importante)
-
-Quando for chamar a função de tradução (`t()`), sempre obtenha keys via `const { t, keys } = useTranslation()` e use `t(keys.someKey)` em vez de `t('some.key.path')` diretamente. Isso garante que todas as chaves usadas no componente estejam agrupadas em um objeto `keys` definido no topo do componente, facilitando a manutenção e evitando erros de digitação.
-Vantagens:
-- Facilita refactors (renomear chaves em um único lugar).
-- Mantém chaves agrupadas e legíveis no componente.
-- Simplifica busca de onde uma chave é usada.
-
-Exemplo de padrão em um componente:
-
-```ts
-const { t, keys } = useTranslation()
-return <button>{t(keys.save)}</button>
-```
-
-Sempre prefira esse padrão em vez de usar literais de string diretamente em chamadas `t('buttons.save')` espalhadas pelo JSX.
-É ESTRITAMENTE PROIBIDO usar literais de string diretamente em chamadas `t()` sem passar por um objeto de chaves, para garantir consistência e facilitar manutenção.
-NÃO USE `t('buttons.save')` DIRETAMENTE — SEMPRE USE `t(keys.save)` COM UM OBJETO DE CHAVES DEFINIDO NO COMPONENTE.
+Atualizar todos os arquivos de locale.
 
 ---
 
-## 11. Testes
+# 10. Segurança
 
-### 11.1 Domínio
-
-* Testar regras de derivação
-* Casos incompletos e inconsistentes
-
-### 11.2 UI
-
-* Estados vazios
-* Dados quebrados
+- Todo input externo é hostil
+- Validar com Zod
+- Rate limit explícito
+- Timeouts definidos
+- Nunca renderizar HTML bruto
 
 ---
 
-## 12. Anti‑Padrões (Copilot Deve Evitar)
+# 11. Testes
 
-* Abstrações genéricas sem domínio
-* `any` para “resolver rápido”
-* UI que esconde incerteza
-* Lógica de negócio em componentes
-* Estados mágicos não rastreáveis
+## 11.1 Domínio
 
-Exemplos explícitos a evitar:
+- Derivação de timeline
+- Series classification
+- Expiração EXPECTED
+- Conflito ACTUAL
+- Alert retroativo
 
-* ❌ Persistir eventos externos (raw) como a única fonte de verdade sem normalização
-* ❌ Deduplicar observações apenas por timestamp ou event_id do carrier
-* ❌ Usar `as` para forçar tipagem em validação de payloads (exceto `as const`)
-* ❌ Derivar status na UI ou em componentes de apresentação
-* ❌ Gerar alertas de monitoring retroativamente a partir de backfills
+## 11.2 UI
 
-## 13. Perguntas que o LLM deve sempre se fazer
-
-Ao gerar código ou regras, o Copilot/LLM deve executar um checklist mental:
-
-1. Isso é um snapshot, uma observation ou um status/projeção?
-2. Isso é um fato (observation) ou uma projeção (status/alerta de monitoring)?
-3. Estou preservando o payload raw e metadados de confiança?
-4. O que acontece se a API do carrier contradizer o histórico? (preservar ambos, marcar incerteza)
-5. Estou usando guards/validação em vez de `as` para todas as formas externas?
-
-## 14. Heurística de decisão rápida
-
-Regras práticas para decisões automáticas do LLM:
-
-* Se a API contradiz o histórico → preserve ambos os registros e marque incerteza.
-* Se o usuário adicionar dados retroativamente (onboarding/backfill) → gerar fact-based alerts retroativos, marcá-los como `retroactive: true` e `historical` na UI.
-* Se houver dúvida entre um event verbatim e um fato semântico → criar uma Observation marcada como `uncertain` e gerar um Alert[data] para revisão manual.
-* Nunca gerar monitoring alerts (time-based) retroativamente.
-
-## 15. Regras Adicionais: Alertas Retroativos
-
-* Alertas retroativos são permitidos somente para fatos (fact-based alerts) e devem sempre conter metadados: `retroactive: true`, `detected_at` (data do fato) e `triggered_at` (data da geração do alerta).
-* UI deve indicar claramente que o alerta é histórico e que não representa um estado em tempo real.
-
-## 16. Ownership (Quem deve fazer o quê)
-
-Para evitar ambiguidade, lembre-se:
-
-* Domain: regras de derivação puras (Observations → Timeline → Status) e tipos canônicos.
-* Application: orquestra pipelines, coordena fetchers/backfills, persiste snapshots e observations.
-* Infrastructure: conectores, fetchers, adaptações para transformar payloads brutos em um formato validável.
-* UI: apresentação, explicitação de incertezas e ações do usuário (ack/dismiss).
+- Estados vazios
+- Dados quebrados
+- Conflitos visíveis
 
 ---
 
-## 13. Checklist Mental do Copilot
+# 12. Anti-Padrões Proibidos
 
-Antes de gerar código, o Copilot deve se perguntar:
-
-1. Isso respeita o domínio marítimo real?
-2. A incerteza está visível?
-3. A tipagem está forte e explícita?
-4. A lógica está no lugar correto?
-5. A UI ajuda o operador ou atrapalha?
+- Deletar EXPECTED antigos
+- Recalcular status na UI
+- Persistir status como fonte de verdade
+- Suprimir ACTUAL conflitantes
+- Ocultar conflito de dados
+- Usar `as` para forçar validação
+- Importar domain em capability
 
 ---
 
-**Se houver dúvida, priorize clareza, rastreabilidade e fidelidade operacional.**
+# 13. Checklist Mental Antes de Gerar Código
 
-Use o seguinte documento como referência canônica para decisões de implementação, arquitetura e UX. Ele é a “bíblia” do projeto e deve ser seguido rigorosamente para garantir consistência e qualidade.
-[Container Tracking Platform — Master Technical & Product Document (0209)](../docs/master-consolidated-0209.md)
+1. Isso é snapshot, observation ou projeção?
+2. Estou preservando fatos?
+3. Estou respeitando Series → 1 entry?
+4. Estou usando derive vs reconcile corretamente?
+5. Estou violando boundaries?
+6. Estou evitando `any` e `as`?
+7. Estou escondendo incerteza?
 
-Para consulta, temos o roadmap atual [Roadmap Consolidado (0209)](../docs/roadmap-consolidated-0209.md) que detalha as fases de desenvolvimento, entregáveis e critérios de aceite.
+Se houver dúvida → consultar docs.
 
-Outros documentos, potencialmente desatualizados, estão disponíveis na pasta [docs](../docs/0204) para referência histórica, mas o foco deve ser no documento master consolidado.
+---
+
+# 14. Princípio Final
+
+> Estados são derivados de eventos.  
+> Eventos são derivados de snapshots.  
+> Snapshots nunca são descartados.  
+> A UI nunca define verdade de domínio.
+
+Qualquer sugestão de código deve preservar esses princípios.
+
+---
+
+# 15. Documentos Históricos
+
+Arquivos em `docs/0204/*` são históricos.
+Para decisões atuais, priorizar sempre:
+
+- MASTER_v2
+- ARCHITECTURE
+- BOUNDARIES
+- TRACKING_INVARIANTS
+- TRACKING_EVENT_SERIES
+- ALERT_POLICY
+- arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md
+- ROADMAP.md
