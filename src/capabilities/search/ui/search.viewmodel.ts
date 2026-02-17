@@ -3,7 +3,7 @@
 // ViewModel types for the search UI.
 // Maps from SearchResponseDto to UI-friendly shapes.
 
-import type { SearchResponseDto } from '~/modules/search/interface/http/search.schemas'
+import type { SearchResponseDto } from '~/capabilities/search/interface/http/search.schemas'
 
 export type SearchResultType = 'process' | 'container' | 'importer' | 'exporter' | 'carrier'
 

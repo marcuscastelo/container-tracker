@@ -6,6 +6,6 @@
  * All logic lives in the controller; the route only delegates.
  */
 
-import { searchControllers } from '~/modules/search/interface/http/search.controllers.bootstrap'
+import { searchControllers } from '~/capabilities/search/interface/http/search.controllers.bootstrap'
 
 export const GET = searchControllers.search

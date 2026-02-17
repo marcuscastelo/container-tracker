@@ -2,12 +2,12 @@
 //
 // Controller factory for the search HTTP endpoint.
 
-import type { SearchUseCases } from '~/modules/search/application/search.usecases'
-import { toSearchResponseDto } from '~/modules/search/interface/http/search.http.mappers'
+import type { SearchUseCases } from '~/capabilities/search/application/search.usecases'
+import { toSearchResponseDto } from '~/capabilities/search/interface/http/search.http.mappers'
 import {
   SearchQuerySchema,
   SearchResponseSchema,
-} from '~/modules/search/interface/http/search.schemas'
+} from '~/capabilities/search/interface/http/search.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 

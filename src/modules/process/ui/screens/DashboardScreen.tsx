@@ -2,11 +2,11 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import z from 'zod'
+import { SearchOverlay } from '~/capabilities/search/ui/SearchOverlay'
 import { presentProcessList } from '~/modules/process/application/queries/processList.presenter'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
-import { SearchOverlay } from '~/modules/search/ui/SearchOverlay'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   CreateProcessResponseSchema,

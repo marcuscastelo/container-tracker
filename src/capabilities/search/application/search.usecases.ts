@@ -3,8 +3,11 @@
 // Search use case factory.
 // Accepts a SearchRepository port and returns the search use case.
 
-import type { SearchRepository } from '~/modules/search/application/search.repository'
-import type { SearchQueryCommand, SearchResult } from '~/modules/search/application/search.types'
+import type { SearchRepository } from '~/capabilities/search/application/search.repository'
+import type {
+  SearchQueryCommand,
+  SearchResult,
+} from '~/capabilities/search/application/search.types'
 
 const DEFAULT_LIMIT = 20
 const MIN_QUERY_LENGTH = 2

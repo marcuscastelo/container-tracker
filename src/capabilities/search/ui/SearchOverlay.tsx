@@ -6,14 +6,14 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
-import { fetchSearchResults } from '~/modules/search/ui/fetchSearch'
+import { fetchSearchResults } from '~/capabilities/search/ui/fetchSearch'
 import {
   groupSearchResults,
   type SearchResultGroup,
   type SearchResultType,
   type SearchResultViewModel,
   toSearchViewModels,
-} from '~/modules/search/ui/search.viewmodel'
+} from '~/capabilities/search/ui/search.viewmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // ---------------------------------------------------------------------------

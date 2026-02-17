@@ -3,11 +3,11 @@
 // Supabase-backed implementation of the SearchRepository port.
 // Queries processes + containers tables with ILIKE for MVP ranking.
 
-import type { SearchRepository } from '~/modules/search/application/search.repository'
+import type { SearchRepository } from '~/capabilities/search/application/search.repository'
 import type {
   SearchResultItemProjection,
   SearchResultType,
-} from '~/modules/search/application/search.types'
+} from '~/capabilities/search/application/search.types'
 import type { Json } from '~/shared/supabase/database.types'
 import { supabase } from '~/shared/supabase/supabase'
 

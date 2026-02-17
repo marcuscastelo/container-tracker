@@ -2,8 +2,8 @@
 //
 // Mappers between search use case results and HTTP response DTOs.
 
-import type { SearchResult } from '~/modules/search/application/search.types'
-import type { SearchResponseDto } from '~/modules/search/interface/http/search.schemas'
+import type { SearchResult } from '~/capabilities/search/application/search.types'
+import type { SearchResponseDto } from '~/capabilities/search/interface/http/search.schemas'
 
 /**
  * Maps the use-case SearchResult to the HTTP response DTO.

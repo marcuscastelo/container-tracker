@@ -3,7 +3,7 @@
 // Port (interface) for the search read-model repository.
 // Infrastructure layer provides the implementation.
 
-import type { SearchResultItemProjection } from '~/modules/search/application/search.types'
+import type { SearchResultItemProjection } from '~/capabilities/search/application/search.types'
 
 export type SearchRepository = {
   /**
