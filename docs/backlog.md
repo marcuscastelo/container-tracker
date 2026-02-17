@@ -74,4 +74,3 @@ Este backlog foi desenhado para:
 * reduzir risco sem travar feature development
 * facilitar manutenção por humanos **e LLMs**
 
-Cada issue deve resultar em **1 PR pequeno**, com testes quando aplicável.
