@@ -4,7 +4,7 @@ import {
   normalizeContainerNumber,
   validateContainerWithWarnings,
 } from '~/modules/container/domain/container.validation'
-import { DuplicateContainersError } from '~/modules/process/application/errors'
+import { DuplicateContainersError } from '~/shared/errors/container-process.errors'
 
 export type CreateManyContainersCommand = {
   processId: string

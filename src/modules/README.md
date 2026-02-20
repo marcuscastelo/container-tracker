@@ -1,6 +1,6 @@
 # src/modules — Visão Geral de Módulos (técnico)
 
-Este diretório reúne os bounded contexts do sistema. Cada submódulo implementa uma parte do domínio com a separação de camadas definida em `docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md` (Domain / Application / Infrastructure / Interface / UI).
+Este diretório reúne os bounded contexts do sistema. Cada submódulo implementa uma parte do domínio com a separação de camadas definida em `docs/TYPE_ARCHITECTURE.md` (Domain / Application / Infrastructure / Interface / UI).
 
 Regras e responsabilidades macro
 
@@ -28,7 +28,7 @@ Estrutura recomendada (presente em vários módulos deste repositório)
 
 Onde procurar orientação e convenções
 
-- Regras de tipagem e mappers: `docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md`
+- Regras de tipagem e mappers: `docs/TYPE_ARCHITECTURE.md`
 - Pipeline de tracking e conceitos centrais: `docs/master-consolidated-0209.md` e `docs/roadmap-consolidated-0209.md`
 
 Boas práticas rápidas

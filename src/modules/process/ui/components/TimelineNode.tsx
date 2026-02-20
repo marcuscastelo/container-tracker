@@ -2,20 +2,23 @@ import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
-import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
+import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
+type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
+
 export function TimelineNode(props: {
-  readonly event: TimelineEvent
+  readonly event: TrackingTimelineItem
   readonly isLast: boolean
   readonly carrier?: string | null
   readonly containerNumber?: string | null
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
+
   const isoTooltip = (iso?: string | null): string | undefined => {
     if (!iso) return undefined
     // capture up to seconds: YYYY-MM-DDTHH:MM:SS
@@ -24,8 +27,17 @@ export function TimelineNode(props: {
     // fallback: strip milliseconds and trailing Z/offset
     return iso.replace(/\.\d+Z?$/, '').replace(/Z$/, '')
   }
+
+  const isExpected = () => props.event.eventTimeType === 'EXPECTED'
+  const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
+
+  const status = createMemo<EventStatus>(() => {
+    if (!isExpected()) return 'completed'
+    return isExpiredExpected() ? 'delayed' : 'expected'
+  })
+
   const styles = createMemo((): { dot: string; line: string; text: string } => {
-    switch (props.event.status) {
+    switch (status()) {
       case 'completed':
         return {
           dot: 'bg-emerald-500 border-emerald-500',
@@ -58,9 +70,50 @@ export function TimelineNode(props: {
     return typeof trackUrl === 'string' ? trackUrl : undefined
   })
 
-  // Determine if this is an EXPECTED event
-  const isExpected = () => props.event.eventTimeType === 'EXPECTED'
-  const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
+  function typeToLabel(type: TrackingTimelineItem['type']): string {
+    switch (type) {
+      case 'SYSTEM_CREATED':
+        return t(keys.shipmentView.timeline.systemCreated)
+      case 'GATE_IN':
+        return t(keys.tracking.observationType.GATE_IN)
+      case 'GATE_OUT':
+        return t(keys.tracking.observationType.GATE_OUT)
+      case 'LOAD':
+        return t(keys.tracking.observationType.LOAD)
+      case 'DEPARTURE':
+        return t(keys.tracking.observationType.DEPARTURE)
+      case 'ARRIVAL':
+        return t(keys.tracking.observationType.ARRIVAL)
+      case 'DISCHARGE':
+        return t(keys.tracking.observationType.DISCHARGE)
+      case 'DELIVERY':
+        return t(keys.tracking.observationType.DELIVERY)
+      case 'EMPTY_RETURN':
+        return t(keys.tracking.observationType.EMPTY_RETURN)
+      case 'CUSTOMS_HOLD':
+        return t(keys.tracking.observationType.CUSTOMS_HOLD)
+      case 'CUSTOMS_RELEASE':
+        return t(keys.tracking.observationType.CUSTOMS_RELEASE)
+      default:
+        return t(keys.tracking.observationType.OTHER)
+    }
+  }
+
+  const label = createMemo(() => {
+    let s = typeToLabel(props.event.type)
+    if (props.event.vesselName) {
+      s += ` — ${props.event.vesselName}`
+      if (props.event.voyage) s += ` (${props.event.voyage})`
+    }
+    return s
+  })
+
+  const dateIso = createMemo(() =>
+    props.event.eventTimeType === 'ACTUAL' ? props.event.eventTimeIso : null,
+  )
+  const expectedDateIso = createMemo(() =>
+    props.event.eventTimeType === 'EXPECTED' ? props.event.eventTimeIso : null,
+  )
 
   return (
     <>
@@ -83,11 +136,8 @@ export function TimelineNode(props: {
           <div class="flex items-start justify-between">
             <div>
               <div class="flex items-center gap-2">
-                <p class={`text-sm ${styles().text}`}>
-                  {props.event.labelKey === 'shipmentView.timeline.systemCreated'
-                    ? t(keys.shipmentView.timeline.systemCreated)
-                    : props.event.label}
-                </p>
+                <p class={`text-sm ${styles().text}`}>{label()}</p>
+
                 {/* Info icon for prediction history */}
                 <Show when={props.event.series && props.event.series.length > 1}>
                   <button
@@ -103,11 +153,12 @@ export function TimelineNode(props: {
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 0 0118 0z"
                       />
                     </svg>
                   </button>
                 </Show>
+
                 {/* Badge for EXPECTED events */}
                 <Show when={isExpiredExpected()}>
                   <span
@@ -126,39 +177,40 @@ export function TimelineNode(props: {
                   </span>
                 </Show>
               </div>
+
               <Show when={props.event.location}>
                 <p class="text-xs text-slate-500 mt-0.5">{props.event.location}</p>
               </Show>
             </div>
+
             <div class="text-right">
               <div class="flex items-center justify-end gap-2">
                 <Show
-                  when={props.event.date}
+                  when={dateIso()}
                   fallback={
-                    <Show when={props.event.expectedDate}>
-                      <p
-                        class="text-xs text-slate-400"
-                        title={isoTooltip(props.event.expectedDate_iso ?? props.event.expectedDate)}
-                      >
-                        {t(keys.shipmentView.timeline.expected)}{' '}
-                        {/* prefer ISO field so we reformat reactively */}
-                        {props.event.expectedDate_iso
-                          ? formatDateForLocale(props.event.expectedDate_iso, locale())
-                          : props.event.expectedDate}
-                      </p>
+                    <Show when={expectedDateIso()}>
+                      {(expectedDateIso) => (
+                        <p
+                          class="text-xs text-slate-400"
+                          title={isoTooltip(expectedDateIso() ?? undefined)}
+                        >
+                          {t(keys.shipmentView.timeline.expected)}{' '}
+                          {expectedDateIso()
+                            ? formatDateForLocale(expectedDateIso(), locale())
+                            : null}
+                        </p>
+                      )}
                     </Show>
                   }
                 >
-                  <p
-                    class="text-xs text-slate-600"
-                    title={isoTooltip(props.event.date_iso ?? props.event.date)}
-                  >
-                    <span class="sr-only">{t(keys.shipmentView.timeline.actual)}</span>
-                    {props.event.date_iso
-                      ? formatDateForLocale(props.event.date_iso, locale())
-                      : props.event.date}
-                  </p>
+                  {(dateIso) => (
+                    <p class="text-xs text-slate-600" title={isoTooltip(dateIso() ?? undefined)}>
+                      <span class="sr-only">{t(keys.shipmentView.timeline.actual)}</span>
+                      {dateIso() ? formatDateForLocale(dateIso(), locale()) : null}
+                    </p>
+                  )}
                 </Show>
+
                 {/* Small neutral badge linking to carrier tracking (rarely used) */}
                 <Show when={href()}>
                   <a
@@ -171,17 +223,15 @@ export function TimelineNode(props: {
                       e.preventDefault()
                       void (async () => {
                         try {
-                          // copy container number to clipboard (best-effort)
                           if (props.containerNumber) await copyToClipboard(props.containerNumber)
                         } catch {
                           /* ignore */
                         } finally {
-                          // open carrier link in new tab
                           try {
                             const h = href()
                             if (typeof h === 'string') window.open(h, '_blank')
                           } catch {
-                            // ignore
+                            /* ignore */
                           }
                         }
                       })()
@@ -203,12 +253,13 @@ export function TimelineNode(props: {
           </div>
         </div>
       </div>
+
       {/* Prediction History Modal */}
       <Show when={props.event.series}>
         {(series) => (
           <PredictionHistoryModal
             series={series()}
-            activityLabel={props.event.label}
+            activityLabel={label()}
             isOpen={showPredictionHistory()}
             onClose={() => setShowPredictionHistory(false)}
           />

@@ -1,6 +1,6 @@
 import type { Carrier } from '~/modules/process/domain/identity/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
-import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
+import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type ContainerDetail = {
@@ -9,7 +9,7 @@ export type ContainerDetail = {
   readonly status: StatusVariant
   readonly statusLabel: string
   readonly eta: string | null
-  readonly timeline: readonly TimelineEvent[]
+  readonly timeline: readonly TrackingTimelineItem[]
 }
 
 export type ShipmentDetail = {

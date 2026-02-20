@@ -1,50 +1,59 @@
-# modules/container
+# Container Module (Bounded Context)
 
-1. Propósito do Módulo
+Represents physical container identity and lifecycle association.
 
-- Bounded context: gestão de containers (entidade física associada a um `Process`/shipment).
-- Responsável por: tipos canônicos de container, value objects (IDs, container number, carrier code), factories e persistência (contratos de repository e implementações em `infrastructure/persistence`).
-- NÃO responsável por: derivação de status, snapshots de carrier, normalizadores de eventos — isso pertence ao módulo `tracking`.
+## Responsibilities
 
-2. Estrutura interna (presente nesta pasta)
+- Container creation
+- Identity validation (container number / ids)
+- Process linkage
+- Persistence mapping
+
+Container does not:
+
+- Derive timeline
+- Classify alerts
+- Perform tracking logic
+
+Tracking owns event semantics.
+
+---
+
+## Internal Structure
 
 - domain/
-  - `container.entity.ts` — `ContainerEntity` e `createContainerEntity`.
-  - `container.types.ts`, `container.validation.ts` — helpers e validações de domínio.
-  - `value-objects/` — `ContainerNumber`, `ContainerId`, `ProcessId`, `CarrierCode`.
+  - entity + validation + identity VOs
 - application/
-  - `container.repository.ts` — contratos de repositório: `InsertContainerRecord`, `ContainerRepository` e use-cases em `application/usecases/`.
+  - repository contract + usecases
 - infrastructure/
-  - `persistence/container.row.ts` — `ContainerRow` mapeado para o schema do DB.
-  - Implementações e mappers de persistência em `infrastructure/persistence/`.
+  - persistence adapters (row/mappers/repository) + bootstrap
 - ui/
-  - Mapeadores / view models (quando aplicável).
+  - UI helpers if needed (no domain rules)
 
-3. Fluxo interno (exemplo de criação via HTTP)
+---
 
-HTTP Request → Interface (controller) → Request DTO (Zod) → Command → Use Case (application) → Repository (insert record) → Entity → Response DTO
+## Key Types
 
-4. Tipos principais (arquivo / camada)
+- Domain
+  - `ContainerEntity` — `domain/container.entity.ts`
+  - `ContainerNumber`, `ContainerId`, `ProcessId`, `CarrierCode` — `domain/identity/*`
+- Application
+  - `ContainerRepository` — `application/container.repository.ts`
+- Infrastructure
+  - `ContainerRow` — `infrastructure/persistence/container.row.ts`
 
-- `ContainerEntity` — `src/modules/container/domain/container.entity.ts` (Domain).
-- Value objects — `src/modules/container/domain/value-objects/*` (`ContainerNumber`, `ContainerId`, `ProcessId`, `CarrierCode`).
-- `InsertContainerRecord`, `UpdateContainerRecord` — `src/modules/container/application/container.repository.ts` (Application / Repository contract).
-- `ContainerRow` — `src/modules/container/infrastructure/persistence/container.row.ts` (Infra / DB row type).
+---
 
-5. Regras arquiteturais do módulo
+## Rules / Pitfalls
 
-- Domain não conhece infra: factories e entidades vivem em `domain/` e não importam clientes de DB.
-- Repositório: contratos em `application/` — implementações em `infrastructure/`.
-- Repositórios lançam exceções em caso de erro (padrão do projeto).
-- Snake_case (rows) não deve vazar para Application/UI; use mappers em `infrastructure/persistence`.
+- Domain must not import infra.
+- Do not leak snake_case rows into application/ui (use mappers).
+- Avoid `Partial<Entity>` as input shapes.
+- Validate container number via VO before persistence.
 
-6. Pontos sensíveis / armadilhas
+---
 
-- Não usar `Partial<Entity>`/`Omit<Entity, ...>` como shape de input.
-- Validar `ContainerNumber` com value-object helpers antes de persistir.
-- Não misturar responsabilidades com `tracking` (status/observations).
+## Near-Term Improvements
 
-7. Evolução futura (curto)
-
-- Padronizar controllers em `interface/http` com Zod schemas compartilhados.
-- Melhorar validação ISO do `ContainerNumber` e adicionar testes de integração para mappers.
+- Add `interface/http` only if container needs a first-class API.
+- Tighten ContainerNumber validation and mapper integration tests.

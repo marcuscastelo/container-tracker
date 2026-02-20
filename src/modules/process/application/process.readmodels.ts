@@ -1,7 +1,13 @@
-import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
+
+export type ProcessContainerRecord = Readonly<{
+  id: string
+  processId: string
+  containerNumber: string
+  carrierCode: string | null
+}>
 
 export type ProcessWithContainers = Readonly<{
   process: ProcessEntity
-  containers: readonly ContainerEntity[]
+  containers: readonly ProcessContainerRecord[]
 }>

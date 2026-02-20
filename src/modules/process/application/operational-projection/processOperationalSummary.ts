@@ -1,4 +1,7 @@
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
+import type {
+  OperationalAlertSeverity,
+  OperationalStatus,
+} from '~/modules/process/application/operational-projection/operationalSemantics'
 
 /**
  * Process-level operational summary — Application-layer read model.
@@ -16,11 +19,11 @@ export type ProcessOperationalSummary = {
   readonly carrier: string | null
   readonly container_count: number
 
-  readonly process_status: ContainerStatus
+  readonly process_status: OperationalStatus
   readonly eta: string | null
 
   readonly alerts_count: number
-  readonly highest_alert_severity: 'info' | 'warning' | 'danger' | null
+  readonly highest_alert_severity: OperationalAlertSeverity | null
 
   readonly has_transshipment: boolean
   readonly last_event_at: string | null

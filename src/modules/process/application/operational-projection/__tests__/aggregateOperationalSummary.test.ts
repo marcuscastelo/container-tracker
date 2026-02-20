@@ -1,32 +1,26 @@
 import { describe, expect, it } from 'vitest'
+import type { OperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import { aggregateOperationalSummary } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
-function makeAlert(overrides: Partial<TrackingAlert> = {}): TrackingAlert {
+type TrackingAlertLike = {
+  readonly id: string
+  readonly type: string
+  readonly severity: string
+}
+
+function makeAlert(overrides: Partial<TrackingAlertLike> = {}): TrackingAlertLike {
   return {
     id: 'alert-1',
-    container_id: 'c1',
-    category: 'fact',
     type: 'TRANSSHIPMENT',
     severity: 'warning',
-    message: 'test alert',
-    detected_at: '2025-01-01T00:00:00Z',
-    triggered_at: '2025-01-01T00:00:00Z',
-    source_observation_fingerprints: [],
-    alert_fingerprint: null,
-    retroactive: false,
-    provider: null,
-    acked_at: null,
-    dismissed_at: null,
     ...overrides,
   }
 }
 
 function makeSummary(
   overrides: {
-    status?: ContainerStatus
-    alerts?: readonly TrackingAlert[]
+    status?: OperationalStatus
+    alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
   } = {},
 ) {

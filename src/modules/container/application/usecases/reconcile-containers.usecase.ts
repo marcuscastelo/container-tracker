@@ -6,7 +6,7 @@ import {
 import {
   CannotRemoveLastContainerError,
   DuplicateContainersError,
-} from '~/modules/process/application/errors'
+} from '~/shared/errors/container-process.errors'
 
 export type ReconcileContainersCommand = {
   processId: string

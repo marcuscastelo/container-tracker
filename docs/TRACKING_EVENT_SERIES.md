@@ -1,0 +1,126 @@
+# Tracking — Event Series Model (Formal Specification)
+
+## 1. Motivation
+
+Carrier APIs frequently:
+
+- Update predicted dates multiple times
+- Replace old predictions
+- Emit ACTUAL events after multiple EXPECTED updates
+- Occasionally duplicate ACTUAL events
+
+The system must:
+
+- Preserve full history
+- Display only one “primary” event per semantic step
+- Avoid confusing the operator
+- Remain explainable
+
+This document formalizes the Event Series model.
+
+---
+
+## 2. Core Concepts
+
+### Observation
+
+A normalized fact derived from snapshot ingestion.
+
+Key fields:
+
+- type
+- location
+- event_time
+- event_time_type: ACTUAL | EXPECTED
+
+Observations are immutable and append-only.
+
+---
+
+### Series
+
+A **Series** is a group of Observations referring to the same semantic milestone.
+
+Series key is derived from:
+
+(type + semantic location grouping rules)
+
+Example:
+
+- LOAD at port A
+- Multiple EXPECTED LOAD updates
+- Later ACTUAL LOAD
+
+All belong to one series.
+
+---
+
+## 3. Valid Series Shapes
+
+A series may contain:
+
+1. Single ACTUAL
+2. Single EXPECTED
+3. Multiple EXPECTED
+4. Multiple EXPECTED + 1 ACTUAL
+5. Multiple ACTUAL (conflict)
+6. EXPECTED after ACTUAL (redundant)
+
+---
+
+## 4. Primary Selection (Safe-First Rule)
+
+Algorithm:
+
+1. If any ACTUAL exists:
+   - Select the latest ACTUAL as primary.
+2. Else:
+   - Select the latest non-expired EXPECTED as primary.
+
+This ensures monotonic correctness and operator safety.
+
+---
+
+## 5. Derived States
+
+Each observation is classified as:
+
+- ACTUAL
+- ACTIVE_EXPECTED
+- EXPIRED_EXPECTED
+
+Rules:
+
+- EXPECTED becomes EXPIRED if:
+  - event_time < now
+  - and no ACTUAL supersedes it
+- EXPECTED after ACTUAL is REDUNDANT (hidden by default)
+
+---
+
+## 6. Conflict Handling
+
+If multiple ACTUAL events exist in one series:
+
+- Latest ACTUAL is primary
+- Series marked as conflicted
+- Data alert may be emitted
+
+System must never discard conflicting ACTUAL facts.
+
+---
+
+## 7. UI Contract
+
+Tracking exports:
+
+- TrackingTimelineItem
+- deriveTimelineWithSeriesReadModel()
+
+Tracking does NOT:
+
+- Generate labels
+- Format dates
+- Perform i18n
+
+UI decides presentation.

@@ -1,4 +1,5 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type {
   ContainerDetail,
   ShipmentDetail,
@@ -6,23 +7,17 @@ import type {
 import { CARRIERS, type Carrier } from '~/modules/process/domain/identity/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
 import {
   containerStatusLabel,
   containerStatusToVariant,
 } from '~/modules/tracking/application/projection/tracking.status.presenter'
-import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
-import { deriveTimelineWithSeries } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
 import {
-  CONTAINER_STATUSES,
-  type ContainerStatus,
-} from '~/modules/tracking/domain/model/containerStatus'
+  deriveTimelineWithSeriesReadModel,
+  type TrackingTimelineItem,
+} from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
-import { formatDateForLocale } from '~/shared/utils/formatDate'
-
-function isContainerStatus(s: unknown): s is ContainerStatus {
-  return typeof s === 'string' && CONTAINER_STATUSES.some((cs) => cs === s)
-}
 
 function isCarrier(s: unknown): s is Carrier {
   return typeof s === 'string' && CARRIERS.some((c) => c === s)
@@ -36,13 +31,7 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
   variant: StatusVariant
   label: string
 } {
-  const statuses: ContainerStatus[] = containers.map((c) => {
-    const s = c.status
-    if (isContainerStatus(s)) {
-      return s
-    }
-    return 'UNKNOWN'
-  })
+  const statuses = containers.map((container) => toOperationalStatus(container.status))
 
   const highest = deriveProcessStatusFromContainers(statuses)
 
@@ -64,21 +53,18 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
 
   const containers: ContainerDetail[] = data.containers.map((c) => {
     // Build timeline from observations using event series projection
-    const observations = c.observations ?? []
-    const timeline: TimelineEvent[] = deriveTimelineWithSeries(observations)
+    const observations = toTrackingObservationDTOs(c.observations ?? [])
+    const timeline: TrackingTimelineItem[] = deriveTimelineWithSeriesReadModel(observations)
 
     // If no observations, show a "process registered" placeholder
     if (timeline.length === 0) {
       timeline.push({
         id: 'system-created',
-        label: 'Process registered in the system', // fallback for non-i18n consumers
-        labelKey: 'shipmentView.timeline.systemCreated', // i18n key for UI
+        type: 'SYSTEM_CREATED',
         location: undefined,
-        date: formatDateForLocale(new Date(data.created_at)),
-        date_iso: data.created_at,
-        status: 'completed',
-        eventTimeType: 'ACTUAL', // System-generated event is ACTUAL
-        derivedState: 'ACTUAL', // System-generated event is ACTUAL
+        eventTimeIso: data.created_at,
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
       })
     }
 
