@@ -53,7 +53,7 @@ describe('processPresenter', () => {
     expect(result.containers[0].statusLabel).toBe('Loaded')
     expect(result.containers[0].timeline.length).toBe(1)
     expect(result.containers[0].timeline[0].type).toBe('LOAD')
-    expect(result.containers[0].timeline[0].vessel_name).toBe('MAERSK SEVILLE')
+    expect(result.containers[0].timeline[0].vesselName).toBe('MAERSK SEVILLE')
     expect(result.containers[0].timeline[0].voyage).toBe('123W')
     expect(Array.isArray(result.alerts)).toBe(true)
   })

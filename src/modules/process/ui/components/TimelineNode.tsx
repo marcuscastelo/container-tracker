@@ -28,7 +28,7 @@ export function TimelineNode(props: {
     return iso.replace(/\.\d+Z?$/, '').replace(/Z$/, '')
   }
 
-  const isExpected = () => props.event.event_time_type === 'EXPECTED'
+  const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
 
   const status = createMemo<EventStatus>(() => {
@@ -72,45 +72,47 @@ export function TimelineNode(props: {
 
   function typeToLabel(type: TrackingTimelineItem['type']): string {
     switch (type) {
+      case 'SYSTEM_CREATED':
+        return t(keys.shipmentView.timeline.systemCreated)
       case 'GATE_IN':
-        return 'Gate In'
+        return t(keys.tracking.observationType.GATE_IN)
       case 'GATE_OUT':
-        return 'Gate Out'
+        return t(keys.tracking.observationType.GATE_OUT)
       case 'LOAD':
-        return 'Loaded on Vessel'
+        return t(keys.tracking.observationType.LOAD)
       case 'DEPARTURE':
-        return 'Vessel Departed'
+        return t(keys.tracking.observationType.DEPARTURE)
       case 'ARRIVAL':
-        return 'Arrived at Port'
+        return t(keys.tracking.observationType.ARRIVAL)
       case 'DISCHARGE':
-        return 'Discharged from Vessel'
+        return t(keys.tracking.observationType.DISCHARGE)
       case 'DELIVERY':
-        return 'Delivered'
+        return t(keys.tracking.observationType.DELIVERY)
       case 'EMPTY_RETURN':
-        return 'Empty Returned'
+        return t(keys.tracking.observationType.EMPTY_RETURN)
       case 'CUSTOMS_HOLD':
-        return 'Customs Hold'
+        return t(keys.tracking.observationType.CUSTOMS_HOLD)
       case 'CUSTOMS_RELEASE':
-        return 'Customs Released'
+        return t(keys.tracking.observationType.CUSTOMS_RELEASE)
       default:
-        return String(type)
+        return t(keys.tracking.observationType.OTHER)
     }
   }
 
   const label = createMemo(() => {
     let s = typeToLabel(props.event.type)
-    if (props.event.vessel_name) {
-      s += ` — ${props.event.vessel_name}`
+    if (props.event.vesselName) {
+      s += ` — ${props.event.vesselName}`
       if (props.event.voyage) s += ` (${props.event.voyage})`
     }
     return s
   })
 
   const dateIso = createMemo(() =>
-    props.event.event_time_type === 'ACTUAL' ? props.event.event_time_iso : null,
+    props.event.eventTimeType === 'ACTUAL' ? props.event.eventTimeIso : null,
   )
   const expectedDateIso = createMemo(() =>
-    props.event.event_time_type === 'EXPECTED' ? props.event.event_time_iso : null,
+    props.event.eventTimeType === 'EXPECTED' ? props.event.eventTimeIso : null,
   )
 
   return (

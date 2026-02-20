@@ -13,14 +13,14 @@ export type TrackingTimelineItem = {
   readonly type: TrackingObservationDTO['type']
   readonly location?: string
   /** ISO timestamp coming from obs.event_time */
-  readonly event_time_iso: string | null
+  readonly eventTimeIso: string | null
   /** ACTUAL or EXPECTED */
-  readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
   /** Derived state for safe-first rendering */
   readonly derivedState: DerivedObservationState
 
   /** Optional vessel info (kept raw, UI decides formatting) */
-  readonly vessel_name?: string | null
+  readonly vesselName?: string | null
   readonly voyage?: string | null
 
   /** Optional series history for prediction evolution */
@@ -45,10 +45,10 @@ export function observationToTrackingTimelineItem(
     id: obs.id ?? `obs-${index}`,
     type: obs.type,
     location,
-    event_time_iso: obs.event_time ?? null,
-    event_time_type: eventTimeType,
+    eventTimeIso: obs.event_time ?? null,
+    eventTimeType,
     derivedState,
-    vessel_name: obs.vessel_name ?? null,
+    vesselName: obs.vessel_name ?? null,
     voyage: obs.voyage ?? null,
   }
 }

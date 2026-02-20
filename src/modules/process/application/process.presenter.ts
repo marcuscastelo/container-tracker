@@ -62,8 +62,8 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
         id: 'system-created',
         type: 'SYSTEM_CREATED',
         location: undefined,
-        event_time_iso: data.created_at,
-        event_time_type: 'ACTUAL',
+        eventTimeIso: data.created_at,
+        eventTimeType: 'ACTUAL',
         derivedState: 'ACTUAL',
       })
     }
