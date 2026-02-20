@@ -1,17 +1,15 @@
-# Agent Instructions — Tracking Bounded Context
+# AGENTS — Tracking (Local Addendum)
 
-This file applies to changes under `src/modules/tracking/*`.
+This file applies only to `src/modules/tracking/*`.
 
-Tracking owns:
-- snapshots (raw payload)
-- observations (normalized events)
-- derivation (timeline/status/alerts)
-- series classification and reconciliation
-- carrier integration (fetchers + normalizers)
+Primary instruction source:
+- `AGENTS.md` (repository root)
+
+This file contains only tracking-specific additions that are not already explicit in root.
 
 ---
 
-## 0) Read-first (mandatory for tracking edits)
+## 0) Read-First for Tracking Changes
 
 - `docs/TRACKING_INVARIANTS.md`
 - `docs/TRACKING_EVENT_SERIES.md`
@@ -21,111 +19,35 @@ Tracking owns:
 
 ---
 
-## 1) Non-negotiable invariants
+## 1) Tracking Ownership
 
-### 1.1 Snapshots are immutable
-- Always persist raw payload first
-- Never overwrite or update snapshots in-place
+Tracking owns:
+- snapshot persistence (raw payload)
+- normalized observations
+- timeline/status/alert derivation
+- series reconciliation/classification
+- carrier integration (fetchers + normalizers)
 
-### 1.2 Observations are append-only
-- Never delete or mutate an observation
-- Corrections are additive
-- Deduplicate via deterministic fingerprint (semantic fields)
-
-### 1.3 Raw payload is preserved
-- Never discard raw
-- Parsing failures must be visible (data alert) while keeping raw
+No other module should redefine tracking semantics.
 
 ---
 
-## 2) Series semantics (must not regress)
+## 2) Invariants to Protect in This Module
 
-### Fundamental Rule:
-ONE series → ONE timeline entry.
-
-Never produce multiple timeline entries for the same semantic series.
-
----
-
-### Primary selection (Safe-First)
-
-If series contains:
-
-- Any ACTUAL → primary = latest ACTUAL.
-- No ACTUAL → primary = latest valid EXPECTED.
-
-Older EXPECTED events:
-
-- Must remain in history.
-- Must NOT generate additional timeline entries.
-- Must be exposed only via `series[]` for inspection.
-
-EXPECTED after ACTUAL:
-
-- Preserved as fact.
-- Marked redundant for display.
-- Never replaces ACTUAL.
-
-Multiple ACTUAL in a series:
-
-- Preserve all facts.
-- Mark series as conflicted.
-- Primary = latest ACTUAL.
-- Emit data alert.
+- Always preserve raw payload, even when parsing fails
+- Parsing failures must surface as `data` alerts (do not hide)
+- `domain/derive/*` must stay pure and deterministic (no presentation logic, no implicit `now`)
+- Reconcile layer classifies; it never mutates facts
+- One semantic series must produce one timeline primary
+- Conflict in multiple ACTUAL must remain visible
 
 ---
 
-### Expiration
+## 3) Tests Required on Sensitive Changes
 
-EXPIRED_EXPECTED is:
+If changing:
+- fingerprint logic -> update/add tests under tracking domain identity/tests
+- series classification/expiration -> update `domain/reconcile/tests/*`
+- timeline derivation -> update derive/reconcile read-model tests
 
-- A derived display state.
-- Computed in reconcile layer.
-- Never a mutation of the original observation.
-
----
-
-## 3) What Tracking must NOT do
-
-- Must NOT format dates for locale
-- Must NOT generate UI labels or i18n strings
-- Must NOT depend on UI components
-- Must NOT import capabilities
-- Must NOT leak transport DTOs as domain types (prefer internal DTOs/read models)
-
----
-
-## 4) Alert rules (tracking-specific)
-
-- Fact alerts may be retroactive
-- Monitoring alerts must not be retroactive
-- Conflicts and parsing issues should produce `data` category alerts
-
----
-
-## 5) Layering & types rules
-
-- domain: pure rules and types, no infra or UI
-- application: orchestration + read models + ports
-- infrastructure: persistence + carrier integration
-- interface: HTTP mapping/controllers
-- UI only consumes read models
-
-No:
-- `any`
-- `as` (except `as const`)
-- `Partial<Entity>` inputs
-- `{ success: boolean }` results
-
-snake_case restricted to persistence.
-
----
-
-## 6) Tests required for sensitive changes
-
-If you change:
-- fingerprinting → add/adjust tests in `domain/tests/*` and/or `domain/identity/*`
-- series classification / expiration → update tests in `domain/reconcile/tests/*`
-- timeline derivation → update tests in `domain/tests/deriveTimeline*` and presenter/read model tests
-
-Prefer deterministic fixtures and golden tests.
+Prefer deterministic fixtures and stable tests.
