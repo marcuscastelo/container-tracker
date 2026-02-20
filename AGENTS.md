@@ -195,3 +195,12 @@ UI never defines domain truth.
 
 Files under `docs/0204/*` are historical context only.
 For current decisions, always prioritize the canonical docs listed in section 0.
+
+---
+
+## 14) Copy/Paste Output Preference
+
+When returning content intended to be copied and pasted (for example PR title/description, changelog blocks, release notes, shell snippets, or templates):
+
+- Prefer wrapping the whole payload with **4 backticks** (```` ... ````) to avoid nesting issues.
+- If the output is long/structured, a canvas-like alternative is acceptable, but default is still 4 backticks for plain copy/paste.
