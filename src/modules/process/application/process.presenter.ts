@@ -10,15 +10,16 @@ import {
   containerStatusLabel,
   containerStatusToVariant,
 } from '~/modules/tracking/application/projection/tracking.status.presenter'
-import type { TimelineEvent } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
-import { deriveTimelineWithSeries } from '~/modules/tracking/application/projection/tracking.timeline.presenter'
+import {
+  deriveTimelineWithSeriesReadModel,
+  type TrackingTimelineItem,
+} from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import {
   CONTAINER_STATUSES,
   type ContainerStatus,
 } from '~/modules/tracking/domain/model/containerStatus'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
-import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 function isContainerStatus(s: unknown): s is ContainerStatus {
   return typeof s === 'string' && CONTAINER_STATUSES.some((cs) => cs === s)
@@ -65,20 +66,17 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
   const containers: ContainerDetail[] = data.containers.map((c) => {
     // Build timeline from observations using event series projection
     const observations = c.observations ?? []
-    const timeline: TimelineEvent[] = deriveTimelineWithSeries(observations)
+    const timeline: TrackingTimelineItem[] = deriveTimelineWithSeriesReadModel(observations)
 
     // If no observations, show a "process registered" placeholder
     if (timeline.length === 0) {
       timeline.push({
         id: 'system-created',
-        label: 'Process registered in the system', // fallback for non-i18n consumers
-        labelKey: 'shipmentView.timeline.systemCreated', // i18n key for UI
+        type: 'SYSTEM_CREATED',
         location: undefined,
-        date: formatDateForLocale(new Date(data.created_at)),
-        date_iso: data.created_at,
-        status: 'completed',
-        eventTimeType: 'ACTUAL', // System-generated event is ACTUAL
-        derivedState: 'ACTUAL', // System-generated event is ACTUAL
+        event_time_iso: data.created_at,
+        event_time_type: 'ACTUAL',
+        derivedState: 'ACTUAL',
       })
     }
 
