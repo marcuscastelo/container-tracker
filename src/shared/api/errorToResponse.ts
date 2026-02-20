@@ -1,3 +1,4 @@
+import { ZodError } from 'zod/v4'
 import { TypedFetchError } from '~/shared/api/typedFetch'
 import {
   CannotRemoveLastContainerError,
@@ -22,6 +23,11 @@ export function mapErrorToResponse(err: unknown): Response {
   // TypedFetchError carries HTTP status from remote fetch
   if (err instanceof TypedFetchError) {
     return jsonResponse({ error: err.message }, err.status)
+  }
+
+  // ZodError at API boundaries means client payload/query/params validation failure
+  if (err instanceof ZodError) {
+    return jsonResponse({ error: err.message }, 400)
   }
 
   // Domain-specific errors -> map to appropriate codes

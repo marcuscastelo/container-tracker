@@ -85,6 +85,25 @@ describe('refresh controllers', () => {
     expect(body.error).toContain('MSCU7654321')
   })
 
+  it('returns 400 for invalid refresh payload', async () => {
+    const controllers = createRefreshControllers({
+      refreshRestUseCase: vi.fn(),
+      refreshMaerskUseCase: vi.fn(),
+    })
+
+    const request = new Request('http://localhost/api/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ container: 'MSCU7654321' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await controllers.refresh({ request })
+    const body = RefreshSchemas.responses.error.parse(await response.json())
+
+    expect(response.status).toBe(400)
+    expect(body.error).toContain('carrier')
+  })
+
   it('parses params/query and returns maersk success', async () => {
     const refreshMaerskUseCase = vi.fn(async () => ({
       kind: 'ok' as const,
