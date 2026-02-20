@@ -1,18 +1,24 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import {
+  type OperationalStatus,
+  toOperationalAlertSeverity,
+  toOperationalStatus,
+} from '~/modules/process/application/operational-projection/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Minimal tracking summary needed for process-level aggregation.
  * Matches the subset of GetContainerSummaryResult we consume.
  */
 type ContainerTrackingSummary = {
-  readonly status: ContainerStatus
-  readonly alerts: readonly TrackingAlert[]
+  readonly status: string
+  readonly alerts: readonly {
+    readonly severity: string
+    readonly type: string
+  }[]
   readonly timeline: {
     readonly observations: readonly { readonly event_time: string | null }[]
   }
@@ -54,7 +60,9 @@ export function aggregateOperationalSummary(
   now?: string,
 ): ProcessOperationalSummary {
   // --- Process Status ---
-  const statuses: ContainerStatus[] = summaries.map((s) => s.status)
+  const statuses: OperationalStatus[] = summaries.map((summary) =>
+    toOperationalStatus(summary.status),
+  )
   const processStatus = deriveProcessStatusFromContainers(statuses)
 
   // --- ETA ---
@@ -72,7 +80,7 @@ export function aggregateOperationalSummary(
   }
 
   // --- Alerts ---
-  const allActiveAlerts: TrackingAlert[] = []
+  const allActiveAlerts: Array<{ readonly severity: string; readonly type: string }> = []
   for (const s of summaries) {
     for (const a of s.alerts) {
       allActiveAlerts.push(a)
@@ -81,14 +89,20 @@ export function aggregateOperationalSummary(
 
   const alertsCount = allActiveAlerts.length
 
-  const severityOrder: Record<string, number> = { info: 1, warning: 2, danger: 3 }
+  const severityOrder: Record<'info' | 'warning' | 'danger', number> = {
+    info: 1,
+    warning: 2,
+    danger: 3,
+  }
   let highestAlertSeverity: 'info' | 'warning' | 'danger' | null = null
   let highestSeverityIdx = 0
   for (const a of allActiveAlerts) {
-    const idx = severityOrder[a.severity] ?? 0
+    const severity = toOperationalAlertSeverity(a.severity)
+    if (!severity) continue
+    const idx = severityOrder[severity]
     if (idx > highestSeverityIdx) {
       highestSeverityIdx = idx
-      highestAlertSeverity = a.severity
+      highestAlertSeverity = severity
     }
   }
 

@@ -1,9 +1,9 @@
+import { TypedFetchError } from '~/shared/api/typedFetch'
 import {
   CannotRemoveLastContainerError,
   ContainerAlreadyExistsError,
   DuplicateContainersError,
-} from '~/modules/process/application/errors'
-import { TypedFetchError } from '~/shared/api/typedFetch'
+} from '~/shared/errors/container-process.errors'
 import { HttpError, InfrastructureError } from '~/shared/errors/httpErrors'
 
 function jsonResponse(body: unknown, status = 500): Response {
@@ -26,7 +26,7 @@ export function mapErrorToResponse(err: unknown): Response {
 
   // Domain-specific errors -> map to appropriate codes
   if (err instanceof ContainerAlreadyExistsError) {
-    return jsonResponse({ error: err.message, existing: err.existingContainer ?? null }, 409)
+    return jsonResponse({ error: err.message, existing: err.existing ?? null }, 409)
   }
 
   if (err instanceof DuplicateContainersError) {

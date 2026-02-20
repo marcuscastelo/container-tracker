@@ -2,7 +2,6 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import z from 'zod'
-import { SearchOverlay } from '~/capabilities/search/ui/SearchOverlay'
 import { presentProcessList } from '~/modules/process/application/queries/processList.presenter'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
@@ -120,7 +119,7 @@ function CheckIcon(): JSX.Element {
   )
 }
 
-export function Dashboard(): JSX.Element {
+export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys } = useTranslation()
   const navigate = useNavigate()
   const [processes, { refetch }] = createResource(fetchProcesses)
@@ -233,10 +232,9 @@ export function Dashboard(): JSX.Element {
       />
 
       <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Global Search Bar */}
-        <div class="mb-6 flex justify-center">
-          <SearchOverlay />
-        </div>
+        <Show when={props.searchSlot}>
+          <div class="mb-6 flex justify-center">{props.searchSlot}</div>
+        </Show>
 
         {/* Error message */}
         <Show when={createError()}>

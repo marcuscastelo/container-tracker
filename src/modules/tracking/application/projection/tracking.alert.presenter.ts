@@ -1,4 +1,12 @@
-import type { TrackingAlertResponse } from '~/shared/api-schemas/processes.schemas'
+export type TrackingAlertDisplaySource = {
+  readonly id: string
+  readonly type: string
+  readonly severity: string
+  readonly message: string
+  readonly triggered_at: string
+  readonly category: string
+  readonly retroactive: boolean
+}
 
 export type AlertDisplay = {
   readonly id: string
@@ -48,7 +56,7 @@ function alertSeverityToDisplay(severity: string): AlertDisplay['severity'] {
   return 'info'
 }
 
-export function alertToDisplay(alert: TrackingAlertResponse): AlertDisplay {
+export function alertToDisplay(alert: TrackingAlertDisplaySource): AlertDisplay {
   return {
     id: alert.id,
     type: alertTypeToDisplay(alert.type),

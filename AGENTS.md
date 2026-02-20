@@ -14,7 +14,7 @@ Goal: preserve domain correctness, auditability, and architectural boundaries.
 Before implementing anything non-trivial, consult:
 
 - Product/domain model: `docs/MASTER_v2.md`
-- Types and layers rules: `docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md`
+- Types and layers rules: `docs/TYPE_ARCHITECTURE.md`
 - BC vs capability boundaries: `docs/BOUNDARIES.md`
 - Tracking invariants: `docs/TRACKING_INVARIANTS.md`
 - Event series semantics: `docs/TRACKING_EVENT_SERIES.md`
@@ -164,7 +164,7 @@ If you modify:
 - `src/modules/tracking/domain/*` -> re-read `docs/TRACKING_INVARIANTS.md` and `docs/TRACKING_EVENT_SERIES.md`
 - alerts logic -> re-read `docs/ALERT_POLICY.md`
 - boundaries/dependencies -> re-read `docs/BOUNDARIES.md`
-- type/DTO contracts -> re-read `docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md`
+- type/DTO contracts -> re-read `docs/TYPE_ARCHITECTURE.md`
 - product/domain wording -> re-read `docs/MASTER_v2.md`
 
 ---

@@ -33,8 +33,35 @@ const RefreshHealthResponseSchema = z.object({
 
 const RefreshResponseSchema = z.union([RefreshSuccessResponseSchema, RefreshRedirectResponseSchema])
 
+const MaerskRequestParamsSchema = z.object({
+  container: z.string(),
+})
+
+const MaerskRequestQuerySchema = z.object({
+  headless: z.string().optional(),
+  userDataDir: z.string().optional(),
+  hold: z.string().optional(),
+  timeout: z.string().optional(),
+})
+
+const MaerskSuccessResponseSchema = z.object({
+  ok: z.literal(true),
+  container: z.string(),
+  status: z.number().optional(),
+  savedToSupabase: z.boolean().optional(),
+})
+
+const MaerskErrorResponseSchema = z.object({
+  error: z.string(),
+  hint: z.string().optional(),
+  diagnostics: z.record(z.string(), z.unknown()).optional(),
+  details: z.string().optional(),
+  status: z.number().optional(),
+  expectedUrl: z.string().optional(),
+})
+
 export const RefreshSchemas = {
-  request: RefreshRequestSchema,
+  refreshRequest: RefreshRequestSchema,
   response: RefreshResponseSchema,
   responses: {
     error: RefreshErrorResponseSchema,
@@ -42,4 +69,13 @@ export const RefreshSchemas = {
     success: RefreshSuccessResponseSchema,
     redirect: RefreshRedirectResponseSchema,
   },
+  maersk: {
+    params: MaerskRequestParamsSchema,
+    query: MaerskRequestQuerySchema,
+    responses: {
+      success: MaerskSuccessResponseSchema,
+      error: MaerskErrorResponseSchema,
+    },
+  },
+  provider: ProviderSchema,
 }

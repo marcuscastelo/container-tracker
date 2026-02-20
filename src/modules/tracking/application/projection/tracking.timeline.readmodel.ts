@@ -1,4 +1,5 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
+import type { TrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
 import {
   buildSeriesKey,
   compareObservationsChronologically,
@@ -6,11 +7,10 @@ import {
 import type { DerivedObservationState } from '~/modules/tracking/domain/reconcile/expiredExpected'
 import { deriveObservationState } from '~/modules/tracking/domain/reconcile/expiredExpected'
 import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassification'
-import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
 
 export type TrackingTimelineItem = {
   readonly id: string
-  readonly type: ObservationResponse['type']
+  readonly type: TrackingObservationDTO['type']
   readonly location?: string
   /** ISO timestamp coming from obs.event_time */
   readonly event_time_iso: string | null
@@ -24,11 +24,11 @@ export type TrackingTimelineItem = {
   readonly voyage?: string | null
 
   /** Optional series history for prediction evolution */
-  readonly series?: readonly ObservationResponse[]
+  readonly series?: readonly TrackingObservationDTO[]
 }
 
 export function observationToTrackingTimelineItem(
-  obs: ObservationResponse,
+  obs: TrackingObservationDTO,
   index: number,
   derivedState: DerivedObservationState = obs.event_time_type === 'ACTUAL'
     ? 'ACTUAL'
@@ -54,8 +54,11 @@ export function observationToTrackingTimelineItem(
 }
 
 export function timelineItemToTrackingItem(
-  item: { readonly primary: ObservationResponse; readonly series?: readonly ObservationResponse[] },
-  allObservations: readonly ObservationResponse[],
+  item: {
+    readonly primary: TrackingObservationDTO
+    readonly series?: readonly TrackingObservationDTO[]
+  },
+  allObservations: readonly TrackingObservationDTO[],
   index: number,
 ): TrackingTimelineItem {
   const derivedState = deriveObservationState(item.primary, allObservations)
@@ -76,12 +79,12 @@ export function timelineItemToTrackingItem(
  * No UI strings, no locale formatting.
  */
 export function deriveTimelineWithSeriesReadModel(
-  observations: readonly ObservationResponse[],
+  observations: readonly TrackingObservationDTO[],
   now: Date = new Date(),
 ): TrackingTimelineItem[] {
   if (observations.length === 0) return []
 
-  const groups = new Map<string, ObservationResponse[]>()
+  const groups = new Map<string, TrackingObservationDTO[]>()
 
   for (const obs of observations) {
     const key = buildSeriesKey(obs)
@@ -90,8 +93,10 @@ export function deriveTimelineWithSeriesReadModel(
     else groups.set(key, [obs])
   }
 
-  const result: Array<{ primary: ObservationResponse; series?: readonly ObservationResponse[] }> =
-    []
+  const result: Array<{
+    primary: TrackingObservationDTO
+    series?: readonly TrackingObservationDTO[]
+  }> = []
 
   for (const series of groups.values()) {
     series.sort(compareObservationsChronologically)

@@ -1,7 +1,7 @@
 import {
-  type ContainerStatus,
-  statusDominanceIndex,
-} from '~/modules/tracking/domain/model/containerStatus'
+  type OperationalStatus,
+  operationalStatusDominanceIndex,
+} from '~/modules/process/application/operational-projection/operationalSemantics'
 
 /**
  * Derive the highest-dominance status from multiple container statuses.
@@ -14,13 +14,13 @@ import {
  * @returns The highest-dominance ContainerStatus
  */
 export function deriveProcessStatusFromContainers(
-  statuses: readonly ContainerStatus[],
-): ContainerStatus {
-  let highest: ContainerStatus = 'UNKNOWN'
+  statuses: readonly OperationalStatus[],
+): OperationalStatus {
+  let highest: OperationalStatus = 'UNKNOWN'
   let highestIdx = 0
 
   for (const s of statuses) {
-    const idx = statusDominanceIndex(s)
+    const idx = operationalStatusDominanceIndex(s)
     if (idx > highestIdx) {
       highest = s
       highestIdx = idx

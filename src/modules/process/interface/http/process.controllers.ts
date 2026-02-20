@@ -1,5 +1,4 @@
 import type { APIEvent } from '@solidjs/start/server'
-import type { ContainerUseCases } from '~/modules/container/application/container.usecases'
 import type { ProcessUseCases } from '~/modules/process/application/process.usecases'
 import {
   toContainerInputs,
@@ -11,13 +10,10 @@ import {
   toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
-import {
-  CheckContainersBodySchema,
-  CreateProcessInputSchema,
-} from '~/modules/process/interface/http/process.schemas'
+import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
-import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
+import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
   ProcessResponseSchema,
@@ -29,7 +25,6 @@ import {
 
 export type ProcessControllerDeps = {
   readonly processUseCases: ProcessUseCases
-  readonly containerUseCases: Pick<ContainerUseCases, 'findByNumbers'>
   readonly trackingUseCases: Pick<TrackingUseCases, 'getContainerSummary'>
 }
 
@@ -38,7 +33,7 @@ export type ProcessControllerDeps = {
 // ---------------------------------------------------------------------------
 
 export function createProcessControllers(deps: ProcessControllerDeps) {
-  const { processUseCases, containerUseCases, trackingUseCases } = deps
+  const { processUseCases, trackingUseCases } = deps
 
   // -----------------------------------------------------------------------
   // GET /api/processes — list all processes with containers and operational summary
@@ -207,47 +202,11 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     }
   }
 
-  // -----------------------------------------------------------------------
-  // POST /api/processes/check — check container existence/conflicts
-  // -----------------------------------------------------------------------
-  async function checkContainers({ request }: { request: Request }): Promise<Response> {
-    try {
-      const parsed = await parseBody(request, CheckContainersBodySchema)
-      const normalized = parsed.containers.map((c) => c.toUpperCase().trim())
-
-      const { containers } = await containerUseCases.findByNumbers({
-        containerNumbers: normalized,
-      })
-
-      const byNumber = new Map(containers.map((c) => [String(c.containerNumber), c]))
-
-      const conflicts = normalized
-        .map((containerNumber) => {
-          const existing = byNumber.get(containerNumber)
-          if (!existing) return null
-          return {
-            containerNumber,
-            processId: String(existing.processId),
-            containerId: String(existing.id),
-            link: `/shipments/${String(existing.processId)}`,
-            message: `Container ${containerNumber} already exists in another process`,
-          }
-        })
-        .filter(Boolean)
-
-      return jsonResponse({ conflicts })
-    } catch (err) {
-      console.error('POST /api/processes/check error:', err)
-      return mapErrorToResponse(err)
-    }
-  }
-
   return {
     listProcesses,
     createProcess,
     getProcessById,
     updateProcessById,
     deleteProcessById,
-    checkContainers,
   }
 }

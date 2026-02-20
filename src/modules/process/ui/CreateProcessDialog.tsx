@@ -1,11 +1,12 @@
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { findDuplicateContainers } from '~/modules/container/domain/container.validation'
-import type { Carrier } from '~/modules/process/domain/identity/value-objects'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { FormInput, FormSelect } from '~/shared/ui/FormFields'
+import { findDuplicateStrings } from '~/shared/utils/findDuplicateStrings'
+
+type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
 
 export type ContainerInput = {
   readonly id: string
@@ -213,7 +214,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     const containerNumbers = containers
       .map((c) => c.containerNumber.trim())
       .filter((n) => n.length > 0)
-    const duplicates = findDuplicateContainers(containerNumbers)
+    const duplicates = findDuplicateStrings(containerNumbers)
     if (duplicates.length > 0) {
       // keep touched state so inline errors (duplicate) are visible and prevent submit
       return
@@ -260,7 +261,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
           return
         }
 
-        const res = await fetch('/api/processes/check', {
+        const res = await fetch('/api/containers/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ containers: containerNumbersForCheck }),
@@ -370,7 +371,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     containers.map((c) => c.containerNumber.trim()).filter((n) => n.length > 0),
   )
 
-  const duplicateList = createMemo(() => findDuplicateContainers(containerNumbersMemo()))
+  const duplicateList = createMemo(() => findDuplicateStrings(containerNumbersMemo()))
 
   const isSubmitDisabled = createMemo(() => {
     // disable when no valid containers or duplicates present
@@ -522,7 +523,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
                               return copy
                             })
 
-                            const res = await fetch('/api/processes/check', {
+                            const res = await fetch('/api/containers/check', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ containers: [val.toUpperCase().trim()] }),

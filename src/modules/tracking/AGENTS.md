@@ -15,7 +15,7 @@ This file contains only tracking-specific additions that are not already explici
 - `docs/TRACKING_EVENT_SERIES.md`
 - `docs/ALERT_POLICY.md`
 - `docs/BOUNDARIES.md`
-- `docs/arquitetura_de_tipos_e_camadas_container_tracker_guia_definitivo-0211.md`
+- `docs/TYPE_ARCHITECTURE.md`
 
 ---
 

@@ -20,4 +20,132 @@ export default [
       },
     },
   },
+  {
+    files: ['src/routes/api/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '~/modules/*/application/**',
+                '~/modules/*/domain/**',
+                '~/modules/*/infrastructure/**',
+              ],
+              message:
+                'API routes must be thin adapters and depend only on interface/http controllers.',
+            },
+            {
+              group: [
+                '~/capabilities/*/application/**',
+                '~/capabilities/*/domain/**',
+                '~/capabilities/*/infrastructure/**',
+                '~/capabilities/*/ui/**',
+              ],
+              message:
+                'API routes must use capability interface/http adapters instead of internal layers.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/modules/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/capabilities/**'],
+              message: 'Modules must not depend on capabilities.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/capabilities/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/modules/*/domain/**'],
+              message:
+                'Capabilities can orchestrate modules, but must not import modules domain directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/modules/*/domain/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/modules/*/interface/**', '~/shared/ui/**', '~/routes/**'],
+              message: 'Domain layer must not depend on interface/http, shared UI, or routes.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/modules/process/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/modules/container/domain/**', '~/modules/tracking/domain/**'],
+              message: 'Cross-BC domain imports are forbidden in process module.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/modules/container/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/modules/process/domain/**', '~/modules/tracking/domain/**'],
+              message: 'Cross-BC domain imports are forbidden in container module.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/modules/tracking/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/modules/process/domain/**', '~/modules/container/domain/**'],
+              message: 'Cross-BC domain imports are forbidden in tracking module.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]

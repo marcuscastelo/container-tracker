@@ -1,17 +1,17 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createMemo, For, Show } from 'solid-js'
+import type { TrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
 import {
-  classifySeries,
+  classifyTrackingSeries,
   getSeriesLabelClass,
   getSeriesLabelKey,
-} from '~/modules/tracking/domain/reconcile/seriesClassification'
-import type { ObservationResponse } from '~/shared/api-schemas/processes.schemas'
+} from '~/modules/tracking/application/projection/tracking.series.presenter'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type Props = {
-  readonly series: readonly ObservationResponse[]
+  readonly series: readonly TrackingObservationDTO[]
   readonly activityLabel: string
   readonly isOpen: boolean
   readonly onClose: () => void
@@ -21,7 +21,7 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
 
   // Classify series with derived labels
-  const classification = createMemo(() => classifySeries(props.series))
+  const classification = createMemo(() => classifyTrackingSeries(props.series))
 
   // Calculate delta in days between consecutive EXPECTED observations
   const calculateDelta = (current: string, previous: string | null): number | null => {

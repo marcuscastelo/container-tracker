@@ -1,14 +1,14 @@
-import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
-import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
+import type {
+  ProcessContainerRecord,
+  ProcessWithContainers,
+} from '~/modules/process/application/process.readmodels'
 import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
-import type { Observation } from '~/modules/tracking/domain/model/observation'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record
@@ -68,7 +68,38 @@ export function toContainerInputs(
 // Result / ReadModel → Response DTO
 // ---------------------------------------------------------------------------
 
-function toContainerResponse(c: ContainerEntity) {
+type TrackingObservationRecord = {
+  readonly id: string
+  readonly fingerprint: string
+  readonly type: string
+  readonly event_time: string | null
+  readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+  readonly location_code: string | null
+  readonly location_display: string | null
+  readonly vessel_name: string | null
+  readonly voyage: string | null
+  readonly is_empty: boolean | null
+  readonly confidence: string
+  readonly provider: string
+  readonly retroactive?: boolean
+  readonly created_at: string
+}
+
+type TrackingAlertRecord = {
+  readonly id: string
+  readonly category: string
+  readonly type: string
+  readonly severity: string
+  readonly message: string
+  readonly detected_at: string
+  readonly triggered_at: string
+  readonly retroactive: boolean
+  readonly provider: string | null
+  readonly acked_at: string | null
+  readonly dismissed_at: string | null
+}
+
+function toContainerResponse(c: ProcessContainerRecord) {
   return {
     id: String(c.id),
     container_number: String(c.containerNumber),
@@ -123,7 +154,7 @@ export function toProcessResponseWithSummary(
 // Tracking data → Response DTO
 // ---------------------------------------------------------------------------
 
-function toObservationResponse(obs: Observation) {
+function toObservationResponse(obs: TrackingObservationRecord) {
   return {
     id: obs.id,
     fingerprint: obs.fingerprint,
@@ -142,7 +173,7 @@ function toObservationResponse(obs: Observation) {
   }
 }
 
-function toTrackingAlertResponse(a: TrackingAlert) {
+function toTrackingAlertResponse(a: TrackingAlertRecord) {
   return {
     id: a.id,
     category: a.category,
@@ -163,10 +194,10 @@ function toTrackingAlertResponse(a: TrackingAlert) {
  * If tracking fetch fails, returns a fallback with status 'UNKNOWN' and empty observations.
  */
 export function toContainerWithTrackingResponse(
-  c: ContainerEntity,
+  c: ProcessContainerRecord,
   summary: {
     status: string
-    observations: readonly Observation[]
+    observations: readonly TrackingObservationRecord[]
   },
 ) {
   return {
@@ -176,7 +207,7 @@ export function toContainerWithTrackingResponse(
   }
 }
 
-export function toContainerWithTrackingFallback(c: ContainerEntity) {
+export function toContainerWithTrackingFallback(c: ProcessContainerRecord) {
   return {
     ...toContainerResponse(c),
     status: 'UNKNOWN',
@@ -193,7 +224,7 @@ export function toProcessDetailResponse(
     status: string
     observations: ReturnType<typeof toObservationResponse>[]
   }[],
-  alerts: readonly TrackingAlert[],
+  alerts: readonly TrackingAlertRecord[],
 ) {
   return {
     ...processToResponseFields(pwc.process),

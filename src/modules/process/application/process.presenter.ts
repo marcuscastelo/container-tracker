@@ -1,4 +1,5 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type {
   ContainerDetail,
   ShipmentDetail,
@@ -6,6 +7,7 @@ import type {
 import { CARRIERS, type Carrier } from '~/modules/process/domain/identity/value-objects'
 import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
 import { alertToDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
 import {
   containerStatusLabel,
   containerStatusToVariant,
@@ -14,16 +16,8 @@ import {
   deriveTimelineWithSeriesReadModel,
   type TrackingTimelineItem,
 } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
-import {
-  CONTAINER_STATUSES,
-  type ContainerStatus,
-} from '~/modules/tracking/domain/model/containerStatus'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
-
-function isContainerStatus(s: unknown): s is ContainerStatus {
-  return typeof s === 'string' && CONTAINER_STATUSES.some((cs) => cs === s)
-}
 
 function isCarrier(s: unknown): s is Carrier {
   return typeof s === 'string' && CARRIERS.some((c) => c === s)
@@ -37,13 +31,7 @@ function deriveProcessStatus(containers: readonly { status?: string }[]): {
   variant: StatusVariant
   label: string
 } {
-  const statuses: ContainerStatus[] = containers.map((c) => {
-    const s = c.status
-    if (isContainerStatus(s)) {
-      return s
-    }
-    return 'UNKNOWN'
-  })
+  const statuses = containers.map((container) => toOperationalStatus(container.status))
 
   const highest = deriveProcessStatusFromContainers(statuses)
 
@@ -65,7 +53,7 @@ export function presentProcess(data: ProcessDetailResponse): ShipmentDetail {
 
   const containers: ContainerDetail[] = data.containers.map((c) => {
     // Build timeline from observations using event series projection
-    const observations = c.observations ?? []
+    const observations = toTrackingObservationDTOs(c.observations ?? [])
     const timeline: TrackingTimelineItem[] = deriveTimelineWithSeriesReadModel(observations)
 
     // If no observations, show a "process registered" placeholder

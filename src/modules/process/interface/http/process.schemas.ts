@@ -40,10 +40,3 @@ export const CreateProcessInputSchema = z.object({
     .min(1, 'At least one container is required'),
 })
 export type CreateProcessInput = z.infer<typeof CreateProcessInputSchema>
-
-/**
- * Schema for the check-containers endpoint (POST /api/processes/check).
- */
-export const CheckContainersBodySchema = z.object({
-  containers: z.array(z.string()).nonempty(),
-})

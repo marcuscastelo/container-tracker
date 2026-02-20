@@ -1,9 +1,9 @@
-import type { ContainerEntity } from '~/modules/container/domain/container.entity'
-import { ContainerAlreadyExistsError } from '~/modules/process/application/errors'
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
+import type { ProcessContainerRecord } from '~/modules/process/application/process.readmodels'
 import type { InsertProcessRecord } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
+import { ContainerAlreadyExistsError } from '~/shared/errors/container-process.errors'
 
 export type CreateProcessCommand = {
   record: InsertProcessRecord
@@ -15,7 +15,7 @@ export type CreateProcessCommand = {
 
 export type CreateProcessResult = {
   process: ProcessEntity
-  containers: readonly ContainerEntity[]
+  containers: readonly ProcessContainerRecord[]
   warnings: readonly string[]
 }
 
@@ -47,7 +47,12 @@ export function createCreateProcessUseCase(deps: {
       })
       const firstExisting = existingContainers[0]
       if (firstExisting) {
-        throw new ContainerAlreadyExistsError(String(firstExisting.containerNumber), firstExisting)
+        throw new ContainerAlreadyExistsError(String(firstExisting.containerNumber), {
+          processId: String(firstExisting.processId),
+          containerId: String(firstExisting.id),
+          containerNumber: String(firstExisting.containerNumber),
+          link: `/shipments/${String(firstExisting.processId)}`,
+        })
       }
     }
 
