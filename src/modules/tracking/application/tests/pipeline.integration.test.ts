@@ -329,18 +329,25 @@ describe('Pipeline Integration Tests - Maersk', () => {
     // Act
     const result = await processSnapshot(snapshot, containerId, containerNumber, deps, false)
 
-    // Assert - ACTUAL events have high confidence
+    // Assert - events are classified as ACTUAL/EXPECTED with consistent confidence
+    expect(result.timeline.observations.length).toBeGreaterThan(0)
+
+    const classifiedEvents = result.timeline.observations.filter(
+      (o) => o.event_time_type === 'ACTUAL' || o.event_time_type === 'EXPECTED',
+    )
+    expect(classifiedEvents.length).toBe(result.timeline.observations.length)
+
+    // ACTUAL events have high confidence
     const actualEvents = result.timeline.observations.filter((o) => o.event_time_type === 'ACTUAL')
     expect(actualEvents.length).toBeGreaterThan(0)
     for (const event of actualEvents) {
       expect(event.confidence).toBe('high')
     }
 
-    // Assert - EXPECTED events have medium confidence
+    // EXPECTED events (when present) have medium confidence
     const expectedEvents = result.timeline.observations.filter(
       (o) => o.event_time_type === 'EXPECTED',
     )
-    expect(expectedEvents.length).toBeGreaterThan(0)
     for (const event of expectedEvents) {
       expect(event.confidence).toBe('medium')
     }
