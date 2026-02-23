@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { toTrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import {
+  TRACKING_STATUS_CODES,
+  toTrackingStatusCode,
+} from '~/modules/tracking/application/projection/tracking.status.projection'
+import { CONTAINER_STATUSES } from '~/modules/tracking/domain/model/containerStatus'
 
 describe('toTrackingStatusCode', () => {
+  it('reuses canonical status codes from tracking domain', () => {
+    expect(TRACKING_STATUS_CODES).toEqual(CONTAINER_STATUSES)
+  })
+
   it('maps known status values as-is', () => {
     expect(toTrackingStatusCode('IN_TRANSIT')).toBe('IN_TRANSIT')
     expect(toTrackingStatusCode('DELIVERED')).toBe('DELIVERED')
