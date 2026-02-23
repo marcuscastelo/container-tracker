@@ -3,17 +3,38 @@ import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTim
 
 describe('formatRelativeTime', () => {
   const now = new Date('2026-02-23T12:00:00.000Z')
+  const enUS = new Intl.RelativeTimeFormat('en-US', { numeric: 'always', style: 'short' })
+  const ptBR = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'always', style: 'short' })
 
-  it('formats past timestamps as ago', () => {
-    expect(formatRelativeTime('2026-02-23T11:45:00.000Z', now)).toBe('15m ago')
-    expect(formatRelativeTime('2026-02-23T10:00:00.000Z', now)).toBe('2h ago')
-    expect(formatRelativeTime('2026-02-20T12:00:00.000Z', now)).toBe('3d ago')
+  it('formats past timestamps using locale', () => {
+    expect(formatRelativeTime('2026-02-23T11:45:00.000Z', now, 'en-US')).toBe(
+      enUS.format(-15, 'minute'),
+    )
+    expect(formatRelativeTime('2026-02-23T10:00:00.000Z', now, 'en-US')).toBe(
+      enUS.format(-2, 'hour'),
+    )
+    expect(formatRelativeTime('2026-02-20T12:00:00.000Z', now, 'en-US')).toBe(
+      enUS.format(-3, 'day'),
+    )
   })
 
-  it('formats future timestamps as in X', () => {
-    expect(formatRelativeTime('2026-02-23T12:15:00.000Z', now)).toBe('in 15m')
-    expect(formatRelativeTime('2026-02-23T14:00:00.000Z', now)).toBe('in 2h')
-    expect(formatRelativeTime('2026-02-26T12:00:00.000Z', now)).toBe('in 3d')
+  it('formats future timestamps using locale', () => {
+    expect(formatRelativeTime('2026-02-23T12:15:00.000Z', now, 'en-US')).toBe(
+      enUS.format(15, 'minute'),
+    )
+    expect(formatRelativeTime('2026-02-23T14:00:00.000Z', now, 'en-US')).toBe(
+      enUS.format(2, 'hour'),
+    )
+    expect(formatRelativeTime('2026-02-26T12:00:00.000Z', now, 'en-US')).toBe(enUS.format(3, 'day'))
+  })
+
+  it('supports non-English locale formatting', () => {
+    expect(formatRelativeTime('2026-02-23T11:45:00.000Z', now, 'pt-BR')).toBe(
+      ptBR.format(-15, 'minute'),
+    )
+    expect(formatRelativeTime('2026-02-23T12:15:00.000Z', now, 'pt-BR')).toBe(
+      ptBR.format(15, 'minute'),
+    )
   })
 
   it('returns empty string for invalid date', () => {

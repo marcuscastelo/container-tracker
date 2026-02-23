@@ -6,13 +6,16 @@ import {
   toTrackingAlertProjections,
 } from '~/modules/tracking/application/projection/tracking.alert.projection'
 
-function projectionToAlertDisplayVM(projection: TrackingAlertProjection): AlertDisplayVM {
+function projectionToAlertDisplayVM(
+  projection: TrackingAlertProjection,
+  locale: string,
+): AlertDisplayVM {
   return {
     id: projection.id,
     type: projection.type,
     severity: projection.severity,
     message: projection.message,
-    timestamp: formatRelativeTime(projection.triggeredAtIso),
+    timestamp: formatRelativeTime(projection.triggeredAtIso, new Date(), locale),
     triggeredAtIso: projection.triggeredAtIso,
     category: projection.category,
     retroactive: projection.retroactive,
@@ -21,6 +24,9 @@ function projectionToAlertDisplayVM(projection: TrackingAlertProjection): AlertD
 
 export function toAlertDisplayVMs(
   alerts: readonly TrackingAlertProjectionSource[],
+  locale: string = 'en-US',
 ): readonly AlertDisplayVM[] {
-  return toTrackingAlertProjections(alerts).map(projectionToAlertDisplayVM)
+  return toTrackingAlertProjections(alerts).map((projection) =>
+    projectionToAlertDisplayVM(projection, locale),
+  )
 }

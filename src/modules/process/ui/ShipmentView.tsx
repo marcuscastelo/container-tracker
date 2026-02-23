@@ -44,11 +44,11 @@ function toDialogCarrier(value: string | null | undefined): DialogCarrier {
 }
 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
-    () => props.params.id,
-    (id) => fetchProcess(id),
+    () => [props.params.id, locale()] as const,
+    ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
 
   const [isRefreshing, setIsRefreshing] = createSignal(false)

@@ -3,10 +3,13 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import { typedFetch } from '~/shared/api/typedFetch'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
 
-export async function fetchProcess(id: string): Promise<ShipmentDetailVM | null> {
+export async function fetchProcess(
+  id: string,
+  locale: string = 'en-US',
+): Promise<ShipmentDetailVM | null> {
   try {
     const data = await typedFetch(`/api/processes/${id}`, undefined, ProcessDetailResponseSchema)
-    return toShipmentDetailVM(data)
+    return toShipmentDetailVM(data, locale)
   } catch (err: unknown) {
     // typedFetch throws on non-2xx or schema mismatch; surface 404 as null
     if (err instanceof Error && err.message?.includes('Not Found')) return null

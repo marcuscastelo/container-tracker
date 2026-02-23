@@ -21,7 +21,10 @@ function deriveProcessStatusCode(
   return toTrackingStatusCode(highest)
 }
 
-export function toShipmentDetailVM(data: ProcessDetailResponse): ShipmentDetailVM {
+export function toShipmentDetailVM(
+  data: ProcessDetailResponse,
+  locale: string = 'en-US',
+): ShipmentDetailVM {
   const containers = data.containers.map((container) => {
     const observations = toTrackingObservationDTOs(container.observations ?? [])
     const timeline: TrackingTimelineItem[] = deriveTimelineWithSeriesReadModel(observations)
@@ -71,6 +74,7 @@ export function toShipmentDetailVM(data: ProcessDetailResponse): ShipmentDetailV
     containers,
     alerts: toAlertDisplayVMs(
       (data.alerts ?? []).filter((alert) => alert.acked_at === null && alert.dismissed_at === null),
+      locale,
     ),
   }
 }
