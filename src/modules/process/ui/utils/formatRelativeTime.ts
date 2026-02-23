@@ -4,11 +4,18 @@ export function formatRelativeTime(dateString: string, now: Date = new Date()): 
 
   if (!Number.isFinite(diffMs)) return ''
 
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  const absMs = Math.abs(diffMs)
+  const diffMins = Math.floor(absMs / 60000)
+  const diffHours = Math.floor(absMs / 3600000)
+  const diffDays = Math.floor(absMs / 86400000)
 
-  if (diffMins < 60) return `${Math.max(diffMins, 0)}m ago`
-  if (diffHours < 24) return `${Math.max(diffHours, 0)}h ago`
-  return `${Math.max(diffDays, 0)}d ago`
+  if (diffMs < 0) {
+    if (diffMins < 60) return `in ${diffMins}m`
+    if (diffHours < 24) return `in ${diffHours}h`
+    return `in ${diffDays}d`
+  }
+
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  return `${diffDays}d ago`
 }
