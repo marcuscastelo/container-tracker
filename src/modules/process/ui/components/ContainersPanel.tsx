@@ -1,10 +1,10 @@
 import type { JSX } from 'solid-js'
-import type { ContainerDetail } from '~/modules/process/application/shipment.readmodel'
 import { ContainerSelector } from '~/modules/process/ui/components/ContainerSelector'
+import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {
-  containers: readonly ContainerDetail[]
+  containers: readonly ContainerDetailVM[]
   selectedId: string
   onSelect: (id: string) => void
 }

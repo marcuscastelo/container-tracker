@@ -1,9 +1,9 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
 import { AlertIcon } from '~/modules/process/ui/components/Icons'
-import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 
-export function AlertsList(props: { alerts: readonly AlertDisplay[] }): JSX.Element {
+export function AlertsList(props: { alerts: readonly AlertDisplayVM[] }): JSX.Element {
   return (
     <div class="p-4 gap-3 flex flex-col">
       <For each={props.alerts}>

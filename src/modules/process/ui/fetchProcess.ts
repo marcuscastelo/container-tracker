@@ -1,12 +1,12 @@
-import { presentProcess } from '~/modules/process/application/process.presenter'
-import type { ShipmentDetail } from '~/modules/process/application/shipment.readmodel'
+import { toShipmentDetailVM } from '~/modules/process/ui/mappers/processDetail.ui-mapper'
+import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
 
-export async function fetchProcess(id: string): Promise<ShipmentDetail | null> {
+export async function fetchProcess(id: string): Promise<ShipmentDetailVM | null> {
   try {
     const data = await typedFetch(`/api/processes/${id}`, undefined, ProcessDetailResponseSchema)
-    return presentProcess(data)
+    return toShipmentDetailVM(data)
   } catch (err: unknown) {
     // typedFetch throws on non-2xx or schema mismatch; surface 404 as null
     if (err instanceof Error && err.message?.includes('Not Found')) return null

@@ -1,11 +1,11 @@
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
-import type { ContainerDetail } from '~/modules/process/application/shipment.readmodel'
 import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
+import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {
-  selectedContainer: ContainerDetail | null
+  selectedContainer: ContainerDetailVM | null
   carrier?: string | null
 }
 

@@ -1,12 +1,12 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createMemo, For, Show } from 'solid-js'
-import type { TrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
 import {
-  classifyTrackingSeries,
-  getSeriesLabelClass,
-  getSeriesLabelKey,
-} from '~/modules/tracking/application/projection/tracking.series.presenter'
+  seriesLabelToClass,
+  seriesLabelToKey,
+} from '~/modules/process/ui/mappers/seriesLabel.ui-mapper'
+import type { TrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
+import { classifyTrackingSeries } from '~/modules/tracking/application/projection/tracking.series.classification'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -208,10 +208,10 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
                             <span
                               class={clsx(
                                 'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
-                                getSeriesLabelClass(classifiedObs.seriesLabel),
+                                seriesLabelToClass(classifiedObs.seriesLabel),
                               )}
                             >
-                              {t(getSeriesLabelKey(classifiedObs.seriesLabel))}
+                              {t(seriesLabelToKey(keys, classifiedObs.seriesLabel))}
                             </span>
                           </td>
                         </tr>

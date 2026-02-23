@@ -1,11 +1,11 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { AlertsList } from '~/modules/process/ui/components/AlertsList'
-import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {
-  alerts: readonly AlertDisplay[]
+  alerts: readonly AlertDisplayVM[]
 }
 
 export function AlertsPanel(props: Props): JSX.Element {

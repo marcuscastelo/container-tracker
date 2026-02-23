@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { presentProcess } from '~/modules/process/application/process.presenter'
+import { toShipmentDetailVM } from '~/modules/process/ui/mappers/processDetail.ui-mapper'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 
-describe('processPresenter', () => {
-  it('presents a minimal API payload into shipment detail', () => {
+describe('toShipmentDetailVM', () => {
+  it('maps a minimal API payload into shipment detail view model', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-1',
       reference: 'REF-1',
@@ -44,13 +44,13 @@ describe('processPresenter', () => {
       alerts: [],
     }
 
-    const result = presentProcess(example)
+    const result = toShipmentDetailVM(example)
     expect(result).toBeTruthy()
     expect(result.id).toBe('proc-1')
     expect(Array.isArray(result.containers)).toBe(true)
     expect(result.containers[0].number).toBe('MRKU1234567')
     expect(result.containers[0].status).toBe('loaded')
-    expect(result.containers[0].statusLabel).toBe('Loaded')
+    expect(result.containers[0].statusCode).toBe('LOADED')
     expect(result.containers[0].timeline.length).toBe(1)
     expect(result.containers[0].timeline[0].type).toBe('LOAD')
     expect(result.containers[0].timeline[0].vesselName).toBe('MAERSK SEVILLE')
@@ -58,7 +58,7 @@ describe('processPresenter', () => {
     expect(Array.isArray(result.alerts)).toBe(true)
   })
 
-  it('presents process with alerts from tracking pipeline', () => {
+  it('maps process-level status and alerts from tracking data', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-2',
       reference: 'REF-2',
@@ -86,7 +86,7 @@ describe('processPresenter', () => {
           severity: 'warning',
           message: 'Transshipment detected: 1 intermediate port(s)',
           detected_at: new Date().toISOString(),
-          triggered_at: new Date().toISOString(),
+          triggered_at: '2026-02-01T10:00:00.000Z',
           retroactive: false,
           provider: 'msc',
           acked_at: null,
@@ -95,13 +95,14 @@ describe('processPresenter', () => {
       ],
     }
 
-    const result = presentProcess(example)
+    const result = toShipmentDetailVM(example)
     expect(result.status).toBe('in-transit')
-    expect(result.statusLabel).toBe('In Transit')
+    expect(result.statusCode).toBe('IN_TRANSIT')
     expect(result.alerts.length).toBe(1)
     expect(result.alerts[0].type).toBe('transshipment')
     expect(result.alerts[0].severity).toBe('warning')
     expect(result.alerts[0].category).toBe('fact')
+    expect(result.alerts[0].triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
   })
 
   it('filters out dismissed alerts', () => {
@@ -132,7 +133,7 @@ describe('processPresenter', () => {
       ],
     }
 
-    const result = presentProcess(example)
+    const result = toShipmentDetailVM(example)
     expect(result.alerts.length).toBe(0)
   })
 
@@ -157,7 +158,7 @@ describe('processPresenter', () => {
       alerts: [],
     }
 
-    const result = presentProcess(example)
+    const result = toShipmentDetailVM(example)
     expect(result.containers[0].timeline.length).toBe(1)
     expect(result.containers[0].timeline[0].id).toBe('system-created')
     expect(result.containers[0].status).toBe('unknown')

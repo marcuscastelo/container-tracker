@@ -1,14 +1,15 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
-import type { ShipmentDetail } from '~/modules/process/application/shipment.readmodel'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
+import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
-  data: ShipmentDetail
+  data: ShipmentDetailVM
   isRefreshing: boolean
   onTriggerRefresh: () => void
   // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
@@ -72,7 +73,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
         <div class="flex items-center gap-6">
           <div class="text-right">
             <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.status)}</p>
-            <StatusBadge variant={props.data.status} label={props.data.statusLabel} />
+            <StatusBadge
+              variant={props.data.status}
+              label={t(trackingStatusToLabelKey(keys, props.data.statusCode))}
+            />
           </div>
           <div class="text-center">
             <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.carrier)}</p>

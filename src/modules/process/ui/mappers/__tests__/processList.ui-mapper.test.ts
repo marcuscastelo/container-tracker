@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  type ProcessApiResponse,
-  presentProcessList,
-} from '~/modules/process/application/queries/processList.presenter'
+  type ProcessListItemSource,
+  toProcessSummaryVMs,
+} from '~/modules/process/ui/mappers/processList.ui-mapper'
 
-describe('presentProcessList', () => {
-  it('maps API response to ProcessSummary array', () => {
-    const example: ProcessApiResponse[] = [
+describe('toProcessSummaryVMs', () => {
+  it('maps API response to ProcessSummaryVM array', () => {
+    const example: ProcessListItemSource[] = [
       {
         id: 'p1',
         reference: 'REF1',
@@ -22,15 +22,15 @@ describe('presentProcessList', () => {
       },
     ]
 
-    const result = presentProcessList(example)
+    const result = toProcessSummaryVMs(example)
     expect(Array.isArray(result)).toBe(true)
     expect(result[0].id).toBe('p1')
     expect(result[0].containerCount).toBe(1)
     expect(result[0].carrier).toBe('Maersk')
   })
 
-  it('maps process_status from API to correct StatusVariant', () => {
-    const example: ProcessApiResponse[] = [
+  it('maps process_status from API to status code + StatusVariant', () => {
+    const example: ProcessListItemSource[] = [
       {
         id: 'p2',
         reference: 'REF2',
@@ -48,9 +48,9 @@ describe('presentProcessList', () => {
       },
     ]
 
-    const result = presentProcessList(example)
+    const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('in-transit')
-    expect(result[0].statusLabel).toBe('In Transit')
+    expect(result[0].statusCode).toBe('IN_TRANSIT')
     expect(result[0].eta).toBe('2025-06-01T00:00:00Z')
     expect(result[0].alertsCount).toBe(2)
     expect(result[0].highestAlertSeverity).toBe('warning')
@@ -59,7 +59,7 @@ describe('presentProcessList', () => {
   })
 
   it('defaults to unknown status when process_status is absent', () => {
-    const example: ProcessApiResponse[] = [
+    const example: ProcessListItemSource[] = [
       {
         id: 'p3',
         source: 'api',
@@ -69,9 +69,9 @@ describe('presentProcessList', () => {
       },
     ]
 
-    const result = presentProcessList(example)
+    const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('unknown')
-    expect(result[0].statusLabel).toBe('Awaiting data')
+    expect(result[0].statusCode).toBe('UNKNOWN')
     expect(result[0].eta).toBeNull()
     expect(result[0].alertsCount).toBe(0)
     expect(result[0].highestAlertSeverity).toBeNull()
@@ -80,7 +80,7 @@ describe('presentProcessList', () => {
   })
 
   it('maps DELIVERED status correctly', () => {
-    const example: ProcessApiResponse[] = [
+    const example: ProcessListItemSource[] = [
       {
         id: 'p4',
         source: 'api',
@@ -91,8 +91,8 @@ describe('presentProcessList', () => {
       },
     ]
 
-    const result = presentProcessList(example)
+    const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('delivered')
-    expect(result[0].statusLabel).toBe('Delivered')
+    expect(result[0].statusCode).toBe('DELIVERED')
   })
 })
