@@ -3,6 +3,7 @@ import { For, Show } from 'solid-js'
 import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { Panel } from '~/shared/ui/layout/Panel'
 
 type Props = {
   selectedContainer: ContainerDetailVM | null
@@ -12,23 +13,12 @@ type Props = {
 export function TimelinePanel(props: Props): JSX.Element {
   const timeline = () => props.selectedContainer?.timeline ?? []
   const { t, keys } = useTranslation()
+  const subtitle = () =>
+    props.selectedContainer ? `${props.selectedContainer.number} •` : undefined
 
   return (
-    <section class="rounded-lg border border-slate-200 bg-white">
-      <header class="border-b border-slate-200 px-6 py-4">
-        <h2 class="text-base font-semibold text-slate-900">
-          {t(keys.shipmentView.timeline.title)}
-        </h2>
-        <Show when={props.selectedContainer}>
-          <p class="mt-1 text-xs text-slate-500">
-            {props.selectedContainer?.number} •{' '}
-            <span class="inline-block align-middle">
-              {/* StatusBadge used in parent header for container; keep simple here */}
-            </span>
-          </p>
-        </Show>
-      </header>
-      <div class="p-6">
+    <Panel title={t(keys.shipmentView.timeline.title)} subtitle={subtitle()} bodyClass="p-6">
+      <div>
         <Show
           when={timeline().length > 0}
           fallback={
@@ -49,6 +39,6 @@ export function TimelinePanel(props: Props): JSX.Element {
           </div>
         </Show>
       </div>
-    </section>
+    </Panel>
   )
 }

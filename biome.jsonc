@@ -340,6 +340,10 @@
       "linter": { "rules": { "suspicious": { "noExplicitAny": "off" } } }
     },
     {
+      "includes": ["scripts/**/*.mjs"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    },
+    {
       "includes": [
         "src/shared/error/**/*.ts",
         "src/shared/error/**/*.tsx",

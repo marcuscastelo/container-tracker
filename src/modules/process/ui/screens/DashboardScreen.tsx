@@ -1,136 +1,27 @@
-import { A, useNavigate } from '@solidjs/router'
+import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createResource, createSignal, For, Show } from 'solid-js'
-import z from 'zod'
-import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import { createResource, createSignal, Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
-import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
-import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
-import { typedFetch } from '~/shared/api/typedFetch'
+import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
+import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import {
-  CreateProcessResponseSchema,
-  ProcessListResponseSchema,
-} from '~/shared/api-schemas/processes.schemas'
-import { useTranslation } from '~/shared/localization/i18n'
+  createProcessRequest,
+  fetchDashboardProcessSummaries,
+  toCreateProcessInput,
+} from '~/modules/process/ui/validation/processApi.validation'
+import {
+  type ExistingProcessConflict,
+  parseExistingProcessConflictError,
+} from '~/modules/process/ui/validation/processConflict.validation'
 import { AppHeader } from '~/shared/ui/AppHeader'
-import { EmptyState } from '~/shared/ui/EmptyState'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
-import { MetricCard } from '~/shared/ui/MetricCard'
-import { StatusBadge } from '~/shared/ui/StatusBadge'
-import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
-import { isRecord } from '~/shared/utils/typeGuards'
-
-// Fetch processes from API
-async function fetchProcesses(): Promise<readonly ProcessSummaryVM[]> {
-  const data = await typedFetch('/api/processes', undefined, ProcessListResponseSchema)
-  return toProcessSummaryVMs(data)
-}
-
-// Create process via API
-async function createProcessApi(input: CreateProcessInput): Promise<{ id: string }> {
-  const result = await typedFetch(
-    '/api/processes',
-    {
-      method: 'POST',
-      body: JSON.stringify(input),
-      headers: { 'Content-Type': 'application/json' },
-    },
-    CreateProcessResponseSchema,
-  )
-  return { id: result.process.id }
-}
-
-function ShipIcon(): JSX.Element {
-  return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-      />
-    </svg>
-  )
-}
-
-function ContainerIcon(): JSX.Element {
-  return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-      />
-    </svg>
-  )
-}
-
-function AlertIcon(): JSX.Element {
-  return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-      />
-    </svg>
-  )
-}
-
-function ArrowIcon(): JSX.Element {
-  return (
-    <svg
-      class="h-4 w-4 text-slate-400"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M17 8l4 4m0 0l-4 4m4-4H3"
-      />
-    </svg>
-  )
-}
-
-function CheckIcon(): JSX.Element {
-  return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
-    </svg>
-  )
-}
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
-  const { t, keys } = useTranslation()
   const navigate = useNavigate()
-  const [processes, { refetch }] = createResource(fetchProcesses)
+  const [processes, { refetch }] = createResource(fetchDashboardProcessSummaries)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
-  const [createError, setCreateError] = createSignal<
-    | string
-    | { message: string; processId?: string; containerId?: string; containerNumber?: string }
-    | null
-  >(null)
-
-  const metrics = () => {
-    const data = processes() ?? []
-    const activeCount = data.length
-    const inTransitCount = data.filter(
-      (s) => s.status === 'in-transit' || s.status === 'loaded',
-    ).length
-    const delayCount = data.filter((s) => s.status === 'delayed').length
-    const arrivingToday = data.filter(
-      (s) => s.status === 'released' || s.status === 'delivered',
-    ).length
-    return { activeCount, inTransitCount, delayCount, arrivingToday }
-  }
+  const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
   const handleCreateProcess = () => {
     setCreateError(null)
@@ -141,26 +32,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     try {
       setCreateError(null)
 
-      // Transform UI form data to API input format
-      const input: CreateProcessInput = {
-        reference: data.reference || null,
-        origin: data.origin ? { display_name: data.origin } : null,
-        destination: data.destination ? { display_name: data.destination } : null,
-        carrier: data.carrier || null,
-        bill_of_lading: data.billOfLading || null,
-        booking_number: data.bookingNumber || null,
-        importer_name: data.importerName || null,
-        exporter_name: data.exporterName || null,
-        reference_importer: data.referenceImporter || null,
-        product: data.product || null,
-        redestination_number: data.redestinationNumber || null,
-        containers: data.containers.map((c) => ({
-          container_number: c.containerNumber,
-          carrier_code: data.carrier || null,
-        })),
-      }
-
-      const result = await createProcessApi(input)
+      const processId = await createProcessRequest(toCreateProcessInput(data))
 
       // Refetch processes list
       await refetch()
@@ -169,46 +41,28 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       setIsCreateDialogOpen(false)
 
       // Navigate to the new process
-      navigate(`/shipments/${result.id}`)
+      navigate(`/shipments/${processId}`)
     } catch (err) {
       console.error('Failed to create process:', err)
-      // Type guard for the structured API conflict payload
-      if (err && typeof err === 'object') {
-        const body = safeParseOrDefault(err, z.record(z.string(), z.unknown()), null)
-        if (body && 'existing' in body && isRecord(body)) {
-          const ex = safeParseOrDefault(body.existing, z.record(z.string(), z.unknown()), null)
-          if (ex) {
-            const processId = String(ex.processId ?? ex.process_id ?? '')
-            const containerId = String(ex.containerId ?? ex.container_id ?? '')
-            const containerNumber = String(ex.containerNumber ?? ex.container_number ?? '')
-            setCreateError({
-              message: String(
-                isRecord(body) && typeof body.message === 'string'
-                  ? body.message
-                  : 'Container already exists',
-              ),
-              processId,
-              containerId,
-              containerNumber,
-            })
-            return
-          }
-        }
+      const conflict = parseExistingProcessConflictError(err)
+      if (conflict) {
+        setCreateError(conflict)
+        return
       }
       setCreateError(err instanceof Error ? err.message : 'Failed to create process')
     }
   }
 
-  const displayProcessRef = (p: ProcessSummaryVM): string => {
-    if (p.reference) return p.reference
-    return `<${p.id.slice(0, 8)}>`
+  const createErrorMessage = () => {
+    const value = createError()
+    if (typeof value === 'string') return value
+    return value?.message ?? ''
   }
 
-  const displayRoute = (p: ProcessSummaryVM): { origin: string; destination: string } => {
-    return {
-      origin: p.origin?.display_name || '—',
-      destination: p.destination?.display_name || '—',
-    }
+  const createErrorExisting = () => {
+    const value = createError()
+    if (typeof value === 'string') return undefined
+    return value ?? undefined
   }
 
   return (
@@ -228,157 +82,21 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         {/* Error message */}
         <Show when={createError()}>
           <ExistingProcessError
-            message={(() => {
-              const v = createError()
-              if (typeof v === 'string') return v
-              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
-              if (body && isRecord(body) && typeof body.message === 'string')
-                return String(body.message)
-              return ''
-            })()}
-            existing={(() => {
-              const v = createError()
-              const body = safeParseOrDefault(v, z.record(z.string(), z.unknown()), null)
-              if (body) {
-                return {
-                  processId: String(body.processId ?? body.process_id ?? ''),
-                  containerId: String(body.containerId ?? body.container_id ?? ''),
-                  containerNumber: String(body.containerNumber ?? body.container_number ?? ''),
-                }
-              }
-              return undefined
-            })()}
+            message={createErrorMessage()}
+            existing={createErrorExisting()}
             onAcknowledge={() => setCreateError(null)}
           />
         </Show>
 
-        {/* Metrics Grid */}
-        <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            icon={<ShipIcon />}
-            label={t(keys.dashboard.metrics.activeShipments)}
-            value={metrics().activeCount}
-          />
-          <MetricCard
-            icon={<ContainerIcon />}
-            label={t(keys.dashboard.metrics.inTransit)}
-            value={metrics().inTransitCount}
-          />
-          <MetricCard
-            icon={<AlertIcon />}
-            label={t(keys.dashboard.metrics.delays)}
-            value={metrics().delayCount}
-            variant={metrics().delayCount > 0 ? 'warning' : 'default'}
-          />
-          <MetricCard
-            icon={<CheckIcon />}
-            label={t(keys.dashboard.metrics.arrivalsToday)}
-            value={metrics().arrivingToday}
-            variant={metrics().arrivingToday > 0 ? 'success' : 'default'}
-          />
-        </div>
-
-        {/* Shipments Table */}
-        <section class="rounded-lg border border-slate-200 bg-white">
-          <header class="border-b border-slate-200 px-6 py-4">
-            <h2 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.table.title)}</h2>
-          </header>
-
-          <Show when={processes.loading}>
-            <div class="px-6 py-12 text-center text-slate-500">{t(keys.dashboard.loading)}</div>
-          </Show>
-
-          <Show when={processes.error}>
-            <div class="px-6 py-12 text-center text-red-500">
-              {t(keys.dashboard.error.loadProcesses)}
-            </div>
-          </Show>
-
-          <Show when={!processes.loading && !processes.error}>
-            <Show
-              when={(processes() ?? []).length > 0}
-              fallback={
-                <EmptyState
-                  title={t(keys.dashboard.empty.title)}
-                  description={t(keys.dashboard.empty.description)}
-                  actionLabel={t(keys.dashboard.empty.action)}
-                  onAction={handleCreateProcess}
-                />
-              }
-            >
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead>
-                    <tr class="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                      <th class="px-6 py-3">{t(keys.dashboard.table.col.process)}</th>
-                      <th class="px-6 py-3">{t(keys.dashboard.table.col.carrier)}</th>
-                      <th class="px-6 py-3">{t(keys.dashboard.table.col.client)}</th>
-                      <th class="px-6 py-3">{t(keys.dashboard.table.col.route)}</th>
-                      <th class="px-6 py-3 text-center">
-                        {t(keys.dashboard.table.col.containers)}
-                      </th>
-                      <th class="px-6 py-3">{t(keys.dashboard.table.col.status)}</th>
-                      <th class="px-6 py-3">{t(keys.dashboard.table.col.eta)}</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100">
-                    <For each={processes()}>
-                      {(process) => {
-                        const route = displayRoute(process)
-                        return (
-                          <tr class="transition-colors hover:bg-slate-50">
-                            <td class="px-6 py-4">
-                              <A
-                                href={`/shipments/${process.id}`}
-                                class="font-medium text-slate-900 hover:text-slate-700 hover:underline"
-                              >
-                                {displayProcessRef(process)}
-                              </A>
-                            </td>
-                            <td class="px-6 py-4">
-                              <span class="text-sm text-slate-600">{process.carrier ?? '—'}</span>
-                            </td>
-                            <td class="px-6 py-4">
-                              <span class="text-sm text-slate-600">
-                                {t(keys.dashboard.table.clientPlaceholder)}
-                              </span>
-                            </td>
-                            <td class="px-6 py-4">
-                              <div class="flex items-center gap-2 text-sm text-slate-600">
-                                <span>{route.origin}</span>
-                                <ArrowIcon />
-                                <span>{route.destination}</span>
-                              </div>
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                              <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-100 px-2 text-xs font-medium text-slate-700">
-                                {process.containerCount}
-                              </span>
-                            </td>
-                            <td class="px-6 py-4">
-                              <StatusBadge
-                                variant={process.status}
-                                label={t(trackingStatusToLabelKey(keys, process.statusCode))}
-                              />
-                            </td>
-                            <td class="px-6 py-4 text-sm text-slate-600">
-                              <Show
-                                when={process.eta}
-                                fallback={<span class="text-slate-400">—</span>}
-                              >
-                                {process.eta}
-                              </Show>
-                            </td>
-                          </tr>
-                        )
-                      }}
-                    </For>
-                  </tbody>
-                </table>
-              </div>
-            </Show>
-          </Show>
-        </section>
+        <DashboardMetricsGrid
+          statuses={(processes() ?? []).map((process) => ({ status: process.status }))}
+        />
+        <DashboardProcessTable
+          processes={processes() ?? []}
+          loading={processes.loading}
+          hasError={Boolean(processes.error)}
+          onCreateProcess={handleCreateProcess}
+        />
       </main>
     </div>
   )

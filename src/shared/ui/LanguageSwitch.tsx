@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createSignal, For, Show } from 'solid-js'
+import { createSignal, For } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // Small mapping of language code to a representative country code for flags.
@@ -39,9 +39,35 @@ function localeToFlag(locale: string): string {
   return parts[0].toUpperCase()
 }
 
+type LanguageOptionProps = {
+  readonly language: string
+  readonly onSelect: (language: string) => void
+}
+
+function LanguageOption(props: LanguageOptionProps): JSX.Element {
+  return (
+    <li>
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+        onClick={() => props.onSelect(props.language)}
+      >
+        <span class="text-lg">{localeToFlag(props.language)}</span>
+        <span class="truncate">{props.language}</span>
+      </button>
+    </li>
+  )
+}
+
 export function LanguageSwitch(): JSX.Element {
   const { t, keys, locale, setLocale, availableLocales } = useTranslation()
   const [open, setOpen] = createSignal(false)
+  const handleSelect = (lng: string) => {
+    setLocale(lng).catch(() => {
+      /* ignore */
+    })
+    setOpen(false)
+  }
 
   return (
     <div class="relative">
@@ -58,32 +84,16 @@ export function LanguageSwitch(): JSX.Element {
         <span class="sr-only">{t(keys.languageSwitch.label)}</span>
       </button>
 
-      <Show when={open()}>
+      {open() ? (
         <ul
           class="absolute right-0 mt-2 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
           onMouseLeave={() => setOpen(false)}
         >
           <For each={availableLocales}>
-            {(lng) => (
-              <li>
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                  onClick={() => {
-                    setLocale(lng).catch(() => {
-                      /* ignore */
-                    })
-                    setOpen(false)
-                  }}
-                >
-                  <span class="text-lg">{localeToFlag(lng)}</span>
-                  <span class="truncate">{lng}</span>
-                </button>
-              </li>
-            )}
+            {(lng) => <LanguageOption language={lng} onSelect={handleSelect} />}
           </For>
         </ul>
-      </Show>
+      ) : null}
     </div>
   )
 }

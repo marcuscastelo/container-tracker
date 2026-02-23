@@ -3,6 +3,65 @@
 import * as tsParser from '@typescript-eslint/parser'
 import solid from 'eslint-plugin-solid/configs/typescript'
 
+const schemaLibraryPaths = [
+  {
+    name: 'zod',
+    message:
+      'Schema/validation libraries are not allowed here. Move parsing to ui/validation or interface/http.',
+  },
+  {
+    name: 'yup',
+    message:
+      'Schema/validation libraries are not allowed here. Move parsing to ui/validation or interface/http.',
+  },
+  {
+    name: 'valibot',
+    message:
+      'Schema/validation libraries are not allowed here. Move parsing to ui/validation or interface/http.',
+  },
+  {
+    name: 'superstruct',
+    message:
+      'Schema/validation libraries are not allowed here. Move parsing to ui/validation or interface/http.',
+  },
+  {
+    name: 'arktype',
+    message:
+      'Schema/validation libraries are not allowed here. Move parsing to ui/validation or interface/http.',
+  },
+]
+
+const uiCoreRestrictedPatterns = [
+  {
+    group: [
+      '~/modules/*/infrastructure/**',
+      '~/capabilities/*/infrastructure/**',
+      '~/infrastructure/**',
+      '../infrastructure/**',
+      '../../infrastructure/**',
+      '../../../infrastructure/**',
+      '../../../../infrastructure/**',
+    ],
+    message: 'UI layer must not import infrastructure modules.',
+  },
+  {
+    group: ['~/shared/supabase/**'],
+    message:
+      'UI layer must not import shared/supabase directly. Use interface or shared/api adapters.',
+  },
+  {
+    group: [
+      '~/modules/*/domain/**',
+      '~/capabilities/*/domain/**',
+      '../domain/**',
+      '../../domain/**',
+      '../../../domain/**',
+      '../../../../domain/**',
+    ],
+    message: 'UI layer must not import domain semantics directly.',
+  },
+]
+
 // biome-ignore lint/style/noDefaultExport: ESLint configs use default exports
 export default [
   // Ignore build/output folders from linting
@@ -98,38 +157,85 @@ export default [
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: [
-                '~/modules/*/infrastructure/**',
-                '~/capabilities/*/infrastructure/**',
-                '~/infrastructure/**',
-                '../infrastructure/**',
-                '../../infrastructure/**',
-                '../../../infrastructure/**',
-                '../../../../infrastructure/**',
-              ],
-              message: 'UI layer must not import infrastructure modules.',
-            },
-            {
-              group: ['~/shared/supabase/**'],
-              message:
-                'UI layer must not import shared/supabase directly. Use interface or shared/api adapters.',
-            },
-            {
-              group: [
-                '~/modules/*/domain/**',
-                '~/capabilities/*/domain/**',
-                '../domain/**',
-                '../../domain/**',
-                '../../../domain/**',
-                '../../../../domain/**',
-              ],
-              message: 'UI layer must not import domain semantics directly.',
-            },
-          ],
+          patterns: uiCoreRestrictedPatterns,
         },
       ],
+    },
+  },
+  {
+    files: ['src/modules/*/ui/components/**/*.{ts,tsx}', 'src/shared/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...uiCoreRestrictedPatterns,
+            {
+              group: [
+                '~/modules/*/ui/validation/**',
+                '~/capabilities/*/ui/validation/**',
+                '../validation/**',
+                '../../validation/**',
+                '../../../validation/**',
+                '../../../../validation/**',
+                '**/*schema*',
+                '**/*validation*',
+              ],
+              message:
+                'Visual components must not import schema/validation modules. Move parsing to ui/validation.',
+            },
+          ],
+          paths: schemaLibraryPaths,
+        },
+      ],
+      complexity: ['error', 15],
+      'max-depth': ['error', 4],
+      'max-nested-callbacks': ['error', 3],
+    },
+  },
+  {
+    files: [
+      'src/modules/*/ui/screens/**/*.{ts,tsx}',
+      'src/modules/*/ui/routes/**/*.{ts,tsx}',
+      'src/modules/*/ui/pages/**/*.{ts,tsx}',
+      'src/modules/*/ui/*View.tsx',
+      'src/modules/*/ui/*Dialog.tsx',
+      'src/capabilities/*/ui/screens/**/*.{ts,tsx}',
+      'src/capabilities/*/ui/routes/**/*.{ts,tsx}',
+      'src/capabilities/*/ui/pages/**/*.{ts,tsx}',
+      'src/capabilities/*/ui/*View.tsx',
+      'src/capabilities/*/ui/*Dialog.tsx',
+      'src/**/ui/**/index.tsx',
+      'src/capabilities/search/ui/SearchOverlay.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...uiCoreRestrictedPatterns,
+            {
+              group: ['~/shared/api-schemas/**', '**/*schema*'],
+              message:
+                'Pages-like UI files must delegate schema parsing to ui/validation or interface/http.',
+            },
+          ],
+          paths: schemaLibraryPaths,
+        },
+      ],
+      complexity: ['error', 20],
+      'max-depth': ['error', 5],
+      'max-nested-callbacks': ['error', 4],
+    },
+  },
+  {
+    files: [
+      'src/modules/*/ui/**/*.{ts,tsx}',
+      'src/capabilities/*/ui/**/*.{ts,tsx}',
+      'src/shared/ui/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'max-lines-per-function': ['error', 220],
     },
   },
   {
@@ -161,6 +267,7 @@ export default [
               message: 'Domain layer must not depend on interface/http, shared UI, or routes.',
             },
           ],
+          paths: schemaLibraryPaths,
         },
       ],
     },

@@ -3,6 +3,8 @@ import { Show } from 'solid-js'
 import { AlertsList } from '~/modules/process/ui/components/AlertsList'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { Panel } from '~/shared/ui/layout/Panel'
+import { Stack } from '~/shared/ui/layout/Stack'
 
 type Props = {
   alerts: readonly AlertDisplayVM[]
@@ -11,11 +13,8 @@ type Props = {
 export function AlertsPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <section class="rounded-lg border border-slate-200 bg-white">
-      <header class="border-b border-slate-200 px-6 py-4">
-        <h2 class="text-base font-semibold text-slate-900">{t(keys.shipmentView.alerts.title)}</h2>
-      </header>
-      <div class="p-4">
+    <Panel title={t(keys.shipmentView.alerts.title)} bodyClass="p-4">
+      <Stack gap="sm">
         <Show
           when={props.alerts.length > 0}
           fallback={
@@ -28,7 +27,7 @@ export function AlertsPanel(props: Props): JSX.Element {
             <AlertsList alerts={props.alerts} />
           </ul>
         </Show>
-      </div>
-    </section>
+      </Stack>
+    </Panel>
   )
 }
