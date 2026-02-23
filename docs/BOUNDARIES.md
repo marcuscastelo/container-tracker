@@ -53,6 +53,10 @@ If two BCs require shared types:
 - Prefer duplication over coupling
 - Or define minimal shared kernel in shared/domain
 
+Policy reference:
+
+- `docs/adr/0004-shared-kernel-policy.md` (operational rule: duplicate by default, extract only with explicit criteria)
+
 Shared kernel must:
 
 - Contain stable abstractions only

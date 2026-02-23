@@ -22,12 +22,33 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
+type DialogCarrier = CreateProcessDialogFormData['carrier']
+
+const DIALOG_CARRIERS: readonly DialogCarrier[] = [
+  'maersk',
+  'msc',
+  'cmacgm',
+  'hapag',
+  'one',
+  'evergreen',
+  'unknown',
+]
+
+function isDialogCarrier(value: string): value is DialogCarrier {
+  return DIALOG_CARRIERS.some((carrier) => carrier === value)
+}
+
+function toDialogCarrier(value: string | null | undefined): DialogCarrier {
+  if (!value) return 'unknown'
+  return isDialogCarrier(value) ? value : 'unknown'
+}
+
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
-    () => props.params.id,
-    (id) => fetchProcess(id),
+    () => [props.params.id, locale()] as const,
+    ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
 
   const [isRefreshing, setIsRefreshing] = createSignal(false)
@@ -410,7 +431,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
                       id: c.id,
                       containerNumber: c.number,
                     })),
-                    carrier: d.carrier ?? 'unknown',
+                    carrier: toDialogCarrier(d.carrier),
                     billOfLading: d.bill_of_lading ?? '',
                     bookingNumber: d.booking_number ?? '',
                     importerName: d.importer_name ?? '',

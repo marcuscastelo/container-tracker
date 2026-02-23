@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 
 export function ChevronLeftIcon(): JSX.Element {
   return (
@@ -28,7 +28,7 @@ export function ArrowIcon(): JSX.Element {
   )
 }
 
-export function AlertIcon(props: { readonly type: AlertDisplay['type'] }): JSX.Element {
+export function AlertIcon(props: { readonly type: AlertDisplayVM['type'] }): JSX.Element {
   const colorClass = () => {
     switch (props.type) {
       case 'delay':

@@ -83,6 +83,15 @@ pnpm run check       # fix/lint + type-check + test
 pnpm run i18n:check  # valida chaves de i18n
 ```
 
+### Quality Gate (CI)
+
+- Workflow obrigatório: `.github/workflows/quality.yml`
+- Checks executados em `pull_request` e `push` para `main`:
+  - `pnpm run lint`
+  - `pnpm run type-check`
+  - `pnpm run test`
+- Recomenda-se branch protection exigindo os três checks acima antes de merge.
+
 ### Estrutura rápida do código
 
 ```text

@@ -1,22 +1,22 @@
-import type { Carrier } from '~/modules/process/domain/identity/value-objects'
-import type { AlertDisplay } from '~/modules/tracking/application/projection/tracking.alert.presenter'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
-export type ContainerDetail = {
+export type ContainerDetailVM = {
   readonly id: string
   readonly number: string
   readonly status: StatusVariant
-  readonly statusLabel: string
+  readonly statusCode: TrackingStatusCode
   readonly eta: string | null
   readonly timeline: readonly TrackingTimelineItem[]
 }
 
-export type ShipmentDetail = {
+export type ShipmentDetailVM = {
   readonly id: string
   readonly processRef: string
   readonly reference?: string | null
-  readonly carrier?: Carrier | 'unknown' | null
+  readonly carrier?: string | null
   readonly bill_of_lading?: string | null
   readonly booking_number?: string | null
   readonly importer_name?: string | null
@@ -27,8 +27,8 @@ export type ShipmentDetail = {
   readonly origin: string
   readonly destination: string
   readonly status: StatusVariant
-  readonly statusLabel: string
+  readonly statusCode: TrackingStatusCode
   readonly eta: string | null
-  readonly containers: readonly ContainerDetail[]
-  readonly alerts: readonly AlertDisplay[]
+  readonly containers: readonly ContainerDetailVM[]
+  readonly alerts: readonly AlertDisplayVM[]
 }

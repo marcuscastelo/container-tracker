@@ -2,10 +2,12 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createResource, createSignal, For, Show } from 'solid-js'
 import z from 'zod'
-import { presentProcessList } from '~/modules/process/application/queries/processList.presenter'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
+import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
+import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   CreateProcessResponseSchema,
@@ -16,27 +18,14 @@ import { AppHeader } from '~/shared/ui/AppHeader'
 import { EmptyState } from '~/shared/ui/EmptyState'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import { MetricCard } from '~/shared/ui/MetricCard'
-import { StatusBadge, type StatusVariant } from '~/shared/ui/StatusBadge'
+import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { safeParseOrDefault } from '~/shared/utils/safeParseOrDefault'
 import { isRecord } from '~/shared/utils/typeGuards'
 
-// Domain types for the dashboard - derived from API response
-type ProcessSummary = {
-  readonly id: string
-  readonly reference: string | null
-  readonly origin?: { display_name?: string | null } | null
-  readonly destination?: { display_name?: string | null } | null
-  readonly containerCount: number
-  readonly status: StatusVariant
-  readonly statusLabel: string
-  readonly eta: string | null
-  readonly carrier: string | null
-}
-
 // Fetch processes from API
-async function fetchProcesses(): Promise<readonly ProcessSummary[]> {
+async function fetchProcesses(): Promise<readonly ProcessSummaryVM[]> {
   const data = await typedFetch('/api/processes', undefined, ProcessListResponseSchema)
-  return presentProcessList(data)
+  return toProcessSummaryVMs(data)
 }
 
 // Create process via API
@@ -210,12 +199,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     }
   }
 
-  const displayProcessRef = (p: ProcessSummary): string => {
+  const displayProcessRef = (p: ProcessSummaryVM): string => {
     if (p.reference) return p.reference
     return `<${p.id.slice(0, 8)}>`
   }
 
-  const displayRoute = (p: ProcessSummary): { origin: string; destination: string } => {
+  const displayRoute = (p: ProcessSummaryVM): { origin: string; destination: string } => {
     return {
       origin: p.origin?.display_name || '—',
       destination: p.destination?.display_name || '—',
@@ -367,7 +356,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
                               </span>
                             </td>
                             <td class="px-6 py-4">
-                              <StatusBadge variant={process.status} label={process.statusLabel} />
+                              <StatusBadge
+                                variant={process.status}
+                                label={t(trackingStatusToLabelKey(keys, process.statusCode))}
+                              />
                             </td>
                             <td class="px-6 py-4 text-sm text-slate-600">
                               <Show

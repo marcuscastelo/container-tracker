@@ -204,3 +204,22 @@ When returning content intended to be copied and pasted (for example PR title/de
 
 - Prefer wrapping the whole payload with **4 backticks** (```` ... ````) to avoid nesting issues.
 - If the output is long/structured, a canvas-like alternative is acceptable, but default is still 4 backticks for plain copy/paste.
+
+---
+
+## 15) Git and Sandbox Execution
+
+Definitions:
+
+- **Sandbox** = restricted execution environment (limited filesystem/process/network, sometimes isolated from host `ssh-agent`).
+- Some assistants run with sandboxing; others run directly on host without sandbox.
+
+Rules:
+
+- If sandbox exists, **never run Git commands inside sandbox**.
+- Always run Git commands with non-sandbox/external execution so commit signing, credentials, and agent access behave correctly.
+- If the assistant has no sandbox feature, treat host execution as compliant and proceed normally.
+
+Why:
+
+- Git operations (especially signed commits) can fail inside sandbox due to missing agent/key access and askpass crashes.

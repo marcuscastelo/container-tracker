@@ -133,6 +133,10 @@ If two BCs need the same type:
 - Prefer duplication over semantic coupling
 - Or explicitly define a shared kernel in `shared/domain/`
 
+Operational decision:
+
+- See `docs/adr/0004-shared-kernel-policy.md` for extraction criteria and default duplication policy.
+
 ---
 
 Architecture principle:

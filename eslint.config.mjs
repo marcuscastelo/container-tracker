@@ -68,6 +68,71 @@ export default [
     },
   },
   {
+    files: ['src/modules/*/application/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/shared/ui/**'],
+              message: 'Application layer must not import UI types/components from shared/ui.',
+            },
+            {
+              group: ['~/shared/api-schemas/**'],
+              message:
+                'Application layer must not depend on HTTP DTO schemas from shared/api-schemas.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/modules/*/ui/**/*.{ts,tsx}',
+      'src/capabilities/*/ui/**/*.{ts,tsx}',
+      'src/shared/ui/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '~/modules/*/infrastructure/**',
+                '~/capabilities/*/infrastructure/**',
+                '~/infrastructure/**',
+                '../infrastructure/**',
+                '../../infrastructure/**',
+                '../../../infrastructure/**',
+                '../../../../infrastructure/**',
+              ],
+              message: 'UI layer must not import infrastructure modules.',
+            },
+            {
+              group: ['~/shared/supabase/**'],
+              message:
+                'UI layer must not import shared/supabase directly. Use interface or shared/api adapters.',
+            },
+            {
+              group: [
+                '~/modules/*/domain/**',
+                '~/capabilities/*/domain/**',
+                '../domain/**',
+                '../../domain/**',
+                '../../../domain/**',
+                '../../../../domain/**',
+              ],
+              message: 'UI layer must not import domain semantics directly.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['src/capabilities/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
@@ -103,15 +168,12 @@ export default [
   {
     files: ['src/modules/process/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
+      'no-restricted-syntax': [
         'error',
         {
-          patterns: [
-            {
-              group: ['~/modules/container/domain/**', '~/modules/tracking/domain/**'],
-              message: 'Cross-BC domain imports are forbidden in process module.',
-            },
-          ],
+          selector:
+            'ImportDeclaration[source.value=/^~\\/modules\\/(container|tracking)\\/domain\\//]',
+          message: 'Cross-BC domain imports are forbidden in process module.',
         },
       ],
     },
@@ -119,15 +181,12 @@ export default [
   {
     files: ['src/modules/container/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
+      'no-restricted-syntax': [
         'error',
         {
-          patterns: [
-            {
-              group: ['~/modules/process/domain/**', '~/modules/tracking/domain/**'],
-              message: 'Cross-BC domain imports are forbidden in container module.',
-            },
-          ],
+          selector:
+            'ImportDeclaration[source.value=/^~\\/modules\\/(process|tracking)\\/domain\\//]',
+          message: 'Cross-BC domain imports are forbidden in container module.',
         },
       ],
     },
@@ -135,15 +194,12 @@ export default [
   {
     files: ['src/modules/tracking/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
+      'no-restricted-syntax': [
         'error',
         {
-          patterns: [
-            {
-              group: ['~/modules/process/domain/**', '~/modules/container/domain/**'],
-              message: 'Cross-BC domain imports are forbidden in tracking module.',
-            },
-          ],
+          selector:
+            'ImportDeclaration[source.value=/^~\\/modules\\/(process|container)\\/domain\\//]',
+          message: 'Cross-BC domain imports are forbidden in tracking module.',
         },
       ],
     },

@@ -1,11 +1,11 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
-import type { ContainerDetail } from '~/modules/process/application/shipment.readmodel'
+import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { CopyButton } from '~/shared/ui/CopyButton'
 
 export function ContainerSelector(props: {
-  containers: readonly ContainerDetail[]
+  containers: readonly ContainerDetailVM[]
   selectedId: string
   onSelect: (id: string) => void
 }): JSX.Element {
