@@ -1,6 +1,5 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
 import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
-import { CARRIERS, type Carrier } from '~/modules/process/domain/identity/value-objects'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
@@ -13,15 +12,6 @@ import {
   type TrackingTimelineItem,
 } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
-
-function isCarrier(value: unknown): value is Carrier {
-  return typeof value === 'string' && CARRIERS.some((carrier) => carrier === value)
-}
-
-function normalizeCarrier(value: string | null | undefined): ShipmentDetailVM['carrier'] {
-  if (value == null) return null
-  return isCarrier(value) ? value : 'unknown'
-}
 
 function deriveProcessStatusCode(
   containers: readonly { readonly status?: string }[],
@@ -65,7 +55,7 @@ export function toShipmentDetailVM(data: ProcessDetailResponse): ShipmentDetailV
     id: data.id,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference,
-    carrier: normalizeCarrier(data.carrier),
+    carrier: data.carrier ?? null,
     bill_of_lading: data.bill_of_lading,
     booking_number: data.booking_number,
     importer_name: data.importer_name,

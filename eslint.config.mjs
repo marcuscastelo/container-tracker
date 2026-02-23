@@ -116,6 +116,17 @@ export default [
               message:
                 'UI layer must not import shared/supabase directly. Use interface or shared/api adapters.',
             },
+            {
+              group: [
+                '~/modules/*/domain/**',
+                '~/capabilities/*/domain/**',
+                '../domain/**',
+                '../../domain/**',
+                '../../../domain/**',
+                '../../../../domain/**',
+              ],
+              message: 'UI layer must not import domain semantics directly.',
+            },
           ],
         },
       ],

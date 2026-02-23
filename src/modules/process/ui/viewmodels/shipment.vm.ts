@@ -1,4 +1,3 @@
-import type { Carrier } from '~/modules/process/domain/identity/value-objects'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
@@ -17,7 +16,7 @@ export type ShipmentDetailVM = {
   readonly id: string
   readonly processRef: string
   readonly reference?: string | null
-  readonly carrier?: Carrier | null
+  readonly carrier?: string | null
   readonly bill_of_lading?: string | null
   readonly booking_number?: string | null
   readonly importer_name?: string | null
