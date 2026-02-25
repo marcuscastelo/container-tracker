@@ -91,6 +91,28 @@ function runCommand(command: string, args: readonly string[], cwd: string): Prom
   })
 }
 
+async function extractZip(zipPath: string, destinationDir: string, cwd: string): Promise<void> {
+  if (process.platform === 'win32') {
+    const powershellCommand = [
+      `$zip = '${zipPath.replaceAll("'", "''")}'`,
+      `$destination = '${destinationDir.replaceAll("'", "''")}'`,
+      'Expand-Archive -LiteralPath $zip -DestinationPath $destination -Force',
+    ].join('; ')
+    await runCommand(
+      'powershell',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', powershellCommand],
+      cwd,
+    )
+    return
+  }
+
+  try {
+    await runCommand('unzip', ['-q', '-o', zipPath, '-d', destinationDir], cwd)
+  } catch {
+    await runCommand('tar', ['-xf', zipPath, '-C', destinationDir], cwd)
+  }
+}
+
 async function downloadFile(url: string, targetPath: string): Promise<void> {
   const response = await fetch(url)
   if (!response.ok) {
@@ -288,7 +310,7 @@ async function buildRelease(): Promise<void> {
 
   await fs.rm(nodeExtractDir, { recursive: true, force: true })
   await fs.mkdir(nodeExtractDir, { recursive: true })
-  await runCommand('unzip', ['-q', '-o', nodeZipPath, '-d', nodeExtractDir], repoRoot)
+  await extractZip(nodeZipPath, nodeExtractDir, repoRoot)
 
   const extractedNodeDir = await findExtractedNodeDirectory(nodeExtractDir)
   await fs.cp(extractedNodeDir, releaseNodeDir, { recursive: true })
