@@ -1,5 +1,6 @@
 import os from 'node:os'
 import process from 'node:process'
+import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
 
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -8,12 +9,18 @@ import { fetchCmaCgmStatus } from '../../src/modules/tracking/infrastructure/car
 import { createMaerskCaptureService } from '../../src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchMscStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { createAgentScheduler } from './agent.scheduler.ts'
 
 const envSchema = z.object({
   BACKEND_URL: z
     .string()
     .url()
     .transform((value) => value.replace(/\/+$/, '')),
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_ANON_KEY: z.string().min(1),
   AGENT_TOKEN: z.string().min(1).optional(),
   TENANT_ID: z.string().uuid(),
   AGENT_ID: z.string().min(1).default(os.hostname()),
@@ -29,6 +36,8 @@ const envSchema = z.object({
 
 const env = envSchema.parse({
   BACKEND_URL: process.env.BACKEND_URL,
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
   AGENT_TOKEN: process.env.AGENT_TOKEN,
   TENANT_ID: process.env.TENANT_ID,
   AGENT_ID: process.env.AGENT_ID,
@@ -57,12 +66,6 @@ const IngestAcceptedResponseSchema = z.object({
   ok: z.literal(true),
   snapshot_id: z.string().uuid(),
 })
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
 
 function buildHeaders(contentType: boolean): Headers {
   const headers = new Headers()
@@ -105,6 +108,16 @@ async function fetchTargets(): Promise<readonly AgentTarget[]> {
 }
 
 const maerskCaptureService = createMaerskCaptureService()
+const supabaseRealtime = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  db: {
+    schema: 'public',
+  },
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+})
 
 async function scrapeTarget(target: AgentTarget): Promise<{ raw: unknown; observedAt: string }> {
   if (target.provider === 'msc') {
@@ -194,20 +207,64 @@ async function runOnce(): Promise<void> {
   }
 }
 
+function shouldWakeForRealtimeEvent(event: {
+  readonly eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+  readonly row: { readonly status: string } | null
+}): boolean {
+  if (event.eventType === 'DELETE') {
+    return false
+  }
+
+  return event.row?.status === 'PENDING'
+}
+
 async function main(): Promise<void> {
   console.log(
     `[agent] started (tenant=${env.TENANT_ID}, agent=${env.AGENT_ID}, interval=${env.INTERVAL_SEC}s)`,
   )
 
-  for (;;) {
-    try {
+  const scheduler = createAgentScheduler({
+    intervalMs: env.INTERVAL_SEC * 1000,
+    runCycle: async (_reason) => {
       await runOnce()
-    } catch (error) {
-      console.error('[agent] cycle failed:', error)
-    }
+    },
+    onRunError({ reason, error }) {
+      console.error(`[agent] cycle failed (reason=${reason}):`, error)
+    },
+  })
 
-    await sleep(env.INTERVAL_SEC * 1000)
+  const realtimeSubscription = subscribeSyncRequestsByTenant({
+    client: supabaseRealtime,
+    tenantId: env.TENANT_ID,
+    onEvent(event) {
+      if (!shouldWakeForRealtimeEvent(event)) {
+        return
+      }
+
+      scheduler.triggerRun('realtime')
+    },
+    onStatus(status) {
+      if (status.state === 'SUBSCRIBED') {
+        console.log('[agent] realtime subscribed for tenant sync requests')
+        return
+      }
+
+      if (status.state === 'CHANNEL_ERROR' || status.state === 'TIMED_OUT') {
+        console.warn('[agent] realtime channel degraded; interval sweep remains active', status)
+      }
+    },
+  })
+
+  scheduler.start()
+
+  const shutdown = (signal: 'SIGINT' | 'SIGTERM') => {
+    console.log(`[agent] received ${signal}, shutting down`)
+    realtimeSubscription.unsubscribe()
+    scheduler.stop()
   }
+
+  process.once('SIGINT', () => shutdown('SIGINT'))
+  process.once('SIGTERM', () => shutdown('SIGTERM'))
 }
 
 void main()

@@ -36,6 +36,8 @@ Notes:
 ### Agent
 
 - `BACKEND_URL` (example: `https://your-app.vercel.app`)
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
 - `TENANT_ID` (UUID)
 - `AGENT_TOKEN` (must match backend in production)
 - `AGENT_ID` (optional; default hostname)
@@ -152,17 +154,26 @@ Expected:
 node --experimental-strip-types tools/agent/agent.ts
 ```
 
-The loop executes:
+Runtime mode is now hybrid:
 
-1. `GET /api/agent/targets`
-2. scrape by provider (`maersk` / `msc` / `cmacgm`)
-3. `POST /api/tracking/snapshots/ingest`
-4. sleep and repeat
+1. startup cycle runs immediately
+2. Realtime wake on `sync_requests` (`PENDING` events by tenant)
+3. periodic interval sweep remains active (`INTERVAL_SEC`) for resilience
+4. each cycle executes `GET /api/agent/targets` -> scrape -> `POST /api/tracking/snapshots/ingest`
 
-## 6) Troubleshooting
+## 6) UI Wait Mode
+
+- UI refresh wait is `realtime-first`.
+- `GET /api/refresh/status` remains as watchdog/backoff fallback (`5, 10, 20, 40, 80s`).
+- While waiting on realtime, UI shows `shipmentView.refreshSyncing`.
+- When watchdog retries run, UI shows `retry X/N`.
+
+## 7) Troubleshooting
 
 - `401 Unauthorized`: check `AGENT_TOKEN` header.
 - `500 AGENT_TOKEN is required in production`: set backend `AGENT_TOKEN`.
 - `500` on `/api/refresh` with env error: set `SYNC_DEFAULT_TENANT_ID`.
 - `409 lease_conflict`: lease expired or was taken/released by another agent.
 - `422 No container found / Ambiguous container`: request is marked `FAILED` with `last_error`.
+- Realtime unavailable: UI fallback polling and agent interval sweep continue.
+- No realtime events in agent: validate Supabase realtime is enabled on `public.sync_requests` and anon key can subscribe.

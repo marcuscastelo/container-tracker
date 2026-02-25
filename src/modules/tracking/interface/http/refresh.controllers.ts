@@ -100,6 +100,11 @@ export function createRefreshControllers(deps: RefreshControllersDeps) {
         },
         RefreshSchemas.responses.status,
         200,
+        {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
       )
     } catch (error) {
       return mapErrorToResponse(error)

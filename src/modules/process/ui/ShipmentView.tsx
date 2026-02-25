@@ -21,6 +21,10 @@ import {
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import {
+  type SyncRequestRealtimeEvent,
+  subscribeToSyncRequestsRealtimeByIds,
+} from '~/shared/api/sync-requests.realtime.client'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
@@ -32,6 +36,20 @@ type RefreshRetryState = { readonly current: number; readonly total: number }
 const REFRESH_SYNC_MAX_RETRIES = 5
 const REFRESH_SYNC_INITIAL_DELAY_MS = 5000
 const REFRESH_SOFT_BLOCK_WINDOW_MS = 60_000
+
+function buildRecentUpdateHint(command: {
+  readonly elapsedMs: number
+  readonly toSecondsLabel: (count: number) => string
+  readonly toMinutesLabel: (count: number) => string
+}): string {
+  const elapsedSeconds = Math.max(1, Math.floor(command.elapsedMs / 1000))
+  if (elapsedSeconds < 60) {
+    return command.toSecondsLabel(elapsedSeconds)
+  }
+
+  const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60))
+  return command.toMinutesLabel(elapsedMinutes)
+}
 
 const RefreshPostResponseSchema = z.object({
   ok: z.literal(true),
@@ -55,8 +73,19 @@ const RefreshStatusResponseSchema = z.object({
   ),
 })
 
-type RefreshStatusResponse = z.infer<typeof RefreshStatusResponseSchema>
-type RefreshStatusRequest = RefreshStatusResponse['requests'][number]
+type RefreshStatusRequest = {
+  readonly syncRequestId: string
+  readonly status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
+  readonly lastError: string | null
+  readonly updatedAt: string | null
+  readonly refValue: string | null
+}
+
+type RefreshStatusResponse = {
+  readonly ok: true
+  readonly allTerminal: boolean
+  readonly requests: readonly RefreshStatusRequest[]
+}
 
 const DIALOG_CARRIERS: readonly DialogCarrier[] = [
   'maersk',
@@ -84,6 +113,7 @@ type RefreshContainersParams = {
   readonly setRefreshHint: (value: string | null) => void
   readonly setRefreshRetry: (value: RefreshRetryState | null) => void
   readonly setLastRefreshDoneAt: (value: Date | null) => void
+  readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
   readonly refreshTrackingData: () => Promise<void>
   readonly isDisposed: () => boolean
   readonly toTimeoutMessage: (totalRetries: number) => string
@@ -151,6 +181,72 @@ function readErrorFromJsonBody(body: unknown): string | null {
   return null
 }
 
+function mapRealtimeEventToRefreshStatus(
+  event: SyncRequestRealtimeEvent,
+  syncRequestIdSet: ReadonlySet<string>,
+): RefreshStatusRequest | null {
+  const row = event.row ?? event.oldRow
+  if (!row) return null
+  if (!syncRequestIdSet.has(row.id)) return null
+
+  if (event.eventType === 'DELETE') {
+    return {
+      syncRequestId: row.id,
+      status: 'NOT_FOUND',
+      lastError: 'sync_request_not_found',
+      updatedAt: row.updated_at,
+      refValue: row.ref_value,
+    }
+  }
+
+  return {
+    syncRequestId: row.id,
+    status: row.status,
+    lastError: row.last_error,
+    updatedAt: row.updated_at,
+    refValue: row.ref_value,
+  }
+}
+
+function applyRefreshStatusRequests(
+  statusBySyncRequestId: Map<string, RefreshStatusRequest>,
+  requests: readonly RefreshStatusRequest[],
+): void {
+  for (const request of requests) {
+    statusBySyncRequestId.set(request.syncRequestId, request)
+  }
+}
+
+function toRefreshStatusResponseFromMap(
+  syncRequestIds: readonly string[],
+  statusBySyncRequestId: ReadonlyMap<string, RefreshStatusRequest>,
+): RefreshStatusResponse {
+  const requests = syncRequestIds.map((syncRequestId) => {
+    const known = statusBySyncRequestId.get(syncRequestId)
+    if (known) return known
+
+    return {
+      syncRequestId,
+      status: 'NOT_FOUND' as const,
+      lastError: 'sync_request_not_found',
+      updatedAt: null,
+      refValue: null,
+    }
+  })
+
+  const allTerminal = requests.every((request) => {
+    return (
+      request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
+    )
+  })
+
+  return {
+    ok: true,
+    allTerminal,
+    requests,
+  }
+}
+
 function toReadableErrorMessage(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err)
 
@@ -197,8 +293,15 @@ async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
   for (const syncRequestId of syncRequestIds) {
     params.append('sync_request_id', syncRequestId)
   }
+  params.set('_ts', String(Date.now()))
 
-  const response = await fetch(`/api/refresh/status?${params.toString()}`)
+  const response = await fetch(`/api/refresh/status?${params.toString()}`, {
+    cache: 'no-store',
+    headers: {
+      'cache-control': 'no-cache',
+      pragma: 'no-cache',
+    },
+  })
   const body: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
@@ -212,6 +315,137 @@ async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
   }
 
   return parsed.data
+}
+
+type WaitForTerminalSyncRequestsCommand = {
+  readonly syncRequestIds: readonly string[]
+  readonly setRefreshRetry: (value: RefreshRetryState | null) => void
+  readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
+  readonly isDisposed: () => boolean
+}
+
+type WaitForTerminalSyncRequestsResult =
+  | {
+      readonly kind: 'completed'
+      readonly response: RefreshStatusResponse
+    }
+  | {
+      readonly kind: 'timeout'
+    }
+  | {
+      readonly kind: 'cancelled'
+    }
+
+async function waitForTerminalSyncRequests(
+  command: WaitForTerminalSyncRequestsCommand,
+): Promise<WaitForTerminalSyncRequestsResult> {
+  const syncRequestIdSet = new Set(command.syncRequestIds)
+  const statusBySyncRequestId = new Map<string, RefreshStatusRequest>()
+
+  let isResolved = false
+  let resolveRealtimeTerminal: ((response: RefreshStatusResponse) => void) | null = null
+  const realtimeTerminalPromise = new Promise<RefreshStatusResponse>((resolve) => {
+    resolveRealtimeTerminal = resolve
+  })
+
+  const resolveIfAllTerminal = () => {
+    if (isResolved || resolveRealtimeTerminal === null) {
+      return
+    }
+
+    const consolidatedResponse = toRefreshStatusResponseFromMap(
+      command.syncRequestIds,
+      statusBySyncRequestId,
+    )
+
+    if (!consolidatedResponse.allTerminal) {
+      return
+    }
+
+    isResolved = true
+    resolveRealtimeTerminal(consolidatedResponse)
+  }
+
+  const realtimeSubscription = subscribeToSyncRequestsRealtimeByIds({
+    syncRequestIds: command.syncRequestIds,
+    onEvent(event) {
+      if (command.isDisposed() || isResolved) return
+
+      const requestStatus = mapRealtimeEventToRefreshStatus(event, syncRequestIdSet)
+      if (!requestStatus) return
+
+      statusBySyncRequestId.set(requestStatus.syncRequestId, requestStatus)
+      resolveIfAllTerminal()
+    },
+    onStatus(channelStatus) {
+      if (channelStatus.state === 'CHANNEL_ERROR' || channelStatus.state === 'TIMED_OUT') {
+        console.warn('[refresh] sync_requests realtime channel degraded', channelStatus)
+      }
+    },
+  })
+
+  command.setRealtimeCleanup(realtimeSubscription.unsubscribe)
+
+  const bootstrapStatus = await fetchRefreshSyncStatuses(command.syncRequestIds)
+  applyRefreshStatusRequests(statusBySyncRequestId, bootstrapStatus.requests)
+  resolveIfAllTerminal()
+
+  if (isResolved) {
+    return {
+      kind: 'completed',
+      response: toRefreshStatusResponseFromMap(command.syncRequestIds, statusBySyncRequestId),
+    }
+  }
+
+  const watchdogPromise = pollRefreshSyncStatus({
+    syncRequestIds: command.syncRequestIds,
+    maxRetries: REFRESH_SYNC_MAX_RETRIES,
+    initialDelayMs: REFRESH_SYNC_INITIAL_DELAY_MS,
+    fetchSyncStatus: async (syncRequestIds) => {
+      const response = await fetchRefreshSyncStatuses(syncRequestIds)
+      applyRefreshStatusRequests(statusBySyncRequestId, response.requests)
+      resolveIfAllTerminal()
+      return response
+    },
+    onRetryStart(progress) {
+      if (!command.isDisposed()) {
+        command.setRefreshRetry(progress)
+      }
+    },
+    shouldStop: () => command.isDisposed() || isResolved,
+  })
+    .then((result) => ({ kind: 'watchdog' as const, result }))
+    .catch((error: unknown) => ({ kind: 'watchdog_error' as const, error }))
+
+  const resolution = await Promise.race([
+    realtimeTerminalPromise.then((response) => ({ kind: 'realtime' as const, response })),
+    watchdogPromise,
+  ])
+
+  if (resolution.kind === 'watchdog_error') {
+    throw resolution.error
+  }
+
+  if (resolution.kind === 'realtime') {
+    command.setRefreshRetry(null)
+    return {
+      kind: 'completed',
+      response: resolution.response,
+    }
+  }
+
+  if (resolution.result.kind === 'cancelled') {
+    return { kind: 'cancelled' }
+  }
+
+  if (resolution.result.kind === 'timeout') {
+    return { kind: 'timeout' }
+  }
+
+  return {
+    kind: 'completed',
+    response: resolution.result.response,
+  }
 }
 
 async function refreshShipmentContainers(params: RefreshContainersParams): Promise<void> {
@@ -252,29 +486,27 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
       return
     }
 
-    const pollingResult = await pollRefreshSyncStatus({
+    const waitResult = await waitForTerminalSyncRequests({
       syncRequestIds: uniqueSyncRequestIds,
-      maxRetries: REFRESH_SYNC_MAX_RETRIES,
-      initialDelayMs: REFRESH_SYNC_INITIAL_DELAY_MS,
-      fetchSyncStatus: fetchRefreshSyncStatuses,
-      onRetryStart(progress) {
-        if (!params.isDisposed()) {
-          params.setRefreshRetry(progress)
-        }
+      setRefreshRetry: params.setRefreshRetry,
+      setRealtimeCleanup(cleanup) {
+        params.setRealtimeCleanup(cleanup)
       },
-      shouldStop: params.isDisposed,
+      isDisposed: params.isDisposed,
     })
 
-    if (pollingResult.kind === 'cancelled') {
+    if (waitResult.kind === 'cancelled') {
       return
     }
 
-    if (pollingResult.kind === 'timeout') {
+    if (waitResult.kind === 'timeout') {
       params.setRefreshError(params.toTimeoutMessage(REFRESH_SYNC_MAX_RETRIES))
       return
     }
 
-    const failedStatuses = pollingResult.response.requests.filter((requestStatus) => {
+    const finalStatusResponse = waitResult.response
+
+    const failedStatuses = finalStatusResponse.requests.filter((requestStatus) => {
       return requestStatus.status === 'FAILED' || requestStatus.status === 'NOT_FOUND'
     })
 
@@ -288,26 +520,21 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
       return
     }
 
-    params.setLastRefreshDoneAt(toLatestDoneAtOrNow(pollingResult.response.requests))
+    params.setLastRefreshDoneAt(toLatestDoneAtOrNow(finalStatusResponse.requests))
     params.setRefreshError(null)
   } catch (err) {
-    try {
-      const readableMessage = toReadableErrorMessage(err)
+    const readableMessage = toReadableErrorMessage(err)
 
-      console.error('Failed to refresh containers (readable):', {
-        original: err,
-        message: readableMessage,
-      })
-      if (!params.isDisposed()) {
-        params.setRefreshError(readableMessage || 'Refresh failed')
-      }
-    } catch (loggingErr) {
-      console.error('Failed to refresh containers (fallback):', err, loggingErr)
-      if (!params.isDisposed()) {
-        params.setRefreshError('Refresh failed')
-      }
+    console.error('Failed to refresh containers:', {
+      original: err,
+      message: readableMessage,
+    })
+    if (!params.isDisposed()) {
+      params.setRefreshError(readableMessage || 'Refresh failed')
     }
   } finally {
+    params.setRealtimeCleanup(null)
+
     const disposed = params.isDisposed()
 
     if (!disposed) {
@@ -490,6 +717,18 @@ function toEditInitialData(data: ShipmentDetailVM): CreateProcessDialogFormData 
   }
 }
 
+function toCreateErrorMessage(value: string | ExistingProcessConflict | null): string {
+  if (typeof value === 'string') return value
+  return value?.message ?? ''
+}
+
+function toCreateErrorExisting(
+  value: string | ExistingProcessConflict | null,
+): ExistingProcessConflict | undefined {
+  if (typeof value === 'string') return undefined
+  return value ?? undefined
+}
+
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { locale, t, keys } = useTranslation()
 
@@ -504,29 +743,23 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const [refreshHint, setRefreshHint] = createSignal<string | null>(null)
   const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Date | null>(null)
   let disposed = false
+  let activeRealtimeCleanup: (() => void) | null = null
 
   onCleanup(() => {
+    if (activeRealtimeCleanup) {
+      activeRealtimeCleanup()
+      activeRealtimeCleanup = null
+    }
     disposed = true
   })
 
-  const buildRecentUpdateHint = (elapsedMs: number): string => {
-    const elapsedSeconds = Math.max(1, Math.floor(elapsedMs / 1000))
-    if (elapsedSeconds < 60) {
-      return t(keys.shipmentView.refreshRecentlyUpdatedSeconds, { count: elapsedSeconds })
-    }
-
-    const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60))
-    return t(keys.shipmentView.refreshRecentlyUpdatedMinutes, { count: elapsedMinutes })
-  }
-
-  const refreshTrackingData = async () => {
-    await refreshTrackingDataOnly({
+  const refreshTrackingData = () =>
+    refreshTrackingDataOnly({
       processId: props.params.id,
       locale: locale(),
       current: shipment(),
       apply: mutate,
     })
-  }
 
   const triggerRefresh = async () => {
     const doneAt = lastRefreshDoneAt()
@@ -534,7 +767,15 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       const elapsedMs = Date.now() - doneAt.getTime()
       if (elapsedMs < REFRESH_SOFT_BLOCK_WINDOW_MS) {
         setRefreshError(null)
-        setRefreshHint(buildRecentUpdateHint(elapsedMs))
+        setRefreshHint(
+          buildRecentUpdateHint({
+            elapsedMs,
+            toSecondsLabel: (count) =>
+              t(keys.shipmentView.refreshRecentlyUpdatedSeconds, { count }),
+            toMinutesLabel: (count) =>
+              t(keys.shipmentView.refreshRecentlyUpdatedMinutes, { count }),
+          }),
+        )
         return
       }
     }
@@ -548,14 +789,19 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       setRefreshHint,
       setRefreshRetry,
       setLastRefreshDoneAt,
+      setRealtimeCleanup(cleanup) {
+        if (activeRealtimeCleanup) {
+          activeRealtimeCleanup()
+          activeRealtimeCleanup = null
+        }
+        activeRealtimeCleanup = cleanup
+      },
       refreshTrackingData,
       isDisposed: () => disposed,
-      toTimeoutMessage(totalRetries) {
-        return t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries })
-      },
-      toFailedMessage(failedCount, firstError) {
-        return t(keys.shipmentView.refreshSyncFailed, { failedCount, firstError })
-      },
+      toTimeoutMessage: (totalRetries) =>
+        t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries }),
+      toFailedMessage: (failedCount, firstError) =>
+        t(keys.shipmentView.refreshSyncFailed, { failedCount, firstError }),
     })
   }
 
@@ -640,18 +886,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     }
   })
 
-  const createErrorMessage = () => {
-    const value = createError()
-    if (typeof value === 'string') return value
-    return value?.message ?? ''
-  }
-
-  const createErrorExisting = () => {
-    const value = createError()
-    if (typeof value === 'string') return undefined
-    return value ?? undefined
-  }
-
   const openEditForShipment = (
     shipmentData: ShipmentDetailVM,
     focus?: 'reference' | 'carrier' | null | undefined,
@@ -687,8 +921,8 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       onCloseCreate={() => setIsCreateDialogOpen(false)}
       onCreateSubmit={handleCreateSubmit}
       hasCreateError={Boolean(createError())}
-      createErrorMessage={createErrorMessage()}
-      createErrorExisting={createErrorExisting()}
+      createErrorMessage={toCreateErrorMessage(createError())}
+      createErrorExisting={toCreateErrorExisting(createError())}
       onAcknowledgeCreateError={() => setCreateError(null)}
       shipmentData={shipment()}
       shipmentLoading={shipment.loading}

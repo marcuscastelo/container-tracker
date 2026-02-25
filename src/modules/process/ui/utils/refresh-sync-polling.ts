@@ -87,14 +87,14 @@ export async function pollRefreshSyncStatus(
       return { kind: 'cancelled', attempts: attemptNumber - 1, lastResponse }
     }
 
-    command.onRetryStart?.({ current: attemptNumber, total: command.maxRetries })
-
     const delayMs = calculateExponentialBackoffDelay(attemptNumber, command.initialDelayMs)
     await sleep(delayMs)
 
     if (command.shouldStop?.() === true) {
       return { kind: 'cancelled', attempts: attemptNumber - 1, lastResponse }
     }
+
+    command.onRetryStart?.({ current: attemptNumber, total: command.maxRetries })
 
     lastResponse = await command.fetchSyncStatus(command.syncRequestIds)
 

@@ -271,6 +271,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 })}
               </span>
             ) : null}
+            {props.isRefreshing && !props.refreshRetry ? (
+              <span class="text-xs text-slate-500">{t(keys.shipmentView.refreshSyncing)}</span>
+            ) : null}
             {!props.isRefreshing && props.refreshHint ? (
               <span class="text-xs text-slate-500">{props.refreshHint}</span>
             ) : null}
