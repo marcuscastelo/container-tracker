@@ -20,6 +20,7 @@
     "check": "run-p flint type-check test",
     "agent:build": "pnpm exec tsc -p tools/agent/tsconfig.json",
     "agent:release": "pnpm run agent:build && node tools/agent/dist/tools/agent/build-release.js",
+    "agent:bundle": "pnpm run agent:release && node tools/agent/dist/tools/agent/bundle-release.js",
     "agent:setup": "iscc tools/agent/installer/installer.iss",
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip"
@@ -30,6 +31,7 @@
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "@supabase/supabase-js": "^2.94.0",
+    "archiver": "^7.0.1",
     "axios": "^1.13.4",
     "i18next": "^25.8.1",
     "solid-js": "^1.9.5",

@@ -4,5 +4,6 @@ node_modules/
 .output/
 release/
 tools/agent/dist/
+dist/agent-installer-bundle.zip
 
 marucs-src/

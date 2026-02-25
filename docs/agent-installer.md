@@ -14,7 +14,19 @@ pnpm run agent:release
 2. `release/` assembly (Node runtime + app + WinSW + config template)
 3. Pre-flight fail-fast checks (`preflight ok` only when all checks pass)
 
-## 2) Build `Setup.exe` (Windows)
+## 2) Build transfer bundle (Linux -> Windows)
+
+```bash
+pnpm run agent:bundle
+```
+
+This command runs `agent:release` and generates:
+
+`dist/agent-installer-bundle.zip`
+
+The bundle contains `release/` plus `tools/agent/installer/*` so Windows only needs unzip + `iscc`.
+
+## 3) Build `Setup.exe` (Windows)
 
 Install Inno Setup and run:
 
@@ -24,19 +36,19 @@ pnpm run agent:setup
 
 Installer script: `tools/agent/installer/installer.iss`
 
-## 3) Installed locations
+## 4) Installed locations
 
 - Program files: `C:\Program Files\ContainerTrackerAgent\`
 - Config: `C:\ProgramData\ContainerTrackerAgent\config.env`
 - Logs: `C:\ProgramData\ContainerTrackerAgent\logs\`
 
-## 4) Runtime behavior
+## 5) Runtime behavior
 
 - Service name: `ContainerTrackerAgent` (WinSW)
 - Updater task: `ContainerTrackerAgentUpdater` (every 30 minutes, `SYSTEM`)
 - Updater mode (MVP): logs version/timestamp and `NO UPDATES (stub mode)`
 
-## 5) Edit config
+## 6) Edit config
 
 Edit:
 
@@ -49,7 +61,7 @@ sc stop ContainerTrackerAgent
 sc start ContainerTrackerAgent
 ```
 
-## 6) Operational commands
+## 7) Operational commands
 
 ```bat
 sc query ContainerTrackerAgent
@@ -57,7 +69,7 @@ schtasks /Query /TN ContainerTrackerAgentUpdater /V /FO LIST
 "C:\Program Files\ContainerTrackerAgent\winsw\ContainerTrackerAgent.exe" status
 ```
 
-## 7) Important notes
+## 8) Important notes
 
 - Installer is x64-only.
 - If `MAERSK_ENABLED=1`, installer blocks when Chrome/Chromium is missing.
