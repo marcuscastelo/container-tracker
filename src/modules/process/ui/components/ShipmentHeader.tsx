@@ -48,7 +48,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
   const [open, setOpen] = createSignal(false)
 
   return (
-    <span class="ml-2 inline-block align-middle">
+    <span class="relative ml-2 inline-block align-middle">
       <button
         type="button"
         aria-label={props.message}
