@@ -297,10 +297,24 @@ async function validateSubmitWithServerCheck(params: {
 }): Promise<SubmitValidationResult> {
   if (!isCarrier(params.carrier)) return { type: 'invalid-carrier' }
 
-  const entries = buildContainerNumbers(params.containers).map((number, index) => ({
-    normalized: normalizeContainerNumber(number),
-    id: params.containers[index]?.id ?? '',
-  }))
+  const entries = params.containers
+    .map((container) => {
+      const trimmed = container.containerNumber.trim()
+      if (!trimmed) return null
+
+      return {
+        normalized: normalizeContainerNumber(trimmed),
+        id: container.id,
+      }
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        readonly normalized: string
+        readonly id: string
+      } => entry !== null,
+    )
 
   const entriesToCheck = entries.filter(
     (entry) => !params.initialContainerNumbers.has(entry.normalized),
