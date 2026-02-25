@@ -1,0 +1,116 @@
+# UI Complexity Baseline
+
+- Generated at: `2026-02-23T22:51:15.187Z`
+- Scope file: `docs/plans/ui-complexity-scope.json`
+
+## Summary
+
+- Total files: **50**
+- Components: **26**
+- Pages-like: **4**
+- Support: **20**
+- Soft violations: **0**
+
+## Top by LOC
+
+| File | Bucket | LOC | JSX Depth | JSX Elements | Soft Violations |
+| --- | --- | --- | --- | --- | --- |
+| `src/modules/process/ui/CreateProcessDialog.tsx` | pages-like | 897 | 1 | 1 | 0 |
+| `src/modules/process/ui/ShipmentView.tsx` | pages-like | 446 | 7 | 32 | 0 |
+| `src/modules/process/ui/CreateProcessDialog.view.tsx` | support | 390 | 8 | 50 | 0 |
+| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | support | 333 | 14 | 66 | 0 |
+| `src/modules/process/ui/components/ShipmentHeader.tsx` | components | 285 | 5 | 49 | 0 |
+| `src/modules/process/ui/components/TimelineNode.tsx` | components | 255 | 4 | 14 | 0 |
+| `src/capabilities/search/ui/SearchOverlay.tsx` | pages-like | 185 | 1 | 1 | 0 |
+| `src/modules/process/ui/components/DashboardProcessTable.tsx` | components | 167 | 5 | 42 | 0 |
+| `src/modules/process/ui/mappers/__tests__/processDetail.ui-mapper.test.ts` | support | 167 | 0 | 0 | 0 |
+| `src/modules/process/ui/components/PredictionHistoryTable.tsx` | components | 163 | 5 | 21 | 0 |
+| `src/shared/ui/FormFields.tsx` | components | 132 | 4 | 20 | 0 |
+| `src/shared/ui/Dialog.tsx` | components | 122 | 6 | 16 | 0 |
+
+## Top by JSX Depth
+
+| File | Bucket | JSX Depth | JSX Elements | LOC |
+| --- | --- | --- | --- | --- |
+| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | support | 14 | 66 | 333 |
+| `src/modules/process/ui/CreateProcessDialog.view.tsx` | support | 8 | 50 | 390 |
+| `src/modules/process/ui/TimelineNode.layout.tsx` | support | 8 | 18 | 96 |
+| `src/modules/process/ui/ShipmentView.tsx` | pages-like | 7 | 32 | 446 |
+| `src/modules/process/ui/components/TimelinePanel.tsx` | components | 6 | 7 | 45 |
+| `src/shared/ui/AppHeader.tsx` | components | 6 | 16 | 91 |
+| `src/shared/ui/Dialog.tsx` | components | 6 | 16 | 122 |
+| `src/shared/ui/ExistingProcessError.tsx` | components | 6 | 11 | 119 |
+| `src/modules/process/ui/components/AlertsList.tsx` | components | 5 | 7 | 23 |
+| `src/modules/process/ui/components/AlertsPanel.tsx` | components | 5 | 6 | 34 |
+| `src/modules/process/ui/components/ContainerSelector.tsx` | components | 5 | 6 | 42 |
+| `src/modules/process/ui/components/DashboardProcessTable.tsx` | components | 5 | 42 | 167 |
+
+## Top by JSX Elements
+
+| File | Bucket | JSX Elements | JSX Depth | LOC |
+| --- | --- | --- | --- | --- |
+| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | support | 66 | 14 | 333 |
+| `src/modules/process/ui/CreateProcessDialog.view.tsx` | support | 50 | 8 | 390 |
+| `src/modules/process/ui/components/ShipmentHeader.tsx` | components | 49 | 5 | 285 |
+| `src/modules/process/ui/components/DashboardProcessTable.tsx` | components | 42 | 5 | 167 |
+| `src/modules/process/ui/ShipmentView.tsx` | pages-like | 32 | 7 | 446 |
+| `src/modules/process/ui/components/PredictionHistoryTable.tsx` | components | 21 | 5 | 163 |
+| `src/shared/ui/FormFields.tsx` | components | 20 | 4 | 132 |
+| `src/modules/process/ui/TimelineNode.layout.tsx` | support | 18 | 8 | 96 |
+| `src/modules/process/ui/components/DashboardMetricsGrid.tsx` | components | 17 | 3 | 109 |
+| `src/shared/ui/AppHeader.tsx` | components | 16 | 6 | 91 |
+| `src/shared/ui/Dialog.tsx` | components | 16 | 6 | 122 |
+| `src/modules/process/ui/components/TimelineNode.tsx` | components | 14 | 4 | 255 |
+
+## Top by Soft Violations
+
+| File | Bucket | Soft Violations | Complexity (max observed) | Max lines/function (max observed) |
+| --- | --- | --- | --- | --- |
+| `src/capabilities/search/ui/fetchSearch.ts` | support | 0 | - | - |
+| `src/capabilities/search/ui/search.viewmodel.ts` | support | 0 | - | - |
+| `src/capabilities/search/ui/SearchOverlay.panel.tsx` | support | 0 | - | - |
+| `src/capabilities/search/ui/SearchOverlay.tsx` | pages-like | 0 | - | - |
+| `src/modules/process/ui/components/AlertsList.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/AlertsPanel.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/ContainerSelector.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/ContainersPanel.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/DashboardMetricsGrid.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/DashboardProcessTable.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/Icons.tsx` | components | 0 | - | - |
+| `src/modules/process/ui/components/PredictionHistoryModal.tsx` | components | 0 | - | - |
+
+## Thresholds Used (Soft)
+
+```json
+{
+  "maxLinesPerFunction": 180,
+  "components": {
+    "complexity": 15,
+    "maxDepth": 4,
+    "maxNestedCallbacks": 3
+  },
+  "pagesLike": {
+    "complexity": 20,
+    "maxDepth": 5,
+    "maxNestedCallbacks": 4
+  }
+}
+```
+
+```json
+{
+  "components": {
+    "depth": 6,
+    "elements": 120
+  },
+  "pagesLike": {
+    "depth": 7,
+    "elements": 160
+  }
+}
+```
+
+## Notes
+
+- This file is generated by `pnpm run ui:complexity:report -- --write`.
+- Hotspot claims become canonical only after this baseline is regenerated in the current commit.

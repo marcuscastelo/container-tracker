@@ -20,6 +20,51 @@ const maxWidthClasses = {
   '2xl': 'max-w-2xl',
 }
 
+type HeaderProps = {
+  readonly title: string
+  readonly description?: string
+  readonly closeLabel: string
+  readonly onClose: () => void
+}
+
+function DialogHeader(props: HeaderProps): JSX.Element {
+  return (
+    <div class="border-b border-slate-200 px-6 py-4">
+      <div class="flex items-start justify-between">
+        <div>
+          <h2 id="dialog-title" class="text-lg font-semibold text-slate-900">
+            {props.title}
+          </h2>
+          {props.description ? (
+            <p class="mt-1 text-sm text-slate-500">{props.description}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => props.onClose()}
+          class="-m-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-500"
+          aria-label={props.closeLabel}
+        >
+          <svg
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function Dialog(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   // Handle escape key
@@ -48,58 +93,24 @@ export function Dialog(props: Props): JSX.Element {
     <Show when={props.open}>
       <Portal>
         <div class="fixed inset-0 z-50 overflow-y-auto">
-          {/* Backdrop */}
           <div
             class="fixed inset-0 bg-slate-900/50 transition-opacity"
-            onClick={() => props.onClose?.()}
+            onClick={() => props.onClose()}
             aria-hidden="true"
           />
-
-          {/* Dialog positioning */}
           <div class="flex min-h-full items-start justify-center p-4 pt-16 sm:pt-24">
-            {/* Dialog panel */}
             <div
               class={`relative w-full ${widthClass()} transform rounded-lg bg-white shadow-xl transition-all`}
               role="dialog"
               aria-modal="true"
               aria-labelledby="dialog-title"
             >
-              {/* Header */}
-              <div class="border-b border-slate-200 px-6 py-4">
-                <div class="flex items-start justify-between">
-                  <div>
-                    <h2 id="dialog-title" class="text-lg font-semibold text-slate-900">
-                      {props.title}
-                    </h2>
-                    <Show when={props.description}>
-                      <p class="mt-1 text-sm text-slate-500">{props.description}</p>
-                    </Show>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => props.onClose?.()}
-                    class="-m-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-500"
-                    aria-label={t(keys.dialog.close)}
-                  >
-                    <svg
-                      class="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Content */}
+              <DialogHeader
+                title={props.title}
+                description={props.description}
+                closeLabel={t(keys.dialog.close)}
+                onClose={props.onClose}
+              />
               <div class="px-6 py-4">{props.children}</div>
             </div>
           </div>

@@ -1,9 +1,8 @@
-import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
-import { createStore } from 'solid-js/store'
+import type { Accessor, JSX, Setter } from 'solid-js'
+import { createEffect, createMemo, createSignal } from 'solid-js'
+import { createStore, type SetStoreFunction } from 'solid-js/store'
+import { CreateProcessDialogView } from '~/modules/process/ui/CreateProcessDialog.view'
 import { useTranslation } from '~/shared/localization/i18n'
-import { Dialog } from '~/shared/ui/Dialog'
-import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 import { findDuplicateStrings } from '~/shared/utils/findDuplicateStrings'
 
 type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
@@ -34,11 +33,167 @@ type Props = {
   readonly onSubmit?: (data: CreateProcessDialogFormData) => void
   readonly initialData?: CreateProcessDialogFormData | null
   readonly mode?: 'create' | 'edit'
-  // Optional field to autofocus when the dialog opens. If omitted, no special focus is applied.
-  // Allowed values: 'reference' | 'carrier'
-  // which field should receive focus when the dialog opens (optional)
   readonly focus?: 'reference' | 'carrier' | null | undefined
 }
+
+type ContainerConflict = {
+  readonly containerNumber: string
+  readonly link?: string
+  readonly message?: string
+}
+
+type FieldError = {
+  readonly message: string
+  readonly link?: string
+}
+
+type SubmitValidationResult =
+  | { readonly type: 'ready'; readonly data: CreateProcessDialogFormData }
+  | { readonly type: 'blocked'; readonly errors: Record<string, FieldError> }
+  | { readonly type: 'invalid-carrier' }
+
+type BuildFormDataInput = {
+  readonly reference: string
+  readonly origin: string
+  readonly destination: string
+  readonly containers: readonly ContainerInput[]
+  readonly carrier: Carrier
+  readonly billOfLading: string
+  readonly bookingNumber: string
+  readonly importerName: string
+  readonly exporterName: string
+  readonly referenceImporter: string
+  readonly product: string
+  readonly redestinationNumber: string
+}
+
+type FormFieldSetters = {
+  readonly setReference: Setter<string>
+  readonly setOrigin: Setter<string>
+  readonly setDestination: Setter<string>
+  readonly setContainers: SetStoreFunction<ContainerInput[]>
+  readonly setCarrier: Setter<Carrier | ''>
+  readonly setBillOfLading: Setter<string>
+  readonly setBookingNumber: Setter<string>
+  readonly setImporterName: Setter<string>
+  readonly setExporterName: Setter<string>
+  readonly setReferenceImporter: Setter<string>
+  readonly setProduct: Setter<string>
+  readonly setRedestinationNumber: Setter<string>
+}
+
+type DialogStateSetters = FormFieldSetters & {
+  readonly setTouched: Setter<Record<string, boolean>>
+  readonly setServerErrors: Setter<Record<string, FieldError>>
+}
+
+type CreateContainerBlurHandlerParams = {
+  readonly markTouched: (fieldKey: string) => void
+  readonly initialContainerNumbers: Accessor<ReadonlySet<string>>
+  readonly setServerErrors: Setter<Record<string, FieldError>>
+}
+
+type CreateSubmitHandlerParams = {
+  readonly getContainers: Accessor<readonly ContainerInput[]>
+  readonly markTouched: (fieldKey: string) => void
+  readonly duplicateList: Accessor<readonly string[]>
+  readonly getCarrier: Accessor<Carrier | ''>
+  readonly buildData: (carrier: Carrier) => CreateProcessDialogFormData
+  readonly initialContainerNumbers: Accessor<ReadonlySet<string>>
+  readonly setServerErrors: Setter<Record<string, FieldError>>
+  readonly onReady: (data: CreateProcessDialogFormData) => void
+}
+
+type BuildDialogFormParams = {
+  readonly reference: string
+  readonly onReferenceInput: (value: string) => void
+  readonly importerName: string
+  readonly onImporterNameInput: (value: string) => void
+  readonly exporterName: string
+  readonly onExporterNameInput: (value: string) => void
+  readonly referenceImporter: string
+  readonly onReferenceImporterInput: (value: string) => void
+  readonly product: string
+  readonly onProductInput: (value: string) => void
+  readonly redestinationNumber: string
+  readonly onRedestinationNumberInput: (value: string) => void
+  readonly origin: string
+  readonly onOriginInput: (value: string) => void
+  readonly destination: string
+  readonly onDestinationInput: (value: string) => void
+  readonly containers: readonly ContainerInput[]
+  readonly onUpdateContainer: (id: string, value: string) => void
+  readonly onContainerBlur: (container: ContainerInput) => void
+  readonly onRemoveContainer: (id: string) => void
+  readonly onAddContainer: () => void
+  readonly getContainerError: (container: ContainerInput) => string | undefined
+  readonly getDuplicateError: (container: ContainerInput) => string | undefined
+  readonly getContainerLink: (container: ContainerInput) => string | undefined
+  readonly onOpenContainerLink: (container: ContainerInput) => void
+  readonly carrier: Carrier | ''
+  readonly onCarrierInput: (value: string) => void
+  readonly carrierOptions: readonly { readonly value: string; readonly label: string }[]
+  readonly billOfLading: string
+  readonly onBillOfLadingInput: (value: string) => void
+  readonly bookingNumber: string
+  readonly onBookingNumberInput: (value: string) => void
+}
+
+type CreateContainerFeedbackHandlersParams = {
+  readonly containers: Accessor<readonly ContainerInput[]>
+  readonly touched: Accessor<Record<string, boolean>>
+  readonly serverErrors: Accessor<Record<string, FieldError>>
+  readonly containerRequiredMessage: Accessor<string>
+  readonly duplicateContainerMessage: Accessor<string>
+  readonly confirmLoseProgressMessage: Accessor<string>
+}
+
+type DialogState = {
+  readonly reference: Accessor<string>
+  readonly setReference: Setter<string>
+  readonly origin: Accessor<string>
+  readonly setOrigin: Setter<string>
+  readonly destination: Accessor<string>
+  readonly setDestination: Setter<string>
+  readonly containers: ContainerInput[]
+  readonly setContainers: SetStoreFunction<ContainerInput[]>
+  readonly carrier: Accessor<Carrier | ''>
+  readonly setCarrier: Setter<Carrier | ''>
+  readonly billOfLading: Accessor<string>
+  readonly setBillOfLading: Setter<string>
+  readonly bookingNumber: Accessor<string>
+  readonly setBookingNumber: Setter<string>
+  readonly importerName: Accessor<string>
+  readonly setImporterName: Setter<string>
+  readonly exporterName: Accessor<string>
+  readonly setExporterName: Setter<string>
+  readonly referenceImporter: Accessor<string>
+  readonly setReferenceImporter: Setter<string>
+  readonly product: Accessor<string>
+  readonly setProduct: Setter<string>
+  readonly redestinationNumber: Accessor<string>
+  readonly setRedestinationNumber: Setter<string>
+  readonly touched: Accessor<Record<string, boolean>>
+  readonly setTouched: Setter<Record<string, boolean>>
+  readonly serverErrors: Accessor<Record<string, FieldError>>
+  readonly setServerErrors: Setter<Record<string, FieldError>>
+}
+
+type CreateDialogFormMemoParams = {
+  readonly state: DialogState
+  readonly carrierOptions: Accessor<readonly { readonly value: Carrier; readonly label: string }[]>
+  readonly onUpdateContainer: (id: string, value: string) => void
+  readonly onContainerBlur: (container: ContainerInput) => void
+  readonly onRemoveContainer: (id: string) => void
+  readonly onAddContainer: () => void
+  readonly getContainerError: (container: ContainerInput) => string | undefined
+  readonly getDuplicateError: (container: ContainerInput) => string | undefined
+  readonly getContainerLink: (container: ContainerInput) => string | undefined
+  readonly onOpenContainerLink: (container: ContainerInput) => void
+  readonly onCarrierInput: (value: string) => void
+}
+
+const DEFAULT_SERVER_ERROR = 'Failed to validate container'
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 11)
@@ -48,17 +203,261 @@ function createEmptyContainer(): ContainerInput {
   return { id: generateId(), containerNumber: '' }
 }
 
-export function CreateProcessDialog(props: Props): JSX.Element {
-  const { t, keys } = useTranslation()
+function isCarrier(value: string): value is Carrier {
+  return ['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'].includes(value)
+}
 
-  // Form state
+function normalizeContainerNumber(value: string): string {
+  return value.toUpperCase().trim()
+}
+
+function hasValidContainers(containers: readonly ContainerInput[]): boolean {
+  return containers.some((container) => container.containerNumber.trim().length > 0)
+}
+
+function buildContainerNumbers(containers: readonly ContainerInput[]): readonly string[] {
+  return containers
+    .map((container) => container.containerNumber.trim())
+    .filter((value) => value.length > 0)
+}
+
+function buildFormData(input: BuildFormDataInput): CreateProcessDialogFormData {
+  return {
+    reference: input.reference,
+    origin: input.origin,
+    destination: input.destination,
+    containers: input.containers.filter((container) => container.containerNumber.trim()),
+    carrier: input.carrier,
+    billOfLading: input.billOfLading,
+    bookingNumber: input.bookingNumber,
+    importerName: input.importerName,
+    exporterName: input.exporterName,
+    referenceImporter: input.referenceImporter,
+    product: input.product,
+    redestinationNumber: input.redestinationNumber,
+  }
+}
+
+function buildGenericErrors(
+  containers: readonly ContainerInput[],
+  message: string,
+): Record<string, FieldError> {
+  return Object.fromEntries(
+    containers.map((container) => [`container-${container.id}`, { message }]),
+  )
+}
+
+function buildConflictErrors(
+  conflicts: readonly ContainerConflict[],
+  entriesToCheck: readonly { readonly id: string; readonly normalized: string }[],
+): Record<string, FieldError> {
+  const errors: Record<string, FieldError> = {}
+  for (const conflict of conflicts) {
+    const match = entriesToCheck.find(
+      (entry) => entry.normalized === normalizeContainerNumber(conflict.containerNumber),
+    )
+    const fieldKey = match ? `container-${match.id}` : `container-${conflict.containerNumber}`
+    errors[fieldKey] = {
+      message: conflict.message ?? `Container ${conflict.containerNumber} already exists`,
+      link: conflict.link,
+    }
+  }
+  return errors
+}
+
+async function requestContainerConflicts(
+  containerNumbers: readonly string[],
+): Promise<
+  | { readonly ok: true; readonly conflicts: readonly ContainerConflict[] }
+  | { readonly ok: false; readonly message: string }
+> {
+  const response = await fetch('/api/containers/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ containers: containerNumbers }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    return { ok: false, message: text || DEFAULT_SERVER_ERROR }
+  }
+
+  const json = await response.json().catch(() => ({}))
+  return {
+    ok: true,
+    conflicts: Array.isArray(json.conflicts) ? json.conflicts : [],
+  }
+}
+
+async function validateSubmitWithServerCheck(params: {
+  readonly containers: readonly ContainerInput[]
+  readonly initialContainerNumbers: ReadonlySet<string>
+  readonly carrier: Carrier | ''
+  readonly buildData: (carrier: Carrier) => CreateProcessDialogFormData
+}): Promise<SubmitValidationResult> {
+  if (!isCarrier(params.carrier)) return { type: 'invalid-carrier' }
+
+  const entries = params.containers
+    .map((container) => {
+      const trimmed = container.containerNumber.trim()
+      if (!trimmed) return null
+
+      return {
+        normalized: normalizeContainerNumber(trimmed),
+        id: container.id,
+      }
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        readonly normalized: string
+        readonly id: string
+      } => entry !== null,
+    )
+
+  const entriesToCheck = entries.filter(
+    (entry) => !params.initialContainerNumbers.has(entry.normalized),
+  )
+  if (entriesToCheck.length === 0) {
+    return { type: 'ready', data: params.buildData(params.carrier) }
+  }
+
+  const checkResult = await requestContainerConflicts(
+    entriesToCheck.map((entry) => entry.normalized),
+  )
+  if (!checkResult.ok) {
+    return {
+      type: 'blocked',
+      errors: buildGenericErrors(params.containers, checkResult.message),
+    }
+  }
+
+  if (checkResult.conflicts.length > 0) {
+    return {
+      type: 'blocked',
+      errors: buildConflictErrors(checkResult.conflicts, entriesToCheck),
+    }
+  }
+
+  return { type: 'ready', data: params.buildData(params.carrier) }
+}
+
+function focusInitialField(focus: Props['focus']): void {
+  if (!focus) return
+
+  setTimeout(() => {
+    try {
+      if (focus === 'reference') {
+        const element = document.getElementById('reference')
+        if (element instanceof HTMLInputElement) {
+          element.focus()
+          element.select()
+        }
+        return
+      }
+
+      const element = document.getElementById('carrier')
+      if (element instanceof HTMLSelectElement) {
+        element.focus()
+      }
+    } catch {
+      /* ignore focus errors */
+    }
+  }, 0)
+}
+
+function populateFormFromInitialData(params: {
+  readonly open: boolean
+  readonly initialData?: CreateProcessDialogFormData | null
+  readonly focus: Props['focus']
+  readonly setters: FormFieldSetters
+}): void {
+  if (!params.open || !params.initialData) return
+
+  const data = params.initialData
+  params.setters.setReference(data.reference || '')
+  params.setters.setOrigin(data.origin || '')
+  params.setters.setDestination(data.destination || '')
+  params.setters.setCarrier(data.carrier || '')
+  params.setters.setBillOfLading(data.billOfLading || '')
+  params.setters.setBookingNumber(data.bookingNumber || '')
+  params.setters.setImporterName(data.importerName || '')
+  params.setters.setExporterName(data.exporterName || '')
+  params.setters.setReferenceImporter(data.referenceImporter || '')
+  params.setters.setProduct(data.product || '')
+  params.setters.setRedestinationNumber(data.redestinationNumber || '')
+  params.setters.setContainers(
+    data.containers.length
+      ? data.containers.map((container) => ({
+          id: container.id,
+          containerNumber: container.containerNumber,
+        }))
+      : [createEmptyContainer()],
+  )
+  focusInitialField(params.focus)
+}
+
+function resetDialogState(setters: DialogStateSetters): void {
+  setters.setReference('')
+  setters.setOrigin('')
+  setters.setDestination('')
+  setters.setContainers([createEmptyContainer()])
+  setters.setCarrier('')
+  setters.setBillOfLading('')
+  setters.setBookingNumber('')
+  setters.setImporterName('')
+  setters.setExporterName('')
+  setters.setReferenceImporter('')
+  setters.setProduct('')
+  setters.setRedestinationNumber('')
+  setters.setTouched({})
+  setters.setServerErrors({})
+}
+
+function clearContainerServerError(
+  setServerErrors: Setter<Record<string, FieldError>>,
+  containerId: string,
+): void {
+  setServerErrors((previous) => {
+    const next = { ...previous }
+    delete next[`container-${containerId}`]
+    return next
+  })
+}
+
+function markContainersAsTouched(
+  containers: readonly ContainerInput[],
+  markTouched: (fieldKey: string) => void,
+): void {
+  for (const container of containers) {
+    markTouched(`container-${container.id}`)
+  }
+}
+
+function cloneContainers(containers: readonly ContainerInput[]): ContainerInput[] {
+  return containers.map((container) => ({
+    id: container.id,
+    containerNumber: container.containerNumber,
+  }))
+}
+
+function buildCarrierOptions(
+  unknownLabel: string,
+): readonly { readonly value: Carrier; readonly label: string }[] {
+  return [
+    { value: 'maersk', label: 'Maersk' },
+    { value: 'msc', label: 'MSC' },
+    { value: 'cmacgm', label: 'CMA CGM' },
+    { value: 'unknown', label: unknownLabel },
+  ]
+}
+
+function createDialogState(): DialogState {
   const [reference, setReference] = createSignal('')
   const [origin, setOrigin] = createSignal('')
   const [destination, setDestination] = createSignal('')
   const [containers, setContainers] = createStore<ContainerInput[]>([createEmptyContainer()])
-  // carrier can be an empty string while the user hasn't chosen a carrier yet.
-  // We use a narrow type here and guard before submitting so the rest of the app
-  // still works with the strict `Carrier` type.
   const [carrier, setCarrier] = createSignal<Carrier | ''>('')
   const [billOfLading, setBillOfLading] = createSignal('')
   const [bookingNumber, setBookingNumber] = createSignal('')
@@ -68,644 +467,444 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const [product, setProduct] = createSignal('')
   const [redestinationNumber, setRedestinationNumber] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
-  const [serverErrors, setServerErrors] = createSignal<
-    Record<string, { message: string; link?: string }>
-  >({})
+  const [serverErrors, setServerErrors] = createSignal<Record<string, FieldError>>({})
 
-  // Set of container numbers that were present when the dialog was opened (edit initial state)
+  return {
+    reference,
+    setReference,
+    origin,
+    setOrigin,
+    destination,
+    setDestination,
+    containers,
+    setContainers,
+    carrier,
+    setCarrier,
+    billOfLading,
+    setBillOfLading,
+    bookingNumber,
+    setBookingNumber,
+    importerName,
+    setImporterName,
+    exporterName,
+    setExporterName,
+    referenceImporter,
+    setReferenceImporter,
+    product,
+    setProduct,
+    redestinationNumber,
+    setRedestinationNumber,
+    touched,
+    setTouched,
+    serverErrors,
+    setServerErrors,
+  }
+}
+
+function asFormFieldSetters(state: DialogState): FormFieldSetters {
+  return {
+    setReference: state.setReference,
+    setOrigin: state.setOrigin,
+    setDestination: state.setDestination,
+    setContainers: state.setContainers,
+    setCarrier: state.setCarrier,
+    setBillOfLading: state.setBillOfLading,
+    setBookingNumber: state.setBookingNumber,
+    setImporterName: state.setImporterName,
+    setExporterName: state.setExporterName,
+    setReferenceImporter: state.setReferenceImporter,
+    setProduct: state.setProduct,
+    setRedestinationNumber: state.setRedestinationNumber,
+  }
+}
+
+function asDialogStateSetters(state: DialogState): DialogStateSetters {
+  return {
+    ...asFormFieldSetters(state),
+    setTouched: state.setTouched,
+    setServerErrors: state.setServerErrors,
+  }
+}
+
+function createContainerFeedbackHandlers(params: CreateContainerFeedbackHandlersParams): {
+  readonly getContainerError: (container: ContainerInput) => string | undefined
+  readonly getDuplicateError: (container: ContainerInput) => string | undefined
+  readonly getContainerLink: (container: ContainerInput) => string | undefined
+  readonly openContainerLink: (container: ContainerInput) => void
+} {
+  const getContainerError = (container: ContainerInput): string | undefined => {
+    const fieldKey = `container-${container.id}`
+    if (!params.touched()[fieldKey]) return undefined
+    if (!container.containerNumber.trim()) {
+      return params.containerRequiredMessage()
+    }
+    return params.serverErrors()[fieldKey]?.message
+  }
+
+  const getDuplicateError = (container: ContainerInput): string | undefined => {
+    const normalized = params
+      .containers()
+      .map((entry) => normalizeContainerNumber(entry.containerNumber))
+    const counts: Record<string, number> = {}
+    for (const value of normalized) {
+      if (!value) continue
+      counts[value] = (counts[value] ?? 0) + 1
+    }
+    const current = normalizeContainerNumber(container.containerNumber)
+    if (current && counts[current] > 1) {
+      return `${params.duplicateContainerMessage()} (${current})`
+    }
+    return undefined
+  }
+
+  const getContainerLink = (container: ContainerInput): string | undefined =>
+    params.serverErrors()[`container-${container.id}`]?.link
+
+  const openContainerLink = (container: ContainerInput) => {
+    const linkUrl = params.serverErrors()[`container-${container.id}`]?.link
+    if (!linkUrl) return
+
+    const shouldNavigate = window.confirm(params.confirmLoseProgressMessage())
+    if (shouldNavigate) {
+      window.location.href = linkUrl
+    }
+  }
+
+  return { getContainerError, getDuplicateError, getContainerLink, openContainerLink }
+}
+
+function createContainerBlurHandler(
+  params: CreateContainerBlurHandlerParams,
+): (container: ContainerInput) => void {
+  return (container) => {
+    params.markTouched(`container-${container.id}`)
+    const rawValue = container.containerNumber.trim()
+    if (!rawValue) return
+
+    const normalized = normalizeContainerNumber(rawValue)
+    if (params.initialContainerNumbers().has(normalized)) return
+
+    void (async () => {
+      clearContainerServerError(params.setServerErrors, container.id)
+
+      try {
+        const result = await requestContainerConflicts([normalized])
+        if (!result.ok) {
+          params.setServerErrors((previous) => ({
+            ...previous,
+            [`container-${container.id}`]: { message: result.message },
+          }))
+          return
+        }
+
+        if (result.conflicts.length > 0) {
+          const conflict = result.conflicts[0]
+          params.setServerErrors((previous) => ({
+            ...previous,
+            [`container-${container.id}`]: {
+              message: conflict.message ?? `Container ${conflict.containerNumber} already exists`,
+              link: conflict.link,
+            },
+          }))
+        }
+      } catch (err) {
+        console.error('onBlur check failed', err)
+        params.setServerErrors((previous) => ({
+          ...previous,
+          [`container-${container.id}`]: { message: DEFAULT_SERVER_ERROR },
+        }))
+      }
+    })()
+  }
+}
+
+function createSubmitHandler(params: CreateSubmitHandlerParams): (event: Event) => void {
+  return (event) => {
+    event.preventDefault()
+
+    const currentContainers = cloneContainers(params.getContainers())
+    markContainersAsTouched(currentContainers, params.markTouched)
+
+    if (!hasValidContainers(currentContainers)) return
+    if (params.duplicateList().length > 0) return
+
+    const carrierValue = params.getCarrier()
+
+    void (async () => {
+      params.setServerErrors({})
+
+      try {
+        const result = await validateSubmitWithServerCheck({
+          containers: currentContainers,
+          initialContainerNumbers: params.initialContainerNumbers(),
+          carrier: carrierValue,
+          buildData: params.buildData,
+        })
+
+        if (result.type === 'ready') {
+          params.onReady(result.data)
+          return
+        }
+
+        if (result.type === 'blocked') {
+          markContainersAsTouched(currentContainers, params.markTouched)
+          params.setServerErrors(result.errors)
+        }
+      } catch (err) {
+        console.error('Failed to check containers before submit:', err)
+        markContainersAsTouched(currentContainers, params.markTouched)
+        params.setServerErrors(buildGenericErrors(currentContainers, DEFAULT_SERVER_ERROR))
+      }
+    })()
+  }
+}
+
+function buildDialogForm(params: BuildDialogFormParams) {
+  return {
+    reference: params.reference,
+    onReferenceInput: params.onReferenceInput,
+    importerName: params.importerName,
+    onImporterNameInput: params.onImporterNameInput,
+    exporterName: params.exporterName,
+    onExporterNameInput: params.onExporterNameInput,
+    referenceImporter: params.referenceImporter,
+    onReferenceImporterInput: params.onReferenceImporterInput,
+    product: params.product,
+    onProductInput: params.onProductInput,
+    redestinationNumber: params.redestinationNumber,
+    onRedestinationNumberInput: params.onRedestinationNumberInput,
+    origin: params.origin,
+    onOriginInput: params.onOriginInput,
+    destination: params.destination,
+    onDestinationInput: params.onDestinationInput,
+    containerSection: {
+      containers: params.containers,
+      onUpdateContainer: params.onUpdateContainer,
+      onContainerBlur: params.onContainerBlur,
+      onRemoveContainer: params.onRemoveContainer,
+      onAddContainer: params.onAddContainer,
+      getContainerError: params.getContainerError,
+      getDuplicateError: params.getDuplicateError,
+      getContainerLink: params.getContainerLink,
+      onOpenContainerLink: params.onOpenContainerLink,
+    },
+    sourceSection: {
+      carrier: params.carrier,
+      onCarrierInput: params.onCarrierInput,
+      carrierOptions: params.carrierOptions,
+      billOfLading: params.billOfLading,
+      onBillOfLadingInput: params.onBillOfLadingInput,
+      bookingNumber: params.bookingNumber,
+      onBookingNumberInput: params.onBookingNumberInput,
+    },
+  }
+}
+
+function buildSubmitDataFromState(
+  state: DialogState,
+  validatedCarrier: Carrier,
+): CreateProcessDialogFormData {
+  return buildFormData({
+    reference: state.reference(),
+    origin: state.origin(),
+    destination: state.destination(),
+    containers: state.containers,
+    carrier: validatedCarrier,
+    billOfLading: state.billOfLading(),
+    bookingNumber: state.bookingNumber(),
+    importerName: state.importerName(),
+    exporterName: state.exporterName(),
+    referenceImporter: state.referenceImporter(),
+    product: state.product(),
+    redestinationNumber: state.redestinationNumber(),
+  })
+}
+
+function createDialogFormMemo(
+  params: CreateDialogFormMemoParams,
+): Accessor<ReturnType<typeof buildDialogForm>> {
+  const form = createMemo(() =>
+    buildDialogForm({
+      reference: params.state.reference(),
+      onReferenceInput: params.state.setReference,
+      importerName: params.state.importerName(),
+      onImporterNameInput: params.state.setImporterName,
+      exporterName: params.state.exporterName(),
+      onExporterNameInput: params.state.setExporterName,
+      referenceImporter: params.state.referenceImporter(),
+      onReferenceImporterInput: params.state.setReferenceImporter,
+      product: params.state.product(),
+      onProductInput: params.state.setProduct,
+      redestinationNumber: params.state.redestinationNumber(),
+      onRedestinationNumberInput: params.state.setRedestinationNumber,
+      origin: params.state.origin(),
+      onOriginInput: params.state.setOrigin,
+      destination: params.state.destination(),
+      onDestinationInput: params.state.setDestination,
+      containers: params.state.containers,
+      onUpdateContainer: params.onUpdateContainer,
+      onContainerBlur: params.onContainerBlur,
+      onRemoveContainer: params.onRemoveContainer,
+      onAddContainer: params.onAddContainer,
+      getContainerError: params.getContainerError,
+      getDuplicateError: params.getDuplicateError,
+      getContainerLink: params.getContainerLink,
+      onOpenContainerLink: params.onOpenContainerLink,
+      carrier: params.state.carrier(),
+      onCarrierInput: params.onCarrierInput,
+      carrierOptions: params.carrierOptions(),
+      billOfLading: params.state.billOfLading(),
+      onBillOfLadingInput: params.state.setBillOfLading,
+      bookingNumber: params.state.bookingNumber(),
+      onBookingNumberInput: params.state.setBookingNumber,
+    }),
+  )
+  return form
+}
+
+export function CreateProcessDialog(props: Props): JSX.Element {
+  const { t, keys } = useTranslation()
+  const state = createDialogState()
+  const formFieldSetters = asFormFieldSetters(state)
+
   const initialContainerNumbersSet = createMemo(
     () =>
       new Set<string>(
-        (props.initialData?.containers ?? []).map((c) => c.containerNumber.toUpperCase().trim()),
+        (props.initialData?.containers ?? []).map((container) =>
+          normalizeContainerNumber(container.containerNumber),
+        ),
       ),
   )
 
-  // Populate form when editing
   createEffect(() => {
-    if (props.open && props.initialData) {
-      setReference(props.initialData.reference || '')
-      setOrigin(props.initialData.origin || '')
-      setDestination(props.initialData.destination || '')
-      // When editing, populate carrier; otherwise keep empty so user must choose.
-      setCarrier(props.initialData.carrier ?? '')
-      setBillOfLading(props.initialData.billOfLading || '')
-      setBookingNumber(props.initialData.bookingNumber || '')
-      setImporterName(props.initialData.importerName || '')
-      setExporterName(props.initialData.exporterName || '')
-      setReferenceImporter(props.initialData.referenceImporter || '')
-      setProduct(props.initialData.product || '')
-      setRedestinationNumber(props.initialData.redestinationNumber || '')
-      setContainers(
-        props.initialData.containers.length
-          ? props.initialData.containers.map((c) => ({
-              id: c.id,
-              containerNumber: c.containerNumber,
-            }))
-          : [createEmptyContainer()],
-      )
-
-      // Optionally autofocus a specific field when requested by the caller
-      if (props.focus) {
-        // schedule after next tick so input/select is mounted
-        setTimeout(() => {
-          try {
-            if (props.focus === 'reference') {
-              const el = document.getElementById('reference')
-              if (el instanceof HTMLInputElement) {
-                el.focus()
-                // select existing text for convenience
-                try {
-                  el.select()
-                } catch {
-                  /* ignore */
-                }
-              }
-            } else if (props.focus === 'carrier') {
-              const el = document.getElementById('carrier')
-              if (el instanceof HTMLSelectElement) {
-                el.focus()
-              }
-            }
-          } catch {
-            /* ignore */
-          }
-        }, 0)
-      }
-    }
+    populateFormFromInitialData({
+      open: props.open,
+      initialData: props.initialData,
+      focus: props.focus,
+      setters: formFieldSetters,
+    })
   })
 
-  // Narrowing guard so TypeScript knows a string value is a valid Carrier
-  const isCarrier = (v: string): v is Carrier =>
-    ['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'].includes(v)
+  const carrierOptions = createMemo(() => buildCarrierOptions(t(keys.createProcess.carrierUnknown)))
 
-  const carrierOptions = () => [
-    { value: 'maersk', label: 'Maersk' },
-    { value: 'msc', label: 'MSC' },
-    { value: 'cmacgm', label: 'CMA CGM' },
-    { value: 'unknown', label: t(keys.createProcess.carrierUnknown) },
-  ]
+  const markTouched = (fieldKey: string) => {
+    state.setTouched((previous) => ({ ...previous, [fieldKey]: true }))
+  }
 
-  const updateContainer = (id: string, field: 'containerNumber', value: string) => {
-    const idx = containers.findIndex((c) => c.id === id)
-    if (idx >= 0) {
-      // update the specific field in the store to avoid remounting the whole item
-      setContainers(idx, field, value)
+  const updateContainer = (id: string, value: string) => {
+    const index = state.containers.findIndex((container) => container.id === id)
+    if (index >= 0) {
+      state.setContainers(index, 'containerNumber', value)
     }
   }
 
   const addContainer = () => {
-    setContainers([...containers, createEmptyContainer()])
+    state.setContainers([...state.containers, createEmptyContainer()])
   }
 
   const removeContainer = (id: string) => {
-    if (containers.length <= 1) return
-    setContainers(containers.filter((c) => c.id !== id))
+    if (state.containers.length <= 1) return
+    state.setContainers(state.containers.filter((container) => container.id !== id))
   }
 
-  const getContainerError = (container: ContainerInput): string | undefined => {
-    const fieldKey = `container-${container.id}`
-    if (!touched()[fieldKey]) return undefined
-    if (!container.containerNumber.trim()) {
-      return t(keys.createProcess.validation.containerNumberRequired)
-    }
-    // Prefer server-side error if present for this container
-    const srv = serverErrors()[fieldKey]
-    if (srv) return srv.message
-    return undefined
-  }
+  const containerFeedbackHandlers = createContainerFeedbackHandlers({
+    containers: () => state.containers,
+    touched: state.touched,
+    serverErrors: state.serverErrors,
+    containerRequiredMessage: () => t(keys.createProcess.validation.containerNumberRequired),
+    duplicateContainerMessage: () => t(keys.createProcess.validation.duplicateContainer),
+    confirmLoseProgressMessage: () => t(keys.createProcess.action.confirmLoseProgress),
+  })
 
-  // Return duplicate error for a container if the same container number appears more than once in the form
-  const getDuplicateError = (container: ContainerInput): string | undefined => {
-    const normalized = containers.map((c) => c.containerNumber.toUpperCase().trim())
-    const counts: Record<string, number> = {}
-    for (const n of normalized) {
-      if (!n) continue
-      counts[n] = (counts[n] ?? 0) + 1
-    }
-    const thisNum = container.containerNumber.toUpperCase().trim()
-    if (thisNum && counts[thisNum] > 1) {
-      // include the number for clarity
-      return `${t(keys.createProcess.validation.duplicateContainer)} (${thisNum})`
-    }
-    return undefined
-  }
-
-  const markTouched = (fieldKey: string) => {
-    setTouched((prev) => ({ ...prev, [fieldKey]: true }))
-  }
-
-  const hasValidContainers = () => {
-    return containers.some((c) => c.containerNumber.trim().length > 0)
-  }
-
-  const handleSubmit = (e: Event) => {
-    e.preventDefault()
-
-    // Mark all container fields as touched
-    for (const c of containers) {
-      markTouched(`container-${c.id}`)
-    }
-
-    if (!hasValidContainers()) {
-      return
-    }
-
-    // Check for duplicate container numbers in the form and block submission
-    const containerNumbers = containers
-      .map((c) => c.containerNumber.trim())
-      .filter((n) => n.length > 0)
-    const duplicates = findDuplicateStrings(containerNumbers)
-    if (duplicates.length > 0) {
-      // keep touched state so inline errors (duplicate) are visible and prevent submit
-      return
-    }
-
-    // Fail-fast server-side check: ask backend if any of these container numbers already exist.
-    // IMPORTANT: when editing, skip checking container numbers that were already present in
-    // the initial process (they are allowed to remain). Only check new or changed numbers.
-    const entries = containerNumbers.map((n, i) => ({
-      num: n.toUpperCase().trim(),
-      id: containers[i].id,
-    }))
-    const entriesToCheck = entries.filter((e) => !initialContainerNumbersSet().has(e.num))
-    const containerNumbersForCheck = entriesToCheck.map((e) => e.num)
-    void (async () => {
-      try {
-        // Reset previous server errors
-        setServerErrors({})
-
-        // If nothing to check (e.g., editing without adding new containers), skip server check
-        if (containerNumbersForCheck.length === 0) {
-          // proceed with submit
-          // Ensure carrier is a valid Carrier value before submitting
-          const carrierValue = carrier()
-          if (!isCarrier(carrierValue)) return
-
-          const data: CreateProcessDialogFormData = {
-            reference: reference(),
-            origin: origin(),
-            destination: destination(),
-            containers: containers.filter((c) => c.containerNumber.trim()),
-            carrier: carrierValue,
-            billOfLading: billOfLading(),
-            bookingNumber: bookingNumber(),
-            importerName: importerName(),
-            exporterName: exporterName(),
-            referenceImporter: referenceImporter(),
-            product: product(),
-            redestinationNumber: redestinationNumber(),
-          }
-
-          props.onSubmit?.(data)
-          handleClose()
-          return
-        }
-
-        const res = await fetch('/api/containers/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ containers: containerNumbersForCheck }),
-        })
-
-        if (!res.ok) {
-          // Unexpected error from check endpoint - surface generic message
-          const txt = await res.text().catch(() => '')
-          setServerErrors(
-            Object.fromEntries(
-              containerNumbers.map((_n, i) => [
-                `container-${containers[i].id}`,
-                { message: txt || 'Failed to validate container' },
-              ]),
-            ),
-          )
-          return
-        }
-
-        const json = await res.json().catch(() => ({}))
-        const conflicts: {
-          containerNumber: string
-          processId?: string
-          containerId?: string
-          link?: string
-          message?: string
-        }[] = json.conflicts || []
-
-        if (conflicts.length > 0) {
-          // Map conflicts to per-field errors and mark touched so they show inline
-          const errs: Record<string, { message: string; link?: string }> = {}
-          for (const c of conflicts) {
-            // find matching entry in the entriesToCheck array
-            const match = entriesToCheck.find((e) => e.num === c.containerNumber.toUpperCase())
-            const fieldKey = match ? `container-${match.id}` : `container-${c.containerNumber}`
-            errs[fieldKey] = {
-              message: c.message ?? `Container ${c.containerNumber} already exists`,
-              link: c.link,
-            }
-          }
-          // Mark touched for all containers so errors are visible
-          for (const c of containers) markTouched(`container-${c.id}`)
-          setServerErrors(errs)
-          return
-        }
-
-        // No conflicts -> proceed with submit
-        const carrierValue = carrier()
-        if (!isCarrier(carrierValue)) return
-
-        const data: CreateProcessDialogFormData = {
-          reference: reference(),
-          origin: origin(),
-          destination: destination(),
-          containers: containers.filter((c) => c.containerNumber.trim()),
-          carrier: carrierValue,
-          billOfLading: billOfLading(),
-          bookingNumber: bookingNumber(),
-          importerName: importerName(),
-          exporterName: exporterName(),
-          referenceImporter: referenceImporter(),
-          product: product(),
-          redestinationNumber: redestinationNumber(),
-        }
-
-        props.onSubmit?.(data)
-        handleClose()
-      } catch (err) {
-        console.error('Failed to check containers before submit:', err)
-        // In case of unexpected failures just block submit and show generic errors
-        for (const c of containers) markTouched(`container-${c.id}`)
-        setServerErrors(
-          Object.fromEntries(
-            containerNumbers.map((_n, i) => [
-              `container-${containers[i].id}`,
-              { message: 'Failed to validate container' },
-            ]),
-          ),
-        )
-      }
-    })()
-
-    // Submission will continue from the async check above; no synchronous submit here
-  }
+  const onContainerBlur = createContainerBlurHandler({
+    markTouched,
+    initialContainerNumbers: initialContainerNumbersSet,
+    setServerErrors: state.setServerErrors,
+  })
 
   const handleClose = () => {
-    // Reset form
-    setReference('')
-    setOrigin('')
-    setDestination('')
-    setContainers([createEmptyContainer()])
-    // Reset to the initial placeholder state so user must re-select a carrier
-    setCarrier('')
-    setBillOfLading('')
-    setBookingNumber('')
-    setImporterName('')
-    setExporterName('')
-    setReferenceImporter('')
-    setProduct('')
-    setRedestinationNumber('')
-    setTouched({})
+    resetDialogState(asDialogStateSetters(state))
     props.onClose()
   }
 
-  // Derived state: detect duplicates and whether submit should be disabled
-  const containerNumbersMemo = createMemo(() =>
-    containers.map((c) => c.containerNumber.trim()).filter((n) => n.length > 0),
+  const duplicateList = createMemo(() =>
+    findDuplicateStrings(buildContainerNumbers(state.containers)),
   )
 
-  const duplicateList = createMemo(() => findDuplicateStrings(containerNumbersMemo()))
-
   const isSubmitDisabled = createMemo(() => {
-    // disable when no valid containers or duplicates present
-    if (!hasValidContainers()) return true
+    if (!hasValidContainers(state.containers)) return true
     if ((duplicateList() ?? []).length > 0) return true
-    // require carrier to be explicitly chosen (placeholder is empty string)
-    if (carrier() === '') return true
-    // disable when server-side errors are present
-    if (Object.keys(serverErrors() ?? {}).length > 0) return true
+    if (state.carrier() === '') return true
+    if (Object.keys(state.serverErrors() ?? {}).length > 0) return true
     return false
   })
 
-  // Tooltip text to show when the submit is disabled: prefer duplicate message, otherwise required message
   const submitTooltip = createMemo(() => {
     if (!isSubmitDisabled()) return ''
-    const dups = duplicateList()
-    if (dups && dups.length > 0) {
-      return `${t(keys.createProcess.validation.duplicateContainer)} (${dups[0]})`
+
+    const duplicates = duplicateList()
+    if (duplicates.length > 0) {
+      return `${t(keys.createProcess.validation.duplicateContainer)} (${duplicates[0]})`
     }
-    // show server-side error if present
-    const srvKeys = Object.keys(serverErrors() ?? {})
-    if (srvKeys.length > 0) {
-      return serverErrors()[srvKeys[0]]?.message ?? ''
+
+    const serverErrorKeys = Object.keys(state.serverErrors() ?? {})
+    if (serverErrorKeys.length > 0) {
+      return state.serverErrors()[serverErrorKeys[0]]?.message ?? ''
     }
-    // require carrier selection
-    if (carrier() === '') return t(keys.createProcess.field.carrierPlaceholder)
-    if (!hasValidContainers()) {
+
+    if (state.carrier() === '') return t(keys.createProcess.field.carrierPlaceholder)
+    if (!hasValidContainers(state.containers)) {
       return t(keys.createProcess.validation.containerNumberRequired)
     }
     return ''
   })
 
+  const buildData = (validatedCarrier: Carrier): CreateProcessDialogFormData =>
+    buildSubmitDataFromState(state, validatedCarrier)
+
+  const handleSubmit = createSubmitHandler({
+    getContainers: () => state.containers,
+    markTouched,
+    duplicateList,
+    getCarrier: state.carrier,
+    buildData,
+    initialContainerNumbers: initialContainerNumbersSet,
+    setServerErrors: state.setServerErrors,
+    onReady: (data) => {
+      props.onSubmit?.(data)
+      handleClose()
+    },
+  })
+
+  const handleCarrierInput = (value: string) => {
+    if (value === '' || isCarrier(value)) {
+      state.setCarrier(value)
+    }
+  }
+
+  const form = createDialogFormMemo({
+    state,
+    carrierOptions,
+    onUpdateContainer: updateContainer,
+    onContainerBlur,
+    onRemoveContainer: removeContainer,
+    onAddContainer: addContainer,
+    getContainerError: containerFeedbackHandlers.getContainerError,
+    getDuplicateError: containerFeedbackHandlers.getDuplicateError,
+    getContainerLink: containerFeedbackHandlers.getContainerLink,
+    onOpenContainerLink: containerFeedbackHandlers.openContainerLink,
+    onCarrierInput: handleCarrierInput,
+  })
+
   return (
-    <Dialog
+    <CreateProcessDialogView
       open={props.open}
+      mode={props.mode}
       onClose={handleClose}
-      title={t(props.mode === 'edit' ? keys.createProcess.titleEdit : keys.createProcess.title)}
-      description={t(keys.createProcess.description)}
-      maxWidth="xl"
-    >
-      <form onSubmit={handleSubmit} class="space-y-8">
-        {/* Section: Identification */}
-        <section>
-          <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.createProcess.section.identification)}
-          </h3>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <FormInput
-              label={t(keys.createProcess.field.reference)}
-              name="reference"
-              value={reference()}
-              onInput={setReference}
-              placeholder={t(keys.createProcess.field.referencePlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.importerName)}
-              name="importerName"
-              value={importerName()}
-              onInput={setImporterName}
-              placeholder={t(keys.createProcess.field.importerNamePlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.exporterName)}
-              name="exporterName"
-              value={exporterName()}
-              onInput={setExporterName}
-              placeholder={t(keys.createProcess.field.exporterNamePlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.referenceImporter)}
-              name="referenceImporter"
-              value={referenceImporter()}
-              onInput={setReferenceImporter}
-              placeholder={t(keys.createProcess.field.referenceImporterPlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.product)}
-              name="product"
-              value={product()}
-              onInput={setProduct}
-              placeholder={t(keys.createProcess.field.productPlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.redestinationNumber)}
-              name="redestinationNumber"
-              value={redestinationNumber()}
-              onInput={setRedestinationNumber}
-              placeholder={t(keys.createProcess.field.redestinationNumberPlaceholder)}
-            />
-          </div>
-        </section>
-
-        {/* Section: Planned Route */}
-        <section>
-          <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.createProcess.section.route)}
-          </h3>
-          <p class="mb-4 text-xs text-slate-400">{t(keys.createProcess.section.routeHelper)}</p>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <FormInput
-              label={t(keys.createProcess.field.origin)}
-              name="origin"
-              value={origin()}
-              onInput={setOrigin}
-              placeholder={t(keys.createProcess.field.originPlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.destination)}
-              name="destination"
-              value={destination()}
-              onInput={setDestination}
-              placeholder={t(keys.createProcess.field.destinationPlaceholder)}
-            />
-          </div>
-        </section>
-
-        {/* Section: Containers */}
-        <section>
-          <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.createProcess.section.containers)}
-          </h3>
-          <div class="space-y-3">
-            <For each={containers}>
-              {(container, index) => (
-                <div class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div class="flex-1">
-                    <FormInput
-                      label={`${t(keys.createProcess.field.containerNumber)} ${index() + 1}`}
-                      name={`container-${container.id}`}
-                      value={container.containerNumber}
-                      onInput={(v) => updateContainer(container.id, 'containerNumber', v)}
-                      onBlur={() => {
-                        markTouched(`container-${container.id}`)
-                        const val = container.containerNumber.trim()
-                        // only check non-empty container numbers
-                        if (!val) return
-
-                        // When editing an existing process, skip server-side check for
-                        // container numbers that were already present in the initial data
-                        const normalized = val.toUpperCase().trim()
-                        if (initialContainerNumbersSet().has(normalized)) return
-
-                        void (async () => {
-                          try {
-                            // reset any previous server error for this field
-                            setServerErrors((prev) => {
-                              const copy = { ...prev }
-                              delete copy[`container-${container.id}`]
-                              return copy
-                            })
-
-                            const res = await fetch('/api/containers/check', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ containers: [val.toUpperCase().trim()] }),
-                            })
-                            if (!res.ok) {
-                              const txt = await res.text().catch(() => '')
-                              setServerErrors((prev) => ({
-                                ...prev,
-                                [`container-${container.id}`]: {
-                                  message: txt || 'Failed to validate container',
-                                },
-                              }))
-                              return
-                            }
-                            const json = await res.json().catch(() => ({}))
-                            const conflicts = json.conflicts || []
-                            if (conflicts.length > 0) {
-                              const c = conflicts[0]
-                              setServerErrors((prev) => ({
-                                ...prev,
-                                [`container-${container.id}`]: {
-                                  message:
-                                    c.message ?? `Container ${c.containerNumber} already exists`,
-                                  link: c.link,
-                                },
-                              }))
-                            }
-                          } catch (err) {
-                            console.error('onBlur check failed', err)
-                            setServerErrors((prev) => ({
-                              ...prev,
-                              [`container-${container.id}`]: {
-                                message: 'Failed to validate container',
-                              },
-                            }))
-                          }
-                        })()
-                      }}
-                      placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
-                      error={getContainerError(container) ?? getDuplicateError(container)}
-                      required
-                    />
-
-                    {/* If server returned a link for this container, show it next to the error text */}
-                    <Show when={serverErrors()[`container-${container.id}`]?.link}>
-                      <p class="mt-1 text-xs text-slate-600 underline">
-                        <button
-                          type="button"
-                          class="underline hover:cursor-pointer"
-                          onClick={() => {
-                            const linkUrl = serverErrors()[`container-${container.id}`]?.link
-                            if (!linkUrl) return
-                            const ok = window.confirm(
-                              t(keys.createProcess.action.confirmLoseProgress),
-                            )
-                            if (ok) {
-                              window.location.href = linkUrl
-                            }
-                          }}
-                        >
-                          {t(keys.createProcess.action.existingProcessLink)}
-                        </button>
-                      </p>
-                    </Show>
-                  </div>
-                  {containers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeContainer(container.id)}
-                      class="mt-7 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
-                      aria-label={t(keys.createProcess.action.removeContainer)}
-                    >
-                      <svg
-                        class="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              )}
-            </For>
-          </div>
-          <button
-            type="button"
-            onClick={addContainer}
-            class="mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
-          >
-            <svg
-              class="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            {t(keys.createProcess.action.addContainer)}
-          </button>
-        </section>
-
-        {/* Section: Source / Integration */}
-        <section>
-          <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {t(keys.createProcess.section.source)}
-          </h3>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <FormSelect
-                label={t(keys.createProcess.field.carrier)}
-                name="carrier"
-                value={carrier()}
-                onInput={setCarrier}
-                options={carrierOptions()}
-                placeholder={t(keys.createProcess.field.carrierPlaceholder)}
-                required
-              />
-              <Show when={carrier() === 'unknown'}>
-                <p class="mt-2 text-xs text-slate-500">
-                  {t(keys.createProcess.unknownCarrierWarning)}
-                </p>
-              </Show>
-            </div>
-            <FormInput
-              label={t(keys.createProcess.field.billOfLading)}
-              name="billOfLading"
-              value={billOfLading()}
-              onInput={setBillOfLading}
-              placeholder={t(keys.createProcess.field.billOfLadingPlaceholder)}
-            />
-            <FormInput
-              label={t(keys.createProcess.field.bookingNumber)}
-              name="bookingNumber"
-              value={bookingNumber()}
-              onInput={setBookingNumber}
-              placeholder={t(keys.createProcess.field.bookingNumberPlaceholder)}
-            />
-          </div>
-        </section>
-
-        {/* Actions */}
-        <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-6">
-          <button
-            type="button"
-            onClick={handleClose}
-            class="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
-          >
-            {t(keys.createProcess.action.cancel)}
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitDisabled()}
-            aria-disabled={isSubmitDisabled()}
-            title={isSubmitDisabled() ? submitTooltip() : undefined}
-            class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${
-              isSubmitDisabled()
-                ? 'opacity-50 cursor-not-allowed hover:bg-slate-900'
-                : 'hover:bg-slate-800'
-            }`}
-          >
-            {t(
-              props.mode === 'edit'
-                ? keys.createProcess.action.update
-                : keys.createProcess.action.create,
-            )}
-          </button>
-        </div>
-      </form>
-    </Dialog>
+      onSubmit={handleSubmit}
+      form={form()}
+      submitDisabled={isSubmitDisabled()}
+      submitTooltip={submitTooltip()}
+    />
   )
 }

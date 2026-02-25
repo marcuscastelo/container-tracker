@@ -1,0 +1,1825 @@
+{
+  "generatedAt": "2026-02-23T22:51:15.187Z",
+  "scopePath": "docs/plans/ui-complexity-scope.json",
+  "thresholds": {
+    "eslintSoft": {
+      "maxLinesPerFunction": 180,
+      "components": {
+        "complexity": 15,
+        "maxDepth": 4,
+        "maxNestedCallbacks": 3
+      },
+      "pagesLike": {
+        "complexity": 20,
+        "maxDepth": 5,
+        "maxNestedCallbacks": 4
+      }
+    },
+    "eslintHard": {
+      "maxLinesPerFunction": 220,
+      "components": {
+        "complexity": 15,
+        "maxDepth": 4,
+        "maxNestedCallbacks": 3
+      },
+      "pagesLike": {
+        "complexity": 20,
+        "maxDepth": 5,
+        "maxNestedCallbacks": 4
+      }
+    },
+    "jsx": {
+      "components": {
+        "depth": 6,
+        "elements": 120
+      },
+      "pagesLike": {
+        "depth": 7,
+        "elements": 160
+      }
+    }
+  },
+  "summary": {
+    "totalFiles": 50,
+    "componentFiles": 26,
+    "pagesLikeFiles": 4,
+    "supportFiles": 20,
+    "totalSoftViolations": 0
+  },
+  "top": {
+    "byLoc": [
+      {
+        "file": "src/modules/process/ui/CreateProcessDialog.tsx",
+        "bucket": "pages-like",
+        "loc": 897,
+        "jsxDepth": 1,
+        "jsxElements": 1,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/ShipmentView.tsx",
+        "bucket": "pages-like",
+        "loc": 446,
+        "jsxDepth": 7,
+        "jsxElements": 32,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/CreateProcessDialog.view.tsx",
+        "bucket": "support",
+        "loc": 390,
+        "jsxDepth": 8,
+        "jsxElements": 50,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/capabilities/search/ui/SearchOverlay.panel.tsx",
+        "bucket": "support",
+        "loc": 333,
+        "jsxDepth": 14,
+        "jsxElements": 66,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/ShipmentHeader.tsx",
+        "bucket": "components",
+        "loc": 285,
+        "jsxDepth": 5,
+        "jsxElements": 49,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/TimelineNode.tsx",
+        "bucket": "components",
+        "loc": 255,
+        "jsxDepth": 4,
+        "jsxElements": 14,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/capabilities/search/ui/SearchOverlay.tsx",
+        "bucket": "pages-like",
+        "loc": 185,
+        "jsxDepth": 1,
+        "jsxElements": 1,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/DashboardProcessTable.tsx",
+        "bucket": "components",
+        "loc": 167,
+        "jsxDepth": 5,
+        "jsxElements": 42,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/mappers/__tests__/processDetail.ui-mapper.test.ts",
+        "bucket": "support",
+        "loc": 167,
+        "jsxDepth": 0,
+        "jsxElements": 0,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/PredictionHistoryTable.tsx",
+        "bucket": "components",
+        "loc": 163,
+        "jsxDepth": 5,
+        "jsxElements": 21,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/FormFields.tsx",
+        "bucket": "components",
+        "loc": 132,
+        "jsxDepth": 4,
+        "jsxElements": 20,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/Dialog.tsx",
+        "bucket": "components",
+        "loc": 122,
+        "jsxDepth": 6,
+        "jsxElements": 16,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      }
+    ],
+    "byJsxDepth": [
+      {
+        "file": "src/capabilities/search/ui/SearchOverlay.panel.tsx",
+        "bucket": "support",
+        "loc": 333,
+        "jsxDepth": 14,
+        "jsxElements": 66,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/CreateProcessDialog.view.tsx",
+        "bucket": "support",
+        "loc": 390,
+        "jsxDepth": 8,
+        "jsxElements": 50,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/TimelineNode.layout.tsx",
+        "bucket": "support",
+        "loc": 96,
+        "jsxDepth": 8,
+        "jsxElements": 18,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/ShipmentView.tsx",
+        "bucket": "pages-like",
+        "loc": 446,
+        "jsxDepth": 7,
+        "jsxElements": 32,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/TimelinePanel.tsx",
+        "bucket": "components",
+        "loc": 45,
+        "jsxDepth": 6,
+        "jsxElements": 7,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/AppHeader.tsx",
+        "bucket": "components",
+        "loc": 91,
+        "jsxDepth": 6,
+        "jsxElements": 16,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/Dialog.tsx",
+        "bucket": "components",
+        "loc": 122,
+        "jsxDepth": 6,
+        "jsxElements": 16,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/ExistingProcessError.tsx",
+        "bucket": "components",
+        "loc": 119,
+        "jsxDepth": 6,
+        "jsxElements": 11,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/AlertsList.tsx",
+        "bucket": "components",
+        "loc": 23,
+        "jsxDepth": 5,
+        "jsxElements": 7,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/AlertsPanel.tsx",
+        "bucket": "components",
+        "loc": 34,
+        "jsxDepth": 5,
+        "jsxElements": 6,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/ContainerSelector.tsx",
+        "bucket": "components",
+        "loc": 42,
+        "jsxDepth": 5,
+        "jsxElements": 6,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/DashboardProcessTable.tsx",
+        "bucket": "components",
+        "loc": 167,
+        "jsxDepth": 5,
+        "jsxElements": 42,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      }
+    ],
+    "byJsxElements": [
+      {
+        "file": "src/capabilities/search/ui/SearchOverlay.panel.tsx",
+        "bucket": "support",
+        "loc": 333,
+        "jsxDepth": 14,
+        "jsxElements": 66,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/CreateProcessDialog.view.tsx",
+        "bucket": "support",
+        "loc": 390,
+        "jsxDepth": 8,
+        "jsxElements": 50,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/ShipmentHeader.tsx",
+        "bucket": "components",
+        "loc": 285,
+        "jsxDepth": 5,
+        "jsxElements": 49,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/DashboardProcessTable.tsx",
+        "bucket": "components",
+        "loc": 167,
+        "jsxDepth": 5,
+        "jsxElements": 42,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/ShipmentView.tsx",
+        "bucket": "pages-like",
+        "loc": 446,
+        "jsxDepth": 7,
+        "jsxElements": 32,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/PredictionHistoryTable.tsx",
+        "bucket": "components",
+        "loc": 163,
+        "jsxDepth": 5,
+        "jsxElements": 21,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/FormFields.tsx",
+        "bucket": "components",
+        "loc": 132,
+        "jsxDepth": 4,
+        "jsxElements": 20,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/TimelineNode.layout.tsx",
+        "bucket": "support",
+        "loc": 96,
+        "jsxDepth": 8,
+        "jsxElements": 18,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/DashboardMetricsGrid.tsx",
+        "bucket": "components",
+        "loc": 109,
+        "jsxDepth": 3,
+        "jsxElements": 17,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/AppHeader.tsx",
+        "bucket": "components",
+        "loc": 91,
+        "jsxDepth": 6,
+        "jsxElements": 16,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/shared/ui/Dialog.tsx",
+        "bucket": "components",
+        "loc": 122,
+        "jsxDepth": 6,
+        "jsxElements": 16,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/TimelineNode.tsx",
+        "bucket": "components",
+        "loc": 255,
+        "jsxDepth": 4,
+        "jsxElements": 14,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      }
+    ],
+    "bySoftViolations": [
+      {
+        "file": "src/capabilities/search/ui/fetchSearch.ts",
+        "bucket": "support",
+        "loc": 12,
+        "jsxDepth": 0,
+        "jsxElements": 0,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/capabilities/search/ui/search.viewmodel.ts",
+        "bucket": "support",
+        "loc": 81,
+        "jsxDepth": 0,
+        "jsxElements": 0,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/capabilities/search/ui/SearchOverlay.panel.tsx",
+        "bucket": "support",
+        "loc": 333,
+        "jsxDepth": 14,
+        "jsxElements": 66,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/capabilities/search/ui/SearchOverlay.tsx",
+        "bucket": "pages-like",
+        "loc": 185,
+        "jsxDepth": 1,
+        "jsxElements": 1,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/AlertsList.tsx",
+        "bucket": "components",
+        "loc": 23,
+        "jsxDepth": 5,
+        "jsxElements": 7,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/AlertsPanel.tsx",
+        "bucket": "components",
+        "loc": 34,
+        "jsxDepth": 5,
+        "jsxElements": 6,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/ContainerSelector.tsx",
+        "bucket": "components",
+        "loc": 42,
+        "jsxDepth": 5,
+        "jsxElements": 6,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/ContainersPanel.tsx",
+        "bucket": "components",
+        "loc": 25,
+        "jsxDepth": 2,
+        "jsxElements": 2,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/DashboardMetricsGrid.tsx",
+        "bucket": "components",
+        "loc": 109,
+        "jsxDepth": 3,
+        "jsxElements": 17,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/DashboardProcessTable.tsx",
+        "bucket": "components",
+        "loc": 167,
+        "jsxDepth": 5,
+        "jsxElements": 42,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/Icons.tsx",
+        "bucket": "components",
+        "loc": 64,
+        "jsxDepth": 2,
+        "jsxElements": 6,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      },
+      {
+        "file": "src/modules/process/ui/components/PredictionHistoryModal.tsx",
+        "bucket": "components",
+        "loc": 76,
+        "jsxDepth": 4,
+        "jsxElements": 13,
+        "complexity": null,
+        "maxLinesFn": null,
+        "maxDepth": null,
+        "maxNestedCallbacks": null,
+        "softViolationCount": 0,
+        "softViolations": {
+          "complexity": 0,
+          "maxLinesFn": 0,
+          "maxDepth": 0,
+          "maxNestedCallbacks": 0
+        }
+      }
+    ]
+  },
+  "files": [
+    {
+      "file": "src/capabilities/search/ui/fetchSearch.ts",
+      "bucket": "support",
+      "loc": 12,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/capabilities/search/ui/search.viewmodel.ts",
+      "bucket": "support",
+      "loc": 81,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/capabilities/search/ui/SearchOverlay.panel.tsx",
+      "bucket": "support",
+      "loc": 333,
+      "jsxDepth": 14,
+      "jsxElements": 66,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/capabilities/search/ui/SearchOverlay.tsx",
+      "bucket": "pages-like",
+      "loc": 185,
+      "jsxDepth": 1,
+      "jsxElements": 1,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/AlertsList.tsx",
+      "bucket": "components",
+      "loc": 23,
+      "jsxDepth": 5,
+      "jsxElements": 7,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/AlertsPanel.tsx",
+      "bucket": "components",
+      "loc": 34,
+      "jsxDepth": 5,
+      "jsxElements": 6,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/ContainerSelector.tsx",
+      "bucket": "components",
+      "loc": 42,
+      "jsxDepth": 5,
+      "jsxElements": 6,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/ContainersPanel.tsx",
+      "bucket": "components",
+      "loc": 25,
+      "jsxDepth": 2,
+      "jsxElements": 2,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/DashboardMetricsGrid.tsx",
+      "bucket": "components",
+      "loc": 109,
+      "jsxDepth": 3,
+      "jsxElements": 17,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/DashboardProcessTable.tsx",
+      "bucket": "components",
+      "loc": 167,
+      "jsxDepth": 5,
+      "jsxElements": 42,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/Icons.tsx",
+      "bucket": "components",
+      "loc": 64,
+      "jsxDepth": 2,
+      "jsxElements": 6,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/PredictionHistoryModal.tsx",
+      "bucket": "components",
+      "loc": 76,
+      "jsxDepth": 4,
+      "jsxElements": 13,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/PredictionHistoryTable.tsx",
+      "bucket": "components",
+      "loc": 163,
+      "jsxDepth": 5,
+      "jsxElements": 21,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/ShipmentHeader.tsx",
+      "bucket": "components",
+      "loc": 285,
+      "jsxDepth": 5,
+      "jsxElements": 49,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/TimelineNode.tsx",
+      "bucket": "components",
+      "loc": 255,
+      "jsxDepth": 4,
+      "jsxElements": 14,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/components/TimelinePanel.tsx",
+      "bucket": "components",
+      "loc": 45,
+      "jsxDepth": 6,
+      "jsxElements": 7,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/CreateProcessDialog.tsx",
+      "bucket": "pages-like",
+      "loc": 897,
+      "jsxDepth": 1,
+      "jsxElements": 1,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/CreateProcessDialog.view.tsx",
+      "bucket": "support",
+      "loc": 390,
+      "jsxDepth": 8,
+      "jsxElements": 50,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/fetchProcess.ts",
+      "bucket": "support",
+      "loc": 22,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/__tests__/processDetail.ui-mapper.test.ts",
+      "bucket": "support",
+      "loc": 167,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/__tests__/processList.ui-mapper.test.ts",
+      "bucket": "support",
+      "loc": 99,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/processDetail.ui-mapper.ts",
+      "bucket": "support",
+      "loc": 81,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/processList.ui-mapper.ts",
+      "bucket": "support",
+      "loc": 54,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/seriesLabel.ui-mapper.ts",
+      "bucket": "support",
+      "loc": 37,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/trackingAlert.ui-mapper.ts",
+      "bucket": "support",
+      "loc": 33,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/mappers/trackingStatus.ui-mapper.ts",
+      "bucket": "support",
+      "loc": 54,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/screens/DashboardScreen.tsx",
+      "bucket": "pages-like",
+      "loc": 104,
+      "jsxDepth": 4,
+      "jsxElements": 10,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/ShipmentView.tsx",
+      "bucket": "pages-like",
+      "loc": 446,
+      "jsxDepth": 7,
+      "jsxElements": 32,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/TimelineNode.layout.tsx",
+      "bucket": "support",
+      "loc": 96,
+      "jsxDepth": 8,
+      "jsxElements": 18,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/utils/__tests__/formatRelativeTime.test.ts",
+      "bucket": "support",
+      "loc": 44,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/utils/formatRelativeTime.ts",
+      "bucket": "support",
+      "loc": 27,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/validation/processApi.validation.ts",
+      "bucket": "support",
+      "loc": 62,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/validation/processConflict.validation.ts",
+      "bucket": "support",
+      "loc": 50,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/viewmodels/alert.vm.ts",
+      "bucket": "support",
+      "loc": 11,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/viewmodels/process-summary.vm.ts",
+      "bucket": "support",
+      "loc": 19,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/modules/process/ui/viewmodels/shipment.vm.ts",
+      "bucket": "support",
+      "loc": 35,
+      "jsxDepth": 0,
+      "jsxElements": 0,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/AppHeader.tsx",
+      "bucket": "components",
+      "loc": 91,
+      "jsxDepth": 6,
+      "jsxElements": 16,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/CopyButton.tsx",
+      "bucket": "components",
+      "loc": 79,
+      "jsxDepth": 4,
+      "jsxElements": 10,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/Dialog.tsx",
+      "bucket": "components",
+      "loc": 122,
+      "jsxDepth": 6,
+      "jsxElements": 16,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/EmptyState.tsx",
+      "bucket": "components",
+      "loc": 57,
+      "jsxDepth": 4,
+      "jsxElements": 9,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/ExistingProcessError.tsx",
+      "bucket": "components",
+      "loc": 119,
+      "jsxDepth": 6,
+      "jsxElements": 11,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/FormFields.tsx",
+      "bucket": "components",
+      "loc": 132,
+      "jsxDepth": 4,
+      "jsxElements": 20,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/LanguageSwitch.tsx",
+      "bucket": "components",
+      "loc": 102,
+      "jsxDepth": 4,
+      "jsxElements": 11,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/layout/DenseCell.tsx",
+      "bucket": "components",
+      "loc": 24,
+      "jsxDepth": 1,
+      "jsxElements": 1,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/layout/Inline.tsx",
+      "bucket": "components",
+      "loc": 39,
+      "jsxDepth": 1,
+      "jsxElements": 1,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/layout/Panel.tsx",
+      "bucket": "components",
+      "loc": 32,
+      "jsxDepth": 5,
+      "jsxElements": 7,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/layout/Section.tsx",
+      "bucket": "components",
+      "loc": 26,
+      "jsxDepth": 3,
+      "jsxElements": 5,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/layout/Stack.tsx",
+      "bucket": "components",
+      "loc": 23,
+      "jsxDepth": 1,
+      "jsxElements": 1,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/MetricCard.tsx",
+      "bucket": "components",
+      "loc": 42,
+      "jsxDepth": 3,
+      "jsxElements": 5,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    },
+    {
+      "file": "src/shared/ui/StatusBadge.tsx",
+      "bucket": "components",
+      "loc": 73,
+      "jsxDepth": 2,
+      "jsxElements": 3,
+      "complexity": null,
+      "maxLinesFn": null,
+      "maxDepth": null,
+      "maxNestedCallbacks": null,
+      "softViolationCount": 0,
+      "softViolations": {
+        "complexity": 0,
+        "maxLinesFn": 0,
+        "maxDepth": 0,
+        "maxNestedCallbacks": 0
+      }
+    }
+  ]
+}

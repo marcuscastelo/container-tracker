@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "allUiGlobs": [
+    "src/modules/*/ui/**/*.{ts,tsx}",
+    "src/capabilities/*/ui/**/*.{ts,tsx}",
+    "src/shared/ui/**/*.{ts,tsx}"
+  ],
+  "componentsGlobs": ["src/modules/*/ui/components/**/*.{ts,tsx}", "src/shared/ui/**/*.{ts,tsx}"],
+  "pagesLikeGlobs": [
+    "src/modules/*/ui/screens/**/*.{ts,tsx}",
+    "src/modules/*/ui/routes/**/*.{ts,tsx}",
+    "src/modules/*/ui/pages/**/*.{ts,tsx}",
+    "src/modules/*/ui/*View.tsx",
+    "src/modules/*/ui/*Dialog.tsx",
+    "src/capabilities/*/ui/screens/**/*.{ts,tsx}",
+    "src/capabilities/*/ui/routes/**/*.{ts,tsx}",
+    "src/capabilities/*/ui/pages/**/*.{ts,tsx}",
+    "src/capabilities/*/ui/*View.tsx",
+    "src/capabilities/*/ui/*Dialog.tsx",
+    "src/**/ui/**/index.tsx"
+  ],
+  "pagesLikeOverrides": ["src/capabilities/search/ui/SearchOverlay.tsx"],
+  "thresholds": {
+    "eslintSoft": {
+      "maxLinesPerFunction": 180,
+      "components": {
+        "complexity": 15,
+        "maxDepth": 4,
+        "maxNestedCallbacks": 3
+      },
+      "pagesLike": {
+        "complexity": 20,
+        "maxDepth": 5,
+        "maxNestedCallbacks": 4
+      }
+    },
+    "eslintHard": {
+      "maxLinesPerFunction": 220,
+      "components": {
+        "complexity": 15,
+        "maxDepth": 4,
+        "maxNestedCallbacks": 3
+      },
+      "pagesLike": {
+        "complexity": 20,
+        "maxDepth": 5,
+        "maxNestedCallbacks": 4
+      }
+    },
+    "jsx": {
+      "components": {
+        "depth": 6,
+        "elements": 120
+      },
+      "pagesLike": {
+        "depth": 7,
+        "elements": 160
+      }
+    }
+  }
+}
