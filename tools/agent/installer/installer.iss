@@ -43,20 +43,27 @@ Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" s
 Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" uninstall >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated
 
 [Code]
-function NormalizeNewLines(const Value: string): string;
+function NormalizeNewLines(const Value: AnsiString): AnsiString;
+var
+  I: Integer;
 begin
-  Result := StringChangeEx(Value, #13, '', True);
+  Result := '';
+  for I := 1 to Length(Value) do
+  begin
+    if Value[I] <> #13 then
+      Result := Result + Value[I];
+  end;
 end;
 
-function ContainsLine(const Content: string; const LineValue: string): Boolean;
+function ContainsLine(const Content: AnsiString; const LineValue: string): Boolean;
 var
-  NormalizedContent: string;
+  NormalizedContent: AnsiString;
 begin
   NormalizedContent := #10 + NormalizeNewLines(Content) + #10;
   Result := Pos(#10 + LineValue + #10, NormalizedContent) > 0;
 end;
 
-function TryLoadEffectiveConfig(var Content: string): Boolean;
+function TryLoadEffectiveConfig(var Content: AnsiString): Boolean;
 var
   ExistingConfigPath: string;
   TemplatePath: string;
@@ -73,16 +80,13 @@ begin
   Result := LoadStringFromFile(TemplatePath, Content);
 end;
 
-function IsMaerskEnabledInConfig(const Content: string): Boolean;
+function IsMaerskEnabledInConfig(const Content: AnsiString): Boolean;
 var
-  Normalized: string;
+  Normalized: AnsiString;
 begin
   Normalized := NormalizeNewLines(Content);
   Result := ContainsLine(Normalized, 'MAERSK_ENABLED=1');
-  if Result then
-  begin
-    exit;
-  end;
+  if Result then exit;
 
   Result := Pos('MAERSK_ENABLED=1', Normalized) > 0;
 end;
@@ -104,7 +108,7 @@ end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
-  EffectiveConfig: string;
+  EffectiveConfig: AnsiString;
 begin
   Result := True;
   if CurPageID <> wpReady then
