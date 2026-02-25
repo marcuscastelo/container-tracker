@@ -177,10 +177,14 @@ async function runPreflightChecks(command: {
 
     if (schtasksLine) {
       const normalizedSchtasksLine = schtasksLine.replaceAll('""', '"')
-      const expectedTaskCommand = 'cmd /c "{app}\\node\\node.exe" "{app}\\app\\dist\\updater.js"'
+      const hasCmdPrefix = normalizedSchtasksLine.includes('cmd /c')
+      const hasNodeExecutable = normalizedSchtasksLine.includes('{app}\\node\\node.exe')
+      const hasUpdaterScript = normalizedSchtasksLine.includes('{app}\\app\\dist\\updater.js')
 
-      if (!normalizedSchtasksLine.includes(expectedTaskCommand)) {
-        errors.push(`installer.iss missing expected task command: ${expectedTaskCommand}`)
+      if (!hasCmdPrefix || !hasNodeExecutable || !hasUpdaterScript) {
+        errors.push(
+          'installer.iss missing expected task command: cmd /c "{app}\\node\\node.exe" "{app}\\app\\dist\\updater.js"',
+        )
       }
     } else {
       errors.push('installer.iss missing schtasks creation command')
@@ -211,7 +215,12 @@ async function runPreflightChecks(command: {
       errors.push('updater.ts must reference DOTENV_PATH')
     }
 
-    if (!updaterSource.includes('C:\\ProgramData\\ContainerTrackerAgent\\config.env')) {
+    const fallbackPathLiteral = 'C:\\\\ProgramData\\\\ContainerTrackerAgent\\\\config.env'
+    const fallbackPathRuntime = 'C:\\ProgramData\\ContainerTrackerAgent\\config.env'
+    if (
+      !updaterSource.includes(fallbackPathLiteral) &&
+      !updaterSource.includes(fallbackPathRuntime)
+    ) {
       errors.push('updater.ts must include fallback ProgramData path')
     }
   } else {

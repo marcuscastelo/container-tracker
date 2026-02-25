@@ -130,29 +130,6 @@ async function collectFilesRecursively(
   return collected
 }
 
-function runCommand(command: string, args: readonly string[], cwd: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      stdio: 'inherit',
-      shell: false,
-    })
-
-    child.on('error', (error) => {
-      reject(new Error(`failed to run "${command}": ${toErrorMessage(error)}`))
-    })
-
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolve()
-        return
-      }
-
-      reject(new Error(`"${command}" exited with code ${code ?? 'unknown'}`))
-    })
-  })
-}
-
 function tryLoadArchiverFactory(): ArchiverFactory | null {
   try {
     const require = createRequire(import.meta.url)
@@ -231,8 +208,40 @@ async function createZipWithSystemZip(command: {
   await fs.rm(command.zipOutputPath, { force: true })
   await fs.mkdir(path.dirname(command.zipOutputPath), { recursive: true })
 
-  const zipArgs = ['-X', '-q', command.zipOutputPath, ...command.relativePaths]
-  await runCommand('zip', zipArgs, command.repoRoot)
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn('zip', ['-X', '-q', command.zipOutputPath, '-@'], {
+      cwd: command.repoRoot,
+      stdio: ['pipe', 'inherit', 'inherit'],
+      shell: false,
+    })
+
+    child.on('error', (error) => {
+      reject(new Error(`failed to run "zip": ${toErrorMessage(error)}`))
+    })
+
+    child.on('exit', (code) => {
+      if (code === 0) {
+        resolve()
+        return
+      }
+
+      reject(new Error(`"zip" exited with code ${code ?? 'unknown'}`))
+    })
+
+    if (!child.stdin) {
+      reject(new Error('"zip" stdin is not available'))
+      return
+    }
+
+    child.stdin.on('error', (error) => {
+      reject(new Error(`failed to write zip file list: ${toErrorMessage(error)}`))
+    })
+
+    for (const relativePath of command.relativePaths) {
+      child.stdin.write(`${toPosixPath(relativePath)}\n`)
+    }
+    child.stdin.end()
+  })
 }
 
 async function bundleRelease(): Promise<void> {
