@@ -21,6 +21,18 @@ const EnqueueSyncRequestRowSchema = z.object({
 
 const EnqueueSyncRequestRowsSchema = z.array(EnqueueSyncRequestRowSchema).min(1)
 
+const RefreshStatusOpenSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
+
+const RefreshStatusRowSchema = z.object({
+  id: z.string().uuid(),
+  status: RefreshStatusOpenSchema,
+  last_error: z.string().nullable(),
+  updated_at: z.string(),
+  ref_value: z.string(),
+})
+
+const RefreshStatusRowsSchema = z.array(RefreshStatusRowSchema)
+
 export type RefreshControllersBootstrapOverrides = Partial<{
   readonly refreshRestDeps: RefreshRestContainerDeps
 }>
@@ -59,5 +71,54 @@ export function bootstrapRefreshControllers(
 
   return createRefreshControllers({
     refreshRestUseCase: createRefreshRestContainerUseCase(refreshRestDeps),
+    async getSyncRequestStatuses({ syncRequestIds }) {
+      const uniqueSyncRequestIds = Array.from(new Set(syncRequestIds))
+
+      const result = await supabaseServer
+        .from('sync_requests')
+        .select('id,status,last_error,updated_at,ref_value')
+        .eq('tenant_id', serverEnv.SYNC_DEFAULT_TENANT_ID)
+        .in('id', uniqueSyncRequestIds)
+
+      const data = unwrapSupabaseResultOrThrow(result, {
+        operation: 'get_sync_request_statuses',
+        table: 'sync_requests',
+      })
+
+      const rows = RefreshStatusRowsSchema.parse(data)
+      const byId = new Map(rows.map((row) => [row.id, row]))
+
+      const requests = syncRequestIds.map((syncRequestId) => {
+        const row = byId.get(syncRequestId)
+        if (!row) {
+          return {
+            syncRequestId,
+            status: 'NOT_FOUND' as const,
+            lastError: 'sync_request_not_found',
+            updatedAt: null,
+            refValue: null,
+          }
+        }
+
+        return {
+          syncRequestId: row.id,
+          status: row.status,
+          lastError: row.last_error,
+          updatedAt: row.updated_at,
+          refValue: row.ref_value,
+        }
+      })
+
+      const allTerminal = requests.every((request) => {
+        return (
+          request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
+        )
+      })
+
+      return {
+        allTerminal,
+        requests,
+      }
+    },
   })
 }

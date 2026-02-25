@@ -1,6 +1,7 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, onCleanup, Show } from 'solid-js'
+import { z } from 'zod/v4'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
@@ -9,6 +10,7 @@ import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import {
   createProcessRequest,
   toCreateProcessInput,
@@ -25,6 +27,32 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 type DialogCarrier = CreateProcessDialogFormData['carrier']
 type ShipmentContainer = ShipmentDetailVM['containers'][number]
+type RefreshRetryState = { readonly current: number; readonly total: number }
+
+const REFRESH_SYNC_MAX_RETRIES = 5
+const REFRESH_SYNC_INITIAL_DELAY_MS = 5000
+
+const RefreshPostResponseSchema = z.object({
+  ok: z.literal(true),
+  container: z.string(),
+  syncRequestId: z.string().uuid(),
+  queued: z.literal(true),
+  deduped: z.boolean(),
+})
+
+const RefreshStatusResponseSchema = z.object({
+  ok: z.literal(true),
+  allTerminal: z.boolean(),
+  requests: z.array(
+    z.object({
+      syncRequestId: z.string().uuid(),
+      status: z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED', 'NOT_FOUND']),
+      lastError: z.string().nullable(),
+      updatedAt: z.string().nullable(),
+      refValue: z.string().nullable(),
+    }),
+  ),
+})
 
 const DIALOG_CARRIERS: readonly DialogCarrier[] = [
   'maersk',
@@ -49,7 +77,93 @@ type RefreshContainersParams = {
   readonly data: ShipmentDetailVM | null | undefined
   readonly setIsRefreshing: (value: boolean) => void
   readonly setRefreshError: (value: string | null) => void
+  readonly setRefreshRetry: (value: RefreshRetryState | null) => void
   readonly refetch: (info?: unknown) => unknown | Promise<unknown>
+  readonly isDisposed: () => boolean
+  readonly toTimeoutMessage: (totalRetries: number) => string
+  readonly toFailedMessage: (failedCount: number, firstError: string) => string
+}
+
+function readErrorFromJsonBody(body: unknown): string | null {
+  const parsed = z
+    .object({
+      error: z.string().optional(),
+    })
+    .safeParse(body)
+
+  if (!parsed.success) {
+    return null
+  }
+
+  const maybeError = parsed.data.error
+  if (typeof maybeError === 'string' && maybeError.trim().length > 0) {
+    return maybeError
+  }
+
+  return null
+}
+
+function toReadableErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+
+  const nestedMessage = message.match(/"message"\s*:\s*"([^"]+)"/)
+  if (nestedMessage?.[1]) {
+    return nestedMessage[1]
+  }
+
+  const afterStatus = message.replace(/^.*?:\s*\d{3}\s*/, '')
+  if (afterStatus && afterStatus.length > 0 && afterStatus.length < message.length) {
+    return afterStatus.trim()
+  }
+
+  return message
+}
+
+async function enqueueContainerRefresh(
+  containerNumber: string,
+  carrier: string | null | undefined,
+): Promise<{ readonly syncRequestId: string }> {
+  const response = await fetch('/api/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ container: containerNumber, carrier: carrier ?? null }),
+  })
+
+  const body: unknown = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const errorMessage = readErrorFromJsonBody(body) ?? response.statusText
+    throw new Error(`refresh failed for ${containerNumber}: ${response.status} ${errorMessage}`)
+  }
+
+  const parsed = RefreshPostResponseSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new Error(`refresh failed for ${containerNumber}: invalid enqueue response`)
+  }
+
+  return { syncRequestId: parsed.data.syncRequestId }
+}
+
+async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
+  const params = new URLSearchParams()
+  for (const syncRequestId of syncRequestIds) {
+    params.append('sync_request_id', syncRequestId)
+  }
+
+  const response = await fetch(`/api/refresh/status?${params.toString()}`)
+  const body: unknown = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const errorMessage = readErrorFromJsonBody(body) ?? response.statusText
+    throw new Error(`refresh status failed: ${response.status} ${errorMessage}`)
+  }
+
+  const parsed = RefreshStatusResponseSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new Error('refresh status failed: invalid response payload')
+  }
+
+  return parsed.data
 }
 
 async function refreshShipmentContainers(params: RefreshContainersParams): Promise<void> {
@@ -60,52 +174,103 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
   if (containers.length === 0) return
 
   try {
+    if (params.isDisposed()) return
+
+    params.setRefreshError(null)
+    params.setRefreshRetry(null)
     params.setIsRefreshing(true)
 
-    const promises = containers.map((container) =>
-      fetch('/api/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ container: container.number, carrier: data.carrier ?? null }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`refresh failed for ${container.number}: ${res.status} ${text}`)
-        }
-        return res.json().catch(() => ({}))
-      }),
+    const enqueueResults = await Promise.allSettled(
+      containers.map((container) => enqueueContainerRefresh(container.number, data.carrier)),
     )
 
-    await Promise.all(promises)
+    const syncRequestIds: string[] = []
+    const enqueueErrors: string[] = []
+
+    for (const result of enqueueResults) {
+      if (result.status === 'fulfilled') {
+        syncRequestIds.push(result.value.syncRequestId)
+      } else {
+        enqueueErrors.push(toReadableErrorMessage(result.reason))
+      }
+    }
+
+    const uniqueSyncRequestIds = Array.from(new Set(syncRequestIds))
+
+    if (uniqueSyncRequestIds.length === 0) {
+      const firstError = enqueueErrors[0] ?? 'Refresh failed'
+      params.setRefreshError(params.toFailedMessage(enqueueErrors.length || 1, firstError))
+      return
+    }
+
+    const pollingResult = await pollRefreshSyncStatus({
+      syncRequestIds: uniqueSyncRequestIds,
+      maxRetries: REFRESH_SYNC_MAX_RETRIES,
+      initialDelayMs: REFRESH_SYNC_INITIAL_DELAY_MS,
+      fetchSyncStatus: fetchRefreshSyncStatuses,
+      onRetryStart(progress) {
+        if (!params.isDisposed()) {
+          params.setRefreshRetry(progress)
+        }
+      },
+      shouldStop: params.isDisposed,
+    })
+
+    if (pollingResult.kind === 'cancelled') {
+      return
+    }
+
+    if (pollingResult.kind === 'timeout') {
+      params.setRefreshError(params.toTimeoutMessage(REFRESH_SYNC_MAX_RETRIES))
+      return
+    }
+
+    const failedStatuses = pollingResult.response.requests.filter((requestStatus) => {
+      return requestStatus.status === 'FAILED' || requestStatus.status === 'NOT_FOUND'
+    })
+
+    const statusErrors = failedStatuses.map((requestStatus) => {
+      return requestStatus.lastError ?? `sync_request_${requestStatus.syncRequestId}_failed`
+    })
+
+    const allErrors = [...enqueueErrors, ...statusErrors]
+    if (allErrors.length > 0) {
+      params.setRefreshError(params.toFailedMessage(allErrors.length, allErrors[0]))
+      return
+    }
+
+    params.setRefreshError(null)
   } catch (err) {
     try {
-      const message = err instanceof Error ? err.message : String(err)
-      let readableMessage = message
-      const nestedMessage = message.match(/"message"\s*:\s*"([^"]+)"/)
-      if (nestedMessage?.[1]) {
-        readableMessage = nestedMessage[1]
-      } else {
-        const afterStatus = message.replace(/^.*?:\s*\d{3}\s*/, '')
-        if (afterStatus && afterStatus.length > 0 && afterStatus.length < message.length) {
-          readableMessage = afterStatus.trim()
-        }
-      }
+      const readableMessage = toReadableErrorMessage(err)
 
       console.error('Failed to refresh containers (readable):', {
         original: err,
         message: readableMessage,
       })
-      params.setRefreshError(readableMessage || 'Refresh failed')
+      if (!params.isDisposed()) {
+        params.setRefreshError(readableMessage || 'Refresh failed')
+      }
     } catch (loggingErr) {
       console.error('Failed to refresh containers (fallback):', err, loggingErr)
-      params.setRefreshError('Refresh failed')
+      if (!params.isDisposed()) {
+        params.setRefreshError('Refresh failed')
+      }
     }
   } finally {
-    params.setIsRefreshing(false)
-    try {
-      await Promise.resolve(params.refetch())
-    } catch (err) {
-      console.error('Failed to refetch after refresh:', err)
+    const disposed = params.isDisposed()
+
+    if (!disposed) {
+      params.setIsRefreshing(false)
+      params.setRefreshRetry(null)
+    }
+
+    if (!disposed) {
+      try {
+        await Promise.resolve(params.refetch())
+      } catch (err) {
+        console.error('Failed to refetch after refresh:', err)
+      }
     }
   }
 }
@@ -129,6 +294,7 @@ type ShipmentViewLayoutProps = {
   readonly shipmentLoading: boolean
   readonly shipmentError: unknown
   readonly isRefreshing: boolean
+  readonly refreshRetry: RefreshRetryState | null
   readonly onTriggerRefresh: () => void
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
@@ -221,6 +387,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
               <ShipmentHeader
                 data={data()}
                 isRefreshing={props.isRefreshing}
+                refreshRetry={props.refreshRetry}
                 onTriggerRefresh={props.onTriggerRefresh}
                 onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
                   props.onOpenEditForShipment(data(), focus)
@@ -272,7 +439,7 @@ function toEditInitialData(data: ShipmentDetailVM): CreateProcessDialogFormData 
 }
 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
-  const { locale } = useTranslation()
+  const { locale, t, keys } = useTranslation()
 
   const [shipment, { refetch }] = createResource(
     () => [props.params.id, locale()] as const,
@@ -280,14 +447,28 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   )
 
   const [isRefreshing, setIsRefreshing] = createSignal(false)
+  const [refreshRetry, setRefreshRetry] = createSignal<RefreshRetryState | null>(null)
   const [refreshError, setRefreshError] = createSignal<string | null>(null)
+  let disposed = false
+
+  onCleanup(() => {
+    disposed = true
+  })
 
   const triggerRefresh = async () => {
     await refreshShipmentContainers({
       data: shipment(),
       setIsRefreshing,
       setRefreshError,
+      setRefreshRetry,
       refetch,
+      isDisposed: () => disposed,
+      toTimeoutMessage(totalRetries) {
+        return t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries })
+      },
+      toFailedMessage(failedCount, firstError) {
+        return t(keys.shipmentView.refreshSyncFailed, { failedCount, firstError })
+      },
     })
   }
 
@@ -434,6 +615,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       shipmentLoading={shipment.loading}
       shipmentError={shipment.error}
       isRefreshing={isRefreshing()}
+      refreshRetry={refreshRetry()}
       onTriggerRefresh={triggerRefresh}
       selectedContainerId={selectedContainerId()}
       onSelectContainer={setSelectedContainerId}

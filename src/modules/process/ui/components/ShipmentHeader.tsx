@@ -10,6 +10,10 @@ import { StatusBadge } from '~/shared/ui/StatusBadge'
 type Props = {
   data: ShipmentDetailVM
   isRefreshing: boolean
+  refreshRetry: {
+    readonly current: number
+    readonly total: number
+  } | null
   onTriggerRefresh: () => void
   // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
   onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
@@ -258,6 +262,14 @@ export function ShipmentHeader(props: Props): JSX.Element {
               onTriggerRefresh={props.onTriggerRefresh}
               onUnknownCarrier={() => setShowUnknownCarrierDialog(true)}
             />
+            {props.isRefreshing && props.refreshRetry ? (
+              <span class="text-xs text-slate-500">
+                {t(keys.shipmentView.refreshRetry, {
+                  current: props.refreshRetry.current,
+                  total: props.refreshRetry.total,
+                })}
+              </span>
+            ) : null}
 
             <UnknownCarrierDialog
               open={showUnknownCarrierDialog()}

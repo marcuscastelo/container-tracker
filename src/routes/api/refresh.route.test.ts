@@ -3,16 +3,19 @@ import { describe, expect, it, vi } from 'vitest'
 const trackingHandlers = vi.hoisted(() => ({
   refresh: vi.fn(),
   health: vi.fn(),
+  status: vi.fn(),
 }))
 
 vi.mock('~/modules/tracking/interface/http/refresh.controllers.bootstrap', () => ({
   bootstrapRefreshControllers: () => ({
     refresh: trackingHandlers.refresh,
     health: trackingHandlers.health,
+    status: trackingHandlers.status,
   }),
 }))
 
 import { GET as refreshGet, POST as refreshPost } from '~/routes/api/refresh'
+import { GET as refreshStatusGet } from '~/routes/api/refresh/status'
 import {
   GET as refreshMaerskGet,
   POST as refreshMaerskPost,
@@ -22,6 +25,10 @@ describe('refresh routes', () => {
   it('binds /api/refresh to refresh controllers', () => {
     expect(refreshPost).toBe(trackingHandlers.refresh)
     expect(refreshGet).toBe(trackingHandlers.health)
+  })
+
+  it('binds /api/refresh/status to refresh status controller', () => {
+    expect(refreshStatusGet).toBe(trackingHandlers.status)
   })
 
   it('returns 410 for legacy /api/refresh-maersk/:container', async () => {

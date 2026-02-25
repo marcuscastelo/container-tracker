@@ -11,8 +11,24 @@ type RefreshRestUseCase = (
   command: RefreshRestContainerCommand,
 ) => Promise<RefreshRestContainerResult>
 
+type RefreshSyncStatus = 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
+
+type RefreshSyncRequestStatus = {
+  readonly syncRequestId: string
+  readonly status: RefreshSyncStatus
+  readonly lastError: string | null
+  readonly updatedAt: string | null
+  readonly refValue: string | null
+}
+
 export type RefreshControllersDeps = {
   readonly refreshRestUseCase: RefreshRestUseCase
+  readonly getSyncRequestStatuses: (command: {
+    readonly syncRequestIds: readonly string[]
+  }) => Promise<{
+    readonly allTerminal: boolean
+    readonly requests: readonly RefreshSyncRequestStatus[]
+  }>
 }
 
 function mapRefreshRestResult(result: RefreshRestContainerResult): Response {
@@ -57,9 +73,43 @@ export function createRefreshControllers(deps: RefreshControllersDeps) {
     return respondWithSchema({ ok: true }, RefreshSchemas.responses.health, 200)
   }
 
+  async function status({ request }: { request: Request }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsedQuery = RefreshSchemas.refreshStatusQuery.safeParse({
+        sync_request_id: url.searchParams.getAll('sync_request_id'),
+      })
+
+      if (!parsedQuery.success) {
+        return respondWithSchema(
+          { error: `Invalid query: ${parsedQuery.error.message}` },
+          RefreshSchemas.responses.error,
+          400,
+        )
+      }
+
+      const result = await deps.getSyncRequestStatuses({
+        syncRequestIds: parsedQuery.data.sync_request_id,
+      })
+
+      return respondWithSchema(
+        {
+          ok: true,
+          allTerminal: result.allTerminal,
+          requests: result.requests,
+        },
+        RefreshSchemas.responses.status,
+        200,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
   return {
     refresh,
     health,
+    status,
   }
 }
 

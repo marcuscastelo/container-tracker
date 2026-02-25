@@ -31,13 +31,36 @@ const RefreshHealthResponseSchema = z.object({
 
 const RefreshResponseSchema = RefreshSuccessResponseSchema
 
+const RefreshStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED', 'NOT_FOUND'])
+
+const RefreshStatusQuerySchema = z.object({
+  sync_request_id: z.array(z.string().uuid()).min(1).max(100),
+})
+
+const RefreshStatusItemSchema = z.object({
+  syncRequestId: z.string().uuid(),
+  status: RefreshStatusSchema,
+  lastError: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  refValue: z.string().nullable(),
+})
+
+const RefreshStatusResponseSchema = z.object({
+  ok: z.literal(true),
+  allTerminal: z.boolean(),
+  requests: z.array(RefreshStatusItemSchema),
+})
+
 export const RefreshSchemas = {
   refreshRequest: RefreshRequestSchema,
+  refreshStatusQuery: RefreshStatusQuerySchema,
   response: RefreshResponseSchema,
   responses: {
     error: RefreshErrorResponseSchema,
     health: RefreshHealthResponseSchema,
     success: RefreshSuccessResponseSchema,
+    status: RefreshStatusResponseSchema,
   },
   provider: ProviderSchema,
+  status: RefreshStatusSchema,
 }
