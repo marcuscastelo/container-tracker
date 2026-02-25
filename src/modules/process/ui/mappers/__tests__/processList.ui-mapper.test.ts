@@ -13,6 +13,7 @@ describe('toProcessSummaryVMs', () => {
         origin: { display_name: 'Shanghai' },
         destination: { display_name: 'Santos' },
         carrier: 'Maersk',
+        importer_name: 'Empresa ABC',
         bill_of_lading: null,
         booking_number: null,
         source: 'api',
@@ -27,6 +28,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].id).toBe('p1')
     expect(result[0].containerCount).toBe(1)
     expect(result[0].carrier).toBe('Maersk')
+    expect(result[0].importerName).toBe('Empresa ABC')
   })
 
   it('maps process_status from API to status code + StatusVariant', () => {
@@ -94,5 +96,21 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('delivered')
     expect(result[0].statusCode).toBe('DELIVERED')
+  })
+
+  it('normalizes blank importer_name to null', () => {
+    const example: ProcessListItemSource[] = [
+      {
+        id: 'p5',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        importer_name: '   ',
+        containers: [],
+      },
+    ]
+
+    const result = toProcessSummaryVMs(example)
+    expect(result[0].importerName).toBeNull()
   })
 })

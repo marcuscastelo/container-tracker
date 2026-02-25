@@ -34,13 +34,12 @@
       "col": {
         "process": "Processo",
         "carrier": "Armador",
-        "client": "Cliente",
+        "importerName": "Importador",
         "route": "Origem → Destino",
         "containers": "Containers",
         "status": "Status",
         "eta": "ETA"
-      },
-      "clientPlaceholder": "<Cliente>"
+      }
     },
     "loading": "Carregando...",
     "error": {
