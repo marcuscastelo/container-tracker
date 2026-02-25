@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import os from 'node:os'
 import process from 'node:process'
 import { createClient } from '@supabase/supabase-js'
@@ -14,18 +15,82 @@ import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-re
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { createAgentScheduler } from './agent.scheduler.ts'
 
+function unquoteValue(value: string): string {
+  if (value.length < 2) return value
+  const first = value.at(0)
+  const last = value.at(-1)
+  if (!first || !last) return value
+
+  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
+    return value.slice(1, -1)
+  }
+
+  return value
+}
+
+function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
+  const trimmed = line.trim()
+  if (trimmed.length === 0 || trimmed.startsWith('#')) return null
+
+  const separatorIndex = trimmed.indexOf('=')
+  if (separatorIndex <= 0) return null
+
+  const key = trimmed.slice(0, separatorIndex).trim()
+  const value = trimmed.slice(separatorIndex + 1).trim()
+
+  if (key.length === 0) return null
+  return {
+    key,
+    value: unquoteValue(value),
+  }
+}
+
+function loadDotenvPathIfConfigured(): void {
+  const dotenvPath = process.env.DOTENV_PATH?.trim()
+  if (!dotenvPath || dotenvPath.length === 0) {
+    return
+  }
+
+  if (!fs.existsSync(dotenvPath)) {
+    throw new Error(`DOTENV_PATH file not found: ${dotenvPath}`)
+  }
+
+  const raw = fs.readFileSync(dotenvPath, 'utf8')
+  for (const line of raw.split(/\r?\n/)) {
+    const parsed = parseEnvLine(line)
+    if (!parsed) continue
+
+    if (typeof process.env[parsed.key] === 'undefined') {
+      process.env[parsed.key] = parsed.value
+    }
+  }
+}
+
+function normalizeOptionalEnv(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  if (normalized.length === 0) return undefined
+  return normalized
+}
+
+loadDotenvPathIfConfigured()
+
 const envSchema = z.object({
   BACKEND_URL: z
     .string()
     .url()
     .transform((value) => value.replace(/\/+$/, '')),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_ANON_KEY: z.string().min(1).optional(),
   AGENT_TOKEN: z.string().min(1).optional(),
   TENANT_ID: z.string().uuid(),
   AGENT_ID: z.string().min(1).default(os.hostname()),
   INTERVAL_SEC: z.coerce.number().int().positive().default(60),
   LIMIT: z.coerce.number().int().min(1).max(100).default(10),
+  MAERSK_ENABLED: z
+    .string()
+    .optional()
+    .transform((value) => value === '1' || value === 'true'),
   MAERSK_HEADLESS: z
     .string()
     .optional()
@@ -36,16 +101,17 @@ const envSchema = z.object({
 
 const env = envSchema.parse({
   BACKEND_URL: process.env.BACKEND_URL,
-  SUPABASE_URL: process.env.SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-  AGENT_TOKEN: process.env.AGENT_TOKEN,
+  SUPABASE_URL: normalizeOptionalEnv(process.env.SUPABASE_URL),
+  SUPABASE_ANON_KEY: normalizeOptionalEnv(process.env.SUPABASE_ANON_KEY),
+  AGENT_TOKEN: normalizeOptionalEnv(process.env.AGENT_TOKEN),
   TENANT_ID: process.env.TENANT_ID,
-  AGENT_ID: process.env.AGENT_ID,
+  AGENT_ID: normalizeOptionalEnv(process.env.AGENT_ID),
   INTERVAL_SEC: process.env.INTERVAL_SEC,
   LIMIT: process.env.LIMIT,
+  MAERSK_ENABLED: normalizeOptionalEnv(process.env.MAERSK_ENABLED),
   MAERSK_HEADLESS: process.env.MAERSK_HEADLESS,
   MAERSK_TIMEOUT_MS: process.env.MAERSK_TIMEOUT_MS,
-  MAERSK_USER_DATA_DIR: process.env.MAERSK_USER_DATA_DIR,
+  MAERSK_USER_DATA_DIR: normalizeOptionalEnv(process.env.MAERSK_USER_DATA_DIR),
 })
 
 const AgentTargetSchema = z.object({
@@ -108,16 +174,6 @@ async function fetchTargets(): Promise<readonly AgentTarget[]> {
 }
 
 const maerskCaptureService = createMaerskCaptureService()
-const supabaseRealtime = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-  db: {
-    schema: 'public',
-  },
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-})
 
 async function scrapeTarget(target: AgentTarget): Promise<{ raw: unknown; observedAt: string }> {
   if (target.provider === 'msc') {
@@ -128,6 +184,10 @@ async function scrapeTarget(target: AgentTarget): Promise<{ raw: unknown; observ
   if (target.provider === 'cmacgm') {
     const result = await fetchCmaCgmStatus(target.ref)
     return { raw: result.payload, observedAt: result.fetchedAt }
+  }
+
+  if (!env.MAERSK_ENABLED) {
+    throw new Error('maersk target received but MAERSK_ENABLED is disabled')
   }
 
   const result = await maerskCaptureService.capture({
@@ -218,6 +278,54 @@ function shouldWakeForRealtimeEvent(event: {
   return event.row?.status === 'PENDING'
 }
 
+function subscribeToRealtimeIfConfigured(command: {
+  readonly tenantId: string
+  readonly onWake: () => void
+}): { readonly unsubscribe: () => void } | null {
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+    console.warn('[agent] realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured')
+    return null
+  }
+
+  try {
+    const supabaseRealtime = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+      db: {
+        schema: 'public',
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+
+    return subscribeSyncRequestsByTenant({
+      client: supabaseRealtime,
+      tenantId: command.tenantId,
+      onEvent(event) {
+        if (!shouldWakeForRealtimeEvent(event)) {
+          return
+        }
+
+        command.onWake()
+      },
+      onStatus(status) {
+        if (status.state === 'SUBSCRIBED') {
+          console.log('[agent] realtime subscribed for tenant sync requests')
+          return
+        }
+
+        if (status.state === 'CHANNEL_ERROR' || status.state === 'TIMED_OUT') {
+          console.warn('[agent] realtime channel degraded; interval sweep remains active', status)
+        }
+      },
+    })
+  } catch (error) {
+    console.warn('[agent] realtime setup failed; continuing with interval sweep only', error)
+    return null
+  }
+}
+
 async function main(): Promise<void> {
   console.log(
     `[agent] started (tenant=${env.TENANT_ID}, agent=${env.AGENT_ID}, interval=${env.INTERVAL_SEC}s)`,
@@ -233,25 +341,10 @@ async function main(): Promise<void> {
     },
   })
 
-  const realtimeSubscription = subscribeSyncRequestsByTenant({
-    client: supabaseRealtime,
+  const realtimeSubscription = subscribeToRealtimeIfConfigured({
     tenantId: env.TENANT_ID,
-    onEvent(event) {
-      if (!shouldWakeForRealtimeEvent(event)) {
-        return
-      }
-
+    onWake() {
       scheduler.triggerRun('realtime')
-    },
-    onStatus(status) {
-      if (status.state === 'SUBSCRIBED') {
-        console.log('[agent] realtime subscribed for tenant sync requests')
-        return
-      }
-
-      if (status.state === 'CHANNEL_ERROR' || status.state === 'TIMED_OUT') {
-        console.warn('[agent] realtime channel degraded; interval sweep remains active', status)
-      }
     },
   })
 
@@ -259,7 +352,7 @@ async function main(): Promise<void> {
 
   const shutdown = (signal: 'SIGINT' | 'SIGTERM') => {
     console.log(`[agent] received ${signal}, shutting down`)
-    realtimeSubscription.unsubscribe()
+    realtimeSubscription?.unsubscribe()
     scheduler.stop()
   }
 

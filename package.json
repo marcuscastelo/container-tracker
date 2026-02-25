@@ -18,6 +18,9 @@
     "ui:complexity:ci": "pnpm run ui:complexity:report && pnpm run ui:complexity:allowlist:check",
     "flint": "pnpm run fix && pnpm run lint",
     "check": "run-p flint type-check test",
+    "agent:build": "pnpm exec tsc -p tools/agent/tsconfig.json",
+    "agent:release": "pnpm run agent:build && node tools/agent/dist/tools/agent/build-release.js",
+    "agent:setup": "iscc tools/agent/installer/installer.iss",
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip"
   },
