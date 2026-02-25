@@ -4,7 +4,7 @@
   <description>Container Tracker background sync service.</description>
 
   <executable>C:\Program Files\ContainerTrackerAgent\node\node.exe</executable>
-  <arguments>C:\Program Files\ContainerTrackerAgent\app\dist\agent.js</arguments>
+  <arguments>"C:\Program Files\ContainerTrackerAgent\app\dist\agent.js"</arguments>
   <workingdirectory>C:\Program Files\ContainerTrackerAgent\app</workingdirectory>
   <startmode>Automatic</startmode>
 
