@@ -25,14 +25,18 @@ type RowProps = {
 function calculateDelta(current: string, previous: string | null): number | null {
   if (!previous) return null
 
-  try {
-    const currentDate = new Date(current)
-    const previousDate = new Date(previous)
-    const diffMs = currentDate.getTime() - previousDate.getTime()
-    return Math.round(diffMs / (1000 * 60 * 60 * 24))
-  } catch {
+  const currentDate = new Date(current)
+  const previousDate = new Date(previous)
+
+  const currentTime = currentDate.getTime()
+  const previousTime = previousDate.getTime()
+
+  if (Number.isNaN(currentTime) || Number.isNaN(previousTime)) {
     return null
   }
+
+  const diffMs = currentTime - previousTime
+  return Math.round(diffMs / (1000 * 60 * 60 * 24))
 }
 
 function PredictionHistoryRow(props: RowProps): JSX.Element {
