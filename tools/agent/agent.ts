@@ -187,6 +187,9 @@ async function runOnce(): Promise<void> {
       await ingestSnapshot(target, scrape)
     } catch (error) {
       console.error(`[agent] target ${target.sync_request_id} failed:`, error)
+      console.warn(
+        `[agent] target ${target.sync_request_id} will be available again after lease expiration`,
+      )
     }
   }
 }
