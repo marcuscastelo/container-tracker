@@ -1,22 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
+
 import { createRefreshControllers } from '~/modules/tracking/interface/http/refresh.controllers'
 import { RefreshSchemas } from '~/modules/tracking/interface/http/refresh.schemas'
 
 describe('refresh controllers', () => {
-  it('returns success for REST carrier refresh', async () => {
+  it('returns 202 queued when sync request is created', async () => {
     const refreshRestUseCase = vi.fn(async () => ({
-      kind: 'ok' as const,
+      kind: 'queued' as const,
       container: 'MSCU7654321',
-      snapshotId: 'snapshot-1',
-      status: 'IN_TRANSIT',
-      newObservationsCount: 1,
-      newAlertsCount: 0,
+      syncRequestId: 'ac8c52bf-0e1d-49db-9441-5586f86f0e31',
+      queued: true as const,
+      deduped: false,
     }))
 
-    const controllers = createRefreshControllers({
-      refreshRestUseCase,
-      refreshMaerskUseCase: vi.fn(),
-    })
+    const controllers = createRefreshControllers({ refreshRestUseCase })
 
     const request = new Request('http://localhost/api/refresh', {
       method: 'POST',
@@ -27,10 +24,12 @@ describe('refresh controllers', () => {
     const response = await controllers.refresh({ request })
     const body = RefreshSchemas.responses.success.parse(await response.json())
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(202)
     expect(body.ok).toBe(true)
     expect(body.container).toBe('MSCU7654321')
-    expect(body.snapshotId).toBe('snapshot-1')
+    expect(body.syncRequestId).toBe('ac8c52bf-0e1d-49db-9441-5586f86f0e31')
+    expect(body.queued).toBe(true)
+    expect(body.deduped).toBe(false)
     expect(refreshRestUseCase).toHaveBeenCalledTimes(1)
     expect(refreshRestUseCase).toHaveBeenCalledWith({
       container: 'MSCU7654321',
@@ -38,16 +37,16 @@ describe('refresh controllers', () => {
     })
   })
 
-  it('returns maersk redirect for POST /api/refresh', async () => {
+  it('returns 202 queued when sync request is deduped', async () => {
     const refreshRestUseCase = vi.fn(async () => ({
-      kind: 'redirect' as const,
-      redirectPath: '/api/refresh-maersk/MRKU1234567',
+      kind: 'queued' as const,
+      container: 'MRKU1234567',
+      syncRequestId: 'f0787fe1-7767-44ca-8f3b-5966d1571318',
+      queued: true as const,
+      deduped: true,
     }))
 
-    const controllers = createRefreshControllers({
-      refreshRestUseCase,
-      refreshMaerskUseCase: vi.fn(),
-    })
+    const controllers = createRefreshControllers({ refreshRestUseCase })
 
     const request = new Request('http://localhost/api/refresh', {
       method: 'POST',
@@ -56,11 +55,10 @@ describe('refresh controllers', () => {
     })
 
     const response = await controllers.refresh({ request })
-    const body = RefreshSchemas.responses.redirect.parse(await response.json())
+    const body = RefreshSchemas.responses.success.parse(await response.json())
 
-    expect(response.status).toBe(307)
-    expect(response.headers.get('Location')).toBe('/api/refresh-maersk/MRKU1234567')
-    expect(body.redirect).toBe('/api/refresh-maersk/MRKU1234567')
+    expect(response.status).toBe(202)
+    expect(body.deduped).toBe(true)
   })
 
   it('returns 404 when container does not exist', async () => {
@@ -69,7 +67,6 @@ describe('refresh controllers', () => {
         kind: 'container_not_found' as const,
         container: 'MSCU7654321',
       })),
-      refreshMaerskUseCase: vi.fn(),
     })
 
     const request = new Request('http://localhost/api/refresh', {
@@ -88,7 +85,6 @@ describe('refresh controllers', () => {
   it('returns 400 for invalid refresh payload', async () => {
     const controllers = createRefreshControllers({
       refreshRestUseCase: vi.fn(),
-      refreshMaerskUseCase: vi.fn(),
     })
 
     const request = new Request('http://localhost/api/refresh', {
@@ -102,76 +98,5 @@ describe('refresh controllers', () => {
 
     expect(response.status).toBe(400)
     expect(body.error).toContain('carrier')
-  })
-
-  it('parses params/query and returns maersk success', async () => {
-    const refreshMaerskUseCase = vi.fn(async () => ({
-      kind: 'ok' as const,
-      status: 200 as const,
-      body: {
-        ok: true as const,
-        container: 'MRKU1234567',
-        status: 200,
-        savedToSupabase: true,
-      },
-    }))
-
-    const controllers = createRefreshControllers({
-      refreshRestUseCase: vi.fn(),
-      refreshMaerskUseCase,
-    })
-
-    const request = new Request(
-      'http://localhost/api/refresh-maersk/MRKU1234567?headless=1&hold=0&timeout=70000',
-      {
-        method: 'GET',
-      },
-    )
-
-    const response = await controllers.refreshMaersk({
-      params: { container: 'MRKU1234567' },
-      request,
-    })
-
-    const body = RefreshSchemas.maersk.responses.success.parse(await response.json())
-
-    expect(response.status).toBe(200)
-    expect(body.ok).toBe(true)
-    expect(refreshMaerskUseCase).toHaveBeenCalledTimes(1)
-    expect(refreshMaerskUseCase).toHaveBeenCalledWith({
-      container: 'MRKU1234567',
-      headless: true,
-      hold: false,
-      timeoutMs: 70000,
-      userDataDir: null,
-    })
-  })
-
-  it('returns maersk error response from usecase', async () => {
-    const controllers = createRefreshControllers({
-      refreshRestUseCase: vi.fn(),
-      refreshMaerskUseCase: vi.fn(async () => ({
-        kind: 'error' as const,
-        status: 403,
-        body: {
-          error: 'Access Denied by Akamai',
-          hint: 'Try warmed profile',
-        },
-      })),
-    })
-
-    const request = new Request('http://localhost/api/refresh-maersk/MRKU1234567', {
-      method: 'POST',
-    })
-
-    const response = await controllers.refreshMaersk({
-      params: { container: 'MRKU1234567' },
-      request,
-    })
-
-    const body = RefreshSchemas.maersk.responses.error.parse(await response.json())
-
-    expect(response.status).toBe(403)
-    expect(body.error).toContain('Access Denied')
   })
 })

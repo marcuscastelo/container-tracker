@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
@@ -341,6 +340,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      enqueue_sync_request: {
+        Args: {
+          p_priority?: number
+          p_provider: string
+          p_ref_type?: string
+          p_ref_value?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          id: string
+          is_new: boolean
+          status: Database['public']['Enums']['sync_request_status']
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'sync_requests'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       lease_sync_requests: {
         Args: {
           p_agent_id: string

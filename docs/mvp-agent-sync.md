@@ -6,9 +6,13 @@ This MVP introduces:
 
 - Queue table: `sync_requests`
 - Atomic lease RPC: `lease_sync_requests(...)`
+- Atomic enqueue RPC: `enqueue_sync_request(...)`
 - API routes:
+  - `POST /api/refresh` (queue-first, no backend scraping)
   - `GET /api/agent/targets`
   - `POST /api/tracking/snapshots/ingest`
+- Legacy route:
+  - `GET/POST /api/refresh-maersk/:container` now returns `410 Gone`
 - Local Node agent runner: `tools/agent/agent.ts`
 
 Snapshots continue to be persisted in existing `container_snapshots` via
@@ -20,6 +24,7 @@ Snapshots continue to be persisted in existing `container_snapshots` via
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SYNC_DEFAULT_TENANT_ID` (required; UUID used by `/api/refresh` enqueue)
 - `AGENT_TOKEN` (required in production)
 - `AGENT_LEASE_MINUTES` (optional, default `5`)
 
@@ -45,6 +50,7 @@ Notes:
 Apply:
 
 - [20260225_01_agent_sync_mvp.sql](/home/marucs/Development/Castro/container-tracker/supabase/migrations/20260225_01_agent_sync_mvp.sql)
+- [20260225_02_refresh_queue_first.sql](/home/marucs/Development/Castro/container-tracker/supabase/migrations/20260225_02_refresh_queue_first.sql)
 
 If you use Supabase SQL Editor, paste and run the full migration file.
 
@@ -70,7 +76,37 @@ insert into public.sync_requests (
 
 ## 4) API Smoke Tests
 
-### 4.1 Lease targets
+### 4.1 Enqueue from UI-style refresh
+
+```bash
+curl -i \
+  -X POST "$BACKEND_URL/api/refresh" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "container":"MSCU1234567",
+    "carrier":"msc"
+  }'
+```
+
+Expected:
+
+- HTTP `202`
+- response contains `syncRequestId`, `queued: true`, `deduped: <bool>`
+- repeated calls while request is `PENDING/LEASED` reuse the same open request (`deduped: true`)
+
+### 4.2 Verify deprecated legacy route
+
+```bash
+curl -i \
+  "$BACKEND_URL/api/refresh-maersk/MSCU1234567"
+```
+
+Expected:
+
+- HTTP `410`
+- `{ "error": "refresh_maersk_deprecated_use_sync_queue" }`
+
+### 4.3 Lease targets
 
 ```bash
 curl -i \
@@ -85,7 +121,7 @@ Expected:
 - `targets[]` list
 - leased rows become `status=LEASED`
 
-### 4.2 Ingest snapshot
+### 4.4 Ingest snapshot
 
 ```bash
 curl -i \
@@ -127,5 +163,6 @@ The loop executes:
 
 - `401 Unauthorized`: check `AGENT_TOKEN` header.
 - `500 AGENT_TOKEN is required in production`: set backend `AGENT_TOKEN`.
+- `500` on `/api/refresh` with env error: set `SYNC_DEFAULT_TENANT_ID`.
 - `409 lease_conflict`: lease expired or was taken/released by another agent.
 - `422 No container found / Ambiguous container`: request is marked `FAILED` with `last_error`.
