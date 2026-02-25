@@ -113,4 +113,20 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].importerName).toBeNull()
   })
+
+  it('preserves leading/trailing whitespace in non-blank importer_name', () => {
+    const example: ProcessListItemSource[] = [
+      {
+        id: 'p6',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        importer_name: '  Empresa ABC  ',
+        containers: [],
+      },
+    ]
+
+    const result = toProcessSummaryVMs(example)
+    expect(result[0].importerName).toBe('  Empresa ABC  ')
+  })
 })
