@@ -125,6 +125,20 @@ async function downloadFile(url: string, targetPath: string): Promise<void> {
   await fs.writeFile(targetPath, fileBuffer)
 }
 
+async function ensureDownloadedFile(command: {
+  readonly label: string
+  readonly url: string
+  readonly targetPath: string
+}): Promise<void> {
+  if (await pathExists(command.targetPath)) {
+    console.log(`[agent:release] using cached ${command.label}: ${command.targetPath}`)
+    return
+  }
+
+  console.log(`[agent:release] downloading ${command.label}: ${command.url}`)
+  await downloadFile(command.url, command.targetPath)
+}
+
 async function findExtractedNodeDirectory(extractDir: string): Promise<string> {
   const entries = await fs.readdir(extractDir, { withFileTypes: true })
   const candidate = entries.find((entry) => entry.isDirectory() && entry.name.includes('-win-x64'))
@@ -276,6 +290,7 @@ async function buildRelease(): Promise<void> {
   const releaseNodeDir = path.join(releaseDir, 'node')
   const releaseConfigDir = path.join(releaseDir, 'config')
   const tempDownloadDir = path.join(releaseDir, '.downloads')
+  const cacheDownloadDir = path.join(toolsAgentDir, '.cache', 'downloads')
 
   const nodeVersion = process.env.AGENT_NODE_WINDOWS_VERSION ?? DEFAULT_NODE_WINDOWS_VERSION
   const winswVersion = process.env.AGENT_WINSW_VERSION ?? DEFAULT_WINSW_VERSION
@@ -292,6 +307,7 @@ async function buildRelease(): Promise<void> {
   await fs.mkdir(releaseAppDir, { recursive: true })
   await fs.mkdir(releaseWinswDir, { recursive: true })
   await fs.mkdir(releaseConfigDir, { recursive: true })
+  await fs.mkdir(cacheDownloadDir, { recursive: true })
 
   await fs.cp(distDir, releaseAppDistDir, { recursive: true })
   await writeAgentEntrypointShims(releaseAppDistDir)
@@ -302,11 +318,14 @@ async function buildRelease(): Promise<void> {
   })
 
   const nodeZipName = `node-${nodeVersion}-win-x64.zip`
-  const nodeZipPath = path.join(tempDownloadDir, nodeZipName)
+  const nodeZipPath = path.join(cacheDownloadDir, nodeZipName)
   const nodeExtractDir = path.join(tempDownloadDir, 'node-extracted')
   const nodeDownloadUrl = `https://nodejs.org/dist/${nodeVersion}/${nodeZipName}`
-  console.log(`[agent:release] downloading node runtime: ${nodeDownloadUrl}`)
-  await downloadFile(nodeDownloadUrl, nodeZipPath)
+  await ensureDownloadedFile({
+    label: 'node runtime',
+    url: nodeDownloadUrl,
+    targetPath: nodeZipPath,
+  })
 
   await fs.rm(nodeExtractDir, { recursive: true, force: true })
   await fs.mkdir(nodeExtractDir, { recursive: true })
@@ -316,8 +335,13 @@ async function buildRelease(): Promise<void> {
   await fs.cp(extractedNodeDir, releaseNodeDir, { recursive: true })
 
   const winswDownloadUrl = `https://github.com/winsw/winsw/releases/download/${winswVersion}/WinSW-x64.exe`
-  console.log(`[agent:release] downloading winsw: ${winswDownloadUrl}`)
-  await downloadFile(winswDownloadUrl, path.join(releaseWinswDir, 'ContainerTrackerAgent.exe'))
+  const winswExePath = path.join(cacheDownloadDir, `WinSW-x64-${winswVersion}.exe`)
+  await ensureDownloadedFile({
+    label: 'winsw',
+    url: winswDownloadUrl,
+    targetPath: winswExePath,
+  })
+  await fs.cp(winswExePath, path.join(releaseWinswDir, 'ContainerTrackerAgent.exe'))
 
   await fs.cp(
     path.join(installerDir, 'ContainerTrackerAgent.xml'),
