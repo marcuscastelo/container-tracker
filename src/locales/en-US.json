@@ -23,13 +23,12 @@
       "col": {
         "process": "Process",
         "carrier": "Carrier",
-        "client": "Client",
+        "importerName": "Importer",
         "route": "Origin → Destination",
         "containers": "Containers",
         "status": "Status",
         "eta": "ETA"
-      },
-      "clientPlaceholder": "<Client>"
+      }
     },
     "loading": "Loading...",
     "error": {

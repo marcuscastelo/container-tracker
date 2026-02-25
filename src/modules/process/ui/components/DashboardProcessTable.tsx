@@ -53,6 +53,10 @@ function displayRoute(process: ProcessSummaryVM): { origin: string; destination:
   }
 }
 
+function displayImporterName(process: ProcessSummaryVM): string {
+  return process.importerName ?? '—'
+}
+
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const route = () => displayRoute(props.process)
@@ -71,7 +75,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         <span class="text-sm text-slate-600">{props.process.carrier ?? '—'}</span>
       </td>
       <td class="px-6 py-4">
-        <span class="text-sm text-slate-600">{t(keys.dashboard.table.clientPlaceholder)}</span>
+        <span class="text-sm text-slate-600">{displayImporterName(props.process)}</span>
       </td>
       <td class="px-6 py-4">
         <div class="flex items-center gap-2 text-sm text-slate-600">
@@ -110,7 +114,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           <tr class="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
             <th class="px-6 py-3">{t(keys.dashboard.table.col.process)}</th>
             <th class="px-6 py-3">{t(keys.dashboard.table.col.carrier)}</th>
-            <th class="px-6 py-3">{t(keys.dashboard.table.col.client)}</th>
+            <th class="px-6 py-3">{t(keys.dashboard.table.col.importerName)}</th>
             <th class="px-6 py-3">{t(keys.dashboard.table.col.route)}</th>
             <th class="px-6 py-3 text-center">{t(keys.dashboard.table.col.containers)}</th>
             <th class="px-6 py-3">{t(keys.dashboard.table.col.status)}</th>
