@@ -31,6 +31,7 @@ type RefreshRetryState = { readonly current: number; readonly total: number }
 
 const REFRESH_SYNC_MAX_RETRIES = 5
 const REFRESH_SYNC_INITIAL_DELAY_MS = 5000
+const REFRESH_SOFT_BLOCK_WINDOW_MS = 60_000
 
 const RefreshPostResponseSchema = z.object({
   ok: z.literal(true),
@@ -53,6 +54,9 @@ const RefreshStatusResponseSchema = z.object({
     }),
   ),
 })
+
+type RefreshStatusResponse = z.infer<typeof RefreshStatusResponseSchema>
+type RefreshStatusRequest = RefreshStatusResponse['requests'][number]
 
 const DIALOG_CARRIERS: readonly DialogCarrier[] = [
   'maersk',
@@ -77,11 +81,55 @@ type RefreshContainersParams = {
   readonly data: ShipmentDetailVM | null | undefined
   readonly setIsRefreshing: (value: boolean) => void
   readonly setRefreshError: (value: string | null) => void
+  readonly setRefreshHint: (value: string | null) => void
   readonly setRefreshRetry: (value: RefreshRetryState | null) => void
-  readonly refetch: (info?: unknown) => unknown | Promise<unknown>
+  readonly setLastRefreshDoneAt: (value: Date | null) => void
+  readonly refreshTrackingData: () => Promise<void>
   readonly isDisposed: () => boolean
   readonly toTimeoutMessage: (totalRetries: number) => string
   readonly toFailedMessage: (failedCount: number, firstError: string) => string
+}
+
+function toLatestDoneAtOrNow(requests: readonly RefreshStatusRequest[]): Date {
+  const doneTimestamps = requests
+    .map((request) => {
+      if (request.status !== 'DONE' || request.updatedAt === null) {
+        return Number.NaN
+      }
+      return Date.parse(request.updatedAt)
+    })
+    .filter((value) => Number.isFinite(value))
+
+  if (doneTimestamps.length === 0) {
+    return new Date()
+  }
+
+  return new Date(Math.max(...doneTimestamps))
+}
+
+async function refreshTrackingDataOnly(command: {
+  readonly processId: string
+  readonly locale: string
+  readonly current: ShipmentDetailVM | null | undefined
+  readonly apply: (next: ShipmentDetailVM) => void
+}): Promise<void> {
+  const latest = await fetchProcess(command.processId, command.locale)
+  if (!latest) return
+
+  if (!command.current) {
+    command.apply(latest)
+    return
+  }
+
+  // Keep non-tracking process metadata and update only fields derived from tracking.
+  command.apply({
+    ...command.current,
+    status: latest.status,
+    statusCode: latest.statusCode,
+    eta: latest.eta,
+    containers: latest.containers,
+    alerts: latest.alerts,
+  })
 }
 
 function readErrorFromJsonBody(body: unknown): string | null {
@@ -177,6 +225,7 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
     if (params.isDisposed()) return
 
     params.setRefreshError(null)
+    params.setRefreshHint(null)
     params.setRefreshRetry(null)
     params.setIsRefreshing(true)
 
@@ -239,6 +288,7 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
       return
     }
 
+    params.setLastRefreshDoneAt(toLatestDoneAtOrNow(pollingResult.response.requests))
     params.setRefreshError(null)
   } catch (err) {
     try {
@@ -267,9 +317,9 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
 
     if (!disposed) {
       try {
-        await Promise.resolve(params.refetch())
+        await params.refreshTrackingData()
       } catch (err) {
-        console.error('Failed to refetch after refresh:', err)
+        console.error('Failed to refresh tracking data after sync:', err)
       }
     }
   }
@@ -277,6 +327,7 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
 
 type ShipmentViewLayoutProps = {
   readonly refreshError: string | null
+  readonly refreshHint: string | null
   readonly onDismissRefreshError: () => void
   readonly isEditOpen: boolean
   readonly onCloseEdit: () => void
@@ -388,6 +439,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                 data={data()}
                 isRefreshing={props.isRefreshing}
                 refreshRetry={props.refreshRetry}
+                refreshHint={props.refreshHint}
                 onTriggerRefresh={props.onTriggerRefresh}
                 onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
                   props.onOpenEditForShipment(data(), focus)
@@ -441,7 +493,7 @@ function toEditInitialData(data: ShipmentDetailVM): CreateProcessDialogFormData 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { locale, t, keys } = useTranslation()
 
-  const [shipment, { refetch }] = createResource(
+  const [shipment, { refetch, mutate }] = createResource(
     () => [props.params.id, locale()] as const,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
@@ -449,19 +501,54 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const [isRefreshing, setIsRefreshing] = createSignal(false)
   const [refreshRetry, setRefreshRetry] = createSignal<RefreshRetryState | null>(null)
   const [refreshError, setRefreshError] = createSignal<string | null>(null)
+  const [refreshHint, setRefreshHint] = createSignal<string | null>(null)
+  const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Date | null>(null)
   let disposed = false
 
   onCleanup(() => {
     disposed = true
   })
 
+  const buildRecentUpdateHint = (elapsedMs: number): string => {
+    const elapsedSeconds = Math.max(1, Math.floor(elapsedMs / 1000))
+    if (elapsedSeconds < 60) {
+      return t(keys.shipmentView.refreshRecentlyUpdatedSeconds, { count: elapsedSeconds })
+    }
+
+    const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60))
+    return t(keys.shipmentView.refreshRecentlyUpdatedMinutes, { count: elapsedMinutes })
+  }
+
+  const refreshTrackingData = async () => {
+    await refreshTrackingDataOnly({
+      processId: props.params.id,
+      locale: locale(),
+      current: shipment(),
+      apply: mutate,
+    })
+  }
+
   const triggerRefresh = async () => {
+    const doneAt = lastRefreshDoneAt()
+    if (doneAt) {
+      const elapsedMs = Date.now() - doneAt.getTime()
+      if (elapsedMs < REFRESH_SOFT_BLOCK_WINDOW_MS) {
+        setRefreshError(null)
+        setRefreshHint(buildRecentUpdateHint(elapsedMs))
+        return
+      }
+    }
+
+    setRefreshHint(null)
+
     await refreshShipmentContainers({
       data: shipment(),
       setIsRefreshing,
       setRefreshError,
+      setRefreshHint,
       setRefreshRetry,
-      refetch,
+      setLastRefreshDoneAt,
+      refreshTrackingData,
       isDisposed: () => disposed,
       toTimeoutMessage(totalRetries) {
         return t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries })
@@ -472,20 +559,15 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     })
   }
 
-  // Edit dialog state
   const [isEditOpen, setIsEditOpen] = createSignal(false)
   const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
     null,
   )
-  // which field should receive focus when opening the edit dialog (null = none)
   const [focusFieldOnOpen, setFocusFieldOnOpen] = createSignal<'reference' | 'carrier' | null>(null)
 
-  // Create dialog state (header "Create process" button uses this)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const navigate = useNavigate()
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
-
-  // Copy button state is handled by shared `CopyButton` component
 
   const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
@@ -515,7 +597,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       try {
         await updateProcessRequest(props.params.id, input)
 
-        // Refresh data
         await refetch()
         setIsEditOpen(false)
       } catch (err) {
@@ -533,14 +614,12 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       if (conflict) {
         setCreateError(conflict)
       }
-      // Could show other UI error; for now just log and close
       setIsEditOpen(false)
     }
   }
 
   const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
 
-  // Set the first container as selected when data loads
   const selectedContainer = createMemo(() => {
     const data = shipment()
     if (!data) return null
@@ -554,7 +633,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     return containers[0]
   })
 
-  // Update selected container when data loads
   createEffect(() => {
     const data = shipment()
     if (data && data.containers.length > 0 && !selectedContainerId()) {
@@ -595,6 +673,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   return (
     <ShipmentViewLayout
       refreshError={refreshError()}
+      refreshHint={refreshHint()}
       onDismissRefreshError={() => setRefreshError(null)}
       isEditOpen={isEditOpen()}
       onCloseEdit={() => {

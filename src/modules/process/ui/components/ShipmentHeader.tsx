@@ -14,6 +14,7 @@ type Props = {
     readonly current: number
     readonly total: number
   } | null
+  refreshHint: string | null
   onTriggerRefresh: () => void
   // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
   onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
@@ -269,6 +270,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
                   total: props.refreshRetry.total,
                 })}
               </span>
+            ) : null}
+            {!props.isRefreshing && props.refreshHint ? (
+              <span class="text-xs text-slate-500">{props.refreshHint}</span>
             ) : null}
 
             <UnknownCarrierDialog

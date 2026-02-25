@@ -104,6 +104,8 @@
     "noEvents": "Nenhum evento registado ainda",
     "internalIdMessage": "Este processo está a ser mostrado com um ID interno porque não foi fornecida uma referência. Pode adicionar uma referência personalizada para facilitar a identificação.",
     "internalIdCTA": "Adicionar referência",
+    "refreshRecentlyUpdatedSeconds": "Já atualizado há {{count}}s",
+    "refreshRecentlyUpdatedMinutes": "Já atualizado há {{count}} min",
     "refreshRetry": "tentativa {{current}}/{{total}}",
     "refreshSyncTimeout": "A sincronização do refresh continua pendente após {{total}} tentativas. Tente novamente em instantes.",
     "refreshSyncFailed": "Refresh concluído com {{failedCount}} pedido(s) com falha. Primeiro erro: {{firstError}}",

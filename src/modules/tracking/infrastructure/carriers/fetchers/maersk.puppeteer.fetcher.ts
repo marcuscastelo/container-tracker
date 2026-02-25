@@ -142,23 +142,6 @@ export function createMaerskCaptureService(): MaerskCaptureService {
     async capture(command: CaptureMaerskCommand): Promise<MaerskCaptureResult> {
       let browser: Browser | null = null
 
-      const projectRoot = process.cwd()
-      const collectionsDir = path.join(projectRoot, 'collections')
-      if (!fs.existsSync(collectionsDir)) {
-        return {
-          kind: 'error',
-          status: 500,
-          body: { error: 'collections directory not found' },
-        }
-      }
-
-      const providerDir = path.join(collectionsDir, 'maersk')
-      if (!fs.existsSync(providerDir)) {
-        fs.mkdirSync(providerDir, { recursive: true })
-      }
-
-      const diagnosticsPath = path.join(providerDir, `${command.container}.json.devtools.json`)
-
       if (command.userDataDir && !fs.existsSync(command.userDataDir)) {
         return {
           kind: 'error',
@@ -472,29 +455,6 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         const captured = captureState.data
 
         if (captured.status === 403 || captured.body.includes('Access Denied')) {
-          const diagnostics = {
-            request: {
-              url: captured.url,
-              method: captured.method,
-              headers: captured.headers,
-            },
-            cookies: captured.cookies.map((cookie) => ({
-              name: cookie.name,
-              value: cookie.value,
-              domain: cookie.domain,
-            })),
-            userAgent: captured.userAgent,
-            telemetry: captured.telemetry ? `${captured.telemetry.substring(0, 100)}...` : null,
-            capturedAt: captured.timestamp,
-            source: 'puppeteer-cdp',
-            response: {
-              status: captured.status,
-            },
-            blockedResponse: captured.body,
-          }
-
-          fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-
           return {
             kind: 'error',
             status: 403,
@@ -529,35 +489,6 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         }
 
         const payload = parsedJson ?? { raw: captured.body }
-
-        const diagnostics = {
-          request: {
-            url: captured.url,
-            method: captured.method,
-            headers: captured.headers,
-          },
-          cookies: captured.cookies.map((cookie) => ({
-            name: cookie.name,
-            value: cookie.value,
-            domain: cookie.domain,
-          })),
-          userAgent: captured.userAgent,
-          telemetry: captured.telemetry ? `${captured.telemetry.substring(0, 100)}...` : null,
-          capturedAt: captured.timestamp,
-          source: 'puppeteer-cdp',
-          response: {
-            status: captured.status,
-          },
-        }
-
-        try {
-          fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-          console.log(
-            `[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`,
-          )
-        } catch (error) {
-          console.warn('[maersk-refresh] Could not write diagnostics file:', error)
-        }
 
         return {
           kind: 'ok',
