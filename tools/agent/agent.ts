@@ -1,6 +1,11 @@
+import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
+import path from 'node:path'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
+
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod/v4'
 
@@ -14,6 +19,10 @@ import { fetchMscStatus } from '../../src/modules/tracking/infrastructure/carrie
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { createAgentScheduler } from './agent.scheduler.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { computeBackoffDelayMs } from './backoff.ts'
+
+const DEFAULT_PROGRAM_DATA_DIR = 'C:\\ProgramData\\ContainerTrackerAgent'
 
 function unquoteValue(value: string): string {
   if (value.length < 2) return value
@@ -37,32 +46,11 @@ function parseEnvLine(line: string): { readonly key: string; readonly value: str
 
   const key = trimmed.slice(0, separatorIndex).trim()
   const value = trimmed.slice(separatorIndex + 1).trim()
-
   if (key.length === 0) return null
+
   return {
     key,
     value: unquoteValue(value),
-  }
-}
-
-function loadDotenvPathIfConfigured(): void {
-  const dotenvPath = process.env.DOTENV_PATH?.trim()
-  if (!dotenvPath || dotenvPath.length === 0) {
-    return
-  }
-
-  if (!fs.existsSync(dotenvPath)) {
-    throw new Error(`DOTENV_PATH file not found: ${dotenvPath}`)
-  }
-
-  const raw = fs.readFileSync(dotenvPath, 'utf8')
-  for (const line of raw.split(/\r?\n/)) {
-    const parsed = parseEnvLine(line)
-    if (!parsed) continue
-
-    if (typeof process.env[parsed.key] === 'undefined') {
-      process.env[parsed.key] = parsed.value
-    }
   }
 }
 
@@ -73,46 +61,439 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
   return normalized
 }
 
-loadDotenvPathIfConfigured()
+function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
+  const normalized = normalizeOptionalEnv(value)?.toLowerCase()
+  if (!normalized) return fallback
 
-const envSchema = z.object({
+  if (normalized === '1' || normalized === 'true') return true
+  if (normalized === '0' || normalized === 'false') return false
+  return fallback
+}
+
+function sanitizeText(value: string, secrets: readonly string[]): string {
+  let sanitized = value
+  for (const secret of secrets) {
+    if (secret.length === 0) continue
+    sanitized = sanitized.split(secret).join('[REDACTED]')
+  }
+  return sanitized
+}
+
+function toErrorMessage(error: unknown, secrets: readonly string[] = []): string {
+  if (error instanceof Error) {
+    return sanitizeText(error.message, secrets)
+  }
+
+  return sanitizeText(String(error), secrets)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+function loadEnvFile(filePath: string): {
+  readonly values: Map<string, string>
+  readonly raw: string
+} {
+  const raw = fs.readFileSync(filePath, 'utf8')
+  const values = new Map<string, string>()
+
+  for (const line of raw.split(/\r?\n/u)) {
+    const parsed = parseEnvLine(line)
+    if (!parsed) continue
+    values.set(parsed.key, parsed.value)
+  }
+
+  return {
+    values,
+    raw,
+  }
+}
+
+function getEnvValue(key: string, fromFile: ReadonlyMap<string, string>): string | undefined {
+  return normalizeOptionalEnv(process.env[key]) ?? normalizeOptionalEnv(fromFile.get(key))
+}
+
+const runtimeConfigSchema = z.object({
   BACKEND_URL: z
     .string()
     .url()
-    .transform((value) => value.replace(/\/+$/, '')),
+    .transform((value) => value.replace(/\/+$/u, '')),
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_ANON_KEY: z.string().min(1).optional(),
-  AGENT_TOKEN: z.string().min(1).optional(),
+  AGENT_TOKEN: z.string().min(1),
   TENANT_ID: z.string().uuid(),
   AGENT_ID: z.string().min(1).default(os.hostname()),
   INTERVAL_SEC: z.coerce.number().int().positive().default(60),
   LIMIT: z.coerce.number().int().min(1).max(100).default(10),
-  MAERSK_ENABLED: z
-    .string()
-    .optional()
-    .transform((value) => value === '1' || value === 'true'),
-  MAERSK_HEADLESS: z
-    .string()
-    .optional()
-    .transform((value) => value !== '0' && value !== 'false'),
+  MAERSK_ENABLED: z.boolean().default(false),
+  MAERSK_HEADLESS: z.boolean().default(true),
   MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
 })
 
-const env = envSchema.parse({
-  BACKEND_URL: process.env.BACKEND_URL,
-  SUPABASE_URL: normalizeOptionalEnv(process.env.SUPABASE_URL),
-  SUPABASE_ANON_KEY: normalizeOptionalEnv(process.env.SUPABASE_ANON_KEY),
-  AGENT_TOKEN: normalizeOptionalEnv(process.env.AGENT_TOKEN),
-  TENANT_ID: process.env.TENANT_ID,
-  AGENT_ID: normalizeOptionalEnv(process.env.AGENT_ID),
-  INTERVAL_SEC: process.env.INTERVAL_SEC,
-  LIMIT: process.env.LIMIT,
-  MAERSK_ENABLED: normalizeOptionalEnv(process.env.MAERSK_ENABLED),
-  MAERSK_HEADLESS: process.env.MAERSK_HEADLESS,
-  MAERSK_TIMEOUT_MS: process.env.MAERSK_TIMEOUT_MS,
-  MAERSK_USER_DATA_DIR: normalizeOptionalEnv(process.env.MAERSK_USER_DATA_DIR),
+type RuntimeConfig = z.infer<typeof runtimeConfigSchema>
+
+const bootstrapConfigSchema = z.object({
+  BACKEND_URL: z
+    .string()
+    .url()
+    .transform((value) => value.replace(/\/+$/u, '')),
+  INSTALLER_TOKEN: z.string().min(1),
+  AGENT_ID: z.string().min(1).default(os.hostname()),
+  INTERVAL_SEC: z.coerce.number().int().positive().default(60),
+  LIMIT: z.coerce.number().int().min(1).max(100).default(10),
+  MAERSK_ENABLED: z.boolean().default(false),
+  MAERSK_HEADLESS: z.boolean().default(true),
+  MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
+  MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
 })
+
+type BootstrapConfig = z.infer<typeof bootstrapConfigSchema>
+
+const enrollResponseSchema = z.object({
+  agentToken: z.string().min(1),
+  tenantId: z.string().uuid(),
+  intervalSec: z.number().int().positive(),
+  limit: z.number().int().min(1).max(100),
+  supabaseUrl: z.string().url().optional(),
+  supabaseAnonKey: z.string().min(1).optional(),
+  providers: z.object({
+    maerskEnabled: z.boolean(),
+    maerskHeadless: z.boolean(),
+    maerskTimeoutMs: z.number().int().positive(),
+    maerskUserDataDir: z.string().min(1).optional(),
+  }),
+})
+
+type EnrollResponse = z.infer<typeof enrollResponseSchema>
+
+const packageJsonSchema = z.object({
+  version: z.string().min(1),
+})
+
+type PathLayout = {
+  readonly programDataDir: string
+  readonly configPath: string
+  readonly bootstrapPath: string
+  readonly consumedBootstrapPath: string
+}
+
+function resolvePathLayout(): PathLayout {
+  const programDataDir =
+    normalizeOptionalEnv(process.env.AGENT_PROGRAMDATA_DIR) ?? DEFAULT_PROGRAM_DATA_DIR
+  const configPath =
+    normalizeOptionalEnv(process.env.DOTENV_PATH) ?? path.win32.join(programDataDir, 'config.env')
+  const bootstrapPath =
+    normalizeOptionalEnv(process.env.BOOTSTRAP_DOTENV_PATH) ??
+    path.win32.join(programDataDir, 'bootstrap.env')
+
+  return {
+    programDataDir,
+    configPath,
+    bootstrapPath,
+    consumedBootstrapPath: `${bootstrapPath}.consumed`,
+  }
+}
+
+function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
+  if (!fs.existsSync(filePath)) return null
+
+  const loaded = loadEnvFile(filePath)
+  const parsed = runtimeConfigSchema.safeParse({
+    BACKEND_URL: getEnvValue('BACKEND_URL', loaded.values),
+    SUPABASE_URL: getEnvValue('SUPABASE_URL', loaded.values),
+    SUPABASE_ANON_KEY: getEnvValue('SUPABASE_ANON_KEY', loaded.values),
+    AGENT_TOKEN: getEnvValue('AGENT_TOKEN', loaded.values),
+    TENANT_ID: getEnvValue('TENANT_ID', loaded.values),
+    AGENT_ID: getEnvValue('AGENT_ID', loaded.values),
+    INTERVAL_SEC: getEnvValue('INTERVAL_SEC', loaded.values),
+    LIMIT: getEnvValue('LIMIT', loaded.values),
+    MAERSK_ENABLED: parseBooleanFlag(getEnvValue('MAERSK_ENABLED', loaded.values), false),
+    MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
+    MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
+    MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
+  })
+
+  if (!parsed.success) {
+    console.warn(
+      `[agent] config.env is invalid, switching to bootstrap mode: ${parsed.error.message}`,
+    )
+    return null
+  }
+
+  return parsed.data
+}
+
+function parseBootstrapConfigFromFile(filePath: string): {
+  readonly config: BootstrapConfig
+  readonly raw: string
+} | null {
+  if (!fs.existsSync(filePath)) return null
+
+  const loaded = loadEnvFile(filePath)
+  const parsed = bootstrapConfigSchema.safeParse({
+    BACKEND_URL: getEnvValue('BACKEND_URL', loaded.values),
+    INSTALLER_TOKEN: getEnvValue('INSTALLER_TOKEN', loaded.values),
+    AGENT_ID: getEnvValue('AGENT_ID', loaded.values),
+    INTERVAL_SEC: getEnvValue('INTERVAL_SEC', loaded.values),
+    LIMIT: getEnvValue('LIMIT', loaded.values),
+    MAERSK_ENABLED: parseBooleanFlag(getEnvValue('MAERSK_ENABLED', loaded.values), false),
+    MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
+    MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
+    MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
+  })
+
+  if (!parsed.success) {
+    throw new Error(`invalid bootstrap.env: ${parsed.error.message}`)
+  }
+
+  return {
+    config: parsed.data,
+    raw: loaded.raw,
+  }
+}
+
+function readWindowsMachineGuid(): string | null {
+  if (process.platform !== 'win32') return null
+
+  const result = spawnSync(
+    'reg',
+    ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'],
+    {
+      encoding: 'utf8',
+    },
+  )
+
+  if (result.status !== 0) return null
+  const output = result.stdout
+  const matched = /MachineGuid\s+REG_SZ\s+([^\r\n]+)/u.exec(output)
+  const machineGuid = matched?.[1]?.trim()
+  if (!machineGuid || machineGuid.length === 0) return null
+  return machineGuid
+}
+
+function resolveMachineFingerprint(hostname: string): string {
+  const providedMachineGuid = normalizeOptionalEnv(process.env.AGENT_MACHINE_GUID)
+  const machineGuid = providedMachineGuid ?? readWindowsMachineGuid() ?? hostname
+  return createHash('sha256').update(`${machineGuid}|${hostname}`, 'utf8').digest('hex')
+}
+
+function resolveAgentVersion(): string {
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url))
+  const candidatePaths = [
+    path.resolve(scriptDir, '../../package.json'),
+    path.resolve(scriptDir, '../../../package.json'),
+  ]
+
+  for (const candidatePath of candidatePaths) {
+    if (!fs.existsSync(candidatePath)) continue
+
+    try {
+      const raw = fs.readFileSync(candidatePath, 'utf8')
+      const parsed = packageJsonSchema.safeParse(JSON.parse(raw))
+      if (parsed.success) return parsed.data.version
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+
+  return 'unknown'
+}
+
+async function enrollRuntime(command: {
+  readonly bootstrapConfig: BootstrapConfig
+  readonly machineFingerprint: string
+  readonly hostname: string
+  readonly osName: string
+  readonly agentVersion: string
+}): Promise<EnrollResponse> {
+  const response = await fetch(`${command.bootstrapConfig.BACKEND_URL}/api/agent/enroll`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${command.bootstrapConfig.INSTALLER_TOKEN}`,
+      'content-type': 'application/json',
+      'x-agent-id': command.bootstrapConfig.AGENT_ID,
+      'user-agent': `container-tracker-agent/${command.bootstrapConfig.AGENT_ID}`,
+    },
+    body: JSON.stringify({
+      machineFingerprint: command.machineFingerprint,
+      hostname: command.hostname,
+      os: command.osName,
+      agentVersion: command.agentVersion,
+    }),
+  })
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '')
+    throw new Error(`enroll request failed (${response.status}): ${details}`)
+  }
+
+  const payload: unknown = await response.json().catch(() => ({}))
+  const parsed = enrollResponseSchema.safeParse(payload)
+  if (!parsed.success) {
+    throw new Error(`invalid enroll response: ${parsed.error.message}`)
+  }
+
+  return parsed.data
+}
+
+function toRuntimeConfig(command: {
+  readonly bootstrapConfig: BootstrapConfig
+  readonly enrollResponse: EnrollResponse
+}): RuntimeConfig {
+  return runtimeConfigSchema.parse({
+    BACKEND_URL: command.bootstrapConfig.BACKEND_URL,
+    SUPABASE_URL: command.enrollResponse.supabaseUrl,
+    SUPABASE_ANON_KEY: command.enrollResponse.supabaseAnonKey,
+    AGENT_TOKEN: command.enrollResponse.agentToken,
+    TENANT_ID: command.enrollResponse.tenantId,
+    AGENT_ID: command.bootstrapConfig.AGENT_ID,
+    INTERVAL_SEC: command.enrollResponse.intervalSec,
+    LIMIT: command.enrollResponse.limit,
+    MAERSK_ENABLED: command.enrollResponse.providers.maerskEnabled,
+    MAERSK_HEADLESS: command.enrollResponse.providers.maerskHeadless,
+    MAERSK_TIMEOUT_MS: command.enrollResponse.providers.maerskTimeoutMs,
+    MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir,
+  })
+}
+
+function serializeRuntimeConfig(config: RuntimeConfig): string {
+  const lines = [
+    '# Generated by runtime enrollment',
+    `BACKEND_URL=${config.BACKEND_URL}`,
+    `TENANT_ID=${config.TENANT_ID}`,
+    `AGENT_TOKEN=${config.AGENT_TOKEN}`,
+    `AGENT_ID=${config.AGENT_ID}`,
+    `INTERVAL_SEC=${config.INTERVAL_SEC}`,
+    `LIMIT=${config.LIMIT}`,
+    `MAERSK_ENABLED=${config.MAERSK_ENABLED ? 'true' : 'false'}`,
+    `MAERSK_HEADLESS=${config.MAERSK_HEADLESS ? 'true' : 'false'}`,
+    `MAERSK_TIMEOUT_MS=${config.MAERSK_TIMEOUT_MS}`,
+    `MAERSK_USER_DATA_DIR=${config.MAERSK_USER_DATA_DIR ?? ''}`,
+  ]
+
+  if (config.SUPABASE_URL) {
+    lines.push(`SUPABASE_URL=${config.SUPABASE_URL}`)
+  }
+  if (config.SUPABASE_ANON_KEY) {
+    lines.push(`SUPABASE_ANON_KEY=${config.SUPABASE_ANON_KEY}`)
+  }
+
+  return `${lines.join('\n')}\n`
+}
+
+function serializeConsumedBootstrap(bootstrapConfig: BootstrapConfig): string {
+  return [
+    '# Bootstrap consumed by runtime enrollment',
+    `BACKEND_URL=${bootstrapConfig.BACKEND_URL}`,
+    'INSTALLER_TOKEN=[REDACTED]',
+    `AGENT_ID=${bootstrapConfig.AGENT_ID}`,
+    `INTERVAL_SEC=${bootstrapConfig.INTERVAL_SEC}`,
+    `LIMIT=${bootstrapConfig.LIMIT}`,
+    `MAERSK_ENABLED=${bootstrapConfig.MAERSK_ENABLED ? 'true' : 'false'}`,
+    `MAERSK_HEADLESS=${bootstrapConfig.MAERSK_HEADLESS ? 'true' : 'false'}`,
+    `MAERSK_TIMEOUT_MS=${bootstrapConfig.MAERSK_TIMEOUT_MS}`,
+    `MAERSK_USER_DATA_DIR=${bootstrapConfig.MAERSK_USER_DATA_DIR ?? ''}`,
+    '',
+  ].join('\n')
+}
+
+function writeFileAtomic(filePath: string, content: string): void {
+  const parentDir = path.dirname(filePath)
+  fs.mkdirSync(parentDir, { recursive: true })
+
+  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
+  fs.writeFileSync(tempPath, content, 'utf8')
+  fs.renameSync(tempPath, filePath)
+}
+
+function persistConfigFile(configPath: string, config: RuntimeConfig): void {
+  writeFileAtomic(configPath, serializeRuntimeConfig(config))
+}
+
+function consumeBootstrapFile(command: {
+  readonly bootstrapPath: string
+  readonly consumedBootstrapPath: string
+  readonly bootstrapConfig: BootstrapConfig
+  readonly bootstrapRaw: string
+}): void {
+  const consumedContent = sanitizeText(command.bootstrapRaw, [
+    command.bootstrapConfig.INSTALLER_TOKEN,
+  ])
+  const safeContent =
+    consumedContent === command.bootstrapRaw
+      ? serializeConsumedBootstrap(command.bootstrapConfig)
+      : consumedContent
+
+  writeFileAtomic(command.consumedBootstrapPath, safeContent)
+  fs.rmSync(command.bootstrapPath, { force: true })
+}
+
+async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<RuntimeConfig> {
+  let enrollAttempt = 0
+
+  for (;;) {
+    const existingConfig = parseRuntimeConfigFromFile(paths.configPath)
+    if (existingConfig) {
+      return existingConfig
+    }
+
+    let bootstrapLoaded: { readonly config: BootstrapConfig; readonly raw: string } | null = null
+    try {
+      bootstrapLoaded = parseBootstrapConfigFromFile(paths.bootstrapPath)
+      if (!bootstrapLoaded) {
+        throw new Error(`bootstrap.env not found at ${paths.bootstrapPath}`)
+      }
+    } catch (error) {
+      const delayMs = computeBackoffDelayMs(enrollAttempt)
+      console.error(
+        `[agent] bootstrap configuration unavailable: ${toErrorMessage(error)} (retry in ${Math.round(delayMs / 1000)}s)`,
+      )
+      enrollAttempt += 1
+      await sleep(delayMs)
+      continue
+    }
+
+    const secrets = [bootstrapLoaded.config.INSTALLER_TOKEN]
+    const hostname = os.hostname()
+    const machineFingerprint = resolveMachineFingerprint(hostname)
+    const agentVersion = resolveAgentVersion()
+
+    try {
+      const enrollResponse = await enrollRuntime({
+        bootstrapConfig: bootstrapLoaded.config,
+        machineFingerprint,
+        hostname,
+        osName: `${os.platform()} ${os.release()}`,
+        agentVersion,
+      })
+
+      const runtimeConfig = toRuntimeConfig({
+        bootstrapConfig: bootstrapLoaded.config,
+        enrollResponse,
+      })
+
+      persistConfigFile(paths.configPath, runtimeConfig)
+      consumeBootstrapFile({
+        bootstrapPath: paths.bootstrapPath,
+        consumedBootstrapPath: paths.consumedBootstrapPath,
+        bootstrapConfig: bootstrapLoaded.config,
+        bootstrapRaw: bootstrapLoaded.raw,
+      })
+      return runtimeConfig
+    } catch (error) {
+      const delayMs = computeBackoffDelayMs(enrollAttempt)
+      console.error(
+        `[agent] enrollment failed (attempt=${enrollAttempt + 1}): ${toErrorMessage(error, secrets)} (retry in ${Math.round(delayMs / 1000)}s)`,
+      )
+      enrollAttempt += 1
+      await sleep(delayMs)
+    }
+  }
+}
 
 const AgentTargetSchema = z.object({
   sync_request_id: z.string().uuid(),
@@ -133,30 +514,27 @@ const IngestAcceptedResponseSchema = z.object({
   snapshot_id: z.string().uuid(),
 })
 
-function buildHeaders(contentType: boolean): Headers {
+function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
   const headers = new Headers()
-  headers.set('x-agent-id', env.AGENT_ID)
-  headers.set('user-agent', `container-tracker-agent/${env.AGENT_ID}`)
+  headers.set('x-agent-id', config.AGENT_ID)
+  headers.set('user-agent', `container-tracker-agent/${config.AGENT_ID}`)
 
   if (contentType) {
     headers.set('content-type', 'application/json')
   }
 
-  if (env.AGENT_TOKEN) {
-    headers.set('authorization', `Bearer ${env.AGENT_TOKEN}`)
-  }
-
+  headers.set('authorization', `Bearer ${config.AGENT_TOKEN}`)
   return headers
 }
 
-async function fetchTargets(): Promise<readonly AgentTarget[]> {
-  const url = new URL('/api/agent/targets', env.BACKEND_URL)
-  url.searchParams.set('tenant_id', env.TENANT_ID)
-  url.searchParams.set('limit', String(env.LIMIT))
+async function fetchTargets(config: RuntimeConfig): Promise<readonly AgentTarget[]> {
+  const url = new URL('/api/agent/targets', config.BACKEND_URL)
+  url.searchParams.set('tenant_id', config.TENANT_ID)
+  url.searchParams.set('limit', String(config.LIMIT))
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: buildHeaders(false),
+    headers: buildHeaders(config, false),
   })
 
   if (!response.ok) {
@@ -175,7 +553,10 @@ async function fetchTargets(): Promise<readonly AgentTarget[]> {
 
 const maerskCaptureService = createMaerskCaptureService()
 
-async function scrapeTarget(target: AgentTarget): Promise<{ raw: unknown; observedAt: string }> {
+async function scrapeTarget(
+  config: RuntimeConfig,
+  target: AgentTarget,
+): Promise<{ raw: unknown; observedAt: string }> {
   if (target.provider === 'msc') {
     const result = await fetchMscStatus(target.ref)
     return { raw: result.payload, observedAt: result.fetchedAt }
@@ -186,16 +567,16 @@ async function scrapeTarget(target: AgentTarget): Promise<{ raw: unknown; observ
     return { raw: result.payload, observedAt: result.fetchedAt }
   }
 
-  if (!env.MAERSK_ENABLED) {
+  if (!config.MAERSK_ENABLED) {
     throw new Error('maersk target received but MAERSK_ENABLED is disabled')
   }
 
   const result = await maerskCaptureService.capture({
     container: target.ref,
-    headless: env.MAERSK_HEADLESS,
+    headless: config.MAERSK_HEADLESS,
     hold: false,
-    timeoutMs: env.MAERSK_TIMEOUT_MS,
-    userDataDir: env.MAERSK_USER_DATA_DIR ?? null,
+    timeoutMs: config.MAERSK_TIMEOUT_MS,
+    userDataDir: config.MAERSK_USER_DATA_DIR ?? null,
   })
 
   if (result.kind === 'error') {
@@ -205,12 +586,16 @@ async function scrapeTarget(target: AgentTarget): Promise<{ raw: unknown; observ
   return { raw: result.payload, observedAt: new Date().toISOString() }
 }
 
-async function ingestSnapshot(target: AgentTarget, scrape: { raw: unknown; observedAt: string }) {
-  const response = await fetch(`${env.BACKEND_URL}/api/tracking/snapshots/ingest`, {
+async function ingestSnapshot(
+  config: RuntimeConfig,
+  target: AgentTarget,
+  scrape: { readonly raw: unknown; readonly observedAt: string },
+): Promise<void> {
+  const response = await fetch(`${config.BACKEND_URL}/api/tracking/snapshots/ingest`, {
     method: 'POST',
-    headers: buildHeaders(true),
+    headers: buildHeaders(config, true),
     body: JSON.stringify({
-      tenant_id: env.TENANT_ID,
+      tenant_id: config.TENANT_ID,
       provider: target.provider,
       ref: {
         type: 'container',
@@ -219,8 +604,8 @@ async function ingestSnapshot(target: AgentTarget, scrape: { raw: unknown; obser
       observed_at: scrape.observedAt,
       raw: scrape.raw,
       meta: {
-        agent_version: 'mvp-0.1',
-        host: env.AGENT_ID,
+        agent_version: resolveAgentVersion(),
+        host: config.AGENT_ID,
       },
       sync_request_id: target.sync_request_id,
     }),
@@ -246,8 +631,8 @@ async function ingestSnapshot(target: AgentTarget, scrape: { raw: unknown; obser
   console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}`)
 }
 
-async function runOnce(): Promise<void> {
-  const targets = await fetchTargets()
+async function runOnce(config: RuntimeConfig): Promise<void> {
+  const targets = await fetchTargets(config)
   if (targets.length === 0) {
     console.log('[agent] no targets available')
     return
@@ -256,10 +641,10 @@ async function runOnce(): Promise<void> {
   console.log(`[agent] received ${targets.length} target(s)`)
   for (const target of targets) {
     try {
-      const scrape = await scrapeTarget(target)
-      await ingestSnapshot(target, scrape)
+      const scrape = await scrapeTarget(config, target)
+      await ingestSnapshot(config, target, scrape)
     } catch (error) {
-      console.error(`[agent] target ${target.sync_request_id} failed:`, error)
+      console.error(`[agent] target ${target.sync_request_id} failed: ${toErrorMessage(error)}`)
       console.warn(
         `[agent] target ${target.sync_request_id} will be available again after lease expiration`,
       )
@@ -279,34 +664,37 @@ function shouldWakeForRealtimeEvent(event: {
 }
 
 function subscribeToRealtimeIfConfigured(command: {
-  readonly tenantId: string
+  readonly config: RuntimeConfig
   readonly onWake: () => void
 }): { readonly unsubscribe: () => void } | null {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+  if (!command.config.SUPABASE_URL || !command.config.SUPABASE_ANON_KEY) {
     console.warn('[agent] realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured')
     return null
   }
 
   try {
-    const supabaseRealtime = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-      db: {
-        schema: 'public',
+    const supabaseRealtime = createClient(
+      command.config.SUPABASE_URL,
+      command.config.SUPABASE_ANON_KEY,
+      {
+        db: {
+          schema: 'public',
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
       },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    })
+    )
 
     return subscribeSyncRequestsByTenant({
       client: supabaseRealtime,
-      tenantId: command.tenantId,
+      tenantId: command.config.TENANT_ID,
       onEvent(event) {
         if (!shouldWakeForRealtimeEvent(event)) {
           return
         }
-
         command.onWake()
       },
       onStatus(status) {
@@ -321,28 +709,33 @@ function subscribeToRealtimeIfConfigured(command: {
       },
     })
   } catch (error) {
-    console.warn('[agent] realtime setup failed; continuing with interval sweep only', error)
+    console.warn(
+      `[agent] realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`,
+    )
     return null
   }
 }
 
 async function main(): Promise<void> {
+  const paths = resolvePathLayout()
+  const runtimeConfig = await resolveRuntimeConfigWithBootstrap(paths)
+
   console.log(
-    `[agent] started (tenant=${env.TENANT_ID}, agent=${env.AGENT_ID}, interval=${env.INTERVAL_SEC}s)`,
+    `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
 
   const scheduler = createAgentScheduler({
-    intervalMs: env.INTERVAL_SEC * 1000,
+    intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
     runCycle: async (_reason) => {
-      await runOnce()
+      await runOnce(runtimeConfig)
     },
     onRunError({ reason, error }) {
-      console.error(`[agent] cycle failed (reason=${reason}):`, error)
+      console.error(`[agent] cycle failed (reason=${reason}): ${toErrorMessage(error)}`)
     },
   })
 
   const realtimeSubscription = subscribeToRealtimeIfConfigured({
-    tenantId: env.TENANT_ID,
+    config: runtimeConfig,
     onWake() {
       scheduler.triggerRun('realtime')
     },
@@ -360,4 +753,7 @@ async function main(): Promise<void> {
   process.once('SIGTERM', () => shutdown('SIGTERM'))
 }
 
-void main()
+void main().catch((error) => {
+  console.error(`[agent] fatal startup error: ${toErrorMessage(error)}`)
+  process.exitCode = 1
+})

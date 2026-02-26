@@ -15,13 +15,13 @@ const REQUIRED_RELEASE_FILES = [
   'release/app/dist/updater.js',
   'release/winsw/ContainerTrackerAgent.exe',
   'release/winsw/ContainerTrackerAgent.xml',
-  'release/config/config.env',
+  'release/config/bootstrap.env',
 ] as const
 
 const REQUIRED_INSTALLER_FILES = [
   'tools/agent/installer/installer.iss',
   'tools/agent/installer/ContainerTrackerAgent.xml',
-  'tools/agent/installer/config.env.template',
+  'tools/agent/installer/bootstrap.env.template',
 ] as const
 
 type ArchiverLike = {

@@ -28,13 +28,23 @@ Snapshots continue to be persisted in `container_snapshots` via
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SYNC_DEFAULT_TENANT_ID` (required; UUID used by `/api/refresh` enqueue)
-- `AGENT_TOKEN` (required in production for agent API auth)
 - `AGENT_LEASE_MINUTES` (optional, default `5`)
+- `AGENT_ENROLL_DEFAULT_INTERVAL_SEC` (optional, default `60`)
+- `AGENT_ENROLL_DEFAULT_LIMIT` (optional, default `10`)
+- `AGENT_ENROLL_SUPABASE_URL` (optional)
+- `AGENT_ENROLL_SUPABASE_ANON_KEY` (optional)
+- `AGENT_ENROLL_DEFAULT_MAERSK_ENABLED` (optional, default `false`)
+- `AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS` (optional, default `true`)
+- `AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS` (optional, default `120000`)
+- `AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR` (optional)
+- `AGENT_ENROLL_RATE_LIMIT_MAX_REQUESTS` (optional, default `20`)
+- `AGENT_ENROLL_RATE_LIMIT_WINDOW_SEC` (optional, default `60`)
 
 Notes:
 
-- If `AGENT_TOKEN` is missing and `NODE_ENV !== production`, auth may be bypassed.
-- If `AGENT_TOKEN` is missing and `NODE_ENV === production`, requests are rejected.
+- `GET /api/agent/targets` and `POST /api/tracking/snapshots/ingest` authenticate with
+  `agent_token` issued by `POST /api/agent/enroll`.
+- Agent token is resolved from `tracking_agents` (active/non-revoked row).
 
 ### 1.2 Agent bootstrap input (`bootstrap.env`)
 
@@ -84,7 +94,7 @@ Bootstrap mode behavior:
 2. Call `POST /api/agent/enroll` with `INSTALLER_TOKEN`.
 3. On success:
    - persist returned `config.env`
-   - optionally rename/delete `bootstrap.env`
+   - rename `bootstrap.env` -> `bootstrap.env.consumed` with token redacted
    - switch to normal mode
 4. On failure:
    - do not crash process
@@ -107,11 +117,16 @@ Purpose: exchange bootstrap secret for effective runtime config.
 
 Request body (minimum):
 
+Headers:
+
+- `Authorization: Bearer <INSTALLER_TOKEN>`
+
 ```json
 {
-  "installer_token": "<INSTALLER_TOKEN>",
-  "agent_id": "optional-host-or-agent-id",
-  "host": "optional-hostname"
+  "machineFingerprint": "sha256(machine-guid+hostname)",
+  "hostname": "host-123",
+  "os": "win32 10.0.19045",
+  "agentVersion": "0.1.0"
 }
 ```
 
@@ -119,7 +134,17 @@ Response `200` (example shape):
 
 ```json
 {
-  "config_env": "BACKEND_URL=...\nTENANT_ID=...\nAGENT_TOKEN=...\nINTERVAL_SEC=60\nLIMIT=10\n"
+  "agentToken": "runtime-agent-token",
+  "tenantId": "11111111-1111-4111-8111-111111111111",
+  "intervalSec": 60,
+  "limit": 10,
+  "supabaseUrl": "https://project.supabase.co",
+  "supabaseAnonKey": "anon-key",
+  "providers": {
+    "maerskEnabled": false,
+    "maerskHeadless": true,
+    "maerskTimeoutMs": 120000
+  }
 }
 ```
 
@@ -127,6 +152,7 @@ Rules:
 
 - `INSTALLER_TOKEN` must be revocable/rotatable.
 - Response may omit Supabase keys; agent must continue with polling.
+- Response never includes installer secret.
 - Logs must never print `INSTALLER_TOKEN` or `AGENT_TOKEN`.
 
 ## 4) Database Migration
@@ -135,6 +161,7 @@ Apply:
 
 - `supabase/migrations/20260225_01_agent_sync_mvp.sql`
 - `supabase/migrations/20260225_02_refresh_queue_first.sql`
+- `supabase/migrations/20260226_01_agent_runtime_enrolment.sql`
 
 ## 5) API Smoke Tests
 
@@ -169,6 +196,7 @@ Expected:
 
 - HTTP `200`
 - `targets[]` list
+- request `tenant_id` must match the tenant attached to bearer `agentToken` (`403` on mismatch)
 - leased rows become `status=LEASED`
 
 ### 5.3 Ingest snapshot
@@ -193,6 +221,7 @@ curl -i \
 Expected:
 
 - HTTP `202` with `snapshot_id`
+- payload `tenant_id` must match bearer `agentToken` tenant (`403` on mismatch)
 - `sync_requests.status` transitions to `DONE`
 - snapshot persisted in `container_snapshots`
 
@@ -227,7 +256,6 @@ Normal cycle:
 - No internet: enrolment retries forever with exponential backoff.
 - `401 Unauthorized` on enrolment: bootstrap token invalid/revoked; process stays alive.
 - `5xx` on enrolment: backend unavailable; process retries with cap+jitter.
-- `500 AGENT_TOKEN is required in production`: backend config issue.
 - `409 lease_conflict`: lease expired or taken by another agent.
 - `422` container resolve failure: request marked `FAILED` with `last_error`.
 - Realtime unavailable: polling mode continues.

@@ -48,8 +48,7 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
       },
     ]),
     saveAndProcess: vi.fn(async () => ({ snapshotId: SNAPSHOT_ID })),
-    authToken: 'token-123',
-    allowMissingTokenInDev: true,
+    authenticateAgentToken: vi.fn(async () => ({ tenantId: TENANT_ID })),
     leaseMinutes: 5,
     ...overrides,
   }
@@ -57,7 +56,9 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
 
 describe('agent sync controllers', () => {
   it('returns 401 when authorization token is invalid', async () => {
-    const deps = createDeps()
+    const deps = createDeps({
+      authenticateAgentToken: vi.fn(async () => null),
+    })
     const controllers = createAgentSyncControllers(deps)
 
     const request = new Request(`http://localhost/api/agent/targets?tenant_id=${TENANT_ID}`)
@@ -76,6 +77,28 @@ describe('agent sync controllers', () => {
     const response = await controllers.getTargets({ request })
 
     expect(response.status).toBe(400)
+  })
+
+  it('returns 403 when token tenant does not match query tenant_id', async () => {
+    const deps = createDeps({
+      authenticateAgentToken: vi.fn(async () => ({
+        tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      })),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request(
+      `http://localhost/api/agent/targets?tenant_id=${TENANT_ID}&limit=1`,
+      {
+        headers: {
+          authorization: 'Bearer token-123',
+          'x-agent-id': 'agent-1',
+        },
+      },
+    )
+    const response = await controllers.getTargets({ request })
+
+    expect(response.status).toBe(403)
   })
 
   it('leases and returns targets', async () => {
@@ -140,6 +163,36 @@ describe('agent sync controllers', () => {
       syncRequestId: SYNC_REQUEST_ID,
       agentId: 'agent-1',
     })
+  })
+
+  it('returns 403 when token tenant does not match ingest payload tenant_id', async () => {
+    const deps = createDeps({
+      authenticateAgentToken: vi.fn(async () => ({
+        tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      })),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request('http://localhost/api/tracking/snapshots/ingest', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-123',
+        'x-agent-id': 'agent-1',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        provider: 'msc',
+        ref: { type: 'container', value: 'MSCU1234567' },
+        observed_at: '2026-02-25T10:01:00.000Z',
+        raw: { ok: true },
+        sync_request_id: SYNC_REQUEST_ID,
+      }),
+    })
+
+    const response = await controllers.ingestSnapshot({ request })
+
+    expect(response.status).toBe(403)
   })
 
   it('marks sync request as FAILED when container is not found', async () => {

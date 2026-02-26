@@ -14,18 +14,15 @@ const REQUIRED_RELEASE_FILES = [
   'app/dist/updater.js',
   'winsw/ContainerTrackerAgent.exe',
   'winsw/ContainerTrackerAgent.xml',
-  'config/config.env',
+  'config/bootstrap.env',
 ] as const
 
 const REQUIRED_CONFIG_KEYS = [
   'BACKEND_URL',
-  'TENANT_ID',
-  'AGENT_TOKEN',
+  'INSTALLER_TOKEN',
   'AGENT_ID',
   'INTERVAL_SEC',
   'LIMIT',
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
 ] as const
 
 function toErrorMessage(error: unknown): string {
@@ -100,7 +97,14 @@ async function extractZip(zipPath: string, destinationDir: string, cwd: string):
     ].join('; ')
     await runCommand(
       'powershell',
-      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', powershellCommand],
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        powershellCommand,
+      ],
       cwd,
     )
     return
@@ -162,7 +166,7 @@ async function runPreflightChecks(command: {
   readonly repoRoot: string
   readonly releaseDir: string
   readonly installerFilePath: string
-  readonly configTemplatePath: string
+  readonly bootstrapTemplatePath: string
   readonly updaterSourcePath: string
 }): Promise<void> {
   const errors: string[] = []
@@ -229,20 +233,20 @@ async function runPreflightChecks(command: {
     errors.push(`installer.iss not found: ${command.installerFilePath}`)
   }
 
-  if (await pathExists(command.configTemplatePath)) {
-    const templateContent = await fs.readFile(command.configTemplatePath, 'utf8')
+  if (await pathExists(command.bootstrapTemplatePath)) {
+    const templateContent = await fs.readFile(command.bootstrapTemplatePath, 'utf8')
     if (!/^MAERSK_ENABLED=0$/m.test(templateContent)) {
-      errors.push('config.env.template must contain MAERSK_ENABLED=0')
+      errors.push('bootstrap.env.template must contain MAERSK_ENABLED=0')
     }
 
     for (const key of REQUIRED_CONFIG_KEYS) {
       const pattern = new RegExp(`^${key}=`, 'm')
       if (!pattern.test(templateContent)) {
-        errors.push(`config.env.template missing key: ${key}`)
+        errors.push(`bootstrap.env.template missing key: ${key}`)
       }
     }
   } else {
-    errors.push(`config.env.template not found: ${command.configTemplatePath}`)
+    errors.push(`bootstrap.env.template not found: ${command.bootstrapTemplatePath}`)
   }
 
   if (await pathExists(command.updaterSourcePath)) {
@@ -348,8 +352,8 @@ async function buildRelease(): Promise<void> {
     path.join(releaseWinswDir, 'ContainerTrackerAgent.xml'),
   )
   await fs.cp(
-    path.join(installerDir, 'config.env.template'),
-    path.join(releaseConfigDir, 'config.env'),
+    path.join(installerDir, 'bootstrap.env.template'),
+    path.join(releaseConfigDir, 'bootstrap.env'),
   )
 
   await fs.rm(tempDownloadDir, { recursive: true, force: true })
@@ -358,7 +362,7 @@ async function buildRelease(): Promise<void> {
     repoRoot,
     releaseDir,
     installerFilePath: path.join(installerDir, 'installer.iss'),
-    configTemplatePath: path.join(installerDir, 'config.env.template'),
+    bootstrapTemplatePath: path.join(installerDir, 'bootstrap.env.template'),
     updaterSourcePath: path.join(toolsAgentDir, 'updater.ts'),
   })
 }

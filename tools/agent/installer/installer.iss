@@ -28,8 +28,8 @@ Name: "{commonappdata}\ContainerTrackerAgent\logs"
 Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#ReleaseRoot}\winsw\*"; DestDir: "{app}\winsw"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "{#ReleaseRoot}\config\config.env"; DestDir: "{commonappdata}\ContainerTrackerAgent"; DestName: "config.env"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "{#ReleaseRoot}\config\config.env"; DestDir: "{tmp}"; DestName: "config.env.template"; Flags: dontcopy
+Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{commonappdata}\ContainerTrackerAgent"; DestName: "bootstrap.env"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
 
 [Run]
 Filename: "{app}\winsw\ContainerTrackerAgent.exe"; Parameters: "install"; Flags: runhidden waituntilterminated
@@ -75,8 +75,8 @@ begin
     exit;
   end;
 
-  ExtractTemporaryFile('config.env.template');
-  TemplatePath := ExpandConstant('{tmp}\config.env.template');
+  ExtractTemporaryFile('bootstrap.env.template');
+  TemplatePath := ExpandConstant('{tmp}\bootstrap.env.template');
   Result := LoadStringFromFile(TemplatePath, Content);
 end;
 
@@ -118,7 +118,11 @@ begin
 
   if not TryLoadEffectiveConfig(EffectiveConfig) then
   begin
-    MsgBox('Could not load effective config.env to evaluate MAERSK_ENABLED.', mbCriticalError, MB_OK);
+    MsgBox(
+      'Could not load effective config/bootstrap template to evaluate MAERSK_ENABLED.',
+      mbCriticalError,
+      MB_OK
+    );
     Result := False;
     exit;
   end;
@@ -144,4 +148,69 @@ begin
     MB_OK
   );
   Result := False;
+end;
+
+function RunCmdHidden(const Parameters: string; var ResultCode: Integer): Boolean;
+begin
+  Result := Exec('cmd.exe', Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+function ApplyProgramDataAcl(var ErrorMessage: string): Boolean;
+var
+  ProgramDataDir: string;
+  ResultCode: Integer;
+  CommandParams: string;
+begin
+  ProgramDataDir := ExpandConstant('{commonappdata}\ContainerTrackerAgent');
+
+  CommandParams := '/C icacls "' + ProgramDataDir + '" /inheritance:r';
+  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
+  begin
+    ErrorMessage := 'Failed to disable inherited ACL on ProgramData folder.';
+    Result := False;
+    exit;
+  end;
+
+  CommandParams :=
+    '/C icacls "' + ProgramDataDir + '" /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F"';
+  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
+  begin
+    ErrorMessage := 'Failed to grant required ACL for SYSTEM/Administrators.';
+    Result := False;
+    exit;
+  end;
+
+  CommandParams :=
+    '/C icacls "' + ProgramDataDir + '" /remove:g "Users" "Authenticated Users" "Everyone"';
+  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
+  begin
+    ErrorMessage := 'Failed to remove broad read ACL entries from ProgramData folder.';
+    Result := False;
+    exit;
+  end;
+
+  Result := True;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ErrorMessage: string;
+begin
+  if CurStep <> ssPostInstall then
+  begin
+    exit;
+  end;
+
+  if ApplyProgramDataAcl(ErrorMessage) then
+  begin
+    exit;
+  end;
+
+  MsgBox(
+    'ProgramData ACL hardening failed: ' + ErrorMessage + #13#10 +
+    'Installation has been aborted to avoid exposing secrets.',
+    mbCriticalError,
+    MB_OK
+  );
+  Abort;
 end;

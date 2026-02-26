@@ -8,6 +8,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_enrollment_audit_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          hostname: string | null
+          id: string
+          ip_address: string | null
+          machine_fingerprint: string | null
+          reason: string | null
+          status_code: number
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          hostname?: string | null
+          id?: string
+          ip_address?: string | null
+          machine_fingerprint?: string | null
+          reason?: string | null
+          status_code: number
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          hostname?: string | null
+          id?: string
+          ip_address?: string | null
+          machine_fingerprint?: string | null
+          reason?: string | null
+          status_code?: number
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
+      agent_install_tokens: {
+        Row: {
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          revoked_at: string | null
+          tenant_id: string
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          revoked_at?: string | null
+          tenant_id: string
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          revoked_at?: string | null
+          tenant_id?: string
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       container_observations: {
         Row: {
           confidence: string
@@ -334,6 +403,72 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      tracking_agents: {
+        Row: {
+          agent_token: string
+          agent_version: string
+          created_at: string
+          hostname: string
+          id: string
+          interval_sec: number
+          last_enrolled_at: string
+          limit: number
+          machine_fingerprint: string
+          maersk_enabled: boolean
+          maersk_headless: boolean
+          maersk_timeout_ms: number
+          maersk_user_data_dir: string | null
+          os: string
+          revoked_at: string | null
+          supabase_anon_key: string | null
+          supabase_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_token: string
+          agent_version: string
+          created_at?: string
+          hostname: string
+          id?: string
+          interval_sec?: number
+          last_enrolled_at?: string
+          limit?: number
+          machine_fingerprint: string
+          maersk_enabled?: boolean
+          maersk_headless?: boolean
+          maersk_timeout_ms?: number
+          maersk_user_data_dir?: string | null
+          os: string
+          revoked_at?: string | null
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_token?: string
+          agent_version?: string
+          created_at?: string
+          hostname?: string
+          id?: string
+          interval_sec?: number
+          last_enrolled_at?: string
+          limit?: number
+          machine_fingerprint?: string
+          maersk_enabled?: boolean
+          maersk_headless?: boolean
+          maersk_timeout_ms?: number
+          maersk_user_data_dir?: string | null
+          os?: string
+          revoked_at?: string | null
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

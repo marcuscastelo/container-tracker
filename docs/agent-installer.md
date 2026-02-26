@@ -57,6 +57,7 @@ Installer never calls the internet.
 - Ensures `C:\ProgramData\ContainerTrackerAgent\`
 - Ensures `C:\ProgramData\ContainerTrackerAgent\logs\`
 - Copies `bootstrap.env` to ProgramData
+- Applies restrictive ACL on ProgramData (`SYSTEM` + `Administrators`)
 - Installs WinSW service `ContainerTrackerAgent`
 - Optionally creates updater task `ContainerTrackerAgentUpdater` every 30 minutes (`SYSTEM`)
 - Starts service automatically
@@ -75,7 +76,7 @@ Bootstrap mode:
 2. Call `POST /api/agent/enroll` using `INSTALLER_TOKEN`.
 3. If success:
    - persist full `config.env` to ProgramData
-   - optionally delete or rename `bootstrap.env` to reduce exposure
+   - rename `bootstrap.env` to `bootstrap.env.consumed` with token redacted
    - switch to normal mode
 4. If failure:
    - do not crash service
@@ -94,6 +95,7 @@ Default retry policy for enrolment:
 
 - Program files: `C:\Program Files\ContainerTrackerAgent\`
 - Bootstrap: `C:\ProgramData\ContainerTrackerAgent\bootstrap.env`
+- Consumed bootstrap: `C:\ProgramData\ContainerTrackerAgent\bootstrap.env.consumed`
 - Effective config: `C:\ProgramData\ContainerTrackerAgent\config.env`
 - Logs: `C:\ProgramData\ContainerTrackerAgent\logs\`
 
