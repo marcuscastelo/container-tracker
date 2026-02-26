@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 const DEFAULT_NODE_WINDOWS_VERSION = 'v22.11.0'
 const DEFAULT_WINSW_VERSION = 'v2.12.0'
+const AGENT_DEPLOY_WORKSPACE = 'example-with-tailwindcss'
 
 const REQUIRED_RELEASE_FILES = [
   'node/node.exe',
@@ -23,6 +24,10 @@ const REQUIRED_CONFIG_KEYS = [
   'AGENT_ID',
   'INTERVAL_SEC',
   'LIMIT',
+] as const
+
+const REQUIRED_RUNTIME_DEPENDENCY_FILES = [
+  'app/node_modules/@supabase/functions-js/package.json',
 ] as const
 
 function toErrorMessage(error: unknown): string {
@@ -178,6 +183,15 @@ async function runPreflightChecks(command: {
     }
   }
 
+  for (const relativePath of REQUIRED_RUNTIME_DEPENDENCY_FILES) {
+    const absolutePath = path.join(command.releaseDir, relativePath)
+    if (!(await pathExists(absolutePath))) {
+      errors.push(
+        `missing required runtime dependency file: ${relativePath} (expected from "pnpm deploy --prod")`,
+      )
+    }
+  }
+
   const winswXmlPath = path.join(command.releaseDir, 'winsw', 'ContainerTrackerAgent.xml')
   if (await pathExists(winswXmlPath)) {
     const xmlContent = await fs.readFile(winswXmlPath, 'utf8')
@@ -313,13 +327,38 @@ async function buildRelease(): Promise<void> {
   await fs.mkdir(releaseConfigDir, { recursive: true })
   await fs.mkdir(cacheDownloadDir, { recursive: true })
 
+  console.log(
+    `[agent:release] deploying production dependencies from workspace "${AGENT_DEPLOY_WORKSPACE}"`,
+  )
+  if (process.platform === 'win32') {
+    await runCommand(
+      'cmd.exe',
+      [
+        '/d',
+        '/s',
+        '/c',
+        `pnpm.cmd --filter ${AGENT_DEPLOY_WORKSPACE} deploy --prod --legacy --node-linker=hoisted ${releaseAppDir}`,
+      ],
+      repoRoot,
+    )
+  } else {
+    await runCommand(
+      'pnpm',
+      [
+        '--filter',
+        AGENT_DEPLOY_WORKSPACE,
+        'deploy',
+        '--prod',
+        '--legacy',
+        '--node-linker=hoisted',
+        releaseAppDir,
+      ],
+      repoRoot,
+    )
+  }
+
   await fs.cp(distDir, releaseAppDistDir, { recursive: true })
   await writeAgentEntrypointShims(releaseAppDistDir)
-
-  await fs.cp(path.join(repoRoot, 'package.json'), path.join(releaseAppDir, 'package.json'))
-  await fs.cp(path.join(repoRoot, 'node_modules'), path.join(releaseAppDir, 'node_modules'), {
-    recursive: true,
-  })
 
   const nodeZipName = `node-${nodeVersion}-win-x64.zip`
   const nodeZipPath = path.join(cacheDownloadDir, nodeZipName)
