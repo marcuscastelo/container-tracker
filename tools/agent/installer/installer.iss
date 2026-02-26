@@ -91,30 +91,178 @@ begin
   Result := Pos('MAERSK_ENABLED=1', Normalized) > 0;
 end;
 
-function IsChromeInstalled: Boolean;
+function IsExistingFilePath(const CandidatePath: string; var ResolvedPath: string): Boolean;
 var
-  ProgramFiles64: string;
-  ProgramFiles32: string;
+  NormalizedPath: string;
 begin
-  ProgramFiles64 := ExpandConstant('{pf}');
-  ProgramFiles32 := ExpandConstant('{pf32}');
-
-  Result :=
-    FileExists(ProgramFiles64 + '\Google\Chrome\Application\chrome.exe') or
-    FileExists(ProgramFiles32 + '\Google\Chrome\Application\chrome.exe') or
-    FileExists(ProgramFiles64 + '\Chromium\Application\chrome.exe') or
-    FileExists(ProgramFiles32 + '\Chromium\Application\chrome.exe');
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  EffectiveConfig: AnsiString;
-begin
-  Result := True;
-  if CurPageID <> wpReady then
+  NormalizedPath := Trim(CandidatePath);
+  if NormalizedPath = '' then
   begin
+    Result := False;
     exit;
   end;
+
+  if (Length(NormalizedPath) >= 2) and (NormalizedPath[1] = '"') and
+     (NormalizedPath[Length(NormalizedPath)] = '"') then
+  begin
+    NormalizedPath := Copy(NormalizedPath, 2, Length(NormalizedPath) - 2);
+  end;
+
+  Result := FileExists(NormalizedPath);
+  if Result then
+  begin
+    ResolvedPath := NormalizedPath;
+  end;
+end;
+
+function TryResolveDisplayIconPath(const DisplayIconValue: string; var ResolvedPath: string): Boolean;
+var
+  IconPath: string;
+  CommaPos: Integer;
+begin
+  IconPath := Trim(DisplayIconValue);
+  CommaPos := Pos(',', IconPath);
+  if CommaPos > 0 then
+  begin
+    IconPath := Copy(IconPath, 1, CommaPos - 1);
+  end;
+
+  Result := IsExistingFilePath(IconPath, ResolvedPath);
+end;
+
+function TryFindFromAppPaths(const RootKey: Integer; const ExeName: string; var BrowserPath: string): Boolean;
+var
+  KeyPath: string;
+  CandidatePath: string;
+begin
+  KeyPath := 'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\' + ExeName;
+
+  if RegQueryStringValue(RootKey, KeyPath, '', CandidatePath) and
+     IsExistingFilePath(CandidatePath, BrowserPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  if RegQueryStringValue(RootKey, KeyPath, 'Path', CandidatePath) then
+  begin
+    CandidatePath := AddBackslash(Trim(CandidatePath)) + ExeName;
+    if IsExistingFilePath(CandidatePath, BrowserPath) then
+    begin
+      Result := True;
+      exit;
+    end;
+  end;
+
+  Result := False;
+end;
+
+function TryFindFromChromeUninstallKey(
+  const RootKey: Integer;
+  const SubKey: string;
+  var BrowserPath: string
+): Boolean;
+var
+  InstallLocation: string;
+  DisplayIcon: string;
+  CandidatePath: string;
+begin
+  if RegQueryStringValue(RootKey, SubKey, 'InstallLocation', InstallLocation) then
+  begin
+    CandidatePath := AddBackslash(Trim(InstallLocation)) + 'chrome.exe';
+    if IsExistingFilePath(CandidatePath, BrowserPath) then
+    begin
+      Result := True;
+      exit;
+    end;
+
+    CandidatePath := AddBackslash(Trim(InstallLocation)) + 'Application\chrome.exe';
+    if IsExistingFilePath(CandidatePath, BrowserPath) then
+    begin
+      Result := True;
+      exit;
+    end;
+  end;
+
+  if RegQueryStringValue(RootKey, SubKey, 'DisplayIcon', DisplayIcon) and
+     TryResolveDisplayIconPath(DisplayIcon, BrowserPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  Result := False;
+end;
+
+function TryFindFromDefaultPaths(var BrowserPath: string): Boolean;
+var
+  CandidatePaths: array[0..5] of string;
+  I: Integer;
+begin
+  CandidatePaths[0] := ExpandConstant('{pf}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[1] := ExpandConstant('{pf32}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[2] := ExpandConstant('{localappdata}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[3] := ExpandConstant('{pf}\Chromium\Application\chrome.exe');
+  CandidatePaths[4] := ExpandConstant('{pf32}\Chromium\Application\chrome.exe');
+  CandidatePaths[5] := ExpandConstant('{localappdata}\Chromium\Application\chrome.exe');
+
+  for I := 0 to 5 do
+  begin
+    if IsExistingFilePath(CandidatePaths[I], BrowserPath) then
+    begin
+      Result := True;
+      exit;
+    end;
+  end;
+
+  Result := False;
+end;
+
+function FindChromeExe(var BrowserPath: string): Boolean;
+begin
+  BrowserPath := '';
+
+  if TryFindFromAppPaths(HKLM, 'chrome.exe', BrowserPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  if TryFindFromAppPaths(HKCU, 'chrome.exe', BrowserPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  if TryFindFromChromeUninstallKey(
+    HKLM,
+    'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome',
+    BrowserPath
+  ) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  if TryFindFromChromeUninstallKey(
+    HKLM,
+    'SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome',
+    BrowserPath
+  ) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  Result := TryFindFromDefaultPaths(BrowserPath);
+end;
+
+function InitializeSetup(): Boolean;
+var
+  EffectiveConfig: AnsiString;
+  BrowserPath: string;
+begin
+  Result := True;
 
   if not TryLoadEffectiveConfig(EffectiveConfig) then
   begin
@@ -129,21 +277,16 @@ begin
 
   if not IsMaerskEnabledInConfig(EffectiveConfig) then
   begin
-    MsgBox(
-      'MAERSK_ENABLED is disabled. Chrome pre-check skipped and installation will continue.',
-      mbInformation,
-      MB_OK
-    );
     exit;
   end;
 
-  if IsChromeInstalled then
+  if FindChromeExe(BrowserPath) then
   begin
     exit;
   end;
 
   MsgBox(
-    'MAERSK_ENABLED=1 but Chrome/Chromium was not found. Install Chrome/Chromium and run setup again.',
+    'Chrome/Chromium not found. This Agent requires Chrome for MAERSK scraping. Install Google Chrome (or Chromium) and run setup again.',
     mbCriticalError,
     MB_OK
   );

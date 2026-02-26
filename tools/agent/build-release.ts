@@ -249,8 +249,8 @@ async function runPreflightChecks(command: {
 
   if (await pathExists(command.bootstrapTemplatePath)) {
     const templateContent = await fs.readFile(command.bootstrapTemplatePath, 'utf8')
-    if (!/^MAERSK_ENABLED=0$/m.test(templateContent)) {
-      errors.push('bootstrap.env.template must contain MAERSK_ENABLED=0')
+    if (!/^MAERSK_ENABLED=1$/m.test(templateContent)) {
+      errors.push('bootstrap.env.template must contain MAERSK_ENABLED=1')
     }
 
     for (const key of REQUIRED_CONFIG_KEYS) {
@@ -322,7 +322,6 @@ async function buildRelease(): Promise<void> {
   await fs.rm(releaseDir, { recursive: true, force: true })
   await fs.mkdir(releaseDir, { recursive: true })
   await fs.mkdir(tempDownloadDir, { recursive: true })
-  await fs.mkdir(releaseAppDir, { recursive: true })
   await fs.mkdir(releaseWinswDir, { recursive: true })
   await fs.mkdir(releaseConfigDir, { recursive: true })
   await fs.mkdir(cacheDownloadDir, { recursive: true })
