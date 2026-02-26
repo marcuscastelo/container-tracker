@@ -3,10 +3,11 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $serviceName = 'ContainerTrackerAgent'
+$installRoot = 'C:\Program Files\ContainerTrackerAgent'
 $shortRoot = 'C:\a'
 $shortReleaseDir = Join-Path $shortRoot 'release'
 $shortInstallerDir = Join-Path $shortRoot 'tools\agent\installer'
-$winswExe = 'C:\Program Files\ContainerTrackerAgent\winsw\ContainerTrackerAgent.exe'
+$winswExe = Join-Path $installRoot 'winsw\ContainerTrackerAgent.exe'
 $serviceLogDir = 'C:\ProgramData\ContainerTrackerAgent\logs'
 
 function Write-ServiceDiagnostics {
@@ -37,6 +38,62 @@ function Write-ServiceDiagnostics {
     Get-Content $outLogPath -Tail 80
   } else {
     Write-Host "[agent:rebuild-restart] out log not found: $outLogPath"
+  }
+}
+
+function Get-AgentInstallProcesses {
+  param(
+    [string]$InstallRootPath
+  )
+
+  return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.ExecutablePath -and $_.ExecutablePath -like "$InstallRootPath*"
+      })
+}
+
+function Stop-AgentForInstall {
+  param(
+    [string]$Name,
+    [string]$InstallRootPath,
+    [string]$WinSwPath
+  )
+
+  Write-Host "[agent:rebuild-restart] stopping service/processes before installer..."
+
+  $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+  if ($service -and $service.Status -ne 'Stopped') {
+    try {
+      Stop-Service -Name $Name -Force -ErrorAction Stop
+    } catch {
+      Write-Warning "[agent:rebuild-restart] Stop-Service failed: $($_.Exception.Message)"
+    }
+  }
+
+  if (Test-Path $WinSwPath) {
+    try {
+      & $WinSwPath stop | Out-Null
+    } catch {
+      Write-Warning "[agent:rebuild-restart] WinSW stop fallback failed: $($_.Exception.Message)"
+    }
+  }
+
+  $deadline = (Get-Date).AddSeconds(20)
+  $running = @(Get-AgentInstallProcesses -InstallRootPath $InstallRootPath)
+
+  while ($running.Count -gt 0 -and (Get-Date) -lt $deadline) {
+    foreach ($process in $running) {
+      Write-Warning "[agent:rebuild-restart] terminating locked process $($process.Name) (PID=$($process.ProcessId))"
+      Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+
+    Start-Sleep -Milliseconds 500
+    $running = @(Get-AgentInstallProcesses -InstallRootPath $InstallRootPath)
+  }
+
+  if ($running.Count -gt 0) {
+    $details = ($running | ForEach-Object { "$($_.Name)#$($_.ProcessId)" }) -join ', '
+    throw "failed to stop install-root processes before setup: $details"
   }
 }
 
@@ -104,6 +161,8 @@ try {
   if (-not $installerPath) {
     throw 'installer executable not found after iscc compilation'
   }
+
+  Stop-AgentForInstall -Name $serviceName -InstallRootPath $installRoot -WinSwPath $winswExe
 
   Write-Host "[agent:rebuild-restart] running installer: $installerPath"
   $installProcess = Start-Process -FilePath $installerPath `
