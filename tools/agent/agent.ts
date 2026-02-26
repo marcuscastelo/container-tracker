@@ -79,9 +79,44 @@ function sanitizeText(value: string, secrets: readonly string[]): string {
   return sanitized
 }
 
+function hasCauseProperty(value: unknown): value is { readonly cause: unknown } {
+  return typeof value === 'object' && value !== null && 'cause' in value
+}
+
+function toUnknownMessage(value: unknown): string {
+  if (value instanceof Error) {
+    return value.message
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  try {
+    const json = JSON.stringify(value)
+    if (typeof json === 'string' && json.length > 0) {
+      return json
+    }
+  } catch {
+    // fall back to String(value)
+  }
+
+  return String(value)
+}
+
 function toErrorMessage(error: unknown, secrets: readonly string[] = []): string {
   if (error instanceof Error) {
-    return sanitizeText(error.message, secrets)
+    const message = sanitizeText(error.message, secrets)
+    if (!hasCauseProperty(error) || typeof error.cause === 'undefined') {
+      return message
+    }
+
+    const causeMessage = sanitizeText(toUnknownMessage(error.cause), secrets)
+    if (causeMessage.length === 0 || causeMessage === message) {
+      return message
+    }
+
+    return `${message} (cause: ${causeMessage})`
   }
 
   return sanitizeText(String(error), secrets)
@@ -174,6 +209,68 @@ const packageJsonSchema = z.object({
   version: z.string().min(1),
 })
 
+const PLACEHOLDER_BACKEND_HOST = 'your-backend.example.com'
+const PLACEHOLDER_SUPABASE_HOST = 'your-project.supabase.co'
+const PLACEHOLDER_TOKEN_FRAGMENT = 'replace-with-'
+const PLACEHOLDER_TENANT_ID = '00000000-0000-4000-8000-000000000000'
+
+function resolveUrlHost(value: string): string | null {
+  try {
+    return new URL(value).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function containsPlaceholderToken(value: string | undefined): boolean {
+  const normalized = normalizeOptionalEnv(value)?.toLowerCase()
+  if (!normalized) return false
+  return normalized.includes(PLACEHOLDER_TOKEN_FRAGMENT)
+}
+
+function detectRuntimePlaceholderKeys(config: RuntimeConfig): readonly string[] {
+  const keys: string[] = []
+
+  if (resolveUrlHost(config.BACKEND_URL) === PLACEHOLDER_BACKEND_HOST) {
+    keys.push('BACKEND_URL')
+  }
+
+  if (
+    typeof config.SUPABASE_URL === 'string' &&
+    resolveUrlHost(config.SUPABASE_URL) === PLACEHOLDER_SUPABASE_HOST
+  ) {
+    keys.push('SUPABASE_URL')
+  }
+
+  if (containsPlaceholderToken(config.AGENT_TOKEN)) {
+    keys.push('AGENT_TOKEN')
+  }
+
+  if (containsPlaceholderToken(config.SUPABASE_ANON_KEY)) {
+    keys.push('SUPABASE_ANON_KEY')
+  }
+
+  if (config.TENANT_ID === PLACEHOLDER_TENANT_ID) {
+    keys.push('TENANT_ID')
+  }
+
+  return keys
+}
+
+function detectBootstrapPlaceholderKeys(config: BootstrapConfig): readonly string[] {
+  const keys: string[] = []
+
+  if (resolveUrlHost(config.BACKEND_URL) === PLACEHOLDER_BACKEND_HOST) {
+    keys.push('BACKEND_URL')
+  }
+
+  if (containsPlaceholderToken(config.INSTALLER_TOKEN)) {
+    keys.push('INSTALLER_TOKEN')
+  }
+
+  return keys
+}
+
 type PathLayout = {
   readonly programDataDir: string
   readonly configPath: string
@@ -224,6 +321,14 @@ function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
     return null
   }
 
+  const placeholderKeys = detectRuntimePlaceholderKeys(parsed.data)
+  if (placeholderKeys.length > 0) {
+    console.warn(
+      `[agent] config.env contains placeholder values (${placeholderKeys.join(', ')}), switching to bootstrap mode`,
+    )
+    return null
+  }
+
   return parsed.data
 }
 
@@ -248,6 +353,13 @@ function parseBootstrapConfigFromFile(filePath: string): {
 
   if (!parsed.success) {
     throw new Error(`invalid bootstrap.env: ${parsed.error.message}`)
+  }
+
+  const placeholderKeys = detectBootstrapPlaceholderKeys(parsed.data)
+  if (placeholderKeys.length > 0) {
+    throw new Error(
+      `invalid bootstrap.env: placeholder values detected in ${placeholderKeys.join(', ')}`,
+    )
   }
 
   return {
