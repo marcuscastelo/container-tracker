@@ -167,6 +167,33 @@ async function writeAgentEntrypointShims(distDir: string): Promise<void> {
   await fs.writeFile(updaterShimPath, `${shimBanner}import './tools/agent/updater.js'\n`, 'utf8')
 }
 
+async function ensureSupabaseFunctionsJsAtRootNodeModules(releaseAppDir: string): Promise<void> {
+  const rootDependencyDir = path.join(releaseAppDir, 'node_modules', '@supabase', 'functions-js')
+  const rootDependencyPackageJson = path.join(rootDependencyDir, 'package.json')
+  if (await pathExists(rootDependencyPackageJson)) {
+    return
+  }
+
+  const pnpmDependencyDir = path.join(
+    releaseAppDir,
+    'node_modules',
+    '.pnpm',
+    'node_modules',
+    '@supabase',
+    'functions-js',
+  )
+  const pnpmDependencyPackageJson = path.join(pnpmDependencyDir, 'package.json')
+  if (!(await pathExists(pnpmDependencyPackageJson))) {
+    throw new Error(
+      `missing @supabase/functions-js after deploy: ${pnpmDependencyPackageJson}`,
+    )
+  }
+
+  await fs.mkdir(path.dirname(rootDependencyDir), { recursive: true })
+  await fs.cp(pnpmDependencyDir, rootDependencyDir, { recursive: true })
+  console.log('[agent:release] materialized @supabase/functions-js at root node_modules')
+}
+
 async function runPreflightChecks(command: {
   readonly repoRoot: string
   readonly releaseDir: string
@@ -303,6 +330,10 @@ async function buildRelease(): Promise<void> {
   const distDir = path.join(toolsAgentDir, 'dist')
   const releaseDir = path.join(repoRoot, 'release')
   const releaseAppDir = path.join(releaseDir, 'app')
+  const deployAppDir =
+    process.platform === 'win32'
+      ? path.join('C:\\a', 'container-tracker-agent-deploy-app')
+      : releaseAppDir
   const releaseAppDistDir = path.join(releaseAppDir, 'dist')
   const releaseWinswDir = path.join(releaseDir, 'winsw')
   const releaseNodeDir = path.join(releaseDir, 'node')
@@ -325,6 +356,8 @@ async function buildRelease(): Promise<void> {
   await fs.mkdir(releaseWinswDir, { recursive: true })
   await fs.mkdir(releaseConfigDir, { recursive: true })
   await fs.mkdir(cacheDownloadDir, { recursive: true })
+  await fs.rm(deployAppDir, { recursive: true, force: true })
+  await fs.mkdir(path.dirname(deployAppDir), { recursive: true })
 
   console.log(
     `[agent:release] deploying production dependencies from workspace "${AGENT_DEPLOY_WORKSPACE}"`,
@@ -336,7 +369,7 @@ async function buildRelease(): Promise<void> {
         '/d',
         '/s',
         '/c',
-        `pnpm.cmd --filter ${AGENT_DEPLOY_WORKSPACE} deploy --prod --legacy --node-linker=hoisted ${releaseAppDir}`,
+        `pnpm.cmd --filter ${AGENT_DEPLOY_WORKSPACE} deploy --prod --legacy ${deployAppDir}`,
       ],
       repoRoot,
     )
@@ -349,11 +382,16 @@ async function buildRelease(): Promise<void> {
         'deploy',
         '--prod',
         '--legacy',
-        '--node-linker=hoisted',
-        releaseAppDir,
+        deployAppDir,
       ],
       repoRoot,
     )
+  }
+
+  await ensureSupabaseFunctionsJsAtRootNodeModules(deployAppDir)
+
+  if (path.resolve(deployAppDir) !== path.resolve(releaseAppDir)) {
+    await fs.cp(deployAppDir, releaseAppDir, { recursive: true })
   }
 
   await fs.cp(distDir, releaseAppDistDir, { recursive: true })
