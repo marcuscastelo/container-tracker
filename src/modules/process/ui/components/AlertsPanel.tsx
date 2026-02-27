@@ -13,17 +13,17 @@ type Props = {
 export function AlertsPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <Panel title={t(keys.shipmentView.alerts.title)} bodyClass="p-4">
-      <Stack gap="sm">
+    <Panel title={t(keys.shipmentView.alerts.title)} bodyClass="py-1">
+      <Stack gap="xs">
         <Show
           when={props.alerts.length > 0}
           fallback={
-            <p class="py-4 text-center text-sm text-slate-500">
+            <p class="py-3 text-center text-xs text-slate-400">
               {t(keys.shipmentView.alerts.empty)}
             </p>
           }
         >
-          <ul class="space-y-3">
+          <ul class="space-y-1">
             <AlertsList alerts={props.alerts} />
           </ul>
         </Show>

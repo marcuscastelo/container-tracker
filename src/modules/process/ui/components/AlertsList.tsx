@@ -5,14 +5,14 @@ import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 
 export function AlertsList(props: { alerts: readonly AlertDisplayVM[] }): JSX.Element {
   return (
-    <div class="p-4 gap-3 flex flex-col">
+    <div class="px-3 py-2 gap-1.5 flex flex-col">
       <For each={props.alerts}>
         {(alert) => (
-          <li class="flex outline outline-black/10 gap-3 rounded-md border border-slate-100 bg-slate-50 p-3 list-none">
+          <li class="flex gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 list-none">
             <AlertIcon type={alert.type} />
             <div class="flex-1 min-w-0">
-              <p class="text-sm text-slate-700">{alert.message}</p>
-              <p class="mt-1 text-xs text-slate-500">{alert.timestamp}</p>
+              <p class="text-xs text-slate-700">{alert.message}</p>
+              <p class="mt-0.5 text-[10px] text-slate-400">{alert.timestamp}</p>
             </div>
           </li>
         )}

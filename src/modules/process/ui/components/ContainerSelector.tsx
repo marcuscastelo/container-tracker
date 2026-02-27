@@ -6,18 +6,18 @@ import { CopyButton } from '~/shared/ui/CopyButton'
 
 function etaChipClass(tone: ContainerDetailVM['etaChipVm']['tone'], selected: boolean): string {
   if (selected) {
-    return 'bg-slate-700 text-slate-100'
+    return 'bg-slate-600 text-white'
   }
 
   switch (tone) {
     case 'positive':
-      return 'bg-emerald-100 text-emerald-800'
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
     case 'informative':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-blue-50 text-blue-700 border border-blue-200'
     case 'warning':
-      return 'bg-amber-100 text-amber-900'
+      return 'bg-amber-50 text-amber-700 border border-amber-200'
     default:
-      return 'bg-slate-200 text-slate-700'
+      return 'bg-slate-100 text-slate-600 border border-slate-200'
   }
 }
 
@@ -28,8 +28,8 @@ export function ContainerSelector(props: {
 }): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <div class="p-4">
-      <div class="flex flex-wrap gap-2">
+    <div class="px-3 py-2">
+      <div class="flex flex-wrap gap-1.5">
         <For each={props.containers}>
           {(container) =>
             (() => {
@@ -45,7 +45,7 @@ export function ContainerSelector(props: {
                 }
 
                 if (container.etaChipVm.state === 'EXPIRED_EXPECTED') {
-                  return `${t(keys.shipmentView.operational.chips.etaExpected)}${datePart} ${t(keys.shipmentView.operational.chips.etaDelayedSuffix)}`
+                  return `ETA${datePart} · ${t(keys.shipmentView.operational.chips.etaDelayedSuffix)}`
                 }
 
                 return `${t(keys.shipmentView.operational.chips.etaExpected)}${datePart}`
@@ -55,23 +55,23 @@ export function ContainerSelector(props: {
                 <button
                   type="button"
                   onClick={() => props.onSelect(container.id)}
-                  class={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                  class={`rounded border px-3 py-1.5 text-xs font-medium transition-colors ${
                     selected
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'border-slate-700 bg-slate-800 text-white'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
-                  <div class="flex items-center gap-2">
-                    <span class="truncate">{container.number}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-semibold tracking-wide">{container.number}</span>
                     <CopyButton
                       text={container.number}
                       title={t(keys.process.containerSelector.copyContainerNumber)}
                       class="inline-flex"
                     />
                   </div>
-                  <div class="mt-1 flex flex-wrap items-center gap-1">
+                  <div class="mt-0.5 flex items-center gap-1">
                     <span
-                      class={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium ${etaChipClass(
+                      class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${etaChipClass(
                         container.etaChipVm.tone,
                         selected,
                       )}`}
@@ -80,8 +80,10 @@ export function ContainerSelector(props: {
                     </span>
                     {container.tsChipVm.visible ? (
                       <span
-                        class={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium ${
-                          selected ? 'bg-slate-700 text-slate-100' : 'bg-amber-100 text-amber-900'
+                        class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${
+                          selected
+                            ? 'bg-slate-600 text-white'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}
                         title={container.tsChipVm.portsTooltip ?? undefined}
                       >
@@ -92,8 +94,10 @@ export function ContainerSelector(props: {
                     ) : null}
                     {container.dataIssueChipVm.visible ? (
                       <span
-                        class={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium ${
-                          selected ? 'bg-slate-700 text-slate-100' : 'bg-rose-100 text-rose-800'
+                        class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${
+                          selected
+                            ? 'bg-slate-600 text-white'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
                       >
                         {t(keys.shipmentView.operational.chips.dataIssue)}

@@ -216,26 +216,24 @@ function etaToneClass(
     case 'informative':
       return 'text-blue-700'
     case 'warning':
-      return 'text-amber-800'
+      return 'text-amber-700'
     default:
-      return 'text-slate-700'
+      return 'text-slate-600'
   }
 }
 
-function milestoneLabel(
-  type: string,
-  t: ReturnType<typeof useTranslation>['t'],
-  keys: ReturnType<typeof useTranslation>['keys'],
+function etaToneBgClass(
+  tone: Exclude<NonNullable<ShipmentDetailVM['selectedContainerEtaVm']>['tone'], never>,
 ): string {
-  switch (type) {
-    case 'ARRIVAL':
-      return t(keys.shipmentView.operational.milestone.arrival)
-    case 'DISCHARGE':
-      return t(keys.shipmentView.operational.milestone.discharge)
-    case 'DELIVERY':
-      return t(keys.shipmentView.operational.milestone.delivery)
+  switch (tone) {
+    case 'positive':
+      return 'bg-emerald-50'
+    case 'informative':
+      return 'bg-blue-50'
+    case 'warning':
+      return 'bg-amber-50'
     default:
-      return t(keys.shipmentView.operational.milestone.unknown)
+      return 'bg-slate-50'
   }
 }
 
@@ -246,7 +244,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
   const selectedEtaTitle = () => {
     const selected = props.selectedContainerEtaVm
     if (!selected) return t(keys.shipmentView.etaMissing)
-    return `${milestoneLabel(selected.type, t, keys)}: ${selected.date}`
+    if (selected.state === 'ACTUAL') {
+      return `${t(keys.shipmentView.operational.chips.etaArrived)} ${selected.date}`
+    }
+    return `ETA ${selected.date}`
   }
 
   const selectedEtaSubtitle = () => {
@@ -261,11 +262,25 @@ export function ShipmentHeader(props: Props): JSX.Element {
     return t(keys.shipmentView.operational.header.selectedExpected)
   }
 
+  const etaBorderClass = () => {
+    const selected = props.selectedContainerEtaVm
+    if (!selected) return 'border-slate-200'
+    switch (selected.tone) {
+      case 'positive':
+        return 'border-emerald-200'
+      case 'warning':
+        return 'border-amber-200'
+      default:
+        return 'border-slate-200'
+    }
+  }
+
   return (
-    <section class="mb-6 rounded-lg border border-slate-200 bg-white p-6">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 class="text-xl font-semibold text-slate-900">
+    <section class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-4">
+      {/* Row 1: Process + Status + Carrier + Actions */}
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <h1 class="truncate text-lg font-semibold text-slate-900">
             {t(keys.shipmentView.header)} {props.data.processRef}
             {props.data.reference ? null : (
               <InternalIdHint
@@ -275,61 +290,23 @@ export function ShipmentHeader(props: Props): JSX.Element {
               />
             )}
           </h1>
-          <div class="mt-2 flex items-center gap-2 text-sm text-slate-600">
-            <span>{props.data.origin}</span>
+          <span class="hidden text-sm text-slate-500 sm:inline-flex sm:items-center sm:gap-1.5">
+            {props.data.origin}
             <ArrowIcon />
-            <span>{props.data.destination}</span>
-          </div>
+            {props.data.destination}
+          </span>
         </div>
 
-        <div class="flex items-center gap-6">
-          <div class="text-right">
-            <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.status)}</p>
-            <StatusBadge
-              variant={props.data.status}
-              label={t(trackingStatusToLabelKey(keys, props.data.statusCode))}
-            />
-          </div>
-          <div class="text-center">
-            <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.carrier)}</p>
-            <p class="text-sm font-medium text-slate-900">{props.data.carrier ?? '—'}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-xs uppercase text-slate-500">
-              {t(keys.shipmentView.operational.header.selectedEtaTitle)}
-            </p>
-            <p
-              class={`text-sm font-medium ${
-                props.selectedContainerEtaVm
-                  ? etaToneClass(props.selectedContainerEtaVm.tone)
-                  : 'text-slate-900'
-              }`}
-            >
-              {selectedEtaTitle()}
-            </p>
-            {selectedEtaSubtitle() ? (
-              <p class="text-xs text-slate-500">{selectedEtaSubtitle()}</p>
-            ) : null}
-          </div>
-          {props.data.processEtaSecondaryVm.visible ? (
-            <div class="text-right">
-              <p class="text-xs uppercase text-slate-500">
-                {t(keys.shipmentView.operational.header.processEtaTitle)}
-              </p>
-              <p class="text-sm font-medium text-slate-900">
-                {props.data.processEtaSecondaryVm.date ??
-                  t(keys.shipmentView.operational.header.noEta)}
-              </p>
-              <p class="text-xs text-slate-500">
-                {props.data.processEtaSecondaryVm.withEta}/{props.data.processEtaSecondaryVm.total}
-                {props.data.processEtaSecondaryVm.incomplete
-                  ? ` ${t(keys.shipmentView.operational.header.incomplete)}`
-                  : ''}
-              </p>
-            </div>
-          ) : null}
+        <div class="flex items-center gap-3 shrink-0">
+          <StatusBadge
+            variant={props.data.status}
+            label={t(trackingStatusToLabelKey(keys, props.data.statusCode))}
+          />
+          <span class="text-xs font-medium uppercase text-slate-500">
+            {props.data.carrier ?? '—'}
+          </span>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 border-l border-slate-200 pl-3">
             <RefreshButton
               isRefreshing={props.isRefreshing}
               carrier={props.data.carrier}
@@ -357,6 +334,60 @@ export function ShipmentHeader(props: Props): JSX.Element {
             />
           </div>
         </div>
+      </div>
+
+      {/* Row 2: ETA container (primary) + ETA process (secondary) — compact bar */}
+      <div class="mt-3 flex items-center gap-4 flex-wrap">
+        {/* Container ETA — primary operational focus */}
+        <div
+          class={`inline-flex items-center gap-2 rounded border px-3 py-1.5 ${etaBorderClass()} ${
+            props.selectedContainerEtaVm
+              ? etaToneBgClass(props.selectedContainerEtaVm.tone)
+              : 'bg-slate-50'
+          }`}
+        >
+          <span
+            class={`text-sm font-semibold ${
+              props.selectedContainerEtaVm
+                ? etaToneClass(props.selectedContainerEtaVm.tone)
+                : 'text-slate-500'
+            }`}
+          >
+            {selectedEtaTitle()}
+          </span>
+          {selectedEtaSubtitle() ? (
+            <span
+              class={`text-[11px] font-medium ${
+                props.selectedContainerEtaVm?.state === 'EXPIRED_EXPECTED'
+                  ? 'text-amber-600'
+                  : 'text-slate-500'
+              }`}
+            >
+              {selectedEtaSubtitle()}
+            </span>
+          ) : null}
+        </div>
+
+        {/* Process ETA — secondary */}
+        {props.data.processEtaSecondaryVm.visible ? (
+          <div class="inline-flex items-center gap-2 text-xs text-slate-500">
+            <span class="font-medium">
+              {t(keys.shipmentView.operational.header.processEtaTitle)}:
+            </span>
+            <span class="font-semibold text-slate-700">
+              {props.data.processEtaSecondaryVm.date ??
+                t(keys.shipmentView.operational.header.noEta)}
+            </span>
+            <span class="text-slate-400">
+              ({props.data.processEtaSecondaryVm.withEta}/{props.data.processEtaSecondaryVm.total})
+            </span>
+            {props.data.processEtaSecondaryVm.incomplete ? (
+              <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                {t(keys.shipmentView.operational.header.incomplete)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   )
