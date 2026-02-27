@@ -13,6 +13,7 @@ export type GetContainersSummaryCommand = {
   readonly containers: readonly {
     readonly containerId: string
     readonly containerNumber: string
+    readonly podLocationCode?: string | null
   }[]
   readonly now: Date
 }
@@ -42,6 +43,7 @@ export async function getContainersSummary(
           observations: toTrackingObservationDTOs(observations),
           status,
           transshipment,
+          podLocationCode: container.podLocationCode ?? null,
           now: cmd.now,
         })
 

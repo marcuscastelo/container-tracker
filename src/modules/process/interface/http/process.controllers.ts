@@ -35,6 +35,49 @@ export type ProcessControllerDeps = {
   readonly trackingUseCases: Pick<TrackingUseCases, 'getContainerSummary' | 'getContainersSummary'>
 }
 
+function normalizeCode(value: string): string | null {
+  const normalized = value.trim().toUpperCase()
+  return /^[A-Z]{5,8}$/.test(normalized) ? normalized : null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function extractPodLocationCode(destination: string | null | undefined): string | null {
+  if (!destination) return null
+
+  const directCode = normalizeCode(destination)
+  if (directCode) return directCode
+
+  const trimmed = destination.trim()
+  if (!trimmed.startsWith('{')) return null
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (!isRecord(parsed)) return null
+
+    const candidates: unknown[] = [
+      parsed.destination_location_code,
+      parsed.pod_location_code,
+      parsed.destinationCode,
+      parsed.code,
+      parsed.unlocode,
+      parsed.location_code,
+    ]
+
+    for (const candidate of candidates) {
+      if (typeof candidate !== 'string') continue
+      const normalized = normalizeCode(candidate)
+      if (normalized) return normalized
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Controller factory
 // ---------------------------------------------------------------------------
@@ -110,11 +153,15 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
 
       const pwc = result.process
       const now = new Date()
+      // Destination can be a canonical code or a serialized location payload.
+      // If we cannot extract a canonical POD code, tracking falls back safely.
+      const podLocationCode = extractPodLocationCode(pwc.process.destination)
 
       const operationalByContainerId = await trackingUseCases.getContainersSummary(
         pwc.containers.map((container) => ({
           containerId: String(container.id),
           containerNumber: String(container.containerNumber),
+          podLocationCode,
         })),
         now,
       )

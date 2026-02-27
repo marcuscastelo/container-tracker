@@ -50,15 +50,16 @@ export type DeriveTrackingOperationalSummaryArgs = {
   readonly observations: readonly TrackingObservationForOperationalSummary[]
   readonly status: string
   readonly transshipment: TransshipmentInfo
+  readonly podLocationCode?: string | null
   readonly now: Date
   readonly dataIssue?: boolean
 }
 
-const POD_INFERENCE_PRIORITY = ['DELIVERY', 'DISCHARGE', 'ARRIVAL'] as const
 const ROUTE_TYPES = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE'] as const
 
-function normalizeLocationCode(code: string | null): string | null {
+function normalizeLocationCode(code: string | null | undefined): string | null {
   if (code === null) return null
+  if (code === undefined) return null
   const normalized = code.trim().toUpperCase()
   return normalized.length > 0 ? normalized : null
 }
@@ -76,22 +77,6 @@ function latestObservation(
 
   const sorted = [...observations].sort(compareObservationsChronologically)
   return sorted[sorted.length - 1] ?? null
-}
-
-function inferPodLocationCode(
-  observations: readonly TrackingObservationForOperationalSummary[],
-): string | null {
-  for (const type of POD_INFERENCE_PRIORITY) {
-    const candidates = observations.filter(
-      (observation) =>
-        observation.type === type && normalizeLocationCode(observation.location_code),
-    )
-    const latest = latestObservation(candidates)
-    if (latest) {
-      return normalizeLocationCode(latest.location_code)
-    }
-  }
-  return null
 }
 
 function derivePrimarySeriesObservations(
@@ -163,39 +148,71 @@ function toTrackingOperationalEta(
 
 function deriveEtaFromSeries(
   observations: readonly TrackingObservationForOperationalSummary[],
+  podLocationCode: string | null | undefined,
   now: Date,
 ): TrackingOperationalEta | null {
   if (observations.length === 0) return null
 
+  const normalizedPodLocationCode = normalizeLocationCode(podLocationCode ?? null)
   const primaryObservations = derivePrimarySeriesObservations(observations, now)
   if (primaryObservations.length === 0) return null
 
-  const podLocationCode = inferPodLocationCode(observations)
+  function locationCodesMatch(
+    observationLocationCode: string | null | undefined,
+    targetPodLocationCode: string,
+  ): boolean {
+    const normalizedObservationCode = normalizeLocationCode(observationLocationCode)
+    if (!normalizedObservationCode) return false
+    if (normalizedObservationCode === targetPodLocationCode) return true
+
+    const observationRoot = normalizedObservationCode.slice(0, 5)
+    const podRoot = targetPodLocationCode.slice(0, 5)
+    return observationRoot.length === 5 && podRoot.length === 5 && observationRoot === podRoot
+  }
+
+  function safeFallbackExpectedArrival(): TrackingOperationalEta | null {
+    const expectedArrivals = primaryObservations.filter(
+      (observation) => observation.type === 'ARRIVAL' && observation.event_time_type === 'EXPECTED',
+    )
+    const latestExpectedArrival = latestObservation(expectedArrivals)
+    if (!latestExpectedArrival) return null
+    return toTrackingOperationalEta(latestExpectedArrival, now)
+  }
+
+  if (!normalizedPodLocationCode) {
+    // Safe fallback without canonical POD:
+    // choose only EXPECTED ARRIVAL and never ACTUAL generic arrival.
+    return safeFallbackExpectedArrival()
+  }
 
   const arrivalPrimaries = primaryObservations.filter(
-    (observation) => observation.type === 'ARRIVAL',
+    (observation) =>
+      observation.type === 'ARRIVAL' &&
+      locationCodesMatch(observation.location_code, normalizedPodLocationCode),
   )
-  const arrivalAtPod = podLocationCode
-    ? latestObservation(
-        arrivalPrimaries.filter(
-          (observation) => normalizeLocationCode(observation.location_code) === podLocationCode,
-        ),
-      )
-    : latestObservation(arrivalPrimaries)
+  const arrivalAtPod = latestObservation(arrivalPrimaries)
 
   if (arrivalAtPod) {
     return toTrackingOperationalEta(arrivalAtPod, now)
   }
 
   const discharge = latestObservation(
-    primaryObservations.filter((observation) => observation.type === 'DISCHARGE'),
+    primaryObservations.filter(
+      (observation) =>
+        observation.type === 'DISCHARGE' &&
+        locationCodesMatch(observation.location_code, normalizedPodLocationCode),
+    ),
   )
   if (discharge) {
     return toTrackingOperationalEta(discharge, now)
   }
 
   const delivery = latestObservation(
-    primaryObservations.filter((observation) => observation.type === 'DELIVERY'),
+    primaryObservations.filter(
+      (observation) =>
+        observation.type === 'DELIVERY' &&
+        locationCodesMatch(observation.location_code, normalizedPodLocationCode),
+    ),
   )
   if (delivery) {
     return toTrackingOperationalEta(delivery, now)
@@ -297,7 +314,7 @@ export function deriveTrackingOperationalSummary(
 ): TrackingOperationalSummary {
   return {
     status: args.status,
-    eta: deriveEtaFromSeries(args.observations, args.now),
+    eta: deriveEtaFromSeries(args.observations, args.podLocationCode, args.now),
     transshipment: normalizeTransshipment(args.observations, args.transshipment),
     dataIssue: args.dataIssue ?? false,
   }

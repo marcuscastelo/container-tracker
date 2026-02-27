@@ -18,7 +18,7 @@ describe('process controllers', () => {
       id: toProcessId('process-1'),
       reference: toProcessReference('REF-1'),
       origin: 'Shanghai',
-      destination: 'Santos',
+      destination: '{"display_name":"Santos, BR","unlocode":"BRSSZBT"}',
       carrier: toCarrierCode('msc'),
       billOfLading: null,
       bookingNumber: null,
@@ -69,6 +69,13 @@ describe('process controllers', () => {
     }
 
     const containerTwoSummary = createTrackingOperationalSummaryFallback(true)
+
+    const getContainersSummaryMock = vi.fn(async () => {
+      return new Map([
+        ['container-1', containerOneSummary],
+        ['container-2', containerTwoSummary],
+      ])
+    })
 
     const controllers = createProcessControllers({
       processUseCases: {
@@ -128,12 +135,7 @@ describe('process controllers', () => {
 
           return summary
         }),
-        getContainersSummary: vi.fn(async () => {
-          return new Map([
-            ['container-1', containerOneSummary],
-            ['container-2', containerTwoSummary],
-          ])
-        }),
+        getContainersSummary: getContainersSummaryMock,
       },
     })
 
@@ -147,5 +149,20 @@ describe('process controllers', () => {
     expect(body.process_operational?.eta_max?.event_time).toBe('2026-03-10T12:00:00.000Z')
     expect(body.process_operational?.coverage.total).toBe(2)
     expect(body.process_operational?.coverage.with_eta).toBe(1)
+    expect(getContainersSummaryMock).toHaveBeenCalledWith(
+      [
+        {
+          containerId: 'container-1',
+          containerNumber: 'MSCU1234567',
+          podLocationCode: 'BRSSZBT',
+        },
+        {
+          containerId: 'container-2',
+          containerNumber: 'MSCU7654321',
+          podLocationCode: 'BRSSZBT',
+        },
+      ],
+      expect.any(Date),
+    )
   })
 })

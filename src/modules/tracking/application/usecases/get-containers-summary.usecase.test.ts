@@ -72,8 +72,8 @@ describe('getContainersSummary', () => {
 
     const summaries = await getContainersSummary(deps, {
       containers: [
-        { containerId: 'c1', containerNumber: 'MSCU1111111' },
-        { containerId: 'c2', containerNumber: 'MSCU2222222' },
+        { containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' },
+        { containerId: 'c2', containerNumber: 'MSCU2222222', podLocationCode: 'BRSSZ' },
       ],
       now: new Date('2026-02-15T00:00:00.000Z'),
     })
@@ -94,8 +94,8 @@ describe('getContainersSummary', () => {
 
     const summaries = await getContainersSummary(deps, {
       containers: [
-        { containerId: 'c1', containerNumber: 'MSCU1111111' },
-        { containerId: 'c2', containerNumber: 'MSCU2222222' },
+        { containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' },
+        { containerId: 'c2', containerNumber: 'MSCU2222222', podLocationCode: 'BRSSZ' },
       ],
       now: new Date('2026-02-15T00:00:00.000Z'),
     })
