@@ -1,4 +1,3 @@
-import type { APIEvent } from '@solidjs/start/server'
 import type { ProcessUseCases } from '~/modules/process/application/process.usecases'
 import {
   toContainerInputs,
@@ -24,8 +23,16 @@ import {
 // ---------------------------------------------------------------------------
 
 export type ProcessControllerDeps = {
-  readonly processUseCases: ProcessUseCases
-  readonly trackingUseCases: Pick<TrackingUseCases, 'getContainerSummary'>
+  readonly processUseCases: Pick<
+    ProcessUseCases,
+    | 'listProcessesWithOperationalSummary'
+    | 'createProcess'
+    | 'findProcessByIdWithContainers'
+    | 'updateProcess'
+    | 'findProcessById'
+    | 'deleteProcess'
+  >
+  readonly trackingUseCases: Pick<TrackingUseCases, 'getContainerSummary' | 'getContainersSummary'>
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +92,11 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   // -----------------------------------------------------------------------
   // GET /api/processes/[id] — get a single process with tracking detail
   // -----------------------------------------------------------------------
-  async function getProcessById({ params }: APIEvent): Promise<Response> {
+  async function getProcessById({
+    params,
+  }: {
+    readonly params: { readonly id?: string }
+  }): Promise<Response> {
     try {
       const processId = params.id
       if (!processId) {
@@ -98,39 +109,47 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       }
 
       const pwc = result.process
+      const now = new Date()
+
+      const operationalByContainerId = await trackingUseCases.getContainersSummary(
+        pwc.containers.map((container) => ({
+          containerId: String(container.id),
+          containerNumber: String(container.containerNumber),
+        })),
+        now,
+      )
 
       // For each container, get tracking summary (observations, status, alerts)
-      const containersWithTracking = await Promise.all(
+      const trackingResults = await Promise.all(
         pwc.containers.map(async (c) => {
           try {
             const summary = await trackingUseCases.getContainerSummary(
               String(c.id),
               String(c.containerNumber),
             )
-            return toContainerWithTrackingResponse(c, summary)
+            return {
+              container: toContainerWithTrackingResponse(c, summary),
+              alerts: summary.alerts,
+            }
           } catch (err) {
             console.error(`Failed to get tracking summary for container ${String(c.id)}:`, err)
-            return toContainerWithTrackingFallback(c)
+            return {
+              container: toContainerWithTrackingFallback(c),
+              alerts: [],
+            }
           }
         }),
       )
 
-      // Gather alerts across all containers
-      const allAlerts = await Promise.all(
-        pwc.containers.map(async (c) => {
-          try {
-            const { alerts } = await trackingUseCases.getContainerSummary(
-              String(c.id),
-              String(c.containerNumber),
-            )
-            return alerts
-          } catch {
-            return []
-          }
-        }),
-      ).then((results) => results.flat())
+      const containersWithTracking = trackingResults.map((resultItem) => resultItem.container)
+      const allAlerts = trackingResults.flatMap((resultItem) => resultItem.alerts)
 
-      const response = toProcessDetailResponse(pwc, containersWithTracking, allAlerts)
+      const response = toProcessDetailResponse(
+        pwc,
+        containersWithTracking,
+        allAlerts,
+        operationalByContainerId,
+      )
 
       return jsonResponse(response, 200, ProcessDetailResponseSchema)
     } catch (err) {
@@ -142,7 +161,13 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   // -----------------------------------------------------------------------
   // PATCH /api/processes/[id] — update process fields and containers
   // -----------------------------------------------------------------------
-  async function updateProcessById({ params, request }: APIEvent): Promise<Response> {
+  async function updateProcessById({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
     try {
       const processId = params.id
       if (!processId) {
@@ -181,7 +206,11 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   // -----------------------------------------------------------------------
   // DELETE /api/processes/[id] — delete a process and all its containers
   // -----------------------------------------------------------------------
-  async function deleteProcessById({ params }: APIEvent): Promise<Response> {
+  async function deleteProcessById({
+    params,
+  }: {
+    readonly params: { readonly id?: string }
+  }): Promise<Response> {
     try {
       const processId = params.id
       if (!processId) {

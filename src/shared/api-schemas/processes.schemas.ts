@@ -78,6 +78,41 @@ export const TrackingAlertResponseSchema = z.object({
   dismissed_at: z.string().nullable(),
 })
 
+export const OperationalEtaResponseSchema = z.object({
+  event_time: z.string(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
+  type: z.string(),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+})
+
+export const OperationalTransshipmentPortResponseSchema = z.object({
+  code: z.string(),
+  display: z.string().nullable(),
+})
+
+export const OperationalTransshipmentResponseSchema = z.object({
+  has_transshipment: z.boolean(),
+  count: z.number(),
+  ports: z.array(OperationalTransshipmentPortResponseSchema),
+})
+
+export const ContainerOperationalResponseSchema = z.object({
+  status: z.string(),
+  eta: OperationalEtaResponseSchema.nullable(),
+  transshipment: OperationalTransshipmentResponseSchema,
+  data_issue: z.boolean().optional(),
+})
+
+export const ProcessOperationalResponseSchema = z.object({
+  eta_max: OperationalEtaResponseSchema.nullable(),
+  coverage: z.object({
+    total: z.number(),
+    with_eta: z.number(),
+  }),
+})
+
 export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
   containers: z.array(
     z.object({
@@ -88,10 +123,14 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       status: z.string().optional(),
       /** Observations for this container (ordered by event_time) */
       observations: z.array(ObservationResponseSchema).optional(),
+      /** Container-level operational projection */
+      operational: ContainerOperationalResponseSchema.optional(),
     }),
   ),
   /** Tracking alerts for this process (across all containers) */
   alerts: z.array(TrackingAlertResponseSchema).optional(),
+  /** Process-level operational projection */
+  process_operational: ProcessOperationalResponseSchema.optional(),
 })
 
 export const CreateProcessResponseSchema = z.object({
@@ -102,3 +141,9 @@ export const CreateProcessResponseSchema = z.object({
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>
 export type ObservationResponse = z.infer<typeof ObservationResponseSchema>
 export type TrackingAlertResponse = z.infer<typeof TrackingAlertResponseSchema>
+export type OperationalEtaResponse = z.infer<typeof OperationalEtaResponseSchema>
+export type OperationalTransshipmentResponse = z.infer<
+  typeof OperationalTransshipmentResponseSchema
+>
+export type ContainerOperationalResponse = z.infer<typeof ContainerOperationalResponseSchema>
+export type ProcessOperationalResponse = z.infer<typeof ProcessOperationalResponseSchema>

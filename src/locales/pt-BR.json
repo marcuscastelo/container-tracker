@@ -59,6 +59,31 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Não disponível",
+    "operational": {
+      "chips": {
+        "etaArrived": "Chegou",
+        "etaExpected": "ETA",
+        "etaDelayedSuffix": "(atrasado)",
+        "etaMissing": "ETA —",
+        "ts": "TS {{count}}",
+        "dataIssue": "Dados"
+      },
+      "milestone": {
+        "arrival": "Chegada",
+        "discharge": "Descarga",
+        "delivery": "Entrega",
+        "unknown": "Evento"
+      },
+      "header": {
+        "selectedEtaTitle": "ETA (container)",
+        "selectedActual": "Confirmado",
+        "selectedExpected": "Previsto",
+        "selectedExpectedDelayed": "Previsto - atrasado",
+        "processEtaTitle": "ETA (processo)",
+        "noEta": "ETA —",
+        "incomplete": "(incompleto)"
+      }
+    },
     "actions": {
       "refresh": "Atualizar",
       "edit": "Editar"
@@ -98,6 +123,11 @@
     "alerts": {
       "title": "Alertas",
       "empty": "Nenhum alerta para este embarque."
+    },
+    "transshipment": {
+      "title": "Transbordo",
+      "route": "Rota intermediária",
+      "count": "{{count}} transbordos"
     },
     "loading": "Carregando...",
     "notFound": "Processo não encontrado",

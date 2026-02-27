@@ -8,6 +8,7 @@ import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
+import { TransshipmentCard } from '~/modules/process/ui/components/TransshipmentCard'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import {
   createProcessRequest,
@@ -133,6 +134,7 @@ type ShipmentViewLayoutProps = {
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
   readonly selectedContainer: ShipmentContainer | null
+  readonly selectedContainerEtaVm: ShipmentDetailVM['selectedContainerEtaVm']
   readonly onOpenEditForShipment: (
     shipment: ShipmentDetailVM,
     focus?: 'reference' | 'carrier' | null | undefined,
@@ -220,6 +222,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
             <>
               <ShipmentHeader
                 data={data()}
+                selectedContainerEtaVm={props.selectedContainerEtaVm}
                 isRefreshing={props.isRefreshing}
                 onTriggerRefresh={props.onTriggerRefresh}
                 onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
@@ -239,7 +242,8 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                     carrier={data().carrier}
                   />
                 </div>
-                <div>
+                <div class="space-y-6">
+                  <TransshipmentCard selectedContainer={props.selectedContainer} />
                   <AlertsPanel alerts={data().alerts} />
                 </div>
               </div>
@@ -373,6 +377,12 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     return containers[0]
   })
 
+  const selectedContainerEtaVm = createMemo<ShipmentDetailVM['selectedContainerEtaVm']>(() => {
+    const selected = selectedContainer()
+    if (!selected) return null
+    return selected.selectedEtaVm
+  })
+
   // Update selected container when data loads
   createEffect(() => {
     const data = shipment()
@@ -438,6 +448,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       selectedContainerId={selectedContainerId()}
       onSelectContainer={setSelectedContainerId}
       selectedContainer={selectedContainer()}
+      selectedContainerEtaVm={selectedContainerEtaVm()}
       onOpenEditForShipment={openEditForShipment}
       onOpenCreateProcess={() => setIsCreateDialogOpen(true)}
     />

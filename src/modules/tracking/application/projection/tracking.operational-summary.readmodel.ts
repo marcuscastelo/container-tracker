@@ -1,0 +1,304 @@
+import {
+  buildSeriesKey,
+  compareObservationsChronologically,
+} from '~/modules/tracking/domain/derive/deriveTimeline'
+import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
+import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassification'
+
+export type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+
+export type TrackingOperationalEta = {
+  readonly eventTimeIso: string
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly state: TrackingOperationalEtaState
+  readonly type: string
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+}
+
+export type TrackingOperationalTransshipmentPort = {
+  readonly code: string
+  readonly display: string | null
+}
+
+export type TrackingOperationalTransshipment = {
+  readonly hasTransshipment: boolean
+  readonly count: number
+  readonly ports: readonly TrackingOperationalTransshipmentPort[]
+}
+
+export type TrackingObservationForOperationalSummary = {
+  readonly id: string
+  readonly type: string
+  readonly event_time: string | null
+  readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+  readonly location_code: string | null
+  readonly location_display: string | null
+  readonly vessel_name: string | null
+  readonly voyage: string | null
+  readonly created_at: string
+}
+
+export type TrackingOperationalSummary = {
+  readonly status: string
+  readonly eta: TrackingOperationalEta | null
+  readonly transshipment: TrackingOperationalTransshipment
+  readonly dataIssue: boolean
+}
+
+export type DeriveTrackingOperationalSummaryArgs = {
+  readonly observations: readonly TrackingObservationForOperationalSummary[]
+  readonly status: string
+  readonly transshipment: TransshipmentInfo
+  readonly now: Date
+  readonly dataIssue?: boolean
+}
+
+const POD_INFERENCE_PRIORITY = ['DELIVERY', 'DISCHARGE', 'ARRIVAL'] as const
+const ROUTE_TYPES = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE'] as const
+
+function normalizeLocationCode(code: string | null): string | null {
+  if (code === null) return null
+  const normalized = code.trim().toUpperCase()
+  return normalized.length > 0 ? normalized : null
+}
+
+function normalizeLocationDisplay(display: string | null): string | null {
+  if (display === null) return null
+  const normalized = display.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function latestObservation(
+  observations: readonly TrackingObservationForOperationalSummary[],
+): TrackingObservationForOperationalSummary | null {
+  if (observations.length === 0) return null
+
+  const sorted = [...observations].sort(compareObservationsChronologically)
+  return sorted[sorted.length - 1] ?? null
+}
+
+function inferPodLocationCode(
+  observations: readonly TrackingObservationForOperationalSummary[],
+): string | null {
+  for (const type of POD_INFERENCE_PRIORITY) {
+    const candidates = observations.filter(
+      (observation) =>
+        observation.type === type && normalizeLocationCode(observation.location_code),
+    )
+    const latest = latestObservation(candidates)
+    if (latest) {
+      return normalizeLocationCode(latest.location_code)
+    }
+  }
+  return null
+}
+
+function derivePrimarySeriesObservations(
+  observations: readonly TrackingObservationForOperationalSummary[],
+  now: Date,
+): readonly TrackingObservationForOperationalSummary[] {
+  const groups = new Map<string, TrackingObservationForOperationalSummary[]>()
+
+  for (const observation of observations) {
+    const key = buildSeriesKey(observation)
+    const series = groups.get(key)
+    if (series) {
+      series.push(observation)
+    } else {
+      groups.set(key, [observation])
+    }
+  }
+
+  const primaries: TrackingObservationForOperationalSummary[] = []
+
+  for (const series of groups.values()) {
+    series.sort(compareObservationsChronologically)
+    const classification = classifySeries(series, now)
+    if (classification.primary) {
+      primaries.push(classification.primary)
+      continue
+    }
+
+    // For operational ETA visibility we keep expired EXPECTED as fallback
+    // when a series has no ACTUAL (safe-first still picks latest EXPECTED).
+    const latestExpected = [...series]
+      .reverse()
+      .find((observation) => observation.event_time_type === 'EXPECTED')
+
+    if (latestExpected) {
+      primaries.push(latestExpected)
+    }
+  }
+
+  return primaries
+}
+
+function toEtaState(
+  observation: TrackingObservationForOperationalSummary,
+  now: Date,
+): TrackingOperationalEtaState | null {
+  if (observation.event_time_type === 'ACTUAL') return 'ACTUAL'
+  if (observation.event_time === null) return null
+  if (observation.event_time < now.toISOString()) return 'EXPIRED_EXPECTED'
+  return 'ACTIVE_EXPECTED'
+}
+
+function toTrackingOperationalEta(
+  observation: TrackingObservationForOperationalSummary,
+  now: Date,
+): TrackingOperationalEta | null {
+  const state = toEtaState(observation, now)
+  if (state === null || observation.event_time === null) return null
+
+  return {
+    eventTimeIso: observation.event_time,
+    eventTimeType: observation.event_time_type,
+    state,
+    type: observation.type,
+    locationCode: normalizeLocationCode(observation.location_code),
+    locationDisplay: normalizeLocationDisplay(observation.location_display),
+  }
+}
+
+function deriveEtaFromSeries(
+  observations: readonly TrackingObservationForOperationalSummary[],
+  now: Date,
+): TrackingOperationalEta | null {
+  if (observations.length === 0) return null
+
+  const primaryObservations = derivePrimarySeriesObservations(observations, now)
+  if (primaryObservations.length === 0) return null
+
+  const podLocationCode = inferPodLocationCode(observations)
+
+  const arrivalPrimaries = primaryObservations.filter(
+    (observation) => observation.type === 'ARRIVAL',
+  )
+  const arrivalAtPod = podLocationCode
+    ? latestObservation(
+        arrivalPrimaries.filter(
+          (observation) => normalizeLocationCode(observation.location_code) === podLocationCode,
+        ),
+      )
+    : latestObservation(arrivalPrimaries)
+
+  if (arrivalAtPod) {
+    return toTrackingOperationalEta(arrivalAtPod, now)
+  }
+
+  const discharge = latestObservation(
+    primaryObservations.filter((observation) => observation.type === 'DISCHARGE'),
+  )
+  if (discharge) {
+    return toTrackingOperationalEta(discharge, now)
+  }
+
+  const delivery = latestObservation(
+    primaryObservations.filter((observation) => observation.type === 'DELIVERY'),
+  )
+  if (delivery) {
+    return toTrackingOperationalEta(delivery, now)
+  }
+
+  return null
+}
+
+function deriveOrderedRoutePorts(
+  observations: readonly TrackingObservationForOperationalSummary[],
+): readonly string[] {
+  const orderedPorts: string[] = []
+  const seenPorts = new Set<string>()
+  const sorted = [...observations].sort(compareObservationsChronologically)
+
+  for (const observation of sorted) {
+    const isRouteType = ROUTE_TYPES.some((type) => type === observation.type)
+    if (!isRouteType) continue
+
+    const code = normalizeLocationCode(observation.location_code)
+    if (!code || seenPorts.has(code)) continue
+
+    seenPorts.add(code)
+    orderedPorts.push(code)
+  }
+
+  return orderedPorts
+}
+
+function buildDisplayByCode(
+  observations: readonly TrackingObservationForOperationalSummary[],
+): ReadonlyMap<string, string> {
+  const displaysByCode = new Map<string, string>()
+  const sorted = [...observations].sort(compareObservationsChronologically)
+
+  for (const observation of sorted) {
+    const code = normalizeLocationCode(observation.location_code)
+    const display = normalizeLocationDisplay(observation.location_display)
+    if (!code || !display || displaysByCode.has(code)) continue
+    displaysByCode.set(code, display)
+  }
+
+  return displaysByCode
+}
+
+function normalizeTransshipment(
+  observations: readonly TrackingObservationForOperationalSummary[],
+  transshipment: TransshipmentInfo,
+): TrackingOperationalTransshipment {
+  const routePorts = deriveOrderedRoutePorts(observations)
+  const displaysByCode = buildDisplayByCode(observations)
+
+  const routeStart = routePorts[0] ?? null
+  const routeEnd = routePorts.length > 1 ? routePorts[routePorts.length - 1] : null
+
+  const normalizedPorts: string[] = []
+  const seenPorts = new Set<string>()
+
+  for (const rawPort of transshipment.ports) {
+    const code = normalizeLocationCode(rawPort)
+    if (!code || seenPorts.has(code)) continue
+    seenPorts.add(code)
+    normalizedPorts.push(code)
+  }
+
+  const intermediatePorts = normalizedPorts.filter(
+    (code) => code !== routeStart && code !== routeEnd,
+  )
+
+  const ports = intermediatePorts.map((code) => ({
+    code,
+    display: displaysByCode.get(code) ?? null,
+  }))
+
+  return {
+    hasTransshipment: ports.length > 0,
+    count: ports.length,
+    ports,
+  }
+}
+
+export function createTrackingOperationalSummaryFallback(
+  dataIssue: boolean = false,
+): TrackingOperationalSummary {
+  return {
+    status: 'UNKNOWN',
+    eta: null,
+    transshipment: {
+      hasTransshipment: false,
+      count: 0,
+      ports: [],
+    },
+    dataIssue,
+  }
+}
+
+export function deriveTrackingOperationalSummary(
+  args: DeriveTrackingOperationalSummaryArgs,
+): TrackingOperationalSummary {
+  return {
+    status: args.status,
+    eta: deriveEtaFromSeries(args.observations, args.now),
+    transshipment: normalizeTransshipment(args.observations, args.transshipment),
+    dataIssue: args.dataIssue ?? false,
+  }
+}

@@ -48,6 +48,31 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Not available",
+    "operational": {
+      "chips": {
+        "etaArrived": "Arrived",
+        "etaExpected": "ETA",
+        "etaDelayedSuffix": "(delayed)",
+        "etaMissing": "ETA —",
+        "ts": "TS {{count}}",
+        "dataIssue": "Data"
+      },
+      "milestone": {
+        "arrival": "Arrival",
+        "discharge": "Discharge",
+        "delivery": "Delivery",
+        "unknown": "Event"
+      },
+      "header": {
+        "selectedEtaTitle": "ETA (container)",
+        "selectedActual": "Confirmed",
+        "selectedExpected": "Expected",
+        "selectedExpectedDelayed": "Expected - delayed",
+        "processEtaTitle": "ETA (process)",
+        "noEta": "ETA —",
+        "incomplete": "(incomplete)"
+      }
+    },
     "actions": {
       "refresh": "Refresh",
       "edit": "Edit"
@@ -87,6 +112,11 @@
     "alerts": {
       "title": "Alerts",
       "empty": "No alerts for this shipment."
+    },
+    "transshipment": {
+      "title": "Transshipment",
+      "route": "Intermediate route",
+      "count": "{{count}} transshipments"
     },
     "loading": "Loading...",
     "notFound": "Process not found",

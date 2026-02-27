@@ -55,6 +55,10 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].timeline[0].type).toBe('LOAD')
     expect(result.containers[0].timeline[0].vesselName).toBe('MAERSK SEVILLE')
     expect(result.containers[0].timeline[0].voyage).toBe('123W')
+    expect(result.containers[0].etaChipVm.state).toBe('UNAVAILABLE')
+    expect(result.containers[0].dataIssueChipVm.visible).toBe(false)
+    expect(result.processEtaSecondaryVm.visible).toBe(false)
+    expect(result.processEtaSecondaryVm.total).toBe(1)
     expect(Array.isArray(result.alerts)).toBe(true)
   })
 
@@ -162,5 +166,97 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].timeline.length).toBe(1)
     expect(result.containers[0].timeline[0].id).toBe('system-created')
     expect(result.containers[0].status).toBe('unknown')
+  })
+})
+
+describe('toShipmentDetailVM operational mapping', () => {
+  it('maps ETA and transshipment operational chips for multi-container view', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-5',
+      reference: 'OPS-5',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      source: 'api',
+      created_at: '2026-02-01T10:00:00.000Z',
+      updated_at: '2026-02-01T10:00:00.000Z',
+      containers: [
+        {
+          id: 'c5-1',
+          container_number: 'MSCU1111111',
+          status: 'IN_TRANSIT',
+          observations: [],
+          operational: {
+            status: 'IN_TRANSIT',
+            eta: {
+              event_time: '2026-02-20T10:00:00.000Z',
+              event_time_type: 'EXPECTED',
+              state: 'EXPIRED_EXPECTED',
+              type: 'ARRIVAL',
+              location_code: 'BRSSZ',
+              location_display: 'Santos',
+            },
+            transshipment: {
+              has_transshipment: true,
+              count: 2,
+              ports: [
+                { code: 'ESALG', display: 'Algeciras' },
+                { code: 'ITGIT', display: 'Gioia Tauro' },
+              ],
+            },
+            data_issue: true,
+          },
+        },
+        {
+          id: 'c5-2',
+          container_number: 'MSCU2222222',
+          status: 'IN_TRANSIT',
+          observations: [],
+          operational: {
+            status: 'IN_TRANSIT',
+            eta: {
+              event_time: '2026-02-25T10:00:00.000Z',
+              event_time_type: 'EXPECTED',
+              state: 'ACTIVE_EXPECTED',
+              type: 'DISCHARGE',
+              location_code: 'BRSSZ',
+              location_display: 'Santos',
+            },
+            transshipment: {
+              has_transshipment: false,
+              count: 0,
+              ports: [],
+            },
+            data_issue: false,
+          },
+        },
+      ],
+      alerts: [],
+      process_operational: {
+        eta_max: {
+          event_time: '2026-02-25T10:00:00.000Z',
+          event_time_type: 'EXPECTED',
+          state: 'ACTIVE_EXPECTED',
+          type: 'DISCHARGE',
+          location_code: 'BRSSZ',
+          location_display: 'Santos',
+        },
+        coverage: {
+          total: 2,
+          with_eta: 1,
+        },
+      },
+    }
+
+    const result = toShipmentDetailVM(example, 'pt-BR')
+
+    expect(result.containers[0].etaChipVm.state).toBe('EXPIRED_EXPECTED')
+    expect(result.containers[0].tsChipVm.visible).toBe(true)
+    expect(result.containers[0].tsChipVm.count).toBe(2)
+    expect(result.containers[0].dataIssueChipVm.visible).toBe(true)
+    expect(result.processEtaSecondaryVm.visible).toBe(true)
+    expect(result.processEtaSecondaryVm.total).toBe(2)
+    expect(result.processEtaSecondaryVm.withEta).toBe(1)
+    expect(result.processEtaSecondaryVm.incomplete).toBe(true)
   })
 })

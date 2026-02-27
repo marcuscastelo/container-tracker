@@ -9,6 +9,7 @@ import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   data: ShipmentDetailVM
+  selectedContainerEtaVm: ShipmentDetailVM['selectedContainerEtaVm']
   isRefreshing: boolean
   onTriggerRefresh: () => void
   // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
@@ -206,9 +207,59 @@ function EditButton(props: EditButtonProps): JSX.Element {
   )
 }
 
+function etaToneClass(
+  tone: Exclude<NonNullable<ShipmentDetailVM['selectedContainerEtaVm']>['tone'], never>,
+): string {
+  switch (tone) {
+    case 'positive':
+      return 'text-emerald-700'
+    case 'informative':
+      return 'text-blue-700'
+    case 'warning':
+      return 'text-amber-800'
+    default:
+      return 'text-slate-700'
+  }
+}
+
+function milestoneLabel(
+  type: string,
+  t: ReturnType<typeof useTranslation>['t'],
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string {
+  switch (type) {
+    case 'ARRIVAL':
+      return t(keys.shipmentView.operational.milestone.arrival)
+    case 'DISCHARGE':
+      return t(keys.shipmentView.operational.milestone.discharge)
+    case 'DELIVERY':
+      return t(keys.shipmentView.operational.milestone.delivery)
+    default:
+      return t(keys.shipmentView.operational.milestone.unknown)
+  }
+}
+
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
+
+  const selectedEtaTitle = () => {
+    const selected = props.selectedContainerEtaVm
+    if (!selected) return t(keys.shipmentView.etaMissing)
+    return `${milestoneLabel(selected.type, t, keys)}: ${selected.date}`
+  }
+
+  const selectedEtaSubtitle = () => {
+    const selected = props.selectedContainerEtaVm
+    if (!selected) return null
+    if (selected.state === 'ACTUAL') {
+      return t(keys.shipmentView.operational.header.selectedActual)
+    }
+    if (selected.state === 'EXPIRED_EXPECTED') {
+      return t(keys.shipmentView.operational.header.selectedExpectedDelayed)
+    }
+    return t(keys.shipmentView.operational.header.selectedExpected)
+  }
 
   return (
     <section class="mb-6 rounded-lg border border-slate-200 bg-white p-6">
@@ -244,11 +295,39 @@ export function ShipmentHeader(props: Props): JSX.Element {
             <p class="text-sm font-medium text-slate-900">{props.data.carrier ?? '—'}</p>
           </div>
           <div class="text-right">
-            <p class="text-xs uppercase text-slate-500">{t(keys.shipmentView.eta)}</p>
-            <p class="text-sm font-medium text-slate-900">
-              {props.data.eta ?? t(keys.shipmentView.etaMissing)}
+            <p class="text-xs uppercase text-slate-500">
+              {t(keys.shipmentView.operational.header.selectedEtaTitle)}
             </p>
+            <p
+              class={`text-sm font-medium ${
+                props.selectedContainerEtaVm
+                  ? etaToneClass(props.selectedContainerEtaVm.tone)
+                  : 'text-slate-900'
+              }`}
+            >
+              {selectedEtaTitle()}
+            </p>
+            {selectedEtaSubtitle() ? (
+              <p class="text-xs text-slate-500">{selectedEtaSubtitle()}</p>
+            ) : null}
           </div>
+          {props.data.processEtaSecondaryVm.visible ? (
+            <div class="text-right">
+              <p class="text-xs uppercase text-slate-500">
+                {t(keys.shipmentView.operational.header.processEtaTitle)}
+              </p>
+              <p class="text-sm font-medium text-slate-900">
+                {props.data.processEtaSecondaryVm.date ??
+                  t(keys.shipmentView.operational.header.noEta)}
+              </p>
+              <p class="text-xs text-slate-500">
+                {props.data.processEtaSecondaryVm.withEta}/{props.data.processEtaSecondaryVm.total}
+                {props.data.processEtaSecondaryVm.incomplete
+                  ? ` ${t(keys.shipmentView.operational.header.incomplete)}`
+                  : ''}
+              </p>
+            </div>
+          ) : null}
 
           <div class="flex items-center gap-2">
             <RefreshButton

@@ -1,4 +1,5 @@
 import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { acknowledgeAlert } from '~/modules/tracking/application/usecases/acknowledge-alert.usecase'
 import { dismissAlert } from '~/modules/tracking/application/usecases/dismiss-alert.usecase'
 import {
@@ -9,6 +10,10 @@ import {
   type GetContainerSummaryResult,
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
+import {
+  type GetContainersSummaryCommand,
+  getContainersSummary as getContainersSummaryUseCase,
+} from '~/modules/tracking/application/usecases/get-containers-summary.usecase'
 import { getLatestSnapshot } from '~/modules/tracking/application/usecases/get-latest-snapshot.usecase'
 import { getSnapshotsForContainer } from '~/modules/tracking/application/usecases/get-snapshots-for-container.usecase'
 import {
@@ -94,6 +99,19 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerNumber: string,
     ): Promise<GetContainerSummaryResult> {
       return getContainerSummary(deps, { containerId, containerNumber })
+    },
+
+    /**
+     * Get operational summaries for multiple containers with partial-success behavior.
+     *
+     * Containers that fail due infra issues are returned with dataIssue=true
+     * so callers can keep rendering uncertainty explicitly.
+     */
+    async getContainersSummary(
+      containers: GetContainersSummaryCommand['containers'],
+      now: Date = new Date(),
+    ): Promise<Map<string, TrackingOperationalSummary>> {
+      return getContainersSummaryUseCase(deps, { containers, now })
     },
 
     /**
