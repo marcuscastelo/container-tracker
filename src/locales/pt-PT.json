@@ -63,9 +63,9 @@
       "chips": {
         "etaArrived": "Chegou",
         "etaExpected": "ETA",
-        "etaDelayedSuffix": "(atrasado)",
+        "etaDelayedSuffix": "atrasado",
         "etaMissing": "ETA —",
-        "ts": "TS {{count}}",
+        "ts": "INT {{count}}",
         "dataIssue": "Dados"
       },
       "milestone": {
@@ -78,10 +78,10 @@
         "selectedEtaTitle": "ETA (contentor)",
         "selectedActual": "Confirmado",
         "selectedExpected": "Previsto",
-        "selectedExpectedDelayed": "Previsto - atrasado",
+        "selectedExpectedDelayed": "Atrasado",
         "processEtaTitle": "ETA (processo)",
         "noEta": "ETA —",
-        "incomplete": "(incompleto)"
+        "incomplete": "incompleto"
       }
     },
     "actions": {
@@ -125,9 +125,9 @@
       "empty": "Nenhum alerta para esta expedição."
     },
     "transshipment": {
-      "title": "Transbordo",
+      "title": "Portos intermédios",
       "route": "Rota intermédia",
-      "count": "{{count}} transbordos"
+      "count": "{{count}} portos intermédios"
     },
     "loading": "A carregar...",
     "notFound": "Processo não encontrado",

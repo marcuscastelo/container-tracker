@@ -52,9 +52,9 @@
       "chips": {
         "etaArrived": "Arrived",
         "etaExpected": "ETA",
-        "etaDelayedSuffix": "(delayed)",
+        "etaDelayedSuffix": "delayed",
         "etaMissing": "ETA —",
-        "ts": "TS {{count}}",
+        "ts": "INT {{count}}",
         "dataIssue": "Data"
       },
       "milestone": {
@@ -67,10 +67,10 @@
         "selectedEtaTitle": "ETA (container)",
         "selectedActual": "Confirmed",
         "selectedExpected": "Expected",
-        "selectedExpectedDelayed": "Expected - delayed",
+        "selectedExpectedDelayed": "Delayed",
         "processEtaTitle": "ETA (process)",
         "noEta": "ETA —",
-        "incomplete": "(incomplete)"
+        "incomplete": "incomplete"
       }
     },
     "actions": {
@@ -114,9 +114,9 @@
       "empty": "No alerts for this shipment."
     },
     "transshipment": {
-      "title": "Transshipment",
+      "title": "Intermediate ports",
       "route": "Intermediate route",
-      "count": "{{count}} transshipments"
+      "count": "{{count}} intermediate ports"
     },
     "loading": "Loading...",
     "notFound": "Process not found",
