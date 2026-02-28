@@ -33,7 +33,9 @@ export function ContainerSelector(props: {
         <For each={props.containers}>
           {(container) =>
             (() => {
-              const selected = props.selectedId === container.id
+              // Coerce to string to avoid type-mismatch between id types (number | string)
+              // Make selected reactive by using a getter so it updates when props change
+              const selected = () => String(props.selectedId) === String(container.id)
               const etaLabel = () => {
                 if (container.etaChipVm.state === 'UNAVAILABLE') {
                   return t(keys.shipmentView.operational.chips.etaMissing)
@@ -52,17 +54,26 @@ export function ContainerSelector(props: {
               }
 
               return (
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => props.onSelect(container.id)}
-                  class={`rounded border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    selected
+                  onKeyDown={(e: KeyboardEvent) => {
+                    const k = e.key
+                    if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
+                      e.preventDefault()
+                      props.onSelect(container.id)
+                    }
+                  }}
+                  class={`rounded border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                    selected()
                       ? 'border-slate-700 bg-slate-800 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <div class="flex items-center gap-1.5">
                     <span class="font-semibold tracking-wide">{container.number}</span>
+
                     <CopyButton
                       text={container.number}
                       title={t(keys.process.containerSelector.copyContainerNumber)}
@@ -73,7 +84,7 @@ export function ContainerSelector(props: {
                     <span
                       class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${etaChipClass(
                         container.etaChipVm.tone,
-                        selected,
+                        selected(),
                       )}`}
                     >
                       {etaLabel()}
@@ -81,7 +92,7 @@ export function ContainerSelector(props: {
                     {container.tsChipVm.visible ? (
                       <span
                         class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${
-                          selected
+                          selected()
                             ? 'bg-slate-600 text-white'
                             : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}
@@ -95,7 +106,7 @@ export function ContainerSelector(props: {
                     {container.dataIssueChipVm.visible ? (
                       <span
                         class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${
-                          selected
+                          selected()
                             ? 'bg-slate-600 text-white'
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}
@@ -104,7 +115,7 @@ export function ContainerSelector(props: {
                       </span>
                     ) : null}
                   </div>
-                </button>
+                </div>
               )
             })()
           }

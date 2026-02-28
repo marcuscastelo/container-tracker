@@ -372,7 +372,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
 
     const selected = selectedContainerId()
     if (selected) {
-      return containers.find((c) => c.id === selected) ?? containers[0]
+      return containers.find((c) => String(c.id) === String(selected)) ?? containers[0]
     }
     return containers[0]
   })
@@ -387,7 +387,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   createEffect(() => {
     const data = shipment()
     if (data && data.containers.length > 0 && !selectedContainerId()) {
-      setSelectedContainerId(data.containers[0].id)
+      setSelectedContainerId(String(data.containers[0].id))
     }
   })
 
@@ -446,7 +446,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       isRefreshing={isRefreshing()}
       onTriggerRefresh={triggerRefresh}
       selectedContainerId={selectedContainerId()}
-      onSelectContainer={setSelectedContainerId}
+      onSelectContainer={(id) => setSelectedContainerId(String(id))}
       selectedContainer={selectedContainer()}
       selectedContainerEtaVm={selectedContainerEtaVm()}
       onOpenEditForShipment={openEditForShipment}
