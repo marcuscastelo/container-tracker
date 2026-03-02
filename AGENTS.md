@@ -294,6 +294,10 @@ Use this when implementing or reviewing any UI/UX change.
 Policy:
 
 - Any UI/UX change is only complete after visual validation with screenshots.
+- Playwright MCP must be used ad hoc for manual validation flows; do not run automated test suites with Playwright MCP by default.
+- Exception: running or wiring Playwright test suites is allowed only when the task explicitly involves implementing or maintaining automated tests (unit/integration/e2e).
+- Do not run ad hoc `node`/JavaScript scripts that import Playwright for routine validation; use Playwright MCP directly in Codex CLI or Codex + VSCode.
+- Exception: ad hoc JavaScript Playwright scripts are allowed only when a concrete MCP limitation (missing tools/capabilities or equivalent blocker) requires that fallback.
 - Always validate at least desktop + mobile.
 - Quality gate mindset is mandatory: ask and answer
   - "Ficou de acordo com o site?"
