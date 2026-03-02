@@ -49,14 +49,15 @@ export type AgentSyncControllersDeps = {
     readonly payload: unknown
     readonly fetchedAt: string
   }) => Promise<{ readonly snapshotId: string }>
-  readonly authToken: string | null
-  readonly allowMissingTokenInDev: boolean
+  readonly authenticateAgentToken: (command: {
+    readonly token: string
+  }) => Promise<{ readonly tenantId: string } | null>
   readonly leaseMinutes: number
 }
 
 function getBearerToken(authorization: string | null): string | null {
   if (!authorization) return null
-  const [scheme, token] = authorization.split(' ')
+  const [scheme, token] = authorization.trim().split(/\s+/u)
   if (scheme !== 'Bearer' || !token) return null
   return token
 }
@@ -83,20 +84,21 @@ function normalizeCarrierCode(value: string): string {
   return value.toLowerCase().trim()
 }
 
-function ensureAgentAuth(request: Request, deps: AgentSyncControllersDeps): Response | null {
-  if (deps.authToken === null) {
-    if (deps.allowMissingTokenInDev) {
-      return null
-    }
-    return jsonResponse({ error: 'AGENT_TOKEN is required in production' }, 500)
-  }
-
+async function ensureAgentAuth(
+  request: Request,
+  deps: AgentSyncControllersDeps,
+): Promise<{ readonly tenantId: string } | Response> {
   const providedToken = getBearerToken(request.headers.get('authorization'))
-  if (providedToken !== deps.authToken) {
+  if (!providedToken) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
-  return null
+  const auth = await deps.authenticateAgentToken({ token: providedToken })
+  if (!auth) {
+    return jsonResponse({ error: 'Unauthorized' }, 401)
+  }
+
+  return auth
 }
 
 function hasSameTarget(leased: SyncRequestRow, provider: Provider, refValue: string): boolean {
@@ -121,8 +123,8 @@ function buildResolveErrorMessage(
 export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
   async function getTargets({ request }: { request: Request }): Promise<Response> {
     try {
-      const authError = ensureAgentAuth(request, deps)
-      if (authError) return authError
+      const authResult = await ensureAgentAuth(request, deps)
+      if (authResult instanceof Response) return authResult
 
       const url = new URL(request.url)
       const parsedQuery = GetAgentTargetsQuerySchema.safeParse({
@@ -132,6 +134,10 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
 
       if (!parsedQuery.success) {
         return jsonResponse({ error: `Invalid query: ${parsedQuery.error.message}` }, 400)
+      }
+
+      if (parsedQuery.data.tenant_id !== authResult.tenantId) {
+        return jsonResponse({ error: 'Forbidden' }, 403)
       }
 
       const agentId = getAgentId(request)
@@ -160,8 +166,8 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
 
   async function ingestSnapshot({ request }: { request: Request }): Promise<Response> {
     try {
-      const authError = ensureAgentAuth(request, deps)
-      if (authError) return authError
+      const authResult = await ensureAgentAuth(request, deps)
+      if (authResult instanceof Response) return authResult
 
       const rawBody: unknown = await request.json().catch(() => ({}))
       const parsedBody = IngestSnapshotBodySchema.safeParse(rawBody)
@@ -170,6 +176,10 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       }
 
       const body = parsedBody.data
+      if (body.tenant_id !== authResult.tenantId) {
+        return jsonResponse({ error: 'Forbidden' }, 403)
+      }
+
       const agentId = getAgentId(request)
 
       const leasedRequest = await deps.findLeasedSyncRequest({

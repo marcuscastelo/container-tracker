@@ -20,6 +20,9 @@ import {
 const { trackingUseCases } = bootstrapTrackingModule()
 
 const SyncRequestRowsSchema = z.array(SyncRequestRowSchema)
+const AgentAuthRowSchema = z.object({
+  tenant_id: z.string().uuid(),
+})
 
 function parseSyncRequestRows(raw: unknown): readonly SyncRequestRow[] {
   return SyncRequestRowsSchema.parse(raw)
@@ -140,8 +143,26 @@ export function bootstrapAgentSyncControllers(): AgentSyncControllers {
       return { snapshotId: result.snapshot.id }
     },
 
-    authToken: serverEnv.AGENT_TOKEN,
-    allowMissingTokenInDev: (serverEnv.NODE_ENV ?? 'development') !== 'production',
+    async authenticateAgentToken({ token }) {
+      const result = await supabaseServer
+        .from('tracking_agents')
+        .select('tenant_id')
+        .eq('agent_token', token)
+        .is('revoked_at', null)
+        .maybeSingle()
+
+      const data = unwrapSupabaseSingleOrNull(result, {
+        operation: 'authenticate_agent_token',
+        table: 'tracking_agents',
+      })
+
+      if (!data) return null
+      const row = AgentAuthRowSchema.parse(data)
+
+      return {
+        tenantId: row.tenant_id,
+      }
+    },
     leaseMinutes: serverEnv.AGENT_LEASE_MINUTES,
   })
 }

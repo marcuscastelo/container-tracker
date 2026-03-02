@@ -1,8 +1,10 @@
-# MVP Agent Sync (Supabase + SolidStart)
+# MVP Agent Sync (One-Click Runtime Enrolment)
 
 ## Overview
 
-This MVP introduces:
+This document defines the operational model for one-click Agent install + runtime bootstrap.
+
+Core components:
 
 - Queue table: `sync_requests`
 - Atomic lease RPC: `lease_sync_requests(...)`
@@ -11,74 +13,161 @@ This MVP introduces:
   - `POST /api/refresh` (queue-first, no backend scraping)
   - `GET /api/agent/targets`
   - `POST /api/tracking/snapshots/ingest`
+  - `POST /api/agent/enroll` (bootstrap -> effective config contract)
 - Legacy route:
-  - `GET/POST /api/refresh-maersk/:container` now returns `410 Gone`
-- Local Node agent runner: `tools/agent/agent.ts`
+  - `GET/POST /api/refresh-maersk/:container` returns `410 Gone`
+- Local Node runner: `tools/agent/agent.ts`
 
-Snapshots continue to be persisted in existing `container_snapshots` via
+Snapshots continue to be persisted in `container_snapshots` via
 `trackingUseCases.saveAndProcess(...)`.
 
-## 1) Environment Variables
+## 1) Environment Model
 
-### Backend (Vercel / server runtime)
+### 1.1 Backend (server runtime)
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SYNC_DEFAULT_TENANT_ID` (required; UUID used by `/api/refresh` enqueue)
-- `AGENT_TOKEN` (required in production)
 - `AGENT_LEASE_MINUTES` (optional, default `5`)
+- `AGENT_ENROLL_DEFAULT_INTERVAL_SEC` (optional, default `60`)
+- `AGENT_ENROLL_DEFAULT_LIMIT` (optional, default `10`)
+- `AGENT_ENROLL_SUPABASE_URL` (optional)
+- `AGENT_ENROLL_SUPABASE_ANON_KEY` (optional)
+- `AGENT_ENROLL_DEFAULT_MAERSK_ENABLED` (optional, default `false`)
+- `AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS` (optional, default `true`)
+- `AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS` (optional, default `120000`)
+- `AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR` (optional)
+- `AGENT_ENROLL_RATE_LIMIT_MAX_REQUESTS` (optional, default `20`)
+- `AGENT_ENROLL_RATE_LIMIT_WINDOW_SEC` (optional, default `60`)
 
 Notes:
 
-- If `AGENT_TOKEN` is missing and `NODE_ENV !== production`, auth is bypassed.
-- If `AGENT_TOKEN` is missing and `NODE_ENV === production`, requests are rejected.
+- `GET /api/agent/targets` and `POST /api/tracking/snapshots/ingest` authenticate with
+  `agent_token` issued by `POST /api/agent/enroll`.
+- Agent token is resolved from `tracking_agents` (active/non-revoked row).
 
-### Agent
+### 1.2 Agent bootstrap input (`bootstrap.env`)
 
-- `BACKEND_URL` (example: `https://your-app.vercel.app`)
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `TENANT_ID` (UUID)
-- `AGENT_TOKEN` (must match backend in production)
-- `AGENT_ID` (optional; default hostname)
-- `INTERVAL_SEC` (optional; default `60`)
-- `LIMIT` (optional; default `10`)
-- `MAERSK_HEADLESS` (optional; default `true`)
-- `MAERSK_TIMEOUT_MS` (optional; default `120000`)
-- `MAERSK_USER_DATA_DIR` (optional)
+`bootstrap.env` is installed into `%LOCALAPPDATA%\ContainerTracker` by installer and is the
+primary first-run input:
 
-## 2) Database Migration
+- `BACKEND_URL` (required)
+- `INSTALLER_TOKEN` (required bootstrap secret)
+- optional runtime defaults such as:
+  - `AGENT_ID`
+  - `INTERVAL_SEC`
+  - `LIMIT`
+  - `MAERSK_ENABLED`
+  - `MAERSK_HEADLESS`
+  - `MAERSK_TIMEOUT_MS`
+  - `MAERSK_USER_DATA_DIR`
+
+No user manual edit is required in primary flow.
+
+### 1.3 Effective runtime config (`config.env`)
+
+`config.env` is issued by backend enrolment and persisted in
+`%LOCALAPPDATA%\ContainerTracker`.
+Expected keys include:
+
+- `BACKEND_URL`
+- `TENANT_ID`
+- `AGENT_TOKEN`
+- optional:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - runtime defaults (`AGENT_ID`, `INTERVAL_SEC`, `LIMIT`, `MAERSK_*`)
+
+Supabase remains optional:
+
+- if `SUPABASE_URL` + `SUPABASE_ANON_KEY` are present, realtime wake is enabled
+- if absent, agent runs polling-only mode
+
+## 2) Runtime Startup Modes
+
+At runtime startup:
+
+1. If `config.env` exists and parses: normal mode.
+2. If missing or invalid: bootstrap mode.
+
+Bootstrap mode behavior:
+
+1. Read `bootstrap.env`.
+2. Call `POST /api/agent/enroll` with `INSTALLER_TOKEN`.
+3. On success:
+   - persist returned `config.env`
+   - rename `bootstrap.env` -> `bootstrap.env.consumed` with token redacted
+   - switch to normal mode
+4. On failure:
+   - do not crash process
+   - log sanitized error
+   - retry with backoff
+
+Default retry profile:
+
+- base delay: `5s`
+- factor: `2`
+- cap: `300s`
+- jitter: `20%`
+- retries: indefinite until success
+
+## 3) Enrolment API Contract
+
+### 3.1 `POST /api/agent/enroll`
+
+Purpose: exchange bootstrap secret for effective runtime config.
+
+Request body (minimum):
+
+Headers:
+
+- `Authorization: Bearer <INSTALLER_TOKEN>`
+
+```json
+{
+  "machineFingerprint": "sha256(machine-guid+hostname)",
+  "hostname": "host-123",
+  "os": "win32 10.0.19045",
+  "agentVersion": "0.1.0"
+}
+```
+
+Response `200` (example shape):
+
+```json
+{
+  "agentToken": "runtime-agent-token",
+  "tenantId": "11111111-1111-4111-8111-111111111111",
+  "intervalSec": 60,
+  "limit": 10,
+  "supabaseUrl": "https://project.supabase.co",
+  "supabaseAnonKey": "anon-key",
+  "providers": {
+    "maerskEnabled": false,
+    "maerskHeadless": true,
+    "maerskTimeoutMs": 120000
+  }
+}
+```
+
+Rules:
+
+- `INSTALLER_TOKEN` must be revocable/rotatable.
+- Response may omit Supabase keys; agent must continue with polling.
+- Response never includes installer secret.
+- Logs must never print `INSTALLER_TOKEN` or `AGENT_TOKEN`.
+
+## 4) Database Migration
 
 Apply:
 
 - [20260225_01_agent_sync_mvp.sql](supabase/migrations/20260225_01_agent_sync_mvp.sql)
 - [20260225_02_refresh_queue_first.sql](supabase/migrations/20260225_02_refresh_queue_first.sql)
+- [20260226_01_agent_runtime_enrolment.sql](supabase/migrations/20260226_01_agent_runtime_enrolment.sql)
 
-If you use Supabase SQL Editor, paste and run the full migration file.
+## 5) API Smoke Tests
 
-## 3) Seed a Pending Sync Request
-
-```sql
-insert into public.sync_requests (
-  tenant_id,
-  provider,
-  ref_type,
-  ref_value,
-  status,
-  priority
-) values (
-  '11111111-1111-4111-8111-111111111111',
-  'msc',
-  'container',
-  'MSCU1234567',
-  'PENDING',
-  10
-);
-```
-
-## 4) API Smoke Tests
-
-### 4.1 Enqueue from UI-style refresh
+### 5.1 Enqueue from UI-style refresh
 
 ```bash
 curl -i \
@@ -94,21 +183,9 @@ Expected:
 
 - HTTP `202`
 - response contains `syncRequestId`, `queued: true`, `deduped: <bool>`
-- repeated calls while request is `PENDING/LEASED` reuse the same open request (`deduped: true`)
+- repeated calls while request is `PENDING/LEASED` reuse same open request
 
-### 4.2 Verify deprecated legacy route
-
-```bash
-curl -i \
-  "$BACKEND_URL/api/refresh-maersk/MSCU1234567"
-```
-
-Expected:
-
-- HTTP `410`
-- `{ "error": "refresh_maersk_deprecated_use_sync_queue" }`
-
-### 4.3 Lease targets
+### 5.2 Lease targets
 
 ```bash
 curl -i \
@@ -121,9 +198,10 @@ Expected:
 
 - HTTP `200`
 - `targets[]` list
+- request `tenant_id` must match the tenant attached to bearer `agentToken` (`403` on mismatch)
 - leased rows become `status=LEASED`
 
-### 4.4 Ingest snapshot
+### 5.3 Ingest snapshot
 
 ```bash
 curl -i \
@@ -145,35 +223,41 @@ curl -i \
 Expected:
 
 - HTTP `202` with `snapshot_id`
+- payload `tenant_id` must match bearer `agentToken` tenant (`403` on mismatch)
 - `sync_requests.status` transitions to `DONE`
 - snapshot persisted in `container_snapshots`
 
-## 5) Run Agent
+## 6) Run Agent
 
 ```bash
 node --experimental-strip-types tools/agent/agent.ts
 ```
 
-Runtime mode is now hybrid:
+First execution:
 
-1. startup cycle runs immediately
-2. Realtime wake on `sync_requests` (`PENDING` events by tenant)
-3. periodic interval sweep remains active (`INTERVAL_SEC`) for resilience
-4. each cycle executes `GET /api/agent/targets` -> scrape -> `POST /api/tracking/snapshots/ingest`
+1. resolve mode (`normal` or `bootstrap`)
+2. if bootstrap, enrol with retry/backoff until config is obtained
+3. run normal cycle
 
-## 6) UI Wait Mode
+Normal cycle:
 
-- UI refresh wait is `realtime-first`.
-- `GET /api/refresh/status` remains as watchdog/backoff fallback (`5, 10, 20, 40, 80s`).
+1. startup run immediately
+2. realtime wake on `sync_requests` when Supabase realtime config exists
+3. interval sweep always active (`INTERVAL_SEC`)
+4. each cycle: `GET /api/agent/targets` -> scrape -> `POST /api/tracking/snapshots/ingest`
+
+## 7) UI Wait Mode
+
+- UI refresh wait is realtime-first.
+- `GET /api/refresh/status` remains fallback watchdog/backoff (`5, 10, 20, 40, 80s`).
 - While waiting on realtime, UI shows `shipmentView.refreshSyncing`.
-- When watchdog retries run, UI shows `retry X/N`.
+- Watchdog retries show `retry X/N`.
 
-## 7) Troubleshooting
+## 8) Troubleshooting
 
-- `401 Unauthorized`: check `AGENT_TOKEN` header.
-- `500 AGENT_TOKEN is required in production`: set backend `AGENT_TOKEN`.
-- `500` on `/api/refresh` with env error: set `SYNC_DEFAULT_TENANT_ID`.
-- `409 lease_conflict`: lease expired or was taken/released by another agent.
-- `422 No container found / Ambiguous container`: request is marked `FAILED` with `last_error`.
-- Realtime unavailable: UI fallback polling and agent interval sweep continue.
-- No realtime events in agent: validate Supabase realtime is enabled on `public.sync_requests` and anon key can subscribe.
+- No internet: enrolment retries forever with exponential backoff.
+- `401 Unauthorized` on enrolment: bootstrap token invalid/revoked; process stays alive.
+- `5xx` on enrolment: backend unavailable; process retries with cap+jitter.
+- `409 lease_conflict`: lease expired or taken by another agent.
+- `422` container resolve failure: request marked `FAILED` with `last_error`.
+- Realtime unavailable: polling mode continues.

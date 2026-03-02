@@ -35,4 +35,10 @@ process.env.VITE_EXTERNAL_API_EAN_ENDPOINT = process.env.VITE_EXTERNAL_API_EAN_E
 process.env.VITE_EXTERNAL_API_BASE_URL =
   process.env.VITE_EXTERNAL_API_BASE_URL || 'https://external.api'
 
+// Server runtime env defaults used by route/controller bootstrap tests
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'https://supabase.test'
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'service-role-key'
+process.env.SYNC_DEFAULT_TENANT_ID =
+  process.env.SYNC_DEFAULT_TENANT_ID || '11111111-1111-4111-8111-111111111111'
+
 // Any other globals tests may expect can be polyfilled here as needed
