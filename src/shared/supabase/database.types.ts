@@ -1,10 +1,17 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.1'
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -137,18 +144,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'container_observations_container_id_fkey'
-            columns: ['container_id']
+            foreignKeyName: "container_observations_container_id_fkey"
+            columns: ["container_id"]
             isOneToOne: false
-            referencedRelation: 'containers'
-            referencedColumns: ['id']
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'container_observations_created_from_snapshot_id_fkey'
-            columns: ['created_from_snapshot_id']
+            foreignKeyName: "container_observations_created_from_snapshot_id_fkey"
+            columns: ["created_from_snapshot_id"]
             isOneToOne: false
-            referencedRelation: 'container_snapshots'
-            referencedColumns: ['id']
+            referencedRelation: "container_snapshots"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -179,11 +186,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'container_snapshots_container_id_fkey'
-            columns: ['container_id']
+            foreignKeyName: "container_snapshots_container_id_fkey"
+            columns: ["container_id"]
             isOneToOne: false
-            referencedRelation: 'containers'
-            referencedColumns: ['id']
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -220,11 +227,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'containers_process_id_fkey'
-            columns: ['process_id']
+            foreignKeyName: "containers_process_id_fkey"
+            columns: ["process_id"]
             isOneToOne: false
-            referencedRelation: 'processes'
-            referencedColumns: ['id']
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -306,7 +313,7 @@ export type Database = {
           provider: string
           ref_type: string
           ref_value: string
-          status: Database['public']['Enums']['sync_request_status']
+          status: Database["public"]["Enums"]["sync_request_status"]
           tenant_id: string
           updated_at: string
         }
@@ -321,7 +328,7 @@ export type Database = {
           provider: string
           ref_type: string
           ref_value: string
-          status?: Database['public']['Enums']['sync_request_status']
+          status?: Database["public"]["Enums"]["sync_request_status"]
           tenant_id: string
           updated_at?: string
         }
@@ -336,7 +343,73 @@ export type Database = {
           provider?: string
           ref_type?: string
           ref_value?: string
-          status?: Database['public']['Enums']['sync_request_status']
+          status?: Database["public"]["Enums"]["sync_request_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tracking_agents: {
+        Row: {
+          agent_token: string
+          agent_version: string
+          created_at: string
+          hostname: string
+          id: string
+          interval_sec: number
+          last_enrolled_at: string
+          machine_fingerprint: string
+          maersk_enabled: boolean
+          maersk_headless: boolean
+          maersk_timeout_ms: number
+          maersk_user_data_dir: string | null
+          max_concurrent: number
+          os: string
+          revoked_at: string | null
+          supabase_anon_key: string | null
+          supabase_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_token: string
+          agent_version: string
+          created_at?: string
+          hostname: string
+          id?: string
+          interval_sec?: number
+          last_enrolled_at?: string
+          machine_fingerprint: string
+          maersk_enabled?: boolean
+          maersk_headless?: boolean
+          maersk_timeout_ms?: number
+          maersk_user_data_dir?: string | null
+          max_concurrent?: number
+          os: string
+          revoked_at?: string | null
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_token?: string
+          agent_version?: string
+          created_at?: string
+          hostname?: string
+          id?: string
+          interval_sec?: number
+          last_enrolled_at?: string
+          machine_fingerprint?: string
+          maersk_enabled?: boolean
+          maersk_headless?: boolean
+          maersk_timeout_ms?: number
+          maersk_user_data_dir?: string | null
+          max_concurrent?: number
+          os?: string
+          revoked_at?: string | null
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -396,79 +469,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'tracking_alerts_container_id_fkey'
-            columns: ['container_id']
+            foreignKeyName: "tracking_alerts_container_id_fkey"
+            columns: ["container_id"]
             isOneToOne: false
-            referencedRelation: 'containers'
-            referencedColumns: ['id']
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
           },
         ]
-      }
-      tracking_agents: {
-        Row: {
-          agent_token: string
-          agent_version: string
-          created_at: string
-          hostname: string
-          id: string
-          interval_sec: number
-          last_enrolled_at: string
-          limit: number
-          machine_fingerprint: string
-          maersk_enabled: boolean
-          maersk_headless: boolean
-          maersk_timeout_ms: number
-          maersk_user_data_dir: string | null
-          os: string
-          revoked_at: string | null
-          supabase_anon_key: string | null
-          supabase_url: string | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          agent_token: string
-          agent_version: string
-          created_at?: string
-          hostname: string
-          id?: string
-          interval_sec?: number
-          last_enrolled_at?: string
-          limit?: number
-          machine_fingerprint: string
-          maersk_enabled?: boolean
-          maersk_headless?: boolean
-          maersk_timeout_ms?: number
-          maersk_user_data_dir?: string | null
-          os: string
-          revoked_at?: string | null
-          supabase_anon_key?: string | null
-          supabase_url?: string | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          agent_token?: string
-          agent_version?: string
-          created_at?: string
-          hostname?: string
-          id?: string
-          interval_sec?: number
-          last_enrolled_at?: string
-          limit?: number
-          machine_fingerprint?: string
-          maersk_enabled?: boolean
-          maersk_headless?: boolean
-          maersk_timeout_ms?: number
-          maersk_user_data_dir?: string | null
-          os?: string
-          revoked_at?: string | null
-          supabase_anon_key?: string | null
-          supabase_url?: string | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {
@@ -486,14 +493,8 @@ export type Database = {
         Returns: {
           id: string
           is_new: boolean
-          status: Database['public']['Enums']['sync_request_status']
+          status: Database["public"]["Enums"]["sync_request_status"]
         }[]
-        SetofOptions: {
-          from: '*'
-          to: 'sync_requests'
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       lease_sync_requests: {
         Args: {
@@ -513,20 +514,20 @@ export type Database = {
           provider: string
           ref_type: string
           ref_value: string
-          status: Database['public']['Enums']['sync_request_status']
+          status: Database["public"]["Enums"]["sync_request_status"]
           tenant_id: string
           updated_at: string
         }[]
         SetofOptions: {
-          from: '*'
-          to: 'sync_requests'
+          from: "*"
+          to: "sync_requests"
           isOneToOne: false
           isSetofReturn: true
         }
       }
     }
     Enums: {
-      sync_request_status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'
+      sync_request_status: "PENDING" | "LEASED" | "DONE" | "FAILED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -534,31 +535,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -567,23 +570,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -592,23 +595,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -617,42 +620,42 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
   public: {
     Enums: {
-      sync_request_status: ['PENDING', 'LEASED', 'DONE', 'FAILED'],
+      sync_request_status: ["PENDING", "LEASED", "DONE", "FAILED"],
     },
   },
 } as const
