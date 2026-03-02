@@ -7,7 +7,7 @@
 #define ReleaseRoot RepoRoot + "\release"
 
 [Setup]
-AppId={{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}
+AppId={{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}
 AppName={#AppName}
 AppVersion={#AppVersion}
 DefaultDirName={autopf}\{#AppDirName}
