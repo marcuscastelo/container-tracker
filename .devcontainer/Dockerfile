@@ -1,14 +1,18 @@
 FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
 
+ARG CHROMIUM_VERSION
+
 USER root
 
-RUN apt-get update \
+RUN test -n "$CHROMIUM_VERSION" \
+  && apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
-    chromium \
+    chromium="${CHROMIUM_VERSION}" \
     jq \
     python3 \
     python3-pip \
+  && apt-mark hold chromium \
   && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable \

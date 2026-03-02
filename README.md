@@ -140,6 +140,29 @@ Regras de avaliação:
 - Erros externos do provider (por exemplo `403 Access Denied by Akamai` ou `502 No API response captured`) não reprovam este smoke, desde que o erro de launch não apareça.
 - Se aparecer `Browser launch failed`, revise `CHROME_PATH` e repita `pnpm run maersk:smoke:puppeteer` antes de depurar integração Maersk.
 
+### Política de versão do Chromium (devcontainer)
+
+- A versão do browser é controlada explicitamente em `.devcontainer/devcontainer.json` via `build.args.CHROMIUM_VERSION`.
+- O build instala `chromium=$CHROMIUM_VERSION` em `.devcontainer/Dockerfile` e aplica `apt-mark hold chromium` para evitar drift acidental.
+- Não existe etapa de auto-update de Chromium em `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh` ou nos fluxos de refresh da aplicação.
+
+#### Processo manual de bump (somente via PR explícito)
+
+1. Identifique a versão alvo disponível para Debian Bookworm:
+
+```bash
+apt-cache madison chromium
+```
+
+2. Atualize o valor de `build.args.CHROMIUM_VERSION` em `.devcontainer/devcontainer.json`.
+3. Abra uma PR explícita de bump de versão (ex.: `chore(devcontainer): bump chromium to <version>`).
+4. Rebuild do devcontainer e valide:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+pnpm run check
+```
+
 ### Loop autônomo com Codex (Ralph + Devcontainer)
 
 Guia completo de setup, comandos `ai:loop:*`, fluxo container/host e troubleshooting:

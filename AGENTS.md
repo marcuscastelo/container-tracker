@@ -232,6 +232,8 @@ Why:
 - Use the local wrappers in `scripts/ai/` (exposed as `pnpm run ai:loop:*`) instead of calling `tools/ralph-loop/ralph.sh` directly.
 - Devcontainer policy is commit-inside-container + push-on-host. In container, `git push` and destructive local Git commands are intentionally blocked by guard scripts.
 - For Maersk Puppeteer flows in devcontainer, keep Chromium provisioned in `.devcontainer/Dockerfile` and set `CHROME_PATH=/usr/bin/chromium` in `.devcontainer/devcontainer.json`.
+- Keep Chromium version pinned via `.devcontainer/devcontainer.json` `build.args.CHROMIUM_VERSION` and install it as an exact package version in `.devcontainer/Dockerfile`.
+- Do not add Chromium auto-update logic to `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, or refresh workflows; version bumps must happen in explicit PRs.
 - Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures as `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
 - For `/api/refresh-maersk/:container` smoke, minimum pass criterion is response output not containing `Browser launch failed`; provider-side `403/502` responses are acceptable for this smoke if launch succeeded.
 

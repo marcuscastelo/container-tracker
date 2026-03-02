@@ -2,7 +2,10 @@
   "name": "container-tracker-codex",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": ".."
+    "context": "..",
+    "args": {
+      "CHROMIUM_VERSION": "145.0.7632.116-1~deb12u1"
+    }
   },
   "remoteUser": "node",
   "workspaceFolder": "/workspaces/container-tracker",
