@@ -33,6 +33,62 @@ type CapturedRequestMeta = {
   readonly postData?: string
 }
 
+function normalizeForMatch(value: string): string {
+  return value.toUpperCase().trim()
+}
+
+function isTrackingApiResponseUrl(url: string): boolean {
+  const normalized = url.toLowerCase()
+  return normalized.includes('api.maersk.com') && normalized.includes('/synergy/tracking')
+}
+
+function scoreTrackingCaptureCandidate(url: string, body: string, container: string): number {
+  const containerKey = normalizeForMatch(container)
+  let score = 0
+
+  if (url.toLowerCase().includes('/synergy/tracking/')) {
+    score += 1
+  }
+
+  if (normalizeForMatch(url).includes(containerKey)) {
+    score += 2
+  }
+
+  if (normalizeForMatch(body).includes(containerKey)) {
+    score += 3
+  }
+
+  return score
+}
+
+type BrowserResolution =
+  | {
+      readonly kind: 'ok'
+      readonly executablePath: string
+      readonly source: 'CHROME_PATH' | 'CHROMIUM_PATH' | 'system-candidate' | 'puppeteer-cache'
+    }
+  | {
+      readonly kind: 'error'
+      readonly cause: 'missing_browser_binary' | 'invalid_chrome_path'
+      readonly message: string
+      readonly hints: readonly string[]
+      readonly diagnostics: Record<string, unknown>
+    }
+
+const LINUX_BROWSER_CANDIDATES = [
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium-browser',
+  '/usr/bin/chromium',
+  '/usr/lib/chromium/chromium',
+  '/snap/bin/chromium',
+]
+
+const DARWIN_BROWSER_CANDIDATES = [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
+]
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -79,9 +135,61 @@ export type MaerskCaptureService = {
   capture(command: CaptureMaerskCommand): Promise<MaerskCaptureResult>
 }
 
-function findSystemChrome(): string | null {
-  const envPath = process.env.CHROME_PATH || process.env.CHROMIUM_PATH
-  if (envPath && fs.existsSync(envPath)) return envPath
+function shouldWriteDevtoolsDiagnostics(): boolean {
+  const value = process.env.MAERSK_WRITE_DEVTOOLS_JSON
+  return value === '1' || value === 'true'
+}
+
+function isExecutable(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return false
+  try {
+    fs.accessSync(filePath, fs.constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function normalizeEnvPath(variableName: 'CHROME_PATH' | 'CHROMIUM_PATH'): string | null {
+  const value = process.env[variableName]
+  if (!value) return null
+  if (path.isAbsolute(value)) return value
+  return path.resolve(process.cwd(), value)
+}
+
+function resolveBrowserExecutablePath(): BrowserResolution {
+  const envVariables: readonly ('CHROME_PATH' | 'CHROMIUM_PATH')[] = [
+    'CHROME_PATH',
+    'CHROMIUM_PATH',
+  ]
+  for (const variableName of envVariables) {
+    const envPath = normalizeEnvPath(variableName)
+    if (!envPath) continue
+
+    if (isExecutable(envPath)) {
+      return {
+        kind: 'ok',
+        executablePath: envPath,
+        source: variableName,
+      }
+    }
+
+    return {
+      kind: 'error',
+      cause: 'invalid_chrome_path',
+      message: `${variableName} is set but does not point to an executable browser binary.`,
+      hints: [
+        'Fix CHROME_PATH/CHROMIUM_PATH to a valid executable path.',
+        'In devcontainer, rebuild and ensure Chromium is available at /usr/bin/chromium.',
+      ],
+      diagnostics: {
+        variableName,
+        configuredPath: process.env[variableName] ?? null,
+        resolvedPath: envPath,
+        exists: fs.existsSync(envPath),
+      },
+    }
+  }
 
   const platform = process.platform
   const candidates: string[] = []
@@ -92,21 +200,53 @@ function findSystemChrome(): string | null {
     candidates.push(path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'))
     candidates.push(path.join(programFilesx86, 'Google', 'Chrome', 'Application', 'chrome.exe'))
   } else if (platform === 'darwin') {
-    candidates.push('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
-    candidates.push('/Applications/Chromium.app/Contents/MacOS/Chromium')
+    candidates.push(...DARWIN_BROWSER_CANDIDATES)
   } else {
-    candidates.push('/usr/bin/google-chrome')
-    candidates.push('/usr/bin/google-chrome-stable')
-    candidates.push('/usr/bin/chromium-browser')
-    candidates.push('/usr/bin/chromium')
-    candidates.push('/snap/bin/chromium')
+    candidates.push(...LINUX_BROWSER_CANDIDATES)
   }
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate
+    if (isExecutable(candidate)) {
+      return {
+        kind: 'ok',
+        executablePath: candidate,
+        source: 'system-candidate',
+      }
+    }
   }
 
-  return null
+  let puppeteerCachePath: string | null = null
+  try {
+    const defaultPath = puppeteerExtra.executablePath()
+    puppeteerCachePath = defaultPath.length > 0 ? defaultPath : null
+  } catch {
+    puppeteerCachePath = null
+  }
+
+  if (puppeteerCachePath && isExecutable(puppeteerCachePath)) {
+    return {
+      kind: 'ok',
+      executablePath: puppeteerCachePath,
+      source: 'puppeteer-cache',
+    }
+  }
+
+  return {
+    kind: 'error',
+    cause: 'missing_browser_binary',
+    message: 'No executable Chrome/Chromium binary was found for Puppeteer launch.',
+    hints: [
+      'In devcontainer, ensure Chromium is installed and available at /usr/bin/chromium.',
+      'Set CHROME_PATH to a valid binary path or install Puppeteer browser cache with: pnpm exec puppeteer browsers install chrome',
+    ],
+    diagnostics: {
+      CHROME_PATH: process.env.CHROME_PATH ?? null,
+      CHROMIUM_PATH: process.env.CHROMIUM_PATH ?? null,
+      checkedCandidates: candidates,
+      puppeteerExpectedPath: puppeteerCachePath,
+      puppeteerPathExists: puppeteerCachePath ? fs.existsSync(puppeteerCachePath) : false,
+    },
+  }
 }
 
 export function createMaerskCaptureService(): MaerskCaptureService {
@@ -115,22 +255,13 @@ export function createMaerskCaptureService(): MaerskCaptureService {
       let browser: Browser | null = null
 
       const projectRoot = process.cwd()
-      const collectionsDir = path.join(projectRoot, 'collections')
-      if (!fs.existsSync(collectionsDir)) {
-        return {
-          kind: 'error',
-          status: 500,
-          body: { error: 'collections directory not found' },
-        }
-      }
-
-      const providerDir = path.join(collectionsDir, 'maersk')
-      if (!fs.existsSync(providerDir)) {
+      const writeDiagnostics = shouldWriteDevtoolsDiagnostics()
+      let diagnosticsPath: string | null = null
+      if (writeDiagnostics) {
+        const providerDir = path.join(projectRoot, 'collections', 'maersk')
         fs.mkdirSync(providerDir, { recursive: true })
+        diagnosticsPath = path.join(providerDir, `${command.container}.json.devtools.json`)
       }
-
-      const diagnosticsPath = path.join(providerDir, `${command.container}.json.devtools.json`)
-
       if (command.userDataDir && !fs.existsSync(command.userDataDir)) {
         return {
           kind: 'error',
@@ -182,11 +313,26 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         launchOpts.userDataDir = command.userDataDir
       }
 
-      const executablePath = findSystemChrome()
-      if (executablePath) {
-        launchOpts.executablePath = executablePath
-        console.log('[maersk-refresh] Using Chrome at:', executablePath)
+      const browserResolution = resolveBrowserExecutablePath()
+      if (browserResolution.kind === 'error') {
+        return {
+          kind: 'error',
+          status: 500,
+          body: {
+            error: 'Browser launch failed',
+            cause: browserResolution.cause,
+            details: browserResolution.message,
+            hint: browserResolution.hints[0],
+            hints: browserResolution.hints,
+            diagnostics: browserResolution.diagnostics,
+          },
+        }
       }
+
+      launchOpts.executablePath = browserResolution.executablePath
+      console.log(
+        `[maersk-refresh] Using Chrome at: ${browserResolution.executablePath} (source: ${browserResolution.source})`,
+      )
 
       try {
         browser = await puppeteerExtra.launch(launchOpts)
@@ -196,8 +342,13 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           status: 500,
           body: {
             error: 'Browser launch failed',
+            cause: 'launch_incompatibility',
             details: String(error),
-            hint: 'Install Chrome/Chromium or set CHROME_PATH',
+            hint: 'Confirm CHROME_PATH points to a compatible Chromium/Chrome binary.',
+            diagnostics: {
+              executablePath: browserResolution.executablePath,
+              source: browserResolution.source,
+            },
           },
         }
       }
@@ -227,7 +378,10 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         const cdpClient = await page.createCDPSession()
         await cdpClient.send('Network.enable')
 
-        const captureState: { data: CapturedData | null } = { data: null }
+        const captureState: { data: CapturedData | null; score: number } = {
+          data: null,
+          score: Number.NEGATIVE_INFINITY,
+        }
         const reqMap = new Map<string, CapturedRequestMeta>()
 
         cdpClient.on('Network.requestWillBeSent', (evt: unknown) => {
@@ -260,8 +414,7 @@ export function createMaerskCaptureService(): MaerskCaptureService {
               responseUrl &&
               requestId &&
               status !== null &&
-              responseUrl.includes('/synergy/tracking/') &&
-              responseUrl.includes(command.container)
+              isTrackingApiResponseUrl(responseUrl)
             ) {
               console.log('[maersk-refresh] CDP captured response:', responseUrl, 'status:', status)
 
@@ -297,19 +450,29 @@ export function createMaerskCaptureService(): MaerskCaptureService {
                 const cookiesRaw = await page.cookies()
                 const cookies = cookiesRaw.map(toCaptureCookie)
                 const userAgent = await page.evaluate(() => navigator.userAgent)
-
-                captureState.data = {
-                  url: responseUrl,
-                  method: reqInfo?.method ?? 'GET',
-                  headers: reqInfo?.headers ?? {},
-                  postData: reqInfo?.postData,
-                  status,
+                const candidateScore = scoreTrackingCaptureCandidate(
+                  responseUrl,
                   body,
-                  cookies,
-                  userAgent,
-                  telemetry,
-                  timestamp: new Date().toISOString(),
+                  command.container,
+                )
+
+                if (candidateScore >= captureState.score) {
+                  captureState.data = {
+                    url: responseUrl,
+                    method: reqInfo?.method ?? 'GET',
+                    headers: reqInfo?.headers ?? {},
+                    postData: reqInfo?.postData,
+                    status,
+                    body,
+                    cookies,
+                    userAgent,
+                    telemetry,
+                    timestamp: new Date().toISOString(),
+                  }
+                  captureState.score = candidateScore
                 }
+
+                console.log('[maersk-refresh] Candidate capture score:', candidateScore)
               } catch (error) {
                 console.error('[maersk-refresh] Error getting response body:', error)
               }
@@ -334,6 +497,24 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         }
 
         const trackingUrl = `https://www.maersk.com/tracking/${command.container}`
+        const apiFallbackUrl = `https://api.maersk.com/synergy/tracking/${encodeURIComponent(command.container)}`
+
+        const tryApiFallback = async () => {
+          if (captureState.data) return
+
+          console.log('[maersk-refresh] Fallback: navigating directly to API URL:', apiFallbackUrl)
+          try {
+            await page.goto(apiFallbackUrl, {
+              waitUntil: 'networkidle0',
+              timeout: Math.max(15000, Math.floor(command.timeoutMs / 2)),
+            })
+          } catch (error) {
+            console.warn('[maersk-refresh] API fallback navigation failed:', error)
+          }
+
+          await delay(1500 + Math.random() * 500)
+        }
+
         console.log('[maersk-refresh] Navigating to:', trackingUrl)
 
         await delay(800 + Math.random() * 400)
@@ -380,6 +561,8 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           }
         }
 
+        await tryApiFallback()
+
         if (command.hold) {
           console.log('[maersk-refresh] HOLD mode - browser stays open. Press Ctrl+C to exit.')
           await new Promise(() => {})
@@ -400,8 +583,11 @@ export function createMaerskCaptureService(): MaerskCaptureService {
             status: 502,
             body: {
               error: 'No API response captured',
-              hint: 'The page did not make a request to /synergy/tracking/. Try with ?hold=1 to inspect manually.',
-              expectedUrl: `https://api.maersk.com/synergy/tracking/${command.container}`,
+              hint: 'No /synergy/tracking response was observed, even after direct API fallback. Try hold/profile diagnostics.',
+              expectedUrl: apiFallbackUrl,
+              diagnostics: {
+                attemptedFallback: true,
+              },
             },
           }
         }
@@ -430,8 +616,13 @@ export function createMaerskCaptureService(): MaerskCaptureService {
             blockedResponse: captured.body,
           }
 
-          fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-
+          if (diagnosticsPath) {
+            try {
+              fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+            } catch (error) {
+              console.warn('[maersk-refresh] Could not write diagnostics file:', error)
+            }
+          }
           return {
             kind: 'error',
             status: 403,
@@ -487,15 +678,16 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           },
         }
 
-        try {
-          fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-          console.log(
-            `[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`,
-          )
-        } catch (error) {
-          console.warn('[maersk-refresh] Could not write diagnostics file:', error)
+        if (diagnosticsPath) {
+          try {
+            fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+            console.log(
+              `[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`,
+            )
+          } catch (error) {
+            console.warn('[maersk-refresh] Could not write diagnostics file:', error)
+          }
         }
-
         return {
           kind: 'ok',
           status: captured.status,

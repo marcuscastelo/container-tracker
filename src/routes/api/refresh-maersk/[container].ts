@@ -1,12 +1,16 @@
 /**
- * Maersk refresh API route - thin adapter to tracking refresh controllers.
+ * Legacy route kept for backward compatibility.
  *
- * GET/POST /api/refresh-maersk/:container
+ * Queue-first migration deprecates direct Maersk scraping on the backend.
+ * Use POST /api/refresh to enqueue a sync request instead.
  */
 
-import { bootstrapRefreshControllers } from '~/modules/tracking/interface/http/refresh.controllers.bootstrap'
+function deprecatedRefreshMaerskRoute(): Response {
+  return new Response(JSON.stringify({ error: 'refresh_maersk_deprecated_use_sync_queue' }), {
+    status: 410,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
 
-const refreshControllers = bootstrapRefreshControllers()
-
-export const GET = refreshControllers.refreshMaersk
-export const POST = refreshControllers.refreshMaersk
+export const GET = deprecatedRefreshMaerskRoute
+export const POST = deprecatedRefreshMaerskRoute

@@ -16,11 +16,9 @@ const RefreshRequestSchema = z
 const RefreshSuccessResponseSchema = z.object({
   ok: z.literal(true),
   container: z.string(),
-  snapshotId: z.string().optional(),
-})
-
-const RefreshRedirectResponseSchema = z.object({
-  redirect: z.string(),
+  syncRequestId: z.string().uuid(),
+  queued: z.literal(true),
+  deduped: z.boolean(),
 })
 
 const RefreshErrorResponseSchema = z.object({
@@ -31,51 +29,38 @@ const RefreshHealthResponseSchema = z.object({
   ok: z.literal(true),
 })
 
-const RefreshResponseSchema = z.union([RefreshSuccessResponseSchema, RefreshRedirectResponseSchema])
+const RefreshResponseSchema = RefreshSuccessResponseSchema
 
-const MaerskRequestParamsSchema = z.object({
-  container: z.string(),
+const RefreshStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED', 'NOT_FOUND'])
+
+const RefreshStatusQuerySchema = z.object({
+  sync_request_id: z.array(z.string().uuid()).min(1).max(100),
 })
 
-const MaerskRequestQuerySchema = z.object({
-  headless: z.string().optional(),
-  userDataDir: z.string().optional(),
-  hold: z.string().optional(),
-  timeout: z.string().optional(),
+const RefreshStatusItemSchema = z.object({
+  syncRequestId: z.string().uuid(),
+  status: RefreshStatusSchema,
+  lastError: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  refValue: z.string().nullable(),
 })
 
-const MaerskSuccessResponseSchema = z.object({
+const RefreshStatusResponseSchema = z.object({
   ok: z.literal(true),
-  container: z.string(),
-  status: z.number().optional(),
-  savedToSupabase: z.boolean().optional(),
-})
-
-const MaerskErrorResponseSchema = z.object({
-  error: z.string(),
-  hint: z.string().optional(),
-  diagnostics: z.record(z.string(), z.unknown()).optional(),
-  details: z.string().optional(),
-  status: z.number().optional(),
-  expectedUrl: z.string().optional(),
+  allTerminal: z.boolean(),
+  requests: z.array(RefreshStatusItemSchema),
 })
 
 export const RefreshSchemas = {
   refreshRequest: RefreshRequestSchema,
+  refreshStatusQuery: RefreshStatusQuerySchema,
   response: RefreshResponseSchema,
   responses: {
     error: RefreshErrorResponseSchema,
     health: RefreshHealthResponseSchema,
     success: RefreshSuccessResponseSchema,
-    redirect: RefreshRedirectResponseSchema,
-  },
-  maersk: {
-    params: MaerskRequestParamsSchema,
-    query: MaerskRequestQuerySchema,
-    responses: {
-      success: MaerskSuccessResponseSchema,
-      error: MaerskErrorResponseSchema,
-    },
+    status: RefreshStatusResponseSchema,
   },
   provider: ProviderSchema,
+  status: RefreshStatusSchema,
 }

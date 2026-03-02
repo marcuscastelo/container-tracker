@@ -81,6 +81,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       provider: Provider,
       payload: unknown,
       parseError: string | null = null,
+      fetchedAt?: string,
     ): Promise<{ readonly snapshot: Snapshot; readonly pipeline: PipelineResult }> {
       return saveAndProcess(deps, {
         containerId,
@@ -88,6 +89,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         provider,
         payload,
         parseError,
+        fetchedAt,
       })
     },
 

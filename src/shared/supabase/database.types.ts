@@ -8,6 +8,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_enrollment_audit_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          hostname: string | null
+          id: string
+          ip_address: string | null
+          machine_fingerprint: string | null
+          reason: string | null
+          status_code: number
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          hostname?: string | null
+          id?: string
+          ip_address?: string | null
+          machine_fingerprint?: string | null
+          reason?: string | null
+          status_code: number
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          hostname?: string | null
+          id?: string
+          ip_address?: string | null
+          machine_fingerprint?: string | null
+          reason?: string | null
+          status_code?: number
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
+      agent_install_tokens: {
+        Row: {
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          revoked_at: string | null
+          tenant_id: string
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          revoked_at?: string | null
+          tenant_id: string
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          revoked_at?: string | null
+          tenant_id?: string
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       container_observations: {
         Row: {
           confidence: string
@@ -225,6 +294,120 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_by: string | null
+          leased_until: string | null
+          priority: number
+          provider: string
+          ref_type: string
+          ref_value: string
+          status: Database['public']['Enums']['sync_request_status']
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          leased_by?: string | null
+          leased_until?: string | null
+          priority?: number
+          provider: string
+          ref_type: string
+          ref_value: string
+          status?: Database['public']['Enums']['sync_request_status']
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          leased_by?: string | null
+          leased_until?: string | null
+          priority?: number
+          provider?: string
+          ref_type?: string
+          ref_value?: string
+          status?: Database['public']['Enums']['sync_request_status']
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tracking_agents: {
+        Row: {
+          agent_token: string
+          agent_version: string
+          created_at: string
+          hostname: string
+          id: string
+          interval_sec: number
+          last_enrolled_at: string
+          machine_fingerprint: string
+          maersk_enabled: boolean
+          maersk_headless: boolean
+          maersk_timeout_ms: number
+          maersk_user_data_dir: string | null
+          max_concurrent: number
+          os: string
+          revoked_at: string | null
+          supabase_anon_key: string | null
+          supabase_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_token: string
+          agent_version: string
+          created_at?: string
+          hostname: string
+          id?: string
+          interval_sec?: number
+          last_enrolled_at?: string
+          machine_fingerprint: string
+          maersk_enabled?: boolean
+          maersk_headless?: boolean
+          maersk_timeout_ms?: number
+          maersk_user_data_dir?: string | null
+          max_concurrent?: number
+          os: string
+          revoked_at?: string | null
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_token?: string
+          agent_version?: string
+          created_at?: string
+          hostname?: string
+          id?: string
+          interval_sec?: number
+          last_enrolled_at?: string
+          machine_fingerprint?: string
+          maersk_enabled?: boolean
+          maersk_headless?: boolean
+          maersk_timeout_ms?: number
+          maersk_user_data_dir?: string | null
+          max_concurrent?: number
+          os?: string
+          revoked_at?: string | null
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tracking_alerts: {
         Row: {
           acked_at: string | null
@@ -292,10 +475,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      enqueue_sync_request: {
+        Args: {
+          p_priority?: number
+          p_provider: string
+          p_ref_type?: string
+          p_ref_value?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          id: string
+          is_new: boolean
+          status: Database['public']['Enums']['sync_request_status']
+        }[]
+      }
+      lease_sync_requests: {
+        Args: {
+          p_agent_id: string
+          p_lease_minutes?: number
+          p_limit?: number
+          p_tenant_id: string
+        }
+        Returns: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_by: string | null
+          leased_until: string | null
+          priority: number
+          provider: string
+          ref_type: string
+          ref_value: string
+          status: Database['public']['Enums']['sync_request_status']
+          tenant_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'sync_requests'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
-      [_ in never]: never
+      sync_request_status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -420,6 +645,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      sync_request_status: ['PENDING', 'LEASED', 'DONE', 'FAILED'],
+    },
   },
 } as const

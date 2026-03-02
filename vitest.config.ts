@@ -17,15 +17,20 @@ export default defineConfig({
           if (fs.existsSync(stub)) return stub
         }
 
-        if (!source.startsWith('~')) return null
+        let after = ''
+        let roots: readonly string[] = []
 
-        // Normalize import path after the tilde
-        const after = source.startsWith('~/') ? source.slice(2) : source.slice(1)
+        if (source.startsWith('~')) {
+          after = source.startsWith('~/') ? source.slice(2) : source.slice(1)
+          roots = ['marucs-src', 'src']
+        } else if (source.startsWith('@tools/')) {
+          after = source.slice('@tools/'.length)
+          roots = ['tools']
+        } else {
+          return null
+        }
 
-        const tryPaths = [
-          path.resolve(__dirname, 'marucs-src', after),
-          path.resolve(__dirname, 'src', after),
-        ]
+        const tryPaths = roots.map((root) => path.resolve(__dirname, root, after))
 
         const exts = [
           '.ts',
