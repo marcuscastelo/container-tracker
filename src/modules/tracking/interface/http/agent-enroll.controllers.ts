@@ -84,9 +84,9 @@ type AgentAuthResult = {
 
 function getBearerToken(authorization: string | null): string | null {
   if (!authorization) return null
-  const [scheme, token] = authorization.split(' ')
+  const [scheme, token] = authorization.trim().split(/\s+/u)
   if (scheme !== 'Bearer' || !token) return null
-  return token.trim()
+  return token
 }
 
 function sha256Hex(value: string): string {

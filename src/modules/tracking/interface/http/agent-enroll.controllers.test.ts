@@ -120,6 +120,31 @@ describe('agent enroll controllers', () => {
     expect(response.status).toBe(401)
   })
 
+  it('accepts authorization header with extra bearer whitespace', async () => {
+    const deps = createDeps()
+    const controllers = createAgentEnrollControllers(deps)
+
+    const request = new Request('http://localhost/api/agent/enroll', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer    installer-token-1',
+        'content-type': 'application/json',
+        'x-forwarded-for': '203.0.113.10',
+      },
+      body: JSON.stringify({
+        machineFingerprint: 'fingerprint-1',
+        hostname: 'host-1',
+        os: 'windows',
+        agentVersion: '0.1.0',
+      }),
+    })
+
+    const response = await controllers.enroll({ request })
+
+    expect(response.status).toBe(200)
+    expect(deps.findInstallerTokenByHash).toHaveBeenCalledTimes(1)
+  })
+
   it('creates a new agent when machine fingerprint is not enrolled', async () => {
     const deps = createDeps()
     const controllers = createAgentEnrollControllers(deps)

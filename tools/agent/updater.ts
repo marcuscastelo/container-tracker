@@ -33,12 +33,8 @@ function resolveDataRoot(): string {
   return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
 }
 
-function resolveLogPaths(): { readonly logPath: string; readonly rotationPath: string } {
-  const logPath = path.win32.join(resolveDataRoot(), 'logs', 'updater.log')
-  return {
-    logPath,
-    rotationPath: `${logPath}.1`,
-  }
+function resolveLogPath(): string {
+  return path.win32.join(resolveDataRoot(), 'logs', 'updater.log')
 }
 
 function unquoteValue(value: string): string {
@@ -87,7 +83,7 @@ function loadEnvFile(dotenvPath: string): void {
   }
 }
 
-function rotateLogIfNeeded(logPath: string, rotationPath: string): void {
+function rotateLogIfNeeded(logPath: string): void {
   if (!fs.existsSync(logPath)) {
     return
   }
@@ -97,6 +93,7 @@ function rotateLogIfNeeded(logPath: string, rotationPath: string): void {
     return
   }
 
+  const rotationPath = `${logPath}.1`
   if (fs.existsSync(rotationPath)) {
     fs.rmSync(rotationPath)
   }
@@ -108,11 +105,11 @@ function appendLogLine(message: string): void {
   const line = `[${new Date().toISOString()}] ${message}`
   console.log(line)
 
-  const logPaths = resolveLogPaths()
-  const logDir = path.dirname(logPaths.logPath)
+  const logPath = resolveLogPath()
+  const logDir = path.dirname(logPath)
   fs.mkdirSync(logDir, { recursive: true })
-  rotateLogIfNeeded(logPaths.logPath, logPaths.rotationPath)
-  fs.appendFileSync(logPaths.logPath, `${line}\n`, 'utf8')
+  rotateLogIfNeeded(logPath)
+  fs.appendFileSync(logPath, `${line}\n`, 'utf8')
 }
 
 function findPackageJsonPath(startDir: string): string | null {

@@ -67,6 +67,27 @@ describe('agent sync controllers', () => {
     expect(response.status).toBe(401)
   })
 
+  it('accepts authorization header with extra bearer whitespace', async () => {
+    const deps = createDeps()
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request(
+      `http://localhost/api/agent/targets?tenant_id=${TENANT_ID}&limit=1`,
+      {
+        headers: {
+          authorization: 'Bearer    token-123',
+          'x-agent-id': 'agent-1',
+        },
+      },
+    )
+    const response = await controllers.getTargets({ request })
+
+    expect(response.status).toBe(200)
+    expect(deps.authenticateAgentToken).toHaveBeenCalledWith({
+      token: 'token-123',
+    })
+  })
+
   it('returns 400 for invalid tenant_id query', async () => {
     const deps = createDeps()
     const controllers = createAgentSyncControllers(deps)

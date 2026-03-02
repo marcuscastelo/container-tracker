@@ -46,10 +46,33 @@ function createInMemoryRateLimitGuard(command: {
 }): { readonly isRateLimited: (ipAddress: string) => boolean } {
   const bucketsByIp = new Map<string, RateLimitBucket>()
   const windowMs = command.windowSeconds * 1000
+  const cleanupIntervalMs = Math.max(windowMs, 30000)
+  let lastCleanupAtMs = 0
+
+  function cleanupExpiredBuckets(nowMs: number): void {
+    if (nowMs - lastCleanupAtMs < cleanupIntervalMs) {
+      return
+    }
+
+    const cutoffMs = nowMs - windowMs
+    for (const [ipAddress, bucket] of bucketsByIp) {
+      const activeTimestamps = bucket.timestampsMs.filter((value) => value >= cutoffMs)
+      if (activeTimestamps.length === 0) {
+        bucketsByIp.delete(ipAddress)
+        continue
+      }
+
+      bucketsByIp.set(ipAddress, { timestampsMs: activeTimestamps })
+    }
+
+    lastCleanupAtMs = nowMs
+  }
 
   return {
     isRateLimited(ipAddress: string): boolean {
       const nowMs = Date.now()
+      cleanupExpiredBuckets(nowMs)
+
       const cutoff = nowMs - windowMs
       const existingBucket = bucketsByIp.get(ipAddress)
       const timestampsMs = (existingBucket?.timestampsMs ?? []).filter((value) => value >= cutoff)

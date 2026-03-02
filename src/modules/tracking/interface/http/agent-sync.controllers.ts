@@ -57,7 +57,7 @@ export type AgentSyncControllersDeps = {
 
 function getBearerToken(authorization: string | null): string | null {
   if (!authorization) return null
-  const [scheme, token] = authorization.split(' ')
+  const [scheme, token] = authorization.trim().split(/\s+/u)
   if (scheme !== 'Bearer' || !token) return null
   return token
 }

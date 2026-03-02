@@ -71,12 +71,63 @@ begin
   end;
 end;
 
-function ContainsLine(const Content: AnsiString; const LineValue: string): Boolean;
+function TryGetEnvVarValue(const Content: AnsiString; const Key: string; var Value: string): Boolean;
 var
-  NormalizedContent: AnsiString;
+  Normalized: AnsiString;
+  Line: string;
+  LineStart: Integer;
+  LineEndOffset: Integer;
+  EqPos: Integer;
+  RawKey: string;
+  RawValue: string;
 begin
-  NormalizedContent := #10 + NormalizeNewLines(Content) + #10;
-  Result := Pos(#10 + LineValue + #10, NormalizedContent) > 0;
+  Result := False;
+  Value := '';
+  Normalized := NormalizeNewLines(Content);
+  LineStart := 1;
+
+  while LineStart <= Length(Normalized) do
+  begin
+    LineEndOffset := Pos(#10, Copy(Normalized, LineStart, MaxInt));
+    if LineEndOffset = 0 then
+    begin
+      Line := Copy(Normalized, LineStart, MaxInt);
+      LineStart := Length(Normalized) + 1;
+    end
+    else
+    begin
+      Line := Copy(Normalized, LineStart, LineEndOffset - 1);
+      LineStart := LineStart + LineEndOffset;
+    end;
+
+    Line := Trim(Line);
+    if (Line = '') then
+      continue;
+
+    if (Line[1] = '#') or (Line[1] = ';') then
+      continue;
+
+    EqPos := Pos('=', Line);
+    if EqPos <= 1 then
+      continue;
+
+    RawKey := Trim(Copy(Line, 1, EqPos - 1));
+    if CompareText(RawKey, Key) <> 0 then
+      continue;
+
+    RawValue := Trim(Copy(Line, EqPos + 1, MaxInt));
+    if (Length(RawValue) >= 2) and (
+      ((RawValue[1] = '"') and (RawValue[Length(RawValue)] = '"')) or
+      ((RawValue[1] = '''') and (RawValue[Length(RawValue)] = ''''))
+    ) then
+    begin
+      RawValue := Copy(RawValue, 2, Length(RawValue) - 2);
+    end;
+
+    Value := RawValue;
+    Result := True;
+    exit;
+  end;
 end;
 
 function TryLoadEffectiveConfig(var Content: AnsiString): Boolean;
@@ -98,13 +149,17 @@ end;
 
 function IsMaerskEnabledInConfig(const Content: AnsiString): Boolean;
 var
-  Normalized: AnsiString;
+  RawValue: string;
+  NormalizedValue: string;
 begin
-  Normalized := NormalizeNewLines(Content);
-  Result := ContainsLine(Normalized, 'MAERSK_ENABLED=1');
-  if Result then exit;
+  if not TryGetEnvVarValue(Content, 'MAERSK_ENABLED', RawValue) then
+  begin
+    Result := False;
+    exit;
+  end;
 
-  Result := Pos('MAERSK_ENABLED=1', Normalized) > 0;
+  NormalizedValue := Lowercase(Trim(RawValue));
+  Result := (NormalizedValue = '1') or (NormalizedValue = 'true');
 end;
 
 function IsExistingFilePath(const CandidatePath: string; var ResolvedPath: string): Boolean;

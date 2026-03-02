@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -7,6 +8,9 @@ import { fileURLToPath } from 'node:url'
 
 const DEFAULT_NODE_WINDOWS_VERSION = 'v22.11.0'
 const DEFAULT_AGENT_DEPLOY_WORKSPACE = 'example-with-tailwindcss'
+const NODE_WINDOWS_SHA256_BY_VERSION: Readonly<Record<string, string>> = {
+  'v22.11.0': '905373a059aecaf7f48c1ce10ffbd5334457ca00f678747f19db5ea7d256c236',
+}
 const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   '@supabase/supabase-js',
   '@supabase/functions-js',
@@ -243,6 +247,33 @@ async function ensureDownloadedFile(command: {
 
   console.log(`[agent:release] downloading ${command.label}: ${command.url}`)
   await downloadFile(command.url, command.targetPath)
+}
+
+async function computeFileSha256(filePath: string): Promise<string> {
+  const fileBuffer = await fs.readFile(filePath)
+  return createHash('sha256').update(fileBuffer).digest('hex')
+}
+
+async function verifyNodeRuntimeChecksum(command: {
+  readonly nodeVersion: string
+  readonly nodeZipPath: string
+}): Promise<void> {
+  const expectedSha256 = NODE_WINDOWS_SHA256_BY_VERSION[command.nodeVersion]
+  if (!expectedSha256) {
+    console.warn(
+      `[agent:release] node checksum verification skipped: no pinned SHA-256 for ${command.nodeVersion}`,
+    )
+    return
+  }
+
+  const observedSha256 = await computeFileSha256(command.nodeZipPath)
+  if (observedSha256 !== expectedSha256) {
+    throw new Error(
+      `node runtime checksum mismatch for ${command.nodeVersion} (expected ${expectedSha256}, got ${observedSha256})`,
+    )
+  }
+
+  console.log(`[agent:release] verified node runtime SHA-256 for ${command.nodeVersion}`)
 }
 
 async function findExtractedNodeDirectory(extractDir: string): Promise<string> {
@@ -826,8 +857,8 @@ async function runPreflightChecks(command: {
 
   if (await pathExists(command.bootstrapTemplatePath)) {
     const templateContent = await fs.readFile(command.bootstrapTemplatePath, 'utf8')
-    if (!/^MAERSK_ENABLED=1$/m.test(templateContent)) {
-      errors.push('bootstrap.env.template must contain MAERSK_ENABLED=1')
+    if (!/^MAERSK_ENABLED=0$/m.test(templateContent)) {
+      errors.push('bootstrap.env.template must default MAERSK_ENABLED=0')
     }
 
     for (const key of REQUIRED_CONFIG_KEYS) {
@@ -939,6 +970,10 @@ async function buildRelease(): Promise<void> {
     label: 'node runtime',
     url: nodeDownloadUrl,
     targetPath: nodeZipPath,
+  })
+  await verifyNodeRuntimeChecksum({
+    nodeVersion,
+    nodeZipPath,
   })
 
   await fs.rm(nodeExtractDir, { recursive: true, force: true })

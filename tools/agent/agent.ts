@@ -693,6 +693,7 @@ async function ingestSnapshot(
   config: RuntimeConfig,
   target: AgentTarget,
   scrape: { readonly raw: unknown; readonly observedAt: string },
+  agentVersion: string,
 ): Promise<void> {
   const response = await fetch(`${config.BACKEND_URL}/api/tracking/snapshots/ingest`, {
     method: 'POST',
@@ -707,7 +708,7 @@ async function ingestSnapshot(
       observed_at: scrape.observedAt,
       raw: scrape.raw,
       meta: {
-        agent_version: resolveAgentVersion(),
+        agent_version: agentVersion,
         host: config.AGENT_ID,
       },
       sync_request_id: target.sync_request_id,
@@ -734,10 +735,14 @@ async function ingestSnapshot(
   console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}`)
 }
 
-async function processTarget(config: RuntimeConfig, target: AgentTarget): Promise<void> {
+async function processTarget(
+  config: RuntimeConfig,
+  target: AgentTarget,
+  agentVersion: string,
+): Promise<void> {
   try {
     const scrape = await scrapeTarget(config, target)
-    await ingestSnapshot(config, target, scrape)
+    await ingestSnapshot(config, target, scrape, agentVersion)
   } catch (error) {
     console.error(`[agent] target ${target.sync_request_id} failed: ${toErrorMessage(error)}`)
     console.warn(
@@ -746,7 +751,7 @@ async function processTarget(config: RuntimeConfig, target: AgentTarget): Promis
   }
 }
 
-async function runOnce(config: RuntimeConfig): Promise<void> {
+async function runOnce(config: RuntimeConfig, agentVersion: string): Promise<void> {
   const leaseBatchSize = 1
   let processed = 0
 
@@ -761,7 +766,7 @@ async function runOnce(config: RuntimeConfig): Promise<void> {
     }
 
     for (const target of targets) {
-      await processTarget(config, target)
+      await processTarget(config, target, agentVersion)
       processed += 1
     }
   }
@@ -838,6 +843,7 @@ function subscribeToRealtimeIfConfigured(command: {
 async function main(): Promise<void> {
   const paths = resolvePathLayout()
   const runtimeConfig = await resolveRuntimeConfigWithBootstrap(paths)
+  const agentVersion = resolveAgentVersion()
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
@@ -846,7 +852,7 @@ async function main(): Promise<void> {
   const scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
     runCycle: async (_reason) => {
-      await runOnce(runtimeConfig)
+      await runOnce(runtimeConfig, agentVersion)
     },
     onRunError({ reason, error }) {
       console.error(`[agent] cycle failed (reason=${reason}): ${toErrorMessage(error)}`)
