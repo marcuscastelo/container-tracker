@@ -130,7 +130,10 @@ function normalizeEnvPath(variableName: 'CHROME_PATH' | 'CHROMIUM_PATH'): string
 }
 
 function resolveBrowserExecutablePath(): BrowserResolution {
-  const envVariables: readonly ('CHROME_PATH' | 'CHROMIUM_PATH')[] = ['CHROME_PATH', 'CHROMIUM_PATH']
+  const envVariables: readonly ('CHROME_PATH' | 'CHROMIUM_PATH')[] = [
+    'CHROME_PATH',
+    'CHROMIUM_PATH',
+  ]
   for (const variableName of envVariables) {
     const envPath = normalizeEnvPath(variableName)
     if (!envPath) continue
