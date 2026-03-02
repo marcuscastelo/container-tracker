@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Existing PRD"
+  short_description: "Run Ralph loop from existing PRD files"
+  default_prompt: "Use $implement-existing-prd to find an existing PRD and start ai:loop:start automatically."

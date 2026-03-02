@@ -24,6 +24,7 @@
     "ai:loop:input": "bash scripts/ai/ralph-loop-make-input.sh",
     "ai:loop:exec": "bash scripts/ai/ralph-loop-exec.sh",
     "ai:loop:update": "bash scripts/ai/ralph-loop-update.sh",
+    "ai:skills:sync": "bash scripts/ai/sync-global-skills.sh",
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip"
   },
