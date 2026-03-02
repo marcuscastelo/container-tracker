@@ -36,6 +36,18 @@ const TrackingAgentRowSchema = z.object({
   maersk_user_data_dir: z.string().nullable(),
 })
 
+function getTrackingAgentLimit(row: z.infer<typeof TrackingAgentRowSchema>): number {
+  if (typeof row.limit === 'number') {
+    return row.limit
+  }
+
+  if (typeof row.max_concurrent === 'number') {
+    return row.max_concurrent
+  }
+
+  throw new Error('tracking_agents row missing limit/max_concurrent value')
+}
+
 type RateLimitBucket = {
   readonly timestampsMs: number[]
 }
