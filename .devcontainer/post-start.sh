@@ -18,18 +18,8 @@ if command -v codex >/dev/null 2>&1; then
   fi
 fi
 
-echo "[post-start] Checking SSH agent forwarding"
-if [ -S "${SSH_AUTH_SOCK:-}" ]; then
-  if ssh-add -l >/dev/null 2>&1; then
-    echo "[post-start] SSH identities available via agent."
-  else
-    echo "[post-start] warning: SSH agent is mounted, but no identities are loaded."
-    echo "[post-start] on host, run: ssh-add <your-key> and reopen/restart the devcontainer."
-  fi
-else
-  echo "[post-start] warning: SSH agent socket not available in container."
-  echo "[post-start] rebuild/reopen devcontainer after ensuring SSH_AUTH_SOCK is set on host."
-fi
+echo "[post-start] Refreshing Git SSH signing setup"
+bash .devcontainer/configure-git-ssh-signing.sh
 
 if [ ! -f "tools/ralph-loop/ralph.sh" ]; then
   echo "[post-start] warning: tools/ralph-loop not initialized."

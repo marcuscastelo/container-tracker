@@ -20,6 +20,9 @@ cp .devcontainer/pre-push-block.sh .git/hooks-guard/pre-push
 chmod +x .git/hooks-guard/pre-push
 git config core.hooksPath .git/hooks-guard
 
+echo "[post-create] Configuring Git SSH signing"
+bash .devcontainer/configure-git-ssh-signing.sh
+
 echo "[post-create] Running Ralph doctor"
 if ! bash scripts/ai/ralph-loop-doctor.sh; then
   echo "[post-create] warning: doctor found setup issues. See output above."
