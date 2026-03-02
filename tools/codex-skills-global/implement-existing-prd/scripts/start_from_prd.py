@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Detect an existing PRD (md/json) and run `pnpm run ai:loop:start` with inferred params."""
+"""Detect an existing PRD (md/json) and generate a `pnpm run ai:loop:start` command."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import re
-import subprocess
+import shlex
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -237,7 +237,7 @@ def build_command(args: argparse.Namespace, feature_key: str, source: Path) -> l
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Detect existing PRD and run ai:loop:start with inferred parameters.",
+        description="Detect existing PRD and generate ai:loop:start command with inferred parameters.",
     )
     parser.add_argument("request", help="User request text, e.g. 'Implement Dashboard Feature PRD'")
     parser.add_argument("--repo-root", default=".", help="Repository root (default: current directory)")
@@ -248,7 +248,6 @@ def main() -> int:
     parser.add_argument("--dangerous-exec", type=int, choices=[0, 1], default=1)
     parser.add_argument("--exec-retries", type=int, default=2)
     parser.add_argument("--prepare-only", action="store_true")
-    parser.add_argument("--dry-run", action="store_true", help="Print inferred values and command only")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
@@ -274,17 +273,15 @@ def main() -> int:
 
     feature_key = infer_feature_key(source, args.request, args.feature)
     command = build_command(args, feature_key, source)
+    command_text = " ".join(shlex.quote(part) for part in command)
 
     print(f"Selected source: {source}")
     print(f"Inferred feature key: {feature_key}")
     print("Command:")
-    print("  " + " ".join(subprocess.list2cmdline([part]) for part in command))
+    print(command_text)
+    print("Execution: command was not run automatically.")
 
-    if args.dry_run:
-        return 0
-
-    completed = subprocess.run(command, cwd=repo_root)
-    return completed.returncode
+    return 0
 
 
 if __name__ == "__main__":

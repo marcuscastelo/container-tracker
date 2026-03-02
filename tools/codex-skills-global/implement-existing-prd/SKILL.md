@@ -1,11 +1,12 @@
 ---
 name: implement-existing-prd
-description: "Start implementation directly from an existing PRD markdown or PRD JSON without refining the plan. Use when the user asks to execute an already-written PRD (for example: 'Implement Dashboard Feature PRD', 'start from this PRD', or 'run Ralph on this PRD'). Detect the best PRD file, infer feature key and execution flags, convert markdown when needed, and run ai:loop:start with minimal user input."
+description: "Prepare implementation command directly from an existing PRD markdown or PRD JSON without executing. Use when the user asks to start from an already-written PRD and wants a ready command to copy/paste. Detect the best PRD source, infer feature key and execution flags, and output ai:loop:start command with minimal user input."
 ---
 
 # Implement Existing PRD
 
-Run implementation from an existing PRD file with zero planning/refinement steps.
+Generate an implementation command from an existing PRD file with zero planning/refinement steps.
+Do not execute the loop automatically.
 
 ## Workflow
 
@@ -26,8 +27,8 @@ python3 ~/.codex/skills/implement-existing-prd/scripts/start_from_prd.py "<user 
 5. Report to the user:
 - selected PRD source path
 - inferred feature key
-- exact `pnpm run ai:loop:start ...` command executed
-- whether the loop completed or needs another run
+- exact `pnpm run ai:loop:start ...` command to copy/paste
+- that execution was not started automatically
 
 ## Defaults
 
@@ -41,10 +42,7 @@ Use these defaults unless user overrides:
 ## Useful Flags
 
 ```bash
-# show what would run, without execution
-python3 ~/.codex/skills/implement-existing-prd/scripts/start_from_prd.py "Implement Dashboard Feature PRD" --dry-run
-
-# prepare files only (no loop execution)
+# prepare files only (no loop execution when user runs command)
 python3 ~/.codex/skills/implement-existing-prd/scripts/start_from_prd.py "Implement Dashboard Feature PRD" --prepare-only
 
 # force a specific feature key
@@ -55,5 +53,6 @@ python3 ~/.codex/skills/implement-existing-prd/scripts/start_from_prd.py "Implem
 
 - Never create a new PRD when an existing one is present and selected.
 - Never run planning/refinement flow before execution.
+- Never execute `ai:loop:start` automatically from this skill.
 - Always use `ai:loop:start` as the entrypoint command.
-- Always show the exact command before or after execution for reproducibility.
+- Always return the exact command in a copy/paste-friendly block.
