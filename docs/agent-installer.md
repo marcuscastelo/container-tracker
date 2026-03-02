@@ -5,6 +5,9 @@ This document defines the canonical one-click flow for the Windows Agent install
 ## TL;DR (UX)
 
 - User runs `Setup.exe`.
+- If `MAERSK_ENABLED=1`, installer shows a dependency checklist for Chrome/Chromium.
+  - If Chrome is already installed, checkbox appears pre-checked.
+  - If Chrome is missing, user can check to trigger automatic install via `winget`.
 - Installer shows normal progress and completes.
 - Service starts automatically.
 - Internet is not required for installation success.
@@ -32,9 +35,9 @@ pnpm run agent:bundle
 
 Output: `dist/agent-installer-bundle.zip`
 
-Bundle content: `release/` plus `tools/agent/installer/*` so Windows only needs unzip + `iscc`.
+Bundle content: `release/` plus `tools/agent/installer/*`.
 
-### 3) Build `Setup.exe` (Windows)
+### 3) Build `Setup.exe` (Windows or Linux)
 
 ```bash
 pnpm run agent:setup
@@ -42,7 +45,27 @@ pnpm run agent:setup
 
 Installer script: `tools/agent/installer/installer.iss`
 
-### 4) Linux E2E simulation (without `iscc`)
+Default strategy (`agent:setup`) is:
+
+1. native `iscc` (if available)
+2. Docker (`amake/innosetup`)
+3. Wine + local `ISCC.exe`
+
+Optional explicit modes:
+
+```bash
+pnpm run agent:setup:native
+pnpm run agent:setup:docker
+pnpm run agent:setup:wine
+```
+
+Optional env vars:
+
+- `AGENT_SETUP_MODE=auto|native|docker|wine`
+- `AGENT_SETUP_DOCKER_IMAGE=<image>`
+- `AGENT_SETUP_WINE_ISCC_PATH=<path-to-ISCC.exe>`
+
+### 4) Linux E2E simulation (runtime wiring)
 
 ```bash
 pnpm run agent:e2e:linux
@@ -55,18 +78,20 @@ This command simulates setup effects on Linux:
 - writes `bootstrap.env`, runs agent, performs runtime enrollment against a local mock backend
 - validates generated `config.env`, consumed bootstrap redaction, and authenticated target polling
 
-Use this during development to validate installer/runtime wiring and enrollment behavior before running `iscc` on Windows.
+Use this during development to validate installer/runtime wiring and enrollment behavior.
 
 ## What the user sees
 
 - Standard installer flow only.
+- For MAERSK-enabled runtime, a dependency page is shown with Chrome/Chromium status.
 - No sensitive field prompts.
 - No request for tenant id, agent token, or Supabase keys.
 - No manual file editing as part of the default flow.
 
-## What the installer does (no network)
+## What the installer does
 
-Installer never calls the internet.
+Installer does not require internet for the core install flow.
+If automatic Chrome install is selected on the dependency page, setup calls `winget` and may use the internet.
 
 - Copies binaries to `C:\Program Files\ContainerTrackerAgent\`
 - Ensures `C:\ProgramData\ContainerTrackerAgent\`

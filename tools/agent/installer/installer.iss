@@ -43,6 +43,14 @@ Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" s
 Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" uninstall >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated
 
 [Code]
+var
+  MaerskEnabled: Boolean;
+  ChromeInstalled: Boolean;
+  ChromePath: string;
+  DependenciesPage: TWizardPage;
+  ChromeDependencyCheckBox: TNewCheckBox;
+  ChromeDependencyStatusLabel: TNewStaticText;
+
 function NormalizeNewLines(const Value: AnsiString): AnsiString;
 var
   I: Integer;
@@ -260,9 +268,14 @@ end;
 function InitializeSetup(): Boolean;
 var
   EffectiveConfig: AnsiString;
-  BrowserPath: string;
 begin
   Result := True;
+  MaerskEnabled := False;
+  ChromeInstalled := False;
+  ChromePath := '';
+  DependenciesPage := nil;
+  ChromeDependencyCheckBox := nil;
+  ChromeDependencyStatusLabel := nil;
 
   if not TryLoadEffectiveConfig(EffectiveConfig) then
   begin
@@ -280,22 +293,176 @@ begin
     exit;
   end;
 
-  if FindChromeExe(BrowserPath) then
+  MaerskEnabled := True;
+  ChromeInstalled := FindChromeExe(ChromePath);
+end;
+
+procedure InitializeWizard();
+var
+  IntroLabel: TNewStaticText;
+begin
+  if not MaerskEnabled then
+  begin
+    exit;
+  end;
+
+  DependenciesPage := CreateCustomPage(
+    wpWelcome,
+    'Dependencias de runtime',
+    'Valide as dependencias usadas pelo provedor MAERSK.'
+  );
+
+  IntroLabel := TNewStaticText.Create(DependenciesPage);
+  IntroLabel.Parent := DependenciesPage.Surface;
+  IntroLabel.Left := ScaleX(0);
+  IntroLabel.Top := ScaleY(0);
+  IntroLabel.Width := DependenciesPage.SurfaceWidth;
+  IntroLabel.AutoSize := False;
+  IntroLabel.WordWrap := True;
+  IntroLabel.Caption :=
+    'MAERSK_ENABLED=1 requer Chrome/Chromium para o scraping. ' +
+    'Dependencias ja instaladas ficam marcadas automaticamente.';
+  WizardForm.AdjustLabelHeight(IntroLabel);
+
+  ChromeDependencyCheckBox := TNewCheckBox.Create(DependenciesPage);
+  ChromeDependencyCheckBox.Parent := DependenciesPage.Surface;
+  ChromeDependencyCheckBox.Left := ScaleX(0);
+  ChromeDependencyCheckBox.Top := IntroLabel.Top + IntroLabel.Height + ScaleY(12);
+  ChromeDependencyCheckBox.Width := DependenciesPage.SurfaceWidth;
+  ChromeDependencyCheckBox.Caption := 'Chrome/Chromium (obrigatorio)';
+  ChromeDependencyCheckBox.Checked := ChromeInstalled;
+  ChromeDependencyCheckBox.Enabled := not ChromeInstalled;
+
+  ChromeDependencyStatusLabel := TNewStaticText.Create(DependenciesPage);
+  ChromeDependencyStatusLabel.Parent := DependenciesPage.Surface;
+  ChromeDependencyStatusLabel.Left := ScaleX(20);
+  ChromeDependencyStatusLabel.Top :=
+    ChromeDependencyCheckBox.Top + ChromeDependencyCheckBox.Height + ScaleY(4);
+  ChromeDependencyStatusLabel.Width := DependenciesPage.SurfaceWidth - ScaleX(20);
+  ChromeDependencyStatusLabel.AutoSize := False;
+  ChromeDependencyStatusLabel.WordWrap := True;
+
+  if ChromeInstalled then
+  begin
+    ChromeDependencyStatusLabel.Caption := 'Status: instalado em ' + ChromePath + '.';
+  end
+  else
+  begin
+    ChromeDependencyStatusLabel.Caption :=
+      'Status: nao encontrado. Marque para instalar automaticamente via winget (requer internet).';
+  end;
+
+  WizardForm.AdjustLabelHeight(ChromeDependencyStatusLabel);
+end;
+
+function RunCmdHidden(const Parameters: string; var ResultCode: Integer): Boolean;
+begin
+  Result := Exec('cmd.exe', Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+function ShouldInstallChromeDependency(): Boolean;
+begin
+  Result :=
+    MaerskEnabled and
+    (not ChromeInstalled) and
+    (ChromeDependencyCheckBox <> nil) and
+    ChromeDependencyCheckBox.Checked;
+end;
+
+function InstallChromeDependency(var ErrorMessage: string): Boolean;
+var
+  ResultCode: Integer;
+  CommandParams: string;
+begin
+  ResultCode := -1;
+  CommandParams :=
+    '/C winget install --id Google.Chrome --exact --source winget ' +
+    '--accept-package-agreements --accept-source-agreements --silent --disable-interactivity';
+
+  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
+  begin
+    ErrorMessage :=
+      'Automatic Chrome install failed (winget exit code ' + IntToStr(ResultCode) + '). ' +
+      'Install Google Chrome or Chromium manually and run setup again.';
+    Result := False;
+    exit;
+  end;
+
+  if not FindChromeExe(ChromePath) then
+  begin
+    ErrorMessage :=
+      'Chrome install command completed, but chrome.exe was not found. ' +
+      'Install Google Chrome or Chromium manually and run setup again.';
+    Result := False;
+    exit;
+  end;
+
+  ChromeInstalled := True;
+  Result := True;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+
+  if not MaerskEnabled then
+  begin
+    exit;
+  end;
+
+  if (DependenciesPage = nil) or (CurPageID <> DependenciesPage.ID) then
+  begin
+    exit;
+  end;
+
+  if ChromeInstalled then
+  begin
+    exit;
+  end;
+
+  if (ChromeDependencyCheckBox <> nil) and ChromeDependencyCheckBox.Checked then
   begin
     exit;
   end;
 
   MsgBox(
-    'Chrome/Chromium not found. This Agent requires Chrome for MAERSK scraping. Install Google Chrome (or Chromium) and run setup again.',
+    'Chrome/Chromium nao foi encontrado. Marque a opcao para instalar automaticamente ' +
+    'ou instale manualmente antes de continuar.',
     mbCriticalError,
     MB_OK
   );
   Result := False;
 end;
 
-function RunCmdHidden(const Parameters: string; var ResultCode: Integer): Boolean;
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ErrorMessage: string;
 begin
-  Result := Exec('cmd.exe', Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := '';
+  if not MaerskEnabled then
+  begin
+    exit;
+  end;
+
+  if ChromeInstalled then
+  begin
+    exit;
+  end;
+
+  if not ShouldInstallChromeDependency() then
+  begin
+    Result :=
+      'Chrome/Chromium nao foi encontrado. Marque a instalacao automatica na pagina de dependencias ' +
+      'ou instale manualmente antes de executar este setup.';
+    exit;
+  end;
+
+  if InstallChromeDependency(ErrorMessage) then
+  begin
+    exit;
+  end;
+
+  Result := ErrorMessage;
 end;
 
 function ApplyProgramDataAcl(var ErrorMessage: string): Boolean;
