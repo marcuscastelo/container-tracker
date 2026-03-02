@@ -83,6 +83,12 @@ pnpm run check       # fix/lint + type-check + test
 pnpm run i18n:check  # valida chaves de i18n
 ```
 
+### Loop autônomo com Codex (Ralph + Devcontainer)
+
+Guia completo de setup, comandos `ai:loop:*`, fluxo container/host e troubleshooting:
+
+- `docs/AI_LOOP_CODEX.md`
+
 ### Quality Gate (CI)
 
 - Workflow obrigatório: `.github/workflows/quality.yml`
