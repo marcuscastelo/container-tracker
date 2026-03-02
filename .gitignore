@@ -2,9 +2,11 @@ node_modules/
 .env
 .vinxi/
 .output/
-
-marucs-src/
-.ralph-loop/
+release/
 tools/agent/dist/
 tools/agent/.cache/
 dist/agent-installer-bundle.zip
+**/.pnpm-store/**
+
+marucs-src/
+.ralph-loop/
