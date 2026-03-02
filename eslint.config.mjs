@@ -66,7 +66,7 @@ const uiCoreRestrictedPatterns = [
 export default [
   // Ignore build/output folders from linting
   {
-    ignores: ['.output/**', '.vinxi/**'],
+    ignores: ['.output/**', '.vinxi/**', 'tools/ralph-loop/**', '.ralph-loop/**'],
   },
   // js.configs.recommended,
   {

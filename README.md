@@ -81,7 +81,93 @@ pnpm run type-check  # checagem de tipos
 pnpm run lint        # lint + regras
 pnpm run check       # fix/lint + type-check + test
 pnpm run i18n:check  # valida chaves de i18n
+pnpm run maersk:smoke:puppeteer # smoke técnico de launch headless do Puppeteer
 ```
+
+### Smoke técnico Puppeteer (devcontainer)
+
+Use este comando para validar rapidamente se o browser do devcontainer está compatível com launch headless:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+```
+
+Saída esperada em sucesso: `[maersk-smoke] PASS`.
+
+Em falha, o comando classifica a causa com hints acionáveis:
+
+- `missing_browser_binary`: Chrome/Chromium não encontrado no ambiente.
+- `invalid_chrome_path`: `CHROME_PATH` definido para caminho inválido/não executável.
+- `launch_incompatibility`: browser encontrado, mas `puppeteer.launch(...)` falhou.
+
+### Smoke da rota `/api/refresh-maersk/:container` (devcontainer)
+
+Procedimento reproduzível para validar que o browser deixou de ser o bloqueio principal:
+
+1. Em um terminal no devcontainer, valide primeiro o launch técnico:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+```
+
+2. Suba a aplicação local:
+
+```bash
+pnpm run dev
+```
+
+3. Em outro terminal, chame o endpoint Maersk:
+
+```bash
+CONTAINER=MRKU1234567
+curl -sS "http://localhost:3000/api/refresh-maersk/${CONTAINER}?headless=1&hold=0&timeout=70000" \
+  | tee /tmp/maersk-refresh-smoke.json
+```
+
+4. Verifique o critério mínimo de sucesso:
+
+```bash
+if grep -q "Browser launch failed" /tmp/maersk-refresh-smoke.json; then
+  echo "FAIL: browser launch ainda bloqueando o endpoint"
+else
+  echo "PASS: browser launch não é o bloqueio atual"
+fi
+```
+
+Regras de avaliação:
+
+- Critério mínimo: a saída do endpoint não pode conter `Browser launch failed`.
+- Erros externos do provider (por exemplo `403 Access Denied by Akamai` ou `502 No API response captured`) não reprovam este smoke, desde que o erro de launch não apareça.
+- Se aparecer `Browser launch failed`, revise `CHROME_PATH` e repita `pnpm run maersk:smoke:puppeteer` antes de depurar integração Maersk.
+
+### Política de versão do Chromium (devcontainer)
+
+- A versão do browser é controlada explicitamente em `.devcontainer/devcontainer.json` via `build.args.CHROMIUM_VERSION`.
+- O build instala `chromium=$CHROMIUM_VERSION` em `.devcontainer/Dockerfile` e aplica `apt-mark hold chromium` para evitar drift acidental.
+- Não existe etapa de auto-update de Chromium em `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh` ou nos fluxos de refresh da aplicação.
+
+#### Processo manual de bump (somente via PR explícito)
+
+1. Identifique a versão alvo disponível para Debian Bookworm:
+
+```bash
+apt-cache madison chromium
+```
+
+2. Atualize o valor de `build.args.CHROMIUM_VERSION` em `.devcontainer/devcontainer.json`.
+3. Abra uma PR explícita de bump de versão (ex.: `chore(devcontainer): bump chromium to <version>`).
+4. Rebuild do devcontainer e valide:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+pnpm run check
+```
+
+### Loop autônomo com Codex (Ralph + Devcontainer)
+
+Guia completo de setup, comandos `ai:loop:*`, fluxo container/host e troubleshooting:
+
+- `docs/AI_LOOP_CODEX.md`
 
 ### Quality Gate (CI)
 
