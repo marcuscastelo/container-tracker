@@ -1,5 +1,6 @@
 #define AppName "Container Tracker Agent"
 #define AppVersion "0.1.0"
+#define AppIdValue "{{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}"
 #define AppDirName "ContainerTrackerAgent"
 #define ServiceId "ContainerTrackerAgent"
 #define UpdaterTaskName "ContainerTrackerAgentUpdater"
@@ -7,7 +8,7 @@
 #define ReleaseRoot RepoRoot + "\release"
 
 [Setup]
-AppId={{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}
+AppId={#AppIdValue}
 AppName={#AppName}
 AppVersion={#AppVersion}
 DefaultDirName={autopf}\{#AppDirName}
@@ -38,12 +39,17 @@ Filename: "{app}\winsw\ContainerTrackerAgent.exe"; Parameters: "start"; Flags: r
 Filename: "schtasks.exe"; Parameters: "/Create /F /SC MINUTE /MO 30 /TN ""{#UpdaterTaskName}"" /RU SYSTEM /TR ""cmd /c """"{app}\node\node.exe"" ""{app}\app\dist\updater.js"""""""; Flags: runhidden waituntilterminated
 
 [UninstallRun]
-Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" stop >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" uninstall >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated
+Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
+Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" stop >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "stop-agent-service"
+Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" uninstall >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "uninstall-agent-service"
 
 [Code]
 var
+  AgentInstalled: Boolean;
+  InstalledUninstallerPath: string;
+  ActionSelectionPage: TWizardPage;
+  InstallActionRadio: TNewRadioButton;
+  UninstallActionRadio: TNewRadioButton;
   MaerskEnabled: Boolean;
   ChromeInstalled: Boolean;
   ChromePath: string;
@@ -121,6 +127,87 @@ begin
   begin
     ResolvedPath := NormalizedPath;
   end;
+end;
+
+function TryExtractExecutablePathFromCommand(
+  const CommandValue: string;
+  var ExecutablePath: string
+): Boolean;
+var
+  NormalizedCommand: string;
+  ClosingQuotePos: Integer;
+  FirstSpacePos: Integer;
+begin
+  NormalizedCommand := Trim(CommandValue);
+  if NormalizedCommand = '' then
+  begin
+    Result := False;
+    exit;
+  end;
+
+  if NormalizedCommand[1] = '"' then
+  begin
+    Delete(NormalizedCommand, 1, 1);
+    ClosingQuotePos := Pos('"', NormalizedCommand);
+    if ClosingQuotePos > 0 then
+    begin
+      NormalizedCommand := Copy(NormalizedCommand, 1, ClosingQuotePos - 1);
+    end
+    else
+    begin
+      NormalizedCommand := '';
+    end;
+  end
+  else
+  begin
+    FirstSpacePos := Pos(' ', NormalizedCommand);
+    if FirstSpacePos > 0 then
+    begin
+      NormalizedCommand := Copy(NormalizedCommand, 1, FirstSpacePos - 1);
+    end;
+  end;
+
+  Result := IsExistingFilePath(NormalizedCommand, ExecutablePath);
+end;
+
+function TryReadUninstallString(
+  const RootKey: Integer;
+  const SubKey: string;
+  var UninstallCommand: string
+): Boolean;
+begin
+  if RegQueryStringValue(RootKey, SubKey, 'QuietUninstallString', UninstallCommand) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  Result := RegQueryStringValue(RootKey, SubKey, 'UninstallString', UninstallCommand);
+end;
+
+function TryFindInstalledUninstaller(var UninstallerPath: string): Boolean;
+var
+  UninstallKeyPath: string;
+  UninstallCommand: string;
+begin
+  UninstallerPath := '';
+  UninstallCommand := '';
+  UninstallKeyPath := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#AppIdValue}_is1';
+
+  if not (
+    TryReadUninstallString(HKLM64, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKLM32, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKLM, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKCU64, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKCU32, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKCU, UninstallKeyPath, UninstallCommand)
+  ) then
+  begin
+    Result := False;
+    exit;
+  end;
+
+  Result := TryExtractExecutablePathFromCommand(UninstallCommand, UninstallerPath);
 end;
 
 function TryResolveDisplayIconPath(const DisplayIconValue: string; var ResolvedPath: string): Boolean;
@@ -270,12 +357,18 @@ var
   EffectiveConfig: AnsiString;
 begin
   Result := True;
+  AgentInstalled := False;
+  InstalledUninstallerPath := '';
+  ActionSelectionPage := nil;
+  InstallActionRadio := nil;
+  UninstallActionRadio := nil;
   MaerskEnabled := False;
   ChromeInstalled := False;
   ChromePath := '';
   DependenciesPage := nil;
   ChromeDependencyCheckBox := nil;
   ChromeDependencyStatusLabel := nil;
+  AgentInstalled := TryFindInstalledUninstaller(InstalledUninstallerPath);
 
   if not TryLoadEffectiveConfig(EffectiveConfig) then
   begin
@@ -299,15 +392,69 @@ end;
 
 procedure InitializeWizard();
 var
+  ActionIntroLabel: TNewStaticText;
+  ActionStatusLabel: TNewStaticText;
   IntroLabel: TNewStaticText;
 begin
+  ActionSelectionPage := CreateCustomPage(
+    wpWelcome,
+    'Escolha a acao',
+    'Selecione se deseja instalar ou desinstalar o Container Tracker Agent.'
+  );
+
+  ActionIntroLabel := TNewStaticText.Create(ActionSelectionPage);
+  ActionIntroLabel.Parent := ActionSelectionPage.Surface;
+  ActionIntroLabel.Left := ScaleX(0);
+  ActionIntroLabel.Top := ScaleY(0);
+  ActionIntroLabel.Width := ActionSelectionPage.SurfaceWidth;
+  ActionIntroLabel.AutoSize := False;
+  ActionIntroLabel.WordWrap := True;
+  ActionIntroLabel.Caption :=
+    'Use instalar para aplicar ou atualizar o agente. ' +
+    'Use desinstalar para remover a versao ja instalada.';
+  WizardForm.AdjustLabelHeight(ActionIntroLabel);
+
+  InstallActionRadio := TNewRadioButton.Create(ActionSelectionPage);
+  InstallActionRadio.Parent := ActionSelectionPage.Surface;
+  InstallActionRadio.Left := ScaleX(0);
+  InstallActionRadio.Top := ActionIntroLabel.Top + ActionIntroLabel.Height + ScaleY(12);
+  InstallActionRadio.Width := ActionSelectionPage.SurfaceWidth;
+  InstallActionRadio.Caption := 'Instalar ou atualizar';
+  InstallActionRadio.Checked := True;
+
+  UninstallActionRadio := TNewRadioButton.Create(ActionSelectionPage);
+  UninstallActionRadio.Parent := ActionSelectionPage.Surface;
+  UninstallActionRadio.Left := ScaleX(0);
+  UninstallActionRadio.Top := InstallActionRadio.Top + InstallActionRadio.Height + ScaleY(8);
+  UninstallActionRadio.Width := ActionSelectionPage.SurfaceWidth;
+  UninstallActionRadio.Caption := 'Desinstalar';
+  UninstallActionRadio.Enabled := AgentInstalled;
+
+  ActionStatusLabel := TNewStaticText.Create(ActionSelectionPage);
+  ActionStatusLabel.Parent := ActionSelectionPage.Surface;
+  ActionStatusLabel.Left := ScaleX(20);
+  ActionStatusLabel.Top := UninstallActionRadio.Top + UninstallActionRadio.Height + ScaleY(4);
+  ActionStatusLabel.Width := ActionSelectionPage.SurfaceWidth - ScaleX(20);
+  ActionStatusLabel.AutoSize := False;
+  ActionStatusLabel.WordWrap := True;
+  if AgentInstalled then
+  begin
+    ActionStatusLabel.Caption :=
+      'Status: instalacao existente detectada. Se escolher desinstalar, o setup sera encerrado em seguida.';
+  end
+  else
+  begin
+    ActionStatusLabel.Caption := 'Status: nenhuma instalacao existente detectada para desinstalar.';
+  end;
+  WizardForm.AdjustLabelHeight(ActionStatusLabel);
+
   if not MaerskEnabled then
   begin
     exit;
   end;
 
   DependenciesPage := CreateCustomPage(
-    wpWelcome,
+    ActionSelectionPage.ID,
     'Dependencias de runtime',
     'Valide as dependencias usadas pelo provedor MAERSK.'
   );
@@ -360,6 +507,58 @@ begin
   Result := Exec('cmd.exe', Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
+procedure RunChosenUninstallAndCloseSetup();
+var
+  UninstallResultCode: Integer;
+begin
+  if not AgentInstalled then
+  begin
+    MsgBox('Container Tracker Agent nao esta instalado neste computador.', mbInformation, MB_OK);
+    exit;
+  end;
+
+  if InstalledUninstallerPath = '' then
+  begin
+    MsgBox('Nao foi possivel localizar o desinstalador instalado.', mbCriticalError, MB_OK);
+    exit;
+  end;
+
+  if MsgBox(
+    'Isso vai desinstalar o Container Tracker Agent deste computador. Deseja continuar?',
+    mbConfirmation,
+    MB_YESNO
+  ) <> IDYES then
+  begin
+    exit;
+  end;
+
+  if not Exec(
+    InstalledUninstallerPath,
+    '/NORESTART',
+    '',
+    SW_SHOWNORMAL,
+    ewWaitUntilTerminated,
+    UninstallResultCode
+  ) then
+  begin
+    MsgBox('Falha ao iniciar o desinstalador.', mbCriticalError, MB_OK);
+    exit;
+  end;
+
+  if UninstallResultCode <> 0 then
+  begin
+    MsgBox(
+      'Desinstalacao finalizou com codigo de saida ' + IntToStr(UninstallResultCode) + '.',
+      mbCriticalError,
+      MB_OK
+    );
+    exit;
+  end;
+
+  MsgBox('Desinstalacao concluida. O setup sera fechado.', mbInformation, MB_OK);
+  WizardForm.Close;
+end;
+
 function ShouldInstallChromeDependency(): Boolean;
 begin
   Result :=
@@ -404,6 +603,16 @@ end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
+
+  if (ActionSelectionPage <> nil) and (CurPageID = ActionSelectionPage.ID) then
+  begin
+    if (UninstallActionRadio <> nil) and UninstallActionRadio.Checked then
+    begin
+      RunChosenUninstallAndCloseSetup();
+      Result := False;
+      exit;
+    end;
+  end;
 
   if not MaerskEnabled then
   begin
