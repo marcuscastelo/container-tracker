@@ -12,6 +12,24 @@ log_warn() {
   echo "[git-signing] warning: $1"
 }
 
+cleanup_stale_local_config() {
+  current_signing_key="$(git config --local --get user.signingkey || true)"
+  case "$current_signing_key" in
+    /workspaces/* | /home/node/*)
+      git config --local --unset-all user.signingkey || true
+      log_warn "Removed stale container path from user.signingkey: $current_signing_key"
+      ;;
+  esac
+
+  current_allowed_signers="$(git config --local --get gpg.ssh.allowedSignersFile || true)"
+  case "$current_allowed_signers" in
+    /workspaces/* | /home/node/*)
+      git config --local --unset-all gpg.ssh.allowedSignersFile || true
+      log_warn "Removed stale container path from gpg.ssh.allowedSignersFile: $current_allowed_signers"
+      ;;
+  esac
+}
+
 if [ ! -d ".git" ]; then
   log_warn "No .git directory found; skipping SSH signing setup."
   exit 0
@@ -26,6 +44,8 @@ if ! command -v ssh-add >/dev/null 2>&1; then
   log_warn "'ssh-add' command not found; skipping SSH signing setup."
   exit 0
 fi
+
+cleanup_stale_local_config
 
 if [ -z "${SSH_AUTH_SOCK:-}" ] || [ ! -S "$SSH_AUTH_SOCK" ]; then
   log_warn "SSH agent socket is unavailable (SSH_AUTH_SOCK not set or invalid)."
@@ -48,17 +68,23 @@ if [ -z "$signing_key" ]; then
   exit 0
 fi
 
-signing_key_file="$ROOT_DIR/.git/devcontainer-signing-key.pub"
-printf '%s\n' "$signing_key" > "$signing_key_file"
+case "$signing_key" in
+  key::*)
+    signing_key_value="$signing_key"
+    ;;
+  *)
+    signing_key_value="key::$signing_key"
+    ;;
+esac
 
 git config --local gpg.format ssh
 git config --local commit.gpgsign true
 git config --local gpg.ssh.defaultKeyCommand "ssh-add -L"
-git config --local user.signingkey "$signing_key_file"
+git config --local user.signingkey "$signing_key_value"
 
 author_email="$(git config --get user.email || true)"
 if [ -n "$author_email" ]; then
-  allowed_signers_file="$ROOT_DIR/.git/devcontainer-allowed-signers"
+  allowed_signers_file=".git/devcontainer-allowed-signers"
   printf '%s %s\n' "$author_email" "$signing_key" > "$allowed_signers_file"
   git config --local gpg.ssh.allowedSignersFile "$allowed_signers_file"
   log_info "Configured repository-local SSH signing key for '$author_email'."
