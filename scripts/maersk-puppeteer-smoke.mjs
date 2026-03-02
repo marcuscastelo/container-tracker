@@ -9,6 +9,7 @@ const LINUX_CANDIDATES = [
   '/usr/bin/google-chrome-stable',
   '/usr/bin/chromium-browser',
   '/usr/bin/chromium',
+  '/usr/lib/chromium/chromium',
   '/snap/bin/chromium',
 ]
 
@@ -46,40 +47,68 @@ function normalizeEnvPath(variableName) {
   return path.resolve(process.cwd(), value)
 }
 
-function resolveExecutablePath() {
-  const chromePath = normalizeEnvPath('CHROME_PATH')
-  if (chromePath) {
-    if (!isExecutable(chromePath)) {
-      return {
-        ok: false,
-        error: {
-          cause: 'invalid_chrome_path',
-          message: 'CHROME_PATH is set but does not point to an executable browser binary.',
-          hints: [
-            'Fix CHROME_PATH to a valid executable path (devcontainer default: /usr/bin/chromium).',
-            'Rebuild the devcontainer if Chromium was added to Dockerfile recently.',
-          ],
-          diagnostics: {
-            CHROME_PATH: process.env.CHROME_PATH,
-            resolvedPath: chromePath,
-            exists: fs.existsSync(chromePath),
-          },
-        },
-      }
-    }
+function resolveFromEnv(variableName) {
+  const resolvedPath = normalizeEnvPath(variableName)
+  if (!resolvedPath) return null
 
-    return { ok: true, executablePath: chromePath, source: 'CHROME_PATH' }
+  if (!isExecutable(resolvedPath)) {
+    return {
+      ok: false,
+      error: {
+        cause: 'invalid_chrome_path',
+        message: `${variableName} is set but does not point to an executable browser binary.`,
+        hints: [
+          'Fix CHROME_PATH/CHROMIUM_PATH to a valid executable path (devcontainer default: /usr/bin/chromium).',
+          'Rebuild the devcontainer if Chromium was added to Dockerfile recently.',
+        ],
+        diagnostics: {
+          variableName,
+          configuredPath: process.env[variableName] ?? null,
+          resolvedPath,
+          exists: fs.existsSync(resolvedPath),
+        },
+      },
+    }
   }
 
-  const chromiumPath = normalizeEnvPath('CHROMIUM_PATH')
-  if (chromiumPath && isExecutable(chromiumPath)) {
-    return { ok: true, executablePath: chromiumPath, source: 'CHROMIUM_PATH' }
+  return {
+    ok: true,
+    executablePath: resolvedPath,
+    source: variableName,
+  }
+}
+
+function resolveExecutablePath() {
+  const fromChromePath = resolveFromEnv('CHROME_PATH')
+  if (fromChromePath) {
+    return fromChromePath
+  }
+
+  const fromChromiumPath = resolveFromEnv('CHROMIUM_PATH')
+  if (fromChromiumPath) {
+    return fromChromiumPath
   }
 
   const candidates = process.platform === 'darwin' ? DARWIN_CANDIDATES : LINUX_CANDIDATES
   for (const candidate of candidates) {
     if (isExecutable(candidate)) {
       return { ok: true, executablePath: candidate, source: 'system-candidate' }
+    }
+  }
+
+  let puppeteerCachePath = null
+  try {
+    const defaultPath = puppeteer.executablePath()
+    if (defaultPath) puppeteerCachePath = defaultPath
+  } catch {
+    puppeteerCachePath = null
+  }
+
+  if (puppeteerCachePath && isExecutable(puppeteerCachePath)) {
+    return {
+      ok: true,
+      executablePath: puppeteerCachePath,
+      source: 'puppeteer-cache',
     }
   }
 
@@ -91,11 +120,14 @@ function resolveExecutablePath() {
       hints: [
         'In devcontainer, ensure Chromium is installed and available at /usr/bin/chromium.',
         'Set CHROME_PATH to a valid binary path before running this smoke command.',
+        'Or install Puppeteer browser cache with: pnpm exec puppeteer browsers install chrome',
       ],
       diagnostics: {
         CHROME_PATH: process.env.CHROME_PATH ?? null,
         CHROMIUM_PATH: process.env.CHROMIUM_PATH ?? null,
         checkedCandidates: candidates,
+        puppeteerExpectedPath: puppeteerCachePath,
+        puppeteerPathExists: puppeteerCachePath ? fs.existsSync(puppeteerCachePath) : false,
       },
     },
   }
