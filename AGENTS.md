@@ -223,3 +223,11 @@ Rules:
 Why:
 
 - Git operations (especially signed commits) can fail inside sandbox due to missing agent/key access and askpass crashes.
+
+---
+
+## 16) Ralph Loop + Devcontainer Patterns
+
+- `tools/ralph-loop` is an external Git submodule; treat it as third-party code and do not apply root lint/type-check rules to it.
+- Use the local wrappers in `scripts/ai/` (exposed as `pnpm run ai:loop:*`) instead of calling `tools/ralph-loop/ralph.sh` directly.
+- Devcontainer policy is commit-inside-container + push-on-host. In container, `git push` and destructive local Git commands are intentionally blocked by guard scripts.
