@@ -1,5 +1,5 @@
+import { createAgentScheduler } from '@tools/agent/agent.scheduler'
 import { describe, expect, it, vi } from 'vitest'
-import { createAgentScheduler } from '~/../tools/agent/agent.scheduler'
 
 function createDeferredPromise<T = void>(): {
   readonly promise: Promise<T>

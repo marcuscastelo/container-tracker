@@ -51,8 +51,8 @@ Notes:
 
 Apply:
 
-- [20260225_01_agent_sync_mvp.sql](/home/marucs/Development/Castro/container-tracker/supabase/migrations/20260225_01_agent_sync_mvp.sql)
-- [20260225_02_refresh_queue_first.sql](/home/marucs/Development/Castro/container-tracker/supabase/migrations/20260225_02_refresh_queue_first.sql)
+- [20260225_01_agent_sync_mvp.sql](supabase/migrations/20260225_01_agent_sync_mvp.sql)
+- [20260225_02_refresh_queue_first.sql](supabase/migrations/20260225_02_refresh_queue_first.sql)
 
 If you use Supabase SQL Editor, paste and run the full migration file.
 

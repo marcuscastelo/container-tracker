@@ -15,7 +15,8 @@
     "types": ["vinxi/types/client"],
     "isolatedModules": true,
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@tools/*": ["./tools/*"]
     }
   },
   "exclude": ["marucs-src/**/*", "tools/ralph-loop/**/*", ".ralph-loop/**/*"]
