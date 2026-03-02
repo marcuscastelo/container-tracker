@@ -8,3 +8,4 @@ tools/agent/.cache/
 dist/agent-installer-bundle.zip
 
 marucs-src/
+.ralph-loop/
