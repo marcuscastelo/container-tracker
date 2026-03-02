@@ -2,7 +2,7 @@
 #define AppVersion "0.1.0"
 #define AppIdValue "{{0F1AE8D1-7B19-4B14-9A17-2EF197BBD5AA}}"
 #define AppDirName "ContainerTrackerAgent"
-#define ServiceId "ContainerTrackerAgent"
+#define AgentTaskName "ContainerTrackerAgent"
 #define UpdaterTaskName "ContainerTrackerAgentUpdater"
 #define RepoRoot "..\..\.."
 #define ReleaseRoot RepoRoot + "\release"
@@ -11,37 +11,37 @@
 AppId={#AppIdValue}
 AppName={#AppName}
 AppVersion={#AppVersion}
-DefaultDirName={autopf}\{#AppDirName}
+DefaultDirName={localappdata}\Programs\{#AppDirName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
-PrivilegesRequired=admin
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+PrivilegesRequired=lowest
 OutputBaseFilename=ContainerTrackerAgent-Setup
 Compression=lzma
 SolidCompression=yes
 
 [Dirs]
-Name: "{commonappdata}\ContainerTrackerAgent"
-Name: "{commonappdata}\ContainerTrackerAgent\logs"
+Name: "{localappdata}\ContainerTracker"
+Name: "{localappdata}\ContainerTracker\data"
+Name: "{localappdata}\ContainerTracker\logs"
+Name: "{localappdata}\ContainerTracker\cache"
 
 [Files]
 Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "{#ReleaseRoot}\winsw\*"; DestDir: "{app}\winsw"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{commonappdata}\ContainerTrackerAgent"; DestName: "bootstrap.env"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
 
 [Run]
-Filename: "{app}\winsw\ContainerTrackerAgent.exe"; Parameters: "install"; Flags: runhidden waituntilterminated
-Filename: "{app}\winsw\ContainerTrackerAgent.exe"; Parameters: "start"; Flags: runhidden waituntilterminated
-; Canonical updater command (preflight): cmd /c ""{app}\node\node.exe" "{app}\app\dist\updater.js""
-Filename: "schtasks.exe"; Parameters: "/Create /F /SC MINUTE /MO 30 /TN ""{#UpdaterTaskName}"" /RU SYSTEM /TR ""cmd /c """"{app}\node\node.exe"" ""{app}\app\dist\updater.js"""""""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""{app}\node\node.exe {app}\app\dist\agent.js"""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""{app}\node\node.exe {app}\app\dist\updater.js"""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Run /TN ""{#AgentTaskName}"""; Flags: runhidden waituntilterminated skipifsilent
+Filename: "schtasks.exe"; Parameters: "/Run /TN ""{#UpdaterTaskName}"""; Flags: runhidden waituntilterminated skipifsilent
 
 [UninstallRun]
+Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
-Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" stop >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "stop-agent-service"
-Filename: "cmd.exe"; Parameters: "/C ""{app}\winsw\ContainerTrackerAgent.exe"" uninstall >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "uninstall-agent-service"
 
 [Code]
 var
@@ -82,7 +82,7 @@ var
   ExistingConfigPath: string;
   TemplatePath: string;
 begin
-  ExistingConfigPath := ExpandConstant('{commonappdata}\ContainerTrackerAgent\config.env');
+  ExistingConfigPath := ExpandConstant('{localappdata}\ContainerTracker\config.env');
   if LoadStringFromFile(ExistingConfigPath, Content) then
   begin
     Result := True;
@@ -195,9 +195,6 @@ begin
   UninstallKeyPath := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#AppIdValue}_is1';
 
   if not (
-    TryReadUninstallString(HKLM64, UninstallKeyPath, UninstallCommand) or
-    TryReadUninstallString(HKLM32, UninstallKeyPath, UninstallCommand) or
-    TryReadUninstallString(HKLM, UninstallKeyPath, UninstallCommand) or
     TryReadUninstallString(HKCU64, UninstallKeyPath, UninstallCommand) or
     TryReadUninstallString(HKCU32, UninstallKeyPath, UninstallCommand) or
     TryReadUninstallString(HKCU, UninstallKeyPath, UninstallCommand)
@@ -291,17 +288,19 @@ end;
 
 function TryFindFromDefaultPaths(var BrowserPath: string): Boolean;
 var
-  CandidatePaths: array[0..5] of string;
+  CandidatePaths: array[0..7] of string;
   I: Integer;
 begin
-  CandidatePaths[0] := ExpandConstant('{pf}\Google\Chrome\Application\chrome.exe');
-  CandidatePaths[1] := ExpandConstant('{pf32}\Google\Chrome\Application\chrome.exe');
-  CandidatePaths[2] := ExpandConstant('{localappdata}\Google\Chrome\Application\chrome.exe');
-  CandidatePaths[3] := ExpandConstant('{pf}\Chromium\Application\chrome.exe');
-  CandidatePaths[4] := ExpandConstant('{pf32}\Chromium\Application\chrome.exe');
-  CandidatePaths[5] := ExpandConstant('{localappdata}\Chromium\Application\chrome.exe');
+  CandidatePaths[0] := ExpandConstant('{localappdata}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[1] := ExpandConstant('{localappdata}\Chromium\Application\chrome.exe');
+  CandidatePaths[2] := ExpandConstant('{commonpf}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[3] := ExpandConstant('{commonpf}\Chromium\Application\chrome.exe');
+  CandidatePaths[4] := ExpandConstant('{commonpf32}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[5] := ExpandConstant('{commonpf32}\Chromium\Application\chrome.exe');
+  CandidatePaths[6] := ExpandConstant('{commonpf64}\Google\Chrome\Application\chrome.exe');
+  CandidatePaths[7] := ExpandConstant('{commonpf64}\Chromium\Application\chrome.exe');
 
-  for I := 0 to 5 do
+  for I := 0 to 7 do
   begin
     if IsExistingFilePath(CandidatePaths[I], BrowserPath) then
     begin
@@ -324,6 +323,16 @@ begin
   end;
 
   if TryFindFromAppPaths(HKCU, 'chrome.exe', BrowserPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  if TryFindFromChromeUninstallKey(
+    HKCU,
+    'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome',
+    BrowserPath
+  ) then
   begin
     Result := True;
     exit;
@@ -674,62 +683,3 @@ begin
   Result := ErrorMessage;
 end;
 
-function ApplyProgramDataAcl(var ErrorMessage: string): Boolean;
-var
-  ProgramDataDir: string;
-  ResultCode: Integer;
-  CommandParams: string;
-begin
-  ProgramDataDir := ExpandConstant('{commonappdata}\ContainerTrackerAgent');
-
-  CommandParams := '/C icacls "' + ProgramDataDir + '" /inheritance:r';
-  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
-  begin
-    ErrorMessage := 'Failed to disable inherited ACL on ProgramData folder.';
-    Result := False;
-    exit;
-  end;
-
-  CommandParams :=
-    '/C icacls "' + ProgramDataDir + '" /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F"';
-  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
-  begin
-    ErrorMessage := 'Failed to grant required ACL for SYSTEM/Administrators.';
-    Result := False;
-    exit;
-  end;
-
-  CommandParams :=
-    '/C icacls "' + ProgramDataDir + '" /remove:g "Users" "Authenticated Users" "Everyone"';
-  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
-  begin
-    ErrorMessage := 'Failed to remove broad read ACL entries from ProgramData folder.';
-    Result := False;
-    exit;
-  end;
-
-  Result := True;
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ErrorMessage: string;
-begin
-  if CurStep <> ssPostInstall then
-  begin
-    exit;
-  end;
-
-  if ApplyProgramDataAcl(ErrorMessage) then
-  begin
-    exit;
-  end;
-
-  MsgBox(
-    'ProgramData ACL hardening failed: ' + ErrorMessage + #13#10 +
-    'Installation has been aborted to avoid exposing secrets.',
-    mbCriticalError,
-    MB_OK
-  );
-  Abort;
-end;

@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -22,7 +21,7 @@ import { createAgentScheduler } from './agent.scheduler.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { computeBackoffDelayMs } from './backoff.ts'
 
-const DEFAULT_PROGRAM_DATA_DIR = 'C:\\ProgramData\\ContainerTrackerAgent'
+const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 
 function unquoteValue(value: string): string {
   if (value.length < 2) return value
@@ -272,23 +271,31 @@ function detectBootstrapPlaceholderKeys(config: BootstrapConfig): readonly strin
 }
 
 type PathLayout = {
-  readonly programDataDir: string
+  readonly dataDir: string
   readonly configPath: string
   readonly bootstrapPath: string
   readonly consumedBootstrapPath: string
 }
 
+function resolveDefaultDataDir(): string {
+  const localAppData = normalizeOptionalEnv(process.env.LOCALAPPDATA)
+  if (localAppData) {
+    return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
+  }
+
+  return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
+}
+
 function resolvePathLayout(): PathLayout {
-  const programDataDir =
-    normalizeOptionalEnv(process.env.AGENT_PROGRAMDATA_DIR) ?? DEFAULT_PROGRAM_DATA_DIR
+  const dataDir = normalizeOptionalEnv(process.env.AGENT_DATA_DIR) ?? resolveDefaultDataDir()
   const configPath =
-    normalizeOptionalEnv(process.env.DOTENV_PATH) ?? path.win32.join(programDataDir, 'config.env')
+    normalizeOptionalEnv(process.env.DOTENV_PATH) ?? path.win32.join(dataDir, 'config.env')
   const bootstrapPath =
     normalizeOptionalEnv(process.env.BOOTSTRAP_DOTENV_PATH) ??
-    path.win32.join(programDataDir, 'bootstrap.env')
+    path.win32.join(dataDir, 'bootstrap.env')
 
   return {
-    programDataDir,
+    dataDir,
     configPath,
     bootstrapPath,
     consumedBootstrapPath: `${bootstrapPath}.consumed`,
@@ -368,28 +375,9 @@ function parseBootstrapConfigFromFile(filePath: string): {
   }
 }
 
-function readWindowsMachineGuid(): string | null {
-  if (process.platform !== 'win32') return null
-
-  const result = spawnSync(
-    'reg',
-    ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'],
-    {
-      encoding: 'utf8',
-    },
-  )
-
-  if (result.status !== 0) return null
-  const output = result.stdout
-  const matched = /MachineGuid\s+REG_SZ\s+([^\r\n]+)/u.exec(output)
-  const machineGuid = matched?.[1]?.trim()
-  if (!machineGuid || machineGuid.length === 0) return null
-  return machineGuid
-}
-
 function resolveMachineFingerprint(hostname: string): string {
   const providedMachineGuid = normalizeOptionalEnv(process.env.AGENT_MACHINE_GUID)
-  const machineGuid = providedMachineGuid ?? readWindowsMachineGuid() ?? hostname
+  const machineGuid = providedMachineGuid ?? hostname
   return createHash('sha256').update(`${machineGuid}|${hostname}`, 'utf8').digest('hex')
 }
 

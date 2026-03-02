@@ -2,53 +2,17 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
-$serviceName = 'ContainerTrackerAgent'
-$installRoot = 'C:\Program Files\ContainerTrackerAgent'
-$programDataDir = 'C:\ProgramData\ContainerTrackerAgent'
+$agentTaskName = 'ContainerTrackerAgent'
+$updaterTaskName = 'ContainerTrackerAgentUpdater'
+$installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
+$dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
+$dataLogDir = Join-Path $dataRoot 'logs'
+$projectDotEnvPath = Join-Path $repoRoot '.env'
+$bootstrapPath = Join-Path $dataRoot 'bootstrap.env'
+$configPath = Join-Path $dataRoot 'config.env'
 $shortRoot = 'C:\a'
 $shortReleaseDir = Join-Path $shortRoot 'release'
 $shortInstallerDir = Join-Path $shortRoot 'tools\agent\installer'
-$winswExe = Join-Path $installRoot 'winsw\ContainerTrackerAgent.exe'
-$serviceLogDir = Join-Path $programDataDir 'logs'
-$projectDotEnvPath = Join-Path $repoRoot '.env'
-$programDataBootstrapPath = Join-Path $programDataDir 'bootstrap.env'
-$programDataConfigPath = Join-Path $programDataDir 'config.env'
-
-$placeholderBackendHost = 'your-backend.example.com'
-$placeholderSupabaseHost = 'your-project.supabase.co'
-$placeholderTokenFragment = 'replace-with-'
-$placeholderTenantId = '00000000-0000-4000-8000-000000000000'
-
-function Write-ServiceDiagnostics {
-  param(
-    [string]$Name
-  )
-
-  Write-Host "[agent:rebuild-restart] diagnostics for service $Name"
-
-  try {
-    & sc.exe query $Name
-  } catch {
-    Write-Warning "[agent:rebuild-restart] failed to query service via sc.exe: $($_.Exception.Message)"
-  }
-
-  $errLogPath = Join-Path $serviceLogDir 'ContainerTrackerAgent.err.log'
-  $outLogPath = Join-Path $serviceLogDir 'ContainerTrackerAgent.out.log'
-
-  if (Test-Path $errLogPath) {
-    Write-Host "[agent:rebuild-restart] tail $errLogPath"
-    Get-Content $errLogPath -Tail 80
-  } else {
-    Write-Host "[agent:rebuild-restart] err log not found: $errLogPath"
-  }
-
-  if (Test-Path $outLogPath) {
-    Write-Host "[agent:rebuild-restart] tail $outLogPath"
-    Get-Content $outLogPath -Tail 80
-  } else {
-    Write-Host "[agent:rebuild-restart] out log not found: $outLogPath"
-  }
-}
 
 function Normalize-EnvValue {
   param(
@@ -107,8 +71,7 @@ function Read-EnvFileMap {
       continue
     }
 
-    $rawValue = $entry.Substring($separatorIndex + 1)
-    $value = Normalize-EnvValue $rawValue
+    $value = Normalize-EnvValue ($entry.Substring($separatorIndex + 1))
     if ($null -ne $value) {
       $result[$key] = $value
     }
@@ -117,173 +80,45 @@ function Read-EnvFileMap {
   return $result
 }
 
-function Get-UrlHost {
+function Get-FirstValue {
   param(
-    [string]$Value
-  )
-
-  try {
-    $uri = [System.Uri]::new($Value)
-    return $uri.Host.ToLowerInvariant()
-  } catch {
-    return $null
-  }
-}
-
-function Is-PlaceholderValue {
-  param(
-    [string]$CanonicalKey,
-    [string]$Value
-  )
-
-  if ([string]::IsNullOrWhiteSpace($Value)) {
-    return $false
-  }
-
-  switch ($CanonicalKey) {
-    'BACKEND_URL' {
-      return (Get-UrlHost $Value) -eq $placeholderBackendHost
-    }
-    'SUPABASE_URL' {
-      return (Get-UrlHost $Value) -eq $placeholderSupabaseHost
-    }
-    'TENANT_ID' {
-      return $Value -eq $placeholderTenantId
-    }
-    'INSTALLER_TOKEN' {
-      $normalized = $Value.ToLowerInvariant()
-      return $normalized.Contains($placeholderTokenFragment) -or
-        $normalized.StartsWith('seu_') -or
-        $normalized.StartsWith('your_')
-    }
-    'AGENT_TOKEN' {
-      $normalized = $Value.ToLowerInvariant()
-      return $normalized.Contains($placeholderTokenFragment) -or
-        $normalized.StartsWith('seu_') -or
-        $normalized.StartsWith('your_')
-    }
-    'SUPABASE_ANON_KEY' {
-      $normalized = $Value.ToLowerInvariant()
-      return $normalized.Contains($placeholderTokenFragment) -or
-        $normalized.StartsWith('seu_') -or
-        $normalized.StartsWith('your_')
-    }
-  }
-
-  return $false
-}
-
-function Get-ResolvedEnvValue {
-  param(
-    [hashtable]$ProjectEnv,
-    [hashtable]$ExistingBootstrap,
-    [hashtable]$ExistingConfig,
-    [string]$CanonicalKey,
-    [string[]]$CandidateKeys
-  )
-
-  foreach ($key in $CandidateKeys) {
-    if ($ProjectEnv.ContainsKey($key)) {
-      $value = Normalize-EnvValue $ProjectEnv[$key]
-      if ($value -and -not (Is-PlaceholderValue -CanonicalKey $CanonicalKey -Value $value)) {
-        return $value
-      }
-    }
-
-    $processValue = Normalize-EnvValue ([System.Environment]::GetEnvironmentVariable($key))
-    if ($processValue -and -not (Is-PlaceholderValue -CanonicalKey $CanonicalKey -Value $processValue)) {
-      return $processValue
-    }
-  }
-
-  if ($ExistingBootstrap.ContainsKey($CanonicalKey)) {
-    $bootstrapValue = Normalize-EnvValue $ExistingBootstrap[$CanonicalKey]
-    if ($bootstrapValue -and -not (Is-PlaceholderValue -CanonicalKey $CanonicalKey -Value $bootstrapValue)) {
-      return $bootstrapValue
-    }
-  }
-
-  if ($ExistingConfig.ContainsKey($CanonicalKey)) {
-    $configValue = Normalize-EnvValue $ExistingConfig[$CanonicalKey]
-    if ($configValue -and -not (Is-PlaceholderValue -CanonicalKey $CanonicalKey -Value $configValue)) {
-      return $configValue
-    }
-  }
-
-  return $null
-}
-
-function Get-OptionalResolvedEnvValue {
-  param(
-    [hashtable]$ProjectEnv,
-    [hashtable]$ExistingBootstrap,
-    [hashtable]$ExistingConfig,
-    [string]$CanonicalKey,
-    [string[]]$CandidateKeys,
+    [hashtable]$Primary,
+    [hashtable]$Secondary,
+    [hashtable]$Tertiary,
+    [string[]]$Keys,
     [AllowNull()]
     [string]$Fallback = $null
   )
 
-  $resolved = Get-ResolvedEnvValue `
-    -ProjectEnv $ProjectEnv `
-    -ExistingBootstrap $ExistingBootstrap `
-    -ExistingConfig $ExistingConfig `
-    -CanonicalKey $CanonicalKey `
-    -CandidateKeys $CandidateKeys
-
-  if ($resolved) {
-    return $resolved
-  }
-
-  return $Fallback
-}
-
-function Get-ProjectOrProcessValue {
-  param(
-    [hashtable]$ProjectEnv,
-    [string]$CanonicalKey,
-    [string[]]$CandidateKeys
-  )
-
-  foreach ($key in $CandidateKeys) {
-    if ($ProjectEnv.ContainsKey($key)) {
-      $value = Normalize-EnvValue $ProjectEnv[$key]
-      if ($value -and -not (Is-PlaceholderValue -CanonicalKey $CanonicalKey -Value $value)) {
+  foreach ($key in $Keys) {
+    if ($Primary.ContainsKey($key)) {
+      $value = Normalize-EnvValue $Primary[$key]
+      if ($value) {
         return $value
       }
     }
 
     $processValue = Normalize-EnvValue ([System.Environment]::GetEnvironmentVariable($key))
-    if ($processValue -and -not (Is-PlaceholderValue -CanonicalKey $CanonicalKey -Value $processValue)) {
+    if ($processValue) {
       return $processValue
+    }
+
+    if ($Secondary.ContainsKey($key)) {
+      $value = Normalize-EnvValue $Secondary[$key]
+      if ($value) {
+        return $value
+      }
+    }
+
+    if ($Tertiary.ContainsKey($key)) {
+      $value = Normalize-EnvValue $Tertiary[$key]
+      if ($value) {
+        return $value
+      }
     }
   }
 
-  return $null
-}
-
-function Get-RequiredResolvedEnvValue {
-  param(
-    [hashtable]$ProjectEnv,
-    [hashtable]$ExistingBootstrap,
-    [hashtable]$ExistingConfig,
-    [string]$CanonicalKey,
-    [string[]]$CandidateKeys
-  )
-
-  $resolved = Get-ResolvedEnvValue `
-    -ProjectEnv $ProjectEnv `
-    -ExistingBootstrap $ExistingBootstrap `
-    -ExistingConfig $ExistingConfig `
-    -CanonicalKey $CanonicalKey `
-    -CandidateKeys $CandidateKeys
-
-  if ($resolved) {
-    return $resolved
-  }
-
-  $aliases = ($CandidateKeys -join ', ')
-  throw "missing required key for $CanonicalKey (checked: $aliases). Populate project .env or process environment."
+  return $Fallback
 }
 
 function Write-EnvFile {
@@ -297,7 +132,7 @@ function Write-EnvFile {
     New-Item -ItemType Directory -Path $parent -Force | Out-Null
   }
 
-  $content = (($Lines | Where-Object { $_ -ne $null -and $_.Length -gt 0 }) -join "`r`n") + "`r`n"
+  $content = (($Lines | Where-Object { $_ -and $_.Length -gt 0 }) -join "`r`n") + "`r`n"
   $encoding = [System.Text.UTF8Encoding]::new($false)
   [System.IO.File]::WriteAllText($Path, $content, $encoding)
 }
@@ -305,8 +140,8 @@ function Write-EnvFile {
 function Sync-AgentEnvFromProjectDotEnv {
   param(
     [string]$ProjectEnvPath,
-    [string]$BootstrapPath,
-    [string]$ConfigPath
+    [string]$BootstrapEnvPath,
+    [string]$ConfigEnvPath
   )
 
   if (-not (Test-Path $ProjectEnvPath)) {
@@ -314,82 +149,77 @@ function Sync-AgentEnvFromProjectDotEnv {
   }
 
   $projectEnv = Read-EnvFileMap -Path $ProjectEnvPath
-  $existingBootstrap = Read-EnvFileMap -Path $BootstrapPath
-  $existingConfig = Read-EnvFileMap -Path $ConfigPath
+  $existingBootstrap = Read-EnvFileMap -Path $BootstrapEnvPath
+  $existingConfig = Read-EnvFileMap -Path $ConfigEnvPath
 
-  $backendUrl = Get-RequiredResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'BACKEND_URL' `
-    -CandidateKeys @('BACKEND_URL', 'AGENT_BACKEND_URL')
+  $backendUrl = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('BACKEND_URL', 'AGENT_BACKEND_URL')
 
-  $installerToken = Get-RequiredResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'INSTALLER_TOKEN' `
-    -CandidateKeys @('INSTALLER_TOKEN', 'AGENT_INSTALLER_TOKEN')
+  $installerToken = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('INSTALLER_TOKEN', 'AGENT_INSTALLER_TOKEN')
+
+  if (-not $backendUrl -or -not $installerToken) {
+    throw 'missing BACKEND_URL and/or INSTALLER_TOKEN in .env or current runtime files'
+  }
 
   $agentIdFallback = Normalize-EnvValue $env:COMPUTERNAME
   if (-not $agentIdFallback) {
     $agentIdFallback = 'container-tracker-agent'
   }
 
-  $agentId = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'AGENT_ID' `
-    -CandidateKeys @('AGENT_ID') `
+  $agentId = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('AGENT_ID') `
     -Fallback $agentIdFallback
 
-  $intervalSec = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'INTERVAL_SEC' `
-    -CandidateKeys @('INTERVAL_SEC', 'AGENT_ENROLL_DEFAULT_INTERVAL_SEC') `
+  $intervalSec = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('INTERVAL_SEC', 'AGENT_ENROLL_DEFAULT_INTERVAL_SEC') `
     -Fallback '60'
 
-  $limit = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'LIMIT' `
-    -CandidateKeys @('LIMIT', 'AGENT_ENROLL_DEFAULT_LIMIT') `
+  $limit = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('LIMIT', 'AGENT_ENROLL_DEFAULT_LIMIT') `
     -Fallback '10'
 
-  $maerskEnabled = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'MAERSK_ENABLED' `
-    -CandidateKeys @('MAERSK_ENABLED', 'AGENT_ENROLL_DEFAULT_MAERSK_ENABLED') `
+  $maerskEnabled = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('MAERSK_ENABLED', 'AGENT_ENROLL_DEFAULT_MAERSK_ENABLED') `
     -Fallback '1'
 
-  $maerskHeadless = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'MAERSK_HEADLESS' `
-    -CandidateKeys @('MAERSK_HEADLESS', 'AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS') `
+  $maerskHeadless = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('MAERSK_HEADLESS', 'AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS') `
     -Fallback '1'
 
-  $maerskTimeoutMs = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'MAERSK_TIMEOUT_MS' `
-    -CandidateKeys @('MAERSK_TIMEOUT_MS', 'AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS') `
+  $maerskTimeoutMs = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('MAERSK_TIMEOUT_MS', 'AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS') `
     -Fallback '120000'
 
-  $maerskUserDataDir = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'MAERSK_USER_DATA_DIR' `
-    -CandidateKeys @('MAERSK_USER_DATA_DIR', 'AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR')
+  $maerskUserDataDir = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('MAERSK_USER_DATA_DIR', 'AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR')
 
   $bootstrapLines = @(
     "BACKEND_URL=$backendUrl",
@@ -405,134 +235,134 @@ function Sync-AgentEnvFromProjectDotEnv {
     $bootstrapLines += "MAERSK_USER_DATA_DIR=$maerskUserDataDir"
   }
 
-  Write-EnvFile -Path $BootstrapPath -Lines $bootstrapLines
-  Write-Host "[agent:rebuild-restart] wrote bootstrap.env from project .env values"
+  Write-EnvFile -Path $BootstrapEnvPath -Lines $bootstrapLines
+  Write-Host "[agent:rebuild-restart] wrote bootstrap.env -> $BootstrapEnvPath"
 
-  $tenantId = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'TENANT_ID' `
-    -CandidateKeys @('TENANT_ID', 'SYNC_DEFAULT_TENANT_ID')
+  $tenantId = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('TENANT_ID', 'SYNC_DEFAULT_TENANT_ID')
 
-  $agentToken = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap @{} `
-    -ExistingConfig @{} `
-    -CanonicalKey 'AGENT_TOKEN' `
-    -CandidateKeys @('AGENT_TOKEN')
+  $agentToken = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary @{} `
+    -Tertiary @{} `
+    -Keys @('AGENT_TOKEN')
 
-  $supabaseUrl = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'SUPABASE_URL' `
-    -CandidateKeys @('SUPABASE_URL', 'AGENT_ENROLL_SUPABASE_URL')
-
-  $supabaseAnonKey = Get-OptionalResolvedEnvValue `
-    -ProjectEnv $projectEnv `
-    -ExistingBootstrap $existingBootstrap `
-    -ExistingConfig $existingConfig `
-    -CanonicalKey 'SUPABASE_ANON_KEY' `
-    -CandidateKeys @('SUPABASE_ANON_KEY', 'AGENT_ENROLL_SUPABASE_ANON_KEY')
-
-  if ($tenantId -and $agentToken) {
-    $configLines = @(
-      "BACKEND_URL=$backendUrl",
-      "TENANT_ID=$tenantId",
-      "AGENT_TOKEN=$agentToken",
-      "AGENT_ID=$agentId",
-      "INTERVAL_SEC=$intervalSec",
-      "LIMIT=$limit",
-      "MAERSK_ENABLED=$maerskEnabled",
-      "MAERSK_HEADLESS=$maerskHeadless",
-      "MAERSK_TIMEOUT_MS=$maerskTimeoutMs"
-    )
-
-    if ($supabaseUrl) {
-      $configLines += "SUPABASE_URL=$supabaseUrl"
-    }
-    if ($supabaseAnonKey) {
-      $configLines += "SUPABASE_ANON_KEY=$supabaseAnonKey"
-    }
-    if ($maerskUserDataDir) {
-      $configLines += "MAERSK_USER_DATA_DIR=$maerskUserDataDir"
+  if (-not $tenantId -or -not $agentToken) {
+    if (Test-Path $ConfigEnvPath) {
+      Remove-Item $ConfigEnvPath -Force
     }
 
-    Write-EnvFile -Path $ConfigPath -Lines $configLines
-    Write-Host '[agent:rebuild-restart] wrote config.env from project .env/runtime values'
+    Write-Warning '[agent:rebuild-restart] config.env not generated (TENANT_ID and AGENT_TOKEN are required). Runtime will use bootstrap enrollment.'
     return
   }
 
-  if (Test-Path $ConfigPath) {
-    Remove-Item $ConfigPath -Force
+  $supabaseUrl = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('SUPABASE_URL', 'AGENT_ENROLL_SUPABASE_URL')
+
+  $supabaseAnonKey = Get-FirstValue `
+    -Primary $projectEnv `
+    -Secondary $existingBootstrap `
+    -Tertiary $existingConfig `
+    -Keys @('SUPABASE_ANON_KEY', 'AGENT_ENROLL_SUPABASE_ANON_KEY')
+
+  $configLines = @(
+    "BACKEND_URL=$backendUrl",
+    "TENANT_ID=$tenantId",
+    "AGENT_TOKEN=$agentToken",
+    "AGENT_ID=$agentId",
+    "INTERVAL_SEC=$intervalSec",
+    "LIMIT=$limit",
+    "MAERSK_ENABLED=$maerskEnabled",
+    "MAERSK_HEADLESS=$maerskHeadless",
+    "MAERSK_TIMEOUT_MS=$maerskTimeoutMs"
+  )
+
+  if ($supabaseUrl) {
+    $configLines += "SUPABASE_URL=$supabaseUrl"
+  }
+  if ($supabaseAnonKey) {
+    $configLines += "SUPABASE_ANON_KEY=$supabaseAnonKey"
+  }
+  if ($maerskUserDataDir) {
+    $configLines += "MAERSK_USER_DATA_DIR=$maerskUserDataDir"
   }
 
-  $missingConfigKeys = @()
-  if (-not $tenantId) {
-    $missingConfigKeys += 'TENANT_ID (or SYNC_DEFAULT_TENANT_ID)'
-  }
-  if (-not $agentToken) {
-    $missingConfigKeys += 'AGENT_TOKEN'
-  }
-
-  Write-Warning "[agent:rebuild-restart] config.env not generated from .env (missing: $($missingConfigKeys -join ', ')). Startup will use bootstrap enrollment."
+  Write-EnvFile -Path $ConfigEnvPath -Lines $configLines
+  Write-Host "[agent:rebuild-restart] wrote config.env -> $ConfigEnvPath"
 }
 
-function Get-AgentInstallProcesses {
+function Stop-AgentInstallProcesses {
   param(
     [string]$InstallRootPath
   )
 
-  return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-      Where-Object {
-        $_.ExecutablePath -and $_.ExecutablePath -like "$InstallRootPath*"
-      })
-}
-
-function Stop-AgentForInstall {
-  param(
-    [string]$Name,
-    [string]$InstallRootPath,
-    [string]$WinSwPath
-  )
-
-  Write-Host "[agent:rebuild-restart] stopping service/processes before installer..."
-
-  $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
-  if ($service -and $service.Status -ne 'Stopped') {
-    try {
-      Stop-Service -Name $Name -Force -ErrorAction Stop
-    } catch {
-      Write-Warning "[agent:rebuild-restart] Stop-Service failed: $($_.Exception.Message)"
-    }
-  }
-
-  if (Test-Path $WinSwPath) {
-    try {
-      & $WinSwPath stop | Out-Null
-    } catch {
-      Write-Warning "[agent:rebuild-restart] WinSW stop fallback failed: $($_.Exception.Message)"
-    }
-  }
-
   $deadline = (Get-Date).AddSeconds(20)
-  $running = @(Get-AgentInstallProcesses -InstallRootPath $InstallRootPath)
+  do {
+    $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.ExecutablePath -and $_.ExecutablePath -like "$InstallRootPath*" })
 
-  while ($running.Count -gt 0 -and (Get-Date) -lt $deadline) {
     foreach ($process in $running) {
-      Write-Warning "[agent:rebuild-restart] terminating locked process $($process.Name) (PID=$($process.ProcessId))"
+      Write-Warning "[agent:rebuild-restart] stopping process $($process.Name) (PID=$($process.ProcessId))"
       Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
     }
 
-    Start-Sleep -Milliseconds 500
-    $running = @(Get-AgentInstallProcesses -InstallRootPath $InstallRootPath)
+    if ($running.Count -eq 0) {
+      return
+    }
+
+    Start-Sleep -Milliseconds 400
+  } while ((Get-Date) -lt $deadline)
+
+  throw 'failed to stop install-root processes before setup'
+}
+
+function Invoke-SafeTaskDelete {
+  param(
+    [string]$TaskName
+  )
+
+  & cmd.exe /d /s /c "schtasks /Delete /TN ""$TaskName"" /F >NUL 2>&1 || exit /B 0"
+  if ($LASTEXITCODE -ne 0) {
+    throw "failed to delete scheduled task $TaskName (exit code $LASTEXITCODE)"
+  }
+}
+
+function Show-TaskDiagnostics {
+  & schtasks.exe /Query /TN $agentTaskName /V /FO LIST 2>$null
+  & schtasks.exe /Query /TN $updaterTaskName /V /FO LIST 2>$null
+
+  $updaterLog = Join-Path $dataLogDir 'updater.log'
+  if (Test-Path $updaterLog) {
+    Write-Host "[agent:rebuild-restart] tail $updaterLog"
+    Get-Content $updaterLog -Tail 80
+  } else {
+    Write-Host "[agent:rebuild-restart] updater log not found: $updaterLog"
+  }
+}
+
+function Invoke-SafeTaskRun {
+  param(
+    [string]$TaskName
+  )
+
+  $maxAttempts = 30
+  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+    & cmd.exe /d /s /c "schtasks /Run /TN ""$TaskName"" >NUL 2>&1"
+    if ($LASTEXITCODE -eq 0) {
+      return
+    }
+
+    Start-Sleep -Milliseconds 400
   }
 
-  if ($running.Count -gt 0) {
-    $details = ($running | ForEach-Object { "$($_.Name)#$($_.ProcessId)" }) -join ', '
-    throw "failed to stop install-root processes before setup: $details"
-  }
+  Write-Warning "[agent:rebuild-restart] failed to run task $TaskName after $maxAttempts attempts; dumping task query for diagnostics"
+  throw "failed to run scheduled task $TaskName after $maxAttempts attempts"
 }
 
 Push-Location $repoRoot
@@ -578,88 +408,51 @@ try {
   }
 
   if (-not $installerPath) {
-    $searchRoots = @(
-      $shortInstallerDir,
-      (Join-Path $repoRoot 'tools\agent\installer')
-    )
-
-    $discovered = Get-ChildItem -Path $searchRoots `
-      -Recurse `
-      -File `
-      -Filter 'ContainerTrackerAgent-Setup*.exe' `
-      -ErrorAction SilentlyContinue |
-      Sort-Object LastWriteTime -Descending |
-      Select-Object -First 1
-
-    if ($discovered) {
-      $installerPath = $discovered.FullName
-    }
-  }
-
-  if (-not $installerPath) {
     throw 'installer executable not found after iscc compilation'
   }
 
-  Stop-AgentForInstall -Name $serviceName -InstallRootPath $installRoot -WinSwPath $winswExe
+  Stop-AgentInstallProcesses -InstallRootPath $installRoot
+  Invoke-SafeTaskDelete -TaskName $agentTaskName
+  Invoke-SafeTaskDelete -TaskName $updaterTaskName
+
+  $installerLogPath = Join-Path $shortRoot 'installer-run.log'
+  if (Test-Path $installerLogPath) {
+    Remove-Item $installerLogPath -Force
+  }
 
   Write-Host "[agent:rebuild-restart] running installer: $installerPath"
-  $installProcess = Start-Process -FilePath $installerPath `
-    -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') `
-    -Wait `
-    -PassThru
+  & $installerPath '/VERYSILENT' '/SUPPRESSMSGBOXES' '/NORESTART' "/LOG=$installerLogPath"
+  $installerExitCode = $LASTEXITCODE
 
-  if ($installProcess.ExitCode -ne 0) {
-    throw "installer failed with exit code $($installProcess.ExitCode)"
+  if ($installerExitCode -ne 0) {
+    if (Test-Path $installerLogPath) {
+      Write-Warning "[agent:rebuild-restart] installer log tail: $installerLogPath"
+      Get-Content $installerLogPath -Tail 120
+    }
+
+    throw "installer failed with exit code $installerExitCode"
   }
 
   Sync-AgentEnvFromProjectDotEnv `
     -ProjectEnvPath $projectDotEnvPath `
-    -BootstrapPath $programDataBootstrapPath `
-    -ConfigPath $programDataConfigPath
+    -BootstrapEnvPath $bootstrapPath `
+    -ConfigEnvPath $configPath
 
-  Start-Sleep -Seconds 1
-
-  $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-  if (-not $service) {
-    throw "service $serviceName was not found after installer execution"
+  Write-Host "[agent:rebuild-restart] starting scheduled tasks..."
+  try {
+    Invoke-SafeTaskRun -TaskName $agentTaskName
+  } catch {
+    Write-Warning "[agent:rebuild-restart] could not run task $agentTaskName immediately: $($_.Exception.Message)"
   }
-
-  if ($service.Status -eq 'Running') {
-    Write-Host "[agent:rebuild-restart] restarting service $serviceName..."
-    try {
-      Restart-Service -Name $serviceName -Force
-    } catch {
-      Write-Warning "[agent:rebuild-restart] Restart-Service failed: $($_.Exception.Message)"
-      if (Test-Path $winswExe) {
-        Write-Host "[agent:rebuild-restart] attempting WinSW restart fallback..."
-        & $winswExe restart
-      } else {
-        throw
-      }
-    }
-  } else {
-    Write-Host "[agent:rebuild-restart] starting service $serviceName..."
-    try {
-      Start-Service -Name $serviceName
-    } catch {
-      Write-Warning "[agent:rebuild-restart] Start-Service failed: $($_.Exception.Message)"
-      if (Test-Path $winswExe) {
-        Write-Host "[agent:rebuild-restart] attempting WinSW start fallback..."
-        & $winswExe start
-      } else {
-        throw
-      }
-    }
+  try {
+    Invoke-SafeTaskRun -TaskName $updaterTaskName
+  } catch {
+    Write-Warning "[agent:rebuild-restart] could not run task $updaterTaskName immediately: $($_.Exception.Message)"
   }
 
   Start-Sleep -Seconds 2
-  $finalService = Get-Service -Name $serviceName
-  if ($finalService.Status -ne 'Running') {
-    Write-ServiceDiagnostics -Name $serviceName
-    throw "service $serviceName did not reach Running state (current: $($finalService.Status))"
-  }
+  Show-TaskDiagnostics
 
-  Write-Host "[agent:rebuild-restart] service status: $($finalService.Status)"
   Write-Host '[agent:rebuild-restart] done.'
 } finally {
   Pop-Location

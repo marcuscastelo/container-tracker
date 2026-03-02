@@ -3,12 +3,12 @@
   <name>Container Tracker Agent</name>
   <description>Container Tracker background sync service.</description>
 
-  <executable>C:\Program Files\ContainerTrackerAgent\node\node.exe</executable>
-  <arguments>"C:\Program Files\ContainerTrackerAgent\app\dist\agent.js"</arguments>
-  <workingdirectory>C:\Program Files\ContainerTrackerAgent\app</workingdirectory>
+  <executable>%LOCALAPPDATA%\Programs\ContainerTrackerAgent\node\node.exe</executable>
+  <arguments>"%LOCALAPPDATA%\Programs\ContainerTrackerAgent\app\dist\agent.js"</arguments>
+  <workingdirectory>%LOCALAPPDATA%\Programs\ContainerTrackerAgent\app</workingdirectory>
   <startmode>Automatic</startmode>
 
-  <logpath>C:\ProgramData\ContainerTrackerAgent\logs</logpath>
+  <logpath>%LOCALAPPDATA%\ContainerTracker\logs</logpath>
   <log mode="roll-by-size-time">
     <sizeThreshold>10240</sizeThreshold>
     <pattern>yyyyMMdd</pattern>
@@ -16,8 +16,8 @@
     <keepFiles>8</keepFiles>
   </log>
 
-  <!-- DOTENV_PATH=C:\ProgramData\ContainerTrackerAgent\config.env -->
-  <env name="DOTENV_PATH" value="C:\ProgramData\ContainerTrackerAgent\config.env" />
+  <!-- DOTENV_PATH=%LOCALAPPDATA%\ContainerTracker\config.env -->
+  <env name="DOTENV_PATH" value="%LOCALAPPDATA%\ContainerTracker\config.env" />
 
   <onfailure action="restart" delay="10 sec" />
   <onfailure action="restart" delay="30 sec" />

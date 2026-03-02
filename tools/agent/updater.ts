@@ -1,11 +1,10 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-const FALLBACK_DOTENV_PATH = 'C:\\ProgramData\\ContainerTrackerAgent\\config.env'
-const FALLBACK_LOG_PATH = 'C:\\ProgramData\\ContainerTrackerAgent\\logs\\updater.log'
-const LOG_ROTATION_PATH = 'C:\\ProgramData\\ContainerTrackerAgent\\logs\\updater.log.1'
+const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 const MAX_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 function toErrorMessage(error: unknown): string {
@@ -22,7 +21,24 @@ function resolveDotenvPath(): string {
     return fromEnv
   }
 
-  return FALLBACK_DOTENV_PATH
+  return path.win32.join(resolveDataRoot(), 'config.env')
+}
+
+function resolveDataRoot(): string {
+  const localAppData = process.env.LOCALAPPDATA?.trim()
+  if (localAppData && localAppData.length > 0) {
+    return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
+  }
+
+  return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
+}
+
+function resolveLogPaths(): { readonly logPath: string; readonly rotationPath: string } {
+  const logPath = path.win32.join(resolveDataRoot(), 'logs', 'updater.log')
+  return {
+    logPath,
+    rotationPath: `${logPath}.1`,
+  }
 }
 
 function unquoteValue(value: string): string {
@@ -71,7 +87,7 @@ function loadEnvFile(dotenvPath: string): void {
   }
 }
 
-function rotateLogIfNeeded(logPath: string): void {
+function rotateLogIfNeeded(logPath: string, rotationPath: string): void {
   if (!fs.existsSync(logPath)) {
     return
   }
@@ -81,21 +97,22 @@ function rotateLogIfNeeded(logPath: string): void {
     return
   }
 
-  if (fs.existsSync(LOG_ROTATION_PATH)) {
-    fs.rmSync(LOG_ROTATION_PATH)
+  if (fs.existsSync(rotationPath)) {
+    fs.rmSync(rotationPath)
   }
 
-  fs.renameSync(logPath, LOG_ROTATION_PATH)
+  fs.renameSync(logPath, rotationPath)
 }
 
 function appendLogLine(message: string): void {
   const line = `[${new Date().toISOString()}] ${message}`
   console.log(line)
 
-  const logDir = path.dirname(FALLBACK_LOG_PATH)
+  const logPaths = resolveLogPaths()
+  const logDir = path.dirname(logPaths.logPath)
   fs.mkdirSync(logDir, { recursive: true })
-  rotateLogIfNeeded(FALLBACK_LOG_PATH)
-  fs.appendFileSync(FALLBACK_LOG_PATH, `${line}\n`, 'utf8')
+  rotateLogIfNeeded(logPaths.logPath, logPaths.rotationPath)
+  fs.appendFileSync(logPaths.logPath, `${line}\n`, 'utf8')
 }
 
 function findPackageJsonPath(startDir: string): string | null {

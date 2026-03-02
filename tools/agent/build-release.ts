@@ -6,7 +6,6 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_NODE_WINDOWS_VERSION = 'v22.11.0'
-const DEFAULT_WINSW_VERSION = 'v2.12.0'
 const DEFAULT_AGENT_DEPLOY_WORKSPACE = 'example-with-tailwindcss'
 const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   '@supabase/supabase-js',
@@ -19,7 +18,6 @@ const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
 ] as const
 const RELEASE_APP_REQUIRED_TOP_LEVEL_ENTRIES = ['dist', 'node_modules', 'package.json'] as const
 const NODE_MODULES_METADATA_ENTRIES = [
-  '.bin',
   '.modules.yaml',
   '.pnpm',
   '.pnpm-workspace-state-v1.json',
@@ -29,8 +27,6 @@ const REQUIRED_RELEASE_FILES = [
   'node/node.exe',
   'app/dist/agent.js',
   'app/dist/updater.js',
-  'winsw/ContainerTrackerAgent.exe',
-  'winsw/ContainerTrackerAgent.xml',
   'config/bootstrap.env',
 ] as const
 
@@ -59,10 +55,41 @@ const NODE_RUNTIME_REMOVABLE_ENTRIES = [
   'npx.ps1',
 ] as const
 
+const STATIC_GATE_FILES = [
+  'tools/agent/installer/installer.iss',
+  'tools/agent/agent.ts',
+  'tools/agent/updater.ts',
+  'tools/agent/rebuild-reinstall.ps1',
+] as const
+
+const STATIC_GATE_FORBIDDEN_PATTERNS = [
+  {
+    label: 'ProgramData',
+    pattern: /programdata/iu,
+  },
+  {
+    label: '{commonappdata}',
+    pattern: /\{commonappdata\}/iu,
+  },
+  {
+    label: '/RU SYSTEM',
+    pattern: /\/ru\s+system/iu,
+  },
+  {
+    label: 'highest privileges',
+    pattern: /highest privileges/iu,
+  },
+] as const
+
 type RuntimeDependencyResolution = {
   readonly packageName: string
   readonly packageDir: string
   readonly depId: string
+}
+
+type RuntimeDependencySnapshot = {
+  readonly directResolutions: readonly RuntimeDependencyResolution[]
+  readonly dependencyIds: ReadonlySet<string>
 }
 
 function toErrorMessage(error: unknown): string {
@@ -453,7 +480,10 @@ async function pruneReleaseAppTopLevelEntries(releaseAppDir: string): Promise<vo
   }
 }
 
-async function pruneRuntimeNodeModules(releaseAppDir: string): Promise<void> {
+async function pruneRuntimeNodeModules(
+  releaseAppDir: string,
+  runtimeSnapshot?: RuntimeDependencySnapshot,
+): Promise<void> {
   const nodeModulesDir = path.join(releaseAppDir, 'node_modules')
   const pnpmStoreDir = path.join(nodeModulesDir, '.pnpm')
 
@@ -464,11 +494,14 @@ async function pruneRuntimeNodeModules(releaseAppDir: string): Promise<void> {
     throw new Error(`release app node_modules is missing .pnpm store: ${pnpmStoreDir}`)
   }
 
-  const { directResolutions, dependencyIds } = await collectRuntimePnpmDependencyIds({
-    nodeModulesDir,
-    pnpmStoreDir,
-    directDependencies: AGENT_RUNTIME_DIRECT_DEPENDENCIES,
-  })
+  const resolvedSnapshot =
+    runtimeSnapshot ??
+    (await collectRuntimePnpmDependencyIds({
+      nodeModulesDir,
+      pnpmStoreDir,
+      directDependencies: AGENT_RUNTIME_DIRECT_DEPENDENCIES,
+    }))
+  const { directResolutions, dependencyIds } = resolvedSnapshot
 
   const pnpmStoreEntries = await fs.readdir(pnpmStoreDir, { withFileTypes: true })
   for (const entry of pnpmStoreEntries) {
@@ -487,6 +520,8 @@ async function pruneRuntimeNodeModules(releaseAppDir: string): Promise<void> {
     await fs.rm(path.join(pnpmStoreDir, entry.name), { recursive: true, force: true })
   }
 
+  await fs.rm(path.join(pnpmStoreDir, 'node_modules'), { recursive: true, force: true })
+
   const topLevelEntries = await fs.readdir(nodeModulesDir, { withFileTypes: true })
   const keepTopLevelEntries = new Set<string>(NODE_MODULES_METADATA_ENTRIES)
   for (const entry of topLevelEntries) {
@@ -498,21 +533,50 @@ async function pruneRuntimeNodeModules(releaseAppDir: string): Promise<void> {
   }
 
   const symlinkType: fsSync.symlink.Type = process.platform === 'win32' ? 'junction' : 'dir'
-  for (const resolution of directResolutions) {
-    const topLevelEntryPath = resolvePackageEntryPath(nodeModulesDir, resolution.packageName)
-    const storePackagePath = path.join(
-      pnpmStoreDir,
-      resolution.depId,
-      'node_modules',
-      ...toPackageNameSegments(resolution.packageName),
-    )
-    const storePackageJson = path.join(storePackagePath, 'package.json')
-    if (!(await pathExists(storePackageJson))) {
-      throw new Error(
-        `runtime dependency missing after pnpm pruning: ${resolution.packageName} (${storePackagePath})`,
-      )
+  const topLevelLinkTargets = new Map<string, string>()
+  const sortedDependencyIds = [...dependencyIds].sort((left, right) => left.localeCompare(right))
+  for (const dependencyId of sortedDependencyIds) {
+    const dependencyNodeModulesDir = path.join(pnpmStoreDir, dependencyId, 'node_modules')
+    if (!(await pathExists(dependencyNodeModulesDir))) {
+      continue
     }
 
+    const packageNames = await listPackageNamesInNodeModules(dependencyNodeModulesDir)
+    for (const packageName of packageNames) {
+      if (topLevelLinkTargets.has(packageName)) {
+        continue
+      }
+
+      const packagePath = resolvePackageEntryPath(dependencyNodeModulesDir, packageName)
+      const packageJsonPath = path.join(packagePath, 'package.json')
+      if (!(await pathExists(packageJsonPath))) {
+        continue
+      }
+
+      topLevelLinkTargets.set(packageName, packagePath)
+    }
+  }
+
+  // Ensure direct runtime dependencies always point to the exact synced snapshot.
+  for (const resolution of directResolutions) {
+    topLevelLinkTargets.set(
+      resolution.packageName,
+      path.join(
+        pnpmStoreDir,
+        resolution.depId,
+        'node_modules',
+        ...toPackageNameSegments(resolution.packageName),
+      ),
+    )
+  }
+
+  for (const [packageName, storePackagePath] of topLevelLinkTargets) {
+    const storePackageJson = path.join(storePackagePath, 'package.json')
+    if (!(await pathExists(storePackageJson))) {
+      continue
+    }
+
+    const topLevelEntryPath = resolvePackageEntryPath(nodeModulesDir, packageName)
     await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
     await fs.rm(topLevelEntryPath, { recursive: true, force: true })
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
@@ -520,7 +584,7 @@ async function pruneRuntimeNodeModules(releaseAppDir: string): Promise<void> {
   }
 
   console.log(
-    `[agent:release] pruned runtime node_modules to ${dependencyIds.size} package snapshots`,
+    `[agent:release] pruned runtime node_modules to ${dependencyIds.size} package snapshots and ${topLevelLinkTargets.size} top-level links`,
   )
 }
 
@@ -560,9 +624,72 @@ async function pruneRuntimeNodeModulesArtifacts(releaseAppDir: string): Promise<
   console.log(`[agent:release] stripped ${removedFilesCount} non-runtime metadata files`)
 }
 
-async function pruneReleaseAppForRuntime(releaseAppDir: string): Promise<void> {
+async function ensureAgentRuntimeDependenciesInReleaseApp(command: {
+  readonly repoRoot: string
+  readonly releaseAppDir: string
+}): Promise<RuntimeDependencySnapshot> {
+  const sourceNodeModulesDir = path.join(command.repoRoot, 'node_modules')
+  const sourcePnpmStoreDir = path.join(sourceNodeModulesDir, '.pnpm')
+  const targetNodeModulesDir = path.join(command.releaseAppDir, 'node_modules')
+  const targetPnpmStoreDir = path.join(targetNodeModulesDir, '.pnpm')
+
+  await ensurePathExists(sourceNodeModulesDir, 'source node_modules')
+  await ensurePathExists(sourcePnpmStoreDir, 'source pnpm store')
+  await ensurePathExists(targetNodeModulesDir, 'release node_modules')
+  await ensurePathExists(targetPnpmStoreDir, 'release pnpm store')
+
+  const runtimeSnapshot = await collectRuntimePnpmDependencyIds({
+    nodeModulesDir: sourceNodeModulesDir,
+    pnpmStoreDir: sourcePnpmStoreDir,
+    directDependencies: AGENT_RUNTIME_DIRECT_DEPENDENCIES,
+  })
+  const { directResolutions, dependencyIds } = runtimeSnapshot
+
+  for (const dependencyId of dependencyIds) {
+    const sourceDependencyDir = path.join(sourcePnpmStoreDir, dependencyId)
+    const targetDependencyDir = path.join(targetPnpmStoreDir, dependencyId)
+    if (await pathExists(targetDependencyDir)) {
+      continue
+    }
+
+    await fs.cp(sourceDependencyDir, targetDependencyDir, { recursive: true })
+  }
+
+  const symlinkType: fsSync.symlink.Type = process.platform === 'win32' ? 'junction' : 'dir'
+  for (const resolution of directResolutions) {
+    const topLevelEntryPath = resolvePackageEntryPath(targetNodeModulesDir, resolution.packageName)
+    const storePackagePath = path.join(
+      targetPnpmStoreDir,
+      resolution.depId,
+      'node_modules',
+      ...toPackageNameSegments(resolution.packageName),
+    )
+    const storePackageJson = path.join(storePackagePath, 'package.json')
+    if (!(await pathExists(storePackageJson))) {
+      throw new Error(
+        `runtime dependency missing after sync: ${resolution.packageName} (${storePackagePath})`,
+      )
+    }
+
+    await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
+    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
+    const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
+    await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
+  }
+
+  console.log(
+    `[agent:release] synced ${dependencyIds.size} runtime package snapshots from workspace cache`,
+  )
+
+  return runtimeSnapshot
+}
+
+async function pruneReleaseAppForRuntime(
+  releaseAppDir: string,
+  runtimeSnapshot?: RuntimeDependencySnapshot,
+): Promise<void> {
   await pruneReleaseAppTopLevelEntries(releaseAppDir)
-  await pruneRuntimeNodeModules(releaseAppDir)
+  await pruneRuntimeNodeModules(releaseAppDir, runtimeSnapshot)
   await pruneRuntimeNodeModulesArtifacts(releaseAppDir)
 }
 
@@ -612,56 +739,77 @@ async function runPreflightChecks(command: {
     errors.push(`missing required runtime dependency package: ${packageName}`)
   }
 
-  const winswXmlPath = path.join(command.releaseDir, 'winsw', 'ContainerTrackerAgent.xml')
-  if (await pathExists(winswXmlPath)) {
-    const xmlContent = await fs.readFile(winswXmlPath, 'utf8')
-    const requiredXmlStrings = [
-      'C:\\Program Files\\ContainerTrackerAgent\\node\\node.exe',
-      'C:\\Program Files\\ContainerTrackerAgent\\app\\dist\\agent.js',
-      'DOTENV_PATH=C:\\ProgramData\\ContainerTrackerAgent\\config.env',
-    ]
-
-    for (const value of requiredXmlStrings) {
-      if (!xmlContent.includes(value)) {
-        errors.push(`winsw xml missing required string: ${value}`)
-      }
-    }
-  }
-
   if (await pathExists(command.installerFilePath)) {
     const installerContentRaw = await fs.readFile(command.installerFilePath, 'utf8')
 
     const hasX64Mode =
-      installerContentRaw.includes('ArchitecturesAllowed=x64compatible') &&
-      installerContentRaw.includes('ArchitecturesInstallIn64BitMode=x64compatible')
+      installerContentRaw.includes('ArchitecturesAllowed=x64') &&
+      installerContentRaw.includes('ArchitecturesInstallIn64BitMode=x64')
     if (!hasX64Mode) {
       errors.push('installer.iss missing x64-only setup directives')
     }
 
     if (
       !installerContentRaw.includes('{app}') ||
-      !installerContentRaw.includes('{commonappdata}')
+      !installerContentRaw.includes('{localappdata}')
     ) {
-      errors.push('installer.iss must reference both {app} and {commonappdata}')
+      errors.push('installer.iss must reference both {app} and {localappdata}')
     }
 
-    const schtasksLine = installerContentRaw
+    if (!installerContentRaw.includes('PrivilegesRequired=lowest')) {
+      errors.push('installer.iss must use PrivilegesRequired=lowest')
+    }
+
+    if (!installerContentRaw.includes('DefaultDirName={localappdata}\\Programs\\')) {
+      errors.push('installer.iss must install binaries under {localappdata}\\Programs')
+    }
+
+    if (installerContentRaw.includes('{commonappdata}')) {
+      errors.push('installer.iss must not reference {commonappdata}')
+    }
+
+    const schtasksCreateLines = installerContentRaw
       .split(/\r?\n/)
-      .find((line) => line.includes('Filename: "schtasks.exe"'))
+      .filter(
+        (line) => line.includes('Filename: "schtasks.exe"') && line.toLowerCase().includes('/create'),
+      )
 
-    if (schtasksLine) {
-      const normalizedSchtasksLine = schtasksLine.replaceAll('""', '"')
-      const hasCmdPrefix = normalizedSchtasksLine.includes('cmd /c')
-      const hasNodeExecutable = normalizedSchtasksLine.includes('{app}\\node\\node.exe')
-      const hasUpdaterScript = normalizedSchtasksLine.includes('{app}\\app\\dist\\updater.js')
+    if (schtasksCreateLines.length >= 2) {
+      const normalizedCreateLines = schtasksCreateLines.map((line) =>
+        line.replaceAll('""', '"').toLowerCase(),
+      )
+      const hasAgentCreate = normalizedCreateLines.some(
+        (line) =>
+          line.includes('{app}\\node\\node.exe') &&
+          line.includes('{app}\\app\\dist\\agent.js'),
+      )
+      const hasUpdaterCreate = normalizedCreateLines.some(
+        (line) =>
+          line.includes('{app}\\node\\node.exe') &&
+          line.includes('{app}\\app\\dist\\updater.js'),
+      )
 
-      if (!hasCmdPrefix || !hasNodeExecutable || !hasUpdaterScript) {
-        errors.push(
-          'installer.iss missing expected task command: cmd /c "{app}\\node\\node.exe" "{app}\\app\\dist\\updater.js"',
-        )
+      if (!hasAgentCreate || !hasUpdaterCreate) {
+        errors.push('installer.iss missing expected ONLOGON task commands for agent/updater')
+      }
+
+      for (const line of normalizedCreateLines) {
+        if (
+          !line.includes('/sc onlogon') ||
+          !line.includes('/it') ||
+          !line.includes('/rl limited')
+        ) {
+          errors.push('installer.iss task commands must include /SC ONLOGON, /IT and /RL LIMITED')
+          break
+        }
+
+        if (line.includes('/ru system') || line.includes('highest privileges')) {
+          errors.push('installer.iss task commands must not use SYSTEM or highest privileges')
+          break
+        }
       }
     } else {
-      errors.push('installer.iss missing schtasks creation command')
+      errors.push('installer.iss must include two schtasks /Create commands')
     }
   } else {
     errors.push(`installer.iss not found: ${command.installerFilePath}`)
@@ -689,16 +837,30 @@ async function runPreflightChecks(command: {
       errors.push('updater.ts must reference DOTENV_PATH')
     }
 
-    const fallbackPathLiteral = 'C:\\\\ProgramData\\\\ContainerTrackerAgent\\\\config.env'
-    const fallbackPathRuntime = 'C:\\ProgramData\\ContainerTrackerAgent\\config.env'
     if (
-      !updaterSource.includes(fallbackPathLiteral) &&
-      !updaterSource.includes(fallbackPathRuntime)
+      !updaterSource.includes('DEFAULT_DATA_DIR_NAME') ||
+      !updaterSource.includes('ContainerTracker') ||
+      !updaterSource.includes('LOCALAPPDATA')
     ) {
-      errors.push('updater.ts must include fallback ProgramData path')
+      errors.push('updater.ts must resolve fallback paths under LOCALAPPDATA\\ContainerTracker')
     }
   } else {
     errors.push(`updater.ts not found: ${command.updaterSourcePath}`)
+  }
+
+  for (const relativePath of STATIC_GATE_FILES) {
+    const absolutePath = path.join(command.repoRoot, relativePath)
+    if (!(await pathExists(absolutePath))) {
+      errors.push(`static gate file not found: ${relativePath}`)
+      continue
+    }
+
+    const source = await fs.readFile(absolutePath, 'utf8')
+    for (const forbidden of STATIC_GATE_FORBIDDEN_PATTERNS) {
+      if (forbidden.pattern.test(source)) {
+        errors.push(`forbidden token "${forbidden.label}" found in ${relativePath}`)
+      }
+    }
   }
 
   if (errors.length > 0) {
@@ -724,14 +886,12 @@ async function buildRelease(): Promise<void> {
   const releaseDir = path.join(repoRoot, 'release')
   const releaseAppDir = path.join(releaseDir, 'app')
   const releaseAppDistDir = path.join(releaseAppDir, 'dist')
-  const releaseWinswDir = path.join(releaseDir, 'winsw')
   const releaseNodeDir = path.join(releaseDir, 'node')
   const releaseConfigDir = path.join(releaseDir, 'config')
   const tempDownloadDir = path.join(releaseDir, '.downloads')
   const cacheDownloadDir = path.join(toolsAgentDir, '.cache', 'downloads')
 
   const nodeVersion = process.env.AGENT_NODE_WINDOWS_VERSION ?? DEFAULT_NODE_WINDOWS_VERSION
-  const winswVersion = process.env.AGENT_WINSW_VERSION ?? DEFAULT_WINSW_VERSION
   const agentDeployWorkspace =
     process.env.AGENT_DEPLOY_WORKSPACE ?? DEFAULT_AGENT_DEPLOY_WORKSPACE
 
@@ -744,7 +904,6 @@ async function buildRelease(): Promise<void> {
   await fs.rm(releaseDir, { recursive: true, force: true })
   await fs.mkdir(releaseDir, { recursive: true })
   await fs.mkdir(tempDownloadDir, { recursive: true })
-  await fs.mkdir(releaseWinswDir, { recursive: true })
   await fs.mkdir(releaseConfigDir, { recursive: true })
   await fs.mkdir(cacheDownloadDir, { recursive: true })
   console.log(
@@ -757,6 +916,11 @@ async function buildRelease(): Promise<void> {
 
   await fs.cp(distDir, releaseAppDistDir, { recursive: true })
   await writeAgentEntrypointShims(releaseAppDistDir)
+  const runtimeSnapshot = await ensureAgentRuntimeDependenciesInReleaseApp({
+    repoRoot,
+    releaseAppDir,
+  })
+  await pruneReleaseAppForRuntime(releaseAppDir, runtimeSnapshot)
 
   const nodeZipName = `node-${nodeVersion}-win-x64.zip`
   const nodeZipPath = path.join(cacheDownloadDir, nodeZipName)
@@ -777,20 +941,6 @@ async function buildRelease(): Promise<void> {
   await ensurePathExists(extractedNodeExePath, 'extracted node runtime executable')
   await fs.mkdir(releaseNodeDir, { recursive: true })
   await fs.cp(extractedNodeExePath, path.join(releaseNodeDir, 'node.exe'))
-
-  const winswDownloadUrl = `https://github.com/winsw/winsw/releases/download/${winswVersion}/WinSW-x64.exe`
-  const winswExePath = path.join(cacheDownloadDir, `WinSW-x64-${winswVersion}.exe`)
-  await ensureDownloadedFile({
-    label: 'winsw',
-    url: winswDownloadUrl,
-    targetPath: winswExePath,
-  })
-  await fs.cp(winswExePath, path.join(releaseWinswDir, 'ContainerTrackerAgent.exe'))
-
-  await fs.cp(
-    path.join(installerDir, 'ContainerTrackerAgent.xml'),
-    path.join(releaseWinswDir, 'ContainerTrackerAgent.xml'),
-  )
   await fs.cp(
     path.join(installerDir, 'bootstrap.env.template'),
     path.join(releaseConfigDir, 'bootstrap.env'),

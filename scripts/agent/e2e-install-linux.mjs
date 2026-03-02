@@ -14,8 +14,8 @@ const INSTALLER_TOKEN = 'installer-token-e2e'
 const AGENT_TOKEN = 'agent-token-e2e'
 const AGENT_ID = 'linux-e2e-agent'
 
-const WINDOWS_APP_ROOT = 'C:\\Program Files\\ContainerTrackerAgent'
-const WINDOWS_PROGRAM_DATA_ROOT = 'C:\\ProgramData\\ContainerTrackerAgent'
+const WINDOWS_INSTALL_ROOT = '%LOCALAPPDATA%\\Programs\\ContainerTrackerAgent'
+const WINDOWS_DATA_ROOT = '%LOCALAPPDATA%\\ContainerTracker'
 
 const WAIT_TIMEOUT_MS = 30_000
 
@@ -42,54 +42,6 @@ function resolveRepoRoot(startDir) {
     }
     cursor = parent
   }
-}
-
-function extractXmlValue(xml, tagName) {
-  const match = new RegExp(`<${tagName}>([^<]+)</${tagName}>`, 'u').exec(xml)
-  if (!match) {
-    throw new Error(`Missing <${tagName}> in XML`)
-  }
-
-  return match[1].trim()
-}
-
-function extractDotenvPathFromXml(xml) {
-  const match = /<env\s+name="DOTENV_PATH"\s+value="([^"]+)"/u.exec(xml)
-  if (!match) {
-    throw new Error('Missing DOTENV_PATH env declaration in XML')
-  }
-
-  return match[1].trim()
-}
-
-function stripDoubleQuotes(value) {
-  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
-    return value.slice(1, -1)
-  }
-
-  return value
-}
-
-function normalizeWindowsPath(value) {
-  return value.replaceAll('\\', '/')
-}
-
-function mapWindowsPathToLinux(winPath, installRoot, programDataRoot) {
-  const normalized = normalizeWindowsPath(winPath)
-  const appRoot = normalizeWindowsPath(WINDOWS_APP_ROOT)
-  const dataRoot = normalizeWindowsPath(WINDOWS_PROGRAM_DATA_ROOT)
-
-  if (normalized === appRoot || normalized.startsWith(`${appRoot}/`)) {
-    const suffix = normalized.slice(appRoot.length).replace(/^\//u, '')
-    return path.join(installRoot, suffix)
-  }
-
-  if (normalized === dataRoot || normalized.startsWith(`${dataRoot}/`)) {
-    const suffix = normalized.slice(dataRoot.length).replace(/^\//u, '')
-    return path.join(programDataRoot, suffix)
-  }
-
-  throw new Error(`Unsupported Windows path mapping: ${winPath}`)
 }
 
 function updateEnvValue(content, key, value) {
@@ -225,6 +177,53 @@ async function waitForCondition(conditionFn, timeoutMs) {
   }
 }
 
+async function collectSandboxPaths(rootDir) {
+  const collected = []
+  const pending = [rootDir]
+
+  while (pending.length > 0) {
+    const currentDir = pending.pop()
+    if (!currentDir) {
+      continue
+    }
+
+    const entries = await fs.readdir(currentDir, { withFileTypes: true })
+    for (const entry of entries) {
+      const entryPath = path.join(currentDir, entry.name)
+      collected.push(entryPath)
+
+      if (entry.isDirectory()) {
+        pending.push(entryPath)
+      }
+    }
+  }
+
+  return collected
+}
+
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+      resolve()
+    })
+  })
+}
+
+async function stopChildProcess(child) {
+  if (!child || child.exitCode !== null) {
+    return
+  }
+
+  child.kill('SIGTERM')
+  await new Promise((resolve) => {
+    child.once('exit', () => resolve())
+  })
+}
+
 async function runLinuxE2E() {
   if (process.platform === 'win32') {
     throw new Error('This script is intended to run on Linux/macOS only')
@@ -232,7 +231,6 @@ async function runLinuxE2E() {
 
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const repoRoot = resolveRepoRoot(scriptDir)
-  const xmlPath = path.join(repoRoot, 'tools', 'agent', 'installer', 'ContainerTrackerAgent.xml')
   const bootstrapTemplatePath = path.join(
     repoRoot,
     'tools',
@@ -256,13 +254,15 @@ async function runLinuxE2E() {
 
   const sandboxRoot =
     process.env.AGENT_E2E_SANDBOX_DIR ?? '/tmp/container-tracker-agent-linux-e2e'
-  const installRoot = path.join(sandboxRoot, 'Program Files', 'ContainerTrackerAgent')
-  const programDataRoot = path.join(sandboxRoot, 'ProgramData', 'ContainerTrackerAgent')
+  const localAppDataRoot = path.join(sandboxRoot, 'LocalAppData')
+  const installRoot = path.join(localAppDataRoot, 'Programs', 'ContainerTrackerAgent')
+  const dataRoot = path.join(localAppDataRoot, 'ContainerTracker')
 
   await fs.rm(sandboxRoot, { recursive: true, force: true })
-  await fs.mkdir(installRoot, { recursive: true })
-  await fs.mkdir(path.join(programDataRoot, 'logs'), { recursive: true })
   await fs.mkdir(path.join(installRoot, 'app'), { recursive: true })
+  await fs.mkdir(path.join(dataRoot, 'logs'), { recursive: true })
+  await fs.mkdir(path.join(dataRoot, 'data'), { recursive: true })
+  await fs.mkdir(path.join(dataRoot, 'cache'), { recursive: true })
 
   const distSourcePath = path.join(repoRoot, 'tools', 'agent', 'dist')
   const distTargetPath = path.join(installRoot, 'app', 'dist')
@@ -287,60 +287,45 @@ async function runLinuxE2E() {
   }
   await fs.symlink(sourceNodeModulesPath, targetNodeModulesPath, 'dir')
 
-  const xmlContent = await fs.readFile(xmlPath, 'utf8')
-  const xmlExecutable = extractXmlValue(xmlContent, 'executable')
-  const xmlArguments = extractXmlValue(xmlContent, 'arguments')
-  const xmlWorkingDirectory = extractXmlValue(xmlContent, 'workingdirectory')
-  const xmlDotenvPath = extractDotenvPathFromXml(xmlContent)
-
-  if (xmlExecutable !== `${WINDOWS_APP_ROOT}\\node\\node.exe`) {
-    throw new Error(`Unexpected XML executable path: ${xmlExecutable}`)
-  }
-  if (!(xmlArguments.startsWith('"') && xmlArguments.endsWith('"'))) {
-    throw new Error(`XML arguments must be quoted. Received: ${xmlArguments}`)
-  }
-
-  const mappedEntrypointPath = mapWindowsPathToLinux(
-    stripDoubleQuotes(xmlArguments),
-    installRoot,
-    programDataRoot,
-  )
-  const mappedWorkingDirectory = mapWindowsPathToLinux(xmlWorkingDirectory, installRoot, programDataRoot)
-  const mappedDotenvPath = mapWindowsPathToLinux(xmlDotenvPath, installRoot, programDataRoot)
-  const mappedBootstrapPath = path.join(path.dirname(mappedDotenvPath), 'bootstrap.env')
+  const mappedEntrypointPath = path.join(installRoot, 'app', 'dist', 'agent.js')
+  const mappedWorkingDirectory = path.join(installRoot, 'app')
+  const mappedDotenvPath = path.join(dataRoot, 'config.env')
+  const mappedBootstrapPath = path.join(dataRoot, 'bootstrap.env')
   const consumedBootstrapPath = `${mappedBootstrapPath}.consumed`
 
   const mockServer = await createMockServer()
-
-  let bootstrapTemplate = await fs.readFile(bootstrapTemplatePath, 'utf8')
-  bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'BACKEND_URL', mockServer.baseUrl)
-  bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'INSTALLER_TOKEN', INSTALLER_TOKEN)
-  bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'AGENT_ID', AGENT_ID)
-  bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'INTERVAL_SEC', '3600')
-  bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'LIMIT', '1')
-  bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'MAERSK_ENABLED', '0')
-  await fs.writeFile(mappedBootstrapPath, bootstrapTemplate, 'utf8')
-
-  const child = spawn(process.execPath, [mappedEntrypointPath], {
-    cwd: mappedWorkingDirectory,
-    env: {
-      ...process.env,
-      DOTENV_PATH: mappedDotenvPath,
-      BOOTSTRAP_DOTENV_PATH: mappedBootstrapPath,
-      AGENT_MACHINE_GUID: 'linux-e2e-guid',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-
   const outputLines = []
-  child.stdout.on('data', (chunk) => {
-    outputLines.push(chunk.toString('utf8'))
-  })
-  child.stderr.on('data', (chunk) => {
-    outputLines.push(chunk.toString('utf8'))
-  })
+  let child = null
 
   try {
+    let bootstrapTemplate = await fs.readFile(bootstrapTemplatePath, 'utf8')
+    bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'BACKEND_URL', mockServer.baseUrl)
+    bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'INSTALLER_TOKEN', INSTALLER_TOKEN)
+    bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'AGENT_ID', AGENT_ID)
+    bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'INTERVAL_SEC', '3600')
+    bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'LIMIT', '1')
+    bootstrapTemplate = updateEnvValue(bootstrapTemplate, 'MAERSK_ENABLED', '0')
+    await fs.writeFile(mappedBootstrapPath, bootstrapTemplate, 'utf8')
+
+    child = spawn(process.execPath, [mappedEntrypointPath], {
+      cwd: mappedWorkingDirectory,
+      env: {
+        ...process.env,
+        LOCALAPPDATA: localAppDataRoot,
+        DOTENV_PATH: mappedDotenvPath,
+        BOOTSTRAP_DOTENV_PATH: mappedBootstrapPath,
+        AGENT_MACHINE_GUID: 'linux-e2e-guid',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    child.stdout.on('data', (chunk) => {
+      outputLines.push(chunk.toString('utf8'))
+    })
+    child.stderr.on('data', (chunk) => {
+      outputLines.push(chunk.toString('utf8'))
+    })
+
     await waitForCondition(() => {
       return (
         mockServer.state.enrollCalls >= 1 &&
@@ -350,50 +335,43 @@ async function runLinuxE2E() {
         !fsSync.existsSync(mappedBootstrapPath)
       )
     }, WAIT_TIMEOUT_MS)
+
+    const consumedBootstrapContent = await fs.readFile(consumedBootstrapPath, 'utf8')
+    if (consumedBootstrapContent.includes(INSTALLER_TOKEN)) {
+      throw new Error('bootstrap.env.consumed leaked INSTALLER_TOKEN')
+    }
+
+    const generatedConfig = await fs.readFile(mappedDotenvPath, 'utf8')
+    if (!generatedConfig.includes(`AGENT_TOKEN=${AGENT_TOKEN}`)) {
+      throw new Error('config.env was not generated with runtime AGENT_TOKEN')
+    }
+
+    if (mockServer.state.lastTargetsAuth !== `Bearer ${AGENT_TOKEN}`) {
+      throw new Error('targets endpoint did not receive runtime AGENT_TOKEN')
+    }
+
+    if (mockServer.state.lastAgentIdHeader !== AGENT_ID) {
+      throw new Error('targets endpoint did not receive expected x-agent-id header')
+    }
+
+    const sandboxPaths = await collectSandboxPaths(sandboxRoot)
+    const forbiddenPath = sandboxPaths.find((entryPath) =>
+      entryPath.toLowerCase().includes('programdata'),
+    )
+    if (forbiddenPath) {
+      throw new Error(`unexpected ProgramData path created in sandbox: ${forbiddenPath}`)
+    }
   } catch (error) {
-    child.kill('SIGTERM')
     throw new Error(`${toErrorMessage(error)}\nAgent output:\n${outputLines.join('')}`)
+  } finally {
+    await stopChildProcess(child)
+    await closeServer(mockServer.server)
   }
-
-  const consumedBootstrapContent = await fs.readFile(consumedBootstrapPath, 'utf8')
-  if (consumedBootstrapContent.includes(INSTALLER_TOKEN)) {
-    child.kill('SIGTERM')
-    throw new Error('bootstrap.env.consumed leaked INSTALLER_TOKEN')
-  }
-
-  const generatedConfig = await fs.readFile(mappedDotenvPath, 'utf8')
-  if (!generatedConfig.includes(`AGENT_TOKEN=${AGENT_TOKEN}`)) {
-    child.kill('SIGTERM')
-    throw new Error('config.env was not generated with runtime AGENT_TOKEN')
-  }
-
-  if (mockServer.state.lastTargetsAuth !== `Bearer ${AGENT_TOKEN}`) {
-    child.kill('SIGTERM')
-    throw new Error('targets endpoint did not receive runtime AGENT_TOKEN')
-  }
-
-  if (mockServer.state.lastAgentIdHeader !== AGENT_ID) {
-    child.kill('SIGTERM')
-    throw new Error('targets endpoint did not receive expected x-agent-id header')
-  }
-
-  child.kill('SIGTERM')
-  await new Promise((resolve) => {
-    child.once('exit', () => resolve())
-  })
-
-  await new Promise((resolve, reject) => {
-    mockServer.server.close((error) => {
-      if (error) {
-        reject(error)
-        return
-      }
-      resolve()
-    })
-  })
 
   console.log('[agent:e2e:linux] PASS')
   console.log(`[agent:e2e:linux] sandbox=${sandboxRoot}`)
+  console.log(`[agent:e2e:linux] windowsInstallRoot=${WINDOWS_INSTALL_ROOT}`)
+  console.log(`[agent:e2e:linux] windowsDataRoot=${WINDOWS_DATA_ROOT}`)
   console.log(`[agent:e2e:linux] enrollCalls=${mockServer.state.enrollCalls}`)
   console.log(`[agent:e2e:linux] targetsCalls=${mockServer.state.targetsCalls}`)
   console.log(`[agent:e2e:linux] ingestCalls=${mockServer.state.ingestCalls}`)

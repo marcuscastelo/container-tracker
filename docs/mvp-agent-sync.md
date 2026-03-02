@@ -48,7 +48,8 @@ Notes:
 
 ### 1.2 Agent bootstrap input (`bootstrap.env`)
 
-`bootstrap.env` is installed into ProgramData by installer and is the primary first-run input:
+`bootstrap.env` is installed into `%LOCALAPPDATA%\ContainerTracker` by installer and is the
+primary first-run input:
 
 - `BACKEND_URL` (required)
 - `INSTALLER_TOKEN` (required bootstrap secret)
@@ -65,7 +66,8 @@ No user manual edit is required in primary flow.
 
 ### 1.3 Effective runtime config (`config.env`)
 
-`config.env` is issued by backend enrolment and persisted in ProgramData.
+`config.env` is issued by backend enrolment and persisted in
+`%LOCALAPPDATA%\ContainerTracker`.
 Expected keys include:
 
 - `BACKEND_URL`
@@ -83,7 +85,7 @@ Supabase remains optional:
 
 ## 2) Runtime Startup Modes
 
-At service startup:
+At runtime startup:
 
 1. If `config.env` exists and parses: normal mode.
 2. If missing or invalid: bootstrap mode.

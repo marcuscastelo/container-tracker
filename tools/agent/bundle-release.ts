@@ -13,14 +13,11 @@ const REQUIRED_RELEASE_FILES = [
   'release/node/node.exe',
   'release/app/dist/agent.js',
   'release/app/dist/updater.js',
-  'release/winsw/ContainerTrackerAgent.exe',
-  'release/winsw/ContainerTrackerAgent.xml',
   'release/config/bootstrap.env',
 ] as const
 
 const REQUIRED_INSTALLER_FILES = [
   'tools/agent/installer/installer.iss',
-  'tools/agent/installer/ContainerTrackerAgent.xml',
   'tools/agent/installer/bootstrap.env.template',
 ] as const
 
