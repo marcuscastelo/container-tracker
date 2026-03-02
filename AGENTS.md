@@ -233,6 +233,7 @@ Why:
 - Devcontainer policy is commit-inside-container + push-on-host. In container, `git push` and destructive local Git commands are intentionally blocked by guard scripts.
 - For Maersk Puppeteer flows in devcontainer, keep Chromium provisioned in `.devcontainer/Dockerfile` and set `CHROME_PATH=/usr/bin/chromium` in `.devcontainer/devcontainer.json`.
 - Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures as `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
+- For `/api/refresh-maersk/:container` smoke, minimum pass criterion is response output not containing `Browser launch failed`; provider-side `403/502` responses are acceptable for this smoke if launch succeeded.
 
 ---
 

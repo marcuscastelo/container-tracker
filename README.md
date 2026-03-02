@@ -100,6 +100,46 @@ Em falha, o comando classifica a causa com hints acionáveis:
 - `invalid_chrome_path`: `CHROME_PATH` definido para caminho inválido/não executável.
 - `launch_incompatibility`: browser encontrado, mas `puppeteer.launch(...)` falhou.
 
+### Smoke da rota `/api/refresh-maersk/:container` (devcontainer)
+
+Procedimento reproduzível para validar que o browser deixou de ser o bloqueio principal:
+
+1. Em um terminal no devcontainer, valide primeiro o launch técnico:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+```
+
+2. Suba a aplicação local:
+
+```bash
+pnpm run dev
+```
+
+3. Em outro terminal, chame o endpoint Maersk:
+
+```bash
+CONTAINER=MRKU1234567
+curl -sS "http://localhost:3000/api/refresh-maersk/${CONTAINER}?headless=1&hold=0&timeout=70000" \
+  | tee /tmp/maersk-refresh-smoke.json
+```
+
+4. Verifique o critério mínimo de sucesso:
+
+```bash
+if grep -q "Browser launch failed" /tmp/maersk-refresh-smoke.json; then
+  echo "FAIL: browser launch ainda bloqueando o endpoint"
+else
+  echo "PASS: browser launch não é o bloqueio atual"
+fi
+```
+
+Regras de avaliação:
+
+- Critério mínimo: a saída do endpoint não pode conter `Browser launch failed`.
+- Erros externos do provider (por exemplo `403 Access Denied by Akamai` ou `502 No API response captured`) não reprovam este smoke, desde que o erro de launch não apareça.
+- Se aparecer `Browser launch failed`, revise `CHROME_PATH` e repita `pnpm run maersk:smoke:puppeteer` antes de depurar integração Maersk.
+
 ### Loop autônomo com Codex (Ralph + Devcontainer)
 
 Guia completo de setup, comandos `ai:loop:*`, fluxo container/host e troubleshooting:
