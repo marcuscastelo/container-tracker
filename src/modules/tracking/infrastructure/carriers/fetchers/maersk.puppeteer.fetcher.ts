@@ -33,6 +33,34 @@ type CapturedRequestMeta = {
   readonly postData?: string
 }
 
+function normalizeForMatch(value: string): string {
+  return value.toUpperCase().trim()
+}
+
+function isTrackingApiResponseUrl(url: string): boolean {
+  const normalized = url.toLowerCase()
+  return normalized.includes('api.maersk.com') && normalized.includes('/synergy/tracking')
+}
+
+function scoreTrackingCaptureCandidate(url: string, body: string, container: string): number {
+  const containerKey = normalizeForMatch(container)
+  let score = 0
+
+  if (url.toLowerCase().includes('/synergy/tracking/')) {
+    score += 1
+  }
+
+  if (normalizeForMatch(url).includes(containerKey)) {
+    score += 2
+  }
+
+  if (normalizeForMatch(body).includes(containerKey)) {
+    score += 3
+  }
+
+  return score
+}
+
 type BrowserResolution =
   | {
       readonly kind: 'ok'
@@ -234,7 +262,6 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         fs.mkdirSync(providerDir, { recursive: true })
         diagnosticsPath = path.join(providerDir, `${command.container}.json.devtools.json`)
       }
-
       if (command.userDataDir && !fs.existsSync(command.userDataDir)) {
         return {
           kind: 'error',
@@ -351,7 +378,10 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         const cdpClient = await page.createCDPSession()
         await cdpClient.send('Network.enable')
 
-        const captureState: { data: CapturedData | null } = { data: null }
+        const captureState: { data: CapturedData | null; score: number } = {
+          data: null,
+          score: Number.NEGATIVE_INFINITY,
+        }
         const reqMap = new Map<string, CapturedRequestMeta>()
 
         cdpClient.on('Network.requestWillBeSent', (evt: unknown) => {
@@ -384,8 +414,7 @@ export function createMaerskCaptureService(): MaerskCaptureService {
               responseUrl &&
               requestId &&
               status !== null &&
-              responseUrl.includes('/synergy/tracking/') &&
-              responseUrl.includes(command.container)
+              isTrackingApiResponseUrl(responseUrl)
             ) {
               console.log('[maersk-refresh] CDP captured response:', responseUrl, 'status:', status)
 
@@ -421,19 +450,29 @@ export function createMaerskCaptureService(): MaerskCaptureService {
                 const cookiesRaw = await page.cookies()
                 const cookies = cookiesRaw.map(toCaptureCookie)
                 const userAgent = await page.evaluate(() => navigator.userAgent)
-
-                captureState.data = {
-                  url: responseUrl,
-                  method: reqInfo?.method ?? 'GET',
-                  headers: reqInfo?.headers ?? {},
-                  postData: reqInfo?.postData,
-                  status,
+                const candidateScore = scoreTrackingCaptureCandidate(
+                  responseUrl,
                   body,
-                  cookies,
-                  userAgent,
-                  telemetry,
-                  timestamp: new Date().toISOString(),
+                  command.container,
+                )
+
+                if (candidateScore >= captureState.score) {
+                  captureState.data = {
+                    url: responseUrl,
+                    method: reqInfo?.method ?? 'GET',
+                    headers: reqInfo?.headers ?? {},
+                    postData: reqInfo?.postData,
+                    status,
+                    body,
+                    cookies,
+                    userAgent,
+                    telemetry,
+                    timestamp: new Date().toISOString(),
+                  }
+                  captureState.score = candidateScore
                 }
+
+                console.log('[maersk-refresh] Candidate capture score:', candidateScore)
               } catch (error) {
                 console.error('[maersk-refresh] Error getting response body:', error)
               }
@@ -458,6 +497,24 @@ export function createMaerskCaptureService(): MaerskCaptureService {
         }
 
         const trackingUrl = `https://www.maersk.com/tracking/${command.container}`
+        const apiFallbackUrl = `https://api.maersk.com/synergy/tracking/${encodeURIComponent(command.container)}`
+
+        const tryApiFallback = async () => {
+          if (captureState.data) return
+
+          console.log('[maersk-refresh] Fallback: navigating directly to API URL:', apiFallbackUrl)
+          try {
+            await page.goto(apiFallbackUrl, {
+              waitUntil: 'networkidle0',
+              timeout: Math.max(15000, Math.floor(command.timeoutMs / 2)),
+            })
+          } catch (error) {
+            console.warn('[maersk-refresh] API fallback navigation failed:', error)
+          }
+
+          await delay(1500 + Math.random() * 500)
+        }
+
         console.log('[maersk-refresh] Navigating to:', trackingUrl)
 
         await delay(800 + Math.random() * 400)
@@ -504,6 +561,8 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           }
         }
 
+        await tryApiFallback()
+
         if (command.hold) {
           console.log('[maersk-refresh] HOLD mode - browser stays open. Press Ctrl+C to exit.')
           await new Promise(() => {})
@@ -524,8 +583,11 @@ export function createMaerskCaptureService(): MaerskCaptureService {
             status: 502,
             body: {
               error: 'No API response captured',
-              hint: 'The page did not make a request to /synergy/tracking/. Try with ?hold=1 to inspect manually.',
-              expectedUrl: `https://api.maersk.com/synergy/tracking/${command.container}`,
+              hint: 'No /synergy/tracking response was observed, even after direct API fallback. Try hold/profile diagnostics.',
+              expectedUrl: apiFallbackUrl,
+              diagnostics: {
+                attemptedFallback: true,
+              },
             },
           }
         }
@@ -561,7 +623,6 @@ export function createMaerskCaptureService(): MaerskCaptureService {
               console.warn('[maersk-refresh] Could not write diagnostics file:', error)
             }
           }
-
           return {
             kind: 'error',
             status: 403,
@@ -627,7 +688,6 @@ export function createMaerskCaptureService(): MaerskCaptureService {
             console.warn('[maersk-refresh] Could not write diagnostics file:', error)
           }
         }
-
         return {
           kind: 'ok',
           status: captured.status,

@@ -1,8 +1,7 @@
 /**
- * Refresh API route - thin adapter to tracking refresh controllers.
+ * Refresh status API route - thin adapter to tracking refresh controllers.
  *
- * POST /api/refresh
- * GET  /api/refresh (health)
+ * GET /api/refresh/status
  */
 
 import { bootstrapRefreshControllers } from '~/modules/tracking/interface/http/refresh.controllers.bootstrap'
@@ -11,5 +10,4 @@ export const runtime = 'nodejs'
 
 const refreshControllers = bootstrapRefreshControllers()
 
-export const POST = refreshControllers.refresh
-export const GET = refreshControllers.health
+export const GET = refreshControllers.status

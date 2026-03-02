@@ -1,6 +1,7 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, onCleanup, Show } from 'solid-js'
+import { z } from 'zod/v4'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
@@ -9,6 +10,7 @@ import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import {
   createProcessRequest,
   toCreateProcessInput,
@@ -19,12 +21,71 @@ import {
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import {
+  type SyncRequestRealtimeEvent,
+  subscribeToSyncRequestsRealtimeByIds,
+} from '~/shared/api/sync-requests.realtime.client'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 type DialogCarrier = CreateProcessDialogFormData['carrier']
 type ShipmentContainer = ShipmentDetailVM['containers'][number]
+type RefreshRetryState = { readonly current: number; readonly total: number }
+
+const REFRESH_SYNC_MAX_RETRIES = 5
+const REFRESH_SYNC_INITIAL_DELAY_MS = 5000
+const REFRESH_SOFT_BLOCK_WINDOW_MS = 60_000
+
+function buildRecentUpdateHint(command: {
+  readonly elapsedMs: number
+  readonly toSecondsLabel: (count: number) => string
+  readonly toMinutesLabel: (count: number) => string
+}): string {
+  const elapsedSeconds = Math.max(1, Math.floor(command.elapsedMs / 1000))
+  if (elapsedSeconds < 60) {
+    return command.toSecondsLabel(elapsedSeconds)
+  }
+
+  const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60))
+  return command.toMinutesLabel(elapsedMinutes)
+}
+
+const RefreshPostResponseSchema = z.object({
+  ok: z.literal(true),
+  container: z.string(),
+  syncRequestId: z.string().uuid(),
+  queued: z.literal(true),
+  deduped: z.boolean(),
+})
+
+const RefreshStatusResponseSchema = z.object({
+  ok: z.literal(true),
+  allTerminal: z.boolean(),
+  requests: z.array(
+    z.object({
+      syncRequestId: z.string().uuid(),
+      status: z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED', 'NOT_FOUND']),
+      lastError: z.string().nullable(),
+      updatedAt: z.string().nullable(),
+      refValue: z.string().nullable(),
+    }),
+  ),
+})
+
+type RefreshStatusRequest = {
+  readonly syncRequestId: string
+  readonly status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
+  readonly lastError: string | null
+  readonly updatedAt: string | null
+  readonly refValue: string | null
+}
+
+type RefreshStatusResponse = {
+  readonly ok: true
+  readonly allTerminal: boolean
+  readonly requests: readonly RefreshStatusRequest[]
+}
 
 const DIALOG_CARRIERS: readonly DialogCarrier[] = [
   'maersk',
@@ -49,7 +110,342 @@ type RefreshContainersParams = {
   readonly data: ShipmentDetailVM | null | undefined
   readonly setIsRefreshing: (value: boolean) => void
   readonly setRefreshError: (value: string | null) => void
-  readonly refetch: (info?: unknown) => unknown | Promise<unknown>
+  readonly setRefreshHint: (value: string | null) => void
+  readonly setRefreshRetry: (value: RefreshRetryState | null) => void
+  readonly setLastRefreshDoneAt: (value: Date | null) => void
+  readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
+  readonly refreshTrackingData: () => Promise<void>
+  readonly isDisposed: () => boolean
+  readonly toTimeoutMessage: (totalRetries: number) => string
+  readonly toFailedMessage: (failedCount: number, firstError: string) => string
+}
+
+function toLatestDoneAtOrNow(requests: readonly RefreshStatusRequest[]): Date {
+  const doneTimestamps = requests
+    .map((request) => {
+      if (request.status !== 'DONE' || request.updatedAt === null) {
+        return Number.NaN
+      }
+      return Date.parse(request.updatedAt)
+    })
+    .filter((value) => Number.isFinite(value))
+
+  if (doneTimestamps.length === 0) {
+    return new Date()
+  }
+
+  return new Date(Math.max(...doneTimestamps))
+}
+
+async function refreshTrackingDataOnly(command: {
+  readonly processId: string
+  readonly locale: string
+  readonly current: ShipmentDetailVM | null | undefined
+  readonly apply: (next: ShipmentDetailVM) => void
+}): Promise<void> {
+  const latest = await fetchProcess(command.processId, command.locale)
+  if (!latest) return
+
+  if (!command.current) {
+    command.apply(latest)
+    return
+  }
+
+  // Keep non-tracking process metadata and update only fields derived from tracking.
+  command.apply({
+    ...command.current,
+    status: latest.status,
+    statusCode: latest.statusCode,
+    eta: latest.eta,
+    containers: latest.containers,
+    alerts: latest.alerts,
+  })
+}
+
+function readErrorFromJsonBody(body: unknown): string | null {
+  const parsed = z
+    .object({
+      error: z.string().optional(),
+    })
+    .safeParse(body)
+
+  if (!parsed.success) {
+    return null
+  }
+
+  const maybeError = parsed.data.error
+  if (typeof maybeError === 'string' && maybeError.trim().length > 0) {
+    return maybeError
+  }
+
+  return null
+}
+
+function mapRealtimeEventToRefreshStatus(
+  event: SyncRequestRealtimeEvent,
+  syncRequestIdSet: ReadonlySet<string>,
+): RefreshStatusRequest | null {
+  const row = event.row ?? event.oldRow
+  if (!row) return null
+  if (!syncRequestIdSet.has(row.id)) return null
+
+  if (event.eventType === 'DELETE') {
+    return {
+      syncRequestId: row.id,
+      status: 'NOT_FOUND',
+      lastError: 'sync_request_not_found',
+      updatedAt: row.updated_at,
+      refValue: row.ref_value,
+    }
+  }
+
+  return {
+    syncRequestId: row.id,
+    status: row.status,
+    lastError: row.last_error,
+    updatedAt: row.updated_at,
+    refValue: row.ref_value,
+  }
+}
+
+function applyRefreshStatusRequests(
+  statusBySyncRequestId: Map<string, RefreshStatusRequest>,
+  requests: readonly RefreshStatusRequest[],
+): void {
+  for (const request of requests) {
+    statusBySyncRequestId.set(request.syncRequestId, request)
+  }
+}
+
+function toRefreshStatusResponseFromMap(
+  syncRequestIds: readonly string[],
+  statusBySyncRequestId: ReadonlyMap<string, RefreshStatusRequest>,
+): RefreshStatusResponse {
+  const requests = syncRequestIds.map((syncRequestId) => {
+    const known = statusBySyncRequestId.get(syncRequestId)
+    if (known) return known
+
+    return {
+      syncRequestId,
+      status: 'NOT_FOUND' as const,
+      lastError: 'sync_request_not_found',
+      updatedAt: null,
+      refValue: null,
+    }
+  })
+
+  const allTerminal = requests.every((request) => {
+    return (
+      request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
+    )
+  })
+
+  return {
+    ok: true,
+    allTerminal,
+    requests,
+  }
+}
+
+function toReadableErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+
+  const nestedMessage = message.match(/"message"\s*:\s*"([^"]+)"/)
+  if (nestedMessage?.[1]) {
+    return nestedMessage[1]
+  }
+
+  const afterStatus = message.replace(/^.*?:\s*\d{3}\s*/, '')
+  if (afterStatus && afterStatus.length > 0 && afterStatus.length < message.length) {
+    return afterStatus.trim()
+  }
+
+  return message
+}
+
+async function enqueueContainerRefresh(
+  containerNumber: string,
+  carrier: string | null | undefined,
+): Promise<{ readonly syncRequestId: string }> {
+  const response = await fetch('/api/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ container: containerNumber, carrier: carrier ?? null }),
+  })
+
+  const body: unknown = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const errorMessage = readErrorFromJsonBody(body) ?? response.statusText
+    throw new Error(`refresh failed for ${containerNumber}: ${response.status} ${errorMessage}`)
+  }
+
+  const parsed = RefreshPostResponseSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new Error(`refresh failed for ${containerNumber}: invalid enqueue response`)
+  }
+
+  return { syncRequestId: parsed.data.syncRequestId }
+}
+
+async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
+  const params = new URLSearchParams()
+  for (const syncRequestId of syncRequestIds) {
+    params.append('sync_request_id', syncRequestId)
+  }
+  params.set('_ts', String(Date.now()))
+
+  const response = await fetch(`/api/refresh/status?${params.toString()}`, {
+    cache: 'no-store',
+    headers: {
+      'cache-control': 'no-cache',
+      pragma: 'no-cache',
+    },
+  })
+  const body: unknown = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const errorMessage = readErrorFromJsonBody(body) ?? response.statusText
+    throw new Error(`refresh status failed: ${response.status} ${errorMessage}`)
+  }
+
+  const parsed = RefreshStatusResponseSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new Error('refresh status failed: invalid response payload')
+  }
+
+  return parsed.data
+}
+
+type WaitForTerminalSyncRequestsCommand = {
+  readonly syncRequestIds: readonly string[]
+  readonly setRefreshRetry: (value: RefreshRetryState | null) => void
+  readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
+  readonly isDisposed: () => boolean
+}
+
+type WaitForTerminalSyncRequestsResult =
+  | {
+      readonly kind: 'completed'
+      readonly response: RefreshStatusResponse
+    }
+  | {
+      readonly kind: 'timeout'
+    }
+  | {
+      readonly kind: 'cancelled'
+    }
+
+async function waitForTerminalSyncRequests(
+  command: WaitForTerminalSyncRequestsCommand,
+): Promise<WaitForTerminalSyncRequestsResult> {
+  const syncRequestIdSet = new Set(command.syncRequestIds)
+  const statusBySyncRequestId = new Map<string, RefreshStatusRequest>()
+
+  let isResolved = false
+  let resolveRealtimeTerminal: ((response: RefreshStatusResponse) => void) | null = null
+  const realtimeTerminalPromise = new Promise<RefreshStatusResponse>((resolve) => {
+    resolveRealtimeTerminal = resolve
+  })
+
+  const resolveIfAllTerminal = () => {
+    if (isResolved || resolveRealtimeTerminal === null) {
+      return
+    }
+
+    const consolidatedResponse = toRefreshStatusResponseFromMap(
+      command.syncRequestIds,
+      statusBySyncRequestId,
+    )
+
+    if (!consolidatedResponse.allTerminal) {
+      return
+    }
+
+    isResolved = true
+    resolveRealtimeTerminal(consolidatedResponse)
+  }
+
+  const realtimeSubscription = subscribeToSyncRequestsRealtimeByIds({
+    syncRequestIds: command.syncRequestIds,
+    onEvent(event) {
+      if (command.isDisposed() || isResolved) return
+
+      const requestStatus = mapRealtimeEventToRefreshStatus(event, syncRequestIdSet)
+      if (!requestStatus) return
+
+      statusBySyncRequestId.set(requestStatus.syncRequestId, requestStatus)
+      resolveIfAllTerminal()
+    },
+    onStatus(channelStatus) {
+      if (channelStatus.state === 'CHANNEL_ERROR' || channelStatus.state === 'TIMED_OUT') {
+        console.warn('[refresh] sync_requests realtime channel degraded', channelStatus)
+      }
+    },
+  })
+
+  command.setRealtimeCleanup(realtimeSubscription.unsubscribe)
+
+  const bootstrapStatus = await fetchRefreshSyncStatuses(command.syncRequestIds)
+  applyRefreshStatusRequests(statusBySyncRequestId, bootstrapStatus.requests)
+  resolveIfAllTerminal()
+
+  if (isResolved) {
+    return {
+      kind: 'completed',
+      response: toRefreshStatusResponseFromMap(command.syncRequestIds, statusBySyncRequestId),
+    }
+  }
+
+  const watchdogPromise = pollRefreshSyncStatus({
+    syncRequestIds: command.syncRequestIds,
+    maxRetries: REFRESH_SYNC_MAX_RETRIES,
+    initialDelayMs: REFRESH_SYNC_INITIAL_DELAY_MS,
+    fetchSyncStatus: async (syncRequestIds) => {
+      const response = await fetchRefreshSyncStatuses(syncRequestIds)
+      applyRefreshStatusRequests(statusBySyncRequestId, response.requests)
+      resolveIfAllTerminal()
+      return response
+    },
+    onRetryStart(progress) {
+      if (!command.isDisposed()) {
+        command.setRefreshRetry(progress)
+      }
+    },
+    shouldStop: () => command.isDisposed() || isResolved,
+  })
+    .then((result) => ({ kind: 'watchdog' as const, result }))
+    .catch((error: unknown) => ({ kind: 'watchdog_error' as const, error }))
+
+  const resolution = await Promise.race([
+    realtimeTerminalPromise.then((response) => ({ kind: 'realtime' as const, response })),
+    watchdogPromise,
+  ])
+
+  if (resolution.kind === 'watchdog_error') {
+    throw resolution.error
+  }
+
+  if (resolution.kind === 'realtime') {
+    command.setRefreshRetry(null)
+    return {
+      kind: 'completed',
+      response: resolution.response,
+    }
+  }
+
+  if (resolution.result.kind === 'cancelled') {
+    return { kind: 'cancelled' }
+  }
+
+  if (resolution.result.kind === 'timeout') {
+    return { kind: 'timeout' }
+  }
+
+  return {
+    kind: 'completed',
+    response: resolution.result.response,
+  }
 }
 
 async function refreshShipmentContainers(params: RefreshContainersParams): Promise<void> {
@@ -60,58 +456,105 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
   if (containers.length === 0) return
 
   try {
+    if (params.isDisposed()) return
+
+    params.setRefreshError(null)
+    params.setRefreshHint(null)
+    params.setRefreshRetry(null)
     params.setIsRefreshing(true)
 
-    const promises = containers.map((container) =>
-      fetch('/api/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ container: container.number, carrier: data.carrier ?? null }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text().catch(() => '')
-          throw new Error(`refresh failed for ${container.number}: ${res.status} ${text}`)
-        }
-        return res.json().catch(() => ({}))
-      }),
+    const enqueueResults = await Promise.allSettled(
+      containers.map((container) => enqueueContainerRefresh(container.number, data.carrier)),
     )
 
-    await Promise.all(promises)
-  } catch (err) {
-    try {
-      const message = err instanceof Error ? err.message : String(err)
-      let readableMessage = message
-      const nestedMessage = message.match(/"message"\s*:\s*"([^"]+)"/)
-      if (nestedMessage?.[1]) {
-        readableMessage = nestedMessage[1]
-      } else {
-        const afterStatus = message.replace(/^.*?:\s*\d{3}\s*/, '')
-        if (afterStatus && afterStatus.length > 0 && afterStatus.length < message.length) {
-          readableMessage = afterStatus.trim()
-        }
-      }
+    const syncRequestIds: string[] = []
+    const enqueueErrors: string[] = []
 
-      console.error('Failed to refresh containers (readable):', {
-        original: err,
-        message: readableMessage,
-      })
+    for (const result of enqueueResults) {
+      if (result.status === 'fulfilled') {
+        syncRequestIds.push(result.value.syncRequestId)
+      } else {
+        enqueueErrors.push(toReadableErrorMessage(result.reason))
+      }
+    }
+
+    const uniqueSyncRequestIds = Array.from(new Set(syncRequestIds))
+
+    if (uniqueSyncRequestIds.length === 0) {
+      const firstError = enqueueErrors[0] ?? 'Refresh failed'
+      params.setRefreshError(params.toFailedMessage(enqueueErrors.length || 1, firstError))
+      return
+    }
+
+    const waitResult = await waitForTerminalSyncRequests({
+      syncRequestIds: uniqueSyncRequestIds,
+      setRefreshRetry: params.setRefreshRetry,
+      setRealtimeCleanup(cleanup) {
+        params.setRealtimeCleanup(cleanup)
+      },
+      isDisposed: params.isDisposed,
+    })
+
+    if (waitResult.kind === 'cancelled') {
+      return
+    }
+
+    if (waitResult.kind === 'timeout') {
+      params.setRefreshError(params.toTimeoutMessage(REFRESH_SYNC_MAX_RETRIES))
+      return
+    }
+
+    const finalStatusResponse = waitResult.response
+
+    const failedStatuses = finalStatusResponse.requests.filter((requestStatus) => {
+      return requestStatus.status === 'FAILED' || requestStatus.status === 'NOT_FOUND'
+    })
+
+    const statusErrors = failedStatuses.map((requestStatus) => {
+      return requestStatus.lastError ?? `sync_request_${requestStatus.syncRequestId}_failed`
+    })
+
+    const allErrors = [...enqueueErrors, ...statusErrors]
+    if (allErrors.length > 0) {
+      params.setRefreshError(params.toFailedMessage(allErrors.length, allErrors[0]))
+      return
+    }
+
+    params.setLastRefreshDoneAt(toLatestDoneAtOrNow(finalStatusResponse.requests))
+    params.setRefreshError(null)
+  } catch (err) {
+    const readableMessage = toReadableErrorMessage(err)
+
+    console.error('Failed to refresh containers:', {
+      original: err,
+      message: readableMessage,
+    })
+    if (!params.isDisposed()) {
       params.setRefreshError(readableMessage || 'Refresh failed')
-    } catch (loggingErr) {
-      console.error('Failed to refresh containers (fallback):', err, loggingErr)
-      params.setRefreshError('Refresh failed')
     }
   } finally {
-    params.setIsRefreshing(false)
-    try {
-      await Promise.resolve(params.refetch())
-    } catch (err) {
-      console.error('Failed to refetch after refresh:', err)
+    params.setRealtimeCleanup(null)
+
+    const disposed = params.isDisposed()
+
+    if (!disposed) {
+      params.setIsRefreshing(false)
+      params.setRefreshRetry(null)
+    }
+
+    if (!disposed) {
+      try {
+        await params.refreshTrackingData()
+      } catch (err) {
+        console.error('Failed to refresh tracking data after sync:', err)
+      }
     }
   }
 }
 
 type ShipmentViewLayoutProps = {
   readonly refreshError: string | null
+  readonly refreshHint: string | null
   readonly onDismissRefreshError: () => void
   readonly isEditOpen: boolean
   readonly onCloseEdit: () => void
@@ -129,6 +572,7 @@ type ShipmentViewLayoutProps = {
   readonly shipmentLoading: boolean
   readonly shipmentError: unknown
   readonly isRefreshing: boolean
+  readonly refreshRetry: RefreshRetryState | null
   readonly onTriggerRefresh: () => void
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
@@ -221,6 +665,8 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
               <ShipmentHeader
                 data={data()}
                 isRefreshing={props.isRefreshing}
+                refreshRetry={props.refreshRetry}
+                refreshHint={props.refreshHint}
                 onTriggerRefresh={props.onTriggerRefresh}
                 onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
                   props.onOpenEditForShipment(data(), focus)
@@ -271,40 +717,103 @@ function toEditInitialData(data: ShipmentDetailVM): CreateProcessDialogFormData 
   }
 }
 
-export function ShipmentView(props: { params: { id: string } }): JSX.Element {
-  const { locale } = useTranslation()
+function toCreateErrorMessage(value: string | ExistingProcessConflict | null): string {
+  if (typeof value === 'string') return value
+  return value?.message ?? ''
+}
 
-  const [shipment, { refetch }] = createResource(
+function toCreateErrorExisting(
+  value: string | ExistingProcessConflict | null,
+): ExistingProcessConflict | undefined {
+  if (typeof value === 'string') return undefined
+  return value ?? undefined
+}
+
+export function ShipmentView(props: { params: { id: string } }): JSX.Element {
+  const { locale, t, keys } = useTranslation()
+
+  const [shipment, { refetch, mutate }] = createResource(
     () => [props.params.id, locale()] as const,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
 
   const [isRefreshing, setIsRefreshing] = createSignal(false)
+  const [refreshRetry, setRefreshRetry] = createSignal<RefreshRetryState | null>(null)
   const [refreshError, setRefreshError] = createSignal<string | null>(null)
+  const [refreshHint, setRefreshHint] = createSignal<string | null>(null)
+  const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Date | null>(null)
+  let disposed = false
+  let activeRealtimeCleanup: (() => void) | null = null
+
+  onCleanup(() => {
+    if (activeRealtimeCleanup) {
+      activeRealtimeCleanup()
+      activeRealtimeCleanup = null
+    }
+    disposed = true
+  })
+
+  const refreshTrackingData = () =>
+    refreshTrackingDataOnly({
+      processId: props.params.id,
+      locale: locale(),
+      current: shipment(),
+      apply: mutate,
+    })
 
   const triggerRefresh = async () => {
+    const doneAt = lastRefreshDoneAt()
+    if (doneAt) {
+      const elapsedMs = Date.now() - doneAt.getTime()
+      if (elapsedMs < REFRESH_SOFT_BLOCK_WINDOW_MS) {
+        setRefreshError(null)
+        setRefreshHint(
+          buildRecentUpdateHint({
+            elapsedMs,
+            toSecondsLabel: (count) =>
+              t(keys.shipmentView.refreshRecentlyUpdatedSeconds, { count }),
+            toMinutesLabel: (count) =>
+              t(keys.shipmentView.refreshRecentlyUpdatedMinutes, { count }),
+          }),
+        )
+        return
+      }
+    }
+
+    setRefreshHint(null)
+
     await refreshShipmentContainers({
       data: shipment(),
       setIsRefreshing,
       setRefreshError,
-      refetch,
+      setRefreshHint,
+      setRefreshRetry,
+      setLastRefreshDoneAt,
+      setRealtimeCleanup(cleanup) {
+        if (activeRealtimeCleanup) {
+          activeRealtimeCleanup()
+          activeRealtimeCleanup = null
+        }
+        activeRealtimeCleanup = cleanup
+      },
+      refreshTrackingData,
+      isDisposed: () => disposed,
+      toTimeoutMessage: (totalRetries) =>
+        t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries }),
+      toFailedMessage: (failedCount, firstError) =>
+        t(keys.shipmentView.refreshSyncFailed, { failedCount, firstError }),
     })
   }
 
-  // Edit dialog state
   const [isEditOpen, setIsEditOpen] = createSignal(false)
   const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
     null,
   )
-  // which field should receive focus when opening the edit dialog (null = none)
   const [focusFieldOnOpen, setFocusFieldOnOpen] = createSignal<'reference' | 'carrier' | null>(null)
 
-  // Create dialog state (header "Create process" button uses this)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const navigate = useNavigate()
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
-
-  // Copy button state is handled by shared `CopyButton` component
 
   const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
@@ -334,7 +843,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       try {
         await updateProcessRequest(props.params.id, input)
 
-        // Refresh data
         await refetch()
         setIsEditOpen(false)
       } catch (err) {
@@ -352,14 +860,12 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       if (conflict) {
         setCreateError(conflict)
       }
-      // Could show other UI error; for now just log and close
       setIsEditOpen(false)
     }
   }
 
   const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
 
-  // Set the first container as selected when data loads
   const selectedContainer = createMemo(() => {
     const data = shipment()
     if (!data) return null
@@ -373,25 +879,12 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     return containers[0]
   })
 
-  // Update selected container when data loads
   createEffect(() => {
     const data = shipment()
     if (data && data.containers.length > 0 && !selectedContainerId()) {
       setSelectedContainerId(data.containers[0].id)
     }
   })
-
-  const createErrorMessage = () => {
-    const value = createError()
-    if (typeof value === 'string') return value
-    return value?.message ?? ''
-  }
-
-  const createErrorExisting = () => {
-    const value = createError()
-    if (typeof value === 'string') return undefined
-    return value ?? undefined
-  }
 
   const openEditForShipment = (
     shipmentData: ShipmentDetailVM,
@@ -414,6 +907,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   return (
     <ShipmentViewLayout
       refreshError={refreshError()}
+      refreshHint={refreshHint()}
       onDismissRefreshError={() => setRefreshError(null)}
       isEditOpen={isEditOpen()}
       onCloseEdit={() => {
@@ -427,13 +921,14 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       onCloseCreate={() => setIsCreateDialogOpen(false)}
       onCreateSubmit={handleCreateSubmit}
       hasCreateError={Boolean(createError())}
-      createErrorMessage={createErrorMessage()}
-      createErrorExisting={createErrorExisting()}
+      createErrorMessage={toCreateErrorMessage(createError())}
+      createErrorExisting={toCreateErrorExisting(createError())}
       onAcknowledgeCreateError={() => setCreateError(null)}
       shipmentData={shipment()}
       shipmentLoading={shipment.loading}
       shipmentError={shipment.error}
       isRefreshing={isRefreshing()}
+      refreshRetry={refreshRetry()}
       onTriggerRefresh={triggerRefresh}
       selectedContainerId={selectedContainerId()}
       onSelectContainer={setSelectedContainerId}

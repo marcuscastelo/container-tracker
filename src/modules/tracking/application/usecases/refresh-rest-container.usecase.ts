@@ -10,19 +10,17 @@ type ContainerLookupPort = {
   }): Promise<{ readonly containers: readonly RefreshContainerRecord[] }>
 }
 
-type FetchAndProcessPort = {
-  fetchAndProcess(
-    containerId: string,
-    containerNumber: string,
-    provider: Provider,
-  ): Promise<{
-    readonly snapshot: { readonly id: string }
-    readonly pipeline: {
-      readonly newObservations: readonly unknown[]
-      readonly newAlerts: readonly unknown[]
-      readonly status: string
-    }
-  } | null>
+type EnqueueSyncRequestPort = {
+  enqueueSyncRequest(command: {
+    readonly provider: Provider
+    readonly refType: 'container'
+    readonly refValue: string
+    readonly priority: number
+  }): Promise<{
+    readonly id: string
+    readonly status: 'PENDING' | 'LEASED'
+    readonly isNew: boolean
+  }>
 }
 
 export type RefreshRestContainerCommand = {
@@ -32,42 +30,26 @@ export type RefreshRestContainerCommand = {
 
 export type RefreshRestContainerResult =
   | {
-      readonly kind: 'redirect'
-      readonly redirectPath: string
-    }
-  | {
       readonly kind: 'container_not_found'
       readonly container: string
     }
   | {
-      readonly kind: 'no_rest_fetcher'
-      readonly provider: Provider
-    }
-  | {
-      readonly kind: 'ok'
+      readonly kind: 'queued'
       readonly container: string
-      readonly snapshotId: string
-      readonly status: string
-      readonly newObservationsCount: number
-      readonly newAlertsCount: number
+      readonly syncRequestId: string
+      readonly queued: true
+      readonly deduped: boolean
     }
 
 export type RefreshRestContainerDeps = {
   readonly containerLookup: ContainerLookupPort
-  readonly fetchAndProcess: FetchAndProcessPort
+  readonly enqueueSyncRequest: EnqueueSyncRequestPort
 }
 
 export function createRefreshRestContainerUseCase(deps: RefreshRestContainerDeps) {
   return async function execute(
     command: RefreshRestContainerCommand,
   ): Promise<RefreshRestContainerResult> {
-    if (command.provider === 'maersk') {
-      return {
-        kind: 'redirect',
-        redirectPath: `/api/refresh-maersk/${encodeURIComponent(command.container)}`,
-      }
-    }
-
     const lookup = await deps.containerLookup.findByNumbers({
       containerNumbers: [command.container],
     })
@@ -80,26 +62,19 @@ export function createRefreshRestContainerUseCase(deps: RefreshRestContainerDeps
       }
     }
 
-    const result = await deps.fetchAndProcess.fetchAndProcess(
-      container.id,
-      command.container,
-      command.provider,
-    )
-
-    if (!result) {
-      return {
-        kind: 'no_rest_fetcher',
-        provider: command.provider,
-      }
-    }
+    const enqueueResult = await deps.enqueueSyncRequest.enqueueSyncRequest({
+      provider: command.provider,
+      refType: 'container',
+      refValue: command.container,
+      priority: 0,
+    })
 
     return {
-      kind: 'ok',
+      kind: 'queued',
       container: command.container,
-      snapshotId: result.snapshot.id,
-      status: result.pipeline.status,
-      newObservationsCount: result.pipeline.newObservations.length,
-      newAlertsCount: result.pipeline.newAlerts.length,
+      syncRequestId: enqueueResult.id,
+      queued: true,
+      deduped: !enqueueResult.isNew,
     }
   }
 }

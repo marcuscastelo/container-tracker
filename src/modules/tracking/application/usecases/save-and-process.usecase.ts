@@ -18,6 +18,7 @@ export type SaveAndProcessCommand = {
   readonly provider: Provider
   readonly payload: unknown
   readonly parseError?: string | null
+  readonly fetchedAt?: string
 }
 
 /**
@@ -41,7 +42,7 @@ export async function saveAndProcess(
   const newSnapshot: NewSnapshot = {
     container_id: cmd.containerId,
     provider: cmd.provider,
-    fetched_at: new Date().toISOString(),
+    fetched_at: cmd.fetchedAt ?? new Date().toISOString(),
     payload: cmd.payload,
     parse_error: cmd.parseError ?? null,
   }

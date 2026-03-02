@@ -225,6 +225,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_by: string | null
+          leased_until: string | null
+          priority: number
+          provider: string
+          ref_type: string
+          ref_value: string
+          status: Database['public']['Enums']['sync_request_status']
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          leased_by?: string | null
+          leased_until?: string | null
+          priority?: number
+          provider: string
+          ref_type: string
+          ref_value: string
+          status?: Database['public']['Enums']['sync_request_status']
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          leased_by?: string | null
+          leased_until?: string | null
+          priority?: number
+          provider?: string
+          ref_type?: string
+          ref_value?: string
+          status?: Database['public']['Enums']['sync_request_status']
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tracking_alerts: {
         Row: {
           acked_at: string | null
@@ -292,10 +340,58 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      enqueue_sync_request: {
+        Args: {
+          p_priority?: number
+          p_provider: string
+          p_ref_type?: string
+          p_ref_value?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          id: string
+          is_new: boolean
+          status: Database['public']['Enums']['sync_request_status']
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'sync_requests'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      lease_sync_requests: {
+        Args: {
+          p_agent_id: string
+          p_lease_minutes?: number
+          p_limit?: number
+          p_tenant_id: string
+        }
+        Returns: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          leased_by: string | null
+          leased_until: string | null
+          priority: number
+          provider: string
+          ref_type: string
+          ref_value: string
+          status: Database['public']['Enums']['sync_request_status']
+          tenant_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'sync_requests'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
-      [_ in never]: never
+      sync_request_status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -420,6 +516,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      sync_request_status: ['PENDING', 'LEASED', 'DONE', 'FAILED'],
+    },
   },
 } as const
