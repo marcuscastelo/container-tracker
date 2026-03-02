@@ -42,6 +42,21 @@ pnpm run agent:setup
 
 Installer script: `tools/agent/installer/installer.iss`
 
+### 4) Linux E2E simulation (without `iscc`)
+
+```bash
+pnpm run agent:e2e:linux
+```
+
+This command simulates setup effects on Linux:
+
+- materializes an install-like layout (`Program Files` + `ProgramData`) under `/tmp`
+- uses `tools/agent/installer/ContainerTrackerAgent.xml` as the runtime contract
+- writes `bootstrap.env`, runs agent, performs runtime enrollment against a local mock backend
+- validates generated `config.env`, consumed bootstrap redaction, and authenticated target polling
+
+Use this during development to validate installer/runtime wiring and enrollment behavior before running `iscc` on Windows.
+
 ## What the user sees
 
 - Standard installer flow only.
