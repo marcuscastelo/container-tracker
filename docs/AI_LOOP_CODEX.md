@@ -28,6 +28,32 @@ pnpm run ai:loop:plan -- "Build dashboard with saved filters" .ralph-loop/prd.js
 
 Or pass a prompt file as first argument.
 
+## One Command Flow (Markdown -> Ralph)
+
+If you already have a PRD markdown (for example copied from ChatGPT web), run everything with one command:
+
+```bash
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md
+```
+
+This command will:
+
+1. Generate `.ralph-loop/docs-ralph-loop/prd.json` from your markdown (or reuse JSON source if provided).
+2. Generate `.ralph-loop/docs-ralph-loop/input.json`.
+3. Start Ralph execution immediately.
+
+The flow works from terminal only. VS Code can be closed after you save the PRD file.
+
+Useful options:
+
+```bash
+# Prepare files only (no execution)
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --prepare-only
+
+# Limit iterations and retries
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --exec-retries 3
+```
+
 ## Build Execution Input
 
 Create loop input JSON:
@@ -95,3 +121,59 @@ To use Claude later:
 1. Install/auth Claude CLI inside container.
 2. Set `RALPH_AGENT=claude`.
 3. Reuse the same `pnpm run ai:loop:*` commands.
+
+## Troubleshooting
+
+### Auth failure (Codex)
+
+Symptoms:
+
+- `pnpm run ai:loop:doctor` reports missing authentication
+- `codex login status` fails
+
+Checks and fixes:
+
+1. Verify login:
+
+```bash
+codex login status
+```
+
+2. Authenticate if needed:
+
+```bash
+codex login --with-api-key
+```
+
+3. In devcontainer, ensure host credentials are mounted at `/home/node/.codex`.
+4. Run diagnostics again:
+
+```bash
+pnpm run ai:loop:doctor
+```
+
+### Stream disconnect during `ai:loop:exec`
+
+Symptoms:
+
+- Loop process exits unexpectedly with transport/stream interruption
+- Iteration output appears truncated
+
+Recovery flow:
+
+1. Inspect latest raw output:
+
+```bash
+cat .ralph-loop/last-exec-output.txt
+```
+
+2. Confirm persisted state:
+   - Plan: `.ralph-loop/prd.json`
+   - Progress log: `.ralph-loop/progress.txt`
+3. Re-run the same command:
+
+```bash
+pnpm run ai:loop:exec -- .ralph-loop/input.json
+```
+
+The loop is append-only and reads persisted files, so it safely continues from the current state.

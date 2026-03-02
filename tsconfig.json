@@ -17,5 +17,5 @@
       "~/*": ["./src/*"]
     }
   },
-  "exclude": ["marucs-src/**/*"]
+  "exclude": ["marucs-src/**/*", "tools/ralph-loop/**/*", ".ralph-loop/**/*"]
 }
