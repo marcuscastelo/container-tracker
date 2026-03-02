@@ -148,16 +148,18 @@ describe('refresh controllers', () => {
   })
 
   it('returns maersk error response from usecase', async () => {
+    const refreshMaerskUseCase = vi.fn(async () => ({
+      kind: 'error' as const,
+      status: 403,
+      body: {
+        error: 'Access Denied by Akamai',
+        hint: 'Try warmed profile',
+      },
+    }))
+
     const controllers = createRefreshControllers({
       refreshRestUseCase: vi.fn(),
-      refreshMaerskUseCase: vi.fn(async () => ({
-        kind: 'error' as const,
-        status: 403,
-        body: {
-          error: 'Access Denied by Akamai',
-          hint: 'Try warmed profile',
-        },
-      })),
+      refreshMaerskUseCase,
     })
 
     const request = new Request('http://localhost/api/refresh-maersk/MRKU1234567', {
@@ -173,5 +175,13 @@ describe('refresh controllers', () => {
 
     expect(response.status).toBe(403)
     expect(body.error).toContain('Access Denied')
+    expect(refreshMaerskUseCase).toHaveBeenCalledTimes(1)
+    expect(refreshMaerskUseCase).toHaveBeenCalledWith({
+      container: 'MRKU1234567',
+      headless: true,
+      hold: false,
+      timeoutMs: 60000,
+      userDataDir: null,
+    })
   })
 })

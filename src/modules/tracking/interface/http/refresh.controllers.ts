@@ -28,6 +28,11 @@ function toBooleanFlag(value: string | undefined): boolean {
   return value === '1' || value === 'true'
 }
 
+function toHeadlessFlag(value: string | undefined): boolean {
+  if (value === undefined) return true
+  return toBooleanFlag(value)
+}
+
 function toTimeoutMs(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? '60000', 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000
@@ -131,7 +136,7 @@ export function createRefreshControllers(deps: RefreshControllersDeps) {
 
       const result = await deps.refreshMaerskUseCase({
         container: parsedParams.data.container,
-        headless: toBooleanFlag(parsedQuery.data.headless),
+        headless: toHeadlessFlag(parsedQuery.data.headless),
         hold: toBooleanFlag(parsedQuery.data.hold),
         timeoutMs: toTimeoutMs(parsedQuery.data.timeout),
         userDataDir: parsedQuery.data.userDataDir ?? process.env.CHROME_USER_DATA_DIR ?? null,
