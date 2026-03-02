@@ -18,6 +18,11 @@
     "ui:complexity:ci": "pnpm run ui:complexity:report && pnpm run ui:complexity:allowlist:check",
     "flint": "pnpm run fix && pnpm run lint",
     "check": "run-p flint type-check test",
+    "ai:loop:doctor": "bash scripts/ai/ralph-loop-doctor.sh",
+    "ai:loop:plan": "bash scripts/ai/ralph-loop-plan.sh",
+    "ai:loop:input": "bash scripts/ai/ralph-loop-make-input.sh",
+    "ai:loop:exec": "bash scripts/ai/ralph-loop-exec.sh",
+    "ai:loop:update": "bash scripts/ai/ralph-loop-update.sh",
     "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip"
   },
