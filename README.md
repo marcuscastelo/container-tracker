@@ -81,7 +81,24 @@ pnpm run type-check  # checagem de tipos
 pnpm run lint        # lint + regras
 pnpm run check       # fix/lint + type-check + test
 pnpm run i18n:check  # valida chaves de i18n
+pnpm run maersk:smoke:puppeteer # smoke técnico de launch headless do Puppeteer
 ```
+
+### Smoke técnico Puppeteer (devcontainer)
+
+Use este comando para validar rapidamente se o browser do devcontainer está compatível com launch headless:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+```
+
+Saída esperada em sucesso: `[maersk-smoke] PASS`.
+
+Em falha, o comando classifica a causa com hints acionáveis:
+
+- `missing_browser_binary`: Chrome/Chromium não encontrado no ambiente.
+- `invalid_chrome_path`: `CHROME_PATH` definido para caminho inválido/não executável.
+- `launch_incompatibility`: browser encontrado, mas `puppeteer.launch(...)` falhou.
 
 ### Loop autônomo com Codex (Ralph + Devcontainer)
 

@@ -18,6 +18,7 @@
     "ui:complexity:ci": "pnpm run ui:complexity:report && pnpm run ui:complexity:allowlist:check",
     "flint": "pnpm run fix && pnpm run lint",
     "check": "run-p flint type-check test",
+    "maersk:smoke:puppeteer": "node scripts/maersk-puppeteer-smoke.mjs",
     "ai:loop:doctor": "bash scripts/ai/ralph-loop-doctor.sh",
     "ai:loop:start": "bash scripts/ai/ralph-loop-start.sh",
     "ai:loop:plan": "bash scripts/ai/ralph-loop-plan.sh",
