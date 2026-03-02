@@ -2,5 +2,6 @@ node_modules/
 .env
 .vinxi/
 .output/
+**/.pnpm-store/**
 
 marucs-src/
