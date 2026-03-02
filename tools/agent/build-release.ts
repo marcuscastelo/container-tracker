@@ -45,6 +45,21 @@ const REQUIRED_RUNTIME_DEPENDENCY_FILES = [
   'app/node_modules/@supabase/functions-js/package.json',
 ] as const
 
+const NODE_RUNTIME_REMOVABLE_ENTRIES = [
+  'corepack',
+  'corepack.cmd',
+  'install_tools.bat',
+  'node_modules/corepack',
+  'node_modules/npm',
+  'nodevars.bat',
+  'npm',
+  'npm.cmd',
+  'npm.ps1',
+  'npx',
+  'npx.cmd',
+  'npx.ps1',
+] as const
+
 type RuntimeDependencyResolution = {
   readonly packageName: string
   readonly packageDir: string
@@ -513,6 +528,14 @@ async function pruneReleaseAppForRuntime(releaseAppDir: string): Promise<void> {
   await pruneRuntimeNodeModulesArtifacts(releaseAppDir)
 }
 
+async function pruneWindowsNodeRuntime(releaseNodeDir: string): Promise<void> {
+  for (const relativePath of NODE_RUNTIME_REMOVABLE_ENTRIES) {
+    await fs.rm(path.join(releaseNodeDir, relativePath), { recursive: true, force: true })
+  }
+
+  console.log('[agent:release] stripped npm/corepack from embedded node runtime')
+}
+
 async function runPreflightChecks(command: {
   readonly repoRoot: string
   readonly releaseDir: string
@@ -703,6 +726,7 @@ async function buildRelease(): Promise<void> {
 
   const extractedNodeDir = await findExtractedNodeDirectory(nodeExtractDir)
   await fs.cp(extractedNodeDir, releaseNodeDir, { recursive: true })
+  await pruneWindowsNodeRuntime(releaseNodeDir)
 
   const winswDownloadUrl = `https://github.com/winsw/winsw/releases/download/${winswVersion}/WinSW-x64.exe`
   const winswExePath = path.join(cacheDownloadDir, `WinSW-x64-${winswVersion}.exe`)
