@@ -30,7 +30,7 @@ create table if not exists public.tracking_agents (
   agent_version text not null,
   agent_token text not null,
   interval_sec integer not null default 60,
-  limit integer not null default 10,
+  max_concurrent integer not null default 10,
   supabase_url text null,
   supabase_anon_key text null,
   maersk_enabled boolean not null default false,
@@ -42,7 +42,7 @@ create table if not exists public.tracking_agents (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint tracking_agents_tenant_machine_unique unique (tenant_id, machine_fingerprint),
-  constraint tracking_agents_limit_check check (limit between 1 and 100),
+  constraint tracking_agents_max_concurrent_check check (max_concurrent between 1 and 100),
   constraint tracking_agents_interval_check check (interval_sec > 0),
   constraint tracking_agents_timeout_check check (maersk_timeout_ms > 0)
 );

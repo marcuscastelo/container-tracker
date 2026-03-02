@@ -27,7 +27,7 @@ const TrackingAgentRowSchema = z.object({
   agent_version: z.string().min(1),
   agent_token: z.string().min(1),
   interval_sec: z.number().int().positive(),
-  limit: z.number().int().min(1).max(100),
+  max_concurrent: z.number().int().min(1).max(100),
   supabase_url: z.string().nullable(),
   supabase_anon_key: z.string().nullable(),
   maersk_enabled: z.boolean(),
@@ -81,7 +81,7 @@ function mapTrackingAgentRow(row: z.infer<typeof TrackingAgentRowSchema>) {
     agentVersion: row.agent_version,
     agentToken: row.agent_token,
     intervalSec: row.interval_sec,
-    limit: row.limit,
+    limit: row.max_concurrent,
     supabaseUrl: row.supabase_url,
     supabaseAnonKey: row.supabase_anon_key,
     maerskEnabled: row.maersk_enabled,
@@ -120,7 +120,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
       const result = await supabaseServer
         .from('tracking_agents')
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,limit,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
+          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
         )
         .eq('tenant_id', tenantId)
         .eq('machine_fingerprint', machineFingerprint)
@@ -148,7 +148,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           agent_version: agentVersion,
           agent_token: agentToken,
           interval_sec: serverEnv.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
-          limit: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
+          max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
           supabase_url: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? null,
           supabase_anon_key: serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null,
           maersk_enabled: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED,
@@ -158,7 +158,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           last_enrolled_at: new Date().toISOString(),
         })
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,limit,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
+          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
         )
         .single()
 
@@ -191,7 +191,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
         .eq('tenant_id', tenantId)
         .eq('machine_fingerprint', machineFingerprint)
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,limit,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
+          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
         )
         .single()
 
