@@ -11,6 +11,7 @@
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.codex,target=/home/node/.codex,type=bind,consistency=cached"
   ],
   "containerEnv": {
+    "CHROME_PATH": "/usr/bin/chromium",
     "DEVCONTAINER": "1",
     "RALPH_AGENT": "codex",
     "RALPH_ALLOW_DANGEROUS_EXEC": "1"
