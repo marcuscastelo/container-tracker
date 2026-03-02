@@ -107,6 +107,11 @@ export type MaerskCaptureService = {
   capture(command: CaptureMaerskCommand): Promise<MaerskCaptureResult>
 }
 
+function shouldWriteDevtoolsDiagnostics(): boolean {
+  const value = process.env.MAERSK_WRITE_DEVTOOLS_JSON
+  return value === '1' || value === 'true'
+}
+
 function isExecutable(filePath: string): boolean {
   if (!fs.existsSync(filePath)) return false
   try {
@@ -219,21 +224,13 @@ export function createMaerskCaptureService(): MaerskCaptureService {
       let browser: Browser | null = null
 
       const projectRoot = process.cwd()
-      const collectionsDir = path.join(projectRoot, 'collections')
-      if (!fs.existsSync(collectionsDir)) {
-        return {
-          kind: 'error',
-          status: 500,
-          body: { error: 'collections directory not found' },
-        }
-      }
-
-      const providerDir = path.join(collectionsDir, 'maersk')
-      if (!fs.existsSync(providerDir)) {
+      const writeDiagnostics = shouldWriteDevtoolsDiagnostics()
+      let diagnosticsPath: string | null = null
+      if (writeDiagnostics) {
+        const providerDir = path.join(projectRoot, 'collections', 'maersk')
         fs.mkdirSync(providerDir, { recursive: true })
+        diagnosticsPath = path.join(providerDir, `${command.container}.json.devtools.json`)
       }
-
-      const diagnosticsPath = path.join(providerDir, `${command.container}.json.devtools.json`)
 
       if (command.userDataDir && !fs.existsSync(command.userDataDir)) {
         return {
@@ -554,7 +551,13 @@ export function createMaerskCaptureService(): MaerskCaptureService {
             blockedResponse: captured.body,
           }
 
-          fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+          if (diagnosticsPath) {
+            try {
+              fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+            } catch (error) {
+              console.warn('[maersk-refresh] Could not write diagnostics file:', error)
+            }
+          }
 
           return {
             kind: 'error',
@@ -611,13 +614,15 @@ export function createMaerskCaptureService(): MaerskCaptureService {
           },
         }
 
-        try {
-          fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
-          console.log(
-            `[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`,
-          )
-        } catch (error) {
-          console.warn('[maersk-refresh] Could not write diagnostics file:', error)
+        if (diagnosticsPath) {
+          try {
+            fs.writeFileSync(diagnosticsPath, JSON.stringify(diagnostics, null, 2), 'utf-8')
+            console.log(
+              `[maersk-refresh] Wrote diagnostics to ${path.relative(projectRoot, diagnosticsPath)}`,
+            )
+          } catch (error) {
+            console.warn('[maersk-refresh] Could not write diagnostics file:', error)
+          }
         }
 
         return {
