@@ -17,6 +17,8 @@
       "!build",
       "!out",
       "!.output",
+      "!tools/ralph-loop",
+      "!.ralph-loop",
       "!coverage",
       "!public",
       "!out",

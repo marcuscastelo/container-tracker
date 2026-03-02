@@ -223,3 +223,64 @@ Rules:
 Why:
 
 - Git operations (especially signed commits) can fail inside sandbox due to missing agent/key access and askpass crashes.
+
+---
+
+## 16) Ralph Loop + Devcontainer Patterns
+
+- `tools/ralph-loop` is an external Git submodule; treat it as third-party code and do not apply root lint/type-check rules to it.
+- Use the local wrappers in `scripts/ai/` (exposed as `pnpm run ai:loop:*`) instead of calling `tools/ralph-loop/ralph.sh` directly.
+- Devcontainer policy is commit-inside-container + push-on-host. In container, `git push` and destructive local Git commands are intentionally blocked by guard scripts.
+- For Maersk Puppeteer flows in devcontainer, keep Chromium provisioned in `.devcontainer/Dockerfile` and set `CHROME_PATH=/usr/bin/chromium` in `.devcontainer/devcontainer.json`.
+- Keep Chromium version pinned via `.devcontainer/devcontainer.json` `build.args.CHROMIUM_VERSION` and install it as an exact package version in `.devcontainer/Dockerfile`.
+- Do not add Chromium auto-update logic to `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, or refresh workflows; version bumps must happen in explicit PRs.
+- Before debugging `/api/refresh-maersk/:container`, run `pnpm run maersk:smoke:puppeteer` to validate browser launch and classify failures as `missing_browser_binary`, `invalid_chrome_path`, or `launch_incompatibility`.
+- For `/api/refresh-maersk/:container` smoke, minimum pass criterion is response output not containing `Browser launch failed`; provider-side `403/502` responses are acceptable for this smoke if launch succeeded.
+
+---
+
+## 17) PRD-to-Implementation Workflow (Canonical)
+
+When the request is to implement an existing PRD, the default path is:
+
+1. Place or identify the PRD:
+   - Markdown: `tasks/prd-<feature>.md`
+   - JSON (Ralph schema): `.ralph-loop/<feature>/prd.json`
+2. Start with one command:
+   - `pnpm run ai:loop:start -- <feature-key> <prd-source>`
+3. Review results:
+   - Plan: `.ralph-loop/<feature-key>/prd.json`
+   - Progress log: `.ralph-loop/<feature-key>/progress.txt`
+   - Input: `.ralph-loop/<feature-key>/input.json`
+4. Push only from host after commits are created.
+
+Rules:
+
+- If a valid existing PRD is present, do not re-plan/refine before execution.
+- Prefer `ai:loop:start` over chaining `plan -> input -> exec` manually.
+- Use `--prepare-only` when user wants artifacts generated without running loop execution.
+
+---
+
+## 18) Skills (Global + Versioned Snapshot)
+
+Global runtime skills live under:
+
+- `~/.codex/skills/*`
+
+Versioned snapshot (for repo history/review) lives under:
+
+- `tools/codex-skills-global/*`
+
+Sync policy:
+
+- After creating/updating global skills, run `pnpm run ai:skills:sync`.
+- Commit snapshot changes so team can review skill evolution.
+- Do not edit snapshot files manually; edit global source skill first, then sync.
+
+Current custom automation skill:
+
+- `implement-existing-prd`:
+  - Detects best existing PRD (`md/json`)
+  - Infers feature key
+  - Runs `pnpm run ai:loop:start` with sensible defaults

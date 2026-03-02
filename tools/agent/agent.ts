@@ -639,10 +639,13 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
   return headers
 }
 
-async function fetchTargets(config: RuntimeConfig): Promise<readonly AgentTarget[]> {
+async function fetchTargets(
+  config: RuntimeConfig,
+  limit: number,
+): Promise<readonly AgentTarget[]> {
   const url = new URL('/api/agent/targets', config.BACKEND_URL)
   url.searchParams.set('tenant_id', config.TENANT_ID)
-  url.searchParams.set('limit', String(config.LIMIT))
+  url.searchParams.set('limit', String(limit))
 
   const response = await fetch(url, {
     method: 'GET',
@@ -743,24 +746,40 @@ async function ingestSnapshot(
   console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}`)
 }
 
+async function processTarget(config: RuntimeConfig, target: AgentTarget): Promise<void> {
+  try {
+    const scrape = await scrapeTarget(config, target)
+    await ingestSnapshot(config, target, scrape)
+  } catch (error) {
+    console.error(`[agent] target ${target.sync_request_id} failed: ${toErrorMessage(error)}`)
+    console.warn(
+      `[agent] target ${target.sync_request_id} will be available again after lease expiration`,
+    )
+  }
+}
+
 async function runOnce(config: RuntimeConfig): Promise<void> {
-  const targets = await fetchTargets(config)
-  if (targets.length === 0) {
-    console.log('[agent] no targets available')
-    return
+  const leaseBatchSize = 1
+  let processed = 0
+
+  while (processed < config.LIMIT) {
+    const remaining = config.LIMIT - processed
+    const targets = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
+    if (targets.length === 0) {
+      if (processed === 0) {
+        console.log('[agent] no targets available')
+      }
+      break
+    }
+
+    for (const target of targets) {
+      await processTarget(config, target)
+      processed += 1
+    }
   }
 
-  console.log(`[agent] received ${targets.length} target(s)`)
-  for (const target of targets) {
-    try {
-      const scrape = await scrapeTarget(config, target)
-      await ingestSnapshot(config, target, scrape)
-    } catch (error) {
-      console.error(`[agent] target ${target.sync_request_id} failed: ${toErrorMessage(error)}`)
-      console.warn(
-        `[agent] target ${target.sync_request_id} will be available again after lease expiration`,
-      )
-    }
+  if (processed > 0) {
+    console.log(`[agent] cycle processed ${processed} target(s)`)
   }
 }
 
