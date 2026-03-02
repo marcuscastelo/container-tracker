@@ -35,7 +35,7 @@
     "agent:setup:native": "node scripts/agent/setup-installer.mjs --mode=native",
     "agent:e2e:linux": "pnpm run agent:build && node scripts/agent/e2e-install-linux.mjs",
     "agent:rebuild-restart": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/agent/rebuild-reinstall.ps1",
-    "supabase:gen-types": "echo '/* eslint-disable @typescript-eslint/no-redundant-type-constituents */' > src/shared/supabase/database.types.ts && yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh >> src/shared/supabase/database.types.ts && pnpm run fix",
+    "supabase:gen-types": "yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh > src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip"
   },
   "dependencies": {

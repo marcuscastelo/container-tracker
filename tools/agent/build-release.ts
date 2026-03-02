@@ -44,21 +44,6 @@ const REQUIRED_CONFIG_KEYS = [
 
 const REQUIRED_RUNTIME_DEPENDENCY_PACKAGES = ['@supabase/functions-js'] as const
 
-const NODE_RUNTIME_REMOVABLE_ENTRIES = [
-  'corepack',
-  'corepack.cmd',
-  'install_tools.bat',
-  'node_modules/corepack',
-  'node_modules/npm',
-  'nodevars.bat',
-  'npm',
-  'npm.cmd',
-  'npm.ps1',
-  'npx',
-  'npx.cmd',
-  'npx.ps1',
-] as const
-
 const STATIC_GATE_FILES = [
   'tools/agent/installer/installer.iss',
   'tools/agent/agent.ts',
@@ -724,14 +709,6 @@ async function pruneReleaseAppForRuntime(
   await pruneRuntimeNodeModulesArtifacts(releaseAppDir)
 }
 
-async function pruneWindowsNodeRuntime(releaseNodeDir: string): Promise<void> {
-  for (const relativePath of NODE_RUNTIME_REMOVABLE_ENTRIES) {
-    await fs.rm(path.join(releaseNodeDir, relativePath), { recursive: true, force: true })
-  }
-
-  console.log('[agent:release] stripped npm/corepack from embedded node runtime')
-}
-
 async function runPreflightChecks(command: {
   readonly repoRoot: string
   readonly releaseDir: string
@@ -780,10 +757,7 @@ async function runPreflightChecks(command: {
       errors.push('installer.iss missing x64-only setup directives')
     }
 
-    if (
-      !installerContentRaw.includes('{app}') ||
-      !installerContentRaw.includes('{localappdata}')
-    ) {
+    if (!installerContentRaw.includes('{app}') || !installerContentRaw.includes('{localappdata}')) {
       errors.push('installer.iss must reference both {app} and {localappdata}')
     }
 
@@ -809,7 +783,8 @@ async function runPreflightChecks(command: {
     const schtasksCreateLines = installerContentRaw
       .split(/\r?\n/)
       .filter(
-        (line) => line.includes('Filename: "schtasks.exe"') && line.toLowerCase().includes('/create'),
+        (line) =>
+          line.includes('Filename: "schtasks.exe"') && line.toLowerCase().includes('/create'),
       )
 
     if (schtasksCreateLines.length >= 2) {
@@ -932,8 +907,7 @@ async function buildRelease(): Promise<void> {
   const cacheDownloadDir = path.join(toolsAgentDir, '.cache', 'downloads')
 
   const nodeVersion = process.env.AGENT_NODE_WINDOWS_VERSION ?? DEFAULT_NODE_WINDOWS_VERSION
-  const agentDeployWorkspace =
-    process.env.AGENT_DEPLOY_WORKSPACE ?? DEFAULT_AGENT_DEPLOY_WORKSPACE
+  const agentDeployWorkspace = process.env.AGENT_DEPLOY_WORKSPACE ?? DEFAULT_AGENT_DEPLOY_WORKSPACE
 
   const compiledAgentFile = path.join(distDir, 'tools', 'agent', 'agent.js')
   const compiledUpdaterFile = path.join(distDir, 'tools', 'agent', 'updater.js')

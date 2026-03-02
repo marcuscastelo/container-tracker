@@ -627,10 +627,7 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
   return headers
 }
 
-async function fetchTargets(
-  config: RuntimeConfig,
-  limit: number,
-): Promise<readonly AgentTarget[]> {
+async function fetchTargets(config: RuntimeConfig, limit: number): Promise<readonly AgentTarget[]> {
   const url = new URL('/api/agent/targets', config.BACKEND_URL)
   url.searchParams.set('tenant_id', config.TENANT_ID)
   url.searchParams.set('limit', String(limit))

@@ -252,8 +252,7 @@ async function runLinuxE2E() {
     throw new Error('Missing compiled agent. Run "pnpm run agent:build" first.')
   }
 
-  const sandboxRoot =
-    process.env.AGENT_E2E_SANDBOX_DIR ?? '/tmp/container-tracker-agent-linux-e2e'
+  const sandboxRoot = process.env.AGENT_E2E_SANDBOX_DIR ?? '/tmp/container-tracker-agent-linux-e2e'
   const localAppDataRoot = path.join(sandboxRoot, 'LocalAppData')
   const installRoot = path.join(localAppDataRoot, 'Programs', 'ContainerTrackerAgent')
   const dataRoot = path.join(localAppDataRoot, 'ContainerTracker')

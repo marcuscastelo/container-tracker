@@ -1,6 +1,5 @@
+import { computeBackoffDelayMs, ENROLL_BACKOFF_CONFIG } from '@tools/agent/backoff'
 import { describe, expect, it } from 'vitest'
-
-import { computeBackoffDelayMs, ENROLL_BACKOFF_CONFIG } from './backoff'
 
 describe('agent enroll backoff', () => {
   it('follows exponential growth with cap (without jitter)', () => {
