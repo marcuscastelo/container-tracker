@@ -36,18 +36,6 @@ const TrackingAgentRowSchema = z.object({
   maersk_user_data_dir: z.string().nullable(),
 })
 
-function getTrackingAgentLimit(row: z.infer<typeof TrackingAgentRowSchema>): number {
-  if (typeof row.limit === 'number') {
-    return row.limit
-  }
-
-  if (typeof row.max_concurrent === 'number') {
-    return row.max_concurrent
-  }
-
-  throw new Error('tracking_agents row missing limit/max_concurrent value')
-}
-
 type RateLimitBucket = {
   readonly timestampsMs: number[]
 }
@@ -197,6 +185,14 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           hostname,
           os,
           agent_version: agentVersion,
+          interval_sec: serverEnv.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
+          max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
+          supabase_url: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? null,
+          supabase_anon_key: serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null,
+          maersk_enabled: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED,
+          maersk_headless: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS,
+          maersk_timeout_ms: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS,
+          maersk_user_data_dir: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR ?? null,
           last_enrolled_at: new Date().toISOString(),
         })
         .eq('id', agentId)

@@ -28,7 +28,7 @@ const serverEnvSchema = z.object({
   AGENT_ENROLL_DEFAULT_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
   AGENT_ENROLL_SUPABASE_URL: z.string().url().optional(),
   AGENT_ENROLL_SUPABASE_ANON_KEY: z.string().min(1).optional(),
-  AGENT_ENROLL_DEFAULT_MAERSK_ENABLED: z.boolean().default(false),
+  AGENT_ENROLL_DEFAULT_MAERSK_ENABLED: z.boolean().default(true),
   AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS: z.boolean().default(true),
   AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
@@ -46,13 +46,17 @@ const getServerEnvVars = (): unknown => {
     AGENT_LEASE_MINUTES: process.env.AGENT_LEASE_MINUTES,
     AGENT_ENROLL_DEFAULT_INTERVAL_SEC: process.env.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
     AGENT_ENROLL_DEFAULT_LIMIT: process.env.AGENT_ENROLL_DEFAULT_LIMIT,
-    AGENT_ENROLL_SUPABASE_URL: normalizeOptionalEnv(process.env.AGENT_ENROLL_SUPABASE_URL),
+    AGENT_ENROLL_SUPABASE_URL: normalizeOptionalEnv(
+      process.env.AGENT_ENROLL_SUPABASE_URL ?? process.env.SUPABASE_URL,
+    ),
     AGENT_ENROLL_SUPABASE_ANON_KEY: normalizeOptionalEnv(
-      process.env.AGENT_ENROLL_SUPABASE_ANON_KEY,
+      process.env.AGENT_ENROLL_SUPABASE_ANON_KEY ??
+        process.env.SUPABASE_ANON_KEY ??
+        process.env.VITE_PUBLIC_SUPABASE_ANON_KEY,
     ),
     AGENT_ENROLL_DEFAULT_MAERSK_ENABLED: parseBooleanEnv(
       process.env.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED,
-      false,
+      true,
     ),
     AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS: parseBooleanEnv(
       process.env.AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS,
