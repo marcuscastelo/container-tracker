@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 const DEFAULT_NODE_WINDOWS_VERSION = 'v22.11.0'
 const DEFAULT_WINSW_VERSION = 'v2.12.0'
+const DEFAULT_AGENT_DEPLOY_WORKSPACE = 'example-with-tailwindcss'
 const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   '@supabase/supabase-js',
   '@supabase/functions-js',
@@ -41,9 +42,7 @@ const REQUIRED_CONFIG_KEYS = [
   'LIMIT',
 ] as const
 
-const REQUIRED_RUNTIME_DEPENDENCY_FILES = [
-  'app/node_modules/@supabase/functions-js/package.json',
-] as const
+const REQUIRED_RUNTIME_DEPENDENCY_PACKAGES = ['@supabase/functions-js'] as const
 
 const NODE_RUNTIME_REMOVABLE_ENTRIES = [
   'corepack',
@@ -129,8 +128,43 @@ function runCommand(command: string, args: readonly string[], cwd: string): Prom
   })
 }
 
+async function runPnpmCommand(args: readonly string[], cwd: string): Promise<void> {
+  if (process.platform === 'win32') {
+    let lastError: unknown = null
+    const comspec = process.env.ComSpec ?? 'cmd.exe'
+
+    try {
+      await runCommand(comspec, ['/d', '/s', '/c', 'pnpm.cmd', ...args], cwd)
+      return
+    } catch (error) {
+      lastError = error
+      console.warn(
+        `[agent:release] failed to run "pnpm.cmd" via cmd.exe (${toErrorMessage(error)}), trying direct binary...`,
+      )
+    }
+
+    try {
+      await runCommand('pnpm', args, cwd)
+      return
+    } catch (error) {
+      lastError = error
+    }
+
+    throw new Error(`failed to run pnpm command: ${toErrorMessage(lastError)}`)
+  }
+
+  await runCommand('pnpm', args, cwd)
+}
+
 async function extractZip(zipPath: string, destinationDir: string, cwd: string): Promise<void> {
   if (process.platform === 'win32') {
+    try {
+      await runCommand('tar', ['-xf', zipPath, '-C', destinationDir], cwd)
+      return
+    } catch {
+      // Fall back to Expand-Archive when tar is unavailable.
+    }
+
     const powershellCommand = [
       `$zip = '${zipPath.replaceAll("'", "''")}'`,
       `$destination = '${destinationDir.replaceAll("'", "''")}'`,
@@ -285,6 +319,10 @@ async function resolvePackageDirFromPnpmStore(
   pnpmStoreDir: string,
   packageName: string,
 ): Promise<string | null> {
+  if (!(await pathExists(pnpmStoreDir))) {
+    return null
+  }
+
   const packageSuffix = path.join('node_modules', ...toPackageNameSegments(packageName))
   const entries = await fs.readdir(pnpmStoreDir, { withFileTypes: true })
   entries.sort((left, right) => left.name.localeCompare(right.name))
@@ -552,13 +590,26 @@ async function runPreflightChecks(command: {
     }
   }
 
-  for (const relativePath of REQUIRED_RUNTIME_DEPENDENCY_FILES) {
-    const absolutePath = path.join(command.releaseDir, relativePath)
-    if (!(await pathExists(absolutePath))) {
-      errors.push(
-        `missing required runtime dependency file: ${relativePath}`,
-      )
+  const releaseAppNodeModulesDir = path.join(command.releaseDir, 'app', 'node_modules')
+  const releasePnpmStoreDir = path.join(releaseAppNodeModulesDir, '.pnpm')
+  for (const packageName of REQUIRED_RUNTIME_DEPENDENCY_PACKAGES) {
+    const topLevelPackageJson = path.join(
+      resolvePackageEntryPath(releaseAppNodeModulesDir, packageName),
+      'package.json',
+    )
+    if (await pathExists(topLevelPackageJson)) {
+      continue
     }
+
+    const packageDirFromStore = await resolvePackageDirFromPnpmStore(
+      releasePnpmStoreDir,
+      packageName,
+    )
+    if (packageDirFromStore && (await pathExists(path.join(packageDirFromStore, 'package.json')))) {
+      continue
+    }
+
+    errors.push(`missing required runtime dependency package: ${packageName}`)
   }
 
   const winswXmlPath = path.join(command.releaseDir, 'winsw', 'ContainerTrackerAgent.xml')
@@ -672,10 +723,6 @@ async function buildRelease(): Promise<void> {
   const distDir = path.join(toolsAgentDir, 'dist')
   const releaseDir = path.join(repoRoot, 'release')
   const releaseAppDir = path.join(releaseDir, 'app')
-  const sourceNodeModulesDir = path.join(repoRoot, 'node_modules')
-  const sourcePackageJsonPath = path.join(repoRoot, 'package.json')
-  const releaseAppNodeModulesDir = path.join(releaseAppDir, 'node_modules')
-  const releaseAppPackageJsonPath = path.join(releaseAppDir, 'package.json')
   const releaseAppDistDir = path.join(releaseAppDir, 'dist')
   const releaseWinswDir = path.join(releaseDir, 'winsw')
   const releaseNodeDir = path.join(releaseDir, 'node')
@@ -685,6 +732,8 @@ async function buildRelease(): Promise<void> {
 
   const nodeVersion = process.env.AGENT_NODE_WINDOWS_VERSION ?? DEFAULT_NODE_WINDOWS_VERSION
   const winswVersion = process.env.AGENT_WINSW_VERSION ?? DEFAULT_WINSW_VERSION
+  const agentDeployWorkspace =
+    process.env.AGENT_DEPLOY_WORKSPACE ?? DEFAULT_AGENT_DEPLOY_WORKSPACE
 
   const compiledAgentFile = path.join(distDir, 'tools', 'agent', 'agent.js')
   const compiledUpdaterFile = path.join(distDir, 'tools', 'agent', 'updater.js')
@@ -698,17 +747,16 @@ async function buildRelease(): Promise<void> {
   await fs.mkdir(releaseWinswDir, { recursive: true })
   await fs.mkdir(releaseConfigDir, { recursive: true })
   await fs.mkdir(cacheDownloadDir, { recursive: true })
-  await ensurePathExists(sourceNodeModulesDir, 'repo node_modules')
-  await ensurePathExists(sourcePackageJsonPath, 'repo package.json')
-  await fs.cp(sourceNodeModulesDir, releaseAppNodeModulesDir, {
-    recursive: true,
-    verbatimSymlinks: true,
-  })
-  await fs.cp(sourcePackageJsonPath, releaseAppPackageJsonPath)
+  console.log(
+    `[agent:release] deploying production dependencies from workspace "${agentDeployWorkspace}"`,
+  )
+  await runPnpmCommand(
+    ['--filter', agentDeployWorkspace, 'deploy', '--prod', '--legacy', releaseAppDir],
+    repoRoot,
+  )
 
   await fs.cp(distDir, releaseAppDistDir, { recursive: true })
   await writeAgentEntrypointShims(releaseAppDistDir)
-  await pruneReleaseAppForRuntime(releaseAppDir)
 
   const nodeZipName = `node-${nodeVersion}-win-x64.zip`
   const nodeZipPath = path.join(cacheDownloadDir, nodeZipName)
@@ -725,8 +773,10 @@ async function buildRelease(): Promise<void> {
   await extractZip(nodeZipPath, nodeExtractDir, repoRoot)
 
   const extractedNodeDir = await findExtractedNodeDirectory(nodeExtractDir)
-  await fs.cp(extractedNodeDir, releaseNodeDir, { recursive: true })
-  await pruneWindowsNodeRuntime(releaseNodeDir)
+  const extractedNodeExePath = path.join(extractedNodeDir, 'node.exe')
+  await ensurePathExists(extractedNodeExePath, 'extracted node runtime executable')
+  await fs.mkdir(releaseNodeDir, { recursive: true })
+  await fs.cp(extractedNodeExePath, path.join(releaseNodeDir, 'node.exe'))
 
   const winswDownloadUrl = `https://github.com/winsw/winsw/releases/download/${winswVersion}/WinSW-x64.exe`
   const winswExePath = path.join(cacheDownloadDir, `WinSW-x64-${winswVersion}.exe`)
