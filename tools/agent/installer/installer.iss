@@ -30,12 +30,14 @@ Name: "{localappdata}\ContainerTracker\cache"
 [Files]
 Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
+Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
 
 [Run]
-Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""{app}\node\node.exe {app}\app\dist\agent.js"""; Flags: runhidden waituntilterminated
-Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""{app}\node\node.exe {app}\app\dist\updater.js"""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1"""""""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1"""""""; Flags: runhidden waituntilterminated
 Filename: "schtasks.exe"; Parameters: "/Run /TN ""{#AgentTaskName}"""; Flags: runhidden waituntilterminated skipifsilent
 Filename: "schtasks.exe"; Parameters: "/Run /TN ""{#UpdaterTaskName}"""; Flags: runhidden waituntilterminated skipifsilent
 

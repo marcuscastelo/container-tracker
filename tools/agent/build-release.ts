@@ -768,6 +768,13 @@ async function runPreflightChecks(command: {
       errors.push('installer.iss must not reference {commonappdata}')
     }
 
+    if (
+      !installerContentRaw.includes('agent-tray-host.ps1') ||
+      !installerContentRaw.includes('updater-hidden.ps1')
+    ) {
+      errors.push('installer.iss must include tray/updater launcher scripts in [Files]/[Run]')
+    }
+
     const schtasksCreateLines = installerContentRaw
       .split(/\r?\n/)
       .filter(
@@ -780,13 +787,15 @@ async function runPreflightChecks(command: {
       )
       const hasAgentCreate = normalizedCreateLines.some(
         (line) =>
-          line.includes('{app}\\node\\node.exe') &&
-          line.includes('{app}\\app\\dist\\agent.js'),
+          line.includes('powershell.exe') &&
+          line.includes('-windowstyle hidden') &&
+          line.includes('agent-tray-host.ps1'),
       )
       const hasUpdaterCreate = normalizedCreateLines.some(
         (line) =>
-          line.includes('{app}\\node\\node.exe') &&
-          line.includes('{app}\\app\\dist\\updater.js'),
+          line.includes('powershell.exe') &&
+          line.includes('-windowstyle hidden') &&
+          line.includes('updater-hidden.ps1'),
       )
 
       if (!hasAgentCreate || !hasUpdaterCreate) {
