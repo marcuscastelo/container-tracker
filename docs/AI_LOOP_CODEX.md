@@ -28,6 +28,32 @@ pnpm run ai:loop:plan -- "Build dashboard with saved filters" .ralph-loop/prd.js
 
 Or pass a prompt file as first argument.
 
+## One Command Flow (Markdown -> Ralph)
+
+If you already have a PRD markdown (for example copied from ChatGPT web), run everything with one command:
+
+```bash
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md
+```
+
+This command will:
+
+1. Generate `.ralph-loop/docs-ralph-loop/prd.json` from your markdown (or reuse JSON source if provided).
+2. Generate `.ralph-loop/docs-ralph-loop/input.json`.
+3. Start Ralph execution immediately.
+
+The flow works from terminal only. VS Code can be closed after you save the PRD file.
+
+Useful options:
+
+```bash
+# Prepare files only (no execution)
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --prepare-only
+
+# Limit iterations and retries
+pnpm run ai:loop:start -- docs-ralph-loop tasks/prd-docs-ralph-loop.md --max-iterations 5 --exec-retries 3
+```
+
 ## Build Execution Input
 
 Create loop input JSON:
