@@ -307,17 +307,20 @@ Policy:
 Dev server strategy:
 
 1. Assume the dev server may or may not already be running.
-2. If trivial, prefer an isolated run on port `3009`:
-   - `pnpm run dev -- --host 127.0.0.1 --port 3009`
-3. If starting a new server is not trivial, use an existing running server (commonly `3000`).
-4. If needed, probe available local routes and proceed with the working one.
+2. Probe local routes in this order and keep the first that responds:
+   - `http://localhost:3000`
+   - `http://127.0.0.1:3000`
+3. If no route responds, start an isolated server in the same execution context/network namespace where Playwright MCP is running:
+   - `pnpm run dev -- --host localhost --port 3009`
+4. If `3009` is unavailable, use the allocated port and continue with the reported URL.
+5. If starting a new server is not trivial, use an existing running server and proceed with the working route.
 
 Screenshot commands (recommended baseline):
 
 - Desktop:
-  - `pnpm exec playwright screenshot --wait-for-timeout 8000 --full-page http://127.0.0.1:<PORT> /tmp/pw-local-real.png`
+  - `pnpm exec playwright screenshot --wait-for-timeout 8000 --full-page http://localhost:<PORT> /tmp/pw-local-real.png`
 - Mobile:
-  - `pnpm exec playwright screenshot --device="Pixel 5" --wait-for-timeout 8000 --full-page http://127.0.0.1:<PORT> /tmp/pw-local-real-mobile.png`
+  - `pnpm exec playwright screenshot --device="Pixel 5" --wait-for-timeout 8000 --full-page http://localhost:<PORT> /tmp/pw-local-real-mobile.png`
 
 Timing and stability:
 
@@ -331,6 +334,8 @@ Blank/gray screenshot troubleshooting:
 2. Re-run Playwright screenshot commands with non-sandbox/external execution.
 3. Sanity-check browser capture with a known page (`https://example.com`) if needed.
 4. Then retry local app capture.
+5. If `127.0.0.1` fails but `localhost` works, keep `localhost` (common loopback/IPv6 binding behavior) and continue.
+6. If local routes still fail, start `pnpm run dev` in the same context as Playwright MCP and retry.
 
 Output expectation for UI tasks:
 
