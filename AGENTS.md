@@ -284,3 +284,52 @@ Current custom automation skill:
   - Detects best existing PRD (`md/json`)
   - Infers feature key
   - Runs `pnpm run ai:loop:start` with sensible defaults
+
+---
+
+## 19) Playwright Visual Validation (Codex CLI)
+
+Use this when implementing or reviewing any UI/UX change.
+
+Policy:
+
+- Any UI/UX change is only complete after visual validation with screenshots.
+- Always validate at least desktop + mobile.
+- Quality gate mindset is mandatory: ask and answer
+  - "Ficou de acordo com o site?"
+  - "Ficou visualmente bom?"
+- Prefer slower and polished over fast and rough for UI work.
+
+Dev server strategy:
+
+1. Assume the dev server may or may not already be running.
+2. If trivial, prefer an isolated run on port `3009`:
+   - `pnpm run dev -- --host 127.0.0.1 --port 3009`
+3. If starting a new server is not trivial, use an existing running server (commonly `3000`).
+4. If needed, probe available local routes and proceed with the working one.
+
+Screenshot commands (recommended baseline):
+
+- Desktop:
+  - `pnpm exec playwright screenshot --wait-for-timeout 8000 --full-page http://127.0.0.1:<PORT> /tmp/pw-local-real.png`
+- Mobile:
+  - `pnpm exec playwright screenshot --device="Pixel 5" --wait-for-timeout 8000 --full-page http://127.0.0.1:<PORT> /tmp/pw-local-real-mobile.png`
+
+Timing and stability:
+
+- Use `--wait-for-timeout 8000` as default (8s).
+- Increase wait (`12000-15000`) when page depends on async fetch/hydration/animations.
+- Keep `--full-page` enabled unless the task explicitly targets viewport-only behavior.
+
+Blank/gray screenshot troubleshooting:
+
+1. If screenshots are blank/gray, suspect sandbox/browser runtime constraints first.
+2. Re-run Playwright screenshot commands with non-sandbox/external execution.
+3. Sanity-check browser capture with a known page (`https://example.com`) if needed.
+4. Then retry local app capture.
+
+Output expectation for UI tasks:
+
+- Provide screenshot file paths in the response.
+- Mention which route was validated.
+- Explicitly state whether UI is aligned and visually good based on the two quality questions above.
