@@ -258,6 +258,23 @@ function toTrackingSummaryOrFallback(
   return summariesByContainerId.get(containerId) ?? FALLBACK_TRACKING_SUMMARY
 }
 
+function sortDashboardProcessesByDominantSeverity(
+  processes: readonly DashboardOperationalProcessReadModel[],
+): readonly DashboardOperationalProcessReadModel[] {
+  return processes
+    .map((process, index) => ({ process, index }))
+    .sort((left, right) => {
+      const rightPriority = DASHBOARD_SEVERITY_ORDER[right.process.dominantSeverity]
+      const leftPriority = DASHBOARD_SEVERITY_ORDER[left.process.dominantSeverity]
+      if (rightPriority !== leftPriority) {
+        return rightPriority - leftPriority
+      }
+
+      return left.index - right.index
+    })
+    .map(({ process }) => process)
+}
+
 export function createDashboardOperationalSummaryReadModelUseCase(
   deps: DashboardOperationalSummaryReadModelDeps,
 ) {
@@ -279,25 +296,28 @@ export function createDashboardOperationalSummaryReadModelUseCase(
 
     const globalAlerts = summarizeGlobalActiveAlerts(activeAlertsResult.alerts)
     const alertsByProcessId = groupAlertsByProcessId(activeAlertsResult.alerts)
-    const dashboardProcesses: DashboardOperationalProcessReadModel[] = processes.map((entry) => {
-      const processId = String(entry.process.id)
-      const activeAlerts = alertsByProcessId.get(processId) ?? []
-      const containerSummaries = entry.containers.map((container) =>
-        toTrackingSummaryOrFallback(summariesByContainerId, String(container.id)),
-      )
+    const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
+      sortDashboardProcessesByDominantSeverity(
+        processes.map((entry) => {
+          const processId = String(entry.process.id)
+          const activeAlerts = alertsByProcessId.get(processId) ?? []
+          const containerSummaries = entry.containers.map((container) =>
+            toTrackingSummaryOrFallback(summariesByContainerId, String(container.id)),
+          )
 
-      return {
-        processId,
-        reference: entry.process.reference,
-        origin: entry.process.origin,
-        destination: entry.process.destination,
-        status: deriveDashboardStatus(containerSummaries),
-        eta: deriveDashboardEta(containerSummaries),
-        dominantSeverity: resolveDashboardDominantSeverity(activeAlerts),
-        activeAlertsCount: activeAlerts.length,
-        activeAlerts,
-      }
-    })
+          return {
+            processId,
+            reference: entry.process.reference,
+            origin: entry.process.origin,
+            destination: entry.process.destination,
+            status: deriveDashboardStatus(containerSummaries),
+            eta: deriveDashboardEta(containerSummaries),
+            dominantSeverity: resolveDashboardDominantSeverity(activeAlerts),
+            activeAlertsCount: activeAlerts.length,
+            activeAlerts,
+          }
+        }),
+      )
 
     return {
       processes: dashboardProcesses,
