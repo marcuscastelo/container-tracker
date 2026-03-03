@@ -38,7 +38,7 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
-  const [processes, { refetch }] = createResource(fetchDashboardProcessSummaries)
+  const [processes, { refetch }] = createResource(() => fetchDashboardProcessSummaries())
   const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
     parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
   )

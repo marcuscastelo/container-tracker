@@ -1,6 +1,10 @@
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
+import type {
+  DashboardSortDirection,
+  DashboardSortField,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
@@ -8,6 +12,26 @@ import {
   ProcessListResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+
+const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
+
+export type DashboardProcessSummariesQuery = {
+  readonly sortField?: DashboardSortField
+  readonly sortDir?: DashboardSortDirection
+}
+
+function toDashboardProcessesPath(query?: DashboardProcessSummariesQuery): string {
+  if (query === undefined || query.sortField === undefined || query.sortDir === undefined) {
+    return DASHBOARD_PROCESSES_ENDPOINT
+  }
+
+  const searchParams = new URLSearchParams({
+    sortField: query.sortField,
+    sortDir: query.sortDir,
+  })
+
+  return `${DASHBOARD_PROCESSES_ENDPOINT}?${searchParams.toString()}`
+}
 
 export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateProcessInput {
   return {
@@ -29,8 +53,14 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
   }
 }
 
-export async function fetchDashboardProcessSummaries(): Promise<readonly ProcessSummaryVM[]> {
-  const data = await typedFetch('/api/processes', undefined, ProcessListResponseSchema)
+export async function fetchDashboardProcessSummaries(
+  query?: DashboardProcessSummariesQuery,
+): Promise<readonly ProcessSummaryVM[]> {
+  const data = await typedFetch(
+    toDashboardProcessesPath(query),
+    undefined,
+    ProcessListResponseSchema,
+  )
   return toProcessSummaryVMs(data)
 }
 
