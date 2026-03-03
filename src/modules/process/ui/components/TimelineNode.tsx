@@ -38,14 +38,20 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
       when={props.actualDateIso}
       fallback={
         props.expectedDateIso ? (
-          <p class="text-xs text-slate-400" title={props.toTooltip(props.expectedDateIso)}>
+          <p
+            class="text-[10px] tabular-nums text-slate-300"
+            title={props.toTooltip(props.expectedDateIso)}
+          >
             {props.expectedLabel} {formatDateForLocale(props.expectedDateIso, props.locale)}
           </p>
         ) : null
       }
     >
       {(actualDateIso) => (
-        <p class="text-xs text-slate-600" title={props.toTooltip(actualDateIso() ?? undefined)}>
+        <p
+          class="text-[10px] tabular-nums text-slate-500"
+          title={props.toTooltip(actualDateIso() ?? undefined)}
+        >
           <span class="sr-only">{props.actualLabel}</span>
           {formatDateForLocale(actualDateIso(), props.locale)}
         </p>
@@ -82,13 +88,13 @@ function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
           target="_blank"
           rel="noopener noreferrer"
           title={props.label}
-          class="ml-2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-600"
+          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-slate-300 hover:text-slate-500"
           onClick={(event) => {
             event.preventDefault()
             void copyAndOpenCarrierLink(href(), props.containerNumber)
           }}
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <title>{props.label}</title>
             <path
               stroke-linecap="round"
@@ -158,27 +164,27 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'border-emerald-500 bg-emerald-500',
-          line: 'bg-emerald-500',
-          text: 'text-slate-900',
+          dot: 'bg-emerald-500',
+          line: 'bg-emerald-300',
+          text: 'text-slate-700',
         }
       case 'current':
         return {
-          dot: 'border-blue-500 bg-blue-500 ring-4 ring-blue-100',
+          dot: 'bg-blue-500 ring-2 ring-blue-100',
           line: 'bg-slate-200',
-          text: 'font-medium text-slate-900',
+          text: 'font-medium text-slate-800',
         }
       case 'delayed':
         return {
-          dot: 'border-red-500 bg-red-500 ring-4 ring-red-100',
+          dot: 'bg-red-400 ring-2 ring-red-50',
           line: 'bg-slate-200',
-          text: 'font-medium text-red-700',
+          text: 'font-medium text-red-600',
         }
       default:
         return {
-          dot: 'border-2 border-slate-300 bg-white',
+          dot: 'border border-slate-300 bg-white',
           line: 'bg-slate-200',
-          text: 'text-slate-500',
+          text: 'text-slate-400',
         }
     }
   })

@@ -9,7 +9,9 @@ import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
+import { TransshipmentCard } from '~/modules/process/ui/components/TransshipmentCard'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { toVisibleAlertsBySelectedContainer } from '~/modules/process/ui/utils/alerts-display'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import {
   createProcessRequest,
@@ -20,7 +22,10 @@ import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
-import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type {
+  ContainerEtaDetailVM,
+  ShipmentDetailVM,
+} from '~/modules/process/ui/viewmodels/shipment.vm'
 import {
   type SyncRequestRealtimeEvent,
   subscribeToSyncRequestsRealtimeByIds,
@@ -577,6 +582,7 @@ type ShipmentViewLayoutProps = {
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
   readonly selectedContainer: ShipmentContainer | null
+  readonly selectedContainerEtaVm: ContainerEtaDetailVM
   readonly onOpenEditForShipment: (
     shipment: ShipmentDetailVM,
     focus?: 'reference' | 'carrier' | null | undefined,
@@ -627,10 +633,10 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
         mode="create"
       />
 
-      <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">
         <A
           href="/"
-          class="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
+          class="mb-1.5 inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-700"
         >
           <ChevronLeftIcon />
           {t(keys.shipmentView.backToList)}
@@ -664,6 +670,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
             <>
               <ShipmentHeader
                 data={data()}
+                selectedContainerEtaVm={props.selectedContainerEtaVm}
                 isRefreshing={props.isRefreshing}
                 refreshRetry={props.refreshRetry}
                 refreshHint={props.refreshHint}
@@ -673,8 +680,8 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                 }
               />
 
-              <div class="grid gap-6 lg:grid-cols-3">
-                <div class="space-y-6 lg:col-span-2">
+              <div class="grid gap-2 lg:grid-cols-3">
+                <div class="space-y-2 lg:col-span-2">
                   <ContainersPanel
                     containers={data().containers}
                     selectedId={props.selectedContainerId}
@@ -685,8 +692,14 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                     carrier={data().carrier}
                   />
                 </div>
-                <div>
-                  <AlertsPanel alerts={data().alerts} />
+                <div class="space-y-2">
+                  <TransshipmentCard selectedContainer={props.selectedContainer} />
+                  <AlertsPanel
+                    alerts={toVisibleAlertsBySelectedContainer(
+                      data().alerts,
+                      props.selectedContainer,
+                    )}
+                  />
                 </div>
               </div>
             </>
@@ -874,15 +887,22 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
 
     const selected = selectedContainerId()
     if (selected) {
-      return containers.find((c) => c.id === selected) ?? containers[0]
+      return containers.find((c) => String(c.id) === String(selected)) ?? containers[0]
     }
     return containers[0]
   })
 
+  const selectedContainerEtaVm = createMemo<ContainerEtaDetailVM>(() => {
+    const selected = selectedContainer()
+    if (!selected) return null
+    return selected.selectedEtaVm
+  })
+
+  // Update selected container when data loads
   createEffect(() => {
     const data = shipment()
     if (data && data.containers.length > 0 && !selectedContainerId()) {
-      setSelectedContainerId(data.containers[0].id)
+      setSelectedContainerId(String(data.containers[0].id))
     }
   })
 
@@ -931,8 +951,9 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       refreshRetry={refreshRetry()}
       onTriggerRefresh={triggerRefresh}
       selectedContainerId={selectedContainerId()}
-      onSelectContainer={setSelectedContainerId}
+      onSelectContainer={(id) => setSelectedContainerId(String(id))}
       selectedContainer={selectedContainer()}
+      selectedContainerEtaVm={selectedContainerEtaVm()}
       onOpenEditForShipment={openEditForShipment}
       onOpenCreateProcess={() => setIsCreateDialogOpen(true)}
     />

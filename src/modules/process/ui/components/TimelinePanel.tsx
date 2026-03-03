@@ -17,12 +17,18 @@ export function TimelinePanel(props: Props): JSX.Element {
     props.selectedContainer ? `${props.selectedContainer.number} •` : undefined
 
   return (
-    <Panel title={t(keys.shipmentView.timeline.title)} subtitle={subtitle()} bodyClass="p-6">
+    <Panel
+      title={t(keys.shipmentView.timeline.title)}
+      subtitle={subtitle()}
+      bodyClass="px-2.5 py-1.5"
+    >
       <div>
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-4 text-center text-sm text-slate-500">{t(keys.shipmentView.noEvents)}</p>
+            <p class="py-3 text-center text-[11px] text-slate-400">
+              {t(keys.shipmentView.noEvents)}
+            </p>
           }
         >
           <div>

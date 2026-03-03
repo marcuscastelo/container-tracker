@@ -9,6 +9,10 @@ import type {
 } from '~/modules/process/application/process.records'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import {
+  createTrackingOperationalSummaryFallback,
+  type TrackingOperationalSummary,
+} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record
@@ -97,6 +101,14 @@ type TrackingAlertRecord = {
   readonly provider: string | null
   readonly acked_at: string | null
   readonly dismissed_at: string | null
+}
+
+type ContainerWithTrackingResponse = {
+  id: string
+  container_number: string
+  carrier_code: string | null
+  status: string
+  observations: ReturnType<typeof toObservationResponse>[]
 }
 
 function toContainerResponse(c: ProcessContainerRecord) {
@@ -215,20 +227,101 @@ export function toContainerWithTrackingFallback(c: ProcessContainerRecord) {
   }
 }
 
-export function toProcessDetailResponse(
-  pwc: ProcessWithContainers,
-  containersWithTracking: {
-    id: string
-    container_number: string
-    carrier_code: string | null
-    status: string
-    observations: ReturnType<typeof toObservationResponse>[]
-  }[],
-  alerts: readonly TrackingAlertRecord[],
+function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
+  if (!eta) return null
+  return {
+    event_time: eta.eventTimeIso,
+    event_time_type: eta.eventTimeType,
+    state: eta.state,
+    type: eta.type,
+    location_code: eta.locationCode,
+    location_display: eta.locationDisplay,
+  }
+}
+
+function toOperationalTransshipmentResponse(
+  transshipment: TrackingOperationalSummary['transshipment'],
 ) {
   return {
+    has_transshipment: transshipment.hasTransshipment,
+    count: transshipment.count,
+    ports: transshipment.ports.map((port) => ({
+      code: port.code,
+      display: port.display,
+    })),
+  }
+}
+
+function toContainerOperationalResponse(summary: TrackingOperationalSummary) {
+  return {
+    status: summary.status,
+    eta: toOperationalEtaResponse(summary.eta),
+    transshipment: toOperationalTransshipmentResponse(summary.transshipment),
+    data_issue: summary.dataIssue,
+  }
+}
+
+function toProcessOperationalResponse(summaries: readonly TrackingOperationalSummary[]) {
+  const total = summaries.length
+  const etaCandidates = summaries
+    .map((summary) => summary.eta)
+    .filter((eta): eta is NonNullable<TrackingOperationalSummary['eta']> => eta !== null)
+  const withEta = etaCandidates.length
+
+  let etaMax: NonNullable<TrackingOperationalSummary['eta']> | null = null
+  for (const eta of etaCandidates) {
+    if (!etaMax || eta.eventTimeIso > etaMax.eventTimeIso) {
+      etaMax = eta
+    }
+  }
+
+  return {
+    eta_max: toOperationalEtaResponse(etaMax),
+    coverage: {
+      total,
+      with_eta: withEta,
+    },
+  }
+}
+
+export function toProcessDetailResponse(
+  pwc: ProcessWithContainers,
+  containersWithTracking: readonly ContainerWithTrackingResponse[],
+  alerts: readonly TrackingAlertRecord[],
+  operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
+) {
+  const fallbackByContainerId = new Map<string, TrackingOperationalSummary>()
+
+  const containers = containersWithTracking.map((container) => {
+    const summary =
+      operationalByContainerId.get(container.id) ??
+      fallbackByContainerId.get(container.id) ??
+      createTrackingOperationalSummaryFallback(true)
+
+    if (!fallbackByContainerId.has(container.id) && !operationalByContainerId.has(container.id)) {
+      fallbackByContainerId.set(container.id, summary)
+    }
+
+    return {
+      ...container,
+      operational: toContainerOperationalResponse(summary),
+    }
+  })
+
+  const summariesForProcess = containersWithTracking.map((container) => {
+    const fromBatch = operationalByContainerId.get(container.id)
+    if (fromBatch) return fromBatch
+    const fallback = fallbackByContainerId.get(container.id)
+    if (fallback) return fallback
+    const createdFallback = createTrackingOperationalSummaryFallback(true)
+    fallbackByContainerId.set(container.id, createdFallback)
+    return createdFallback
+  })
+
+  return {
     ...processToResponseFields(pwc.process),
-    containers: [...containersWithTracking],
+    containers,
     alerts: alerts.map(toTrackingAlertResponse),
+    process_operational: toProcessOperationalResponse(summariesForProcess),
   }
 }

@@ -284,3 +284,60 @@ Current custom automation skill:
   - Detects best existing PRD (`md/json`)
   - Infers feature key
   - Runs `pnpm run ai:loop:start` with sensible defaults
+
+---
+
+## 19) Playwright Visual Validation (Codex CLI)
+
+Use this when implementing or reviewing any UI/UX change.
+
+Policy:
+
+- Any UI/UX change is only complete after visual validation with screenshots.
+- Playwright MCP must be used ad hoc for manual validation flows; do not run automated test suites with Playwright MCP by default.
+- Exception: running or wiring Playwright test suites is allowed only when the task explicitly involves implementing or maintaining automated tests (unit/integration/e2e).
+- Do not run ad hoc `node`/JavaScript scripts that import Playwright for routine validation; use Playwright MCP directly in Codex CLI or Codex + VSCode.
+- Exception: ad hoc JavaScript Playwright scripts are allowed only when a concrete MCP limitation (missing tools/capabilities or equivalent blocker) requires that fallback.
+- Always validate at least desktop + mobile.
+- Quality gate mindset is mandatory: ask and answer
+  - "Ficou de acordo com o site?"
+  - "Ficou visualmente bom?"
+- Prefer slower and polished over fast and rough for UI work.
+
+Dev server strategy:
+
+1. Assume the dev server may or may not already be running.
+2. Prefer an isolated run first, always in the same execution context/network namespace where Playwright MCP is running:
+   - `pnpm run dev -- --host localhost --port 3009`
+3. If `3009` is unavailable, use the allocated port and continue with the reported URL.
+4. Fallback only when starting a new isolated server is not trivial: probe existing local routes in this order and keep the first that responds:
+   - `http://localhost:3000`
+   - `http://127.0.0.1:3000`
+
+Screenshot commands (recommended baseline):
+
+- Desktop:
+  - `pnpm exec playwright screenshot --wait-for-timeout 8000 --full-page http://localhost:<PORT> /tmp/pw-local-real.png`
+- Mobile:
+  - `pnpm exec playwright screenshot --device="Pixel 5" --wait-for-timeout 8000 --full-page http://localhost:<PORT> /tmp/pw-local-real-mobile.png`
+
+Timing and stability:
+
+- Use `--wait-for-timeout 8000` as default (8s).
+- Increase wait (`12000-15000`) when page depends on async fetch/hydration/animations.
+- Keep `--full-page` enabled unless the task explicitly targets viewport-only behavior.
+
+Blank/gray screenshot troubleshooting:
+
+1. If screenshots are blank/gray, suspect sandbox/browser runtime constraints first.
+2. Re-run Playwright screenshot commands with non-sandbox/external execution.
+3. Sanity-check browser capture with a known page (`https://example.com`) if needed.
+4. Then retry local app capture.
+5. If `127.0.0.1` fails but `localhost` works, keep `localhost` (common loopback/IPv6 binding behavior) and continue.
+6. If local routes still fail, start `pnpm run dev` in the same context as Playwright MCP and retry.
+
+Output expectation for UI tasks:
+
+- Provide screenshot file paths in the response.
+- Mention which route was validated.
+- Explicitly state whether UI is aligned and visually good based on the two quality questions above.

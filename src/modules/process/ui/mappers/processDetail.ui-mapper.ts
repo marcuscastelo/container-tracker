@@ -12,6 +12,7 @@ import {
   type TrackingTimelineItem,
 } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
+import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 function deriveProcessStatusCode(
   containers: readonly { readonly status?: string }[],
@@ -19,6 +20,113 @@ function deriveProcessStatusCode(
   const statuses = containers.map((container) => toOperationalStatus(container.status))
   const highest = deriveProcessStatusFromContainers(statuses)
   return toTrackingStatusCode(highest)
+}
+
+type ContainerOperational = NonNullable<ProcessDetailResponse['containers'][number]['operational']>
+type OperationalEta = NonNullable<ContainerOperational['eta']>
+type OperationalTransshipment = ContainerOperational['transshipment']
+
+function toEtaTone(
+  state: OperationalEta['state'],
+): ShipmentDetailVM['containers'][number]['etaChipVm']['tone'] {
+  switch (state) {
+    case 'ACTUAL':
+      return 'positive'
+    case 'ACTIVE_EXPECTED':
+      return 'informative'
+    case 'EXPIRED_EXPECTED':
+      return 'warning'
+  }
+}
+
+function toContainerEtaChipVm(
+  eta: ContainerOperational['eta'] | undefined,
+  locale: string,
+): ShipmentDetailVM['containers'][number]['etaChipVm'] {
+  if (!eta?.event_time) {
+    return {
+      state: 'UNAVAILABLE',
+      tone: 'neutral',
+      date: null,
+    }
+  }
+
+  return {
+    state: eta.state,
+    tone: toEtaTone(eta.state),
+    date: formatDateForLocale(eta.event_time, locale),
+  }
+}
+
+function toContainerEtaDetailVm(
+  eta: ContainerOperational['eta'] | undefined,
+  locale: string,
+): ShipmentDetailVM['containers'][number]['selectedEtaVm'] {
+  if (!eta?.event_time) return null
+
+  return {
+    state: eta.state,
+    tone: toEtaTone(eta.state),
+    date: formatDateForLocale(eta.event_time, locale),
+    type: eta.type,
+  }
+}
+
+function toTransshipmentVm(
+  transshipment: OperationalTransshipment | undefined,
+): ShipmentDetailVM['containers'][number]['transshipment'] {
+  if (!transshipment) {
+    return {
+      hasTransshipment: false,
+      count: 0,
+      ports: [],
+    }
+  }
+
+  return {
+    hasTransshipment: transshipment.has_transshipment,
+    count: transshipment.count,
+    ports: transshipment.ports.map((port) => ({
+      code: port.code,
+      display: port.display,
+    })),
+  }
+}
+
+function toTsChipVm(
+  transshipment: ShipmentDetailVM['containers'][number]['transshipment'],
+): ShipmentDetailVM['containers'][number]['tsChipVm'] {
+  const portsTooltip =
+    transshipment.ports.length > 0
+      ? transshipment.ports
+          .map((port) => (port.display ? `${port.code} (${port.display})` : port.code))
+          .join(', ')
+      : null
+
+  return {
+    visible: transshipment.hasTransshipment && transshipment.count > 0,
+    count: transshipment.count,
+    portsTooltip,
+  }
+}
+
+function toProcessEtaSecondaryVm(
+  data: ProcessDetailResponse,
+  containers: readonly ShipmentDetailVM['containers'][number][],
+  locale: string,
+): ShipmentDetailVM['processEtaSecondaryVm'] {
+  const total = data.process_operational?.coverage.total ?? containers.length
+  const withEta =
+    data.process_operational?.coverage.with_eta ?? containers.filter((c) => c.selectedEtaVm).length
+  const etaMax = data.process_operational?.eta_max ?? null
+
+  return {
+    visible: containers.length > 1,
+    date: etaMax?.event_time ? formatDateForLocale(etaMax.event_time, locale) : null,
+    withEta,
+    total,
+    incomplete: withEta < total,
+  }
 }
 
 export function toShipmentDetailVM(
@@ -41,6 +149,9 @@ export function toShipmentDetailVM(
     }
 
     const statusCode = toTrackingStatusCode(container.status)
+    const etaChipVm = toContainerEtaChipVm(container.operational?.eta, locale)
+    const selectedEtaVm = toContainerEtaDetailVm(container.operational?.eta, locale)
+    const transshipment = toTransshipmentVm(container.operational?.transshipment)
 
     return {
       id: container.id,
@@ -48,11 +159,19 @@ export function toShipmentDetailVM(
       status: trackingStatusToVariant(statusCode),
       statusCode,
       eta: null,
+      etaChipVm,
+      selectedEtaVm,
+      tsChipVm: toTsChipVm(transshipment),
+      dataIssueChipVm: {
+        visible: container.operational?.data_issue === true,
+      },
+      transshipment,
       timeline,
     }
   })
 
   const processStatusCode = deriveProcessStatusCode(data.containers)
+  const processEtaSecondaryVm = toProcessEtaSecondaryVm(data, containers, locale)
 
   return {
     id: data.id,
@@ -70,7 +189,8 @@ export function toShipmentDetailVM(
     destination: data.destination?.display_name || '—',
     status: trackingStatusToVariant(processStatusCode),
     statusCode: processStatusCode,
-    eta: null,
+    eta: processEtaSecondaryVm.date,
+    processEtaSecondaryVm,
     containers,
     alerts: toAlertDisplayVMs(
       (data.alerts ?? []).filter((alert) => alert.acked_at === null && alert.dismissed_at === null),

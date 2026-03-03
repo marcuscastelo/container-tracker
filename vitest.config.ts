@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 // biome-ignore lint/style/noDefaultExport: Needed for Vitest config
 export default defineConfig({
@@ -64,5 +64,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: [path.resolve(__dirname, 'vitest.setup.ts')],
+    // Playwright specs run via `pnpm test:playwright`, not Vitest.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })

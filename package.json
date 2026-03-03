@@ -7,6 +7,7 @@
     "start": "vinxi start",
     "type-check": "tsc --noEmit --skipLibCheck",
     "test": "vitest run",
+    "test:playwright": "playwright test",
     "i18n:check": "node scripts/check-i18n-keys.mjs",
     "i18n:enforce": "node scripts/enforce-i18n-no-hardcoded.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true && pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
