@@ -34,6 +34,29 @@ export type DashboardGlobalAlertsSummaryReadModel = {
   readonly byCategory: DashboardGlobalAlertsByCategoryReadModel
 }
 
+export type DashboardOperationalAlertProcessReadModel = {
+  readonly processId: string
+  readonly reference: string | null
+  readonly origin: string | null
+  readonly destination: string | null
+}
+
+export type DashboardOperationalAlertContainerReadModel = {
+  readonly containerId: string
+  readonly containerNumber: string
+}
+
+export type DashboardOperationalAlertReadModel = {
+  readonly process: DashboardOperationalAlertProcessReadModel
+  readonly container: DashboardOperationalAlertContainerReadModel | null
+  readonly category: TrackingOperationalAlertCategory
+  readonly severity: TrackingActiveAlertReadModel['severity']
+  readonly type: TrackingActiveAlertReadModel['category']
+  readonly description: TrackingActiveAlertReadModel['type']
+  readonly generated_at: string
+  readonly retroactive: boolean
+}
+
 type DashboardProcessRecord = {
   readonly id: string
   readonly reference: string | null
@@ -92,6 +115,7 @@ export type DashboardOperationalProcessReadModel = {
 export type DashboardOperationalSummaryReadModel = {
   readonly processes: readonly DashboardOperationalProcessReadModel[]
   readonly globalAlerts: DashboardGlobalAlertsSummaryReadModel
+  readonly activeAlertsPanel: readonly DashboardOperationalAlertReadModel[]
 }
 
 const DASHBOARD_SEVERITY_ORDER: Readonly<Record<DashboardDominantSeverity, number>> = {
@@ -251,6 +275,93 @@ function groupAlertsByProcessId(
   return groupedAlerts
 }
 
+type DashboardProcessContext = {
+  readonly process: DashboardProcessRecord
+  readonly containersById: ReadonlyMap<string, DashboardContainerRecord>
+}
+
+function indexDashboardProcessContextById(
+  processes: readonly ProcessWithContainersProjection[],
+): ReadonlyMap<string, DashboardProcessContext> {
+  const contextByProcessId = new Map<string, DashboardProcessContext>()
+
+  for (const processWithContainers of processes) {
+    const processId = String(processWithContainers.process.id)
+    const containersById = new Map<string, DashboardContainerRecord>()
+
+    for (const container of processWithContainers.containers) {
+      containersById.set(String(container.id), container)
+    }
+
+    contextByProcessId.set(processId, {
+      process: processWithContainers.process,
+      containersById,
+    })
+  }
+
+  return contextByProcessId
+}
+
+function toDashboardAlertProcessReadModel(
+  alertProcessId: string,
+  context: DashboardProcessContext | undefined,
+): DashboardOperationalAlertProcessReadModel {
+  if (!context) {
+    return {
+      processId: alertProcessId,
+      reference: null,
+      origin: null,
+      destination: null,
+    }
+  }
+
+  return {
+    processId: alertProcessId,
+    reference: context.process.reference,
+    origin: context.process.origin,
+    destination: context.process.destination,
+  }
+}
+
+function toDashboardAlertContainerReadModel(
+  alertContainerId: string,
+  context: DashboardProcessContext | undefined,
+): DashboardOperationalAlertContainerReadModel | null {
+  if (!context) {
+    return null
+  }
+
+  const container = context.containersById.get(alertContainerId)
+  if (!container) {
+    return null
+  }
+
+  return {
+    containerId: alertContainerId,
+    containerNumber: container.containerNumber,
+  }
+}
+
+function buildDashboardActiveAlertsPanel(
+  alerts: readonly TrackingActiveAlertReadModel[],
+  contextByProcessId: ReadonlyMap<string, DashboardProcessContext>,
+): readonly DashboardOperationalAlertReadModel[] {
+  return alerts.map((alert) => {
+    const context = contextByProcessId.get(alert.process_id)
+
+    return {
+      process: toDashboardAlertProcessReadModel(alert.process_id, context),
+      container: toDashboardAlertContainerReadModel(alert.container_id, context),
+      category: toTrackingOperationalAlertCategory(alert.type),
+      severity: alert.severity,
+      type: alert.category,
+      description: alert.type,
+      generated_at: alert.generated_at,
+      retroactive: alert.retroactive,
+    }
+  })
+}
+
 function toTrackingSummaryOrFallback(
   summariesByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
   containerId: string,
@@ -295,6 +406,11 @@ export function createDashboardOperationalSummaryReadModelUseCase(
     ])
 
     const globalAlerts = summarizeGlobalActiveAlerts(activeAlertsResult.alerts)
+    const processContextById = indexDashboardProcessContextById(processes)
+    const activeAlertsPanel = buildDashboardActiveAlertsPanel(
+      activeAlertsResult.alerts,
+      processContextById,
+    )
     const alertsByProcessId = groupAlertsByProcessId(activeAlertsResult.alerts)
     const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
       sortDashboardProcessesByDominantSeverity(
@@ -322,6 +438,7 @@ export function createDashboardOperationalSummaryReadModelUseCase(
     return {
       processes: dashboardProcesses,
       globalAlerts,
+      activeAlertsPanel,
     }
   }
 }

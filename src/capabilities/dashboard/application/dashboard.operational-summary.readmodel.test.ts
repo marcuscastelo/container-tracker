@@ -164,6 +164,63 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         data: 0,
       },
     })
+
+    expect(result.activeAlertsPanel).toEqual([
+      {
+        process: {
+          processId: 'process-1',
+          reference: 'REF-001',
+          origin: 'Santos',
+          destination: 'Rotterdam',
+        },
+        container: {
+          containerId: 'container-1',
+          containerNumber: 'MSCU1111111',
+        },
+        category: 'movement',
+        severity: 'info',
+        type: 'monitoring',
+        description: 'NO_MOVEMENT',
+        generated_at: '2026-03-03T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        process: {
+          processId: 'process-1',
+          reference: 'REF-001',
+          origin: 'Santos',
+          destination: 'Rotterdam',
+        },
+        container: {
+          containerId: 'container-1',
+          containerNumber: 'MSCU1111111',
+        },
+        category: 'movement',
+        severity: 'warning',
+        type: 'monitoring',
+        description: 'NO_MOVEMENT',
+        generated_at: '2026-03-03T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        process: {
+          processId: 'process-1',
+          reference: 'REF-001',
+          origin: 'Santos',
+          destination: 'Rotterdam',
+        },
+        container: {
+          containerId: 'container-2',
+          containerNumber: 'MSCU2222222',
+        },
+        category: 'movement',
+        severity: 'danger',
+        type: 'monitoring',
+        description: 'NO_MOVEMENT',
+        generated_at: '2026-03-03T00:00:00.000Z',
+        retroactive: false,
+      },
+    ])
   })
 
   it('applies dominant severity order danger > warning > info > success > none', () => {

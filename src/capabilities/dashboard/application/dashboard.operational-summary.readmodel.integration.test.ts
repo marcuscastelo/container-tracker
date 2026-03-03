@@ -41,6 +41,8 @@ function makeAlert(
     readonly severity: TrackingActiveAlertReadModel['severity']
     readonly type: TrackingActiveAlertReadModel['type']
     readonly category: TrackingActiveAlertReadModel['category']
+    readonly generated_at?: TrackingActiveAlertReadModel['generated_at']
+    readonly retroactive?: TrackingActiveAlertReadModel['retroactive']
   },
 ): TrackingActiveAlertReadModel {
   return {
@@ -50,10 +52,10 @@ function makeAlert(
     category: args.category,
     severity: args.severity,
     type: args.type,
-    generated_at: '2026-03-03T00:00:00.000Z',
+    generated_at: args.generated_at ?? '2026-03-03T00:00:00.000Z',
     fingerprint: null,
     is_active: true,
-    retroactive: false,
+    retroactive: args.retroactive ?? false,
   }
 }
 
@@ -167,6 +169,110 @@ describe('dashboard operational summary read model integration', () => {
         data: 1,
       },
     })
+  })
+
+  it('builds consolidated active-alert panel preserving fact/monitoring, retroactive and raw generated_at', async () => {
+    const fixedNow = new Date('2026-03-03T00:00:00.000Z')
+
+    const processes: ProcessesProjection = [
+      {
+        process: {
+          id: 'process-fact',
+          reference: 'REF-FACT',
+          origin: 'Santos',
+          destination: 'Antwerp',
+        },
+        containers: [{ id: 'container-fact', containerNumber: 'MSCU2000001' }],
+      },
+      {
+        process: {
+          id: 'process-monitoring',
+          reference: 'REF-MON',
+          origin: 'Busan',
+          destination: 'Hamburg',
+        },
+        containers: [{ id: 'container-monitoring', containerNumber: 'MSCU2000002' }],
+      },
+    ]
+
+    const listProcessesWithContainers = vi.fn(async () => ({ processes }))
+    const getContainersSummary = vi.fn(
+      async (): Promise<ReadonlyMap<string, TrackingOperationalSummary>> =>
+        new Map([
+          ['container-fact', makeTrackingOperationalSummary('IN_TRANSIT')],
+          ['container-monitoring', makeTrackingOperationalSummary('IN_PROGRESS')],
+        ]),
+    )
+
+    const alerts: readonly TrackingActiveAlertReadModel[] = [
+      makeAlert({
+        alert_id: 'alert-fact-retroactive',
+        process_id: 'process-fact',
+        container_id: 'container-fact',
+        category: 'fact',
+        severity: 'danger',
+        type: 'CUSTOMS_HOLD',
+        generated_at: '2026-03-01T14:10:00.000Z',
+        retroactive: true,
+      }),
+      makeAlert({
+        alert_id: 'alert-monitoring',
+        process_id: 'process-monitoring',
+        container_id: 'container-monitoring',
+        category: 'monitoring',
+        severity: 'warning',
+        type: 'ETA_PASSED',
+        generated_at: '2026-03-03T10:00:00.000Z',
+      }),
+    ]
+    const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
+
+    const useCases = createDashboardUseCases({
+      processUseCases: { listProcessesWithContainers },
+      trackingUseCases: { getContainersSummary, listActiveAlertReadModel },
+      nowFactory: () => fixedNow,
+    })
+
+    const result = await useCases.getOperationalSummaryReadModel()
+
+    expect(result.activeAlertsPanel).toEqual([
+      {
+        process: {
+          processId: 'process-fact',
+          reference: 'REF-FACT',
+          origin: 'Santos',
+          destination: 'Antwerp',
+        },
+        container: {
+          containerId: 'container-fact',
+          containerNumber: 'MSCU2000001',
+        },
+        category: 'customs',
+        severity: 'danger',
+        type: 'fact',
+        description: 'CUSTOMS_HOLD',
+        generated_at: '2026-03-01T14:10:00.000Z',
+        retroactive: true,
+      },
+      {
+        process: {
+          processId: 'process-monitoring',
+          reference: 'REF-MON',
+          origin: 'Busan',
+          destination: 'Hamburg',
+        },
+        container: {
+          containerId: 'container-monitoring',
+          containerNumber: 'MSCU2000002',
+        },
+        category: 'eta',
+        severity: 'warning',
+        type: 'monitoring',
+        description: 'ETA_PASSED',
+        generated_at: '2026-03-03T10:00:00.000Z',
+        retroactive: false,
+      },
+    ])
   })
 
   it('orders process rows by dominant severity and keeps processes without alerts visible', async () => {
