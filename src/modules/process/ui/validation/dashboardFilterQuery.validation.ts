@@ -1,6 +1,7 @@
 import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
+  hasActiveDashboardFilters,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
 import {
   TRACKING_STATUS_CODES,
@@ -73,6 +74,50 @@ export function parseDashboardFiltersFromSearchParams(
     statuses,
     importerId,
     importerName,
+  }
+}
+
+export function hasDashboardFilterQueryParams(searchParams: URLSearchParams): boolean {
+  return (
+    searchParams.has(FILTER_PROVIDER_QUERY_KEY) ||
+    searchParams.has(FILTER_STATUS_QUERY_KEY) ||
+    searchParams.has(FILTER_IMPORTER_ID_QUERY_KEY) ||
+    searchParams.has(FILTER_IMPORTER_NAME_QUERY_KEY)
+  )
+}
+
+export function resolveDashboardFilterSelectionWithStorageFallback(
+  searchParams: URLSearchParams,
+  storageFilterSelection: DashboardFilterSelection,
+): DashboardFilterSelection {
+  if (hasDashboardFilterQueryParams(searchParams)) {
+    return parseDashboardFiltersFromSearchParams(searchParams)
+  }
+
+  if (!hasActiveDashboardFilters(storageFilterSelection)) {
+    return DASHBOARD_DEFAULT_FILTER_SELECTION
+  }
+
+  return storageFilterSelection
+}
+
+export type DashboardFilterHydrationResult = {
+  readonly filterSelection: DashboardFilterSelection
+  readonly searchParams: URLSearchParams
+}
+
+export function hydrateDashboardFiltersFromQueryAndStorage(
+  searchParams: URLSearchParams,
+  storageFilterSelection: DashboardFilterSelection,
+): DashboardFilterHydrationResult {
+  const filterSelection = resolveDashboardFilterSelectionWithStorageFallback(
+    searchParams,
+    storageFilterSelection,
+  )
+
+  return {
+    filterSelection,
+    searchParams: applyDashboardFiltersToSearchParams(searchParams, filterSelection),
   }
 }
 

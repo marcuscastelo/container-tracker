@@ -8,6 +8,15 @@ import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/Dash
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import {
+  applyDashboardFiltersToSearchParams,
+  hydrateDashboardFiltersFromQueryAndStorage,
+  parseDashboardFiltersFromSearchParams,
+} from '~/modules/process/ui/validation/dashboardFilterQuery.validation'
+import {
+  readDashboardFiltersFromLocalStorage,
+  writeDashboardFiltersToLocalStorage,
+} from '~/modules/process/ui/validation/dashboardFilterStorage.validation'
+import {
   applyDashboardSortToSearchParams,
   hydrateDashboardSortFromQueryAndStorage,
   parseDashboardSortFromSearchParams,
@@ -58,7 +67,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
   )
   const [filterSelection, setFilterSelection] = createSignal<DashboardFilterSelection>(
-    DASHBOARD_DEFAULT_FILTER_SELECTION,
+    parseDashboardFiltersFromSearchParams(new URLSearchParams(location.search)),
   )
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
@@ -86,11 +95,18 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       currentSearchParams,
       readDashboardSortFromLocalStorage(),
     )
+    const hydratedFilters = hydrateDashboardFiltersFromQueryAndStorage(
+      hydratedSort.searchParams,
+      readDashboardFiltersFromLocalStorage(),
+    )
     const resolvedSortSelection = hydratedSort.sortSelection
-    const nextSearchParams = hydratedSort.searchParams
+    const resolvedFilterSelection = hydratedFilters.filterSelection
+    const nextSearchParams = hydratedFilters.searchParams
 
     setSortSelection(resolvedSortSelection)
+    setFilterSelection(resolvedFilterSelection)
     writeDashboardSortToLocalStorage(resolvedSortSelection)
+    writeDashboardFiltersToLocalStorage(resolvedFilterSelection)
 
     const currentQuery = currentSearchParams.toString()
     const nextQuery = nextSearchParams.toString()
@@ -101,6 +117,20 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
     void navigate(nextPath, { replace: true })
   })
+
+  const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
+    setFilterSelection(nextFilterSelection)
+    writeDashboardFiltersToLocalStorage(nextFilterSelection)
+
+    const nextSearchParams = applyDashboardFiltersToSearchParams(
+      new URLSearchParams(location.search),
+      nextFilterSelection,
+    )
+    const nextQuery = nextSearchParams.toString()
+    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+
+    void navigate(nextPath, { replace: true })
+  }
 
   const handleCreateProcess = () => {
     setCreateError(null)
@@ -124,25 +154,19 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   const handleProviderFilterToggle = (provider: string) => {
-    setFilterSelection((currentSelection) => {
-      return toggleDashboardProviderFilter(currentSelection, provider)
-    })
+    persistDashboardFilters(toggleDashboardProviderFilter(filterSelection(), provider))
   }
 
   const handleStatusFilterToggle = (status: TrackingStatusCode) => {
-    setFilterSelection((currentSelection) => {
-      return toggleDashboardStatusFilter(currentSelection, status)
-    })
+    persistDashboardFilters(toggleDashboardStatusFilter(filterSelection(), status))
   }
 
   const handleImporterFilterSelect = (importer: DashboardImporterFilterValue | null) => {
-    setFilterSelection((currentSelection) => {
-      return setDashboardImporterFilter(currentSelection, importer)
-    })
+    persistDashboardFilters(setDashboardImporterFilter(filterSelection(), importer))
   }
 
   const handleClearAllFilters = () => {
-    setFilterSelection(DASHBOARD_DEFAULT_FILTER_SELECTION)
+    persistDashboardFilters(DASHBOARD_DEFAULT_FILTER_SELECTION)
   }
 
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
