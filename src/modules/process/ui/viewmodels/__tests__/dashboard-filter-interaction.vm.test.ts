@@ -39,10 +39,14 @@ function createProcess(
 function createFilters(input?: {
   readonly providers?: DashboardFilterSelection['providers']
   readonly statuses?: DashboardFilterSelection['statuses']
+  readonly importerId?: DashboardFilterSelection['importerId']
+  readonly importerName?: DashboardFilterSelection['importerName']
 }): DashboardFilterSelection {
   return {
     providers: input?.providers ?? DASHBOARD_DEFAULT_FILTER_SELECTION.providers,
     statuses: input?.statuses ?? DASHBOARD_DEFAULT_FILTER_SELECTION.statuses,
+    importerId: input?.importerId ?? DASHBOARD_DEFAULT_FILTER_SELECTION.importerId,
+    importerName: input?.importerName ?? DASHBOARD_DEFAULT_FILTER_SELECTION.importerName,
   }
 }
 

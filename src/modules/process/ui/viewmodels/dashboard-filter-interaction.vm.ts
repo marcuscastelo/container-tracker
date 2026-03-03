@@ -12,6 +12,8 @@ const PT_BR_COLLATOR =
 export type DashboardFilterSelection = {
   readonly providers: readonly string[]
   readonly statuses: readonly TrackingStatusCode[]
+  readonly importerId: string | null
+  readonly importerName: string | null
 }
 
 export type DashboardProviderFilterOption = {
@@ -27,6 +29,8 @@ export type DashboardStatusFilterOption = {
 export const DASHBOARD_DEFAULT_FILTER_SELECTION: DashboardFilterSelection = {
   providers: [],
   statuses: [],
+  importerId: null,
+  importerName: null,
 }
 
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
@@ -61,6 +65,8 @@ export function toggleDashboardProviderFilter(
   return {
     providers: toggleSelectionValue(currentSelection.providers, provider),
     statuses: currentSelection.statuses,
+    importerId: currentSelection.importerId,
+    importerName: currentSelection.importerName,
   }
 }
 
@@ -71,6 +77,8 @@ export function toggleDashboardStatusFilter(
   return {
     providers: currentSelection.providers,
     statuses: toggleSelectionValue(currentSelection.statuses, status),
+    importerId: currentSelection.importerId,
+    importerName: currentSelection.importerName,
   }
 }
 
