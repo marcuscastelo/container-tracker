@@ -4,9 +4,35 @@ import {
   toOperationalStatus,
 } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
+import {
+  type TrackingOperationalAlertCategory,
+  toTrackingOperationalAlertCategory,
+} from '~/modules/tracking/application/projection/tracking.operational-alert-category.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 
 export type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
+export type DashboardGlobalAlertSeverity = Exclude<DashboardDominantSeverity, 'none'>
+
+export type DashboardGlobalAlertsBySeverityReadModel = {
+  readonly danger: number
+  readonly warning: number
+  readonly info: number
+  readonly success: number
+}
+
+export type DashboardGlobalAlertsByCategoryReadModel = {
+  readonly eta: number
+  readonly movement: number
+  readonly customs: number
+  readonly status: number
+  readonly data: number
+}
+
+export type DashboardGlobalAlertsSummaryReadModel = {
+  readonly totalActiveAlerts: number
+  readonly bySeverity: DashboardGlobalAlertsBySeverityReadModel
+  readonly byCategory: DashboardGlobalAlertsByCategoryReadModel
+}
 
 type DashboardProcessRecord = {
   readonly id: string
@@ -65,6 +91,7 @@ export type DashboardOperationalProcessReadModel = {
 
 export type DashboardOperationalSummaryReadModel = {
   readonly processes: readonly DashboardOperationalProcessReadModel[]
+  readonly globalAlerts: DashboardGlobalAlertsSummaryReadModel
 }
 
 const DASHBOARD_SEVERITY_ORDER: Readonly<Record<DashboardDominantSeverity, number>> = {
@@ -107,6 +134,81 @@ export function resolveDashboardDominantSeverity(
   }
 
   return dominantSeverity
+}
+
+function countBySeverity(
+  alerts: readonly TrackingActiveAlertReadModel[],
+): DashboardGlobalAlertsBySeverityReadModel {
+  let danger = 0
+  let warning = 0
+  let info = 0
+  let success = 0
+
+  for (const alert of alerts) {
+    const severity = normalizeDashboardSeverity(alert.severity)
+    if (severity === 'danger') {
+      danger += 1
+      continue
+    }
+    if (severity === 'warning') {
+      warning += 1
+      continue
+    }
+    if (severity === 'info') {
+      info += 1
+      continue
+    }
+    if (severity === 'success') {
+      success += 1
+    }
+  }
+
+  return { danger, warning, info, success }
+}
+
+function countByOperationalCategory(
+  alerts: readonly TrackingActiveAlertReadModel[],
+): DashboardGlobalAlertsByCategoryReadModel {
+  let eta = 0
+  let movement = 0
+  let customs = 0
+  let status = 0
+  let data = 0
+
+  for (const alert of alerts) {
+    const category: TrackingOperationalAlertCategory = toTrackingOperationalAlertCategory(
+      alert.type,
+    )
+    if (category === 'eta') {
+      eta += 1
+      continue
+    }
+    if (category === 'movement') {
+      movement += 1
+      continue
+    }
+    if (category === 'customs') {
+      customs += 1
+      continue
+    }
+    if (category === 'status') {
+      status += 1
+      continue
+    }
+    data += 1
+  }
+
+  return { eta, movement, customs, status, data }
+}
+
+function summarizeGlobalActiveAlerts(
+  alerts: readonly TrackingActiveAlertReadModel[],
+): DashboardGlobalAlertsSummaryReadModel {
+  return {
+    totalActiveAlerts: alerts.length,
+    bySeverity: countBySeverity(alerts),
+    byCategory: countByOperationalCategory(alerts),
+  }
 }
 
 function deriveDashboardStatus(
@@ -175,6 +277,7 @@ export function createDashboardOperationalSummaryReadModelUseCase(
       deps.trackingUseCases.listActiveAlertReadModel(),
     ])
 
+    const globalAlerts = summarizeGlobalActiveAlerts(activeAlertsResult.alerts)
     const alertsByProcessId = groupAlertsByProcessId(activeAlertsResult.alerts)
     const dashboardProcesses: DashboardOperationalProcessReadModel[] = processes.map((entry) => {
       const processId = String(entry.process.id)
@@ -196,6 +299,9 @@ export function createDashboardOperationalSummaryReadModelUseCase(
       }
     })
 
-    return { processes: dashboardProcesses }
+    return {
+      processes: dashboardProcesses,
+      globalAlerts,
+    }
   }
 }

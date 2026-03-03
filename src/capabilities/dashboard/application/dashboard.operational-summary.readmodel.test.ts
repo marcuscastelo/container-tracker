@@ -147,6 +147,23 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         activeAlerts: [],
       },
     ])
+
+    expect(result.globalAlerts).toEqual({
+      totalActiveAlerts: 3,
+      bySeverity: {
+        danger: 1,
+        warning: 1,
+        info: 1,
+        success: 0,
+      },
+      byCategory: {
+        eta: 0,
+        movement: 3,
+        customs: 0,
+        status: 0,
+        data: 0,
+      },
+    })
   })
 
   it('applies dominant severity order danger > warning > info > success > none', () => {

@@ -40,7 +40,7 @@ describe('assertNoIifeErrorSmokeResult', () => {
     const result = {
       status: 2,
       stdout: '',
-      stderr: `A configuration object specifies rule \"${noIifeRuleId}\"`,
+      stderr: `A configuration object specifies rule "${noIifeRuleId}"`,
     }
 
     expect(() => assertNoIifeErrorSmokeResult(result)).toThrow(

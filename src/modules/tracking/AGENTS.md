@@ -63,3 +63,4 @@ Prefer deterministic fixtures and stable tests.
 
 - `tracking_alerts` does not include `process_id`; when a tracking read model needs process ownership, enrich alert rows through `containers (id -> process_id)` in infra repositories.
 - `is_active` is derived from `acked_at === null && dismissed_at === null`; expose it as derived read-model data, never as mutable source truth.
+- If dashboard/capabilities need operational alert buckets (`eta|movement|customs|status|data`), keep `TrackingAlert.type -> operational category` mapping in tracking application projections (`tracking.operational-alert-category.readmodel.ts`) and let capabilities only aggregate.
