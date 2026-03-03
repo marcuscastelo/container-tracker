@@ -127,6 +127,39 @@ const validCases = [
       )
     `,
   },
+  {
+    name: 'allows pre-computed fallback in Switch',
+    source: `
+      const fallback = 'fallback'
+      const View = () => (
+        <Switch>
+          {fallback}
+        </Switch>
+      )
+    `,
+  },
+  {
+    name: 'allows declarative expression in Match',
+    source: `
+      const label = 'matched'
+      const View = () => (
+        <Match when={true}>
+          {label}
+        </Match>
+      )
+    `,
+  },
+  {
+    name: 'allows pure helper in Index renderer',
+    source: `
+      const toLabel = (value) => \`item-\${value}\`
+      const View = () => (
+        <Index each={[1, 2]}>
+          {(item) => <span>{toLabel(item())}</span>}
+        </Index>
+      )
+    `,
+  },
 ]
 
 describe('container-tracker/no-iife-in-jsx', () => {
