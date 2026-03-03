@@ -90,6 +90,10 @@ class InMemoryObservationRepository implements ObservationRepository {
       .map((o) => o.fingerprint)
     return new Set(fingerprints)
   }
+
+  async listSearchObservations() {
+    return []
+  }
 }
 
 /**
