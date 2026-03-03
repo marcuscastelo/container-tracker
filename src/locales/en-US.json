@@ -30,7 +30,15 @@
         "label": "Status",
         "all": "All statuses",
         "empty": "No statuses"
-      }
+      },
+      "importer": {
+        "label": "Importer",
+        "all": "All importers",
+        "empty": "No importers",
+        "searchPlaceholder": "Search importer",
+        "noMatches": "No importers found"
+      },
+      "clearAll": "Clear all"
     },
     "table": {
       "title": "Shipments Overview",

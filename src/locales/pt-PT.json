@@ -41,7 +41,15 @@
         "label": "Estado",
         "all": "Todos os estados",
         "empty": "Sem estados"
-      }
+      },
+      "importer": {
+        "label": "Importador",
+        "all": "Todos os importadores",
+        "empty": "Sem importadores",
+        "searchPlaceholder": "Pesquisar importador",
+        "noMatches": "Nenhum importador encontrado"
+      },
+      "clearAll": "Limpar filtros"
     },
     "table": {
       "title": "Resumo das Expedições",

@@ -28,9 +28,12 @@ import {
 import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
+  type DashboardImporterFilterValue,
+  deriveDashboardImporterFilterOptions,
   deriveDashboardProviderFilterOptions,
   deriveDashboardStatusFilterOptions,
   filterDashboardProcesses,
+  setDashboardImporterFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
@@ -61,6 +64,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
   const providerFilterOptions = createMemo(() =>
     deriveDashboardProviderFilterOptions(processes() ?? []),
+  )
+  const importerFilterOptions = createMemo(() =>
+    deriveDashboardImporterFilterOptions(processes() ?? []),
   )
   const statusFilterOptions = createMemo(() =>
     deriveDashboardStatusFilterOptions(processes() ?? []),
@@ -125,6 +131,16 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     setFilterSelection((currentSelection) => {
       return toggleDashboardStatusFilter(currentSelection, status)
     })
+  }
+
+  const handleImporterFilterSelect = (importer: DashboardImporterFilterValue | null) => {
+    setFilterSelection((currentSelection) => {
+      return setDashboardImporterFilter(currentSelection, importer)
+    })
+  }
+
+  const handleClearAllFilters = () => {
+    setFilterSelection(DASHBOARD_DEFAULT_FILTER_SELECTION)
   }
 
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
@@ -193,10 +209,15 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         <DashboardProcessFiltersBar
           providers={providerFilterOptions()}
           statuses={statusFilterOptions()}
+          importers={importerFilterOptions()}
           selectedProviders={filterSelection().providers}
           selectedStatuses={filterSelection().statuses}
+          selectedImporterId={filterSelection().importerId}
+          selectedImporterName={filterSelection().importerName}
           onProviderToggle={handleProviderFilterToggle}
           onStatusToggle={handleStatusFilterToggle}
+          onImporterSelect={handleImporterFilterSelect}
+          onClearAllFilters={handleClearAllFilters}
         />
         <DashboardProcessTable
           processes={sortedProcesses()}

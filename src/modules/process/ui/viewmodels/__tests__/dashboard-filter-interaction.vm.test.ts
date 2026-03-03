@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
+  deriveDashboardImporterFilterOptions,
   deriveDashboardProviderFilterOptions,
   deriveDashboardStatusFilterOptions,
   filterDashboardProcesses,
+  setDashboardImporterFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
@@ -13,6 +15,8 @@ import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-s
 function createProcess(
   input: Pick<ProcessSummaryVM, 'id' | 'statusCode'> & {
     readonly carrier?: string | null
+    readonly importerId?: string | null
+    readonly importerName?: string | null
   },
 ): ProcessSummaryVM {
   return {
@@ -20,8 +24,8 @@ function createProcess(
     reference: null,
     origin: null,
     destination: null,
-    importerId: null,
-    importerName: null,
+    importerId: input.importerId ?? null,
+    importerName: input.importerName ?? null,
     containerCount: 1,
     status: 'unknown',
     statusCode: input.statusCode,
@@ -107,6 +111,94 @@ describe('dashboard filter interactions', () => {
     ])
   })
 
+  it('derives importer options from dataset with id-first deduplication and counts', () => {
+    const processes = [
+      createProcess({
+        id: 'A',
+        statusCode: 'UNKNOWN',
+        importerId: 'importer-7',
+        importerName: 'Empresa Alpha',
+      }),
+      createProcess({
+        id: 'B',
+        statusCode: 'UNKNOWN',
+        importerId: 'importer-7',
+        importerName: 'Empresa Alpha',
+      }),
+      createProcess({
+        id: 'C',
+        statusCode: 'UNKNOWN',
+        importerName: 'Mercury Trade',
+      }),
+      createProcess({
+        id: 'D',
+        statusCode: 'UNKNOWN',
+        importerName: '  mercury trade  ',
+      }),
+      createProcess({
+        id: 'E',
+        statusCode: 'UNKNOWN',
+        importerId: 'importer-8',
+      }),
+      createProcess({
+        id: 'F',
+        statusCode: 'UNKNOWN',
+        importerName: '  ',
+      }),
+    ] as const
+
+    const options = deriveDashboardImporterFilterOptions(processes)
+
+    expect(options).toEqual([
+      {
+        importerId: 'importer-7',
+        importerName: 'Empresa Alpha',
+        label: 'Empresa Alpha (importer-7)',
+        count: 2,
+      },
+      {
+        importerId: 'importer-8',
+        importerName: 'importer-8',
+        label: 'importer-8',
+        count: 1,
+      },
+      {
+        importerId: null,
+        importerName: 'Mercury Trade',
+        label: 'Mercury Trade',
+        count: 2,
+      },
+    ])
+  })
+
+  it('sets importer selection while preserving provider and status filters', () => {
+    const currentSelection = createFilters({
+      providers: ['MAERSK'],
+      statuses: ['IN_TRANSIT'],
+    })
+
+    const updatedSelection = setDashboardImporterFilter(currentSelection, {
+      importerId: 'importer-9',
+      importerName: 'Empresa Delta',
+    })
+    const clearedSelection = setDashboardImporterFilter(updatedSelection, null)
+
+    expect(updatedSelection).toEqual({
+      providers: ['MAERSK'],
+      statuses: ['IN_TRANSIT'],
+      importerId: 'importer-9',
+      importerName: 'Empresa Delta',
+    })
+    expect(clearedSelection).toEqual({
+      providers: ['MAERSK'],
+      statuses: ['IN_TRANSIT'],
+      importerId: null,
+      importerName: null,
+    })
+  })
+})
+
+describe('dashboard process filtering', () => {
   it('keeps baseline order untouched when no filters are selected', () => {
     const baseline = [
       createProcess({ id: 'A', carrier: 'MAERSK', statusCode: 'IN_TRANSIT' }),
@@ -149,5 +241,48 @@ describe('dashboard filter interactions', () => {
     )
 
     expect(result.map((process) => process.id)).toEqual(['A'])
+  })
+
+  it('matches importer filter by importerId when provided and falls back to normalized importerName', () => {
+    const baseline = [
+      createProcess({
+        id: 'A',
+        carrier: 'MAERSK',
+        statusCode: 'IN_TRANSIT',
+        importerId: 'importer-1',
+        importerName: 'Empresa Alpha',
+      }),
+      createProcess({
+        id: 'B',
+        carrier: 'MAERSK',
+        statusCode: 'IN_TRANSIT',
+        importerId: null,
+        importerName: ' empresa alpha ',
+      }),
+      createProcess({
+        id: 'C',
+        carrier: 'MAERSK',
+        statusCode: 'IN_TRANSIT',
+        importerId: 'importer-2',
+        importerName: 'Empresa Beta',
+      }),
+    ] as const
+
+    const byImporterId = filterDashboardProcesses(
+      baseline,
+      createFilters({
+        importerId: 'importer-1',
+        importerName: 'Empresa Alpha',
+      }),
+    )
+    const byImporterName = filterDashboardProcesses(
+      baseline,
+      createFilters({
+        importerName: 'EMPRESA ALPHA',
+      }),
+    )
+
+    expect(byImporterId.map((process) => process.id)).toEqual(['A'])
+    expect(byImporterName.map((process) => process.id)).toEqual(['A', 'B'])
   })
 })

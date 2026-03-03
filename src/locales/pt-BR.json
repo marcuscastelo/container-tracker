@@ -41,7 +41,15 @@
         "label": "Status",
         "all": "Todos os status",
         "empty": "Sem status"
-      }
+      },
+      "importer": {
+        "label": "Importador",
+        "all": "Todos os importadores",
+        "empty": "Sem importadores",
+        "searchPlaceholder": "Buscar importador",
+        "noMatches": "Nenhum importador encontrado"
+      },
+      "clearAll": "Limpar filtros"
     },
     "table": {
       "title": "Resumo dos Embarques",

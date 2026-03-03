@@ -26,6 +26,18 @@ export type DashboardStatusFilterOption = {
   readonly count: number
 }
 
+export type DashboardImporterFilterOption = {
+  readonly importerId: string | null
+  readonly importerName: string
+  readonly label: string
+  readonly count: number
+}
+
+export type DashboardImporterFilterValue = {
+  readonly importerId: string | null
+  readonly importerName: string
+}
+
 export const DASHBOARD_DEFAULT_FILTER_SELECTION: DashboardFilterSelection = {
   providers: [],
   statuses: [],
@@ -37,6 +49,12 @@ function toOptionalNonBlankString(value: string | null | undefined): string | nu
   if (!value) return null
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+function toNormalizedNonBlankString(value: string | null | undefined): string | null {
+  const nonBlankValue = toOptionalNonBlankString(value)
+  if (nonBlankValue === null) return null
+  return nonBlankValue.toLocaleLowerCase('pt-BR')
 }
 
 function compareCaseInsensitive(left: string, right: string): number {
@@ -117,14 +135,79 @@ export function deriveDashboardStatusFilterOptions(
   })
 }
 
+function toImporterOptionLabel(importerName: string, importerId: string | null): string {
+  if (importerId === null || importerId === importerName) return importerName
+  return `${importerName} (${importerId})`
+}
+
+export function deriveDashboardImporterFilterOptions(
+  processes: readonly ProcessSummaryVM[],
+): readonly DashboardImporterFilterOption[] {
+  const countsByImporter = new Map<string, DashboardImporterFilterOption>()
+
+  for (const process of processes) {
+    const importerId = toOptionalNonBlankString(process.importerId)
+    const importerName = toOptionalNonBlankString(process.importerName)
+
+    if (importerId === null && importerName === null) continue
+
+    const normalizedImporterName = importerName ?? importerId ?? ''
+    const optionKey =
+      importerId !== null
+        ? `id:${importerId}`
+        : `name:${toNormalizedNonBlankString(normalizedImporterName) ?? normalizedImporterName}`
+    const currentOption = countsByImporter.get(optionKey)
+    if (currentOption) {
+      countsByImporter.set(optionKey, { ...currentOption, count: currentOption.count + 1 })
+      continue
+    }
+
+    countsByImporter.set(optionKey, {
+      importerId,
+      importerName: normalizedImporterName,
+      label: toImporterOptionLabel(normalizedImporterName, importerId),
+      count: 1,
+    })
+  }
+
+  const options = Array.from(countsByImporter.values())
+
+  return options.sort((left, right) => {
+    const byName = compareCaseInsensitive(left.importerName, right.importerName)
+    if (byName !== 0) return byName
+
+    if (left.importerId === null && right.importerId !== null) return 1
+    if (left.importerId !== null && right.importerId === null) return -1
+    if (left.importerId === null || right.importerId === null) return 0
+
+    return compareCaseInsensitive(left.importerId, right.importerId)
+  })
+}
+
+export function setDashboardImporterFilter(
+  currentSelection: DashboardFilterSelection,
+  importerFilter: DashboardImporterFilterValue | null,
+): DashboardFilterSelection {
+  return {
+    providers: currentSelection.providers,
+    statuses: currentSelection.statuses,
+    importerId: importerFilter?.importerId ?? null,
+    importerName: importerFilter?.importerName ?? null,
+  }
+}
+
 export function filterDashboardProcesses(
   processes: readonly ProcessSummaryVM[],
   filterSelection: DashboardFilterSelection,
 ): readonly ProcessSummaryVM[] {
   const hasProviderFilters = filterSelection.providers.length > 0
   const hasStatusFilters = filterSelection.statuses.length > 0
+  const selectedImporterId = toOptionalNonBlankString(filterSelection.importerId)
+  const selectedImporterName =
+    selectedImporterId === null ? toNormalizedNonBlankString(filterSelection.importerName) : null
+  const hasImporterFilter = selectedImporterId !== null || selectedImporterName !== null
 
-  if (!hasProviderFilters && !hasStatusFilters) {
+  if (!hasProviderFilters && !hasStatusFilters && !hasImporterFilter) {
     return processes
   }
 
@@ -138,6 +221,12 @@ export function filterDashboardProcesses(
       !hasStatusFilters ||
       filterSelection.statuses.some((statusCode) => statusCode === process.statusCode)
 
-    return matchesProvider && matchesStatus
+    const matchesImporter =
+      !hasImporterFilter ||
+      (selectedImporterId !== null
+        ? toOptionalNonBlankString(process.importerId) === selectedImporterId
+        : toNormalizedNonBlankString(process.importerName) === selectedImporterName)
+
+    return matchesProvider && matchesStatus && matchesImporter
   })
 }
