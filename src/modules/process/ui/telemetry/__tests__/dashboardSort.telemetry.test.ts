@@ -5,6 +5,8 @@ import {
   type DashboardSortTelemetryEmitter,
   emitDashboardSortChangedTelemetry,
 } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
+import type { DashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 
 type TelemetryCall = {
   readonly eventName: string
@@ -80,5 +82,44 @@ describe('dashboard sort telemetry', () => {
     )
 
     expect(capture.calls).toEqual([])
+  })
+
+  it('emits exactly one event per user sort action with UI-matching direction', () => {
+    const capture = createTelemetryCapture()
+
+    let selection: DashboardSortSelection = null
+
+    selection = nextDashboardSortSelection(selection, 'provider')
+    emitDashboardSortChangedTelemetry('user', 'provider', selection, capture.emitEvent)
+
+    selection = nextDashboardSortSelection(selection, 'provider')
+    emitDashboardSortChangedTelemetry('user', 'provider', selection, capture.emitEvent)
+
+    selection = nextDashboardSortSelection(selection, 'provider')
+    emitDashboardSortChangedTelemetry('user', 'provider', selection, capture.emitEvent)
+
+    expect(capture.calls).toEqual([
+      {
+        eventName: DASHBOARD_SORT_CHANGED_EVENT,
+        payload: {
+          field: 'provider',
+          direction: 'desc',
+        },
+      },
+      {
+        eventName: DASHBOARD_SORT_CHANGED_EVENT,
+        payload: {
+          field: 'provider',
+          direction: 'asc',
+        },
+      },
+      {
+        eventName: DASHBOARD_SORT_CHANGED_EVENT,
+        payload: {
+          field: 'provider',
+          direction: null,
+        },
+      },
+    ])
   })
 })
