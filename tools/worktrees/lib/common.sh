@@ -75,3 +75,72 @@ wt_validate_prd_path() {
       ;;
   esac
 }
+
+wt_slugify() {
+  local raw="$1"
+  local normalized
+
+  normalized="$(
+    printf '%s' "$raw" \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g'
+  )"
+
+  if [ -z "$normalized" ]; then
+    wt_error "Could not derive a valid slug from input: $raw"
+    return 1
+  fi
+
+  printf '%s\n' "$normalized"
+}
+
+wt_derive_slug_from_prd() {
+  local prd_path="$1"
+  local filename
+  local stem
+
+  filename="$(basename "$prd_path")"
+  stem="${filename%.md}"
+  wt_slugify "$stem"
+}
+
+wt_resolve_slug() {
+  local prd_path="$1"
+  local slug_override="$2"
+
+  if [ -n "$slug_override" ]; then
+    wt_slugify "$slug_override"
+    return
+  fi
+
+  wt_derive_slug_from_prd "$prd_path"
+}
+
+wt_build_branch_name() {
+  local branch_prefix="$1"
+  local slug="$2"
+
+  if [ -z "$branch_prefix" ]; then
+    wt_error "Branch prefix must not be empty."
+    return 1
+  fi
+
+  case "$branch_prefix" in
+    */) printf '%s%s\n' "$branch_prefix" "$slug" ;;
+    *) printf '%s/%s\n' "$branch_prefix" "$slug" ;;
+  esac
+}
+
+wt_join_path() {
+  local root="$1"
+  local leaf="$2"
+  local trimmed_root
+
+  if [ "$root" = "/" ]; then
+    printf '/%s\n' "$leaf"
+    return
+  fi
+
+  trimmed_root="${root%/}"
+  printf '%s/%s\n' "$trimmed_root" "$leaf"
+}

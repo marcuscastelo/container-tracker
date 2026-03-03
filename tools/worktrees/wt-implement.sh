@@ -77,11 +77,23 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+if ! slug="$(wt_resolve_slug "$prd_path" "$slug")"; then
+  exit 1
+fi
+
+if ! branch_name="$(wt_build_branch_name "$branch_prefix" "$slug")"; then
+  exit 1
+fi
+
+worktree_path="$(wt_join_path "$wt_root" "$slug")"
+
 wt_info "wt-implement scaffold initialized."
 wt_info "PRD path: $prd_path"
 wt_info "Worktree root: $wt_root"
 wt_info "Branch prefix: $branch_prefix"
-wt_info "Slug override: ${slug:-<auto>}"
+wt_info "Slug: $slug"
+wt_info "Branch: $branch_name"
+wt_info "Worktree path: $worktree_path"
 wt_info "force-seed: $force_seed"
 wt_info "no-open: $no_open"
 wt_info "print-only: $print_only"
