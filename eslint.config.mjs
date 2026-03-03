@@ -86,6 +86,12 @@ export default [
     },
   },
   {
+    files: ['src/modules/**/ui/**/*.{ts,tsx}'],
+    rules: {
+      'container-tracker/no-iife-in-jsx': 'warn',
+    },
+  },
+  {
     files: ['src/routes/api/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
