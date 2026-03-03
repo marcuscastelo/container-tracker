@@ -66,6 +66,69 @@ function createControllers(deps?: Partial<SearchDeps>) {
   }
 }
 
+type TypicalSearchFixture = {
+  readonly processMatches: readonly ProcessSearchProjection[]
+  readonly containerMatches: readonly ContainerSearchProjection[]
+  readonly vesselMatches: readonly TrackingSearchProjection[]
+  readonly statusMatches: readonly TrackingSearchProjection[]
+}
+
+function createTypicalSearchFixture(processCount: number): TypicalSearchFixture {
+  const processMatches: ProcessSearchProjection[] = Array.from(
+    { length: processCount },
+    (_, index) => {
+      const id = String(index).padStart(4, '0')
+      return {
+        processId: `process-${id}`,
+        reference: `REF-${id}`,
+        importerName: `Importer ${id}`,
+        billOfLading: `BL-${id}`,
+        carrier: index % 2 === 0 ? 'MAERSK' : 'MSC',
+      }
+    },
+  )
+
+  const containerMatches: ContainerSearchProjection[] = processMatches.flatMap(
+    (processMatch, index) => {
+      return [
+        {
+          processId: processMatch.processId,
+          containerNumber: `MSKU${String(index).padStart(7, '0')}`,
+        },
+        {
+          processId: processMatch.processId,
+          containerNumber: `MSKU${String(index + processCount).padStart(7, '0')}`,
+        },
+      ]
+    },
+  )
+
+  const vesselMatches: TrackingSearchProjection[] = processMatches
+    .filter((_unused, index) => index % 3 === 0)
+    .map((processMatch, index) => ({
+      processId: processMatch.processId,
+      vesselName: `MV Atlas ${index}`,
+      latestDerivedStatus: 'IN_TRANSIT',
+      latestEta: '2026-03-10T00:00:00.000Z',
+    }))
+
+  const statusMatches: TrackingSearchProjection[] = processMatches
+    .filter((_unused, index) => index % 5 === 0)
+    .map((processMatch, index) => ({
+      processId: processMatch.processId,
+      vesselName: `MV Boreal ${index}`,
+      latestDerivedStatus: 'ARRIVED_AT_POD',
+      latestEta: '2026-03-12T00:00:00.000Z',
+    }))
+
+  return {
+    processMatches,
+    containerMatches,
+    vesselMatches,
+    statusMatches,
+  }
+}
+
 describe('search controllers', () => {
   it('returns 200 with empty list for empty or short queries without calling BC searches', async () => {
     const { controllers, deps } = createControllers()
@@ -158,5 +221,131 @@ describe('search controllers', () => {
     expect(deps.searchByNumber).toHaveBeenCalledWith('ref', 30)
     expect(deps.searchByVesselName).toHaveBeenCalledWith('ref', 30)
     expect(deps.searchByDerivedStatusText).toHaveBeenCalledWith('ref', 30)
+  })
+
+  it('keeps exact container lookup returning the owning process as top result', async () => {
+    const exactContainerNumber = 'MSKU9990001'
+    const { controllers } = createControllers({
+      searchByText: vi.fn(async () => [
+        {
+          processId: 'process-legacy',
+          reference: 'REF-LEGACY',
+          importerName: 'Legacy Importers',
+          billOfLading: 'BL-LEGACY',
+          carrier: 'MAERSK',
+        },
+        {
+          processId: 'process-noise',
+          reference: 'REF-NOISE',
+          importerName: 'Noise Co',
+          billOfLading: 'BL-NOISE',
+          carrier: 'MSC',
+        },
+      ]),
+      searchByNumber: vi.fn(async () => [
+        {
+          processId: 'process-legacy',
+          containerNumber: exactContainerNumber,
+        },
+        {
+          processId: 'process-noise',
+          containerNumber: `${exactContainerNumber}0`,
+        },
+      ]),
+      searchByVesselName: vi.fn(async () => []),
+      searchByDerivedStatusText: vi.fn(async () => []),
+    })
+
+    const response = await controllers.search({
+      request: new Request(`http://localhost/api/search?q=${exactContainerNumber}`),
+    })
+    const body = SearchHttpResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body[0]?.processId).toBe('process-legacy')
+    expect(body[0]?.containers).toContain(exactContainerNumber)
+  })
+
+  it('returns one consolidated process row per processId for ambiguous queries', async () => {
+    const { controllers } = createControllers({
+      searchByText: vi.fn(async () => [
+        {
+          processId: 'process-01',
+          reference: 'REF-OCEAN-01',
+          importerName: 'Oceanic Imports',
+          billOfLading: 'BL-OCEAN-01',
+          carrier: 'MAERSK',
+        },
+        {
+          processId: 'process-02',
+          reference: 'REF-OCEAN-02',
+          importerName: 'Oceanic Imports',
+          billOfLading: 'BL-OCEAN-02',
+          carrier: 'MSC',
+        },
+      ]),
+      searchByNumber: vi.fn(async () => [
+        { processId: 'process-01', containerNumber: 'MSKU0000001' },
+        { processId: 'process-01', containerNumber: 'MSKU0000001' },
+        { processId: 'process-01', containerNumber: 'MSKU0000002' },
+        { processId: 'process-02', containerNumber: 'MSKU0000003' },
+      ]),
+      searchByVesselName: vi.fn(async () => [
+        {
+          processId: 'process-01',
+          vesselName: 'Ocean Runner',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: '2026-03-15T00:00:00.000Z',
+        },
+        {
+          processId: 'process-02',
+          vesselName: 'Ocean Star',
+          latestDerivedStatus: 'ARRIVED_AT_POD',
+          latestEta: '2026-03-18T00:00:00.000Z',
+        },
+      ]),
+      searchByDerivedStatusText: vi.fn(async () => [
+        {
+          processId: 'process-01',
+          vesselName: 'Ocean Runner',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: '2026-03-15T00:00:00.000Z',
+        },
+      ]),
+    })
+
+    const response = await controllers.search({
+      request: new Request('http://localhost/api/search?q=ocean'),
+    })
+    const body = SearchHttpResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(new Set(body.map((item) => item.processId)).size).toBe(body.length)
+    expect(body.filter((item) => item.processId === 'process-01')).toHaveLength(1)
+    expect(body.find((item) => item.processId === 'process-01')?.containers).toEqual([
+      'MSKU0000001',
+      'MSKU0000002',
+    ])
+  })
+
+  it('responds below 300ms for a typical fixture query with a 30-result cap', async () => {
+    const fixture = createTypicalSearchFixture(240)
+    const { controllers } = createControllers({
+      searchByText: vi.fn(async () => fixture.processMatches),
+      searchByNumber: vi.fn(async () => fixture.containerMatches),
+      searchByVesselName: vi.fn(async () => fixture.vesselMatches),
+      searchByDerivedStatusText: vi.fn(async () => fixture.statusMatches),
+    })
+
+    const startedAtMs = performance.now()
+    const response = await controllers.search({
+      request: new Request('http://localhost/api/search?q=msku'),
+    })
+    const body = SearchHttpResponseSchema.parse(await response.json())
+    const elapsedMs = performance.now() - startedAtMs
+
+    expect(response.status).toBe(200)
+    expect(body).toHaveLength(30)
+    expect(elapsedMs).toBeLessThan(300)
   })
 })
