@@ -8,6 +8,16 @@ import {
 const SORT_FIELD_QUERY_KEY = 'sortField'
 const SORT_DIR_QUERY_KEY = 'sortDir'
 
+function getDashboardDefaultSortSelection(): DashboardSortSelection {
+  return DASHBOARD_DEFAULT_SORT_SELECTION
+}
+
+function isDashboardDefaultSortSelection(
+  sortSelection: DashboardSortSelection,
+): sortSelection is null {
+  return sortSelection === DASHBOARD_DEFAULT_SORT_SELECTION
+}
+
 function parseDashboardSortField(value: string | null): DashboardSortField | null {
   switch (value) {
     case 'processNumber':
@@ -39,7 +49,7 @@ export function parseDashboardSortFromSearchParams(
   const direction = parseDashboardSortDirection(searchParams.get(SORT_DIR_QUERY_KEY))
 
   if (field === null || direction === null) {
-    return DASHBOARD_DEFAULT_SORT_SELECTION
+    return getDashboardDefaultSortSelection()
   }
 
   return { field, direction }
@@ -57,6 +67,10 @@ export function resolveDashboardSortSelectionWithStorageFallback(
     return parseDashboardSortFromSearchParams(searchParams)
   }
 
+  if (isDashboardDefaultSortSelection(storageSortSelection)) {
+    return getDashboardDefaultSortSelection()
+  }
+
   return storageSortSelection
 }
 
@@ -65,7 +79,7 @@ export function serializeDashboardSortToSearchParams(
 ): URLSearchParams {
   const searchParams = new URLSearchParams()
 
-  if (sortSelection === null) {
+  if (isDashboardDefaultSortSelection(sortSelection)) {
     return searchParams
   }
 
@@ -83,7 +97,7 @@ export function applyDashboardSortToSearchParams(
   nextSearchParams.delete(SORT_FIELD_QUERY_KEY)
   nextSearchParams.delete(SORT_DIR_QUERY_KEY)
 
-  if (sortSelection === null) {
+  if (isDashboardDefaultSortSelection(sortSelection)) {
     return nextSearchParams
   }
 

@@ -2,7 +2,10 @@ import {
   parseDashboardSortFromSearchParams,
   serializeDashboardSortToSearchParams,
 } from '~/modules/process/ui/validation/dashboardSortQuery.validation'
-import type { DashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import {
+  DASHBOARD_DEFAULT_SORT_SELECTION,
+  type DashboardSortSelection,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 
 export const DASHBOARD_SORT_STORAGE_KEY = 'dashboardSort'
 
@@ -14,7 +17,7 @@ function getLocalStorageOrNull(): DashboardSortStorage | null {
 }
 
 function parseDashboardSortFromStorageValue(storageValue: string | null): DashboardSortSelection {
-  if (storageValue === null) return null
+  if (storageValue === null) return DASHBOARD_DEFAULT_SORT_SELECTION
 
   const searchParams = new URLSearchParams(storageValue)
   return parseDashboardSortFromSearchParams(searchParams)
@@ -32,13 +35,13 @@ export function readDashboardSortFromLocalStorage(
   storage: DashboardSortStorage | null = getLocalStorageOrNull(),
 ): DashboardSortSelection {
   if (storage === null) {
-    return null
+    return DASHBOARD_DEFAULT_SORT_SELECTION
   }
 
   try {
     return parseDashboardSortFromStorageValue(storage.getItem(DASHBOARD_SORT_STORAGE_KEY))
   } catch {
-    return null
+    return DASHBOARD_DEFAULT_SORT_SELECTION
   }
 }
 

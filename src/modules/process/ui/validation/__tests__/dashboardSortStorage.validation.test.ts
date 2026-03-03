@@ -4,6 +4,7 @@ import {
   readDashboardSortFromLocalStorage,
   writeDashboardSortToLocalStorage,
 } from '~/modules/process/ui/validation/dashboardSortStorage.validation'
+import { DASHBOARD_DEFAULT_SORT_SELECTION } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 
 type SortStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
@@ -42,7 +43,7 @@ describe('dashboard sort local storage contract', () => {
       [DASHBOARD_SORT_STORAGE_KEY]: 'sortField=invalid&sortDir=desc',
     })
 
-    expect(readDashboardSortFromLocalStorage(storage)).toBeNull()
+    expect(readDashboardSortFromLocalStorage(storage)).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
   })
 
   it('writes sort selection as query-contract string', () => {
@@ -82,6 +83,10 @@ describe('dashboard sort local storage contract', () => {
       },
     }
 
-    expect(readDashboardSortFromLocalStorage(brokenStorage)).toBeNull()
+    expect(readDashboardSortFromLocalStorage(brokenStorage)).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
+  })
+
+  it('returns explicit default sort when storage is unavailable', () => {
+    expect(readDashboardSortFromLocalStorage(null)).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
   })
 })

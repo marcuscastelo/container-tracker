@@ -100,6 +100,33 @@ describe('dashboard sort query contract', () => {
     expect(result).toEqual(storageSelection)
   })
 
+  it('uses explicit default sort selection when URL and storage have no active sort', () => {
+    const result = resolveDashboardSortSelectionWithStorageFallback(
+      new URLSearchParams(),
+      DASHBOARD_DEFAULT_SORT_SELECTION,
+    )
+
+    expect(result).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
+  })
+
+  it('keeps URL-first precedence when URL sort params are invalid', () => {
+    const invalidUrlSelection = new URLSearchParams({
+      sortField: 'invalid',
+      sortDir: 'asc',
+    })
+    const storageSelection: DashboardSortSelection = {
+      field: 'provider',
+      direction: 'desc',
+    }
+
+    const result = resolveDashboardSortSelectionWithStorageFallback(
+      invalidUrlSelection,
+      storageSelection,
+    )
+
+    expect(result).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
+  })
+
   it('roundtrips URL-to-state and state-to-URL for all supported sort fields', () => {
     for (const field of DASHBOARD_SORT_FIELDS) {
       for (const direction of DASHBOARD_SORT_DIRECTIONS) {
