@@ -101,6 +101,7 @@
       "viewOnCarrierSite": "Ver no site da transportadora",
       "systemCreated": "Processo registrado no sistema",
       "unknownEvent": "Evento desconhecido",
+      "nonMappedIndicator": "Não mapeado",
       "viewPredictionHistory": "Ver histórico de previsões",
       "predictionHistory": {
         "title": "Histórico de Previsões",

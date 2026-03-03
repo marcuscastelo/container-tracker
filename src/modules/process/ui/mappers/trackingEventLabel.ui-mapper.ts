@@ -3,6 +3,7 @@ type TimelineLabelKeys = {
     readonly timeline: {
       readonly systemCreated: string
       readonly unknownEvent: string
+      readonly nonMappedIndicator: string
     }
   }
   readonly tracking: {
@@ -27,6 +28,17 @@ type TimelineLabelEvent = {
 }
 
 type TranslateFn = (key: string) => string
+export type NonMappedIndicatorVariant = 'badge' | 'suffix'
+export type TimelineEventLabelSource = 'canonical' | 'carrier' | 'unknown'
+export type TimelineEventLabelResolution = {
+  readonly label: string
+  readonly source: TimelineEventLabelSource
+}
+export type TimelineEventLabelPresentation = {
+  readonly label: string
+  readonly showNonMappedIndicator: boolean
+  readonly nonMappedIndicatorLabel: string
+}
 
 function toCanonicalLabelKey(keys: TimelineLabelKeys, eventType: string): string | undefined {
   switch (eventType) {
@@ -66,12 +78,63 @@ export function resolveTimelineEventLabel(
   t: TranslateFn,
   keys: TimelineLabelKeys,
 ): string {
-  const canonicalKey = toCanonicalLabelKey(keys, event.type)
-  if (canonicalKey) return t(canonicalKey)
+  return resolveTimelineEventLabelResolution(event, t, keys).label
+}
 
-  if (hasDisplayableCarrierLabel(event.carrierLabel)) {
-    return event.carrierLabel
+export function resolveTimelineEventLabelResolution(
+  event: TimelineLabelEvent,
+  t: TranslateFn,
+  keys: TimelineLabelKeys,
+): TimelineEventLabelResolution {
+  const canonicalKey = toCanonicalLabelKey(keys, event.type)
+  if (canonicalKey) {
+    return {
+      label: t(canonicalKey),
+      source: 'canonical',
+    }
   }
 
-  return t(keys.shipmentView.timeline.unknownEvent)
+  if (hasDisplayableCarrierLabel(event.carrierLabel)) {
+    return {
+      label: event.carrierLabel,
+      source: 'carrier',
+    }
+  }
+
+  return {
+    label: t(keys.shipmentView.timeline.unknownEvent),
+    source: 'unknown',
+  }
+}
+
+export function resolveTimelineEventLabelPresentation(
+  event: TimelineLabelEvent,
+  t: TranslateFn,
+  keys: TimelineLabelKeys,
+  nonMappedIndicatorVariant: NonMappedIndicatorVariant = 'badge',
+): TimelineEventLabelPresentation {
+  const resolution = resolveTimelineEventLabelResolution(event, t, keys)
+  const nonMappedIndicatorLabel = t(keys.shipmentView.timeline.nonMappedIndicator)
+
+  if (resolution.source !== 'carrier') {
+    return {
+      label: resolution.label,
+      showNonMappedIndicator: false,
+      nonMappedIndicatorLabel,
+    }
+  }
+
+  if (nonMappedIndicatorVariant === 'suffix') {
+    return {
+      label: `${resolution.label} (${nonMappedIndicatorLabel})`,
+      showNonMappedIndicator: false,
+      nonMappedIndicatorLabel,
+    }
+  }
+
+  return {
+    label: resolution.label,
+    showNonMappedIndicator: true,
+    nonMappedIndicatorLabel,
+  }
 }

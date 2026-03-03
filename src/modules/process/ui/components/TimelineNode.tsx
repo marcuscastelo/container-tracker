@@ -1,7 +1,10 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
-import { resolveTimelineEventLabel } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
+import {
+  type NonMappedIndicatorVariant,
+  resolveTimelineEventLabelPresentation,
+} from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { TimelineNodeLayout } from '~/modules/process/ui/TimelineNode.layout'
 import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -115,6 +118,7 @@ export function TimelineNode(props: {
   readonly isLast: boolean
   readonly carrier?: string | null
   readonly containerNumber?: string | null
+  readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
@@ -162,13 +166,23 @@ export function TimelineNode(props: {
     return typeof trackUrl === 'string' ? trackUrl : undefined
   })
 
-  const label = createMemo(() => {
-    let currentLabel = resolveTimelineEventLabel(props.event, t, keys)
+  const labelPresentation = createMemo(() => {
+    const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
+    const presentation = resolveTimelineEventLabelPresentation(
+      props.event,
+      t,
+      keys,
+      indicatorVariant,
+    )
+    let currentLabel = presentation.label
     if (props.event.vesselName) {
       currentLabel += ` — ${props.event.vesselName}`
       if (props.event.voyage) currentLabel += ` (${props.event.voyage})`
     }
-    return currentLabel
+    return {
+      ...presentation,
+      label: currentLabel,
+    }
   })
 
   const actualDateIso = createMemo(() =>
@@ -187,7 +201,12 @@ export function TimelineNode(props: {
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
-        label={label()}
+        label={labelPresentation().label}
+        nonMappedBadgeLabel={
+          labelPresentation().showNonMappedIndicator
+            ? labelPresentation().nonMappedIndicatorLabel
+            : undefined
+        }
         showPredictionHistoryButton={hasPredictionHistory()}
         onOpenPredictionHistory={() => setShowPredictionHistory(true)}
         predictionHistoryLabel={t(keys.shipmentView.timeline.viewPredictionHistory)}
@@ -218,7 +237,7 @@ export function TimelineNode(props: {
       {props.event.series ? (
         <PredictionHistoryModal
           series={props.event.series}
-          activityLabel={label()}
+          activityLabel={labelPresentation().label}
           isOpen={showPredictionHistory()}
           onClose={() => setShowPredictionHistory(false)}
         />
