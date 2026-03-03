@@ -13,6 +13,16 @@ Options:
 USAGE
 }
 
+require_option_value() {
+  local opt="$1"
+  local argc="$2"
+  if ((argc < 2)); then
+    echo "Error: ${opt} requires a value." >&2
+    usage >&2
+    exit 2
+  fi
+}
+
 BASE_BRANCH="main"
 REPO_DIR="$(pwd)"
 OUTDIR="/tmp"
@@ -20,14 +30,17 @@ OUTDIR="/tmp"
 while (($# > 0)); do
   case "$1" in
     --base)
+      require_option_value "--base" $#
       BASE_BRANCH="${2:-}"
       shift 2
       ;;
     --repo)
+      require_option_value "--repo" $#
       REPO_DIR="${2:-}"
       shift 2
       ;;
     --outdir)
+      require_option_value "--outdir" $#
       OUTDIR="${2:-}"
       shift 2
       ;;
@@ -53,7 +66,7 @@ if ! command -v git >/dev/null 2>&1; then
   exit 2
 fi
 
-if [[ ! -d "$REPO_DIR/.git" ]]; then
+if ! git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Repository path is not a git repository: $REPO_DIR" >&2
   exit 2
 fi

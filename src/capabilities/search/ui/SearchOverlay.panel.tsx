@@ -164,7 +164,8 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
         <SearchIcon />
         <span class="flex-1 text-[13px] text-slate-400">{t(keys.search.placeholder)}</span>
         <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:inline-flex">
-          <span class="text-[9px]">⌘</span>K
+          <span class="text-[9px]">Ctrl/⌘</span>
+          <span>K</span>
         </kbd>
       </button>
 

@@ -68,7 +68,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   const route = () => displayRoute(props.process)
 
   return (
-    <tr class="group cursor-pointer border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
+    <tr class="group border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
       <td class="px-4 py-2.5">
         <A
           href={`/shipments/${props.process.id}`}

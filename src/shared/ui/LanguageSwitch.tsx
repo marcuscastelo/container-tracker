@@ -74,7 +74,7 @@ export function LanguageSwitch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="inline-flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white focus:outline-none"
+        class="inline-flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
         aria-haspopup="listbox"
         aria-expanded={open()}
       >

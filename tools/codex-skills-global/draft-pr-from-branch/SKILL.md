@@ -30,8 +30,10 @@ Always return to the user:
 
 The script prints these values and writes:
 
-- `pr-<branch>-title.txt`
-- `pr-<branch>-description.md`
+- `pr-<branch-slug>-title.txt`
+- `pr-<branch-slug>-description.md`
+
+Here, `<branch-slug>` is a slugified form of the git branch name (for example, `feat/x` becomes `feat-x`).
 
 ## Behavior
 

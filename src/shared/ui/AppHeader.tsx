@@ -17,7 +17,7 @@ function NavLink(props: {
       href={props.href}
       end={props.end}
       class="relative px-3 py-2.5 text-[13px] font-medium text-slate-400 transition-colors hover:text-white"
-      activeClass="!text-white after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-blue-400"
+      activeClass="!text-white after:content-[''] after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-blue-400"
     >
       {props.children}
     </A>
@@ -66,6 +66,7 @@ export function AppHeader(props: Props): JSX.Element {
           <button
             type="button"
             onClick={() => props.onCreateProcess?.()}
+            aria-label={t(keys.header.createProcess)}
             class="inline-flex items-center gap-1.5 rounded bg-blue-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 focus:ring-offset-slate-900"
           >
             <svg
