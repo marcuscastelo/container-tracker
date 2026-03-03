@@ -58,3 +58,9 @@ Prefer deterministic fixtures and stable tests.
 
 - For global search data (`vessel/status/eta`), derive values inside Tracking BC using tracking read models (`application/projection/tracking.search.readmodel.ts`), not in capabilities/UI.
 - Use `observationRepository.listSearchObservations()` + tracking derivation (`deriveTimeline`/`deriveStatus`/operational summary) to keep status/ETA semantics canonical.
+
+## 5) Observation Metadata Propagation Pattern
+
+- When adding provider metadata fields on observations (for example carrier labels), propagate through the full chain:
+  `normalizers -> ObservationDraft -> diffObservations -> persistence mappers -> TrackingObservationDTO -> tracking timeline read model`.
+- Keep metadata out of semantic derivation inputs (status/series/alerts) unless a canonical domain rule explicitly requires it.

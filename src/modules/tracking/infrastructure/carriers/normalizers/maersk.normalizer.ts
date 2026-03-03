@@ -63,6 +63,12 @@ function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeTy
   return 'EXPECTED'
 }
 
+function normalizeCarrierLabel(label: string | null | undefined): string | null {
+  if (typeof label !== 'string') return null
+  const normalized = label.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
 function computeConfidence(
   eventTime: string | null,
   eventTimeType: string | null | undefined,
@@ -128,6 +134,7 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
           confidence,
           provider: 'maersk',
           snapshot_id: snapshot.id,
+          carrier_label: normalizeCarrierLabel(event.activity),
           raw_event: event,
         }
 

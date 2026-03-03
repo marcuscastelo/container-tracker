@@ -43,6 +43,12 @@ function mapMscDescription(description: string | null | undefined): ObservationT
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
 }
 
+function normalizeCarrierLabel(label: string | null | undefined): string | null {
+  if (typeof label !== 'string') return null
+  const normalized = label.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
 function isEmptyEvent(
   description: string | null | undefined,
   detail: readonly string[] | null | undefined,
@@ -199,6 +205,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           confidence,
           provider: 'msc',
           snapshot_id: snapshot.id,
+          carrier_label: normalizeCarrierLabel(event.Description),
           raw_event: event,
         }
 
@@ -231,6 +238,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
               confidence: 'medium', // ETA is provisional
               provider: 'msc',
               snapshot_id: snapshot.id,
+              carrier_label: null,
               raw_event: { source: 'PodEtaDate', value: podEtaDate },
             }
 

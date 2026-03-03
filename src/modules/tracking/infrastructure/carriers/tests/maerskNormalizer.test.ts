@@ -37,6 +37,7 @@ describe('normalizeMaerskSnapshot', () => {
       expect(gateOut).toBeDefined()
       expect(gateOut?.is_empty).toBe(true)
       expect(gateOut?.location_code).toBe('EGPSDTM')
+      expect(gateOut?.carrier_label).toBe('GATE-OUT')
     })
 
     it('should map "GATE-IN" to GATE_IN', () => {

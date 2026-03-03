@@ -49,6 +49,7 @@ describe('normalizeCmaCgmSnapshot', () => {
       expect(load).toBeDefined()
       expect(load?.vessel_name).toBe('CMA CGM VOLTAIRE')
       expect(load?.voyage).toBe('0DVNTS1MA')
+      expect(load?.carrier_label).toBe('Loaded on board')
     })
 
     it('should map "Vessel Departure" to DEPARTURE', () => {

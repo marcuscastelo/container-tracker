@@ -47,6 +47,7 @@ export const ObservationResponseSchema = z.object({
   id: z.string(),
   fingerprint: z.string(),
   type: z.string(),
+  carrier_label: z.string().nullable().optional(),
   event_time: z.string().nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   location_code: z.string().nullable(),

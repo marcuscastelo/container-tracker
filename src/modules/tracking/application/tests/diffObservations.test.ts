@@ -74,6 +74,7 @@ describe('diffObservations', () => {
       voyage: 'MZ546A',
       is_empty: false,
       confidence: 'high',
+      carrier_label: 'Export Loaded on Vessel',
     })
     const result = diffObservations(new Set(), [draft], CONTAINER_ID)
     const obs = result[0]
@@ -81,5 +82,6 @@ describe('diffObservations', () => {
     expect(obs?.voyage).toBe('MZ546A')
     expect(obs?.is_empty).toBe(false)
     expect(obs?.confidence).toBe('high')
+    expect(obs?.carrier_label).toBe('Export Loaded on Vessel')
   })
 })

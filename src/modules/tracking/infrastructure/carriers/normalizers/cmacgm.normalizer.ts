@@ -62,6 +62,12 @@ function mapCmaCgmDescription(description: string | null | undefined): Observati
   return CMACGM_STATUS_MAP[key] ?? 'OTHER'
 }
 
+function normalizeCarrierLabel(label: string | null | undefined): string | null {
+  if (typeof label !== 'string') return null
+  const normalized = label.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
 /**
  * Parse CMA-CGM date strings.
  *
@@ -196,6 +202,7 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
       confidence,
       provider: 'cmacgm',
       snapshot_id: snapshot.id,
+      carrier_label: normalizeCarrierLabel(move.StatusDescription),
       raw_event: move,
     }
 

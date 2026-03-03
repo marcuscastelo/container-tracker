@@ -11,6 +11,7 @@ import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassi
 export type TrackingTimelineItem = {
   readonly id: string
   readonly type: TrackingObservationDTO['type']
+  readonly carrierLabel?: string
   readonly location?: string
   /** ISO timestamp coming from obs.event_time */
   readonly eventTimeIso: string | null
@@ -44,6 +45,7 @@ export function observationToTrackingTimelineItem(
   return {
     id: obs.id ?? `obs-${index}`,
     type: obs.type,
+    carrierLabel: obs.carrierLabel,
     location,
     eventTimeIso: obs.event_time ?? null,
     eventTimeType,

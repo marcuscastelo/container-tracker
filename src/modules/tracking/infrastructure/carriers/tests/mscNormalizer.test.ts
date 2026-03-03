@@ -33,6 +33,7 @@ describe('normalizeMscSnapshot', () => {
       expect(gateIn?.container_number).toBe('CXDU2058677')
       expect(gateIn?.location_code).toBe('ITNAP')
       expect(gateIn?.location_display).toBe('NAPLES, IT')
+      expect(gateIn?.carrier_label).toBe('Export received at CY')
     })
 
     it('should map "Empty to Shipper" to GATE_OUT', () => {
