@@ -1,6 +1,9 @@
 {
   "name": "example-with-tailwindcss",
   "type": "module",
+  "imports": {
+    "#container-tracker-eslint-plugin": "./scripts/eslint-plugin-container-tracker.mjs"
+  },
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
