@@ -42,7 +42,7 @@ async function runSmokeCheck() {
         eslintCliPath,
         smokeFixtureFilePath,
         '--rule',
-        'container-tracker/no-iife-in-jsx:error',
+        '{"container-tracker/no-iife-in-jsx":"error"}',
         '--format',
         'json',
         '--max-warnings=0',

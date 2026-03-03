@@ -1,5 +1,6 @@
 const noIifeRuleId = 'container-tracker/no-iife-in-jsx'
 const noIifeRuleMessageId = 'avoidIifeInJsx'
+const noIifeErrorSeverity = 2
 const maximumDiagnosticsLength = 1200
 
 function truncateText(text) {
@@ -69,6 +70,10 @@ function collectNoIifeViolations(results) {
         continue
       }
 
+      if (message?.severity !== noIifeErrorSeverity) {
+        continue
+      }
+
       violations.push(message)
     }
   }
@@ -98,12 +103,13 @@ export function assertNoIifeErrorSmokeResult(commandResult) {
 
   if (violations.length === 0) {
     throw new Error(
-      `ESLint failed for an unexpected reason. Expected ${noIifeRuleId} with messageId ${noIifeRuleMessageId}.${buildDiagnosticsContext(stdout, stderr)}`,
+      `ESLint failed for an unexpected reason. Expected ${noIifeRuleId} with messageId ${noIifeRuleMessageId} at severity ${String(noIifeErrorSeverity)}.${buildDiagnosticsContext(stdout, stderr)}`,
     )
   }
 }
 
 export const noIifeErrorSmokeConstants = {
+  noIifeErrorSeverity,
   noIifeRuleId,
   noIifeRuleMessageId,
 }

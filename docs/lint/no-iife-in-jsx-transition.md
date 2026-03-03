@@ -20,12 +20,6 @@ Use an inline disable only when the refactor cannot be completed in the same PR 
 {(() => computeFallback())()}
 ```
 
-Short form reference used in rollout docs:
-
-```tsx
-// eslint-disable-next-line no-iife-in-jsx -- justified reason
-```
-
 ## warn -> error Procedure
 
 1. Confirm the precondition above (`0` warnings in scope).
@@ -44,7 +38,7 @@ Short form reference used in rollout docs:
 Quality workflow includes `pnpm run lint:no-iife:error-smoke`, which:
 
 1. Generates a temporary UI fixture containing an IIFE in JSX.
-2. Runs ESLint with `--rule container-tracker/no-iife-in-jsx:error`.
+2. Runs ESLint with `--rule '{"container-tracker/no-iife-in-jsx":"error"}'`.
 3. Expects the lint command to fail because of the sample violation.
 
 If lint does not fail under error severity, the smoke command fails and the CI lint job is blocked.

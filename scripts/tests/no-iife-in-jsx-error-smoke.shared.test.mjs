@@ -28,7 +28,7 @@ describe('assertNoIifeErrorSmokeResult', () => {
       {
         ruleId: noIifeRuleId,
         messageId: noIifeRuleMessageId,
-        severity: 2,
+        severity: noIifeErrorSmokeConstants.noIifeErrorSeverity,
         message: 'Avoid IIFE inside JSX.',
       },
     ])
@@ -59,6 +59,21 @@ describe('assertNoIifeErrorSmokeResult', () => {
 
     expect(() => assertNoIifeErrorSmokeResult(result)).toThrow(
       `Expected ${noIifeRuleId} with messageId ${noIifeRuleMessageId}`,
+    )
+  })
+
+  it('fails when matching rule is reported only as warning severity', () => {
+    const result = buildResult([
+      {
+        ruleId: noIifeRuleId,
+        messageId: noIifeRuleMessageId,
+        severity: 1,
+        message: 'Avoid IIFE inside JSX.',
+      },
+    ])
+
+    expect(() => assertNoIifeErrorSmokeResult(result)).toThrow(
+      `Expected ${noIifeRuleId} with messageId ${noIifeRuleMessageId} at severity ${String(noIifeErrorSmokeConstants.noIifeErrorSeverity)}`,
     )
   })
 })
