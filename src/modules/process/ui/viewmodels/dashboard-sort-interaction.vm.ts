@@ -10,6 +10,8 @@ const PT_BR_COLLATOR =
     ? new Intl.Collator('pt-BR', { sensitivity: 'base' })
     : null
 
+type MissingValuePolicy = 'directional' | 'always-last'
+
 function compareNumbers(left: number, right: number): number {
   return left - right
 }
@@ -29,29 +31,82 @@ function compareByDirection(baseComparison: number, direction: DashboardSortDire
   return baseComparison * toDirectionMultiplier(direction)
 }
 
-function toCreatedAtSortValue(process: ProcessSummaryVM): number {
-  if (!process.lastEventAt) return Number.NEGATIVE_INFINITY
-  const parsed = Date.parse(process.lastEventAt)
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+function normalizeSortableString(value: string | null | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
-function toProcessNumberSortValue(process: ProcessSummaryVM): string {
-  return process.reference ?? `<${process.id.slice(0, 8)}>`
+function compareNullableValues<T>(
+  left: T | null,
+  right: T | null,
+  direction: DashboardSortDirection,
+  missingValuePolicy: MissingValuePolicy,
+  compareBase: (leftValue: T, rightValue: T) => number,
+): number {
+  const leftIsMissing = left === null
+  const rightIsMissing = right === null
+
+  if (leftIsMissing && rightIsMissing) return 0
+
+  if (leftIsMissing || rightIsMissing) {
+    if (missingValuePolicy === 'always-last') {
+      return leftIsMissing ? 1 : -1
+    }
+
+    if (direction === 'asc') {
+      return leftIsMissing ? 1 : -1
+    }
+
+    return leftIsMissing ? -1 : 1
+  }
+
+  return compareByDirection(compareBase(left, right), direction)
 }
 
-function toProcessNumberTieBreakSortValue(process: ProcessSummaryVM): string {
-  return process.reference ?? process.id
+function compareNullableStringValues(
+  left: string | null | undefined,
+  right: string | null | undefined,
+  direction: DashboardSortDirection,
+): number {
+  return compareNullableValues(
+    normalizeSortableString(left),
+    normalizeSortableString(right),
+    direction,
+    'directional',
+    compareCaseInsensitiveStrings,
+  )
 }
 
-function compareEtaMsOrNull(
+function compareNullableNumberValues(
+  left: number | null,
+  right: number | null,
+  direction: DashboardSortDirection,
+  missingValuePolicy: MissingValuePolicy,
+): number {
+  return compareNullableValues(left, right, direction, missingValuePolicy, compareNumbers)
+}
+
+function compareNullableDateValues(
   left: number | null,
   right: number | null,
   direction: DashboardSortDirection,
 ): number {
-  if (left === null && right === null) return 0
-  if (left === null) return 1
-  if (right === null) return -1
-  return compareByDirection(compareNumbers(left, right), direction)
+  return compareNullableNumberValues(left, right, direction, 'always-last')
+}
+
+function toCreatedAtSortValue(process: ProcessSummaryVM): number | null {
+  if (!process.lastEventAt) return null
+  const parsed = Date.parse(process.lastEventAt)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+function toProcessNumberSortValue(process: ProcessSummaryVM): string | null {
+  return normalizeSortableString(process.reference)
+}
+
+function toProcessNumberTieBreakSortValue(process: ProcessSummaryVM): string {
+  return normalizeSortableString(process.reference) ?? process.id
 }
 
 function compareBySortField(
@@ -62,40 +117,35 @@ function compareBySortField(
 ): number {
   switch (field) {
     case 'processNumber':
-      return compareByDirection(
-        compareCaseInsensitiveStrings(
-          toProcessNumberSortValue(left),
-          toProcessNumberSortValue(right),
-        ),
+      return compareNullableStringValues(
+        toProcessNumberSortValue(left),
+        toProcessNumberSortValue(right),
         direction,
       )
     case 'importerName':
-      return compareByDirection(
-        compareCaseInsensitiveStrings(left.importerName ?? '', right.importerName ?? ''),
-        direction,
-      )
+      return compareNullableStringValues(left.importerName, right.importerName, direction)
     case 'createdAt':
-      return compareByDirection(
-        compareNumbers(toCreatedAtSortValue(left), toCreatedAtSortValue(right)),
+      return compareNullableDateValues(
+        toCreatedAtSortValue(left),
+        toCreatedAtSortValue(right),
         direction,
       )
     case 'status':
-      return compareByDirection(compareNumbers(left.statusRank, right.statusRank), direction)
-    case 'eta':
-      return compareEtaMsOrNull(left.etaMsOrNull, right.etaMsOrNull, direction)
-    case 'provider':
-      return compareByDirection(
-        compareCaseInsensitiveStrings(left.carrier ?? '', right.carrier ?? ''),
+      return compareNullableNumberValues(
+        left.statusRank,
+        right.statusRank,
         direction,
+        'directional',
       )
+    case 'eta':
+      return compareNullableDateValues(left.etaMsOrNull, right.etaMsOrNull, direction)
+    case 'provider':
+      return compareNullableStringValues(left.carrier, right.carrier, direction)
   }
 }
 
 function compareByCreatedAtDescending(left: ProcessSummaryVM, right: ProcessSummaryVM): number {
-  return compareByDirection(
-    compareNumbers(toCreatedAtSortValue(left), toCreatedAtSortValue(right)),
-    'desc',
-  )
+  return compareNullableDateValues(toCreatedAtSortValue(left), toCreatedAtSortValue(right), 'desc')
 }
 
 function compareByProcessNumberAscendingWithIdFallback(
