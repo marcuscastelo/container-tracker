@@ -29,6 +29,20 @@
       "delays": "Atrasos",
       "arrivalsToday": "Chegadas Hoje"
     },
+    "filters": {
+      "title": "Filtros",
+      "selectedCount": "{{count}} selecionados",
+      "provider": {
+        "label": "Armador",
+        "all": "Todos os armadores",
+        "empty": "Sem armadores"
+      },
+      "status": {
+        "label": "Estado",
+        "all": "Todos os estados",
+        "empty": "Sem estados"
+      }
+    },
     "table": {
       "title": "Resumo das Expedições",
       "col": {

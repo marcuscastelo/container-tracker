@@ -29,6 +29,20 @@
       "delays": "Atrasos",
       "arrivalsToday": "Chegadas Hoje"
     },
+    "filters": {
+      "title": "Filtros",
+      "selectedCount": "{{count}} selecionados",
+      "provider": {
+        "label": "Armador",
+        "all": "Todos os armadores",
+        "empty": "Sem armadores"
+      },
+      "status": {
+        "label": "Status",
+        "all": "Todos os status",
+        "empty": "Sem status"
+      }
+    },
     "table": {
       "title": "Resumo dos Embarques",
       "col": {

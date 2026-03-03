@@ -18,6 +18,20 @@
       "delays": "Delays",
       "arrivalsToday": "Arrivals Today"
     },
+    "filters": {
+      "title": "Filters",
+      "selectedCount": "{{count}} selected",
+      "provider": {
+        "label": "Provider",
+        "all": "All providers",
+        "empty": "No providers"
+      },
+      "status": {
+        "label": "Status",
+        "all": "All statuses",
+        "empty": "No statuses"
+      }
+    },
     "table": {
       "title": "Shipments Overview",
       "col": {

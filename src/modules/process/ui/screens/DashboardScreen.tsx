@@ -4,6 +4,7 @@ import { createMemo, createResource, createSignal, onMount, Show } from 'solid-j
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
+import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/DashboardProcessFiltersBar'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import {
@@ -24,6 +25,15 @@ import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
+import {
+  DASHBOARD_DEFAULT_FILTER_SELECTION,
+  type DashboardFilterSelection,
+  deriveDashboardProviderFilterOptions,
+  deriveDashboardStatusFilterOptions,
+  filterDashboardProcesses,
+  toggleDashboardProviderFilter,
+  toggleDashboardStatusFilter,
+} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
 import type {
   DashboardSortField,
   DashboardSortSelection,
@@ -32,6 +42,7 @@ import {
   nextDashboardSortSelection,
   sortDashboardProcesses,
 } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
+import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
@@ -42,11 +53,23 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
     parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
   )
+  const [filterSelection, setFilterSelection] = createSignal<DashboardFilterSelection>(
+    DASHBOARD_DEFAULT_FILTER_SELECTION,
+  )
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
+  const providerFilterOptions = createMemo(() =>
+    deriveDashboardProviderFilterOptions(processes() ?? []),
+  )
+  const statusFilterOptions = createMemo(() =>
+    deriveDashboardStatusFilterOptions(processes() ?? []),
+  )
+  const filteredProcesses = createMemo(() =>
+    filterDashboardProcesses(processes() ?? [], filterSelection()),
+  )
   const sortedProcesses = createMemo(() =>
-    sortDashboardProcesses(processes() ?? [], sortSelection()),
+    sortDashboardProcesses(filteredProcesses(), sortSelection()),
   )
 
   onMount(() => {
@@ -77,6 +100,18 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
 
     void navigate(nextPath, { replace: true })
+  }
+
+  const handleProviderFilterToggle = (provider: string) => {
+    setFilterSelection((currentSelection) => {
+      return toggleDashboardProviderFilter(currentSelection, provider)
+    })
+  }
+
+  const handleStatusFilterToggle = (status: TrackingStatusCode) => {
+    setFilterSelection((currentSelection) => {
+      return toggleDashboardStatusFilter(currentSelection, status)
+    })
   }
 
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
@@ -141,6 +176,14 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
         <DashboardMetricsGrid
           statuses={(processes() ?? []).map((process) => ({ status: process.status }))}
+        />
+        <DashboardProcessFiltersBar
+          providers={providerFilterOptions()}
+          statuses={statusFilterOptions()}
+          selectedProviders={filterSelection().providers}
+          selectedStatuses={filterSelection().statuses}
+          onProviderToggle={handleProviderFilterToggle}
+          onStatusToggle={handleStatusFilterToggle}
         />
         <DashboardProcessTable
           processes={sortedProcesses()}
