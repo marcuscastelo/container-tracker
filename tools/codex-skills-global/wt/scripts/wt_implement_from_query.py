@@ -39,7 +39,8 @@ def tokenize(text: str) -> list[str]:
 
 def slugify(text: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return re.sub(r"-{2,}", "-", value)
+    value = re.sub(r"-{2,}", "-", value)
+    return value or "feature"
 
 
 def is_tasks_md(path: Path, repo_root: Path) -> bool:

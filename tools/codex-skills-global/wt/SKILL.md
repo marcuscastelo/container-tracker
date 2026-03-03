@@ -5,7 +5,13 @@ description: "Resolve loose PRD paths in tasks/ and run `pnpm run ai:wt-implemen
 
 # Worktree Implement
 
-Resolve an imprecise PRD reference to one `tasks/*.md` file and execute the repository worktree scaffold command.
+Resolve an imprecise PRD reference to one `tasks/*.md` file and execute the repository scaffold flow (`ai:wt-implement`).
+
+`ai:wt-implement` is responsible for:
+- creating the worktree/branch,
+- copying allowed seed files (for now, `.env` via allowlist),
+- running `pnpm install` in the new worktree,
+- opening a new VS Code window (unless `--no-open`).
 
 ## Workflow
 
@@ -24,7 +30,8 @@ python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py <prd-query> -- <wt
 ```bash
 python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py prd-worktrees
 python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py devcontainer chromium -- --print-only
-python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py worktrees -- --wt-root ../wt --branch-prefix feat/
+python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py worktrees -- --wt-root /home/node/wt --branch-prefix feat/
+python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py iife -- --no-open
 ```
 
 ## Rules
