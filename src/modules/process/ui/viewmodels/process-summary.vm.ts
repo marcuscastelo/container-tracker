@@ -10,7 +10,9 @@ export type ProcessSummaryVM = {
   readonly containerCount: number
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
+  readonly statusRank: number
   readonly eta: string | null
+  readonly etaMsOrNull: number | null
   readonly carrier: string | null
   readonly alertsCount: number
   readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null

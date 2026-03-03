@@ -1,10 +1,18 @@
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
-import { toTrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import {
+  TRACKING_STATUS_CODES,
+  toTrackingStatusCode,
+} from '~/modules/tracking/application/projection/tracking.status.projection'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export { toTrackingStatusCode }
 export type { TrackingStatusCode }
+
+export function trackingStatusToRank(statusCode: TrackingStatusCode): number {
+  const idx = TRACKING_STATUS_CODES.indexOf(statusCode)
+  return idx >= 0 ? idx : 0
+}
 
 export function trackingStatusToVariant(statusCode: TrackingStatusCode): StatusVariant {
   switch (statusCode) {

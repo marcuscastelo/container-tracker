@@ -1,5 +1,6 @@
 import {
   toTrackingStatusCode,
+  trackingStatusToRank,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
@@ -34,11 +35,18 @@ function toOptionalNonBlankString(value: string | null | undefined): string | nu
   return value.trim().length > 0 ? value : null
 }
 
+function toTimestampOrNull(value: string | null | undefined): number | null {
+  if (!value) return null
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 export function toProcessSummaryVMs(
   data: readonly ProcessListItemSource[],
 ): readonly ProcessSummaryVM[] {
   return data.map((process) => {
     const statusCode = toTrackingStatusCode(process.process_status)
+    const eta = process.eta ?? null
 
     return {
       id: process.id,
@@ -49,7 +57,9 @@ export function toProcessSummaryVMs(
       containerCount: process.containers.length,
       status: trackingStatusToVariant(statusCode),
       statusCode,
-      eta: process.eta ?? null,
+      statusRank: trackingStatusToRank(statusCode),
+      eta,
+      etaMsOrNull: toTimestampOrNull(eta),
       carrier: process.carrier ?? null,
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,

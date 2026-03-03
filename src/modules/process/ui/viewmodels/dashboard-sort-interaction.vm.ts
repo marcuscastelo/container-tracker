@@ -5,47 +5,85 @@ import type {
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
-type SortableValue = string | number
+const PT_BR_COLLATOR =
+  typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined'
+    ? new Intl.Collator('pt-BR', { sensitivity: 'base' })
+    : null
 
-function compareValues(left: SortableValue, right: SortableValue): number {
-  if (typeof left === 'number' && typeof right === 'number') {
-    return left - right
+function compareNumbers(left: number, right: number): number {
+  return left - right
+}
+
+function compareCaseInsensitiveStrings(left: string, right: string): number {
+  if (PT_BR_COLLATOR) {
+    return PT_BR_COLLATOR.compare(left, right)
   }
-  return String(left).localeCompare(String(right), undefined, { sensitivity: 'base' })
+  return left.toLowerCase().localeCompare(right.toLowerCase())
 }
 
-function getEtaSortValue(process: ProcessSummaryVM): number {
-  if (!process.eta) return Number.POSITIVE_INFINITY
-
-  const parsed = Date.parse(process.eta)
-  if (Number.isNaN(parsed)) return Number.POSITIVE_INFINITY
-
-  return parsed
+function toDirectionMultiplier(direction: DashboardSortDirection): 1 | -1 {
+  return direction === 'asc' ? 1 : -1
 }
 
-function getCreatedAtSortValue(process: ProcessSummaryVM): number {
+function compareByDirection(baseComparison: number, direction: DashboardSortDirection): number {
+  return baseComparison * toDirectionMultiplier(direction)
+}
+
+function toCreatedAtSortValue(process: ProcessSummaryVM): number {
   if (!process.lastEventAt) return Number.NEGATIVE_INFINITY
-
   const parsed = Date.parse(process.lastEventAt)
-  if (Number.isNaN(parsed)) return Number.NEGATIVE_INFINITY
-
-  return parsed
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
 }
 
-function getSortValue(process: ProcessSummaryVM, field: DashboardSortField): SortableValue {
+function toProcessNumberSortValue(process: ProcessSummaryVM): string {
+  return process.reference ?? `<${process.id.slice(0, 8)}>`
+}
+
+function compareEtaMsOrNull(
+  left: number | null,
+  right: number | null,
+  direction: DashboardSortDirection,
+): number {
+  if (left === null && right === null) return 0
+  if (left === null) return 1
+  if (right === null) return -1
+  return compareByDirection(compareNumbers(left, right), direction)
+}
+
+function compareBySortField(
+  left: ProcessSummaryVM,
+  right: ProcessSummaryVM,
+  field: DashboardSortField,
+  direction: DashboardSortDirection,
+): number {
   switch (field) {
     case 'processNumber':
-      return process.reference ?? `<${process.id.slice(0, 8)}>`
+      return compareByDirection(
+        compareCaseInsensitiveStrings(
+          toProcessNumberSortValue(left),
+          toProcessNumberSortValue(right),
+        ),
+        direction,
+      )
     case 'importerName':
-      return process.importerName ?? ''
+      return compareByDirection(
+        compareCaseInsensitiveStrings(left.importerName ?? '', right.importerName ?? ''),
+        direction,
+      )
     case 'createdAt':
-      return getCreatedAtSortValue(process)
+      return compareByDirection(
+        compareNumbers(toCreatedAtSortValue(left), toCreatedAtSortValue(right)),
+        direction,
+      )
     case 'status':
-      return process.status
+      return compareByDirection(compareNumbers(left.statusRank, right.statusRank), direction)
     case 'eta':
-      return getEtaSortValue(process)
+      return compareEtaMsOrNull(left.etaMsOrNull, right.etaMsOrNull, direction)
     case 'provider':
-      return process.carrier ?? ''
+      return compareByDirection(
+        compareCaseInsensitiveStrings(left.carrier ?? '', right.carrier ?? ''),
+        direction,
+      )
   }
 }
 
@@ -81,10 +119,8 @@ export function sortDashboardProcesses(
   if (!sortSelection) return processes
 
   const { field, direction } = sortSelection
-  const multiplier = direction === 'asc' ? 1 : -1
 
   return [...processes].sort((left, right) => {
-    const base = compareValues(getSortValue(left, field), getSortValue(right, field))
-    return base * multiplier
+    return compareBySortField(left, right, field, direction)
   })
 }

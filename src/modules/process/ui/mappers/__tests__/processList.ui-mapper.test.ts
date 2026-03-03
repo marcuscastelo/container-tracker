@@ -53,7 +53,9 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('in-transit')
     expect(result[0].statusCode).toBe('IN_TRANSIT')
+    expect(result[0].statusRank).toBeGreaterThan(0)
     expect(result[0].eta).toBe('2025-06-01T00:00:00Z')
+    expect(result[0].etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
     expect(result[0].alertsCount).toBe(2)
     expect(result[0].highestAlertSeverity).toBe('warning')
     expect(result[0].hasTransshipment).toBe(true)
@@ -74,7 +76,9 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('unknown')
     expect(result[0].statusCode).toBe('UNKNOWN')
+    expect(result[0].statusRank).toBe(0)
     expect(result[0].eta).toBeNull()
+    expect(result[0].etaMsOrNull).toBeNull()
     expect(result[0].alertsCount).toBe(0)
     expect(result[0].highestAlertSeverity).toBeNull()
     expect(result[0].hasTransshipment).toBe(false)
@@ -96,6 +100,24 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('delivered')
     expect(result[0].statusCode).toBe('DELIVERED')
+    expect(result[0].statusRank).toBeGreaterThan(0)
+  })
+
+  it('maps invalid eta string to etaMsOrNull = null', () => {
+    const example: ProcessListItemSource[] = [
+      {
+        id: 'p7',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        containers: [],
+        eta: 'not-a-date',
+      },
+    ]
+
+    const result = toProcessSummaryVMs(example)
+    expect(result[0].eta).toBe('not-a-date')
+    expect(result[0].etaMsOrNull).toBeNull()
   })
 
   it('normalizes blank importer_name to null', () => {

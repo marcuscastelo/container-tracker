@@ -7,16 +7,28 @@ import {
 } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
+function toTimestampOrNull(value: string | null): number | null {
+  if (!value) return null
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 function createProcess(
   input: Pick<ProcessSummaryVM, 'id'> & {
     readonly reference?: string | null
     readonly importerName?: string | null
     readonly carrier?: string | null
     readonly status?: ProcessSummaryVM['status']
+    readonly statusCode?: ProcessSummaryVM['statusCode']
+    readonly statusRank?: number
     readonly eta?: string | null
+    readonly etaMsOrNull?: number | null
     readonly lastEventAt?: string | null
   },
 ): ProcessSummaryVM {
+  const eta = input.eta ?? null
+  const etaMsOrNull = input.etaMsOrNull ?? toTimestampOrNull(eta)
+
   return {
     id: input.id,
     reference: input.reference ?? null,
@@ -25,8 +37,10 @@ function createProcess(
     importerName: input.importerName ?? null,
     containerCount: 1,
     status: input.status ?? 'unknown',
-    statusCode: 'UNKNOWN',
-    eta: input.eta ?? null,
+    statusCode: input.statusCode ?? 'UNKNOWN',
+    statusRank: input.statusRank ?? 0,
+    eta,
+    etaMsOrNull,
     carrier: input.carrier ?? null,
     alertsCount: 0,
     highestAlertSeverity: null,
@@ -91,5 +105,74 @@ describe('dashboard sort interactions', () => {
 
     expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
     expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
+  })
+
+  it('sorts process number lexicographically for MVP', () => {
+    const baseline = [
+      createProcess({ id: 'A', reference: 'P-3' }),
+      createProcess({ id: 'B', reference: 'P-20' }),
+      createProcess({ id: 'C', reference: 'P-11' }),
+    ] as const
+
+    const ascResult = sortDashboardProcesses(baseline, {
+      field: 'processNumber',
+      direction: 'asc',
+    })
+
+    expect(ascResult.map((process) => process.reference)).toEqual(['P-11', 'P-20', 'P-3'])
+  })
+
+  it('sorts provider case-insensitively', () => {
+    const baseline = [
+      createProcess({ id: 'A', carrier: 'zeta' }),
+      createProcess({ id: 'B', carrier: 'Alpha' }),
+      createProcess({ id: 'C', carrier: 'delta' }),
+    ] as const
+
+    const ascResult = sortDashboardProcesses(baseline, { field: 'provider', direction: 'asc' })
+
+    expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
+  })
+
+  it('sorts created date using timestamp order', () => {
+    const baseline = [
+      createProcess({ id: 'A', lastEventAt: '2025-03-01T00:00:00.000Z' }),
+      createProcess({ id: 'B', lastEventAt: '2025-01-01T00:00:00.000Z' }),
+      createProcess({ id: 'C', lastEventAt: '2025-02-01T00:00:00.000Z' }),
+    ] as const
+
+    const descResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'desc' })
+    const ascResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'asc' })
+
+    expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
+    expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
+  })
+
+  it('sorts status by statusRank instead of label text', () => {
+    const baseline = [
+      createProcess({ id: 'A', status: 'released', statusRank: 5 }),
+      createProcess({ id: 'B', status: 'delivered', statusRank: 7 }),
+      createProcess({ id: 'C', status: 'in-transit', statusRank: 3 }),
+    ] as const
+
+    const descResult = sortDashboardProcesses(baseline, { field: 'status', direction: 'desc' })
+    const ascResult = sortDashboardProcesses(baseline, { field: 'status', direction: 'asc' })
+
+    expect(descResult.map((process) => process.id)).toEqual(['B', 'A', 'C'])
+    expect(ascResult.map((process) => process.id)).toEqual(['C', 'A', 'B'])
+  })
+
+  it('sorts ETA by etaMsOrNull and keeps null values at the end in both directions', () => {
+    const baseline = [
+      createProcess({ id: 'A', eta: '2025-03-01T00:00:00.000Z', etaMsOrNull: 1740787200000 }),
+      createProcess({ id: 'B', eta: null, etaMsOrNull: null }),
+      createProcess({ id: 'C', eta: '2025-02-01T00:00:00.000Z', etaMsOrNull: 1738368000000 }),
+    ] as const
+
+    const ascResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'asc' })
+    const descResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'desc' })
+
+    expect(ascResult.map((process) => process.id)).toEqual(['C', 'A', 'B'])
+    expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
   })
 })
