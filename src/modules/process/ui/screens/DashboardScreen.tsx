@@ -9,8 +9,8 @@ import { DashboardProcessTable } from '~/modules/process/ui/components/Dashboard
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import {
   applyDashboardSortToSearchParams,
+  hydrateDashboardSortFromQueryAndStorage,
   parseDashboardSortFromSearchParams,
-  resolveDashboardSortSelectionWithStorageFallback,
 } from '~/modules/process/ui/validation/dashboardSortQuery.validation'
 import {
   readDashboardSortFromLocalStorage,
@@ -73,12 +73,25 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   )
 
   onMount(() => {
-    const resolvedSortSelection = resolveDashboardSortSelectionWithStorageFallback(
-      new URLSearchParams(location.search),
+    const currentSearchParams = new URLSearchParams(location.search)
+    const hydratedSort = hydrateDashboardSortFromQueryAndStorage(
+      currentSearchParams,
       readDashboardSortFromLocalStorage(),
     )
+    const resolvedSortSelection = hydratedSort.sortSelection
+    const nextSearchParams = hydratedSort.searchParams
 
     setSortSelection(resolvedSortSelection)
+    writeDashboardSortToLocalStorage(resolvedSortSelection)
+
+    const currentQuery = currentSearchParams.toString()
+    const nextQuery = nextSearchParams.toString()
+    if (nextQuery === currentQuery) {
+      return
+    }
+
+    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+    void navigate(nextPath, { replace: true })
   })
 
   const handleCreateProcess = () => {

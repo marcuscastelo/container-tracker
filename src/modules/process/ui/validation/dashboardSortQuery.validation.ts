@@ -74,6 +74,26 @@ export function resolveDashboardSortSelectionWithStorageFallback(
   return storageSortSelection
 }
 
+export type DashboardSortHydrationResult = {
+  readonly sortSelection: DashboardSortSelection
+  readonly searchParams: URLSearchParams
+}
+
+export function hydrateDashboardSortFromQueryAndStorage(
+  searchParams: URLSearchParams,
+  storageSortSelection: DashboardSortSelection,
+): DashboardSortHydrationResult {
+  const sortSelection = resolveDashboardSortSelectionWithStorageFallback(
+    searchParams,
+    storageSortSelection,
+  )
+
+  return {
+    sortSelection,
+    searchParams: applyDashboardSortToSearchParams(searchParams, sortSelection),
+  }
+}
+
 export function serializeDashboardSortToSearchParams(
   sortSelection: DashboardSortSelection,
 ): URLSearchParams {

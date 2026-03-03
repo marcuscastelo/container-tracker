@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyDashboardSortToSearchParams,
   hasDashboardSortQueryParams,
+  hydrateDashboardSortFromQueryAndStorage,
   parseDashboardSortFromSearchParams,
   resolveDashboardSortSelectionWithStorageFallback,
   serializeDashboardSortToSearchParams,
@@ -125,6 +126,52 @@ describe('dashboard sort query contract', () => {
     )
 
     expect(result).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
+  })
+
+  it('hydrates URL params with storage sort when URL has no sort state', () => {
+    const result = hydrateDashboardSortFromQueryAndStorage(
+      new URLSearchParams({
+        q: 'active',
+      }),
+      { field: 'provider', direction: 'asc' },
+    )
+
+    expect(result.sortSelection).toEqual({ field: 'provider', direction: 'asc' })
+    expect(result.searchParams.get('q')).toBe('active')
+    expect(result.searchParams.get('sortField')).toBe('provider')
+    expect(result.searchParams.get('sortDir')).toBe('asc')
+  })
+
+  it('hydrates sort using URL values before storage fallback', () => {
+    const result = hydrateDashboardSortFromQueryAndStorage(
+      new URLSearchParams({
+        sortField: 'status',
+        sortDir: 'desc',
+        q: 'active',
+      }),
+      { field: 'provider', direction: 'asc' },
+    )
+
+    expect(result.sortSelection).toEqual({ field: 'status', direction: 'desc' })
+    expect(result.searchParams.get('q')).toBe('active')
+    expect(result.searchParams.get('sortField')).toBe('status')
+    expect(result.searchParams.get('sortDir')).toBe('desc')
+  })
+
+  it('removes invalid sort params while keeping unrelated query params during hydration', () => {
+    const result = hydrateDashboardSortFromQueryAndStorage(
+      new URLSearchParams({
+        sortField: 'invalid',
+        sortDir: 'asc',
+        q: 'active',
+      }),
+      { field: 'provider', direction: 'desc' },
+    )
+
+    expect(result.sortSelection).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
+    expect(result.searchParams.get('q')).toBe('active')
+    expect(result.searchParams.get('sortField')).toBeNull()
+    expect(result.searchParams.get('sortDir')).toBeNull()
   })
 
   it('roundtrips URL-to-state and state-to-URL for all supported sort fields', () => {
