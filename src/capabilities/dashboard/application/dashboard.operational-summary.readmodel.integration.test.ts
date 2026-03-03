@@ -43,6 +43,7 @@ function makeAlert(
     readonly category: TrackingActiveAlertReadModel['category']
     readonly generated_at?: TrackingActiveAlertReadModel['generated_at']
     readonly retroactive?: TrackingActiveAlertReadModel['retroactive']
+    readonly is_active?: TrackingActiveAlertReadModel['is_active']
   },
 ): TrackingActiveAlertReadModel {
   return {
@@ -54,7 +55,7 @@ function makeAlert(
     type: args.type,
     generated_at: args.generated_at ?? '2026-03-03T00:00:00.000Z',
     fingerprint: null,
-    is_active: true,
+    is_active: args.is_active ?? true,
     retroactive: args.retroactive ?? false,
   }
 }
@@ -167,6 +168,91 @@ describe('dashboard operational summary read model integration', () => {
         customs: 1,
         status: 1,
         data: 1,
+      },
+    })
+  })
+
+  it('exposes global indicator keys and computes totals from active alerts only', async () => {
+    const fixedNow = new Date('2026-03-03T00:00:00.000Z')
+    const processes: ProcessesProjection = [
+      {
+        process: {
+          id: 'process-1',
+          reference: 'REF-001',
+          origin: 'Santos',
+          destination: 'Hamburg',
+        },
+        containers: [{ id: 'container-1', containerNumber: 'MSCU1111111' }],
+      },
+    ]
+
+    const listProcessesWithContainers = vi.fn(async () => ({ processes }))
+    const getContainersSummary = vi.fn(
+      async (): Promise<ReadonlyMap<string, TrackingOperationalSummary>> =>
+        new Map([['container-1', makeTrackingOperationalSummary('IN_TRANSIT')]]),
+    )
+    const alerts: readonly TrackingActiveAlertReadModel[] = [
+      makeAlert({
+        alert_id: 'alert-active',
+        process_id: 'process-1',
+        container_id: 'container-1',
+        category: 'monitoring',
+        severity: 'warning',
+        type: 'ETA_PASSED',
+        is_active: true,
+      }),
+      makeAlert({
+        alert_id: 'alert-inactive',
+        process_id: 'process-1',
+        container_id: 'container-1',
+        category: 'fact',
+        severity: 'danger',
+        type: 'CUSTOMS_HOLD',
+        is_active: false,
+      }),
+    ]
+    const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
+
+    const useCases = createDashboardUseCases({
+      processUseCases: { listProcessesWithContainers },
+      trackingUseCases: { getContainersSummary, listActiveAlertReadModel },
+      nowFactory: () => fixedNow,
+    })
+    const result = await useCases.getOperationalSummaryReadModel()
+
+    expect(Object.keys(result.globalAlerts)).toEqual([
+      'totalActiveAlerts',
+      'bySeverity',
+      'byCategory',
+    ])
+    expect(Object.keys(result.globalAlerts.bySeverity)).toEqual([
+      'danger',
+      'warning',
+      'info',
+      'success',
+    ])
+    expect(Object.keys(result.globalAlerts.byCategory)).toEqual([
+      'eta',
+      'movement',
+      'customs',
+      'status',
+      'data',
+    ])
+
+    expect(result.globalAlerts).toEqual({
+      totalActiveAlerts: 1,
+      bySeverity: {
+        danger: 0,
+        warning: 1,
+        info: 0,
+        success: 0,
+      },
+      byCategory: {
+        eta: 1,
+        movement: 0,
+        customs: 0,
+        status: 0,
+        data: 0,
       },
     })
   })

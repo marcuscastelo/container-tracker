@@ -275,6 +275,12 @@ function groupAlertsByProcessId(
   return groupedAlerts
 }
 
+function filterActiveAlerts(
+  alerts: readonly TrackingActiveAlertReadModel[],
+): readonly TrackingActiveAlertReadModel[] {
+  return alerts.filter((alert) => alert.is_active)
+}
+
 type DashboardProcessContext = {
   readonly process: DashboardProcessRecord
   readonly containersById: ReadonlyMap<string, DashboardContainerRecord>
@@ -405,13 +411,11 @@ export function createDashboardOperationalSummaryReadModelUseCase(
       deps.trackingUseCases.listActiveAlertReadModel(),
     ])
 
-    const globalAlerts = summarizeGlobalActiveAlerts(activeAlertsResult.alerts)
+    const activeAlerts = filterActiveAlerts(activeAlertsResult.alerts)
+    const globalAlerts = summarizeGlobalActiveAlerts(activeAlerts)
     const processContextById = indexDashboardProcessContextById(processes)
-    const activeAlertsPanel = buildDashboardActiveAlertsPanel(
-      activeAlertsResult.alerts,
-      processContextById,
-    )
-    const alertsByProcessId = groupAlertsByProcessId(activeAlertsResult.alerts)
+    const activeAlertsPanel = buildDashboardActiveAlertsPanel(activeAlerts, processContextById)
+    const alertsByProcessId = groupAlertsByProcessId(activeAlerts)
     const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
       sortDashboardProcessesByDominantSeverity(
         processes.map((entry) => {
