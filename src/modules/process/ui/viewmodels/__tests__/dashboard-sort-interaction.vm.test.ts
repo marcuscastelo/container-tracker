@@ -249,11 +249,11 @@ describe('dashboard sort interactions', () => {
     })
 
     expect(ascResult.map((process) => process.id)).toEqual([
-      'proc-03',
-      'proc-04',
       'proc-00',
       'proc-01',
       'proc-02',
+      'proc-03',
+      'proc-04',
     ])
   })
 

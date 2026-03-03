@@ -105,10 +105,6 @@ function toProcessNumberSortValue(process: ProcessSummaryVM): string | null {
   return normalizeSortableString(process.reference)
 }
 
-function toProcessNumberTieBreakSortValue(process: ProcessSummaryVM): string {
-  return normalizeSortableString(process.reference) ?? process.id
-}
-
 function compareBySortField(
   left: ProcessSummaryVM,
   right: ProcessSummaryVM,
@@ -148,20 +144,35 @@ function compareByCreatedAtDescending(left: ProcessSummaryVM, right: ProcessSumm
   return compareNullableDateValues(toCreatedAtSortValue(left), toCreatedAtSortValue(right), 'desc')
 }
 
+function compareByProcessNumberAscendingWithMissingLast(
+  left: ProcessSummaryVM,
+  right: ProcessSummaryVM,
+): number {
+  return compareNullableValues(
+    toProcessNumberSortValue(left),
+    toProcessNumberSortValue(right),
+    'asc',
+    'always-last',
+    compareCaseInsensitiveStrings,
+  )
+}
+
+function compareByProcessIdAscending(left: ProcessSummaryVM, right: ProcessSummaryVM): number {
+  return compareCaseInsensitiveStrings(left.id, right.id)
+}
+
 function compareByProcessNumberAscendingWithIdFallback(
   left: ProcessSummaryVM,
   right: ProcessSummaryVM,
 ): number {
-  const processNumberComparison = compareCaseInsensitiveStrings(
-    toProcessNumberTieBreakSortValue(left),
-    toProcessNumberTieBreakSortValue(right),
-  )
+  const processNumberComparison = compareByProcessNumberAscendingWithMissingLast(left, right)
 
   if (processNumberComparison !== 0) {
     return processNumberComparison
   }
 
-  return compareCaseInsensitiveStrings(left.id, right.id)
+  // Fallback keeps null process numbers and duplicate references deterministic.
+  return compareByProcessIdAscending(left, right)
 }
 
 function compareWithDeterministicTieBreaks(
