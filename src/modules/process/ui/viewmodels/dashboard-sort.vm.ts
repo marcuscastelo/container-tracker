@@ -19,3 +19,5 @@ export type DashboardSortState = {
 }
 
 export type DashboardSortSelection = DashboardSortState | null
+
+export const DASHBOARD_DEFAULT_SORT_SELECTION: DashboardSortSelection = null

@@ -1,7 +1,8 @@
-import type {
-  DashboardSortDirection,
-  DashboardSortField,
-  DashboardSortSelection,
+import {
+  DASHBOARD_DEFAULT_SORT_SELECTION,
+  type DashboardSortDirection,
+  type DashboardSortField,
+  type DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 
 const SORT_FIELD_QUERY_KEY = 'sortField'
@@ -38,7 +39,7 @@ export function parseDashboardSortFromSearchParams(
   const direction = parseDashboardSortDirection(searchParams.get(SORT_DIR_QUERY_KEY))
 
   if (field === null || direction === null) {
-    return null
+    return DASHBOARD_DEFAULT_SORT_SELECTION
   }
 
   return { field, direction }

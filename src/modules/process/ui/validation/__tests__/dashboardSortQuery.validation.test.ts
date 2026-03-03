@@ -4,6 +4,7 @@ import {
   serializeDashboardSortToSearchParams,
 } from '~/modules/process/ui/validation/dashboardSortQuery.validation'
 import {
+  DASHBOARD_DEFAULT_SORT_SELECTION,
   DASHBOARD_SORT_DIRECTIONS,
   DASHBOARD_SORT_FIELDS,
   type DashboardSortSelection,
@@ -22,6 +23,13 @@ describe('dashboard sort query contract', () => {
       field: 'importerName',
       direction: 'asc',
     })
+  })
+
+  it('uses default order when URL has no sort params', () => {
+    const searchParams = new URLSearchParams()
+
+    const result = parseDashboardSortFromSearchParams(searchParams)
+    expect(result).toBe(DASHBOARD_DEFAULT_SORT_SELECTION)
   })
 
   it('resolves to no active sort when sortField is invalid', () => {
@@ -73,7 +81,7 @@ describe('dashboard sort query contract', () => {
   })
 
   it('serializes no active sort to an empty query', () => {
-    const serialized = serializeDashboardSortToSearchParams(null)
+    const serialized = serializeDashboardSortToSearchParams(DASHBOARD_DEFAULT_SORT_SELECTION)
     expect(serialized.toString()).toBe('')
   })
 })

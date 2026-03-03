@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createResource, createSignal, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
@@ -14,18 +14,35 @@ import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
+import type {
+  DashboardSortField,
+  DashboardSortSelection,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import {
+  nextDashboardSortSelection,
+  sortDashboardProcesses,
+} from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const navigate = useNavigate()
   const [processes, { refetch }] = createResource(fetchDashboardProcessSummaries)
+  const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+
+  const sortedProcesses = createMemo(() =>
+    sortDashboardProcesses(processes() ?? [], sortSelection()),
+  )
 
   const handleCreateProcess = () => {
     setCreateError(null)
     setIsCreateDialogOpen(true)
+  }
+
+  const handleSortToggle = (field: DashboardSortField) => {
+    setSortSelection((currentSelection) => nextDashboardSortSelection(currentSelection, field))
   }
 
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
@@ -92,10 +109,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           statuses={(processes() ?? []).map((process) => ({ status: process.status }))}
         />
         <DashboardProcessTable
-          processes={processes() ?? []}
+          processes={sortedProcesses()}
           loading={processes.loading}
           hasError={Boolean(processes.error)}
           onCreateProcess={handleCreateProcess}
+          sortSelection={sortSelection()}
+          onSortToggle={handleSortToggle}
         />
       </main>
     </div>

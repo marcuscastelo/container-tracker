@@ -112,6 +112,7 @@ UI must not:
 
 - Use `createSignal` for state, `createMemo` for derivation
 - Use `createEffect` only for side effects
+- In component helpers, read `props.*` inside JSX/tracked scopes (or through accessors) to satisfy `solid/reactivity`
 - Keep explicit UI states: `loading | empty | error | ready`
 - Do not use hardcoded literal keys in `t()`
 - Prefer `const { t, keys } = useTranslation()` and `t(keys.someKey)`

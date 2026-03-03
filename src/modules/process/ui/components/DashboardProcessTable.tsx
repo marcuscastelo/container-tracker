@@ -2,6 +2,12 @@ import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import type {
+  DashboardSortDirection,
+  DashboardSortField,
+  DashboardSortSelection,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import { getActiveDashboardSortDirection } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
@@ -13,6 +19,8 @@ type Props = {
   readonly loading: boolean
   readonly hasError: boolean
   readonly onCreateProcess: () => void
+  readonly sortSelection: DashboardSortSelection
+  readonly onSortToggle: (field: DashboardSortField) => void
 }
 
 type RowProps = {
@@ -21,6 +29,16 @@ type RowProps = {
 
 type TableRowsProps = {
   readonly processes: readonly ProcessSummaryVM[]
+  readonly sortSelection: DashboardSortSelection
+  readonly onSortToggle: (field: DashboardSortField) => void
+}
+
+type SortHeaderProps = {
+  readonly field: DashboardSortField
+  readonly label: string
+  readonly direction: DashboardSortDirection | null
+  readonly onToggle: (field: DashboardSortField) => void
+  readonly align?: 'left' | 'right'
 }
 
 function ArrowIcon(): JSX.Element {
@@ -39,6 +57,42 @@ function ArrowIcon(): JSX.Element {
         d="M17 8l4 4m0 0l-4 4m4-4H3"
       />
     </svg>
+  )
+}
+
+function toAriaSort(direction: DashboardSortDirection | null): 'none' | 'ascending' | 'descending' {
+  if (direction === 'asc') return 'ascending'
+  if (direction === 'desc') return 'descending'
+  return 'none'
+}
+
+function SortDirectionIcon(props: {
+  readonly direction: DashboardSortDirection | null
+}): JSX.Element {
+  return (
+    <span
+      class={`inline-flex h-4 w-4 items-center justify-center text-[11px] leading-none ${
+        props.direction ? 'text-slate-600' : 'text-transparent'
+      }`}
+      aria-hidden="true"
+    >
+      {props.direction === 'asc' ? '↑' : '↓'}
+    </span>
+  )
+}
+
+function SortHeaderButton(props: SortHeaderProps): JSX.Element {
+  const justifyClass = () => (props.align === 'right' ? 'justify-end' : 'justify-start')
+
+  return (
+    <button
+      type="button"
+      class={`inline-flex w-full items-center ${justifyClass()} gap-1 transition-colors hover:text-slate-600 focus-visible:text-slate-700 focus-visible:outline-none`}
+      onClick={() => props.onToggle(props.field)}
+    >
+      <span>{props.label}</span>
+      <SortDirectionIcon direction={props.direction} />
+    </button>
   )
 }
 
@@ -115,20 +169,66 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
 function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const processSortDirection = () =>
+    getActiveDashboardSortDirection(props.sortSelection, 'processNumber')
+  const providerSortDirection = () =>
+    getActiveDashboardSortDirection(props.sortSelection, 'provider')
+  const importerSortDirection = () =>
+    getActiveDashboardSortDirection(props.sortSelection, 'importerName')
+  const statusSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'status')
+  const etaSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'eta')
+
   return (
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
           <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            <th class="px-4 py-2">{t(keys.dashboard.table.col.process)}</th>
-            <th class="px-4 py-2">{t(keys.dashboard.table.col.carrier)}</th>
-            <th class="hidden px-4 py-2 xl:table-cell">
-              {t(keys.dashboard.table.col.importerName)}
+            <th class="px-4 py-2" aria-sort={toAriaSort(processSortDirection())}>
+              <SortHeaderButton
+                field="processNumber"
+                label={t(keys.dashboard.table.col.process)}
+                direction={processSortDirection()}
+                onToggle={props.onSortToggle}
+              />
+            </th>
+            <th class="px-4 py-2" aria-sort={toAriaSort(providerSortDirection())}>
+              <SortHeaderButton
+                field="provider"
+                label={t(keys.dashboard.table.col.carrier)}
+                direction={providerSortDirection()}
+                onToggle={props.onSortToggle}
+              />
+            </th>
+            <th
+              class="hidden px-4 py-2 xl:table-cell"
+              aria-sort={toAriaSort(importerSortDirection())}
+            >
+              <SortHeaderButton
+                field="importerName"
+                label={t(keys.dashboard.table.col.importerName)}
+                direction={importerSortDirection()}
+                onToggle={props.onSortToggle}
+              />
             </th>
             <th class="hidden px-4 py-2 md:table-cell">{t(keys.dashboard.table.col.route)}</th>
             <th class="px-4 py-2 text-center">{t(keys.dashboard.table.col.containers)}</th>
-            <th class="px-4 py-2">{t(keys.dashboard.table.col.status)}</th>
-            <th class="px-4 py-2 text-right">{t(keys.dashboard.table.col.eta)}</th>
+            <th class="px-4 py-2" aria-sort={toAriaSort(statusSortDirection())}>
+              <SortHeaderButton
+                field="status"
+                label={t(keys.dashboard.table.col.status)}
+                direction={statusSortDirection()}
+                onToggle={props.onSortToggle}
+              />
+            </th>
+            <th class="px-4 py-2 text-right" aria-sort={toAriaSort(etaSortDirection())}>
+              <SortHeaderButton
+                field="eta"
+                label={t(keys.dashboard.table.col.eta)}
+                direction={etaSortDirection()}
+                onToggle={props.onSortToggle}
+                align="right"
+              />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -170,7 +270,13 @@ export function DashboardProcessTable(props: Props): JSX.Element {
       )
     }
 
-    return <DashboardProcessRows processes={props.processes} />
+    return (
+      <DashboardProcessRows
+        processes={props.processes}
+        sortSelection={props.sortSelection}
+        onSortToggle={props.onSortToggle}
+      />
+    )
   }
 
   return (
