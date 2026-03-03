@@ -74,11 +74,11 @@ export function LanguageSwitch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 focus:outline-none"
+        class="inline-flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white focus:outline-none"
         aria-haspopup="listbox"
         aria-expanded={open()}
       >
-        <span class="text-lg" aria-hidden>
+        <span class="text-sm" aria-hidden>
           {localeToFlag(locale())}
         </span>
         <span class="sr-only">{t(keys.languageSwitch.label)}</span>

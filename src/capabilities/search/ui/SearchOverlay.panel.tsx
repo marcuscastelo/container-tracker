@@ -159,12 +159,12 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
       <button
         type="button"
         onClick={() => props.onOpen()}
-        class="group flex w-full max-w-2xl items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        class="group flex w-full max-w-xl items-center gap-2.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
       >
         <SearchIcon />
-        <span class="flex-1 text-sm text-slate-400">{t(keys.search.placeholder)}</span>
-        <kbd class="hidden rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-400 sm:inline-flex">
-          Ctrl K
+        <span class="flex-1 text-[13px] text-slate-400">{t(keys.search.placeholder)}</span>
+        <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:inline-flex">
+          <span class="text-[9px]">⌘</span>K
         </kbd>
       </button>
 
