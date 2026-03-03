@@ -12,44 +12,147 @@ import {
 import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
 
+type GetContainerSummaryMock = (
+  containerId: string,
+  containerNumber: string,
+  podLocationCode?: string | null,
+  now?: Date,
+) => Promise<GetContainerSummaryResult>
+
+type ContainerSummaryStatus = GetContainerSummaryResult['status']
+
+const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
+  'UNKNOWN',
+  'IN_PROGRESS',
+  'LOADED',
+  'IN_TRANSIT',
+  'ARRIVED_AT_POD',
+  'DISCHARGED',
+  'AVAILABLE_FOR_PICKUP',
+  'DELIVERED',
+  'EMPTY_RETURNED',
+]
+
+function isContainerStatus(value: string): value is ContainerSummaryStatus {
+  return CONTAINER_SUMMARY_STATUSES.some((item) => item === value)
+}
+
+function createProcessWithContainers(destination: string) {
+  const process = createProcessEntity({
+    id: toProcessId('process-1'),
+    reference: toProcessReference('REF-1'),
+    origin: 'Shanghai',
+    destination,
+    carrier: toCarrierCode('msc'),
+    billOfLading: null,
+    bookingNumber: null,
+    importerName: null,
+    exporterName: null,
+    referenceImporter: null,
+    product: null,
+    redestinationNumber: null,
+    source: toProcessSource('manual'),
+    createdAt: new Date('2026-02-01T10:00:00.000Z'),
+    updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+  })
+
+  const processWithContainers = {
+    process,
+    containers: [
+      {
+        id: 'container-1',
+        processId: 'process-1',
+        containerNumber: 'MSCU1234567',
+        carrierCode: 'MSC',
+      },
+      {
+        id: 'container-2',
+        processId: 'process-1',
+        containerNumber: 'MSCU7654321',
+        carrierCode: 'MSC',
+      },
+    ],
+  }
+
+  return { process, processWithContainers }
+}
+
+function createSummary(
+  containerId: string,
+  containerNumber: string,
+  operational: TrackingOperationalSummary,
+): GetContainerSummaryResult {
+  const status: ContainerSummaryStatus = isContainerStatus(operational.status)
+    ? operational.status
+    : 'UNKNOWN'
+
+  return {
+    containerId,
+    containerNumber,
+    observations: [
+      {
+        id: `obs-${containerId}`,
+        fingerprint: `fp-${containerId}`,
+        container_id: containerId,
+        container_number: containerNumber,
+        type: 'ARRIVAL',
+        event_time: operational.eta?.eventTimeIso ?? null,
+        event_time_type: operational.eta?.eventTimeType ?? 'EXPECTED',
+        location_code: operational.eta?.locationCode ?? null,
+        location_display: operational.eta?.locationDisplay ?? null,
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        created_at: '2026-02-25T12:00:00.000Z',
+      },
+    ],
+    timeline: {
+      container_id: containerId,
+      container_number: containerNumber,
+      observations: [],
+      derived_at: '2026-02-25T12:00:00.000Z',
+      holes: [],
+    },
+    status,
+    transshipment: {
+      hasTransshipment: operational.transshipment.hasTransshipment,
+      transshipmentCount: operational.transshipment.count,
+      ports: operational.transshipment.ports.map((port) => port.code),
+    },
+    alerts: [],
+    operational,
+  }
+}
+
+function createControllers(destination: string, getContainerSummary: GetContainerSummaryMock) {
+  const { process, processWithContainers } = createProcessWithContainers(destination)
+
+  return createProcessControllers({
+    processUseCases: {
+      listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
+      createProcess: vi.fn(async () => ({
+        process,
+        containers: [],
+        warnings: [],
+      })),
+      findProcessByIdWithContainers: vi.fn(async () => ({
+        process: processWithContainers,
+      })),
+      updateProcess: vi.fn(async () => ({ process: processWithContainers })),
+      findProcessById: vi.fn(async () => ({ process })),
+      deleteProcess: vi.fn(async () => ({ deleted: true as const })),
+    },
+    trackingUseCases: {
+      getContainerSummary,
+    },
+  })
+}
+
 describe('process controllers', () => {
   it('returns process detail with container operational and process coverage', async () => {
-    const process = createProcessEntity({
-      id: toProcessId('process-1'),
-      reference: toProcessReference('REF-1'),
-      origin: 'Shanghai',
-      destination: '{"display_name":"Santos, BR","unlocode":"BRSSZBT"}',
-      carrier: toCarrierCode('msc'),
-      billOfLading: null,
-      bookingNumber: null,
-      importerName: null,
-      exporterName: null,
-      referenceImporter: null,
-      product: null,
-      redestinationNumber: null,
-      source: toProcessSource('manual'),
-      createdAt: new Date('2026-02-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T10:00:00.000Z'),
-    })
-
-    const processWithContainers = {
-      process,
-      containers: [
-        {
-          id: 'container-1',
-          processId: 'process-1',
-          containerNumber: 'MSCU1234567',
-          carrierCode: 'MSC',
-        },
-        {
-          id: 'container-2',
-          processId: 'process-1',
-          containerNumber: 'MSCU7654321',
-          carrierCode: 'MSC',
-        },
-      ],
-    }
-
     const containerOneSummary: TrackingOperationalSummary = {
       status: 'IN_TRANSIT',
       eta: {
@@ -67,77 +170,22 @@ describe('process controllers', () => {
       },
       dataIssue: false,
     }
-
     const containerTwoSummary = createTrackingOperationalSummaryFallback(true)
 
-    const getContainersSummaryMock = vi.fn(async () => {
-      return new Map([
-        ['container-1', containerOneSummary],
-        ['container-2', containerTwoSummary],
-      ])
-    })
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        if (containerId === 'container-2') {
+          return createSummary(containerId, containerNumber, containerTwoSummary)
+        }
 
-    const controllers = createProcessControllers({
-      processUseCases: {
-        listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
-        createProcess: vi.fn(async () => ({
-          process,
-          containers: [],
-          warnings: [],
-        })),
-        findProcessByIdWithContainers: vi.fn(async () => ({
-          process: processWithContainers,
-        })),
-        updateProcess: vi.fn(async () => ({ process: processWithContainers })),
-        findProcessById: vi.fn(async () => ({ process })),
-        deleteProcess: vi.fn(async () => ({ deleted: true as const })),
+        return createSummary(containerId, containerNumber, containerOneSummary)
       },
-      trackingUseCases: {
-        getContainerSummary: vi.fn(async (containerId: string, containerNumber: string) => {
-          const summary: GetContainerSummaryResult = {
-            containerId,
-            containerNumber,
-            observations: [
-              {
-                id: `obs-${containerId}`,
-                fingerprint: `fp-${containerId}`,
-                container_id: containerId,
-                container_number: containerNumber,
-                type: 'ARRIVAL',
-                event_time: '2026-03-10T12:00:00.000Z',
-                event_time_type: 'EXPECTED',
-                location_code: 'BRSSZ',
-                location_display: 'Santos',
-                vessel_name: null,
-                voyage: null,
-                is_empty: null,
-                confidence: 'high',
-                provider: 'msc',
-                created_from_snapshot_id: 'snapshot-1',
-                created_at: '2026-02-25T12:00:00.000Z',
-              },
-            ],
-            timeline: {
-              container_id: containerId,
-              container_number: containerNumber,
-              observations: [],
-              derived_at: '2026-02-25T12:00:00.000Z',
-              holes: [],
-            },
-            status: 'IN_TRANSIT',
-            transshipment: {
-              hasTransshipment: false,
-              transshipmentCount: 0,
-              ports: [],
-            },
-            alerts: [],
-          }
+    )
 
-          return summary
-        }),
-        getContainersSummary: getContainersSummaryMock,
-      },
-    })
+    const controllers = createControllers(
+      '{"display_name":"Santos, BR","unlocode":"BRSSZBT"}',
+      getContainerSummaryMock,
+    )
 
     const response = await controllers.getProcessById({ params: { id: 'process-1' } })
     const body = ProcessDetailResponseSchema.parse(await response.json())
@@ -160,19 +208,73 @@ describe('process controllers', () => {
       'total',
       'with_eta',
     ])
-    expect(getContainersSummaryMock).toHaveBeenCalledWith(
-      [
-        {
-          containerId: 'container-1',
-          containerNumber: 'MSCU1234567',
-          podLocationCode: 'BRSSZBT',
-        },
-        {
-          containerId: 'container-2',
-          containerNumber: 'MSCU7654321',
-          podLocationCode: 'BRSSZBT',
-        },
-      ],
+    expect(getContainerSummaryMock).toHaveBeenCalledTimes(2)
+    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
+      1,
+      'container-1',
+      'MSCU1234567',
+      'BRSSZBT',
+      expect.any(Date),
+    )
+    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
+      2,
+      'container-2',
+      'MSCU7654321',
+      'BRSSZBT',
+      expect.any(Date),
+    )
+  })
+
+  it('does not infer POD code from free-text destination names', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const controllers = createControllers('Santos', getContainerSummaryMock)
+
+    await controllers.getProcessById({ params: { id: 'process-1' } })
+
+    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
+      1,
+      'container-1',
+      'MSCU1234567',
+      null,
+      expect.any(Date),
+    )
+    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
+      2,
+      'container-2',
+      'MSCU7654321',
+      null,
+      expect.any(Date),
+    )
+  })
+
+  it('accepts alphanumeric direct destination codes with numeric terminal suffix', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const controllers = createControllers('ESBCN07', getContainerSummaryMock)
+
+    await controllers.getProcessById({ params: { id: 'process-1' } })
+
+    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
+      1,
+      'container-1',
+      'MSCU1234567',
+      'ESBCN07',
+      expect.any(Date),
+    )
+    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
+      2,
+      'container-2',
+      'MSCU7654321',
+      'ESBCN07',
       expect.any(Date),
     )
   })

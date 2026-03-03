@@ -30,11 +30,11 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
       })}
     >
       {/* Vertical rail: dot + connecting line */}
-      <div class="flex flex-col items-center pt-1.25 w-3 shrink-0">
+      <div class="flex flex-col items-center pt-[5px] w-3 shrink-0">
         <div
           class={clsx('shrink-0 rounded-full', props.dotClass, {
             'h-1.5 w-1.5': props.isExpected,
-            'h-1.75 w-1.75': !props.isExpected,
+            'h-[7px] w-[7px]': !props.isExpected,
           })}
         />
         {props.isLast ? null : <div class={`w-px flex-1 min-h-8 ${props.lineClass}`} />}

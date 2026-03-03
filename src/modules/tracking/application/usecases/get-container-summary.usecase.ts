@@ -1,3 +1,8 @@
+import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
+import {
+  deriveTrackingOperationalSummary,
+  type TrackingOperationalSummary,
+} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
@@ -14,6 +19,8 @@ import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAler
 export type GetContainerSummaryCommand = {
   readonly containerId: string
   readonly containerNumber: string
+  readonly podLocationCode?: string | null
+  readonly now?: Date
 }
 
 /**
@@ -30,6 +37,7 @@ export type GetContainerSummaryResult = {
   readonly status: ContainerStatus
   readonly transshipment: TransshipmentInfo
   readonly alerts: readonly TrackingAlert[]
+  readonly operational: TrackingOperationalSummary
 }
 
 /**
@@ -42,14 +50,22 @@ export async function getContainerSummary(
   deps: TrackingUseCasesDeps,
   cmd: GetContainerSummaryCommand,
 ): Promise<GetContainerSummaryResult> {
+  const referenceNow = cmd.now ?? new Date()
   const [observations, alerts] = await Promise.all([
     deps.observationRepository.findAllByContainerId(cmd.containerId),
     deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId),
   ])
 
-  const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations)
+  const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations, referenceNow)
   const status = deriveStatus(timeline)
   const transshipment = deriveTransshipment(timeline)
+  const operational = deriveTrackingOperationalSummary({
+    observations: toTrackingObservationDTOs(observations),
+    status,
+    transshipment,
+    podLocationCode: cmd.podLocationCode ?? null,
+    now: referenceNow,
+  })
 
   return {
     containerId: cmd.containerId,
@@ -59,5 +75,6 @@ export async function getContainerSummary(
     status,
     transshipment,
     alerts,
+    operational,
   }
 }

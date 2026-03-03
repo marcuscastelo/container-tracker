@@ -79,7 +79,6 @@ export type ShipmentDetailVM = {
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
   readonly eta: string | null
-  readonly selectedContainerEtaVm: ContainerEtaDetailVM
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
   readonly containers: readonly ContainerDetailVM[]
   readonly alerts: readonly AlertDisplayVM[]

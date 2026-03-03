@@ -172,7 +172,6 @@ export function toShipmentDetailVM(
 
   const processStatusCode = deriveProcessStatusCode(data.containers)
   const processEtaSecondaryVm = toProcessEtaSecondaryVm(data, containers, locale)
-  const selectedContainerEtaVm = containers[0]?.selectedEtaVm ?? null
 
   return {
     id: data.id,
@@ -191,7 +190,6 @@ export function toShipmentDetailVM(
     status: trackingStatusToVariant(processStatusCode),
     statusCode: processStatusCode,
     eta: processEtaSecondaryVm.date,
-    selectedContainerEtaVm,
     processEtaSecondaryVm,
     containers,
     alerts: toAlertDisplayVMs(

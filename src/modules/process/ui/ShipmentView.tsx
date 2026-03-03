@@ -22,7 +22,10 @@ import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
-import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type {
+  ContainerEtaDetailVM,
+  ShipmentDetailVM,
+} from '~/modules/process/ui/viewmodels/shipment.vm'
 import {
   type SyncRequestRealtimeEvent,
   subscribeToSyncRequestsRealtimeByIds,
@@ -579,7 +582,7 @@ type ShipmentViewLayoutProps = {
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
   readonly selectedContainer: ShipmentContainer | null
-  readonly selectedContainerEtaVm: ShipmentDetailVM['selectedContainerEtaVm']
+  readonly selectedContainerEtaVm: ContainerEtaDetailVM
   readonly onOpenEditForShipment: (
     shipment: ShipmentDetailVM,
     focus?: 'reference' | 'carrier' | null | undefined,
@@ -889,7 +892,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     return containers[0]
   })
 
-  const selectedContainerEtaVm = createMemo<ShipmentDetailVM['selectedContainerEtaVm']>(() => {
+  const selectedContainerEtaVm = createMemo<ContainerEtaDetailVM>(() => {
     const selected = selectedContainer()
     if (!selected) return null
     return selected.selectedEtaVm
