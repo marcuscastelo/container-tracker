@@ -13,7 +13,7 @@ type Props = {
 
 function ShipIcon(): JSX.Element {
   return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -26,7 +26,7 @@ function ShipIcon(): JSX.Element {
 
 function ContainerIcon(): JSX.Element {
   return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -39,7 +39,7 @@ function ContainerIcon(): JSX.Element {
 
 function AlertIcon(): JSX.Element {
   return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -52,7 +52,7 @@ function AlertIcon(): JSX.Element {
 
 function CheckIcon(): JSX.Element {
   return (
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
     </svg>
   )
@@ -80,7 +80,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   })
 
   return (
-    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
       <MetricCard
         icon={<ShipIcon />}
         label={t(keys.dashboard.metrics.activeShipments)}

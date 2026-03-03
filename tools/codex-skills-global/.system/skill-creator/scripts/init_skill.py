@@ -125,8 +125,6 @@ Example real scripts from other skills:
 def main():
     print("This is an example script for {skill_name}")
     # TODO: Add actual script logic here
-    # Issue URL: https://github.com/marcuscastelo/container-tracker/issues/79
-    Issue URL: https://github.com/marcuscastelo/container-tracker/issues/78
     # This could be data processing, file conversion, API calls, etc.
 
 if __name__ == "__main__":

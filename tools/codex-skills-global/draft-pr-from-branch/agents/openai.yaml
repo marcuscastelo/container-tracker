@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Draft Offline"
+  short_description: "Generate PR title/description from branch diff"
+  default_prompt: "Use $draft-pr-from-branch to compare my current branch with main and draft an offline PR title and description in /tmp."

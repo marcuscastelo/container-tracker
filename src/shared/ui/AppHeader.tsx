@@ -7,17 +7,34 @@ type Props = {
   readonly onCreateProcess?: () => void
 }
 
+function NavLink(props: {
+  readonly href: string
+  readonly children: JSX.Element
+  readonly end?: boolean
+}): JSX.Element {
+  return (
+    <A
+      href={props.href}
+      end={props.end}
+      class="relative px-3 py-2.5 text-[13px] font-medium text-slate-400 transition-colors hover:text-white"
+      activeClass="!text-white after:content-[''] after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-blue-400"
+    >
+      {props.children}
+    </A>
+  )
+}
+
 export function AppHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <header class="border-b border-slate-200 bg-slate-900">
-      <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header class="border-b border-slate-800 bg-slate-900">
+      <div class="mx-auto flex h-11 max-w-7xl items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <div class="flex items-center gap-8">
+        <div class="flex items-center gap-6">
           <A href="/" class="flex items-center gap-2 text-white">
             <svg
-              class="h-6 w-6"
+              class="h-5 w-5 text-blue-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -30,45 +47,30 @@ export function AppHeader(props: Props): JSX.Element {
                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
               />
             </svg>
-            <span class="text-lg font-semibold">{t(keys.header.brand)}</span>
+            <span class="text-sm font-bold tracking-tight">{t(keys.header.brand)}</span>
           </A>
 
-          {/* Navigation */}
-          <nav class="hidden items-center gap-1 md:flex">
-            <A
-              href="/"
-              class="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-              activeClass="bg-slate-800 text-white"
-            >
+          {/* Navigation — border-bottom active indicator */}
+          <nav class="hidden items-center gap-0.5 md:flex">
+            <NavLink href="/" end>
               {t(keys.header.nav.dashboard)}
-            </A>
-            <A
-              href="/shipments"
-              class="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-              activeClass="bg-slate-800 text-white"
-            >
-              {t(keys.header.nav.shipments)}
-            </A>
-            <A
-              href="/containers"
-              class="rounded-md px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
-              activeClass="bg-slate-800 text-white"
-            >
-              {t(keys.header.nav.containers)}
-            </A>
+            </NavLink>
+            <NavLink href="/shipments">{t(keys.header.nav.shipments)}</NavLink>
+            <NavLink href="/containers">{t(keys.header.nav.containers)}</NavLink>
           </nav>
         </div>
 
         {/* Actions */}
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
           <LanguageSwitch />
           <button
             type="button"
             onClick={() => props.onCreateProcess?.()}
-            class="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-900"
+            aria-label={t(keys.header.createProcess)}
+            class="inline-flex items-center gap-1.5 rounded bg-blue-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 focus:ring-offset-slate-900"
           >
             <svg
-              class="h-4 w-4"
+              class="h-3.5 w-3.5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -77,11 +79,11 @@ export function AppHeader(props: Props): JSX.Element {
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                stroke-width="2"
+                stroke-width="2.5"
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            {t(keys.header.createProcess)}
+            <span class="hidden sm:inline">{t(keys.header.createProcess)}</span>
           </button>
         </div>
       </div>

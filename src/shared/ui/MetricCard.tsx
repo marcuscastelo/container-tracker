@@ -9,16 +9,25 @@ type Props = {
   readonly variant?: Variant
 }
 
-const variantStyles: Record<Variant, { labelClass: string; valueClass: string }> = {
+const variantStyles: Record<
+  Variant,
+  { iconBg: string; iconText: string; labelClass: string; valueClass: string }
+> = {
   default: {
-    labelClass: 'text-slate-600',
+    iconBg: 'bg-slate-50',
+    iconText: 'text-slate-500',
+    labelClass: 'text-slate-500',
     valueClass: 'text-slate-900',
   },
   warning: {
-    labelClass: 'text-red-600',
+    iconBg: 'bg-red-50',
+    iconText: 'text-red-500',
+    labelClass: 'text-red-500',
     valueClass: 'text-red-700',
   },
   success: {
+    iconBg: 'bg-emerald-50',
+    iconText: 'text-emerald-500',
     labelClass: 'text-emerald-600',
     valueClass: 'text-emerald-700',
   },
@@ -28,13 +37,19 @@ export function MetricCard(props: Props): JSX.Element {
   const styles = () => variantStyles[props.variant ?? 'default']
 
   return (
-    <div class="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-5 py-4">
-      <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+    <div class="flex items-center gap-3 rounded border border-slate-200 bg-white px-3 py-2.5">
+      <div
+        class={`flex h-8 w-8 shrink-0 items-center justify-center rounded ${styles().iconBg} ${styles().iconText}`}
+      >
         {props.icon}
       </div>
-      <div class="flex flex-col">
-        <span class={`text-sm font-medium ${styles().labelClass}`}>{props.label}</span>
-        <span class={`text-2xl font-semibold ${styles().valueClass}`}>{props.value}</span>
+      <div class="flex flex-col gap-0">
+        <span class={`text-[22px] font-bold leading-tight tabular-nums ${styles().valueClass}`}>
+          {props.value}
+        </span>
+        <span class={`text-[11px] font-medium leading-tight ${styles().labelClass}`}>
+          {props.label}
+        </span>
       </div>
     </div>
   )

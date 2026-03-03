@@ -66,7 +66,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   return (
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-screen bg-slate-50/80">
       <AppHeader onCreateProcess={handleCreateProcess} />
       <CreateProcessDialog
         open={isCreateDialogOpen()}
@@ -74,9 +74,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         onSubmit={handleProcessSubmit}
       />
 
-      <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
         <Show when={props.searchSlot}>
-          <div class="mb-6 flex justify-center">{props.searchSlot}</div>
+          <div class="mb-4 flex justify-center">{props.searchSlot}</div>
         </Show>
 
         {/* Error message */}
