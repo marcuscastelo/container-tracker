@@ -33,6 +33,7 @@ const translations: Record<string, string> = {
   [keys.shipmentView.timeline.systemCreated]: 'Processo registrado no sistema',
   [keys.shipmentView.timeline.unknownEvent]: 'Evento desconhecido',
   [keys.shipmentView.timeline.nonMappedIndicator]: 'Não mapeado',
+  'tracking.observationType.OTHER': 'Outro',
   [keys.tracking.observationType.GATE_IN]: 'Entrada no Terminal',
   [keys.tracking.observationType.GATE_OUT]: 'Saida do Terminal',
   [keys.tracking.observationType.LOAD]: 'Carregado no Navio',
@@ -111,6 +112,28 @@ describe('resolveTimelineEventLabel', () => {
     )
 
     expect(label).toBe('Evento desconhecido')
+  })
+
+  it('never resolves non-canonical events to the literal "Outro"', () => {
+    const withoutCarrierLabel = resolveTimelineEventLabel(
+      {
+        type: 'OTHER',
+      },
+      t,
+      keys,
+    )
+    const withCarrierLabel = resolveTimelineEventLabel(
+      {
+        type: 'OTHER',
+        carrierLabel: 'Carrier free-text event',
+      },
+      t,
+      keys,
+    )
+
+    expect(withoutCarrierLabel).toBe('Evento desconhecido')
+    expect(withCarrierLabel).toBe('Carrier free-text event')
+    expect([withoutCarrierLabel, withCarrierLabel]).not.toContain('Outro')
   })
 })
 
