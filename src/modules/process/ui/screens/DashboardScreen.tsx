@@ -5,6 +5,7 @@ import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreatePro
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
+import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import {
   applyDashboardSortToSearchParams,
   parseDashboardSortFromSearchParams,
@@ -65,6 +66,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const handleSortToggle = (field: DashboardSortField) => {
     const nextSelection = nextDashboardSortSelection(sortSelection(), field)
     setSortSelection(nextSelection)
+    emitDashboardSortChangedTelemetry('user', field, nextSelection)
     writeDashboardSortToLocalStorage(nextSelection)
 
     const nextSearchParams = applyDashboardSortToSearchParams(
