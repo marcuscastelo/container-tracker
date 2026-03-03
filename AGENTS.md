@@ -89,6 +89,8 @@ Capabilities orchestrate across BCs.
   Row (infra) != Entity (domain) != DTO (interface) != ViewModel (UI)
 - `snake_case` only in persistence and persistence mappers
 - Prefer named exports; avoid `export default`
+- Root tooling configs (for example `eslint.config.mjs`) are linted by Biome import rules:
+  avoid `./` or `../` imports there and prefer `package.json` `imports` aliases (`#...`)
 
 ---
 

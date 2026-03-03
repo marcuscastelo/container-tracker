@@ -2,6 +2,7 @@
 // biome-ignore lint/performance/noNamespaceImport: This is how ESLint configs are structured
 import * as tsParser from '@typescript-eslint/parser'
 import solid from 'eslint-plugin-solid/configs/typescript'
+import { containerTrackerEslintPlugin } from '#container-tracker-eslint-plugin'
 
 const schemaLibraryPaths = [
   {
@@ -67,6 +68,11 @@ export default [
   // Ignore build/output folders from linting
   {
     ignores: ['.output/**', '.vinxi/**', 'tools/ralph-loop/**', '.ralph-loop/**'],
+  },
+  {
+    plugins: {
+      'container-tracker': containerTrackerEslintPlugin,
+    },
   },
   // js.configs.recommended,
   {
