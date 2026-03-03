@@ -149,6 +149,17 @@ describe('process controllers', () => {
     expect(body.process_operational?.eta_max?.event_time).toBe('2026-03-10T12:00:00.000Z')
     expect(body.process_operational?.coverage.total).toBe(2)
     expect(body.process_operational?.coverage.with_eta).toBe(1)
+    expect(Object.keys(body.containers[0]?.operational ?? {}).sort()).toEqual([
+      'data_issue',
+      'eta',
+      'status',
+      'transshipment',
+    ])
+    expect(Object.keys(body.process_operational ?? {}).sort()).toEqual(['coverage', 'eta_max'])
+    expect(Object.keys(body.process_operational?.coverage ?? {}).sort()).toEqual([
+      'total',
+      'with_eta',
+    ])
     expect(getContainersSummaryMock).toHaveBeenCalledWith(
       [
         {

@@ -1,7 +1,8 @@
 import type { JSX } from 'solid-js'
-import { createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { toSelectedEtaSubtitle, toSelectedEtaTitle } from '~/modules/process/ui/utils/eta-labels'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
@@ -242,42 +243,102 @@ function etaToneBgClass(
   }
 }
 
+function selectedEtaBorderClass(selectedEtaVm: ShipmentDetailVM['selectedContainerEtaVm']): string {
+  if (!selectedEtaVm) return 'border-slate-200'
+  switch (selectedEtaVm.tone) {
+    case 'positive':
+      return 'border-emerald-200'
+    case 'warning':
+      return 'border-amber-200'
+    default:
+      return 'border-slate-200'
+  }
+}
+
+function SelectedEtaSummary(props: {
+  readonly selectedEtaVm: ShipmentDetailVM['selectedContainerEtaVm']
+  readonly title: string
+  readonly subtitle: string | null
+}): JSX.Element {
+  return (
+    <div
+      data-testid="selected-eta-summary"
+      class={`inline-flex items-center gap-2 rounded border px-3 py-1.5 ${selectedEtaBorderClass(props.selectedEtaVm)} ${
+        props.selectedEtaVm ? etaToneBgClass(props.selectedEtaVm.tone) : 'bg-slate-50'
+      }`}
+    >
+      <span
+        data-testid="selected-eta-title"
+        class={`text-sm font-semibold ${
+          props.selectedEtaVm ? etaToneClass(props.selectedEtaVm.tone) : 'text-slate-500'
+        }`}
+      >
+        {props.title}
+      </span>
+      {props.subtitle ? (
+        <span
+          data-testid="selected-eta-subtitle"
+          class={`text-[11px] font-medium ${
+            props.selectedEtaVm?.state === 'EXPIRED_EXPECTED' ? 'text-amber-600' : 'text-slate-500'
+          }`}
+        >
+          {props.subtitle}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+function ProcessEtaSummary(props: {
+  readonly processEtaSecondaryVm: ShipmentDetailVM['processEtaSecondaryVm']
+  readonly processEtaTitle: string
+  readonly noEta: string
+  readonly incomplete: string
+}): JSX.Element {
+  return (
+    <Show when={props.processEtaSecondaryVm.visible}>
+      <div
+        data-testid="process-eta-summary"
+        class="inline-flex items-center gap-2 text-xs text-slate-500"
+      >
+        <span class="font-medium">{props.processEtaTitle}:</span>
+        <span data-testid="process-eta-date" class="font-semibold text-slate-700">
+          {props.processEtaSecondaryVm.date ?? props.noEta}
+        </span>
+        <span data-testid="process-eta-coverage" class="text-slate-400">
+          ({props.processEtaSecondaryVm.withEta}/{props.processEtaSecondaryVm.total})
+        </span>
+        {props.processEtaSecondaryVm.incomplete ? (
+          <span
+            data-testid="process-eta-incomplete"
+            class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
+          >
+            {props.incomplete}
+          </span>
+        ) : null}
+      </div>
+    </Show>
+  )
+}
+
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
 
   const selectedEtaTitle = () => {
-    const selected = props.selectedContainerEtaVm
-    if (!selected) return t(keys.shipmentView.etaMissing)
-    if (selected.state === 'ACTUAL') {
-      return `${t(keys.shipmentView.operational.chips.etaArrived)} ${selected.date}`
-    }
-    return `ETA ${selected.date}`
+    return toSelectedEtaTitle(props.selectedContainerEtaVm, {
+      arrived: t(keys.shipmentView.operational.chips.etaArrived),
+      expectedPrefix: t(keys.shipmentView.operational.chips.etaExpected),
+      noEta: t(keys.shipmentView.operational.header.noEta),
+    })
   }
 
   const selectedEtaSubtitle = () => {
-    const selected = props.selectedContainerEtaVm
-    if (!selected) return null
-    if (selected.state === 'ACTUAL') {
-      return t(keys.shipmentView.operational.header.selectedActual)
-    }
-    if (selected.state === 'EXPIRED_EXPECTED') {
-      return t(keys.shipmentView.operational.header.selectedExpectedDelayed)
-    }
-    return t(keys.shipmentView.operational.header.selectedExpected)
-  }
-
-  const etaBorderClass = () => {
-    const selected = props.selectedContainerEtaVm
-    if (!selected) return 'border-slate-200'
-    switch (selected.tone) {
-      case 'positive':
-        return 'border-emerald-200'
-      case 'warning':
-        return 'border-amber-200'
-      default:
-        return 'border-slate-200'
-    }
+    return toSelectedEtaSubtitle(props.selectedContainerEtaVm, {
+      actual: t(keys.shipmentView.operational.header.selectedActual),
+      expected: t(keys.shipmentView.operational.header.selectedExpected),
+      delayed: t(keys.shipmentView.operational.header.selectedExpectedDelayed),
+    })
   }
 
   return (
@@ -357,56 +418,17 @@ export function ShipmentHeader(props: Props): JSX.Element {
 
       {/* Row 2: ETA container (primary) + ETA process (secondary) — compact bar */}
       <div class="mt-3 flex items-center gap-4 flex-wrap">
-        {/* Container ETA — primary operational focus */}
-        <div
-          class={`inline-flex items-center gap-2 rounded border px-3 py-1.5 ${etaBorderClass()} ${
-            props.selectedContainerEtaVm
-              ? etaToneBgClass(props.selectedContainerEtaVm.tone)
-              : 'bg-slate-50'
-          }`}
-        >
-          <span
-            class={`text-sm font-semibold ${
-              props.selectedContainerEtaVm
-                ? etaToneClass(props.selectedContainerEtaVm.tone)
-                : 'text-slate-500'
-            }`}
-          >
-            {selectedEtaTitle()}
-          </span>
-          {selectedEtaSubtitle() ? (
-            <span
-              class={`text-[11px] font-medium ${
-                props.selectedContainerEtaVm?.state === 'EXPIRED_EXPECTED'
-                  ? 'text-amber-600'
-                  : 'text-slate-500'
-              }`}
-            >
-              {selectedEtaSubtitle()}
-            </span>
-          ) : null}
-        </div>
-
-        {/* Process ETA — secondary */}
-        {props.data.processEtaSecondaryVm.visible ? (
-          <div class="inline-flex items-center gap-2 text-xs text-slate-500">
-            <span class="font-medium">
-              {t(keys.shipmentView.operational.header.processEtaTitle)}:
-            </span>
-            <span class="font-semibold text-slate-700">
-              {props.data.processEtaSecondaryVm.date ??
-                t(keys.shipmentView.operational.header.noEta)}
-            </span>
-            <span class="text-slate-400">
-              ({props.data.processEtaSecondaryVm.withEta}/{props.data.processEtaSecondaryVm.total})
-            </span>
-            {props.data.processEtaSecondaryVm.incomplete ? (
-              <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                {t(keys.shipmentView.operational.header.incomplete)}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        <SelectedEtaSummary
+          selectedEtaVm={props.selectedContainerEtaVm}
+          title={selectedEtaTitle()}
+          subtitle={selectedEtaSubtitle()}
+        />
+        <ProcessEtaSummary
+          processEtaSecondaryVm={props.data.processEtaSecondaryVm}
+          processEtaTitle={t(keys.shipmentView.operational.header.processEtaTitle)}
+          noEta={t(keys.shipmentView.operational.header.noEta)}
+          incomplete={t(keys.shipmentView.operational.header.incomplete)}
+        />
       </div>
     </section>
   )

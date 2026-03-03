@@ -15,7 +15,7 @@ export function TransshipmentCard(props: Props): JSX.Element | null {
 
   return (
     <Show when={hasTransshipment()}>
-      <section class="rounded-lg border border-slate-200 bg-white">
+      <section data-testid="transshipment-card" class="rounded-lg border border-slate-200 bg-white">
         <div class="px-4 py-2.5">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">

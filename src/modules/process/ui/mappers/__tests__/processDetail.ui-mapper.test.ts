@@ -254,9 +254,131 @@ describe('toShipmentDetailVM operational mapping', () => {
     expect(result.containers[0].tsChipVm.visible).toBe(true)
     expect(result.containers[0].tsChipVm.count).toBe(2)
     expect(result.containers[0].dataIssueChipVm.visible).toBe(true)
+    expect(result.containers[1].tsChipVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.visible).toBe(true)
     expect(result.processEtaSecondaryVm.total).toBe(2)
     expect(result.processEtaSecondaryVm.withEta).toBe(1)
     expect(result.processEtaSecondaryVm.incomplete).toBe(true)
+  })
+
+  it('keeps INT chip hidden when transshipment flag is false even with count > 0', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-6',
+      reference: 'OPS-6',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      source: 'api',
+      created_at: '2026-02-01T10:00:00.000Z',
+      updated_at: '2026-02-01T10:00:00.000Z',
+      containers: [
+        {
+          id: 'c6-1',
+          container_number: 'MSCU3333333',
+          status: 'IN_TRANSIT',
+          observations: [],
+          operational: {
+            status: 'IN_TRANSIT',
+            eta: null,
+            transshipment: {
+              has_transshipment: false,
+              count: 2,
+              ports: [
+                { code: 'EGPSDTM', display: 'Port Said' },
+                { code: 'ESBCN07', display: 'Barcelona' },
+              ],
+            },
+            data_issue: false,
+          },
+        },
+      ],
+      alerts: [],
+    }
+
+    const result = toShipmentDetailVM(example, 'pt-BR')
+    expect(result.containers[0].tsChipVm.visible).toBe(false)
+    expect(result.containers[0].tsChipVm.count).toBe(2)
+  })
+
+  it('marks process ETA coverage as complete when all containers have ETA', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-7',
+      reference: 'OPS-7',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      source: 'api',
+      created_at: '2026-02-01T10:00:00.000Z',
+      updated_at: '2026-02-01T10:00:00.000Z',
+      containers: [
+        {
+          id: 'c7-1',
+          container_number: 'MSCU4444444',
+          status: 'IN_TRANSIT',
+          observations: [],
+          operational: {
+            status: 'IN_TRANSIT',
+            eta: {
+              event_time: '2026-03-05T10:00:00.000Z',
+              event_time_type: 'EXPECTED',
+              state: 'ACTIVE_EXPECTED',
+              type: 'ARRIVAL',
+              location_code: 'BRSSZ',
+              location_display: 'Santos',
+            },
+            transshipment: {
+              has_transshipment: false,
+              count: 0,
+              ports: [],
+            },
+            data_issue: false,
+          },
+        },
+        {
+          id: 'c7-2',
+          container_number: 'MSCU5555555',
+          status: 'IN_TRANSIT',
+          observations: [],
+          operational: {
+            status: 'IN_TRANSIT',
+            eta: {
+              event_time: '2026-03-10T10:00:00.000Z',
+              event_time_type: 'EXPECTED',
+              state: 'ACTIVE_EXPECTED',
+              type: 'ARRIVAL',
+              location_code: 'BRSSZ',
+              location_display: 'Santos',
+            },
+            transshipment: {
+              has_transshipment: false,
+              count: 0,
+              ports: [],
+            },
+            data_issue: false,
+          },
+        },
+      ],
+      alerts: [],
+      process_operational: {
+        eta_max: {
+          event_time: '2026-03-10T10:00:00.000Z',
+          event_time_type: 'EXPECTED',
+          state: 'ACTIVE_EXPECTED',
+          type: 'ARRIVAL',
+          location_code: 'BRSSZ',
+          location_display: 'Santos',
+        },
+        coverage: {
+          total: 2,
+          with_eta: 2,
+        },
+      },
+    }
+
+    const result = toShipmentDetailVM(example, 'pt-BR')
+    expect(result.processEtaSecondaryVm.visible).toBe(true)
+    expect(result.processEtaSecondaryVm.withEta).toBe(2)
+    expect(result.processEtaSecondaryVm.total).toBe(2)
+    expect(result.processEtaSecondaryVm.incomplete).toBe(false)
   })
 })

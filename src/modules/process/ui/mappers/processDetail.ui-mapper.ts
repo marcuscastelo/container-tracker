@@ -104,7 +104,7 @@ function toTsChipVm(
       : null
 
   return {
-    visible: transshipment.count > 0,
+    visible: transshipment.hasTransshipment && transshipment.count > 0,
     count: transshipment.count,
     portsTooltip,
   }
