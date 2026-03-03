@@ -73,6 +73,13 @@ function containsQuery(value: string | null, normalizedQuery: string): boolean {
   return normalizedValue.includes(normalizedQuery)
 }
 
+function isExactMatch(value: string | null, normalizedQuery: string): boolean {
+  const normalizedValue = normalizeText(value)
+  if (normalizedValue === null) return false
+
+  return normalizedValue === normalizedQuery
+}
+
 function resolveProcessMatchSource(
   projection: ProcessSearchProjection,
   normalizedQuery: string,
@@ -95,6 +102,16 @@ const MATCH_SOURCE_PRIORITY: Readonly<Record<SearchMatchSource, number>> = {
   status: 6,
 }
 
+const MATCH_RANK_PRIORITY = {
+  exactContainer: 0,
+  exactProcessReference: 1,
+  partialContainer: 2,
+  processText: 3,
+  vessel: 4,
+  status: 5,
+  fallback: 6,
+} as const
+
 type MutableSearchResultItem = {
   processId: string
   processReference: string | null
@@ -106,6 +123,12 @@ type MutableSearchResultItem = {
   derivedStatus: string | null
   eta: string | null
   matchSource: SearchMatchSource
+  hasExactContainerMatch: boolean
+  hasPartialContainerMatch: boolean
+  hasExactProcessReferenceMatch: boolean
+  hasProcessTextMatch: boolean
+  hasVesselMatch: boolean
+  hasStatusMatch: boolean
 }
 
 function createEmptySearchResultItem(
@@ -123,6 +146,12 @@ function createEmptySearchResultItem(
     derivedStatus: null,
     eta: null,
     matchSource,
+    hasExactContainerMatch: false,
+    hasPartialContainerMatch: false,
+    hasExactProcessReferenceMatch: false,
+    hasProcessTextMatch: false,
+    hasVesselMatch: false,
+    hasStatusMatch: false,
   }
 }
 
@@ -152,6 +181,43 @@ function getOrCreateResult(
   return created
 }
 
+function compareStringAsc(left: string, right: string): number {
+  if (left < right) return -1
+  if (left > right) return 1
+  return 0
+}
+
+function toSortableReference(reference: string | null): string {
+  const normalizedReference = normalizeText(reference)
+  return normalizedReference ?? '\uffff'
+}
+
+function resolveMatchRankPriority(item: MutableSearchResultItem): number {
+  if (item.hasExactContainerMatch) return MATCH_RANK_PRIORITY.exactContainer
+  if (item.hasExactProcessReferenceMatch) return MATCH_RANK_PRIORITY.exactProcessReference
+  if (item.hasPartialContainerMatch) return MATCH_RANK_PRIORITY.partialContainer
+  if (item.hasProcessTextMatch) return MATCH_RANK_PRIORITY.processText
+  if (item.hasVesselMatch) return MATCH_RANK_PRIORITY.vessel
+  if (item.hasStatusMatch) return MATCH_RANK_PRIORITY.status
+  return MATCH_RANK_PRIORITY.fallback
+}
+
+function compareConsolidatedResults(
+  left: MutableSearchResultItem,
+  right: MutableSearchResultItem,
+): number {
+  const rankDiff = resolveMatchRankPriority(left) - resolveMatchRankPriority(right)
+  if (rankDiff !== 0) return rankDiff
+
+  const referenceCompare = compareStringAsc(
+    toSortableReference(left.processReference),
+    toSortableReference(right.processReference),
+  )
+  if (referenceCompare !== 0) return referenceCompare
+
+  return compareStringAsc(left.processId, right.processId)
+}
+
 export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCase {
   const searchLimit = SEARCH_RESULTS_LIMIT
 
@@ -173,15 +239,33 @@ export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCas
     for (const processMatch of processMatches) {
       const source = resolveProcessMatchSource(processMatch, normalizedQuery)
       const result = getOrCreateResult(consolidated, processMatch.processId, source)
+      const processReferenceMatches = containsQuery(processMatch.reference, normalizedQuery)
+      const importerMatches = containsQuery(processMatch.importerName, normalizedQuery)
+      const billOfLadingMatches = containsQuery(processMatch.billOfLading, normalizedQuery)
+      const carrierMatches = containsQuery(processMatch.carrier, normalizedQuery)
 
       result.processReference = processMatch.reference
       result.importerName = processMatch.importerName
       result.bl = processMatch.billOfLading
       result.carrier = processMatch.carrier
+      result.hasExactProcessReferenceMatch =
+        result.hasExactProcessReferenceMatch ||
+        isExactMatch(processMatch.reference, normalizedQuery)
+      result.hasProcessTextMatch =
+        result.hasProcessTextMatch ||
+        processReferenceMatches ||
+        importerMatches ||
+        billOfLadingMatches ||
+        carrierMatches
     }
 
     for (const containerMatch of containerMatches) {
       const result = getOrCreateResult(consolidated, containerMatch.processId, 'container')
+      if (isExactMatch(containerMatch.containerNumber, normalizedQuery)) {
+        result.hasExactContainerMatch = true
+      } else {
+        result.hasPartialContainerMatch = true
+      }
 
       if (!result.containers.includes(containerMatch.containerNumber)) {
         result.containers.push(containerMatch.containerNumber)
@@ -194,6 +278,7 @@ export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCas
       result.vesselName = vesselMatch.vesselName
       result.derivedStatus = vesselMatch.latestDerivedStatus
       result.eta = vesselMatch.latestEta
+      result.hasVesselMatch = true
     }
 
     for (const statusMatch of statusMatches) {
@@ -202,9 +287,10 @@ export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCas
       result.vesselName = statusMatch.vesselName
       result.derivedStatus = statusMatch.latestDerivedStatus
       result.eta = statusMatch.latestEta
+      result.hasStatusMatch = true
     }
 
-    const consolidatedResults = Array.from(consolidated.values())
+    const consolidatedResults = Array.from(consolidated.values()).sort(compareConsolidatedResults)
 
     return consolidatedResults.slice(0, SEARCH_RESULTS_LIMIT).map((item) => ({
       processId: item.processId,

@@ -167,6 +167,92 @@ describe('createSearchUseCase', () => {
     })
   })
 
+  it('applies ranking priority by match strength levels', async () => {
+    const { deps } = createDeps({
+      processResults: [
+        {
+          processId: 'process-exact-reference',
+          reference: 'MATCH-KEY',
+          importerName: null,
+          billOfLading: null,
+          carrier: null,
+        },
+        {
+          processId: 'process-importer',
+          reference: 'REF-003',
+          importerName: 'Match-key Importers',
+          billOfLading: null,
+          carrier: null,
+        },
+      ],
+      containerResults: [
+        { processId: 'process-exact-container', containerNumber: 'MATCH-KEY' },
+        { processId: 'process-partial-container', containerNumber: 'MSKU-MATCH-KEY-001' },
+      ],
+      vesselResults: [
+        {
+          processId: 'process-vessel',
+          vesselName: 'MV Match-key',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      statusResults: [
+        {
+          processId: 'process-status',
+          vesselName: 'MV Ocean',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: null,
+        },
+      ],
+    })
+    const search = createSearchUseCase(deps)
+
+    const result = await search({ query: 'match-key' })
+
+    expect(result.map((item) => item.processId)).toEqual([
+      'process-exact-container',
+      'process-exact-reference',
+      'process-partial-container',
+      'process-importer',
+      'process-vessel',
+      'process-status',
+    ])
+  })
+
+  it('uses deterministic tie-breaker by processReference then processId', async () => {
+    const { deps } = createDeps({
+      processResults: [
+        {
+          processId: 'process-z',
+          reference: 'REF-002',
+          importerName: 'Market Imports',
+          billOfLading: null,
+          carrier: null,
+        },
+        {
+          processId: 'process-b',
+          reference: 'REF-001',
+          importerName: 'Market Imports',
+          billOfLading: null,
+          carrier: null,
+        },
+        {
+          processId: 'process-a',
+          reference: 'REF-001',
+          importerName: 'Market Imports',
+          billOfLading: null,
+          carrier: null,
+        },
+      ],
+    })
+    const search = createSearchUseCase(deps)
+
+    const result = await search({ query: 'market' })
+
+    expect(result.map((item) => item.processId)).toEqual(['process-a', 'process-b', 'process-z'])
+  })
+
   it('applies fixed limit of 30 items after consolidation', async () => {
     const containerResults = Array.from({ length: 35 }, (_unused, index) => ({
       processId: `process-${index + 1}`,
