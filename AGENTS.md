@@ -307,13 +307,12 @@ Policy:
 Dev server strategy:
 
 1. Assume the dev server may or may not already be running.
-2. Probe local routes in this order and keep the first that responds:
+2. Prefer an isolated run first, always in the same execution context/network namespace where Playwright MCP is running:
+   - `pnpm run dev -- --host localhost --port 3009`
+3. If `3009` is unavailable, use the allocated port and continue with the reported URL.
+4. Fallback only when starting a new isolated server is not trivial: probe existing local routes in this order and keep the first that responds:
    - `http://localhost:3000`
    - `http://127.0.0.1:3000`
-3. If no route responds, start an isolated server in the same execution context/network namespace where Playwright MCP is running:
-   - `pnpm run dev -- --host localhost --port 3009`
-4. If `3009` is unavailable, use the allocated port and continue with the reported URL.
-5. If starting a new server is not trivial, use an existing running server and proceed with the working route.
 
 Screenshot commands (recommended baseline):
 
