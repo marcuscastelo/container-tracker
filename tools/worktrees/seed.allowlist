@@ -1,0 +1,4 @@
+# Paths are relative to repository root.
+# Copy only files listed here from main worktree to the new worktree.
+
+.env

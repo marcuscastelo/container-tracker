@@ -230,3 +230,99 @@ wt_create_worktree() {
     return 1
   fi
 }
+
+wt_seed_allowlist_path() {
+  local repo_root
+
+  repo_root="$(wt_repo_root)" || return 1
+  printf '%s\n' "$repo_root/tools/worktrees/seed.allowlist"
+}
+
+wt_trim_whitespace() {
+  local value="$1"
+  printf '%s' "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+wt_seed_from_allowlist() {
+  local worktree_path="$1"
+  local force_seed="${2:-0}"
+  local repo_root
+  local allowlist
+
+  repo_root="$(wt_repo_root)" || return 1
+  allowlist="$(wt_seed_allowlist_path)" || return 1
+
+  if [ ! -f "$allowlist" ]; then
+    wt_error "Seed allowlist not found: $allowlist"
+    return 1
+  fi
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    local item
+    local source_path
+    local target_path
+    local target_dir
+
+    item="${line%%#*}"
+    item="$(wt_trim_whitespace "$item")"
+
+    if [ -z "$item" ]; then
+      continue
+    fi
+
+    source_path="$repo_root/$item"
+    target_path="$worktree_path/$item"
+    target_dir="$(dirname "$target_path")"
+
+    if [ ! -f "$source_path" ]; then
+      wt_info "Seed skip (missing source): $item"
+      continue
+    fi
+
+    if [ -e "$target_path" ] && [ "$force_seed" -ne 1 ]; then
+      wt_info "Seed skip (already exists, use --force-seed): $item"
+      continue
+    fi
+
+    mkdir -p "$target_dir"
+    if ! cp -f "$source_path" "$target_path"; then
+      wt_error "Failed to seed file: $item"
+      return 1
+    fi
+
+    wt_info "Seed copied: $item"
+  done < "$allowlist"
+}
+
+wt_run_pnpm_install() {
+  local worktree_path="$1"
+
+  if ! command -v pnpm >/dev/null 2>&1; then
+    wt_error "pnpm command not found in PATH."
+    return 1
+  fi
+
+  wt_info "Running pnpm install in $worktree_path"
+
+  if ! (cd "$worktree_path" && pnpm install); then
+    wt_error "pnpm install failed in worktree: $worktree_path"
+    return 1
+  fi
+}
+
+wt_open_vscode() {
+  local worktree_path="$1"
+
+  if ! command -v code >/dev/null 2>&1; then
+    wt_info "VS Code CLI not found. Open manually: code -n \"$worktree_path\""
+    return 0
+  fi
+
+  if code -n "$worktree_path"; then
+    wt_info "Opened VS Code: $worktree_path"
+    return 0
+  fi
+
+  wt_info "Could not open VS Code automatically. Open manually: code -n \"$worktree_path\""
+  return 0
+}

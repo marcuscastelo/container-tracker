@@ -12,7 +12,7 @@ Options:
   --wt-root <PATH>           Worktree root directory (default: $default_wt_root)
   --branch-prefix <PREFIX>   Branch prefix (default: feat/)
   --slug <SLUG>              Override inferred slug
-  --force-seed               Allow reseeding existing files
+  --force-seed               Allow reseeding files from allowlist
   --no-open                  Skip VS Code open attempt
   --print-only               Print computed plan without writing files
   -h, --help                 Show this help message
