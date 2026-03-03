@@ -159,6 +159,36 @@ describe('normalizeMscSnapshot', () => {
     })
   })
 
+  it('preserves raw carrier_label text without trimming', () => {
+    const payload = {
+      Data: {
+        CurrentDate: '02/02/2026',
+        BillOfLadings: [
+          {
+            ContainersInfo: [
+              {
+                ContainerNumber: 'TEST123',
+                Events: [
+                  {
+                    Date: '01/02/2026',
+                    Description: '  Export received at CY  ',
+                    UnLocationCode: 'BRSSZ',
+                    Location: 'SANTOS, BR',
+                    Detail: ['MSC SHIP', 'VOY001'],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }
+
+    const drafts = normalizeMscSnapshot(makeSnapshot(payload, '2026-02-02T00:00:00.000Z'))
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]?.carrier_label).toBe('  Export received at CY  ')
+  })
+
   describe('ACTUAL vs EXPECTED differentiation', () => {
     it('should mark events with Date <= CurrentDate as ACTUAL', () => {
       // transshipment fixture has CurrentDate='30/11/2025'

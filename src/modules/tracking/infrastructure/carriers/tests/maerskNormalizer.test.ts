@@ -197,6 +197,34 @@ describe('normalizeMaerskSnapshot', () => {
     })
   })
 
+  it('preserves raw carrier_label text without trimming', () => {
+    const payload = {
+      containers: [
+        {
+          container_num: 'MNBU3094033',
+          locations: [
+            {
+              city: 'SANTOS',
+              country_code: 'BR',
+              location_code: 'BRSSZ',
+              events: [
+                {
+                  activity: '  Carrier Label With Padding  ',
+                  event_time: '2026-02-03T10:00:00.000Z',
+                  event_time_type: 'ACTUAL',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]?.carrier_label).toBe('  Carrier Label With Padding  ')
+  })
+
   describe('edge cases', () => {
     it('should return empty array for invalid payload', () => {
       const drafts = normalizeMaerskSnapshot(makeSnapshot(null))

@@ -136,6 +136,25 @@ describe('normalizeCmaCgmSnapshot', () => {
     })
   })
 
+  it('preserves raw carrier_label text without trimming', () => {
+    const payload = {
+      ContainerReference: 'FSCU4565494',
+      PastMoves: [
+        {
+          DateString: '2026-02-01T10:00:00.000Z',
+          State: 'DONE',
+          StatusDescription: '  Loaded on board  ',
+          LocationCode: 'BRSSZ',
+          Location: 'SANTOS, BR',
+        },
+      ],
+    }
+
+    const drafts = normalizeCmaCgmSnapshot(makeSnapshot(payload))
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]?.carrier_label).toBe('  Loaded on board  ')
+  })
+
   describe('edge cases', () => {
     it('should return empty array for invalid payload', () => {
       const drafts = normalizeCmaCgmSnapshot(makeSnapshot(null))

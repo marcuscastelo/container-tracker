@@ -76,8 +76,7 @@ function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeTy
 
 function normalizeCarrierLabel(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
-  const normalized = label.trim()
-  return normalized.length > 0 ? normalized : null
+  return label.trim().length > 0 ? label : null
 }
 
 function computeConfidence(
