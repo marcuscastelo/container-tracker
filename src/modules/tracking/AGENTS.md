@@ -58,3 +58,8 @@ Prefer deterministic fixtures and stable tests.
 
 - For global search data (`vessel/status/eta`), derive values inside Tracking BC using tracking read models (`application/projection/tracking.search.readmodel.ts`), not in capabilities/UI.
 - Use `observationRepository.listSearchObservations()` + tracking derivation (`deriveTimeline`/`deriveStatus`/operational summary) to keep status/ETA semantics canonical.
+
+## 5) Alert Read Model Pattern
+
+- `tracking_alerts` does not include `process_id`; when a tracking read model needs process ownership, enrich alert rows through `containers (id -> process_id)` in infra repositories.
+- `is_active` is derived from `acked_at === null && dismissed_at === null`; expose it as derived read-model data, never as mutable source truth.

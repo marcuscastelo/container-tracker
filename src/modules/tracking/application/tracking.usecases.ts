@@ -18,6 +18,10 @@ import {
 import { getLatestSnapshot } from '~/modules/tracking/application/usecases/get-latest-snapshot.usecase'
 import { getSnapshotsForContainer } from '~/modules/tracking/application/usecases/get-snapshots-for-container.usecase'
 import {
+  type ListActiveAlertReadModelResult,
+  listActiveAlertReadModel,
+} from '~/modules/tracking/application/usecases/list-active-alert-read-model.usecase'
+import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
@@ -178,6 +182,13 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerId: string,
     ): Promise<ListActiveAlertsByContainerIdResult> {
       return listActiveAlertsByContainerId(deps, { containerId })
+    },
+
+    /**
+     * List global active alerts read model for operational dashboards.
+     */
+    async listActiveAlertReadModel(): Promise<ListActiveAlertReadModelResult> {
+      return listActiveAlertReadModel(deps)
     },
   }
 }
