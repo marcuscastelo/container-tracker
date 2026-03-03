@@ -7,18 +7,29 @@ import type { ContainerSearchProjection } from '~/modules/container/application/
 import type { ProcessSearchProjection } from '~/modules/process/application/process.readmodels'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 
-function createDeps(limit?: number) {
+type SearchDepsOverrides = {
+  readonly processResults?: readonly ProcessSearchProjection[]
+  readonly containerResults?: readonly ContainerSearchProjection[]
+  readonly vesselResults?: readonly TrackingSearchProjection[]
+  readonly statusResults?: readonly TrackingSearchProjection[]
+}
+
+function createDeps(overrides: SearchDepsOverrides = {}) {
   const searchByText = vi.fn(
-    async (_query: string, _limit: number): Promise<readonly ProcessSearchProjection[]> => [],
+    async (_query: string, _limit: number): Promise<readonly ProcessSearchProjection[]> =>
+      overrides.processResults ?? [],
   )
   const searchByNumber = vi.fn(
-    async (_query: string, _limit: number): Promise<readonly ContainerSearchProjection[]> => [],
+    async (_query: string, _limit: number): Promise<readonly ContainerSearchProjection[]> =>
+      overrides.containerResults ?? [],
   )
   const searchByVesselName = vi.fn(
-    async (_query: string, _limit: number): Promise<readonly TrackingSearchProjection[]> => [],
+    async (_query: string, _limit: number): Promise<readonly TrackingSearchProjection[]> =>
+      overrides.vesselResults ?? [],
   )
   const searchByDerivedStatusText = vi.fn(
-    async (_query: string, _limit: number): Promise<readonly TrackingSearchProjection[]> => [],
+    async (_query: string, _limit: number): Promise<readonly TrackingSearchProjection[]> =>
+      overrides.statusResults ?? [],
   )
 
   const deps: CreateSearchUseCaseDeps = {
@@ -28,7 +39,6 @@ function createDeps(limit?: number) {
       searchByVesselName,
       searchByDerivedStatusText,
     },
-    limit,
   }
 
   return {
@@ -73,7 +83,7 @@ describe('createSearchUseCase', () => {
 
   it('normalizes query with trim + lowercase before calling BC search use cases', async () => {
     const { deps, searchByText, searchByNumber, searchByVesselName, searchByDerivedStatusText } =
-      createDeps(12)
+      createDeps()
     const search = createSearchUseCase(deps)
 
     await search({ query: '  MaErSk  ' })
@@ -82,9 +92,92 @@ describe('createSearchUseCase', () => {
     expect(searchByNumber).toHaveBeenCalledTimes(1)
     expect(searchByVesselName).toHaveBeenCalledTimes(1)
     expect(searchByDerivedStatusText).toHaveBeenCalledTimes(1)
-    expect(searchByText).toHaveBeenCalledWith('maersk', 12)
-    expect(searchByNumber).toHaveBeenCalledWith('maersk', 12)
-    expect(searchByVesselName).toHaveBeenCalledWith('maersk', 12)
-    expect(searchByDerivedStatusText).toHaveBeenCalledWith('maersk', 12)
+    expect(searchByText).toHaveBeenCalledWith('maersk', 30)
+    expect(searchByNumber).toHaveBeenCalledWith('maersk', 30)
+    expect(searchByVesselName).toHaveBeenCalledWith('maersk', 30)
+    expect(searchByDerivedStatusText).toHaveBeenCalledWith('maersk', 30)
+  })
+
+  it('consolidates multi-BC matches by processId and removes duplicates', async () => {
+    const { deps } = createDeps({
+      processResults: [
+        {
+          processId: 'process-1',
+          reference: 'REF-001',
+          importerName: 'ACME Logistics',
+          billOfLading: 'BL-001',
+          carrier: 'Maersk',
+        },
+      ],
+      containerResults: [
+        { processId: 'process-1', containerNumber: 'MSKU1234567' },
+        { processId: 'process-1', containerNumber: 'MSKU1234567' },
+        { processId: 'process-1', containerNumber: 'MSKU7654321' },
+        { processId: 'process-2', containerNumber: 'MSKU0000001' },
+      ],
+      vesselResults: [
+        {
+          processId: 'process-1',
+          vesselName: 'Ever Prime',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: '2026-04-15T00:00:00.000Z',
+        },
+      ],
+      statusResults: [
+        {
+          processId: 'process-2',
+          vesselName: 'Ocean Wind',
+          latestDerivedStatus: 'ARRIVED_AT_POD',
+          latestEta: '2026-04-20T00:00:00.000Z',
+        },
+      ],
+    })
+    const search = createSearchUseCase(deps)
+
+    const result = await search({ query: '  msku  ' })
+
+    expect(result).toHaveLength(2)
+
+    const processOne = result.find((item) => item.processId === 'process-1')
+    expect(processOne).toEqual({
+      processId: 'process-1',
+      processReference: 'REF-001',
+      importerName: 'ACME Logistics',
+      containers: ['MSKU1234567', 'MSKU7654321'],
+      carrier: 'Maersk',
+      vesselName: 'Ever Prime',
+      bl: 'BL-001',
+      derivedStatus: 'IN_TRANSIT',
+      eta: '2026-04-15T00:00:00.000Z',
+      matchSource: 'container',
+    })
+
+    const processTwo = result.find((item) => item.processId === 'process-2')
+    expect(processTwo).toEqual({
+      processId: 'process-2',
+      processReference: null,
+      importerName: null,
+      containers: ['MSKU0000001'],
+      carrier: null,
+      vesselName: 'Ocean Wind',
+      bl: null,
+      derivedStatus: 'ARRIVED_AT_POD',
+      eta: '2026-04-20T00:00:00.000Z',
+      matchSource: 'container',
+    })
+  })
+
+  it('applies fixed limit of 30 items after consolidation', async () => {
+    const containerResults = Array.from({ length: 35 }, (_unused, index) => ({
+      processId: `process-${index + 1}`,
+      containerNumber: `MSKU${String(index + 1).padStart(7, '0')}`,
+    }))
+    const { deps } = createDeps({ containerResults })
+    const search = createSearchUseCase(deps)
+
+    const result = await search({ query: 'msk' })
+
+    expect(result).toHaveLength(30)
+    expect(new Set(result.map((item) => item.processId)).size).toBe(30)
   })
 })
