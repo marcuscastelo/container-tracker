@@ -32,3 +32,56 @@ Mappers duplicados, F1, UI, etc. api collections deprecated? Avaliar se ja resol
 Aparentemente o check se o container já existe é naive, nao checa o erro de fato e assume que qualquer erro é por container existente. Melhorar isso, se ainda estiver assim.
 CreateProcessDialog exige reimplementacao de logica de submit, duplicacao para permitir edit, etc. em todos os lugares que usam. Refatorar para um hook ou componente separado.
 A pasta tools está ficando bloated com scripts, prompts, e o nosso agent, que é software real. Precisamos repensar como estruturar isso. Talvez um submodule para agent e common AI prompts/skills. Mas tools/ é genérico demais e pode ficar bagunçado. Pensar em uma estrutura melhor para organizar isso.
+
+# Erros VSCode
+[INFO 1:48:07 AM] [v1.44.1] Vitest extension is activated because Vitest is installed or there is a Vite/Vitest config file in the workspace.
+[INFO 1:48:07 AM] [API] Resolving configs: container-tracker/vitest.config.ts, flowchart/vite.config.ts
+[INFO 1:48:08 AM] [API] Running Vitest v3.2.4 (container-tracker/vitest.config.ts) with "/usr/bin/node /home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/worker.js"
+[INFO 1:48:08 AM] [API] Running Vitest v3.2.4 (flowchart/vite.config.ts) with "/usr/bin/node /home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/worker.js"
+[Error 1:48:08 AM] There were errors during config load.
+[Error 1:48:08 AM] [Error Error] Vitest failed to start: 
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /home/marucs/Development/Castro/container-tracker/node_modules/.vite-temp/vite.config.ts.timestamp-1772513288662-bdf61befe0f9c8.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+    at packageResolve (node:internal/modules/esm/resolve:764:81)
+    at moduleResolve (node:internal/modules/esm/resolve:855:18)
+    at defaultResolve (node:internal/modules/esm/resolve:988:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:743:52)
+    at #resolve (node:internal/modules/esm/loader:679:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+Error: Vitest failed to start: 
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /home/marucs/Development/Castro/container-tracker/node_modules/.vite-temp/vite.config.ts.timestamp-1772513288662-bdf61befe0f9c8.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+    at packageResolve (node:internal/modules/esm/resolve:764:81)
+    at moduleResolve (node:internal/modules/esm/resolve:855:18)
+    at defaultResolve (node:internal/modules/esm/resolve:988:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:697:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:714:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:743:52)
+    at #resolve (node:internal/modules/esm/loader:679:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:599:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+	at e.s (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/extension.js:1:60051)
+	at e.emit (node:events:519:28)
+	at e.o.t.exports.K (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/wrapper-DYgoE0-C.js:1:38462)
+	at e.o.t.exports.emit (node:events:519:28)
+	at e.o.t.exports.dataMessage (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/wrapper-DYgoE0-C.js:1:16483)
+	at e.o.t.exports.getData (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/wrapper-DYgoE0-C.js:1:15380)
+	at e.o.t.exports.startLoop (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/wrapper-DYgoE0-C.js:1:12092)
+	at e.o.t.exports._write (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/wrapper-DYgoE0-C.js:1:11384)
+	at writeOrBuffer (node:internal/streams/writable:572:12)
+	at _write (node:internal/streams/writable:501:10)
+	at Writable.write (node:internal/streams/writable:510:10)
+	at Socket.Z (/home/marucs/.vscode/extensions/vitest.explorer-1.44.1/dist/wrapper-DYgoE0-C.js:1:39429)
+	at Socket.emit (node:events:519:28)
+	at addChunk (node:internal/streams/readable:561:12)
+	at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+	at Readable.push (node:internal/streams/readable:392:5)
+	at TCP.onStreamRead (node:internal/stream_base_commons:189:23)
+[INFO 1:48:09 AM] [API] Watching vitest.config.ts
+[INFO 1:48:09 AM] [VSCODE] Watching container-tracker with pattern **/*
+[1:48:14 AM] [VSCODE] Ignoring file: .git/.gitstatus.PfHIfI
+[1:48:15 AM] [VSCODE] File deleted: .git/.gitstatus.PfHIfI
+[1:48:18 AM] [VSCODE] Ignoring file: tasks/prd-worktrees.md.git

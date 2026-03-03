@@ -1,4 +1,4 @@
 interface:
   display_name: "PR Draft Offline"
-  short_description: "Generate PR title/description from branch diff"
-  default_prompt: "Use $draft-pr-from-branch to compare my current branch with main and draft an offline PR title and description in /tmp."
+  short_description: "Generate enriched PR title/description from branch diff"
+  default_prompt: "Use $draft-pr-from-branch to compare my current branch with main, then enrich the PR title/description using commit hashes and changed tasks/prd-* context before returning final files in /tmp."
