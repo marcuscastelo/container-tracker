@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shlex
 import subprocess
@@ -30,6 +31,12 @@ STOPWORDS = {
 }
 
 PENALTY_HINTS = ("example", "sample", "smoke", "test", "tmp")
+TRUTHY_VALUES = {"1", "true", "yes", "on"}
+
+RALPH_DEFAULT_AGENT = "codex"
+RALPH_DEFAULT_MAX_ITERATIONS = "10"
+RALPH_DEFAULT_DANGEROUS_EXEC = "1"
+RALPH_DEFAULT_EXEC_RETRIES = "2"
 
 
 def tokenize(text: str) -> list[str]:
@@ -168,8 +175,104 @@ def print_candidates(repo_root: Path, ranked: list[tuple[Path, int]], title: str
         print(f"  {index}. {rel} (score={score})")
 
 
-def build_command(resolved_rel_path: str, passthrough: list[str]) -> list[str]:
+def build_wt_command(resolved_rel_path: str, passthrough: list[str]) -> list[str]:
     return ["pnpm", "run", "ai:wt-implement", "--", resolved_rel_path, *passthrough]
+
+
+def is_truthy_env(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in TRUTHY_VALUES
+
+
+def is_devcontainer_env() -> bool:
+    if is_truthy_env(os.environ.get("DEVCONTAINER")):
+        return True
+    if is_truthy_env(os.environ.get("REMOTE_CONTAINERS")):
+        return True
+    if os.environ.get("REMOTE_CONTAINERS_IPC"):
+        return True
+    if os.environ.get("CODESPACES"):
+        return True
+    return False
+
+
+def default_wt_root(repo_root: Path) -> Path:
+    home = os.environ.get("HOME")
+    if is_devcontainer_env() and home:
+        return (Path(home).expanduser() / "wt").resolve()
+    return (repo_root / "../wt").resolve()
+
+
+def passthrough_option_value(passthrough: list[str], option_name: str) -> str | None:
+    prefix = f"{option_name}="
+
+    for index, item in enumerate(passthrough):
+        if item == option_name:
+            if index + 1 >= len(passthrough):
+                return None
+            return passthrough[index + 1]
+        if item.startswith(prefix):
+            return item[len(prefix):]
+
+    return None
+
+
+def derive_feature_key(resolved_rel_path: str) -> str:
+    stem = Path(resolved_rel_path).stem
+    if stem.startswith("prd-"):
+        stem = stem[4:]
+    return slugify(stem)
+
+
+def resolve_worktree_path(repo_root: Path, resolved_rel_path: str, passthrough: list[str]) -> Path:
+    wt_root_raw = passthrough_option_value(passthrough, "--wt-root")
+    slug_raw = passthrough_option_value(passthrough, "--slug")
+
+    if wt_root_raw:
+        wt_root_path = Path(wt_root_raw).expanduser()
+        if not wt_root_path.is_absolute():
+            wt_root_path = (repo_root / wt_root_path).resolve()
+        else:
+            wt_root_path = wt_root_path.resolve()
+    else:
+        wt_root_path = default_wt_root(repo_root)
+
+    if slug_raw:
+        slug = slugify(slug_raw)
+    else:
+        slug = slugify(Path(resolved_rel_path).stem)
+
+    return wt_root_path / slug
+
+
+def build_ralph_command(feature_key: str, resolved_rel_path: str) -> list[str]:
+    return [
+        "pnpm",
+        "run",
+        "ai:loop:start",
+        "--",
+        feature_key,
+        resolved_rel_path,
+        "--agent",
+        RALPH_DEFAULT_AGENT,
+        "--max-iterations",
+        RALPH_DEFAULT_MAX_ITERATIONS,
+        "--dangerous-exec",
+        RALPH_DEFAULT_DANGEROUS_EXEC,
+        "--exec-retries",
+        RALPH_DEFAULT_EXEC_RETRIES,
+    ]
+
+
+def command_text(parts: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def print_ralph_command_block(worktree_path: Path, ralph_parts: list[str]) -> None:
+    print("Ralph loop command:")
+    print(f"cd {shlex.quote(str(worktree_path))}")
+    print(command_text(ralph_parts))
 
 
 def parse_args(raw_args: list[str]) -> tuple[argparse.Namespace, list[str]]:
@@ -232,17 +335,22 @@ def main() -> int:
         return 2 if reason == "ambiguous" else 1
 
     resolved_rel = resolved.relative_to(repo_root).as_posix()
-    command = build_command(resolved_rel, passthrough)
-    command_text = " ".join(shlex.quote(part) for part in command)
+    wt_parts = build_wt_command(resolved_rel, passthrough)
+    wt_text = command_text(wt_parts)
+
+    worktree_path = resolve_worktree_path(repo_root, resolved_rel, passthrough)
+    feature_key = derive_feature_key(resolved_rel)
+    ralph_parts = build_ralph_command(feature_key, resolved_rel)
 
     print(f"Resolved PRD: {resolved_rel}")
-    print(f"Command: {command_text}")
+    print(f"Command: {wt_text}")
+    print_ralph_command_block(worktree_path, ralph_parts)
 
     if args.print_only:
         print("Execution skipped (--print-only).")
         return 0
 
-    completed = subprocess.run(command, cwd=repo_root, check=False)
+    completed = subprocess.run(wt_parts, cwd=repo_root, check=False)
     return completed.returncode
 
 

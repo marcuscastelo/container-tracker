@@ -23,7 +23,14 @@ python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py <prd-query> -- <wt
 ```
 
 3. If the script reports ambiguity, ask for one disambiguation input and rerun.
-4. Report the resolved PRD file and the resulting branch/worktree details.
+4. Always print the ready-to-run Ralph loop command block:
+
+```bash
+cd <resolved-worktree-path>
+pnpm run ai:loop:start -- <feature-key> <resolved-prd-path> --agent codex --max-iterations 10 --dangerous-exec 1 --exec-retries 2
+```
+
+5. Report the resolved PRD file and the resulting branch/worktree details.
 
 ## Examples
 
@@ -39,4 +46,5 @@ python3 ~/.codex/skills/wt/scripts/wt_implement_from_query.py iife -- --no-open
 - Always execute through `pnpm run ai:wt-implement`.
 - Match only `.md` files under `tasks/`.
 - Forward all user flags after `--` unchanged.
+- Always print the Ralph start command block with `cd` + `pnpm run ai:loop:start`.
 - Never invent PRD files when no candidate matches.

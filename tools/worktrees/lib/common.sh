@@ -231,6 +231,41 @@ wt_create_worktree() {
   fi
 }
 
+wt_copy_prd_to_worktree() {
+  local source_prd_path="$1"
+  local worktree_path="$2"
+  local repo_root
+  local source_abs_path
+  local rel_path
+  local target_path
+  local target_dir
+
+  repo_root="$(wt_repo_root)" || return 1
+  source_abs_path="$(wt_abs_path "$source_prd_path")"
+
+  case "$source_abs_path" in
+    "$repo_root"/tasks/*)
+      rel_path="${source_abs_path#"$repo_root/"}"
+      ;;
+    *)
+      wt_error "PRD source must be under tasks/: $source_prd_path"
+      return 1
+      ;;
+  esac
+
+  target_path="$worktree_path/$rel_path"
+  target_dir="$(dirname "$target_path")"
+
+  mkdir -p "$target_dir"
+
+  if ! cp -f "$source_abs_path" "$target_path"; then
+    wt_error "Failed to copy PRD into worktree: $rel_path"
+    return 1
+  fi
+
+  wt_info "PRD copied: $rel_path"
+}
+
 wt_seed_allowlist_path() {
   local repo_root
 

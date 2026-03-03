@@ -110,6 +110,10 @@ fi
 wt_info "Created git worktree: $worktree_path"
 wt_info "Checked out branch: $branch_name"
 
+if ! wt_copy_prd_to_worktree "$prd_path" "$worktree_path"; then
+  exit 1
+fi
+
 if ! wt_seed_from_allowlist "$worktree_path" "$force_seed"; then
   exit 1
 fi
