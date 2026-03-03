@@ -49,6 +49,41 @@ function createProcess(
   }
 }
 
+function createImporterTieBreakProcesses(): readonly ProcessSummaryVM[] {
+  return [
+    createProcess({
+      id: 'proc-04',
+      importerName: 'Same',
+      reference: null,
+      lastEventAt: '2025-03-01T00:00:00.000Z',
+    }),
+    createProcess({
+      id: 'proc-03',
+      importerName: 'Same',
+      reference: null,
+      lastEventAt: '2025-03-01T00:00:00.000Z',
+    }),
+    createProcess({
+      id: 'proc-02',
+      importerName: 'Same',
+      reference: 'PROC-20',
+      lastEventAt: '2025-03-01T00:00:00.000Z',
+    }),
+    createProcess({
+      id: 'proc-01',
+      importerName: 'Same',
+      reference: 'PROC-10',
+      lastEventAt: '2025-03-01T00:00:00.000Z',
+    }),
+    createProcess({
+      id: 'proc-00',
+      importerName: 'Same',
+      reference: 'PROC-10',
+      lastEventAt: '2025-03-01T00:00:00.000Z',
+    }),
+  ] as const
+}
+
 describe('dashboard sort interactions', () => {
   it('cycles same field in order desc -> asc -> default', () => {
     const first = nextDashboardSortSelection(null, 'provider')
@@ -174,5 +209,62 @@ describe('dashboard sort interactions', () => {
 
     expect(ascResult.map((process) => process.id)).toEqual(['C', 'A', 'B'])
     expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
+  })
+
+  it('uses createdAt descending as tie-break when primary field values are equal', () => {
+    const baseline = [
+      createProcess({
+        id: 'A',
+        importerName: 'Same',
+        lastEventAt: '2025-01-01T00:00:00.000Z',
+      }),
+      createProcess({
+        id: 'B',
+        importerName: 'Same',
+        lastEventAt: '2025-03-01T00:00:00.000Z',
+      }),
+      createProcess({
+        id: 'C',
+        importerName: 'Same',
+        lastEventAt: '2025-02-01T00:00:00.000Z',
+      }),
+    ] as const
+
+    const ascResult = sortDashboardProcesses(baseline, {
+      field: 'importerName',
+      direction: 'asc',
+    })
+
+    expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
+  })
+
+  it('uses processNumber asc and processId asc fallback when createdAt tie-break still ties', () => {
+    const baseline = createImporterTieBreakProcesses()
+
+    const ascResult = sortDashboardProcesses(baseline, {
+      field: 'importerName',
+      direction: 'asc',
+    })
+
+    expect(ascResult.map((process) => process.id)).toEqual([
+      'proc-03',
+      'proc-04',
+      'proc-00',
+      'proc-01',
+      'proc-02',
+    ])
+  })
+
+  it('returns deterministic order when sorting the same dataset repeatedly', () => {
+    const baseline = createImporterTieBreakProcesses()
+
+    const sortSelection: DashboardSortSelection = { field: 'importerName', direction: 'asc' }
+
+    const firstRun = sortDashboardProcesses(baseline, sortSelection).map((process) => process.id)
+    const secondRun = sortDashboardProcesses(baseline, sortSelection).map((process) => process.id)
+    const thirdRun = sortDashboardProcesses(baseline, sortSelection).map((process) => process.id)
+
+    expect(firstRun).toEqual(secondRun)
+    expect(secondRun).toEqual(thirdRun)
   })
 })

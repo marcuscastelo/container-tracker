@@ -39,6 +39,10 @@ function toProcessNumberSortValue(process: ProcessSummaryVM): string {
   return process.reference ?? `<${process.id.slice(0, 8)}>`
 }
 
+function toProcessNumberTieBreakSortValue(process: ProcessSummaryVM): string {
+  return process.reference ?? process.id
+}
+
 function compareEtaMsOrNull(
   left: number | null,
   right: number | null,
@@ -87,6 +91,44 @@ function compareBySortField(
   }
 }
 
+function compareByCreatedAtDescending(left: ProcessSummaryVM, right: ProcessSummaryVM): number {
+  return compareByDirection(
+    compareNumbers(toCreatedAtSortValue(left), toCreatedAtSortValue(right)),
+    'desc',
+  )
+}
+
+function compareByProcessNumberAscendingWithIdFallback(
+  left: ProcessSummaryVM,
+  right: ProcessSummaryVM,
+): number {
+  const processNumberComparison = compareCaseInsensitiveStrings(
+    toProcessNumberTieBreakSortValue(left),
+    toProcessNumberTieBreakSortValue(right),
+  )
+
+  if (processNumberComparison !== 0) {
+    return processNumberComparison
+  }
+
+  return compareCaseInsensitiveStrings(left.id, right.id)
+}
+
+function compareWithDeterministicTieBreaks(
+  left: ProcessSummaryVM,
+  right: ProcessSummaryVM,
+  field: DashboardSortField,
+  direction: DashboardSortDirection,
+): number {
+  const primaryComparison = compareBySortField(left, right, field, direction)
+  if (primaryComparison !== 0) return primaryComparison
+
+  const createdAtTieBreak = compareByCreatedAtDescending(left, right)
+  if (createdAtTieBreak !== 0) return createdAtTieBreak
+
+  return compareByProcessNumberAscendingWithIdFallback(left, right)
+}
+
 export function getActiveDashboardSortDirection(
   sortSelection: DashboardSortSelection,
   field: DashboardSortField,
@@ -121,6 +163,6 @@ export function sortDashboardProcesses(
   const { field, direction } = sortSelection
 
   return [...processes].sort((left, right) => {
-    return compareBySortField(left, right, field, direction)
+    return compareWithDeterministicTieBreaks(left, right, field, direction)
   })
 }

@@ -142,6 +142,9 @@ For domain-sensitive changes, tests should cover:
 
 Prefer deterministic fixtures and stable tests.
 
+Additional repo testing convention:
+- Keep large test suites under ESLint `max-lines-per-function` limits by extracting repeated fixture builders/helpers out of long `describe` callbacks.
+
 ---
 
 ## 9) Anti-Patterns (Forbidden)
