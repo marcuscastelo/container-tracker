@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
 
-type Variant = 'default' | 'warning' | 'success'
+type Variant = 'default' | 'warning' | 'info' | 'danger' | 'success'
 
 type Props = {
   readonly icon: JSX.Element
@@ -20,9 +20,21 @@ const variantStyles: Record<
     valueClass: 'text-slate-900',
   },
   warning: {
+    iconBg: 'bg-amber-50',
+    iconText: 'text-amber-500',
+    labelClass: 'text-amber-600',
+    valueClass: 'text-amber-700',
+  },
+  info: {
+    iconBg: 'bg-blue-50',
+    iconText: 'text-blue-500',
+    labelClass: 'text-blue-600',
+    valueClass: 'text-blue-700',
+  },
+  danger: {
     iconBg: 'bg-red-50',
     iconText: 'text-red-500',
-    labelClass: 'text-red-500',
+    labelClass: 'text-red-600',
     valueClass: 'text-red-700',
   },
   success: {

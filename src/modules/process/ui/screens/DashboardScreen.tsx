@@ -7,6 +7,7 @@ import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardM
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import {
   createProcessRequest,
+  fetchDashboardGlobalAlertsSummary,
   fetchDashboardProcessSummaries,
   toCreateProcessInput,
 } from '~/modules/process/ui/validation/processApi.validation'
@@ -19,7 +20,10 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const navigate = useNavigate()
-  const [processes, { refetch }] = createResource(fetchDashboardProcessSummaries)
+  const [processes, { refetch: refetchProcesses }] = createResource(fetchDashboardProcessSummaries)
+  const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(
+    fetchDashboardGlobalAlertsSummary,
+  )
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
@@ -34,8 +38,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       const processId = await createProcessRequest(toCreateProcessInput(data))
 
-      // Refetch processes list
-      await refetch()
+      // Refetch dashboard lists
+      await Promise.all([refetchProcesses(), refetchGlobalAlerts()])
 
       // Close dialog
       setIsCreateDialogOpen(false)
@@ -89,7 +93,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         </Show>
 
         <DashboardMetricsGrid
-          statuses={(processes() ?? []).map((process) => ({ status: process.status }))}
+          summary={globalAlerts() ?? null}
+          loading={globalAlerts.loading}
+          hasError={Boolean(globalAlerts.error)}
         />
         <DashboardProcessTable
           processes={processes() ?? []}

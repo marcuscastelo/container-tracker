@@ -1,8 +1,11 @@
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
+import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
 import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
+import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
+import { DashboardGlobalAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {
   CreateProcessResponseSchema,
   ProcessListResponseSchema,
@@ -32,6 +35,15 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
 export async function fetchDashboardProcessSummaries(): Promise<readonly ProcessSummaryVM[]> {
   const data = await typedFetch('/api/processes', undefined, ProcessListResponseSchema)
   return toProcessSummaryVMs(data)
+}
+
+export async function fetchDashboardGlobalAlertsSummary(): Promise<DashboardGlobalAlertsVM> {
+  const data = await typedFetch(
+    '/api/dashboard/operational-summary',
+    undefined,
+    DashboardGlobalAlertsSummaryResponseSchema,
+  )
+  return toDashboardGlobalAlertsVM(data)
 }
 
 export async function createProcessRequest(input: CreateProcessInput): Promise<string> {

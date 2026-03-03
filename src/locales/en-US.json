@@ -12,6 +12,26 @@
     "createProcess": "Create Process"
   },
   "dashboard": {
+    "alertIndicators": {
+      "title": "Operational Alerts",
+      "total": "Total Active Alerts",
+      "loading": "Loading alert indicators...",
+      "error": "Failed to load alert indicators",
+      "empty": "No active alerts at the moment.",
+      "severity": {
+        "danger": "Critical",
+        "warning": "Warning",
+        "info": "Info",
+        "success": "Resolved"
+      },
+      "category": {
+        "eta": "ETA",
+        "movement": "Movement",
+        "customs": "Customs",
+        "status": "Status",
+        "data": "Data"
+      }
+    },
     "metrics": {
       "activeShipments": "Active Shipments",
       "inTransit": "In Transit",

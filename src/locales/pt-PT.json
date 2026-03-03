@@ -23,6 +23,26 @@
     "close": "Fechar"
   },
   "dashboard": {
+    "alertIndicators": {
+      "title": "Alertas Operacionais",
+      "total": "Total de Alertas Ativos",
+      "loading": "A carregar indicadores de alerta...",
+      "error": "Falha ao carregar indicadores de alerta",
+      "empty": "Sem alertas ativos neste momento.",
+      "severity": {
+        "danger": "Crítico",
+        "warning": "Atenção",
+        "info": "Informativo",
+        "success": "Resolvido"
+      },
+      "category": {
+        "eta": "ETA",
+        "movement": "Movimentação",
+        "customs": "Alfândega",
+        "status": "Estado",
+        "data": "Dados"
+      }
+    },
     "metrics": {
       "activeShipments": "Expedições Ativas",
       "inTransit": "Em Trânsito",
