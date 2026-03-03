@@ -19,6 +19,28 @@ function toSearchProjection(container: {
   }
 }
 
+function selectProcessIdsWithinLimit(
+  matches: readonly {
+    readonly processId: string
+  }[],
+  limit: number,
+): ReadonlySet<string> {
+  const selectedProcessIds = new Set<string>()
+
+  for (const match of matches) {
+    if (selectedProcessIds.has(match.processId)) {
+      continue
+    }
+    if (selectedProcessIds.size >= limit) {
+      break
+    }
+
+    selectedProcessIds.add(match.processId)
+  }
+
+  return selectedProcessIds
+}
+
 export function createSearchContainersByNumberUseCase(deps: {
   readonly repository: ContainerRepository
 }) {
@@ -37,7 +59,12 @@ export function createSearchContainersByNumberUseCase(deps: {
       containsMatch(container.containerNumber, normalizedQuery),
     )
 
-    return matches.slice(0, limit).map((container) =>
+    const selectedProcessIds = selectProcessIdsWithinLimit(matches, limit)
+    const limitedMatches = matches.filter((container) =>
+      selectedProcessIds.has(container.processId),
+    )
+
+    return limitedMatches.map((container) =>
       toSearchProjection({
         processId: container.processId,
         containerNumber: container.containerNumber,

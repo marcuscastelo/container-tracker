@@ -87,6 +87,25 @@ describe('createSearchContainersByNumberUseCase', () => {
     ])
   })
 
+  it('applies process limit before truncating container matches', async () => {
+    const repository = createRepository([
+      { processId: 'process-1', containerNumber: 'MSCU1000001' },
+      { processId: 'process-1', containerNumber: 'MSCU1000002' },
+      { processId: 'process-2', containerNumber: 'MSCU1000003' },
+      { processId: 'process-3', containerNumber: 'MSCU1000004' },
+    ])
+
+    const searchByNumber = createSearchContainersByNumberUseCase({ repository })
+
+    const result = await searchByNumber('mscu1', 2)
+
+    expect(result).toEqual([
+      { processId: 'process-1', containerNumber: 'MSCU1000001' },
+      { processId: 'process-1', containerNumber: 'MSCU1000002' },
+      { processId: 'process-2', containerNumber: 'MSCU1000003' },
+    ])
+  })
+
   it('returns empty results for empty query or non-positive limit without calling repository', async () => {
     const listSearchProjections = vi.fn(async () => [
       { processId: 'process-1', containerNumber: 'MSCU1000001' },

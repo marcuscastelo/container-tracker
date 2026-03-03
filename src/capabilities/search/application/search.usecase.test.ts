@@ -167,6 +167,45 @@ describe('createSearchUseCase', () => {
     })
   })
 
+  it('selects tracking fields deterministically when multiple tracking rows exist for one process', async () => {
+    const { deps } = createDeps({
+      containerResults: [{ processId: 'process-1', containerNumber: 'MSKU1234567' }],
+      vesselResults: [
+        {
+          processId: 'process-1',
+          vesselName: 'MV Newest',
+          latestDerivedStatus: 'ARRIVED_AT_POD',
+          latestEta: '2026-05-20T00:00:00.000Z',
+        },
+        {
+          processId: 'process-1',
+          vesselName: 'MV Older',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: '2026-05-10T00:00:00.000Z',
+        },
+      ],
+      statusResults: [
+        {
+          processId: 'process-1',
+          vesselName: 'MV Without Eta',
+          latestDerivedStatus: 'IN_TRANSIT',
+          latestEta: null,
+        },
+      ],
+    })
+    const search = createSearchUseCase(deps)
+
+    const result = await search({ query: 'msku' })
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      processId: 'process-1',
+      vesselName: 'MV Newest',
+      derivedStatus: 'ARRIVED_AT_POD',
+      eta: '2026-05-20T00:00:00.000Z',
+    })
+  })
+
   it('applies ranking priority by match strength levels', async () => {
     const { deps } = createDeps({
       processResults: [

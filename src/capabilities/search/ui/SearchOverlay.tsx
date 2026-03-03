@@ -67,6 +67,19 @@ export function SearchOverlay(): JSX.Element {
   })
 
   createEffect(
+    on(isOpen, (open) => {
+      if (!open) return
+
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+
+      onCleanup(() => {
+        document.body.style.overflow = previousOverflow
+      })
+    }),
+  )
+
+  createEffect(
     on(normalizedQuery, (currentQuery) => {
       if (debounceTimer) {
         clearTimeout(debounceTimer)

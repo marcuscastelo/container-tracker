@@ -187,9 +187,44 @@ function compareStringAsc(left: string, right: string): number {
   return 0
 }
 
+function toSortableNullableText(value: string | null): string {
+  const normalizedValue = normalizeText(value)
+  return normalizedValue ?? '\uffff'
+}
+
 function toSortableReference(reference: string | null): string {
-  const normalizedReference = normalizeText(reference)
-  return normalizedReference ?? '\uffff'
+  return toSortableNullableText(reference)
+}
+
+function compareNullableIsoDesc(left: string | null, right: string | null): number {
+  if (left === null && right === null) return 0
+  if (left === null) return 1
+  if (right === null) return -1
+  return compareStringAsc(right, left)
+}
+
+function compareTrackingProjectionPriority(
+  left: TrackingSearchProjection,
+  right: TrackingSearchProjection,
+): number {
+  const etaCompare = compareNullableIsoDesc(left.latestEta, right.latestEta)
+  if (etaCompare !== 0) return etaCompare
+
+  const statusCompare = compareStringAsc(left.latestDerivedStatus, right.latestDerivedStatus)
+  if (statusCompare !== 0) return statusCompare
+
+  return compareStringAsc(
+    toSortableNullableText(left.vesselName),
+    toSortableNullableText(right.vesselName),
+  )
+}
+
+function selectPreferredTrackingProjection(
+  current: TrackingSearchProjection | null,
+  candidate: TrackingSearchProjection,
+): TrackingSearchProjection {
+  if (current === null) return candidate
+  return compareTrackingProjectionPriority(candidate, current) < 0 ? candidate : current
 }
 
 function resolveMatchRankPriority(item: MutableSearchResultItem): number {
@@ -235,6 +270,7 @@ export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCas
     ])
 
     const consolidated = new Map<string, MutableSearchResultItem>()
+    const trackingProjectionByProcess = new Map<string, TrackingSearchProjection>()
 
     for (const processMatch of processMatches) {
       const source = resolveProcessMatchSource(processMatch, normalizedQuery)
@@ -275,19 +311,34 @@ export function createSearchUseCase(deps: CreateSearchUseCaseDeps): SearchUseCas
     for (const vesselMatch of vesselMatches) {
       const result = getOrCreateResult(consolidated, vesselMatch.processId, 'vessel')
 
-      result.vesselName = vesselMatch.vesselName
-      result.derivedStatus = vesselMatch.latestDerivedStatus
-      result.eta = vesselMatch.latestEta
+      const currentTrackingProjection =
+        trackingProjectionByProcess.get(vesselMatch.processId) ?? null
+      trackingProjectionByProcess.set(
+        vesselMatch.processId,
+        selectPreferredTrackingProjection(currentTrackingProjection, vesselMatch),
+      )
       result.hasVesselMatch = true
     }
 
     for (const statusMatch of statusMatches) {
       const result = getOrCreateResult(consolidated, statusMatch.processId, 'status')
 
-      result.vesselName = statusMatch.vesselName
-      result.derivedStatus = statusMatch.latestDerivedStatus
-      result.eta = statusMatch.latestEta
+      const currentTrackingProjection =
+        trackingProjectionByProcess.get(statusMatch.processId) ?? null
+      trackingProjectionByProcess.set(
+        statusMatch.processId,
+        selectPreferredTrackingProjection(currentTrackingProjection, statusMatch),
+      )
       result.hasStatusMatch = true
+    }
+
+    for (const [processId, trackingProjection] of trackingProjectionByProcess) {
+      const result = consolidated.get(processId)
+      if (!result) continue
+
+      result.vesselName = trackingProjection.vesselName
+      result.derivedStatus = trackingProjection.latestDerivedStatus
+      result.eta = trackingProjection.latestEta
     }
 
     const consolidatedResults = Array.from(consolidated.values()).sort(compareConsolidatedResults)

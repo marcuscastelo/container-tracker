@@ -329,6 +329,9 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
           <div
             class="relative z-10 w-full max-w-4xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
             style={{ animation: 'search-modal-in 150ms ease-out' }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t(keys.search.placeholder)}
           >
             <div class="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
               <SearchIcon />
