@@ -1,0 +1,4 @@
+interface:
+  display_name: "Worktree Implement"
+  short_description: "Resolve PRD loose match and run ai:wt-implement"
+  default_prompt: "Use $wt <prd path loose match> to resolve a tasks PRD and run ai:wt-implement."
