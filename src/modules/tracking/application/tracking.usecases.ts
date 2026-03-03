@@ -99,8 +99,10 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     async getContainerSummary(
       containerId: string,
       containerNumber: string,
+      podLocationCode?: string | null,
+      now: Date = new Date(),
     ): Promise<GetContainerSummaryResult> {
-      return getContainerSummary(deps, { containerId, containerNumber })
+      return getContainerSummary(deps, { containerId, containerNumber, podLocationCode, now })
     },
 
     /**
