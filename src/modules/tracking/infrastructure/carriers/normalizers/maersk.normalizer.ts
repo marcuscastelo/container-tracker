@@ -39,12 +39,23 @@ const MAERSK_ACTIVITY_MAP: Record<string, ObservationType> = {
   'customs hold': 'CUSTOMS_HOLD',
   'customs release': 'CUSTOMS_RELEASE',
   'empty return': 'EMPTY_RETURN',
+  'container returned empty': 'EMPTY_RETURN',
+  'devolucao de conteiner vazio': 'EMPTY_RETURN',
   'empty to shipper': 'GATE_OUT',
+}
+
+function toActivityMapKey(activity: string): string {
+  return activity
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
 }
 
 function mapMaerskActivity(activity: string | null | undefined): ObservationType {
   if (!activity) return 'OTHER'
-  const key = activity.toLowerCase().trim()
+  const key = toActivityMapKey(activity)
   return MAERSK_ACTIVITY_MAP[key] ?? 'OTHER'
 }
 

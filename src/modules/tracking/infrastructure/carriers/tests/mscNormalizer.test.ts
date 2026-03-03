@@ -125,6 +125,40 @@ describe('normalizeMscSnapshot', () => {
     })
   })
 
+  describe('EMPTY_RETURN synonym mapping', () => {
+    it('maps "Container returned empty" to EMPTY_RETURN', () => {
+      const payload = {
+        Data: {
+          CurrentDate: '02/02/2026',
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  Events: [
+                    {
+                      Date: '01/02/2026',
+                      Description: 'Container returned empty',
+                      UnLocationCode: 'BRSSZ',
+                      Location: 'SANTOS, BR',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }
+
+      const drafts = normalizeMscSnapshot(makeSnapshot(payload, '2026-02-02T00:00:00.000Z'))
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[0]?.carrier_label).toBe('Container returned empty')
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+    })
+  })
+
   describe('ACTUAL vs EXPECTED differentiation', () => {
     it('should mark events with Date <= CurrentDate as ACTUAL', () => {
       // transshipment fixture has CurrentDate='30/11/2025'

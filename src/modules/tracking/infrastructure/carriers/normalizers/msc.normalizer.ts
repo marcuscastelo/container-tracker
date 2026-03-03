@@ -35,11 +35,22 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'customs hold': 'CUSTOMS_HOLD',
   'customs release': 'CUSTOMS_RELEASE',
   'empty return': 'EMPTY_RETURN',
+  'container returned empty': 'EMPTY_RETURN',
+  'devolucao de conteiner vazio': 'EMPTY_RETURN',
+}
+
+function toDescriptionMapKey(description: string): string {
+  return description
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
 }
 
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
-  const key = description.toLowerCase().trim()
+  const key = toDescriptionMapKey(description)
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
 }
 

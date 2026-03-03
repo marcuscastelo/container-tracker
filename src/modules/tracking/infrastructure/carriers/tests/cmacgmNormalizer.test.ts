@@ -112,6 +112,30 @@ describe('normalizeCmaCgmSnapshot', () => {
     })
   })
 
+  describe('EMPTY_RETURN synonym mapping', () => {
+    it('maps Portuguese empty-return label to EMPTY_RETURN', () => {
+      const portugueseLabel = 'Devolu\u00E7\u00E3o de cont\u00EAiner vazio'
+      const payload = {
+        ContainerReference: 'FSCU4565494',
+        PastMoves: [
+          {
+            DateString: '2026-02-01T10:00:00.000Z',
+            State: 'DONE',
+            StatusDescription: portugueseLabel,
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS, BR',
+          },
+        ],
+      }
+
+      const drafts = normalizeCmaCgmSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[0]?.carrier_label).toBe(portugueseLabel)
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+    })
+  })
+
   describe('edge cases', () => {
     it('should return empty array for invalid payload', () => {
       const drafts = normalizeCmaCgmSnapshot(makeSnapshot(null))

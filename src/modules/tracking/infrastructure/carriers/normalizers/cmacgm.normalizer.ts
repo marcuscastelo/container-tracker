@@ -50,15 +50,26 @@ const CMACGM_STATUS_MAP: Record<string, ObservationType> = {
   delivered: 'DELIVERY',
   delivery: 'DELIVERY',
   'empty return': 'EMPTY_RETURN',
+  'container returned empty': 'EMPTY_RETURN',
+  'devolucao de conteiner vazio': 'EMPTY_RETURN',
 
   // Customs
   'customs hold': 'CUSTOMS_HOLD',
   'customs release': 'CUSTOMS_RELEASE',
 }
 
+function toStatusMapKey(description: string): string {
+  return description
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
 function mapCmaCgmDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
-  const key = description.toLowerCase().trim()
+  const key = toStatusMapKey(description)
   return CMACGM_STATUS_MAP[key] ?? 'OTHER'
 }
 

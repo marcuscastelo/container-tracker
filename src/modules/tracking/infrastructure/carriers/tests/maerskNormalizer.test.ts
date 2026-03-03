@@ -105,6 +105,98 @@ describe('normalizeMaerskSnapshot', () => {
     })
   })
 
+  describe('EMPTY_RETURN synonym mapping', () => {
+    it('maps unequivocal empty return labels and keeps event_time_type logic unchanged', () => {
+      const portugueseLabel = 'Devolu\u00E7\u00E3o de cont\u00EAiner vazio'
+      const payload = {
+        containers: [
+          {
+            container_num: 'MNBU3094033',
+            locations: [
+              {
+                city: 'SANTOS',
+                country_code: 'BR',
+                location_code: 'BRSSZ',
+                events: [
+                  {
+                    activity: 'Empty Return',
+                    event_time: '2026-02-01T10:00:00.000Z',
+                    event_time_type: 'ACTUAL',
+                  },
+                  {
+                    activity: 'Container returned empty',
+                    event_time: '2026-02-02T10:00:00.000Z',
+                    event_time_type: 'EXPECTED',
+                  },
+                  {
+                    activity: portugueseLabel,
+                    event_time: '2026-02-03T10:00:00.000Z',
+                    event_time_type: 'ACTUAL',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(3)
+
+      expect(drafts[0]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+      expect(drafts[0]?.carrier_label).toBe('Empty Return')
+
+      expect(drafts[1]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[1]?.event_time_type).toBe('EXPECTED')
+      expect(drafts[1]?.carrier_label).toBe('Container returned empty')
+
+      expect(drafts[2]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[2]?.event_time_type).toBe('ACTUAL')
+      expect(drafts[2]?.carrier_label).toBe(portugueseLabel)
+    })
+
+    it('keeps ambiguous labels as OTHER and preserves carrier_label', () => {
+      const payload = {
+        containers: [
+          {
+            container_num: 'MNBU3094033',
+            locations: [
+              {
+                city: 'SANTOS',
+                country_code: 'BR',
+                location_code: 'BRSSZ',
+                events: [
+                  {
+                    activity: 'Empty return requested',
+                    event_time: '2026-02-04T10:00:00.000Z',
+                    event_time_type: 'ACTUAL',
+                  },
+                  {
+                    activity: 'Container returned',
+                    event_time: '2026-02-05T10:00:00.000Z',
+                    event_time_type: 'EXPECTED',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(2)
+
+      expect(drafts[0]?.type).toBe('OTHER')
+      expect(drafts[0]?.carrier_label).toBe('Empty return requested')
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+
+      expect(drafts[1]?.type).toBe('OTHER')
+      expect(drafts[1]?.carrier_label).toBe('Container returned')
+      expect(drafts[1]?.event_time_type).toBe('EXPECTED')
+    })
+  })
+
   describe('edge cases', () => {
     it('should return empty array for invalid payload', () => {
       const drafts = normalizeMaerskSnapshot(makeSnapshot(null))
