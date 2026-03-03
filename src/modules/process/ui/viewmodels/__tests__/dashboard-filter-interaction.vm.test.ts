@@ -6,6 +6,7 @@ import {
   deriveDashboardProviderFilterOptions,
   deriveDashboardStatusFilterOptions,
   filterDashboardProcesses,
+  hasActiveDashboardFilters,
   setDashboardImporterFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
@@ -199,6 +200,38 @@ describe('dashboard filter interactions', () => {
 })
 
 describe('dashboard process filtering', () => {
+  it('detects active filters only for non-empty provider/status/importer values', () => {
+    expect(hasActiveDashboardFilters(DASHBOARD_DEFAULT_FILTER_SELECTION)).toBe(false)
+    expect(
+      hasActiveDashboardFilters(
+        createFilters({
+          providers: ['MAERSK'],
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      hasActiveDashboardFilters(
+        createFilters({
+          statuses: ['IN_TRANSIT'],
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      hasActiveDashboardFilters(
+        createFilters({
+          importerName: '   ',
+        }),
+      ),
+    ).toBe(false)
+    expect(
+      hasActiveDashboardFilters(
+        createFilters({
+          importerId: 'importer-42',
+        }),
+      ),
+    ).toBe(true)
+  })
+
   it('keeps baseline order untouched when no filters are selected', () => {
     const baseline = [
       createProcess({ id: 'A', carrier: 'MAERSK', statusCode: 'IN_TRANSIT' }),

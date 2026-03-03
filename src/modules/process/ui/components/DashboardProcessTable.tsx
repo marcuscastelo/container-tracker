@@ -18,7 +18,9 @@ type Props = {
   readonly processes: readonly ProcessSummaryVM[]
   readonly loading: boolean
   readonly hasError: boolean
+  readonly hasActiveFilters: boolean
   readonly onCreateProcess: () => void
+  readonly onClearFilters: () => void
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
 }
@@ -288,6 +290,17 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     }
 
     if (props.processes.length === 0) {
+      if (props.hasActiveFilters) {
+        return (
+          <EmptyState
+            title={t(keys.dashboard.empty.filtered.title)}
+            description={t(keys.dashboard.empty.filtered.description)}
+            actionLabel={t(keys.dashboard.empty.filtered.action)}
+            onAction={props.onClearFilters}
+          />
+        )
+      }
+
       return (
         <EmptyState
           title={t(keys.dashboard.empty.title)}

@@ -45,6 +45,15 @@ export const DASHBOARD_DEFAULT_FILTER_SELECTION: DashboardFilterSelection = {
   importerName: null,
 }
 
+export function hasActiveDashboardFilters(filterSelection: DashboardFilterSelection): boolean {
+  const hasProviders = filterSelection.providers.length > 0
+  const hasStatuses = filterSelection.statuses.length > 0
+  const hasImporterId = toOptionalNonBlankString(filterSelection.importerId) !== null
+  const hasImporterName = toOptionalNonBlankString(filterSelection.importerName) !== null
+
+  return hasProviders || hasStatuses || hasImporterId || hasImporterName
+}
+
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
   if (!value) return null
   const trimmed = value.trim()

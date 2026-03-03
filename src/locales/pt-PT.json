@@ -49,7 +49,9 @@
         "searchPlaceholder": "Pesquisar importador",
         "noMatches": "Nenhum importador encontrado"
       },
-      "clearAll": "Limpar filtros"
+      "clearAll": "Limpar filtros",
+      "active": "Filtros ativos",
+      "removeChip": "Remover {{filter}}"
     },
     "table": {
       "title": "Resumo das Expedições",
@@ -71,7 +73,12 @@
     "empty": {
       "title": "Ainda sem expedições",
       "description": "Crie a sua primeira expedição para começar a rastrear contentores.",
-      "action": "Criar Processo"
+      "action": "Criar Processo",
+      "filtered": {
+        "title": "Nenhuma expedição corresponde a estes filtros",
+        "description": "Ajuste ou limpe os filtros para ver expedições correspondentes.",
+        "action": "Limpar filtros"
+      }
     }
   },
   "shipmentView": {

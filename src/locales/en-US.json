@@ -38,7 +38,9 @@
         "searchPlaceholder": "Search importer",
         "noMatches": "No importers found"
       },
-      "clearAll": "Clear all"
+      "clearAll": "Clear all",
+      "active": "Active filters",
+      "removeChip": "Remove {{filter}}"
     },
     "table": {
       "title": "Shipments Overview",
@@ -60,7 +62,12 @@
     "empty": {
       "title": "No shipments yet",
       "description": "Create your first process to start tracking containers.",
-      "action": "Create Process"
+      "action": "Create Process",
+      "filtered": {
+        "title": "No shipments match these filters",
+        "description": "Adjust or clear filters to see matching shipments.",
+        "action": "Clear filters"
+      }
     }
   },
   "shipmentView": {

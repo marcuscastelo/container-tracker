@@ -2,11 +2,13 @@ import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
+  DashboardFilterSelection,
   DashboardImporterFilterOption,
   DashboardImporterFilterValue,
   DashboardProviderFilterOption,
   DashboardStatusFilterOption,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 
@@ -101,6 +103,13 @@ function toNormalizedNonBlankString(value: string | null): string | null {
   const trimmed = value.trim()
   if (trimmed.length === 0) return null
   return trimmed.toLocaleLowerCase('pt-BR')
+}
+
+function toOptionalNonBlankString(value: string | null): string | null {
+  if (value === null) return null
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return null
+  return trimmed
 }
 
 type ImporterFilterControlProps = {
@@ -260,14 +269,33 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
     }))
   }
 
-  const hasActiveFilters = () => {
-    return (
-      props.selectedProviders.length > 0 ||
-      props.selectedStatuses.length > 0 ||
-      props.selectedImporterId !== null ||
-      props.selectedImporterName !== null
-    )
-  }
+  const activeFilters = (): DashboardFilterSelection => ({
+    providers: props.selectedProviders,
+    statuses: props.selectedStatuses,
+    importerId: props.selectedImporterId,
+    importerName: props.selectedImporterName,
+  })
+  const hasActiveFilters = () => hasActiveDashboardFilters(activeFilters())
+  const selectedImporterChipLabel = createMemo(() => {
+    const selectedImporterId = toOptionalNonBlankString(props.selectedImporterId)
+    if (selectedImporterId !== null) {
+      const selectedOption = props.importers.find(
+        (option) => option.importerId === selectedImporterId,
+      )
+      if (selectedOption) {
+        return selectedOption.label
+      }
+
+      const selectedImporterName = toOptionalNonBlankString(props.selectedImporterName)
+      if (selectedImporterName !== null && selectedImporterName !== selectedImporterId) {
+        return `${selectedImporterName} (${selectedImporterId})`
+      }
+
+      return selectedImporterId
+    }
+
+    return toOptionalNonBlankString(props.selectedImporterName)
+  })
 
   return (
     <section class="mb-3 rounded border border-slate-200 bg-white px-3 py-2">
@@ -318,6 +346,68 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
           {t(keys.dashboard.filters.clearAll)}
         </button>
       </div>
+      <Show when={hasActiveFilters()}>
+        <div
+          class="mt-2 flex flex-wrap items-center gap-1.5"
+          data-testid="dashboard-active-filter-chips"
+        >
+          <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {t(keys.dashboard.filters.active)}
+          </span>
+          <For each={props.selectedProviders}>
+            {(provider) => {
+              const chipLabel = () => `${t(keys.dashboard.filters.provider.label)}: ${provider}`
+
+              return (
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+                  aria-label={t(keys.dashboard.filters.removeChip, { filter: chipLabel() })}
+                  onClick={() => props.onProviderToggle(provider)}
+                >
+                  <span>{chipLabel()}</span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              )
+            }}
+          </For>
+          <For each={props.selectedStatuses}>
+            {(status) => {
+              const chipLabel = () =>
+                `${t(keys.dashboard.filters.status.label)}: ${t(trackingStatusToLabelKey(keys, status))}`
+
+              return (
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+                  aria-label={t(keys.dashboard.filters.removeChip, { filter: chipLabel() })}
+                  onClick={() => props.onStatusToggle(status)}
+                >
+                  <span>{chipLabel()}</span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              )
+            }}
+          </For>
+          <Show when={selectedImporterChipLabel()}>
+            {(label) => {
+              const chipLabel = () => `${t(keys.dashboard.filters.importer.label)}: ${label()}`
+
+              return (
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+                  aria-label={t(keys.dashboard.filters.removeChip, { filter: chipLabel() })}
+                  onClick={() => props.onImporterSelect(null)}
+                >
+                  <span>{chipLabel()}</span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              )
+            }}
+          </Show>
+        </div>
+      </Show>
     </section>
   )
 }

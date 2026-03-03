@@ -33,6 +33,7 @@ import {
   deriveDashboardProviderFilterOptions,
   deriveDashboardStatusFilterOptions,
   filterDashboardProcesses,
+  hasActiveDashboardFilters,
   setDashboardImporterFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
@@ -74,6 +75,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const filteredProcesses = createMemo(() =>
     filterDashboardProcesses(processes() ?? [], filterSelection()),
   )
+  const hasActiveFilters = createMemo(() => hasActiveDashboardFilters(filterSelection()))
   const sortedProcesses = createMemo(() =>
     sortDashboardProcesses(filteredProcesses(), sortSelection()),
   )
@@ -223,7 +225,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           processes={sortedProcesses()}
           loading={processes.loading}
           hasError={Boolean(processes.error)}
+          hasActiveFilters={hasActiveFilters()}
           onCreateProcess={handleCreateProcess}
+          onClearFilters={handleClearAllFilters}
           sortSelection={sortSelection()}
           onSortToggle={handleSortToggle}
         />
