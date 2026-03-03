@@ -5,9 +5,32 @@ REAL_GIT="/usr/bin/git"
 
 deny() {
   printf '%s\n' "git-guard: blocked '$*'." >&2
-  printf '%s\n' "git-guard: commits are allowed in container, but remote writes and destructive local commands are blocked." >&2
-  printf '%s\n' "git-guard: push from host. Use GIT_GUARD_BYPASS=1 only for explicit one-off override." >&2
+  printf '%s\n' "git-guard: dangerous git pushes and destructive local commands are blocked in devcontainer." >&2
+  printf '%s\n' "git-guard: branch push is allowed. Use GIT_GUARD_BYPASS=1 only for explicit one-off override." >&2
   exit 1
+}
+
+check_push_args() {
+  local arg target
+
+  for arg in "$@"; do
+    case "$arg" in
+      --force | -f | --force-with-lease | --force-with-lease=* | --mirror | --delete | -d | --all)
+        deny "git push $*"
+        ;;
+      :*)
+        deny "git push $*"
+        ;;
+      *:*)
+        target="${arg#*:}"
+        case "$target" in
+          "" | main | master | refs/heads/main | refs/heads/master)
+            deny "git push $*"
+            ;;
+        esac
+        ;;
+    esac
+  done
 }
 
 if [ "${GIT_GUARD_BYPASS:-}" = "1" ]; then
@@ -22,7 +45,10 @@ subcommand="$1"
 shift || true
 
 case "$subcommand" in
-  push | send-pack | receive-pack)
+  push)
+    check_push_args "$@"
+    ;;
+  send-pack | receive-pack)
     deny "git $subcommand $*"
     ;;
   branch)
