@@ -97,3 +97,15 @@ wt_info "Worktree path: $worktree_path"
 wt_info "force-seed: $force_seed"
 wt_info "no-open: $no_open"
 wt_info "print-only: $print_only"
+
+if [ "$print_only" -eq 1 ]; then
+  wt_info "Print-only mode enabled. No git worktree changes were made."
+  exit 0
+fi
+
+if ! wt_create_worktree "$worktree_path" "$branch_name"; then
+  exit 1
+fi
+
+wt_info "Created git worktree: $worktree_path"
+wt_info "Checked out branch: $branch_name"

@@ -144,3 +144,47 @@ wt_join_path() {
   trimmed_root="${root%/}"
   printf '%s/%s\n' "$trimmed_root" "$leaf"
 }
+
+wt_branch_exists() {
+  local branch_name="$1"
+  git show-ref --verify --quiet "refs/heads/$branch_name"
+}
+
+wt_worktree_branch() {
+  local worktree_path="$1"
+  git -C "$worktree_path" rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+wt_create_worktree() {
+  local worktree_path="$1"
+  local branch_name="$2"
+  local checked_branch
+
+  if [ -e "$worktree_path" ]; then
+    wt_error "Worktree path already exists: $worktree_path"
+    wt_error "Choose a different slug (--slug) or worktree root (--wt-root)."
+    return 1
+  fi
+
+  if wt_branch_exists "$branch_name"; then
+    wt_error "Branch already exists: $branch_name"
+    wt_error "By default, existing branches are not reused."
+    wt_error "Next step: git worktree add \"$worktree_path\" \"$branch_name\""
+    return 1
+  fi
+
+  if ! git worktree add -b "$branch_name" "$worktree_path"; then
+    wt_error "Failed to create worktree at $worktree_path on branch $branch_name."
+    return 1
+  fi
+
+  if ! checked_branch="$(wt_worktree_branch "$worktree_path")"; then
+    wt_error "Created worktree but could not read current branch: $worktree_path"
+    return 1
+  fi
+
+  if [ "$checked_branch" != "$branch_name" ]; then
+    wt_error "Worktree branch mismatch. Expected $branch_name, got $checked_branch."
+    return 1
+  fi
+}
