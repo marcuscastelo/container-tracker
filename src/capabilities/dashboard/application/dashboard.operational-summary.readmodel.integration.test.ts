@@ -257,7 +257,7 @@ describe('dashboard operational summary read model integration', () => {
     })
   })
 
-  it('builds consolidated active-alert panel preserving fact/monitoring, retroactive and raw generated_at', async () => {
+  it('builds consolidated active-alert panel with mixed types and generated_at descending order', async () => {
     const fixedNow = new Date('2026-03-03T00:00:00.000Z')
 
     const processes: ProcessesProjection = [
@@ -292,23 +292,33 @@ describe('dashboard operational summary read model integration', () => {
 
     const alerts: readonly TrackingActiveAlertReadModel[] = [
       makeAlert({
-        alert_id: 'alert-fact-retroactive',
-        process_id: 'process-fact',
-        container_id: 'container-fact',
-        category: 'fact',
-        severity: 'danger',
-        type: 'CUSTOMS_HOLD',
-        generated_at: '2026-03-01T14:10:00.000Z',
-        retroactive: true,
-      }),
-      makeAlert({
-        alert_id: 'alert-monitoring',
+        alert_id: 'alert-monitoring-eta-passed',
         process_id: 'process-monitoring',
         container_id: 'container-monitoring',
         category: 'monitoring',
         severity: 'warning',
         type: 'ETA_PASSED',
         generated_at: '2026-03-03T10:00:00.000Z',
+      }),
+      makeAlert({
+        alert_id: 'alert-fact-data-inconsistent',
+        process_id: 'process-fact',
+        container_id: 'container-fact',
+        category: 'fact',
+        severity: 'danger',
+        type: 'DATA_INCONSISTENT',
+        generated_at: '2026-03-03T12:45:00.000Z',
+        retroactive: true,
+      }),
+      makeAlert({
+        alert_id: 'alert-fact-customs-hold',
+        process_id: 'process-fact',
+        container_id: 'container-fact',
+        category: 'fact',
+        severity: 'warning',
+        type: 'CUSTOMS_HOLD',
+        generated_at: '2026-03-01T14:10:00.000Z',
+        retroactive: true,
       }),
     ]
     const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
@@ -333,11 +343,11 @@ describe('dashboard operational summary read model integration', () => {
           containerId: 'container-fact',
           containerNumber: 'MSCU2000001',
         },
-        category: 'customs',
+        category: 'data',
         severity: 'danger',
         type: 'fact',
-        description: 'CUSTOMS_HOLD',
-        generated_at: '2026-03-01T14:10:00.000Z',
+        description: 'DATA_INCONSISTENT',
+        generated_at: '2026-03-03T12:45:00.000Z',
         retroactive: true,
       },
       {
@@ -358,6 +368,30 @@ describe('dashboard operational summary read model integration', () => {
         generated_at: '2026-03-03T10:00:00.000Z',
         retroactive: false,
       },
+      {
+        process: {
+          processId: 'process-fact',
+          reference: 'REF-FACT',
+          origin: 'Santos',
+          destination: 'Antwerp',
+        },
+        container: {
+          containerId: 'container-fact',
+          containerNumber: 'MSCU2000001',
+        },
+        category: 'customs',
+        severity: 'warning',
+        type: 'fact',
+        description: 'CUSTOMS_HOLD',
+        generated_at: '2026-03-01T14:10:00.000Z',
+        retroactive: true,
+      },
+    ])
+
+    expect(result.activeAlertsPanel.map((alert) => alert.generated_at)).toEqual([
+      '2026-03-03T12:45:00.000Z',
+      '2026-03-03T10:00:00.000Z',
+      '2026-03-01T14:10:00.000Z',
     ])
   })
 

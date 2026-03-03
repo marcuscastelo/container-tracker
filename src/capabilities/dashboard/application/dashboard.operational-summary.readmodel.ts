@@ -352,20 +352,47 @@ function buildDashboardActiveAlertsPanel(
   alerts: readonly TrackingActiveAlertReadModel[],
   contextByProcessId: ReadonlyMap<string, DashboardProcessContext>,
 ): readonly DashboardOperationalAlertReadModel[] {
-  return alerts.map((alert) => {
-    const context = contextByProcessId.get(alert.process_id)
+  return [...alerts]
+    .sort((left, right) => {
+      const rightTimestamp = Date.parse(right.generated_at)
+      const leftTimestamp = Date.parse(left.generated_at)
+      if (!Number.isNaN(rightTimestamp) && !Number.isNaN(leftTimestamp)) {
+        const byTimestamp = rightTimestamp - leftTimestamp
+        if (byTimestamp !== 0) {
+          return byTimestamp
+        }
+      }
 
-    return {
-      process: toDashboardAlertProcessReadModel(alert.process_id, context),
-      container: toDashboardAlertContainerReadModel(alert.container_id, context),
-      category: toTrackingOperationalAlertCategory(alert.type),
-      severity: alert.severity,
-      type: alert.category,
-      description: alert.type,
-      generated_at: alert.generated_at,
-      retroactive: alert.retroactive,
-    }
-  })
+      if (left.generated_at !== right.generated_at) {
+        return left.generated_at < right.generated_at ? 1 : -1
+      }
+
+      const byProcessId = left.process_id.localeCompare(right.process_id)
+      if (byProcessId !== 0) {
+        return byProcessId
+      }
+
+      const byContainerId = left.container_id.localeCompare(right.container_id)
+      if (byContainerId !== 0) {
+        return byContainerId
+      }
+
+      return left.alert_id.localeCompare(right.alert_id)
+    })
+    .map((alert) => {
+      const context = contextByProcessId.get(alert.process_id)
+
+      return {
+        process: toDashboardAlertProcessReadModel(alert.process_id, context),
+        container: toDashboardAlertContainerReadModel(alert.container_id, context),
+        category: toTrackingOperationalAlertCategory(alert.type),
+        severity: alert.severity,
+        type: alert.category,
+        description: alert.type,
+        generated_at: alert.generated_at,
+        retroactive: alert.retroactive,
+      }
+    })
 }
 
 function toTrackingSummaryOrFallback(
