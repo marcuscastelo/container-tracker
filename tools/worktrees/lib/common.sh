@@ -18,6 +18,48 @@ wt_require_value() {
   fi
 }
 
+wt_is_truthy_env() {
+  local value="${1:-}"
+
+  case "$value" in
+    1|true|TRUE|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+wt_is_devcontainer() {
+  if wt_is_truthy_env "${DEVCONTAINER:-}"; then
+    return 0
+  fi
+
+  if wt_is_truthy_env "${REMOTE_CONTAINERS:-}"; then
+    return 0
+  fi
+
+  if [ -n "${REMOTE_CONTAINERS_IPC:-}" ]; then
+    return 0
+  fi
+
+  if [ -n "${CODESPACES:-}" ]; then
+    return 0
+  fi
+
+  return 1
+}
+
+wt_default_root() {
+  if wt_is_devcontainer && [ -n "${HOME:-}" ]; then
+    printf '%s\n' "${HOME%/}/wt"
+    return 0
+  fi
+
+  printf '%s\n' "../wt"
+}
+
 wt_repo_root() {
   if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
     wt_error "Could not detect repository root from current directory."

@@ -29,7 +29,7 @@ if ! prd_path="$(wt_validate_prd_path "$prd_path")"; then
   exit 1
 fi
 
-wt_root="../wt"
+wt_root="$(wt_default_root)"
 branch_prefix="feat/"
 slug=""
 force_seed=0
