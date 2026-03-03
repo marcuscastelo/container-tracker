@@ -91,6 +91,8 @@ Capabilities orchestrate across BCs.
 - Prefer named exports; avoid `export default`
 - Root tooling configs (for example `eslint.config.mjs`) are linted by Biome import rules:
   avoid `./` or `../` imports there and prefer `package.json` `imports` aliases (`#...`)
+- For local ESLint plugins authored in `.mjs`, prefer rule tests in `*.test.mjs`;
+  TypeScript `*.test.ts` can fail strict plugin-shape checks during `pnpm run type-check`
 
 ---
 
