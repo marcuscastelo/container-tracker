@@ -63,7 +63,7 @@ Evita debug lento.
 ---
 
 # 3) Atualizar a lista de dívidas do MVP (append)
-Adicionar ao doc de dívidas (ex.: docs/debt/0003.md):
+Adicionar ao doc de dívidas (ex.: docs/debt/0003-agent-runtime-enrolment.md):
 
 - Dependência de flags pnpm (`--legacy`, `--node-linker=hoisted`) para materializar deps no release.
 - Execução via `cmd.exe /c` no Windows por limitação do spawn com pnpm.cmd.
