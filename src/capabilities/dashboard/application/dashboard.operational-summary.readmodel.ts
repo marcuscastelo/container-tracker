@@ -378,6 +378,14 @@ function toTrackingSummaryOrFallback(
 function sortDashboardProcessesByDominantSeverity(
   processes: readonly DashboardOperationalProcessReadModel[],
 ): readonly DashboardOperationalProcessReadModel[] {
+  function normalizeReference(reference: string | null): string {
+    if (reference === null) {
+      return '~'
+    }
+
+    return reference.trim().toUpperCase()
+  }
+
   return processes
     .map((process, index) => ({ process, index }))
     .sort((left, right) => {
@@ -385,6 +393,17 @@ function sortDashboardProcessesByDominantSeverity(
       const leftPriority = DASHBOARD_SEVERITY_ORDER[left.process.dominantSeverity]
       if (rightPriority !== leftPriority) {
         return rightPriority - leftPriority
+      }
+
+      const leftReference = normalizeReference(left.process.reference)
+      const rightReference = normalizeReference(right.process.reference)
+      if (leftReference !== rightReference) {
+        return leftReference < rightReference ? -1 : 1
+      }
+
+      const byProcessId = left.process.processId.localeCompare(right.process.processId)
+      if (byProcessId !== 0) {
+        return byProcessId
       }
 
       return left.index - right.index

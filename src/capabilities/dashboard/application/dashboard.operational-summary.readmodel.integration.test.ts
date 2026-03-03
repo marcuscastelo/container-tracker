@@ -376,12 +376,12 @@ describe('dashboard operational summary read model integration', () => {
       },
       {
         process: {
-          id: 'process-warning',
-          reference: 'REF-WARN',
+          id: 'process-warning-z',
+          reference: 'REF-WARN-Z',
           origin: 'Shanghai',
           destination: 'Rotterdam',
         },
-        containers: [{ id: 'container-warning', containerNumber: 'MSCU1000002' }],
+        containers: [{ id: 'container-warning-z', containerNumber: 'MSCU1000002' }],
       },
       {
         process: {
@@ -391,6 +391,15 @@ describe('dashboard operational summary read model integration', () => {
           destination: 'Hamburg',
         },
         containers: [{ id: 'container-info', containerNumber: 'MSCU1000003' }],
+      },
+      {
+        process: {
+          id: 'process-warning-a',
+          reference: 'REF-WARN-A',
+          origin: 'Xiamen',
+          destination: 'Le Havre',
+        },
+        containers: [{ id: 'container-warning-a', containerNumber: 'MSCU1000005' }],
       },
       {
         process: {
@@ -409,12 +418,16 @@ describe('dashboard operational summary read model integration', () => {
         new Map([
           ['container-none', makeTrackingOperationalSummary('LOADED', null)],
           [
-            'container-warning',
-            makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-12T10:00:00.000Z'),
+            'container-warning-z',
+            makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-13T10:00:00.000Z'),
           ],
           [
             'container-info',
             makeTrackingOperationalSummary('IN_PROGRESS', '2026-03-14T10:00:00.000Z'),
+          ],
+          [
+            'container-warning-a',
+            makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-12T10:00:00.000Z'),
           ],
           [
             'container-danger',
@@ -425,12 +438,20 @@ describe('dashboard operational summary read model integration', () => {
 
     const alerts: readonly TrackingActiveAlertReadModel[] = [
       makeAlert({
-        alert_id: 'alert-warning',
-        process_id: 'process-warning',
-        container_id: 'container-warning',
+        alert_id: 'alert-warning-z',
+        process_id: 'process-warning-z',
+        container_id: 'container-warning-z',
         category: 'monitoring',
         severity: 'warning',
         type: 'NO_MOVEMENT',
+      }),
+      makeAlert({
+        alert_id: 'alert-warning-a',
+        process_id: 'process-warning-a',
+        container_id: 'container-warning-a',
+        category: 'monitoring',
+        severity: 'warning',
+        type: 'ETA_PASSED',
       }),
       makeAlert({
         alert_id: 'alert-danger',
@@ -482,12 +503,22 @@ describe('dashboard operational summary read model integration', () => {
         activeAlertsCount: 1,
       },
       {
-        processId: 'process-warning',
-        reference: 'REF-WARN',
+        processId: 'process-warning-a',
+        reference: 'REF-WARN-A',
+        origin: 'Xiamen',
+        destination: 'Le Havre',
+        status: 'IN_TRANSIT',
+        eta: '2026-03-12T10:00:00.000Z',
+        dominantSeverity: 'warning',
+        activeAlertsCount: 1,
+      },
+      {
+        processId: 'process-warning-z',
+        reference: 'REF-WARN-Z',
         origin: 'Shanghai',
         destination: 'Rotterdam',
         status: 'IN_TRANSIT',
-        eta: '2026-03-12T10:00:00.000Z',
+        eta: '2026-03-13T10:00:00.000Z',
         dominantSeverity: 'warning',
         activeAlertsCount: 1,
       },
