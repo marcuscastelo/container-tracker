@@ -51,6 +51,7 @@ If changing:
 - timeline derivation -> update derive/reconcile read-model tests
 
 Prefer deterministic fixtures and stable tests.
+- `deriveTimelineWithSeriesReadModel()` emits only series with a valid primary; a series containing only expired EXPECTED events is omitted, so test timestamps/`now` must reflect the intended visibility.
 
 ---
 

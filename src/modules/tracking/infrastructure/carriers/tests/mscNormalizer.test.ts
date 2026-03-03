@@ -126,7 +126,8 @@ describe('normalizeMscSnapshot', () => {
   })
 
   describe('EMPTY_RETURN synonym mapping', () => {
-    it('maps "Container returned empty" to EMPTY_RETURN', () => {
+    it('maps unambiguous empty-return labels to EMPTY_RETURN and preserves event_time_type derivation', () => {
+      const portugueseLabel = 'Devolu\u00E7\u00E3o de cont\u00EAiner vazio'
       const payload = {
         Data: {
           CurrentDate: '02/02/2026',
@@ -138,7 +139,21 @@ describe('normalizeMscSnapshot', () => {
                   Events: [
                     {
                       Date: '01/02/2026',
+                      Description: 'Empty Return',
+                      UnLocationCode: 'BRSSZ',
+                      Location: 'SANTOS, BR',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                    {
+                      Date: '03/02/2026',
                       Description: 'Container returned empty',
+                      UnLocationCode: 'BRSSZ',
+                      Location: 'SANTOS, BR',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                    {
+                      Date: '02/02/2026',
+                      Description: portugueseLabel,
                       UnLocationCode: 'BRSSZ',
                       Location: 'SANTOS, BR',
                       Detail: ['MSC SHIP', 'VOY001'],
@@ -152,10 +167,63 @@ describe('normalizeMscSnapshot', () => {
       }
 
       const drafts = normalizeMscSnapshot(makeSnapshot(payload, '2026-02-02T00:00:00.000Z'))
-      expect(drafts).toHaveLength(1)
+      expect(drafts).toHaveLength(3)
+
       expect(drafts[0]?.type).toBe('EMPTY_RETURN')
-      expect(drafts[0]?.carrier_label).toBe('Container returned empty')
+      expect(drafts[0]?.carrier_label).toBe('Empty Return')
       expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+
+      expect(drafts[1]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[1]?.carrier_label).toBe('Container returned empty')
+      expect(drafts[1]?.event_time_type).toBe('EXPECTED')
+
+      expect(drafts[2]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[2]?.carrier_label).toBe(portugueseLabel)
+      expect(drafts[2]?.event_time_type).toBe('ACTUAL')
+    })
+
+    it('keeps ambiguous labels as OTHER and preserves carrier_label', () => {
+      const payload = {
+        Data: {
+          CurrentDate: '02/02/2026',
+          BillOfLadings: [
+            {
+              ContainersInfo: [
+                {
+                  ContainerNumber: 'TEST123',
+                  Events: [
+                    {
+                      Date: '01/02/2026',
+                      Description: 'Empty return requested',
+                      UnLocationCode: 'BRSSZ',
+                      Location: 'SANTOS, BR',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                    {
+                      Date: '03/02/2026',
+                      Description: 'Container returned',
+                      UnLocationCode: 'BRSSZ',
+                      Location: 'SANTOS, BR',
+                      Detail: ['MSC SHIP', 'VOY001'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }
+
+      const drafts = normalizeMscSnapshot(makeSnapshot(payload, '2026-02-02T00:00:00.000Z'))
+      expect(drafts).toHaveLength(2)
+
+      expect(drafts[0]?.type).toBe('OTHER')
+      expect(drafts[0]?.carrier_label).toBe('Empty return requested')
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+
+      expect(drafts[1]?.type).toBe('OTHER')
+      expect(drafts[1]?.carrier_label).toBe('Container returned')
+      expect(drafts[1]?.event_time_type).toBe('EXPECTED')
     })
   })
 

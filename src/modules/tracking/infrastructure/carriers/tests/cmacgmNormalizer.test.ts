@@ -113,7 +113,7 @@ describe('normalizeCmaCgmSnapshot', () => {
   })
 
   describe('EMPTY_RETURN synonym mapping', () => {
-    it('maps Portuguese empty-return label to EMPTY_RETURN', () => {
+    it('maps unambiguous empty-return labels to EMPTY_RETURN and preserves event_time_type derivation', () => {
       const portugueseLabel = 'Devolu\u00E7\u00E3o de cont\u00EAiner vazio'
       const payload = {
         ContainerReference: 'FSCU4565494',
@@ -121,6 +121,20 @@ describe('normalizeCmaCgmSnapshot', () => {
           {
             DateString: '2026-02-01T10:00:00.000Z',
             State: 'DONE',
+            StatusDescription: 'Empty Return',
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS, BR',
+          },
+          {
+            DateString: '2026-02-02T10:00:00.000Z',
+            State: 'NONE',
+            StatusDescription: 'Container returned empty',
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS, BR',
+          },
+          {
+            DateString: '2026-02-03T10:00:00.000Z',
+            State: 'CURRENT',
             StatusDescription: portugueseLabel,
             LocationCode: 'BRSSZ',
             Location: 'SANTOS, BR',
@@ -129,10 +143,52 @@ describe('normalizeCmaCgmSnapshot', () => {
       }
 
       const drafts = normalizeCmaCgmSnapshot(makeSnapshot(payload))
-      expect(drafts).toHaveLength(1)
+      expect(drafts).toHaveLength(3)
+
       expect(drafts[0]?.type).toBe('EMPTY_RETURN')
-      expect(drafts[0]?.carrier_label).toBe(portugueseLabel)
+      expect(drafts[0]?.carrier_label).toBe('Empty Return')
       expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+
+      expect(drafts[1]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[1]?.carrier_label).toBe('Container returned empty')
+      expect(drafts[1]?.event_time_type).toBe('EXPECTED')
+
+      expect(drafts[2]?.type).toBe('EMPTY_RETURN')
+      expect(drafts[2]?.carrier_label).toBe(portugueseLabel)
+      expect(drafts[2]?.event_time_type).toBe('ACTUAL')
+    })
+
+    it('keeps ambiguous labels as OTHER and preserves carrier_label', () => {
+      const payload = {
+        ContainerReference: 'FSCU4565494',
+        PastMoves: [
+          {
+            DateString: '2026-02-01T10:00:00.000Z',
+            State: 'DONE',
+            StatusDescription: 'Empty return requested',
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS, BR',
+          },
+          {
+            DateString: '2026-02-02T10:00:00.000Z',
+            State: 'CURRENT',
+            StatusDescription: 'Container returned',
+            LocationCode: 'BRSSZ',
+            Location: 'SANTOS, BR',
+          },
+        ],
+      }
+
+      const drafts = normalizeCmaCgmSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(2)
+
+      expect(drafts[0]?.type).toBe('OTHER')
+      expect(drafts[0]?.carrier_label).toBe('Empty return requested')
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+
+      expect(drafts[1]?.type).toBe('OTHER')
+      expect(drafts[1]?.carrier_label).toBe('Container returned')
+      expect(drafts[1]?.event_time_type).toBe('ACTUAL')
     })
   })
 
