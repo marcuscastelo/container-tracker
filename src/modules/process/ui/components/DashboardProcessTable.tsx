@@ -69,30 +69,30 @@ function toAriaSort(direction: DashboardSortDirection | null): 'none' | 'ascendi
 function SortDirectionIcon(props: {
   readonly direction: DashboardSortDirection | null
 }): JSX.Element {
-  const arrow = () => {
-    if (props.direction === null) return ''
-    return props.direction === 'asc' ? '↑' : '↓'
-  }
+  const arrow = () => (props.direction === 'asc' ? '↑' : '↓')
 
   return (
-    <span
-      class={`inline-flex h-4 w-4 items-center justify-center text-[11px] leading-none ${
-        props.direction ? 'text-slate-600' : 'text-transparent'
-      }`}
-      aria-hidden="true"
-    >
-      {arrow()}
-    </span>
+    <Show when={props.direction !== null}>
+      <span
+        class="inline-flex h-4 w-4 items-center justify-center text-[11px] leading-none text-slate-600"
+        aria-hidden="true"
+      >
+        {arrow()}
+      </span>
+    </Show>
   )
 }
 
 function SortHeaderButton(props: SortHeaderProps): JSX.Element {
+  const isActive = () => props.direction !== null
   const justifyClass = () => (props.align === 'right' ? 'justify-end' : 'justify-start')
 
   return (
     <button
       type="button"
-      class={`inline-flex w-full items-center ${justifyClass()} gap-1 transition-colors hover:text-slate-600 focus-visible:text-slate-700 focus-visible:outline-none`}
+      class={`inline-flex w-full items-center ${justifyClass()} gap-1 transition-colors focus-visible:outline-none ${
+        isActive() ? 'text-slate-700' : 'hover:text-slate-600 focus-visible:text-slate-700'
+      }`}
       onClick={() => props.onToggle(props.field)}
     >
       <span>{props.label}</span>
