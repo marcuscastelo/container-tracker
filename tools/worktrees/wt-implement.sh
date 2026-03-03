@@ -122,6 +122,10 @@ if ! wt_run_pnpm_install "$worktree_path"; then
   exit 1
 fi
 
+if ! wt_init_ralph_submodule "$worktree_path"; then
+  exit 1
+fi
+
 if [ "$no_open" -eq 1 ]; then
   wt_info "Skipping VS Code open (--no-open)."
   exit 0

@@ -345,6 +345,17 @@ wt_run_pnpm_install() {
   fi
 }
 
+wt_init_ralph_submodule() {
+  local worktree_path="$1"
+
+  wt_info "Initializing submodule: tools/ralph-loop"
+
+  if ! git -C "$worktree_path" submodule update --init --recursive tools/ralph-loop; then
+    wt_error "Failed to initialize tools/ralph-loop in worktree: $worktree_path"
+    return 1
+  fi
+}
+
 wt_open_vscode() {
   local worktree_path="$1"
 
