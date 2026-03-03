@@ -3,10 +3,12 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { assertNoIifeErrorSmokeResult } from './no-iife-in-jsx-error-smoke.shared.mjs'
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const scriptsDirectory = path.dirname(currentFilePath)
 const repositoryRoot = path.resolve(scriptsDirectory, '..')
+const eslintCliPath = path.join(repositoryRoot, 'node_modules', 'eslint', 'bin', 'eslint.js')
 const smokeFixtureDirectory = path.join(
   repositoryRoot,
   'src',
@@ -35,13 +37,14 @@ async function runSmokeCheck() {
     await writeFile(smokeFixtureFilePath, smokeFixtureSource, 'utf8')
 
     const command = spawnSync(
-      'pnpm',
+      process.execPath,
       [
-        'exec',
-        'eslint',
+        eslintCliPath,
         smokeFixtureFilePath,
         '--rule',
         'container-tracker/no-iife-in-jsx:error',
+        '--format',
+        'json',
         '--max-warnings=0',
       ],
       {
@@ -54,20 +57,7 @@ async function runSmokeCheck() {
       throw command.error
     }
 
-    const output = `${command.stdout ?? ''}\n${command.stderr ?? ''}`
-    const detectedRuleViolation = output.includes('container-tracker/no-iife-in-jsx')
-
-    if (command.status === 0) {
-      throw new Error(
-        'Expected ESLint to fail when no-iife-in-jsx is promoted to error, but command succeeded.',
-      )
-    }
-
-    if (!detectedRuleViolation) {
-      throw new Error(
-        'ESLint failed for an unexpected reason. Expected container-tracker/no-iife-in-jsx violation.',
-      )
-    }
+    assertNoIifeErrorSmokeResult(command)
 
     console.log('[no-iife-in-jsx-error-smoke] PASS')
   } finally {
