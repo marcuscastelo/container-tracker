@@ -24,6 +24,7 @@
         "process": "Process",
         "carrier": "Carrier",
         "importerName": "Importer",
+        "createdAt": "Created",
         "route": "Origin → Destination",
         "containers": "Containers",
         "status": "Status",

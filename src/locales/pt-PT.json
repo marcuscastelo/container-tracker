@@ -35,6 +35,7 @@
         "process": "Processo",
         "carrier": "Armador",
         "importerName": "Importador",
+        "createdAt": "Criado em",
         "route": "Origem → Destino",
         "containers": "Contentores",
         "status": "Estado",

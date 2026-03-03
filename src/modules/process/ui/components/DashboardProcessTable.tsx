@@ -69,6 +69,11 @@ function toAriaSort(direction: DashboardSortDirection | null): 'none' | 'ascendi
 function SortDirectionIcon(props: {
   readonly direction: DashboardSortDirection | null
 }): JSX.Element {
+  const arrow = () => {
+    if (props.direction === null) return ''
+    return props.direction === 'asc' ? '↑' : '↓'
+  }
+
   return (
     <span
       class={`inline-flex h-4 w-4 items-center justify-center text-[11px] leading-none ${
@@ -76,7 +81,7 @@ function SortDirectionIcon(props: {
       }`}
       aria-hidden="true"
     >
-      {props.direction === 'asc' ? '↑' : '↓'}
+      {arrow()}
     </span>
   )
 }
@@ -117,6 +122,11 @@ function displayEta(eta: string | null): string {
   return formatDateForLocale(eta)
 }
 
+function displayCreatedAt(createdAt: string | null): string {
+  if (!createdAt) return '—'
+  return formatDateForLocale(createdAt)
+}
+
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const route = () => displayRoute(props.process)
@@ -136,6 +146,11 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </td>
       <td class="hidden px-4 py-2.5 xl:table-cell">
         <span class="text-[13px] text-slate-500">{displayImporterName(props.process)}</span>
+      </td>
+      <td class="hidden px-4 py-2.5 lg:table-cell">
+        <span class="text-[13px] tabular-nums text-slate-500">
+          {displayCreatedAt(props.process.lastEventAt)}
+        </span>
       </td>
       <td class="hidden px-4 py-2.5 md:table-cell">
         <div class="flex items-center gap-1.5 text-[13px] text-slate-600">
@@ -175,6 +190,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
     getActiveDashboardSortDirection(props.sortSelection, 'provider')
   const importerSortDirection = () =>
     getActiveDashboardSortDirection(props.sortSelection, 'importerName')
+  const createdAtSortDirection = () =>
+    getActiveDashboardSortDirection(props.sortSelection, 'createdAt')
   const statusSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'status')
   const etaSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'eta')
 
@@ -207,6 +224,17 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
                 field="importerName"
                 label={t(keys.dashboard.table.col.importerName)}
                 direction={importerSortDirection()}
+                onToggle={props.onSortToggle}
+              />
+            </th>
+            <th
+              class="hidden px-4 py-2 lg:table-cell"
+              aria-sort={toAriaSort(createdAtSortDirection())}
+            >
+              <SortHeaderButton
+                field="createdAt"
+                label={t(keys.dashboard.table.col.createdAt)}
+                direction={createdAtSortDirection()}
                 onToggle={props.onSortToggle}
               />
             </th>
