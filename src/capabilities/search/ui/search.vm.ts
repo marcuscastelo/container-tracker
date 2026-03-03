@@ -1,4 +1,4 @@
-import type { SearchResultItem } from '~/capabilities/search/application/search.usecase'
+import type { SearchHttpResultItemDto } from '~/capabilities/search/interface/http/search.schemas'
 
 export type SearchResultItemVm = {
   readonly processId: string
@@ -10,10 +10,14 @@ export type SearchResultItemVm = {
   readonly bl: string | null
   readonly derivedStatus: string | null
   readonly eta: string | null
-  readonly matchSource: SearchResultItem['matchSource']
+  readonly matchSource: SearchHttpResultItemDto['matchSource']
 }
 
-export function toSearchResultItemVm(item: SearchResultItem): SearchResultItemVm {
+export type SearchUiState = 'loading' | 'empty' | 'error' | 'ready'
+
+export const MIN_SEARCH_QUERY_LENGTH = 3
+
+export function toSearchResultItemVm(item: SearchHttpResultItemDto): SearchResultItemVm {
   return {
     processId: item.processId,
     processReference: item.processReference,
@@ -26,4 +30,10 @@ export function toSearchResultItemVm(item: SearchResultItem): SearchResultItemVm
     eta: item.eta,
     matchSource: item.matchSource,
   }
+}
+
+export function toSearchResultItemsVm(
+  items: readonly SearchHttpResultItemDto[],
+): readonly SearchResultItemVm[] {
+  return items.map(toSearchResultItemVm)
 }

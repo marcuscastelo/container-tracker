@@ -15,8 +15,8 @@ Global operational search for the Container Tracker platform.
    dedicated repository port — no domain entities exposed to UI.
 2. **No fuzzy search (MVP)**: Ranking is deterministic:
    exact → prefix → contains.
-3. **Grouped results**: Results are categorised by type
-   (process, container, importer, exporter, carrier).
+3. **Consolidated process rows**: Results are rendered as one row per process,
+   showing operational fields (`reference`, `importer`, `containers`, `carrier`, `vessel`, `BL`, `status`, `ETA`).
 4. **Single component**: Both visible dashboard bar and Ctrl+K overlay
    share the same `SearchOverlay` component.
-5. **Limit 20**: Results capped at 20 items server-side.
+5. **Limit 30**: Results capped at 30 items after capability consolidation.
