@@ -14,6 +14,7 @@ import {
   type ListProcessesWithOperationalSummaryDeps,
 } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
+import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
 
 export type CreateProcessUseCasesDeps = {
@@ -57,6 +58,9 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     repository: deps.repository,
     containerUseCases: deps.containerUseCases,
   })
+  const searchByText = createSearchProcessesByTextUseCase({
+    repository: deps.repository,
+  })
 
   const listProcessesWithOperationalSummary = createListProcessesWithOperationalSummaryUseCase({
     repository: deps.repository,
@@ -74,6 +78,7 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     updateProcess,
     deleteProcess,
     removeContainerFromProcess,
+    searchByText,
   }
 }
 

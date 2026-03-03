@@ -266,16 +266,30 @@
   "search": {
     "placeholder": "Search process, container, BL, importer...",
     "loading": "Searching...",
+    "error": "Search failed. Try again.",
     "noResults": "No results found",
-    "hint": "Type at least 2 characters to search",
+    "hint": "Type at least {{count}} characters to search",
+    "notAvailable": "—",
     "close": "Close search",
     "clear": "Clear search",
-    "groups": {
-      "processes": "Processes",
+    "fields": {
+      "processId": "Process ID",
+      "importerName": "Importer",
       "containers": "Containers",
-      "importers": "Importers",
-      "exporters": "Exporters",
-      "carriers": "Carriers"
+      "carrier": "Carrier",
+      "vesselName": "Vessel",
+      "bl": "BL",
+      "derivedStatus": "Status",
+      "eta": "ETA"
+    },
+    "matchSource": {
+      "container": "Container match",
+      "process": "Process match",
+      "importer": "Importer match",
+      "bl": "BL match",
+      "vessel": "Vessel match",
+      "status": "Status match",
+      "carrier": "Carrier match"
     },
     "footer": {
       "navigate": "Navigate",

@@ -1,3 +1,4 @@
+import type { TrackingSearchObservationProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
 
 /**
@@ -14,4 +15,12 @@ export type ObservationRepository = {
 
   /** Fetch the set of fingerprints already persisted for a container. */
   findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>>
+
+  /**
+   * Fetch search observations enriched with process ownership.
+   *
+   * Used by tracking-level search projections so capabilities can consume
+   * status/ETA already derived by Tracking BC.
+   */
+  listSearchObservations(): Promise<readonly TrackingSearchObservationProjection[]>
 }

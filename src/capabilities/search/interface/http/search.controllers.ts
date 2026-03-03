@@ -1,54 +1,36 @@
-// src/modules/search/interface/http/search.controllers.ts
-//
-// Controller factory for the search HTTP endpoint.
-
-import type { SearchUseCases } from '~/capabilities/search/application/search.usecases'
-import { toSearchResponseDto } from '~/capabilities/search/interface/http/search.http.mappers'
+import type { SearchController } from '~/capabilities/search/interface/http/search.controller'
+import { toSearchHttpResponseDto } from '~/capabilities/search/interface/http/search.http.mappers'
 import {
-  SearchQuerySchema,
-  SearchResponseSchema,
+  SearchHttpQuerySchema,
+  SearchHttpResponseSchema,
 } from '~/capabilities/search/interface/http/search.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 
-// ---------------------------------------------------------------------------
-// Dependency types
-// ---------------------------------------------------------------------------
-
 export type SearchControllerDeps = {
-  readonly searchUseCases: SearchUseCases
+  readonly searchController: SearchController
 }
 
-// ---------------------------------------------------------------------------
-// Controller factory
-// ---------------------------------------------------------------------------
-
 export function createSearchControllers(deps: SearchControllerDeps) {
-  const { searchUseCases } = deps
+  const { searchController } = deps
 
-  // -----------------------------------------------------------------------
-  // GET /api/search?q=...&limit=...
-  // -----------------------------------------------------------------------
   async function search({ request }: { request: Request }): Promise<Response> {
     try {
       const url = new URL(request.url)
-      const rawParams = {
-        q: url.searchParams.get('q') ?? '',
-        limit: url.searchParams.get('limit') ?? undefined,
-      }
-
-      const parsed = SearchQuerySchema.safeParse(rawParams)
-      if (!parsed.success) {
-        return jsonResponse({ error: `Invalid search query: ${parsed.error.message}` }, 400)
-      }
-
-      const result = await searchUseCases.search({
-        query: parsed.data.q,
-        limit: parsed.data.limit,
+      const parsedQuery = SearchHttpQuerySchema.safeParse({
+        q: url.searchParams.get('q') ?? undefined,
       })
 
-      const response = toSearchResponseDto(result)
-      return jsonResponse(response, 200, SearchResponseSchema)
+      if (!parsedQuery.success) {
+        return jsonResponse({ error: `Invalid search query: ${parsedQuery.error.message}` }, 400)
+      }
+
+      const result = await searchController.search({
+        query: parsedQuery.data.q,
+      })
+      const response = toSearchHttpResponseDto(result)
+
+      return jsonResponse(response, 200, SearchHttpResponseSchema)
     } catch (err) {
       console.error('GET /api/search error:', err)
       return mapErrorToResponse(err)

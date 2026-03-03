@@ -92,6 +92,23 @@ export const supabaseContainerRepository: ContainerRepository = {
     return data.map(containerMappers.fromRow)
   },
 
+  async listSearchProjections() {
+    const result = await supabase
+      .from(TABLE_NAME)
+      .select('process_id, container_number')
+      .order('created_at', { ascending: true })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'listSearchProjections',
+      table: TABLE_NAME,
+    })
+
+    return data.map((row) => ({
+      processId: row.process_id,
+      containerNumber: row.container_number,
+    }))
+  },
+
   async delete(containerId: string): Promise<void> {
     const result = await supabase.from(TABLE_NAME).delete().eq('id', containerId)
     // Throw only on real errors; allow null/empty delete result

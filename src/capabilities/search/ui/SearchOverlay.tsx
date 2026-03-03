@@ -1,49 +1,30 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createEffect, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { fetchSearchResults } from '~/capabilities/search/ui/fetchSearch'
 import { SearchOverlayPanel } from '~/capabilities/search/ui/SearchOverlay.panel'
 import {
-  groupSearchResults,
-  type SearchResultGroup,
-  type SearchResultType,
-  type SearchResultViewModel,
-  toSearchViewModels,
-} from '~/capabilities/search/ui/search.viewmodel'
-import { useTranslation } from '~/shared/localization/i18n'
+  MIN_SEARCH_QUERY_LENGTH,
+  type SearchResultItemVm,
+  type SearchUiState,
+  toSearchResultItemsVm,
+} from '~/capabilities/search/ui/search.vm'
+
+const SEARCH_DEBOUNCE_MS = 180
 
 export function SearchOverlay(): JSX.Element {
-  const { t, keys } = useTranslation()
   const navigate = useNavigate()
 
   const [isOpen, setIsOpen] = createSignal(false)
   const [query, setQuery] = createSignal('')
-  const [results, setResults] = createSignal<readonly SearchResultViewModel[]>([])
-  const [groups, setGroups] = createSignal<readonly SearchResultGroup[]>([])
-  const [isLoading, setIsLoading] = createSignal(false)
+  const [results, setResults] = createSignal<readonly SearchResultItemVm[]>([])
+  const [state, setState] = createSignal<SearchUiState>('empty')
   const [activeIndex, setActiveIndex] = createSignal(-1)
 
   let inputRef: HTMLInputElement | undefined
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
-
-  const flatItems = (): readonly SearchResultViewModel[] => {
-    const grouped = groups()
-    const flattened: SearchResultViewModel[] = []
-    for (const group of grouped) {
-      for (const item of group.items) {
-        flattened.push(item)
-      }
-    }
-    return flattened
-  }
-
-  const typeLabelMap = (): Record<SearchResultType, string> => ({
-    process: t(keys.search.groups.processes),
-    container: t(keys.search.groups.containers),
-    importer: t(keys.search.groups.importers),
-    exporter: t(keys.search.groups.exporters),
-    carrier: t(keys.search.groups.carriers),
-  })
+  let requestSequence = 0
+  const normalizedQuery = createMemo(() => query().trim())
 
   const open = () => {
     setIsOpen(true)
@@ -54,7 +35,7 @@ export function SearchOverlay(): JSX.Element {
     setIsOpen(false)
     setQuery('')
     setResults([])
-    setGroups([])
+    setState('empty')
     setActiveIndex(-1)
   }
 
@@ -86,46 +67,67 @@ export function SearchOverlay(): JSX.Element {
   })
 
   createEffect(
-    on(query, (currentQuery) => {
+    on(isOpen, (open) => {
+      if (!open) return
+
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+
+      onCleanup(() => {
+        document.body.style.overflow = previousOverflow
+      })
+    }),
+  )
+
+  createEffect(
+    on(normalizedQuery, (currentQuery) => {
       if (debounceTimer) {
         clearTimeout(debounceTimer)
       }
 
-      if (currentQuery.trim().length < 2) {
+      requestSequence += 1
+      const currentRequestSequence = requestSequence
+
+      if (currentQuery.length < MIN_SEARCH_QUERY_LENGTH) {
         setResults([])
-        setGroups([])
-        setIsLoading(false)
+        setState('empty')
+        setActiveIndex(-1)
         return
       }
 
-      setIsLoading(true)
+      setState('loading')
       debounceTimer = setTimeout(async () => {
         try {
-          const data = await fetchSearchResults(currentQuery.trim())
-          const viewModels = toSearchViewModels(data)
+          const data = await fetchSearchResults(currentQuery)
+          if (currentRequestSequence !== requestSequence) {
+            return
+          }
+
+          const viewModels = toSearchResultItemsVm(data)
           setResults(viewModels)
-          setGroups(groupSearchResults(viewModels, typeLabelMap()))
           setActiveIndex(viewModels.length > 0 ? 0 : -1)
+          setState(viewModels.length > 0 ? 'ready' : 'empty')
         } catch (err) {
+          if (currentRequestSequence !== requestSequence) {
+            return
+          }
+
           console.error('Search failed:', err)
           setResults([])
-          setGroups([])
-        } finally {
-          setIsLoading(false)
+          setActiveIndex(-1)
+          setState('error')
         }
-      }, 150)
+      }, SEARCH_DEBOUNCE_MS)
     }),
   )
 
-  const navigateToResult = (item: SearchResultViewModel) => {
-    if (item.processId) {
-      navigate(`/shipments/${item.processId}`)
-    }
+  const navigateToResult = (item: SearchResultItemVm) => {
+    navigate(`/shipments/${item.processId}`)
     close()
   }
 
   const handleInputKeyDown = (event: KeyboardEvent) => {
-    const items = flatItems()
+    const items = results()
     if (items.length === 0) return
 
     if (event.key === 'ArrowDown') {
@@ -151,22 +153,12 @@ export function SearchOverlay(): JSX.Element {
     }),
   )
 
-  const getCumulativeIndex = (groupIndex: number, itemIndex: number): number => {
-    const grouped = groups()
-    let cumulative = 0
-    for (let index = 0; index < groupIndex; index += 1) {
-      cumulative += grouped[index].items.length
-    }
-    return cumulative + itemIndex
-  }
-
   return (
     <SearchOverlayPanel
       isOpen={isOpen()}
       query={query()}
-      isLoading={isLoading()}
+      state={state()}
       results={results()}
-      groups={groups()}
       activeIndex={activeIndex()}
       onOpen={open}
       onClose={close}
@@ -174,11 +166,11 @@ export function SearchOverlay(): JSX.Element {
       onInputKeyDown={handleInputKeyDown}
       onSelectResult={navigateToResult}
       onHoverIndex={setActiveIndex}
-      getCumulativeIndex={getCumulativeIndex}
       setInputRef={(element) => {
         inputRef = element
       }}
       focusInput={() => inputRef?.focus()}
+      minimumQueryLength={MIN_SEARCH_QUERY_LENGTH}
     />
   )
 }

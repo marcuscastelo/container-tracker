@@ -51,3 +51,10 @@ If changing:
 - timeline derivation -> update derive/reconcile read-model tests
 
 Prefer deterministic fixtures and stable tests.
+
+---
+
+## 4) Search Projection Pattern
+
+- For global search data (`vessel/status/eta`), derive values inside Tracking BC using tracking read models (`application/projection/tracking.search.readmodel.ts`), not in capabilities/UI.
+- Use `observationRepository.listSearchObservations()` + tracking derivation (`deriveTimeline`/`deriveStatus`/operational summary) to keep status/ETA semantics canonical.

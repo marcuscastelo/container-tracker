@@ -266,16 +266,30 @@
   "search": {
     "placeholder": "Buscar processo, container, BL, importador...",
     "loading": "Buscando...",
+    "error": "Falha na busca. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
-    "hint": "Digite ao menos 2 caracteres para buscar",
+    "hint": "Digite ao menos {{count}} caracteres para buscar",
+    "notAvailable": "—",
     "close": "Fechar busca",
     "clear": "Limpar busca",
-    "groups": {
-      "processes": "Processos",
+    "fields": {
+      "processId": "ID do processo",
+      "importerName": "Importador",
       "containers": "Containers",
-      "importers": "Importadores",
-      "exporters": "Exportadores",
-      "carriers": "Armadores"
+      "carrier": "Armador",
+      "vesselName": "Navio",
+      "bl": "BL",
+      "derivedStatus": "Status",
+      "eta": "ETA"
+    },
+    "matchSource": {
+      "container": "Match em container",
+      "process": "Match em processo",
+      "importer": "Match em importador",
+      "bl": "Match em BL",
+      "vessel": "Match em navio",
+      "status": "Match em status",
+      "carrier": "Match em armador"
     },
     "footer": {
       "navigate": "Navegar",

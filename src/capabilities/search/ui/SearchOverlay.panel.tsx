@@ -1,28 +1,23 @@
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
-import type {
-  SearchResultGroup,
-  SearchResultType,
-  SearchResultViewModel,
-} from '~/capabilities/search/ui/search.viewmodel'
+import type { SearchResultItemVm, SearchUiState } from '~/capabilities/search/ui/search.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type SearchOverlayPanelProps = {
   readonly isOpen: boolean
   readonly query: string
-  readonly isLoading: boolean
-  readonly results: readonly SearchResultViewModel[]
-  readonly groups: readonly SearchResultGroup[]
+  readonly state: SearchUiState
+  readonly results: readonly SearchResultItemVm[]
   readonly activeIndex: number
   readonly onOpen: () => void
   readonly onClose: () => void
   readonly onQueryInput: (value: string) => void
   readonly onInputKeyDown: (event: KeyboardEvent) => void
-  readonly onSelectResult: (item: SearchResultViewModel) => void
+  readonly onSelectResult: (item: SearchResultItemVm) => void
   readonly onHoverIndex: (index: number) => void
-  readonly getCumulativeIndex: (groupIndex: number, itemIndex: number) => number
   readonly setInputRef: (element: HTMLInputElement) => void
   readonly focusInput: () => void
+  readonly minimumQueryLength: number
 }
 
 function SearchIcon(): JSX.Element {
@@ -44,37 +39,61 @@ function SearchIcon(): JSX.Element {
   )
 }
 
-function TypeIcon(props: { readonly type: SearchResultType }): JSX.Element {
-  const iconClass = 'h-4 w-4 shrink-0'
+function MatchSourceIcon(props: {
+  readonly source: SearchResultItemVm['matchSource']
+}): JSX.Element {
+  const className = 'h-4 w-4 shrink-0'
 
   return (
     <Show
-      when={props.type === 'container'}
+      when={props.source === 'container'}
       fallback={
         <Show
-          when={props.type === 'process'}
+          when={props.source === 'process'}
           fallback={
             <Show
-              when={props.type === 'carrier'}
+              when={
+                props.source === 'importer' || props.source === 'bl' || props.source === 'carrier'
+              }
               fallback={
-                <svg
-                  class={`${iconClass} text-slate-400`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
+                <Show
+                  when={props.source === 'vessel'}
+                  fallback={
+                    <svg
+                      class={`${className} text-cyan-500`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  }
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
+                  <svg
+                    class={`${className} text-indigo-500`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 17l3-3m0 0l4 4 8-8m-8 8V6"
+                    />
+                  </svg>
+                </Show>
               }
             >
               <svg
-                class={`${iconClass} text-blue-400`}
+                class={`${className} text-slate-500`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -84,14 +103,14 @@ function TypeIcon(props: { readonly type: SearchResultType }): JSX.Element {
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                 />
               </svg>
             </Show>
           }
         >
           <svg
-            class={`${iconClass} text-blue-500`}
+            class={`${className} text-blue-500`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -108,7 +127,7 @@ function TypeIcon(props: { readonly type: SearchResultType }): JSX.Element {
       }
     >
       <svg
-        class={`${iconClass} text-emerald-500`}
+        class={`${className} text-emerald-500`}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -125,41 +144,162 @@ function TypeIcon(props: { readonly type: SearchResultType }): JSX.Element {
   )
 }
 
-function HighlightMatch(props: { readonly text: string; readonly query: string }): JSX.Element {
-  const parts = () => {
-    const query = props.query.toLowerCase()
-    const text = props.text
-    const index = text.toLowerCase().indexOf(query)
-    if (index === -1 || query.length === 0) return [{ text, highlight: false }]
-    return [
-      { text: text.slice(0, index), highlight: false },
-      { text: text.slice(index, index + query.length), highlight: true },
-      { text: text.slice(index + query.length), highlight: false },
-    ].filter((part) => part.text.length > 0)
+function formatNullableText(value: string | null, fallbackText: string): string {
+  if (value === null) return fallbackText
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : fallbackText
+}
+
+function formatContainers(value: readonly string[], fallbackText: string): string {
+  if (value.length === 0) return fallbackText
+  return value.join(', ')
+}
+
+function formatEta(value: string | null, fallbackText: string): string {
+  if (value === null) return fallbackText
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
   }
 
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  }).format(parsed)
+}
+
+type SearchResultRowLabels = {
+  readonly processId: string
+  readonly importerName: string
+  readonly containers: string
+  readonly carrier: string
+  readonly vesselName: string
+  readonly bl: string
+  readonly derivedStatus: string
+  readonly eta: string
+}
+
+type SearchResultRowProps = {
+  readonly item: SearchResultItemVm
+  readonly index: number
+  readonly activeIndex: number
+  readonly fallbackText: string
+  readonly labels: SearchResultRowLabels
+  readonly matchSourceLabel: string
+  readonly onSelectResult: (item: SearchResultItemVm) => void
+  readonly onHoverIndex: (index: number) => void
+}
+
+function SearchResultRow(props: SearchResultRowProps): JSX.Element {
+  const isActive = () => props.activeIndex === props.index
+
   return (
-    <span>
-      <For each={parts()}>
-        {(part) => (
-          <Show when={part.highlight} fallback={part.text}>
-            <mark class="rounded bg-blue-100 px-0.5 text-blue-700">{part.text}</mark>
-          </Show>
-        )}
-      </For>
-    </span>
+    <button
+      type="button"
+      data-search-index={props.index}
+      onClick={() => props.onSelectResult(props.item)}
+      onMouseEnter={() => props.onHoverIndex(props.index)}
+      class={`w-full border-b border-slate-100 px-4 py-3 text-left transition-colors last:border-b-0 ${
+        isActive() ? 'bg-blue-50 text-blue-900' : 'bg-white text-slate-700 hover:bg-slate-50'
+      }`}
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <MatchSourceIcon source={props.item.matchSource} />
+            <span class="truncate text-sm font-semibold">
+              {formatNullableText(props.item.processReference, props.item.processId)}
+            </span>
+          </div>
+          <div class="mt-1 text-xs text-slate-500">
+            {props.labels.processId}: {props.item.processId}
+          </div>
+        </div>
+
+        <span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+          {props.matchSourceLabel}
+        </span>
+      </div>
+
+      <div class="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-slate-600 sm:grid-cols-2">
+        <div class="truncate">
+          <span class="font-medium text-slate-500">{props.labels.importerName}:</span>{' '}
+          {formatNullableText(props.item.importerName, props.fallbackText)}
+        </div>
+        <div class="truncate">
+          <span class="font-medium text-slate-500">{props.labels.containers}:</span>{' '}
+          {formatContainers(props.item.containers, props.fallbackText)}
+        </div>
+        <div class="truncate">
+          <span class="font-medium text-slate-500">{props.labels.carrier}:</span>{' '}
+          {formatNullableText(props.item.carrier, props.fallbackText)}
+        </div>
+        <div class="truncate">
+          <span class="font-medium text-slate-500">{props.labels.vesselName}:</span>{' '}
+          {formatNullableText(props.item.vesselName, props.fallbackText)}
+        </div>
+        <div class="truncate">
+          <span class="font-medium text-slate-500">{props.labels.bl}:</span>{' '}
+          {formatNullableText(props.item.bl, props.fallbackText)}
+        </div>
+        <div class="truncate">
+          <span class="font-medium text-slate-500">{props.labels.derivedStatus}:</span>{' '}
+          {formatNullableText(props.item.derivedStatus, props.fallbackText)}
+        </div>
+        <div class="truncate sm:col-span-2">
+          <span class="font-medium text-slate-500">{props.labels.eta}:</span>{' '}
+          {formatEta(props.item.eta, props.fallbackText)}
+        </div>
+      </div>
+    </button>
   )
 }
 
 export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const matchSourceLabel = (source: SearchResultItemVm['matchSource']): string => {
+    switch (source) {
+      case 'container':
+        return t(keys.search.matchSource.container)
+      case 'process':
+        return t(keys.search.matchSource.process)
+      case 'importer':
+        return t(keys.search.matchSource.importer)
+      case 'bl':
+        return t(keys.search.matchSource.bl)
+      case 'vessel':
+        return t(keys.search.matchSource.vessel)
+      case 'status':
+        return t(keys.search.matchSource.status)
+      case 'carrier':
+        return t(keys.search.matchSource.carrier)
+    }
+  }
+
+  const shouldShowResultsState = () => props.query.trim().length >= props.minimumQueryLength
+  const showShortQueryHint = () => !shouldShowResultsState()
+  const fallbackText = t(keys.search.notAvailable)
+  const labels: SearchResultRowLabels = {
+    processId: t(keys.search.fields.processId),
+    importerName: t(keys.search.fields.importerName),
+    containers: t(keys.search.fields.containers),
+    carrier: t(keys.search.fields.carrier),
+    vesselName: t(keys.search.fields.vesselName),
+    bl: t(keys.search.fields.bl),
+    derivedStatus: t(keys.search.fields.derivedStatus),
+    eta: t(keys.search.fields.eta),
+  }
+
   return (
     <>
       <button
         type="button"
         onClick={() => props.onOpen()}
-        class="group flex w-full max-w-xl items-center gap-2.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        class="group flex w-full max-w-4xl items-center gap-2.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
       >
         <SearchIcon />
         <span class="flex-1 text-[13px] text-slate-400">{t(keys.search.placeholder)}</span>
@@ -171,7 +311,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
 
       <Show when={props.isOpen}>
         <div
-          class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+          class="fixed inset-0 z-50 flex items-start justify-center px-2 pt-[8vh] sm:px-4"
           style={{ animation: 'search-overlay-in 150ms ease-out' }}
         >
           {/* biome-ignore lint/a11y/useSemanticElements: backdrop overlay uses div as a click-away target, not a true interactive button */}
@@ -187,8 +327,11 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
           />
 
           <div
-            class="relative z-10 w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+            class="relative z-10 w-full max-w-4xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
             style={{ animation: 'search-modal-in 150ms ease-out' }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t(keys.search.placeholder)}
           >
             <div class="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
               <SearchIcon />
@@ -234,80 +377,46 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
               </kbd>
             </div>
 
-            <div class="max-h-80 overflow-y-auto">
-              <Show when={props.isLoading && props.query.trim().length >= 2}>
+            <div class="max-h-[65vh] overflow-y-auto">
+              <Show when={props.state === 'loading' && shouldShowResultsState()}>
                 <div class="px-4 py-6 text-center text-sm text-slate-400">
                   {t(keys.search.loading)}
                 </div>
               </Show>
 
-              <Show
-                when={
-                  !props.isLoading && props.query.trim().length >= 2 && props.results.length === 0
-                }
-              >
+              <Show when={props.state === 'error' && shouldShowResultsState()}>
+                <div class="px-4 py-6 text-center text-sm text-red-500">{t(keys.search.error)}</div>
+              </Show>
+
+              <Show when={props.state === 'empty' && shouldShowResultsState()}>
                 <div class="px-4 py-6 text-center text-sm text-slate-400">
                   {t(keys.search.noResults)}
                 </div>
               </Show>
 
-              <Show when={!props.isLoading && props.groups.length > 0}>
-                <For each={props.groups}>
-                  {(group, groupIndex) => (
-                    <div>
-                      <div class="bg-slate-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        {group.label}
-                      </div>
-                      <For each={group.items}>
-                        {(item, itemIndex) => {
-                          const cumulativeIndex = () =>
-                            props.getCumulativeIndex(groupIndex(), itemIndex())
-                          const isActive = () => props.activeIndex === cumulativeIndex()
-
-                          return (
-                            <button
-                              type="button"
-                              data-search-index={cumulativeIndex()}
-                              onClick={() => props.onSelectResult(item)}
-                              onMouseEnter={() => props.onHoverIndex(cumulativeIndex())}
-                              class={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                                isActive()
-                                  ? 'bg-blue-50 text-blue-900'
-                                  : 'text-slate-700 hover:bg-slate-50'
-                              }`}
-                            >
-                              <TypeIcon type={item.type} />
-                              <div class="min-w-0 flex-1">
-                                <div class="truncate text-sm font-medium">
-                                  <HighlightMatch text={item.title} query={props.query} />
-                                </div>
-                                <Show when={item.subtitle}>
-                                  <div class="truncate text-xs text-slate-400">
-                                    <HighlightMatch
-                                      text={item.subtitle ?? ''}
-                                      query={props.query}
-                                    />
-                                  </div>
-                                </Show>
-                              </div>
-                              <Show when={item.carrier}>
-                                <span class="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
-                                  {item.carrier}
-                                </span>
-                              </Show>
-                            </button>
-                          )
-                        }}
-                      </For>
-                    </div>
-                  )}
-                </For>
+              <Show when={showShortQueryHint() && props.state !== 'loading'}>
+                <div class="px-4 py-6 text-center text-sm text-slate-400">
+                  {t(keys.search.hint, { count: props.minimumQueryLength })}
+                </div>
               </Show>
 
-              <Show when={props.query.trim().length < 2 && !props.isLoading}>
-                <div class="px-4 py-6 text-center text-sm text-slate-400">
-                  {t(keys.search.hint)}
-                </div>
+              <Show when={props.state === 'ready' && props.results.length > 0}>
+                <For each={props.results}>
+                  {(item, itemIndex) => {
+                    return (
+                      <SearchResultRow
+                        item={item}
+                        index={itemIndex()}
+                        activeIndex={props.activeIndex}
+                        labels={labels}
+                        fallbackText={fallbackText}
+                        matchSourceLabel={matchSourceLabel(item.matchSource)}
+                        onSelectResult={props.onSelectResult}
+                        onHoverIndex={props.onHoverIndex}
+                      />
+                    )
+                  }}
+                </For>
               </Show>
             </div>
 
