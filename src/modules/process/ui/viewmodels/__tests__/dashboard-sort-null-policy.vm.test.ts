@@ -21,6 +21,7 @@ function createProcess(
     reference: input.reference ?? null,
     origin: null,
     destination: null,
+    importerId: null,
     importerName: input.importerName ?? null,
     containerCount: 1,
     status: 'unknown',

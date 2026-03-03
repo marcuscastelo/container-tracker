@@ -20,6 +20,7 @@ function createProcess(
     reference: null,
     origin: null,
     destination: null,
+    importerId: null,
     importerName: null,
     containerCount: 1,
     status: 'unknown',

@@ -11,6 +11,7 @@ export type ProcessListItemSource = {
   origin?: { display_name?: string | null } | null
   destination?: { display_name?: string | null } | null
   carrier?: string | null
+  importer_id?: string | null
   importer_name?: string | null
   bill_of_lading?: string | null
   booking_number?: string | null
@@ -53,6 +54,7 @@ export function toProcessSummaryVMs(
       reference: process.reference ?? null,
       origin: process.origin,
       destination: process.destination,
+      importerId: toOptionalNonBlankString(process.importer_id),
       importerName: toOptionalNonBlankString(process.importer_name),
       containerCount: process.containers.length,
       status: trackingStatusToVariant(statusCode),

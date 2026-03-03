@@ -50,4 +50,55 @@ describe('fetchDashboardProcessSummaries', () => {
     expect(fetchSpy).toHaveBeenNthCalledWith(1, '/api/processes', undefined)
     expect(fetchSpy).toHaveBeenNthCalledWith(2, '/api/processes', undefined)
   })
+
+  it('serializes optional filter query params', async () => {
+    const fetchSpy = mockProcessListFetch()
+
+    await fetchDashboardProcessSummaries({
+      filters: {
+        provider: ['MAERSK', 'MSC'],
+        status: ['IN_TRANSIT', 'DELIVERED'],
+        importerId: 'importer-42',
+        importerName: 'Empresa ABC',
+      },
+    })
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/processes?provider=MAERSK&provider=MSC&status=IN_TRANSIT&status=DELIVERED&importerId=importer-42&importerName=Empresa+ABC',
+      undefined,
+    )
+  })
+
+  it('serializes sort and filters together when both are valid', async () => {
+    const fetchSpy = mockProcessListFetch()
+
+    await fetchDashboardProcessSummaries({
+      sortField: 'createdAt',
+      sortDir: 'desc',
+      filters: {
+        provider: ['MAERSK'],
+        status: ['LOADED'],
+      },
+    })
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/processes?sortField=createdAt&sortDir=desc&provider=MAERSK&status=LOADED',
+      undefined,
+    )
+  })
+
+  it('ignores empty filter values and keeps existing endpoint behavior', async () => {
+    const fetchSpy = mockProcessListFetch()
+
+    await fetchDashboardProcessSummaries({
+      filters: {
+        provider: ['', '   '],
+        status: [],
+        importerId: ' ',
+        importerName: '',
+      },
+    })
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/processes', undefined)
+  })
 })

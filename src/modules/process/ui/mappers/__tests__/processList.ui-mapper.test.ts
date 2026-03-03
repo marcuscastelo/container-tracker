@@ -13,6 +13,7 @@ describe('toProcessSummaryVMs', () => {
         origin: { display_name: 'Shanghai' },
         destination: { display_name: 'Santos' },
         carrier: 'Maersk',
+        importer_id: 'importer-1',
         importer_name: 'Empresa ABC',
         bill_of_lading: null,
         booking_number: null,
@@ -28,6 +29,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].id).toBe('p1')
     expect(result[0].containerCount).toBe(1)
     expect(result[0].carrier).toBe('Maersk')
+    expect(result[0].importerId).toBe('importer-1')
     expect(result[0].importerName).toBe('Empresa ABC')
   })
 
@@ -133,6 +135,7 @@ describe('toProcessSummaryVMs', () => {
     ]
 
     const result = toProcessSummaryVMs(example)
+    expect(result[0].importerId).toBeNull()
     expect(result[0].importerName).toBeNull()
   })
 

@@ -6,6 +6,7 @@ export type ProcessSummaryVM = {
   readonly reference: string | null
   readonly origin?: { display_name?: string | null } | null
   readonly destination?: { display_name?: string | null } | null
+  readonly importerId: string | null
   readonly importerName: string | null
   readonly containerCount: number
   readonly status: StatusVariant

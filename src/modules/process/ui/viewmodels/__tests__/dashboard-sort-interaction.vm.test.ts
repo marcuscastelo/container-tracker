@@ -16,6 +16,7 @@ function toTimestampOrNull(value: string | null): number | null {
 function createProcess(
   input: Pick<ProcessSummaryVM, 'id'> & {
     readonly reference?: string | null
+    readonly importerId?: string | null
     readonly importerName?: string | null
     readonly carrier?: string | null
     readonly status?: ProcessSummaryVM['status']
@@ -34,6 +35,7 @@ function createProcess(
     reference: input.reference ?? null,
     origin: null,
     destination: null,
+    importerId: input.importerId ?? null,
     importerName: input.importerName ?? null,
     containerCount: 1,
     status: input.status ?? 'unknown',
