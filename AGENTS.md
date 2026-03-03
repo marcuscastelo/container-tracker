@@ -230,7 +230,7 @@ Why:
 
 - `tools/ralph-loop` is an external Git submodule; treat it as third-party code and do not apply root lint/type-check rules to it.
 - Use the local wrappers in `scripts/ai/` (exposed as `pnpm run ai:loop:*`) instead of calling `tools/ralph-loop/ralph.sh` directly.
-- Devcontainer policy is commit-inside-container + push-on-host. In container, `git push` and destructive local Git commands are intentionally blocked by guard scripts.
+- Devcontainer policy allows commit-in-container and branch push-in-container for Ralph loop completion; dangerous pushes remain blocked by guard scripts (`main/master`, deletion refspecs, force/mirror/all) and destructive local Git commands are still blocked.
 - For Maersk Puppeteer flows in devcontainer, keep Chromium provisioned in `.devcontainer/Dockerfile` and set `CHROME_PATH=/usr/bin/chromium` in `.devcontainer/devcontainer.json`.
 - Keep Chromium version pinned via `.devcontainer/devcontainer.json` `build.args.CHROMIUM_VERSION` and install it as an exact package version in `.devcontainer/Dockerfile`.
 - Do not add Chromium auto-update logic to `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, or refresh workflows; version bumps must happen in explicit PRs.
@@ -252,13 +252,15 @@ When the request is to implement an existing PRD, the default path is:
    - Plan: `.ralph-loop/<feature-key>/prd.json`
    - Progress log: `.ralph-loop/<feature-key>/progress.txt`
    - Input: `.ralph-loop/<feature-key>/input.json`
-4. Push only from host after commits are created.
+4. If an active Ralph loop is running, finish by pushing the current implementation branch (`git push`) after commits are created. Never push/delete protected branches (`main`/`master`).
 
 Rules:
 
 - If a valid existing PRD is present, do not re-plan/refine before execution.
 - Prefer `ai:loop:start` over chaining `plan -> input -> exec` manually.
 - Use `--prepare-only` when user wants artifacts generated without running loop execution.
+- After implementation in an active Ralph loop, prefer preparing/opening a PR with the `$draft-pr-from-branch` skill when applicable.
+- The agent must never merge PRs.
 
 ---
 

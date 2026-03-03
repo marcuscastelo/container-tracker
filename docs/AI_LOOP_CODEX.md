@@ -89,11 +89,13 @@ RALPH_MAX_ITERATIONS=20 pnpm run ai:loop:exec -- .ralph-loop/input.json
 The devcontainer is optimized for:
 
 - Commit in container
-- Push from host
+- Push implementation branch in container (for Ralph loop completion)
 
 Inside container:
 
-- `git push` is blocked
+- regular branch `git push` is allowed
+- pushes to protected branches (`main`/`master`) are blocked
+- branch/tag deletion pushes are blocked
 - force-destructive commands are blocked (`git branch -D`, `git reset --hard`, `git clean -f*`)
 - `git fetch` and `git pull` are allowed
 
@@ -112,7 +114,7 @@ Branch and commit history are shared between host and container because the devc
 Practical flow:
 
 1. Work and commit in container.
-2. Run `git push` from host.
+2. Push only the implementation branch from container (or host when preferred).
 
 ## Claude Swap (Future)
 
