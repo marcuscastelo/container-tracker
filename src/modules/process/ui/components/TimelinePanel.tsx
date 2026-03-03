@@ -17,7 +17,7 @@ export function TimelinePanel(props: Props): JSX.Element {
     props.selectedContainer ? `${props.selectedContainer.number} •` : undefined
 
   return (
-    <Panel title={t(keys.shipmentView.timeline.title)} subtitle={subtitle()} bodyClass="px-4 py-3">
+    <Panel title={t(keys.shipmentView.timeline.title)} subtitle={subtitle()} bodyClass="px-3 py-2">
       <div>
         <Show
           when={timeline().length > 0}

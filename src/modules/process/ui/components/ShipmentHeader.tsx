@@ -263,13 +263,13 @@ function SelectedEtaSummary(props: {
   return (
     <div
       data-testid="selected-eta-summary"
-      class={`inline-flex items-center gap-2 rounded border px-3 py-1.5 ${selectedEtaBorderClass(props.selectedEtaVm)} ${
+      class={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 ${selectedEtaBorderClass(props.selectedEtaVm)} ${
         props.selectedEtaVm ? etaToneBgClass(props.selectedEtaVm.tone) : 'bg-slate-50'
       }`}
     >
       <span
         data-testid="selected-eta-title"
-        class={`text-sm font-semibold ${
+        class={`text-[13px] font-semibold leading-tight ${
           props.selectedEtaVm ? etaToneClass(props.selectedEtaVm.tone) : 'text-slate-500'
         }`}
       >
@@ -278,8 +278,8 @@ function SelectedEtaSummary(props: {
       {props.subtitle ? (
         <span
           data-testid="selected-eta-subtitle"
-          class={`text-[11px] font-medium ${
-            props.selectedEtaVm?.state === 'EXPIRED_EXPECTED' ? 'text-amber-600' : 'text-slate-500'
+          class={`text-[10px] font-medium leading-tight ${
+            props.selectedEtaVm?.state === 'EXPIRED_EXPECTED' ? 'text-amber-600' : 'text-slate-400'
           }`}
         >
           {props.subtitle}
@@ -299,10 +299,10 @@ function ProcessEtaSummary(props: {
     <Show when={props.processEtaSecondaryVm.visible}>
       <div
         data-testid="process-eta-summary"
-        class="inline-flex items-center gap-2 text-xs text-slate-500"
+        class="inline-flex items-center gap-1.5 text-[11px] text-slate-400"
       >
         <span class="font-medium">{props.processEtaTitle}:</span>
-        <span data-testid="process-eta-date" class="font-semibold text-slate-700">
+        <span data-testid="process-eta-date" class="font-semibold text-slate-600">
           {props.processEtaSecondaryVm.date ?? props.noEta}
         </span>
         <span data-testid="process-eta-coverage" class="text-slate-400">
@@ -311,7 +311,7 @@ function ProcessEtaSummary(props: {
         {props.processEtaSecondaryVm.incomplete ? (
           <span
             data-testid="process-eta-incomplete"
-            class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
+            class="rounded bg-slate-100/80 px-1 py-px text-[9px] font-medium text-slate-400"
           >
             {props.incomplete}
           </span>
@@ -342,11 +342,11 @@ export function ShipmentHeader(props: Props): JSX.Element {
   }
 
   return (
-    <section class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-4">
+    <section class="mb-3 rounded-lg border border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-3.5">
       {/* Row 1: Process + Status + Carrier + Actions */}
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-4 min-w-0">
-          <h1 class="truncate text-lg font-semibold text-slate-900">
+      <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <h1 class="truncate text-base font-semibold text-slate-900 sm:text-lg">
             {t(keys.shipmentView.header)} {props.data.processRef}
             {props.data.reference ? null : (
               <InternalIdHint
@@ -356,23 +356,23 @@ export function ShipmentHeader(props: Props): JSX.Element {
               />
             )}
           </h1>
-          <span class="hidden text-sm text-slate-500 sm:inline-flex sm:items-center sm:gap-1.5">
+          <span class="hidden text-xs text-slate-400 sm:inline-flex sm:items-center sm:gap-1">
             {props.data.origin}
             <ArrowIcon />
             {props.data.destination}
           </span>
         </div>
 
-        <div class="flex items-center gap-3 shrink-0">
+        <div class="flex items-center gap-2 shrink-0">
           <StatusBadge
             variant={props.data.status}
             label={t(trackingStatusToLabelKey(keys, props.data.statusCode))}
           />
-          <span class="text-xs font-medium uppercase text-slate-500">
+          <span class="text-[11px] font-medium uppercase tracking-wide text-slate-400">
             {props.data.carrier ?? '—'}
           </span>
 
-          <div class="flex items-center gap-1 border-l border-slate-200 pl-3">
+          <div class="flex items-center gap-0.5 border-l border-slate-200 pl-2">
             <RefreshButton
               isRefreshing={props.isRefreshing}
               carrier={props.data.carrier}
@@ -417,7 +417,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
       </div>
 
       {/* Row 2: ETA container (primary) + ETA process (secondary) — compact bar */}
-      <div class="mt-3 flex items-center gap-4 flex-wrap">
+      <div class="mt-2 flex items-center gap-3 flex-wrap">
         <SelectedEtaSummary
           selectedEtaVm={props.selectedContainerEtaVm}
           title={selectedEtaTitle()}

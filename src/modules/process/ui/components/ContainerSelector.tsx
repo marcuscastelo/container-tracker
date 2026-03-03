@@ -7,18 +7,18 @@ import { CopyButton } from '~/shared/ui/CopyButton'
 
 function etaChipClass(tone: ContainerDetailVM['etaChipVm']['tone'], selected: boolean): string {
   if (selected) {
-    return 'bg-slate-600 text-white'
+    return 'bg-slate-500/80 text-white'
   }
 
   switch (tone) {
     case 'positive':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+      return 'bg-emerald-50 text-emerald-700'
     case 'informative':
-      return 'bg-blue-50 text-blue-700 border border-blue-200'
+      return 'bg-blue-50 text-blue-700'
     case 'warning':
-      return 'bg-amber-50 text-amber-700 border border-amber-200'
+      return 'bg-amber-50 text-amber-700'
     default:
-      return 'bg-slate-100 text-slate-600 border border-slate-200'
+      return 'bg-slate-50 text-slate-500'
   }
 }
 
@@ -29,7 +29,7 @@ export function ContainerSelector(props: {
 }): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <div class="px-3 py-2">
+    <div class="px-3 py-1.5">
       <div class="flex flex-wrap gap-1.5">
         <For each={props.containers}>
           {(container) =>
@@ -49,25 +49,27 @@ export function ContainerSelector(props: {
               return (
                 <div
                   data-testid={`container-card-${container.id}`}
-                  class={`rounded border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  class={`rounded border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
                     selected()
                       ? 'border-slate-700 bg-slate-800 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
-                  <div class="flex items-start gap-1.5">
+                  <div class="flex items-start gap-1">
                     <button
                       type="button"
                       onClick={() => props.onSelect(container.id)}
                       class="min-w-0 flex-1 text-left"
                     >
-                      <div class="flex items-center gap-1.5">
-                        <span class="font-semibold tracking-wide">{container.number}</span>
+                      <div class="flex items-center gap-1">
+                        <span class="font-semibold tracking-wide text-[11px]">
+                          {container.number}
+                        </span>
                       </div>
-                      <div class="mt-0.5 flex items-center gap-1">
+                      <div class="mt-0.5 flex items-center gap-0.5">
                         <span
                           data-testid={`container-eta-chip-${container.id}`}
-                          class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${etaChipClass(
+                          class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-tight ${etaChipClass(
                             container.etaChipVm.tone,
                             selected(),
                           )}`}
@@ -77,10 +79,10 @@ export function ContainerSelector(props: {
                         {container.tsChipVm.visible ? (
                           <span
                             data-testid={`container-int-chip-${container.id}`}
-                            class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${
+                            class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-tight ${
                               selected()
-                                ? 'bg-slate-600 text-white'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                ? 'bg-slate-500/80 text-white'
+                                : 'bg-slate-100 text-slate-500'
                             }`}
                             title={container.tsChipVm.portsTooltip ?? undefined}
                           >
@@ -92,10 +94,10 @@ export function ContainerSelector(props: {
                         {container.dataIssueChipVm.visible ? (
                           <span
                             data-testid={`container-data-chip-${container.id}`}
-                            class={`inline-flex rounded px-1.5 py-px text-[10px] font-medium leading-tight ${
+                            class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-tight ${
                               selected()
-                                ? 'bg-slate-600 text-white'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                ? 'bg-slate-500/80 text-white'
+                                : 'bg-amber-50 text-amber-600'
                             }`}
                           >
                             {t(keys.shipmentView.operational.chips.dataIssue)}
