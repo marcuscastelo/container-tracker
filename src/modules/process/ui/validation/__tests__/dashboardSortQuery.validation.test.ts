@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyDashboardSortToSearchParams,
+  hasDashboardSortQueryParams,
   parseDashboardSortFromSearchParams,
+  resolveDashboardSortSelectionWithStorageFallback,
   serializeDashboardSortToSearchParams,
 } from '~/modules/process/ui/validation/dashboardSortQuery.validation'
 import {
@@ -64,6 +67,39 @@ describe('dashboard sort query contract', () => {
     expect(parseDashboardSortFromSearchParams(withOnlyDirection)).toBeNull()
   })
 
+  it('tracks when URL includes sort query params', () => {
+    expect(hasDashboardSortQueryParams(new URLSearchParams())).toBe(false)
+    expect(hasDashboardSortQueryParams(new URLSearchParams({ sortField: 'status' }))).toBe(true)
+    expect(hasDashboardSortQueryParams(new URLSearchParams({ sortDir: 'asc' }))).toBe(true)
+  })
+
+  it('resolves initial sort with URL precedence over storage fallback', () => {
+    const urlSelection = new URLSearchParams({
+      sortField: 'status',
+      sortDir: 'desc',
+    })
+    const storageSelection: DashboardSortSelection = {
+      field: 'provider',
+      direction: 'asc',
+    }
+
+    const result = resolveDashboardSortSelectionWithStorageFallback(urlSelection, storageSelection)
+    expect(result).toEqual({ field: 'status', direction: 'desc' })
+  })
+
+  it('uses storage fallback when URL has no sort params', () => {
+    const storageSelection: DashboardSortSelection = {
+      field: 'createdAt',
+      direction: 'asc',
+    }
+
+    const result = resolveDashboardSortSelectionWithStorageFallback(
+      new URLSearchParams(),
+      storageSelection,
+    )
+    expect(result).toEqual(storageSelection)
+  })
+
   it('roundtrips URL-to-state and state-to-URL for all supported sort fields', () => {
     for (const field of DASHBOARD_SORT_FIELDS) {
       for (const direction of DASHBOARD_SORT_DIRECTIONS) {
@@ -83,5 +119,33 @@ describe('dashboard sort query contract', () => {
   it('serializes no active sort to an empty query', () => {
     const serialized = serializeDashboardSortToSearchParams(DASHBOARD_DEFAULT_SORT_SELECTION)
     expect(serialized.toString()).toBe('')
+  })
+
+  it('applies sort params while preserving unrelated query params', () => {
+    const result = applyDashboardSortToSearchParams(
+      new URLSearchParams({
+        q: 'active',
+      }),
+      { field: 'eta', direction: 'desc' },
+    )
+
+    expect(result.get('q')).toBe('active')
+    expect(result.get('sortField')).toBe('eta')
+    expect(result.get('sortDir')).toBe('desc')
+  })
+
+  it('removes sort params when no active sort is selected', () => {
+    const result = applyDashboardSortToSearchParams(
+      new URLSearchParams({
+        sortField: 'provider',
+        sortDir: 'asc',
+        q: 'active',
+      }),
+      null,
+    )
+
+    expect(result.get('sortField')).toBeNull()
+    expect(result.get('sortDir')).toBeNull()
+    expect(result.get('q')).toBe('active')
   })
 })

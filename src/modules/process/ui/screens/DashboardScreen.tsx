@@ -1,10 +1,19 @@
-import { useNavigate } from '@solidjs/router'
+import { useLocation, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, onMount, Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
+import {
+  applyDashboardSortToSearchParams,
+  parseDashboardSortFromSearchParams,
+  resolveDashboardSortSelectionWithStorageFallback,
+} from '~/modules/process/ui/validation/dashboardSortQuery.validation'
+import {
+  readDashboardSortFromLocalStorage,
+  writeDashboardSortToLocalStorage,
+} from '~/modules/process/ui/validation/dashboardSortStorage.validation'
 import {
   createProcessRequest,
   fetchDashboardProcessSummaries,
@@ -26,9 +35,12 @@ import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
+  const location = useLocation()
   const navigate = useNavigate()
   const [processes, { refetch }] = createResource(fetchDashboardProcessSummaries)
-  const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(null)
+  const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
+    parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
+  )
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
@@ -36,13 +48,33 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     sortDashboardProcesses(processes() ?? [], sortSelection()),
   )
 
+  onMount(() => {
+    const resolvedSortSelection = resolveDashboardSortSelectionWithStorageFallback(
+      new URLSearchParams(location.search),
+      readDashboardSortFromLocalStorage(),
+    )
+
+    setSortSelection(resolvedSortSelection)
+  })
+
   const handleCreateProcess = () => {
     setCreateError(null)
     setIsCreateDialogOpen(true)
   }
 
   const handleSortToggle = (field: DashboardSortField) => {
-    setSortSelection((currentSelection) => nextDashboardSortSelection(currentSelection, field))
+    const nextSelection = nextDashboardSortSelection(sortSelection(), field)
+    setSortSelection(nextSelection)
+    writeDashboardSortToLocalStorage(nextSelection)
+
+    const nextSearchParams = applyDashboardSortToSearchParams(
+      new URLSearchParams(location.search),
+      nextSelection,
+    )
+    const nextQuery = nextSearchParams.toString()
+    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+
+    void navigate(nextPath, { replace: true })
   }
 
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
