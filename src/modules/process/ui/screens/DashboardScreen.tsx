@@ -8,7 +8,7 @@ import { DashboardProcessTable } from '~/modules/process/ui/components/Dashboard
 import {
   createProcessRequest,
   fetchDashboardGlobalAlertsSummary,
-  fetchDashboardProcessSummaries,
+  fetchDashboardProcessExceptions,
   toCreateProcessInput,
 } from '~/modules/process/ui/validation/processApi.validation'
 import {
@@ -20,7 +20,7 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const navigate = useNavigate()
-  const [processes, { refetch: refetchProcesses }] = createResource(fetchDashboardProcessSummaries)
+  const [processes, { refetch: refetchProcesses }] = createResource(fetchDashboardProcessExceptions)
   const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(
     fetchDashboardGlobalAlertsSummary,
   )

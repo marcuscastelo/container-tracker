@@ -50,15 +50,20 @@
       "arrivalsToday": "Chegadas Hoje"
     },
     "table": {
-      "title": "Resumo das Expedições",
+      "title": "Exceções de Processos",
       "col": {
         "process": "Processo",
         "carrier": "Armador",
         "importerName": "Importador",
-        "route": "Origem → Destino",
+        "route": "Rota",
         "containers": "Contentores",
-        "status": "Estado",
-        "eta": "ETA"
+        "status": "Estado Derivado",
+        "eta": "ETA Atual",
+        "dominantSeverity": "Severidade Dominante",
+        "activeAlerts": "Alertas Ativos"
+      },
+      "severity": {
+        "none": "Sem alerta"
       }
     },
     "loading": "A carregar...",
