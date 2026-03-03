@@ -5,6 +5,7 @@ Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar ident
 No Status, em vez de "Discharged", "Loaded", etc. poderia ter "Discharged (3/7)", "Loaded (5/10)", etc. para dar uma ideia de quantos eventos ainda falta para o "Arrived at destination" acontecer, e dar uma ideia melhor do progresso do container, lembrando que no X/Y X é o ultimo ACTUAL e Y é o último EXPECTED e pode mudar. Talvez seja melhor criar outro campo na UI (progresso?) para permitir futuros filtros por status sem poluir com progresso meramente visual.
 Fazer efeitos de blur serem transicionados para nao ser abrupto (searchoverlay)
 Animacoes ao abrir e fechar dialogs, trocar de pagina, etc.
+Paginacao na pagina dashboard e outras listas de processo etc.
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
