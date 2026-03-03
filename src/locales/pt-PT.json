@@ -100,6 +100,7 @@
       "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planeado já passou",
       "viewOnCarrierSite": "Ver no site do armador",
       "systemCreated": "Processo registado no sistema",
+      "unknownEvent": "Evento desconhecido",
       "viewPredictionHistory": "Ver histórico de previsões",
       "predictionHistory": {
         "title": "Histórico de Previsões",
