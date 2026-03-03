@@ -630,10 +630,10 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
         mode="create"
       />
 
-      <main class="mx-auto max-w-7xl px-3 py-3 sm:px-6 lg:px-8">
+      <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">
         <A
           href="/"
-          class="mb-2 inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-700"
+          class="mb-1.5 inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-700"
         >
           <ChevronLeftIcon />
           {t(keys.shipmentView.backToList)}
@@ -677,8 +677,8 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                 }
               />
 
-              <div class="grid gap-3 lg:grid-cols-3">
-                <div class="space-y-3 lg:col-span-2">
+              <div class="grid gap-2 lg:grid-cols-3">
+                <div class="space-y-2 lg:col-span-2">
                   <ContainersPanel
                     containers={data().containers}
                     selectedId={props.selectedContainerId}

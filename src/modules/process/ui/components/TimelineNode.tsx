@@ -38,14 +38,20 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
       when={props.actualDateIso}
       fallback={
         props.expectedDateIso ? (
-          <p class="text-[11px] text-slate-300" title={props.toTooltip(props.expectedDateIso)}>
+          <p
+            class="text-[10px] tabular-nums text-slate-300"
+            title={props.toTooltip(props.expectedDateIso)}
+          >
             {props.expectedLabel} {formatDateForLocale(props.expectedDateIso, props.locale)}
           </p>
         ) : null
       }
     >
       {(actualDateIso) => (
-        <p class="text-[11px] text-slate-500" title={props.toTooltip(actualDateIso() ?? undefined)}>
+        <p
+          class="text-[10px] tabular-nums text-slate-500"
+          title={props.toTooltip(actualDateIso() ?? undefined)}
+        >
           <span class="sr-only">{props.actualLabel}</span>
           {formatDateForLocale(actualDateIso(), props.locale)}
         </p>
@@ -158,25 +164,25 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'border-emerald-500 bg-emerald-500',
-          line: 'bg-emerald-400',
-          text: 'text-slate-800',
+          dot: 'bg-emerald-500',
+          line: 'bg-emerald-300',
+          text: 'text-slate-700',
         }
       case 'current':
         return {
-          dot: 'border-blue-500 bg-blue-500 ring-2 ring-blue-100',
+          dot: 'bg-blue-500 ring-2 ring-blue-100',
           line: 'bg-slate-200',
           text: 'font-medium text-slate-800',
         }
       case 'delayed':
         return {
-          dot: 'border-red-400 bg-red-400 ring-2 ring-red-50',
+          dot: 'bg-red-400 ring-2 ring-red-50',
           line: 'bg-slate-200',
           text: 'font-medium text-red-600',
         }
       default:
         return {
-          dot: 'border-2 border-slate-300 bg-white',
+          dot: 'border border-slate-300 bg-white',
           line: 'bg-slate-200',
           text: 'text-slate-400',
         }

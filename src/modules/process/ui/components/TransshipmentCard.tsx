@@ -16,18 +16,18 @@ export function TransshipmentCard(props: Props): JSX.Element | null {
   return (
     <Show when={hasTransshipment()}>
       <section data-testid="transshipment-card" class="rounded-lg border border-slate-200 bg-white">
-        <div class="px-3 py-2">
+        <div class="px-2.5 py-1.5">
           <div class="flex items-center justify-between">
             <h3 class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               {t(keys.shipmentView.transshipment.title)}
             </h3>
-            <span class="text-[10px] font-medium text-slate-500">
+            <span class="text-[10px] font-medium tabular-nums text-slate-400">
               {t(keys.shipmentView.transshipment.count, {
                 count: transshipment()?.count ?? 0,
               })}
             </span>
           </div>
-          <p class="mt-0.5 text-[11px] text-slate-500">
+          <p class="mt-0.5 text-[10px] text-slate-500">
             {(transshipment()?.ports ?? []).map((port) => port.code).join(' \u2192 ')}
           </p>
           <div class="mt-1 flex flex-wrap gap-0.5">
