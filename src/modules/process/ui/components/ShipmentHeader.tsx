@@ -3,14 +3,17 @@ import { createSignal, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toSelectedEtaSubtitle, toSelectedEtaTitle } from '~/modules/process/ui/utils/eta-labels'
-import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type {
+  ContainerEtaDetailVM,
+  ShipmentDetailVM,
+} from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   data: ShipmentDetailVM
-  selectedContainerEtaVm: ShipmentDetailVM['selectedContainerEtaVm']
+  selectedContainerEtaVm: ContainerEtaDetailVM
   isRefreshing: boolean
   refreshRetry: {
     readonly current: number
@@ -213,9 +216,7 @@ function EditButton(props: EditButtonProps): JSX.Element {
   )
 }
 
-function etaToneClass(
-  tone: Exclude<NonNullable<ShipmentDetailVM['selectedContainerEtaVm']>['tone'], never>,
-): string {
+function etaToneClass(tone: NonNullable<ContainerEtaDetailVM>['tone']): string {
   switch (tone) {
     case 'positive':
       return 'text-emerald-700'
@@ -228,9 +229,7 @@ function etaToneClass(
   }
 }
 
-function etaToneBgClass(
-  tone: Exclude<NonNullable<ShipmentDetailVM['selectedContainerEtaVm']>['tone'], never>,
-): string {
+function etaToneBgClass(tone: NonNullable<ContainerEtaDetailVM>['tone']): string {
   switch (tone) {
     case 'positive':
       return 'bg-emerald-50'
@@ -243,7 +242,7 @@ function etaToneBgClass(
   }
 }
 
-function selectedEtaBorderClass(selectedEtaVm: ShipmentDetailVM['selectedContainerEtaVm']): string {
+function selectedEtaBorderClass(selectedEtaVm: ContainerEtaDetailVM): string {
   if (!selectedEtaVm) return 'border-slate-200'
   switch (selectedEtaVm.tone) {
     case 'positive':
@@ -256,7 +255,7 @@ function selectedEtaBorderClass(selectedEtaVm: ShipmentDetailVM['selectedContain
 }
 
 function SelectedEtaSummary(props: {
-  readonly selectedEtaVm: ShipmentDetailVM['selectedContainerEtaVm']
+  readonly selectedEtaVm: ContainerEtaDetailVM
   readonly title: string
   readonly subtitle: string | null
 }): JSX.Element {

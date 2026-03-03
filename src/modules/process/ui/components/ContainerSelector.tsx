@@ -47,7 +47,7 @@ export function ContainerSelector(props: {
               return (
                 <div
                   data-testid={`container-card-${container.id}`}
-                  class={`rounded border px-2 py-0.5 text-xs font-medium transition-colors cursor-pointer ${
+                  class={`rounded border px-2 py-0.5 text-xs font-medium transition-colors ${
                     selected()
                       ? 'border-slate-600 bg-slate-700 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
@@ -57,7 +57,7 @@ export function ContainerSelector(props: {
                     <button
                       type="button"
                       onClick={() => props.onSelect(container.id)}
-                      class="min-w-0 flex-1 text-left"
+                      class="min-w-0 flex-1 cursor-pointer text-left"
                     >
                       <div class="flex items-center gap-1">
                         <span class="font-semibold tracking-wide text-[11px] leading-tight">
