@@ -15,6 +15,7 @@
     "i18n:enforce": "node scripts/enforce-i18n-no-hardcoded.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true && pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
     "lint": "pnpm exec biome check . --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx . --max-warnings=0",
+    "lint:no-iife:error-smoke": "node scripts/no-iife-in-jsx-error-smoke.mjs",
     "ui:complexity:report": "node scripts/ui-complexity-report.mjs",
     "ui:complexity:report:write": "node scripts/ui-complexity-report.mjs --write",
     "ui:complexity:lint:soft": "node scripts/ui-complexity-report.mjs",

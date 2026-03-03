@@ -35,6 +35,9 @@ jobs:
       - name: Run lint
         run: pnpm run lint
 
+      - name: Verify no-iife-in-jsx error gate behavior
+        run: pnpm run lint:no-iife:error-smoke
+
       - name: Run UI complexity gates
         run: pnpm run ui:complexity:ci
 
