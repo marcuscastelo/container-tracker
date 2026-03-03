@@ -25,6 +25,10 @@ fi
 prd_path="$1"
 shift
 
+if ! prd_path="$(wt_validate_prd_path "$prd_path")"; then
+  exit 1
+fi
+
 wt_root="../wt"
 branch_prefix="feat/"
 slug=""

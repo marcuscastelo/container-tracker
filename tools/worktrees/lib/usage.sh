@@ -3,6 +3,7 @@
 wt_usage() {
   cat <<'EOF'
 Usage: tools/worktrees/wt-implement.sh <PRD_PATH> [options]
+  <PRD_PATH> must point to an existing tasks/*.md file
 
 Options:
   --wt-root <PATH>           Worktree root directory (default: ../wt)
