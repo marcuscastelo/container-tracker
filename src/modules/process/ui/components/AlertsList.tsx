@@ -6,18 +6,21 @@ import { useTranslation } from '~/shared/localization/i18n'
 
 type AlertCategoryChipType = 'delay' | 'customs' | 'missing-eta' | 'transshipment' | 'info'
 
-function toAlertCategoryLabel(type: AlertCategoryChipType): string {
+function toAlertCategoryLabel(
+  type: AlertCategoryChipType,
+  t: ReturnType<typeof useTranslation>['t'],
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string {
   switch (type) {
     case 'delay':
-      return 'eta'
-    case 'customs':
-      return 'customs'
     case 'missing-eta':
-      return 'eta'
+      return t(keys.shipmentView.alerts.category.eta)
+    case 'customs':
+      return t(keys.shipmentView.alerts.category.customs)
     case 'transshipment':
-      return 'movement'
+      return t(keys.shipmentView.alerts.category.movement)
     default:
-      return 'data'
+      return t(keys.shipmentView.alerts.category.data)
   }
 }
 
@@ -101,7 +104,7 @@ export function AlertsList(props: { alerts: readonly AlertDisplayVM[] }): JSX.El
                 </span>
                 <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium leading-none text-slate-500">
                   <span aria-hidden="true">{toAlertCategoryIcon(alert.type)}</span>
-                  {toAlertCategoryLabel(alert.type)}
+                  {toAlertCategoryLabel(alert.type, t, keys)}
                 </span>
                 <span class="text-[10px] font-medium tabular-nums text-slate-500">
                   {formatAlertAge(alert.triggeredAtIso, t, keys)}

@@ -253,7 +253,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
                 {(card) => (
                   <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                     <span class="font-bold tabular-nums">{card.value}</span>
-                    {card.label.toLowerCase()}
+                    {card.label}
                   </span>
                 )}
               </For>
