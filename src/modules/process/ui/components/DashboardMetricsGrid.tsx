@@ -108,13 +108,6 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       icon: <InfoIcon />,
       variant: 'info' as const,
     },
-    {
-      key: 'success',
-      label: t(keys.dashboard.alertIndicators.severity.success),
-      value: safeSummary().bySeverity.success,
-      icon: <SuccessIcon />,
-      variant: 'success' as const,
-    },
   ]
 
   const categoryCards = () => [
