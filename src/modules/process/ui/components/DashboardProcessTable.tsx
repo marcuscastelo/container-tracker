@@ -132,6 +132,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <td class="px-4 py-2.5">
         <StatusBadge
           variant={props.process.status}
+          neutral={true}
           label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
         />
       </td>
