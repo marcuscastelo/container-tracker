@@ -102,7 +102,18 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   }
 
   return (
-    <tr class="group border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
+    <tr class="group relative border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
+      <td class="p-0 w-0">
+        <div
+          class={`absolute left-0 top-0 bottom-0 w-1 ${
+            props.process.dominantSeverity === 'danger'
+              ? 'bg-red-500'
+              : props.process.dominantSeverity === 'warning'
+              ? 'bg-yellow-400'
+              : 'bg-slate-200'
+          }`}
+        />
+      </td>
       <td class="px-4 py-2.5">
         <A
           href={`/shipments/${props.process.processId}`}
@@ -157,8 +168,9 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
-          <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            <th class="px-4 py-2">{t(keys.dashboard.table.col.process)}</th>
+            <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <th class="p-0 w-0" />
+              <th class="px-4 py-2">{t(keys.dashboard.table.col.process)}</th>
             <th class="px-4 py-2">{t(keys.dashboard.table.col.route)}</th>
             <th class="px-4 py-2">{t(keys.dashboard.table.col.status)}</th>
             <th class="px-4 py-2 text-right">{t(keys.dashboard.table.col.eta)}</th>
