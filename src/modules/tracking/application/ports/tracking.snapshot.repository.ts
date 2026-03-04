@@ -19,8 +19,5 @@ export type SnapshotRepository = {
    * Fetch only specific snapshots for a container by id.
    * Optional to keep backwards compatibility with in-memory test doubles.
    */
-  findByIds?(
-    containerId: string,
-    snapshotIds: readonly string[],
-  ): Promise<readonly Snapshot[]>
+  findByIds?(containerId: string, snapshotIds: readonly string[]): Promise<readonly Snapshot[]>
 }

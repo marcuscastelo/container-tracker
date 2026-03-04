@@ -163,12 +163,13 @@ export async function getContainerSummary(
   ])
 
   const snapshotIdsToEnrich = collectSnapshotIdsForCarrierLabelEnrichment(observationsRaw)
-  const observations = snapshotIdsToEnrich.length > 0
-    ? enrichCarrierLabelsFromSnapshots(
-        observationsRaw,
-        await loadSnapshotsForCarrierLabelEnrichment(deps, cmd.containerId, snapshotIdsToEnrich),
-      )
-    : observationsRaw
+  const observations =
+    snapshotIdsToEnrich.length > 0
+      ? enrichCarrierLabelsFromSnapshots(
+          observationsRaw,
+          await loadSnapshotsForCarrierLabelEnrichment(deps, cmd.containerId, snapshotIdsToEnrich),
+        )
+      : observationsRaw
 
   const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations, referenceNow)
   const status = deriveStatus(timeline)

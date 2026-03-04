@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  getContainerSummary,
   type GetContainerSummaryCommand,
+  getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
-import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
 import type { Observation } from '~/modules/tracking/domain/model/observation'
+import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
@@ -137,7 +137,10 @@ describe('getContainerSummary', () => {
       carrierLabel: null,
       createdFromSnapshotId: 'snapshot-1',
     })
-    const { deps, findSnapshotsByIds, findAllSnapshotsByContainerId } = createDeps([observation], [])
+    const { deps, findSnapshotsByIds, findAllSnapshotsByContainerId } = createDeps(
+      [observation],
+      [],
+    )
 
     const result = await getContainerSummary(deps, makeCommand())
 
