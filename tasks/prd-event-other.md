@@ -85,7 +85,7 @@ Mapping só ocorre se:
 * Texto for inequívoco
 * Não houver colisão com outro tipo canônico
 
-Caso contrário → fallback para unknown.
+Caso contrário → fallback para evento desconhecido (conceito), persistido como `OTHER` no enum canônico atual.
 
 ---
 
@@ -95,7 +95,8 @@ Caso contrário → fallback para unknown.
 
 Quando tipo não mapeado:
 
-* type = UNKNOWN
+* conceptualmente = unknown event
+* tipo canônico atual persistido = `OTHER`
 * UI exibe "Outro"
 
 Isso reduz confiança e obscurece informação original.

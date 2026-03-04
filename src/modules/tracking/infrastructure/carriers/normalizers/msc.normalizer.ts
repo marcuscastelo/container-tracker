@@ -5,6 +5,7 @@ import type {
 } from '~/modules/tracking/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
@@ -39,22 +40,13 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'devolucao de conteiner vazio': 'EMPTY_RETURN',
 }
 
-function toDescriptionMapKey(description: string): string {
-  return description
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-}
-
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
-  const key = toDescriptionMapKey(description)
+  const key = toLookupMapKey(description)
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
 }
 
-function normalizeCarrierLabel(label: string | null | undefined): string | null {
+function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
   return label.trim().length > 0 ? label : null
 }
@@ -215,7 +207,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           confidence,
           provider: 'msc',
           snapshot_id: snapshot.id,
-          carrier_label: normalizeCarrierLabel(event.Description),
+          carrier_label: toCarrierLabelOrNull(event.Description),
           raw_event: event,
         }
 

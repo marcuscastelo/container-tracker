@@ -14,4 +14,13 @@ export type SnapshotRepository = {
 
   /** Fetch all snapshots for a container, ordered by fetched_at desc. */
   findAllByContainerId(containerId: string): Promise<readonly Snapshot[]>
+
+  /**
+   * Fetch only specific snapshots for a container by id.
+   * Optional to keep backwards compatibility with in-memory test doubles.
+   */
+  findByIds?(
+    containerId: string,
+    snapshotIds: readonly string[],
+  ): Promise<readonly Snapshot[]>
 }

@@ -47,13 +47,30 @@ function hasCarrierLabel(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
-function shouldEnrichCarrierLabels(observations: readonly Observation[]): boolean {
-  return observations.some(
-    (observation) =>
+function collectSnapshotIdsForCarrierLabelEnrichment(
+  observations: readonly Observation[],
+): readonly string[] {
+  const snapshotIds = new Set<string>()
+  for (const observation of observations) {
+    if (
       observation.type === 'OTHER' &&
       !hasCarrierLabel(observation.carrier_label) &&
-      observation.created_from_snapshot_id.length > 0,
-  )
+      observation.created_from_snapshot_id.length > 0
+    ) {
+      snapshotIds.add(observation.created_from_snapshot_id)
+    }
+  }
+  return [...snapshotIds]
+}
+
+function setCarrierLabelIfMissing(
+  labelsByFingerprint: Map<string, string>,
+  fingerprint: string,
+  carrierLabel: string,
+): void {
+  if (!labelsByFingerprint.has(fingerprint)) {
+    labelsByFingerprint.set(fingerprint, carrierLabel)
+  }
 }
 
 function buildCarrierLabelByFingerprint(snapshot: Snapshot): ReadonlyMap<string, string> {
@@ -62,9 +79,15 @@ function buildCarrierLabelByFingerprint(snapshot: Snapshot): ReadonlyMap<string,
 
   for (const draft of drafts) {
     if (!hasCarrierLabel(draft.carrier_label)) continue
-    const fingerprint = computeFingerprint(draft)
-    if (!labelsByFingerprint.has(fingerprint)) {
-      labelsByFingerprint.set(fingerprint, draft.carrier_label)
+    setCarrierLabelIfMissing(labelsByFingerprint, computeFingerprint(draft), draft.carrier_label)
+
+    // Legacy observations may have been fingerprinted as OTHER before semantic mapping was expanded.
+    if (draft.type !== 'OTHER') {
+      const legacyOtherFingerprint = computeFingerprint({
+        ...draft,
+        type: 'OTHER',
+      })
+      setCarrierLabelIfMissing(labelsByFingerprint, legacyOtherFingerprint, draft.carrier_label)
     }
   }
 
@@ -77,22 +100,8 @@ function enrichCarrierLabelsFromSnapshots(
 ): readonly Observation[] {
   if (observations.length === 0 || snapshots.length === 0) return observations
 
-  const snapshotIds = new Set<string>()
-  for (const observation of observations) {
-    if (
-      observation.type === 'OTHER' &&
-      !hasCarrierLabel(observation.carrier_label) &&
-      observation.created_from_snapshot_id.length > 0
-    ) {
-      snapshotIds.add(observation.created_from_snapshot_id)
-    }
-  }
-
-  if (snapshotIds.size === 0) return observations
-
   const labelsBySnapshotId = new Map<string, ReadonlyMap<string, string>>()
   for (const snapshot of snapshots) {
-    if (!snapshotIds.has(snapshot.id)) continue
     labelsBySnapshotId.set(snapshot.id, buildCarrierLabelByFingerprint(snapshot))
   }
 
@@ -119,6 +128,24 @@ function enrichCarrierLabelsFromSnapshots(
   return hasChanges ? enriched : observations
 }
 
+async function loadSnapshotsForCarrierLabelEnrichment(
+  deps: TrackingUseCasesDeps,
+  containerId: string,
+  snapshotIds: readonly string[],
+): Promise<readonly Snapshot[]> {
+  if (snapshotIds.length === 0) return []
+
+  if (deps.snapshotRepository.findByIds) {
+    return deps.snapshotRepository.findByIds(containerId, snapshotIds)
+  }
+
+  const allSnapshots = await deps.snapshotRepository.findAllByContainerId(containerId)
+  if (allSnapshots.length === 0) return allSnapshots
+
+  const neededSnapshotIds = new Set(snapshotIds)
+  return allSnapshots.filter((snapshot) => neededSnapshotIds.has(snapshot.id))
+}
+
 /**
  * Get the full tracking summary for a container.
  *
@@ -135,10 +162,11 @@ export async function getContainerSummary(
     deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId),
   ])
 
-  const observations = shouldEnrichCarrierLabels(observationsRaw)
+  const snapshotIdsToEnrich = collectSnapshotIdsForCarrierLabelEnrichment(observationsRaw)
+  const observations = snapshotIdsToEnrich.length > 0
     ? enrichCarrierLabelsFromSnapshots(
         observationsRaw,
-        await deps.snapshotRepository.findAllByContainerId(cmd.containerId),
+        await loadSnapshotsForCarrierLabelEnrichment(deps, cmd.containerId, snapshotIdsToEnrich),
       )
     : observationsRaw
 
