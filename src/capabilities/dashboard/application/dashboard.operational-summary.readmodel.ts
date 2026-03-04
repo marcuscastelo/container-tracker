@@ -452,10 +452,12 @@ export function createDashboardOperationalSummaryReadModelUseCase(
     ])
 
     const activeAlerts = activeAlertsResult.alerts
-    const globalAlerts = summarizeGlobalActiveAlerts(activeAlerts)
+    // ensure we only consider alerts that are currently active
+    const activeOnly = activeAlerts.filter((a) => a.is_active === true)
+    const globalAlerts = summarizeGlobalActiveAlerts(activeOnly)
     const processContextById = indexDashboardProcessContextById(processes)
-    const activeAlertsPanel = buildDashboardActiveAlertsPanel(activeAlerts, processContextById)
-    const alertsByProcessId = groupAlertsByProcessId(activeAlerts)
+    const activeAlertsPanel = buildDashboardActiveAlertsPanel(activeOnly, processContextById)
+    const alertsByProcessId = groupAlertsByProcessId(activeOnly)
     const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
       sortDashboardProcessesByDominantSeverity(
         processes.map((entry) => {
