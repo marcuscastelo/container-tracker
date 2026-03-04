@@ -21,11 +21,6 @@ function processAggregatedStatusToVariant(status: ProcessAggregatedStatus): Stat
   return trackingStatusToVariant(toTrackingStatusCode(status))
 }
 
-function processAggregatedStatusToCode(status: ProcessAggregatedStatus): string {
-  if (status === 'PARTIALLY_DELIVERED') return 'PARTIALLY_DELIVERED'
-  return toTrackingStatusCode(status)
-}
-
 function deriveProcessStatus(
   containers: readonly { readonly status?: string }[],
 ): ProcessAggregatedStatus {
@@ -202,7 +197,8 @@ export function toShipmentDetailVM(
     // canonical container-level status code (UNKNOWN if not a container status)
     statusCode: toTrackingStatusCode(processAggregatedStatus),
     // expose the raw process-level aggregated status when applicable
-    aggregatedStatus: processAggregatedStatus === 'PARTIALLY_DELIVERED' ? 'PARTIALLY_DELIVERED' : null,
+    aggregatedStatus:
+      processAggregatedStatus === 'PARTIALLY_DELIVERED' ? 'PARTIALLY_DELIVERED' : null,
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,

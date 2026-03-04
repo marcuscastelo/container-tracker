@@ -3,9 +3,8 @@ import {
   trackingStatusToRank,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import { TRACKING_STATUS_CODES } from '~/modules/tracking/application/projection/tracking.status.projection'
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { TRACKING_STATUS_CODES } from '~/modules/tracking/application/projection/tracking.status.projection'
 
 export type ProcessListItemSource = {
   id: string
@@ -36,7 +35,7 @@ export type ProcessListItemSource = {
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
   if (value == null) return null
   const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
+  return trimmed.length > 0 ? value : null
 }
 
 function toTimestampOrNull(value: string | null | undefined): number | null {
@@ -56,6 +55,12 @@ export function toProcessSummaryVMs(
     const statusCode = toTrackingStatusCode(rawStatus)
     const aggregatedStatus = rawStatus === 'PARTIALLY_DELIVERED' ? 'PARTIALLY_DELIVERED' : null
 
+    const statusRank = (() => {
+      if (TRACKING_STATUS_CODES.includes(statusCode)) return trackingStatusToRank(statusCode)
+      if (aggregatedStatus === 'PARTIALLY_DELIVERED') return trackingStatusToRank('DELIVERED')
+      return 0
+    })()
+
     return {
       id: process.id,
       reference: process.reference ?? null,
@@ -66,16 +71,11 @@ export function toProcessSummaryVMs(
       containerCount: process.containers.length,
       status: trackingStatusToVariant(aggregatedStatus ?? statusCode),
       statusCode,
-      aggregatedStatus: aggregatedStatus,
+      aggregatedStatus,
       // compute a sensible rank: use the canonical tracking rank when the code
       // is one of the container statuses; for PARTIALLY_DELIVERED use the same
       // rank as DELIVERED to position it appropriately in sorted lists.
-      statusRank:
-        TRACKING_STATUS_CODES.includes(statusCode as TrackingStatusCode)
-          ? trackingStatusToRank(statusCode as TrackingStatusCode)
-          : aggregatedStatus === 'PARTIALLY_DELIVERED'
-          ? trackingStatusToRank('DELIVERED')
-          : 0,
+      statusRank,
       eta,
       etaMsOrNull: toTimestampOrNull(eta),
       carrier: toOptionalNonBlankString(process.carrier),
