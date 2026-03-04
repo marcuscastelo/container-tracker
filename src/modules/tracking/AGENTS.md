@@ -51,6 +51,8 @@ If changing:
 - timeline derivation -> update derive/reconcile read-model tests
 
 Prefer deterministic fixtures and stable tests.
+- `deriveTimelineWithSeriesReadModel()` emits only series with a valid primary; a series containing only expired EXPECTED events is omitted, so test timestamps/`now` must reflect the intended visibility.
+- For metadata-only additions on observations, add an A/B invariant regression using the same fixture with metadata present vs stripped (`null`) and assert timeline semantics, status derivation, and alert derivation are identical.
 
 ---
 
@@ -58,3 +60,10 @@ Prefer deterministic fixtures and stable tests.
 
 - For global search data (`vessel/status/eta`), derive values inside Tracking BC using tracking read models (`application/projection/tracking.search.readmodel.ts`), not in capabilities/UI.
 - Use `observationRepository.listSearchObservations()` + tracking derivation (`deriveTimeline`/`deriveStatus`/operational summary) to keep status/ETA semantics canonical.
+
+## 5) Observation Metadata Propagation Pattern
+
+- When adding provider metadata fields on observations (for example carrier labels), propagate through the full chain:
+  `normalizers -> ObservationDraft -> diffObservations -> persistence mappers -> TrackingObservationDTO -> tracking timeline read model`.
+- Keep metadata out of semantic derivation inputs (status/series/alerts) unless a canonical domain rule explicitly requires it.
+- For carrier semantic label mapping, normalize lookup keys (lowercase, trim, collapse spaces, remove diacritics) but keep `carrier_label` as the original provider text for audit/UI transparency.
