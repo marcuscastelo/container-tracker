@@ -5,6 +5,7 @@ import type {
 } from '~/modules/tracking/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 import { parseIsoOrRfcString, parseMsDateString } from '~/shared/utils/parseDate'
 
@@ -50,6 +51,8 @@ const CMACGM_STATUS_MAP: Record<string, ObservationType> = {
   delivered: 'DELIVERY',
   delivery: 'DELIVERY',
   'empty return': 'EMPTY_RETURN',
+  'container returned empty': 'EMPTY_RETURN',
+  'devolucao de conteiner vazio': 'EMPTY_RETURN',
 
   // Customs
   'customs hold': 'CUSTOMS_HOLD',
@@ -58,8 +61,15 @@ const CMACGM_STATUS_MAP: Record<string, ObservationType> = {
 
 function mapCmaCgmDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
-  const key = description.toLowerCase().trim()
+  const key = toLookupMapKey(description)
   return CMACGM_STATUS_MAP[key] ?? 'OTHER'
+}
+
+function toCarrierLabelOrNull(label: string | null | undefined): string | null {
+  if (typeof label !== 'string') return null
+  // Preserve original provider text for audit/UI transparency;
+  // only use trim to detect blank values.
+  return label.trim().length > 0 ? label : null
 }
 
 /**
@@ -196,6 +206,7 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
       confidence,
       provider: 'cmacgm',
       snapshot_id: snapshot.id,
+      carrier_label: toCarrierLabelOrNull(move.StatusDescription),
       raw_event: move,
     }
 

@@ -89,6 +89,8 @@
       "expiredExpectedTooltip": "This predicted event was not confirmed and its planned time has passed",
       "viewOnCarrierSite": "View on carrier site",
       "systemCreated": "Process registered in the system",
+      "unknownEvent": "Unknown event",
+      "nonMappedIndicator": "Not mapped",
       "viewPredictionHistory": "View prediction history",
       "predictionHistory": {
         "title": "Prediction History",

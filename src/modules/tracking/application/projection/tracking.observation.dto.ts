@@ -1,6 +1,8 @@
 export type TrackingObservationDTO = {
   readonly id: string
   readonly type: string
+  // Use snake_case to keep DTO shape consistent with other observation fields
+  readonly carrier_label?: string | null
   readonly event_time: string | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
@@ -13,6 +15,7 @@ export type TrackingObservationDTO = {
 export type TrackingObservationSource = {
   readonly id: string
   readonly type: string
+  readonly carrier_label?: string | null
   readonly event_time: string | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
@@ -25,9 +28,12 @@ export type TrackingObservationSource = {
 export function toTrackingObservationDTO(
   source: TrackingObservationSource,
 ): TrackingObservationDTO {
+  const carrier_label = source.carrier_label ?? null
+
   return {
     id: source.id,
     type: source.type,
+    carrier_label,
     event_time: source.event_time,
     event_time_type: source.event_time_type,
     location_code: source.location_code,

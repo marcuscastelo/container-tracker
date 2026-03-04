@@ -52,6 +52,7 @@ export function diffObservations(
       confidence: draft.confidence,
       provider: draft.provider,
       created_from_snapshot_id: draft.snapshot_id,
+      carrier_label: draft.carrier_label ?? null,
       retroactive: false,
     }
 

@@ -64,6 +64,9 @@ export type ObservationDraft = {
   /** ID of the snapshot this draft was extracted from */
   snapshot_id: string
 
+  /** Original provider event label (for audit/debug), null when unavailable */
+  carrier_label?: string | null
+
   /** Reference to the raw event inside the snapshot payload (for audit) */
   raw_event?: unknown
 }
