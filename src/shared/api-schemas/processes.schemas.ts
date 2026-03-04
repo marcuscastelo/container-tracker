@@ -13,6 +13,8 @@ export const ProcessResponseSchema = z.object({
   reference_importer: z.string().nullish(),
   product: z.string().nullish(),
   redestination_number: z.string().nullish(),
+  /** Importer identifier, may be missing from older API responses */
+  importer_id: z.string().nullish(),
   source: z.string(),
   created_at: z.string(),
   updated_at: z.string(),

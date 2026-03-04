@@ -199,7 +199,10 @@ export function toShipmentDetailVM(
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),
-    statusCode: processAggregatedStatusToCode(processAggregatedStatus),
+    // canonical container-level status code (UNKNOWN if not a container status)
+    statusCode: toTrackingStatusCode(processAggregatedStatus),
+    // expose the raw process-level aggregated status when applicable
+    aggregatedStatus: processAggregatedStatus === 'PARTIALLY_DELIVERED' ? 'PARTIALLY_DELIVERED' : null,
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,
