@@ -7,6 +7,7 @@ type Props = {
   readonly label: string
   readonly value: number | string
   readonly variant?: Variant
+  readonly subtitle?: string
 }
 
 const variantStyles: Record<
@@ -62,6 +63,7 @@ export function MetricCard(props: Props): JSX.Element {
         <span class={`text-[11px] font-medium leading-tight ${styles().labelClass}`}>
           {props.label}
         </span>
+        {props.subtitle && <span class="text-[11px] mt-0.5 text-slate-400">{props.subtitle}</span>}
       </div>
     </div>
   )
