@@ -140,6 +140,37 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
   const visibleCategoryCards = () => categoryCards().filter((c) => c.value > 0)
 
+  const computeSubtitleText = (key: string | undefined): string | undefined => {
+    if (key === 'danger') return t('dashboard.alertIndicators.subtitle.severity.danger')
+    if (key === 'warning') return t('dashboard.alertIndicators.subtitle.severity.warning')
+    return undefined
+  }
+
+  const severityNodes = () =>
+    visibleSeverityCards().map((card) => (
+      <div class="flex-1 min-w-[220px] basis-[220px]">
+        <MetricCard
+          icon={card.icon}
+          label={card.label}
+          value={card.value}
+          variant={card.variant}
+          subtitle={computeSubtitleText(computeSeveritySubtitle(card.key))}
+        />
+      </div>
+    ))
+
+  const categoryNodes = () =>
+    visibleCategoryCards().map((card) => (
+      <div class="flex-1 min-w-[220px] basis-[220px]">
+        <MetricCard
+          icon={<InfoIcon />}
+          label={card.label}
+          value={card.value}
+          variant={card.value > 0 ? 'info' : 'default'}
+        />
+      </div>
+    ))
+
   const state = () => {
     if (props.loading) return 'loading'
     if (props.hasError) return 'error'
@@ -178,44 +209,11 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
                 subtitle={t(keys.dashboard.alertIndicators.subtitle.total)}
               />
             </div>
-            <For each={visibleSeverityCards()}>
-              {(card) => {
-                const subtitleKey = computeSeveritySubtitle(card.key)
-                let subtitleText: string | undefined
-                if (subtitleKey === 'danger')
-                  subtitleText = t('dashboard.alertIndicators.subtitle.severity.danger')
-                else if (subtitleKey === 'warning')
-                  subtitleText = t('dashboard.alertIndicators.subtitle.severity.warning')
-                else subtitleText = undefined
-
-                return (
-                  <div class="flex-1 min-w-[220px] basis-[220px]">
-                    <MetricCard
-                      icon={card.icon}
-                      label={card.label}
-                      value={card.value}
-                      variant={card.variant}
-                      subtitle={subtitleText}
-                    />
-                  </div>
-                )
-              }}
-            </For>
+            {severityNodes()}
           </div>
 
           <div class="flex flex-wrap gap-2 items-stretch">
-            <For each={visibleCategoryCards()}>
-              {(card) => (
-                <div class="flex-1 min-w-[220px] basis-[220px]">
-                  <MetricCard
-                    icon={<InfoIcon />}
-                    label={card.label}
-                    value={card.value}
-                    variant={card.value > 0 ? 'info' : 'default'}
-                  />
-                </div>
-              )}
-            </For>
+            {categoryNodes()}
           </div>
 
           {state() === 'empty' && (
