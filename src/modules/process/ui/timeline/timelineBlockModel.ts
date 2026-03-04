@@ -600,6 +600,7 @@ export function buildTimelineRenderList(
 
 /**
  * TODO (Future — Phase 26): Port waiting time should also generate monitoring alerts.
+ Issue URL: https://github.com/marcuscastelo/container-tracker/issues/96
  *
  * When implemented:
  * - category: 'movement'
