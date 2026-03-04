@@ -12,8 +12,13 @@ type Props = {
 
 export function AlertsPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const panelTitle = () => {
+    const count = props.alerts.length
+    if (count === 0) return t(keys.shipmentView.alerts.title)
+    return `${t(keys.shipmentView.alerts.title)} (${count})`
+  }
   return (
-    <Panel title={t(keys.shipmentView.alerts.title)} bodyClass="py-0">
+    <Panel title={panelTitle()} bodyClass="py-0">
       <Stack gap="xs">
         <Show
           when={props.alerts.length > 0}

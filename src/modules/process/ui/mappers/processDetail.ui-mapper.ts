@@ -1,5 +1,6 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
 import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
+import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
@@ -12,14 +13,24 @@ import {
   type TrackingTimelineItem,
 } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
+import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
-function deriveProcessStatusCode(
+function processAggregatedStatusToVariant(status: ProcessAggregatedStatus): StatusVariant {
+  if (status === 'PARTIALLY_DELIVERED') return 'partial'
+  return trackingStatusToVariant(toTrackingStatusCode(status))
+}
+
+function processAggregatedStatusToCode(status: ProcessAggregatedStatus): string {
+  if (status === 'PARTIALLY_DELIVERED') return 'PARTIALLY_DELIVERED'
+  return toTrackingStatusCode(status)
+}
+
+function deriveProcessStatus(
   containers: readonly { readonly status?: string }[],
-): ReturnType<typeof toTrackingStatusCode> {
+): ProcessAggregatedStatus {
   const statuses = containers.map((container) => toOperationalStatus(container.status))
-  const highest = deriveProcessStatusFromContainers(statuses)
-  return toTrackingStatusCode(highest)
+  return deriveProcessStatusFromContainers(statuses)
 }
 
 type ContainerOperational = NonNullable<ProcessDetailResponse['containers'][number]['operational']>
@@ -170,7 +181,7 @@ export function toShipmentDetailVM(
     }
   })
 
-  const processStatusCode = deriveProcessStatusCode(data.containers)
+  const processAggregatedStatus = deriveProcessStatus(data.containers)
   const processEtaSecondaryVm = toProcessEtaSecondaryVm(data, containers, locale)
 
   return {
@@ -187,8 +198,8 @@ export function toShipmentDetailVM(
     redestination_number: data.redestination_number,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
-    status: trackingStatusToVariant(processStatusCode),
-    statusCode: processStatusCode,
+    status: processAggregatedStatusToVariant(processAggregatedStatus),
+    statusCode: processAggregatedStatusToCode(processAggregatedStatus),
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,

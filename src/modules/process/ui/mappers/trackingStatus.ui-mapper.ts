@@ -14,7 +14,7 @@ export function trackingStatusToRank(statusCode: TrackingStatusCode): number {
   return idx >= 0 ? idx : 0
 }
 
-export function trackingStatusToVariant(statusCode: TrackingStatusCode): StatusVariant {
+export function trackingStatusToVariant(statusCode: TrackingStatusCode | string): StatusVariant {
   switch (statusCode) {
     case 'IN_TRANSIT':
       return 'in-transit'
@@ -29,6 +29,8 @@ export function trackingStatusToVariant(statusCode: TrackingStatusCode): StatusV
       return 'delivered'
     case 'IN_PROGRESS':
       return 'pending'
+    case 'PARTIALLY_DELIVERED':
+      return 'partial'
     default:
       return 'unknown'
   }
@@ -36,7 +38,7 @@ export function trackingStatusToVariant(statusCode: TrackingStatusCode): StatusV
 
 export function trackingStatusToLabelKey(
   keys: TranslationKeys,
-  statusCode: TrackingStatusCode,
+  statusCode: TrackingStatusCode | string,
 ): string {
   switch (statusCode) {
     case 'IN_PROGRESS':
@@ -55,6 +57,8 @@ export function trackingStatusToLabelKey(
       return keys.tracking.status.DELIVERED
     case 'EMPTY_RETURNED':
       return keys.tracking.status.EMPTY_RETURNED
+    case 'PARTIALLY_DELIVERED':
+      return keys.tracking.status.PARTIALLY_DELIVERED
     default:
       return keys.tracking.status.UNKNOWN
   }

@@ -10,33 +10,63 @@ describe('deriveProcessStatusFromContainers', () => {
     expect(deriveProcessStatusFromContainers(['IN_TRANSIT'])).toBe('IN_TRANSIT')
   })
 
-  it('returns the highest-dominance status among multiple containers', () => {
+  it('returns PARTIALLY_DELIVERED when one container is in transit and another delivered', () => {
+    expect(deriveProcessStatusFromContainers(['IN_TRANSIT', 'DELIVERED'])).toBe(
+      'PARTIALLY_DELIVERED',
+    )
+  })
+
+  it('returns PARTIALLY_DELIVERED when one container is loaded and another empty returned', () => {
+    expect(deriveProcessStatusFromContainers(['LOADED', 'EMPTY_RETURNED'])).toBe(
+      'PARTIALLY_DELIVERED',
+    )
+  })
+
+  it('returns most conservative pre-completion status when all still moving', () => {
     expect(deriveProcessStatusFromContainers(['UNKNOWN', 'IN_PROGRESS', 'IN_TRANSIT'])).toBe(
-      'IN_TRANSIT',
+      'IN_PROGRESS',
     )
   })
 
-  it('selects DELIVERED over IN_TRANSIT', () => {
-    expect(deriveProcessStatusFromContainers(['IN_TRANSIT', 'DELIVERED'])).toBe('DELIVERED')
+  it('returns IN_TRANSIT when one loaded and one in transit (both pre-completion)', () => {
+    expect(deriveProcessStatusFromContainers(['LOADED', 'IN_TRANSIT'])).toBe('LOADED')
   })
 
-  it('selects EMPTY_RETURNED as the highest dominance', () => {
-    expect(deriveProcessStatusFromContainers(['IN_TRANSIT', 'DELIVERED', 'EMPTY_RETURNED'])).toBe(
-      'EMPTY_RETURNED',
-    )
+  it('returns lowest post-completion status when all completed', () => {
+    expect(deriveProcessStatusFromContainers(['DISCHARGED', 'DELIVERED'])).toBe('DISCHARGED')
+  })
+
+  it('returns DISCHARGED when all are discharged', () => {
+    expect(deriveProcessStatusFromContainers(['DISCHARGED', 'DISCHARGED'])).toBe('DISCHARGED')
   })
 
   it('handles all UNKNOWN statuses', () => {
     expect(deriveProcessStatusFromContainers(['UNKNOWN', 'UNKNOWN'])).toBe('UNKNOWN')
   })
 
-  it('DISCHARGED dominates ARRIVED_AT_POD', () => {
-    expect(deriveProcessStatusFromContainers(['ARRIVED_AT_POD', 'DISCHARGED'])).toBe('DISCHARGED')
+  it('AVAILABLE_FOR_PICKUP is returned when mixed with DELIVERED', () => {
+    expect(deriveProcessStatusFromContainers(['AVAILABLE_FOR_PICKUP', 'DELIVERED'])).toBe(
+      'AVAILABLE_FOR_PICKUP',
+    )
   })
 
-  it('AVAILABLE_FOR_PICKUP dominates DISCHARGED', () => {
-    expect(deriveProcessStatusFromContainers(['DISCHARGED', 'AVAILABLE_FOR_PICKUP'])).toBe(
-      'AVAILABLE_FOR_PICKUP',
+  it('DELIVERED is returned when all containers are delivered', () => {
+    expect(deriveProcessStatusFromContainers(['DELIVERED', 'DELIVERED'])).toBe('DELIVERED')
+  })
+
+  it('EMPTY_RETURNED is returned when all containers are returned empty', () => {
+    expect(deriveProcessStatusFromContainers(['EMPTY_RETURNED', 'EMPTY_RETURNED'])).toBe(
+      'EMPTY_RETURNED',
+    )
+  })
+
+  it('prefers informative status over UNKNOWN when pre-completion', () => {
+    expect(deriveProcessStatusFromContainers(['UNKNOWN', 'IN_TRANSIT'])).toBe('IN_TRANSIT')
+  })
+
+  it('PARTIALLY_DELIVERED with arrived_at_pod and delivered', () => {
+    expect(deriveProcessStatusFromContainers(['ARRIVED_AT_POD', 'DELIVERED'])).toBe(
+      'PARTIALLY_DELIVERED',
     )
   })
 })

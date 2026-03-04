@@ -209,7 +209,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
   return (
     <div class="min-h-screen bg-slate-50/80">
-      <AppHeader onCreateProcess={handleCreateProcess} />
+      <AppHeader onCreateProcess={handleCreateProcess} alertCount={globalAlerts()?.totalActiveAlerts ?? 0} />
       <CreateProcessDialog
         open={isCreateDialogOpen()}
         onClose={() => setIsCreateDialogOpen(false)}

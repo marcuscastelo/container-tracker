@@ -7,9 +7,10 @@ import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
+import { OperationalSummaryStrip } from '~/modules/process/ui/components/OperationalSummaryStrip'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
+import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCard'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
-import { TransshipmentCard } from '~/modules/process/ui/components/TransshipmentCard'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import {
@@ -597,7 +598,10 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
 
   return (
     <div class="min-h-screen bg-slate-50">
-      <AppHeader onCreateProcess={props.onOpenCreateProcess} />
+      <AppHeader
+        onCreateProcess={props.onOpenCreateProcess}
+        alertCount={props.shipmentData?.alerts.length ?? 0}
+      />
 
       <Show when={props.refreshError}>
         <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -670,7 +674,6 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
             <>
               <ShipmentHeader
                 data={data()}
-                selectedContainerEtaVm={props.selectedContainerEtaVm}
                 isRefreshing={props.isRefreshing}
                 refreshRetry={props.refreshRetry}
                 refreshHint={props.refreshHint}
@@ -680,8 +683,15 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                 }
               />
 
+              {/* Phase 1: Operational Summary Strip */}
+              <OperationalSummaryStrip data={data()} />
+
               <div class="grid gap-2 lg:grid-cols-3">
                 <div class="space-y-2 lg:col-span-2">
+                  {/* Phase 3+4: Alerts first, sticky */}
+                  <div class="sticky top-16 z-10">
+                    <AlertsPanel alerts={data().alerts} />
+                  </div>
                   <ContainersPanel
                     containers={data().containers}
                     selectedId={props.selectedContainerId}
@@ -690,13 +700,12 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                   <TimelinePanel
                     selectedContainer={props.selectedContainer}
                     carrier={data().carrier}
+                    alerts={data().alerts}
                   />
                 </div>
                 <div class="space-y-2">
-                  <TransshipmentCard selectedContainer={props.selectedContainer} />
-                  <AlertsPanel
-                    alerts={data().alerts}
-                  />
+                  {/* Phase 9: Unified Shipment Info */}
+                  <ShipmentInfoCard data={data()} />
                 </div>
               </div>
             </>

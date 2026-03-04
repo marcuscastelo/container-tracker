@@ -9,7 +9,8 @@
       "shipments": "Shipments",
       "containers": "Containers"
     },
-    "createProcess": "Create Process"
+    "createProcess": "Create Process",
+    "alertsBadge": "{{count}} Alerts"
   },
   "dashboard": {
     "alertIndicators": {
@@ -69,6 +70,12 @@
       "active": "Active filters",
       "removeChip": "Remove {{filter}}"
     },
+    "triageSummary": {
+      "alerts": "Alerts",
+      "critical": "Critical",
+      "warning": "Warning",
+      "lastUpdate": "Last update"
+    },
     "table": {
       "title": "Process Exceptions",
       "col": {
@@ -81,8 +88,15 @@
         "status": "Derived Status",
         "eta": "Current ETA",
         "dominantSeverity": "Dominant Severity",
+        "dominantAlert": "Dominant Alert",
         "activeAlerts": "Active Alerts"
       },
+      "dominantAlertLabel": {
+        "transshipment": "Transshipment detected",
+        "alertsPresent": "{{count}} alert(s)",
+        "noAlerts": "—"
+      },
+      "chipOverflow": "+{{count}}",
       "age": {
         "now": "now",
         "minutes": "{{count}}m ago",
@@ -97,7 +111,11 @@
         "warning": "Warning"
       },
       "severity": {
-        "none": "None"
+        "none": "No alert"
+      },
+      "groupHeader": {
+        "exceptions": "Operational Exceptions",
+        "normal": "Other Processes"
       }
     },
     "loading": "Loading...",
@@ -112,6 +130,11 @@
         "title": "No shipments match these filters",
         "description": "Adjust or clear filters to see matching shipments.",
         "action": "Clear filters"
+      },
+      "noExceptions": {
+        "title": "No active operational exceptions.",
+        "description": "All processes are running normally.",
+        "action": "View all processes"
       }
     }
   },
@@ -122,13 +145,33 @@
     "carrier": "Carrier",
     "status": "Status",
     "eta": "ETA",
-    "etaMissing": "Not available",
+    "etaMissing": "Unavailable",
+    "summaryStrip": {
+      "status": "Status",
+      "carrier": "Carrier",
+      "eta": "ETA",
+      "containers": "Containers",
+      "alerts": "Alerts",
+      "lastUpdate": "Last update",
+      "noAlerts": "No alerts",
+      "unknown": "Unavailable"
+    },
+    "shipmentInfo": {
+      "title": "Shipment Info",
+      "carrier": "Carrier",
+      "vessel": "Vessel",
+      "bl": "BL",
+      "booking": "Booking",
+      "importer": "Importer",
+      "exporter": "Exporter",
+      "product": "Product"
+    },
     "operational": {
       "chips": {
         "etaArrived": "Arrived",
         "etaExpected": "ETA",
         "etaDelayedSuffix": "delayed",
-        "etaMissing": "ETA —",
+        "etaMissing": "Unavailable",
         "ts": "INT {{count}}",
         "dataIssue": "Data"
       },
@@ -153,10 +196,12 @@
       "edit": "Edit"
     },
     "containers": {
-      "title": "Containers"
+      "title": "Containers",
+      "selectionHint": "Select a container to view its timeline."
     },
     "timeline": {
       "title": "Container Timeline",
+      "vessel": "Vessel",
       "expected": "Expected",
       "actual": "Actual",
       "predictedTooltip": "This is a predicted event, not yet confirmed",
@@ -167,6 +212,22 @@
       "unknownEvent": "Unknown event",
       "nonMappedIndicator": "Not mapped",
       "viewPredictionHistory": "View prediction history",
+      "blocks": {
+        "voyage": "Voyage",
+        "voyageRoute": "{{origin}} → {{destination}}",
+        "terminalInland": "Terminal / Inland",
+        "preCarriage": "Pre-carriage",
+        "postCarriage": "Post-carriage / Delivery",
+        "transshipmentTerminal": "Transshipment Terminal",
+        "transshipment": "Transshipment",
+        "transshipmentPort": "Transshipment — {{port}}",
+        "vesselChange": "Vessel change",
+        "gapTransit": "{{days}} days in transit",
+        "gapGeneric": "Gap: {{days}} days without new events",
+        "portRiskClosed": "At port for {{days}} days",
+        "portRiskOngoing": "At port for {{days}} days (risk of storage fees)",
+        "portRiskShort": "At port for {{days}} days"
+      },
       "predictionHistory": {
         "title": "Prediction History",
         "eventType": "Type",
@@ -188,7 +249,25 @@
     },
     "alerts": {
       "title": "Alerts",
-      "empty": "No alerts for this shipment."
+      "empty": "No alerts for this shipment.",
+      "category": {
+        "eta": "eta",
+        "movement": "movement",
+        "customs": "customs",
+        "status": "status",
+        "data": "data"
+      },
+      "aging": {
+        "now": "now",
+        "minutes": "{{count}}m",
+        "hours": "{{count}}h",
+        "days": "{{count}}d"
+      },
+      "severity": {
+        "danger": "CRITICAL",
+        "warning": "WARNING",
+        "info": "INFO"
+      }
     },
     "transshipment": {
       "title": "Intermediate ports",
@@ -281,7 +360,8 @@
       "DISCHARGED": "Discharged",
       "AVAILABLE_FOR_PICKUP": "Available for Pickup",
       "DELIVERED": "Delivered",
-      "EMPTY_RETURNED": "Empty Returned"
+      "EMPTY_RETURNED": "Empty Returned",
+      "PARTIALLY_DELIVERED": "Partially Delivered"
     },
     "observationType": {
       "GATE_IN": "Gate In",

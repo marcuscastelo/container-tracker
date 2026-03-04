@@ -9,6 +9,13 @@ export type OperationalStatus =
   | 'DELIVERED'
   | 'EMPTY_RETURNED'
 
+/**
+ * Process-level aggregated status — includes PARTIALLY_DELIVERED
+ * which is not a valid container status but represents a mixed state
+ * across containers in a process.
+ */
+export type ProcessAggregatedStatus = OperationalStatus | 'PARTIALLY_DELIVERED'
+
 export const OPERATIONAL_STATUSES: readonly OperationalStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
