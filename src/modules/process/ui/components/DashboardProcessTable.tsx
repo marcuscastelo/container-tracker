@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { For, Show, createSignal, createMemo } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
   DashboardProcessExceptionSeverity,
@@ -190,6 +190,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 export function DashboardProcessTable(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const [selectedSeverity, setSelectedSeverity] = createSignal<'all' | 'danger' | 'warning'>('all')
+
   const content = () => {
     if (props.loading) {
       return (
@@ -218,7 +220,48 @@ export function DashboardProcessTable(props: Props): JSX.Element {
       )
     }
 
-    return <DashboardProcessRows processes={props.processes} />
+    const filteredProcesses = () => {
+      const all = props.processes
+      const sel = selectedSeverity()
+      if (sel === 'all') return all
+      return all.filter((p) => p.dominantSeverity === sel)
+    }
+
+    return (
+      <div>
+        <div class="flex items-center gap-2 px-4 py-3">
+          <div class="text-[13px] font-semibold text-slate-700">Filtros</div>
+          <div class="flex gap-2">
+            <button
+              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
+              onClick={() => setSelectedSeverity('all')}
+              aria-pressed={selectedSeverity() === 'all'}
+            >
+              Todos
+            </button>
+            <button
+              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
+              onClick={() => setSelectedSeverity('danger')}
+              aria-pressed={selectedSeverity() === 'danger'}
+            >
+              Crítico
+            </button>
+            <button
+              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
+              onClick={() => setSelectedSeverity('warning')}
+              aria-pressed={selectedSeverity() === 'warning'}
+            >
+              Atenção
+            </button>
+          </div>
+          <div class="ml-auto text-[13px] text-slate-500">
+            {filteredProcesses().length} / {props.processes.length}
+          </div>
+        </div>
+
+        <DashboardProcessRows processes={filteredProcesses()} />
+      </div>
+    )
   }
 
   return (
