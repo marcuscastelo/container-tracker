@@ -134,24 +134,42 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     const readModel: TrackingActiveAlertReadModel[] = []
     for (const row of alertRows) {
       const processId = processIdByContainerId.get(row.container_id)
-      if (!processId) continue
+      if (!processId) {
+        // Fail fast: missing container/process mapping indicates a data integrity
+        // problem that would silently hide active alerts from consumers.
+        throw new Error(
+          `listActiveAlertReadModel: missing container->process mapping for container_id=${String(
+            row.container_id,
+          )} (alert_id=${String(row.id)})`,
+        )
+      }
 
-      const category = toAlertCategory(row.category)
-      const severity = toAlertSeverity(row.severity)
-      const type = toAlertType(row.type)
-      if (category === null || severity === null || type === null) continue
+      // Use the centralized persistence mapper to validate enum fields and
+      // timestamp shapes. The mapper throws with a helpful message when rows
+      // contain unexpected values; surface that error instead of silently
+      // discarding rows.
+      let domainAlert
+      try {
+        domainAlert = alertRowToDomain(row)
+      } catch (err) {
+        throw new Error(
+          `listActiveAlertReadModel: invalid alert row (id=${String(row.id)}): ${String(
+            (err as Error).message,
+          )}`,
+        )
+      }
 
       readModel.push({
-        alert_id: row.id,
+        alert_id: domainAlert.id,
         process_id: processId,
-        container_id: row.container_id,
-        category,
-        severity,
-        type,
-        generated_at: row.triggered_at,
-        fingerprint: row.alert_fingerprint,
-        is_active: row.acked_at === null && row.dismissed_at === null,
-        retroactive: row.retroactive,
+        container_id: domainAlert.container_id,
+        category: domainAlert.category,
+        severity: domainAlert.severity,
+        type: domainAlert.type,
+        generated_at: domainAlert.triggered_at,
+        fingerprint: domainAlert.alert_fingerprint,
+        is_active: domainAlert.acked_at === null && domainAlert.dismissed_at === null,
+        retroactive: domainAlert.retroactive,
       })
     }
 

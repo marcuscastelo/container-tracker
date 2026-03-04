@@ -245,9 +245,16 @@ function deriveDashboardStatus(
 function deriveDashboardEta(
   containerSummaries: readonly TrackingOperationalSummary[],
 ): string | null {
+  // Prefer only ACTIVE_EXPECTED ETAs when computing a process-level ETA.
+  // Ignoring ACTUAL and EXPIRED_EXPECTED avoids showing stale past dates
+  // when some containers already reported past ACTUALs while others have
+  // future expected ETAs (mixed-state processes).
   let eta: string | null = null
 
   for (const summary of containerSummaries) {
+    const state = summary.eta?.state ?? null
+    if (state !== 'ACTIVE_EXPECTED') continue
+
     const nextEta = summary.eta?.eventTimeIso ?? null
     if (nextEta !== null && (eta === null || nextEta < eta)) {
       eta = nextEta
