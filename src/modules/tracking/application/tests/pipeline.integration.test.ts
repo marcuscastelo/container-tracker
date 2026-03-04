@@ -4,6 +4,7 @@ import { processSnapshot } from '~/modules/tracking/application/orchestration/pi
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
@@ -126,6 +127,9 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
       .filter((a) => a.container_id === containerId && !a.dismissed_at && !a.acked_at)
       .map((a) => a.type)
     return new Set(types)
+  }
+  async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
+    return []
   }
   async acknowledge(alertId: string, ackedAt: string): Promise<void> {
     const alert = this.alerts.get(alertId)

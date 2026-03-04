@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import {
   type GetContainerSummaryCommand,
   getContainerSummary,
@@ -111,6 +112,9 @@ function createDeps(
     },
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
+      listActiveAlertReadModel: vi.fn(
+        async (): Promise<readonly TrackingActiveAlertReadModel[]> => [],
+      ),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),

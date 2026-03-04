@@ -105,8 +105,7 @@ PASSO 7 — Garantir verde
 - Rode no mínimo:
   - `pnpm run type-check`
   - `pnpm run build`
-- Se o projeto exigir/for viável, rode também:
-  - `pnpm run lint`
+  - `pnpm run flint`
 - Se algo falhar, corrija antes de commit.
 
 PASSO 8 — Revisão final do diff

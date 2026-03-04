@@ -1,13 +1,15 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createResource, createSignal, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
+import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
+import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
 import {
   createProcessRequest,
-  fetchDashboardProcessSummaries,
+  fetchDashboardOperationalSummary,
   toCreateProcessInput,
 } from '~/modules/process/ui/validation/processApi.validation'
 import {
@@ -19,7 +21,17 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const navigate = useNavigate()
-  const [processes, { refetch }] = createResource(fetchDashboardProcessSummaries)
+  const [summary, { refetch: refetchSummary }] = createResource(fetchDashboardOperationalSummary)
+
+  const globalAlerts = createMemo(() => {
+    const s = summary()
+    return s ? toDashboardGlobalAlertsVM(s) : null
+  })
+
+  const processes = createMemo(() => {
+    const s = summary()
+    return s ? toDashboardProcessExceptionVMs(s) : []
+  })
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
@@ -34,8 +46,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       const processId = await createProcessRequest(toCreateProcessInput(data))
 
-      // Refetch processes list
-      await refetch()
+      // Refetch dashboard summary
+      await refetchSummary()
 
       // Close dialog
       setIsCreateDialogOpen(false)
@@ -89,12 +101,14 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         </Show>
 
         <DashboardMetricsGrid
-          statuses={(processes() ?? []).map((process) => ({ status: process.status }))}
+          summary={globalAlerts() ?? null}
+          loading={summary.loading}
+          hasError={Boolean(summary.error)}
         />
         <DashboardProcessTable
           processes={processes() ?? []}
-          loading={processes.loading}
-          hasError={Boolean(processes.error)}
+          loading={summary.loading}
+          hasError={Boolean(summary.error)}
           onCreateProcess={handleCreateProcess}
         />
       </main>
