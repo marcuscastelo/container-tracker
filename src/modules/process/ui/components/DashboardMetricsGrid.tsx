@@ -110,6 +110,8 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     },
   ]
 
+  const visibleSeverityCards = () => severityCards().filter((c) => c.value > 0)
+
   const categoryCards = () => [
     {
       key: 'eta',
@@ -137,6 +139,8 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       value: safeSummary().byCategory.data,
     },
   ]
+
+  const visibleCategoryCards = () => categoryCards().filter((c) => c.value > 0)
 
   const state = () => {
     if (props.loading) return 'loading'
@@ -173,7 +177,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
               label={t(keys.dashboard.alertIndicators.total)}
               value={safeSummary().totalActiveAlerts}
             />
-            <For each={severityCards()}>
+            <For each={visibleSeverityCards()}>
               {(card) => (
                 <MetricCard
                   icon={card.icon}
@@ -186,7 +190,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
           </div>
 
           <div class="grid grid-cols-2 gap-2 lg:grid-cols-5">
-            <For each={categoryCards()}>
+            <For each={visibleCategoryCards()}>
               {(card) => (
                 <MetricCard
                   icon={<InfoIcon />}
