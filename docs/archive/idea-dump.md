@@ -1,3 +1,7 @@
+# Bugs
+Criando novo processo: adiciona um container ja existente, edita para um nao existente. Adiciona outro container ja existente, REMOVE com a lixeira, readiciona so que nao existente. Resultado: soft-lock mensagem "container ja existente" e nao da para resolver pq o campo foi deletado.
+Nao da pra remover BL do processo no update (será que nao da pra remover nada? será que é qualquer tipo de update? testar)
+
 # Ideas
 Assim que o processo for criado e ele redirecionado, o usuario poderia ver algo como "ultima edicao há 1s, 2s, 3s etc" para ter o feedback imediato de que a criacao foi bem sucedida. As vezes o usuario nao tem certeza se trocou de processo, principalmente se o processo novo for parecido com o anterior, e isso daria um feedback visual imediato.
 Plano futuro: deixar templates de email prontos para serem preenchidos para alertas específicos, como transbordo, atraso, etc. para facilitar a comunicação com os clientes, terminal, etc.
@@ -6,6 +10,8 @@ No Status, em vez de "Discharged", "Loaded", etc. poderia ter "Discharged (3/7)"
 Fazer efeitos de blur serem transicionados para nao ser abrupto (searchoverlay)
 Animacoes ao abrir e fechar dialogs, trocar de pagina, etc.
 Paginacao na pagina dashboard e outras listas de processo etc.
+Permitir colar multiplos containers e ja adiciona varios.
+Permitir colar um markdown ou csv ou formato especifico human-friendly com todos os campos do processo para criar fácil. (Alinhar com a forma que o trello é usado hoje)
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
