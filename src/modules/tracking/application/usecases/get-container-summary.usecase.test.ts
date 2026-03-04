@@ -9,6 +9,7 @@ import type { Observation } from '~/modules/tracking/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 
 type ObservationOverrides = {
   readonly type?: Observation['type']
@@ -111,7 +112,7 @@ function createDeps(
     },
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
-      listActiveAlertReadModel: vi.fn(async (): Promise<readonly any[]> => []),
+      listActiveAlertReadModel: vi.fn(async (): Promise<readonly TrackingActiveAlertReadModel[]> => []),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),

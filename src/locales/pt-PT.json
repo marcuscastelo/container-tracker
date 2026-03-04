@@ -35,6 +35,13 @@
         "info": "Informativo",
         "success": "Resolvido"
       },
+      "subtitle": {
+        "total": "abertos agora",
+        "severity": {
+          "danger": "agir já",
+          "warning": "exige triagem"
+        }
+      },
       "category": {
         "eta": "ETA",
         "movement": "Movimentação",
@@ -61,6 +68,19 @@
         "eta": "ETA Atual",
         "dominantSeverity": "Severidade Dominante",
         "activeAlerts": "Alertas Ativos"
+      },
+      "age": {
+        "now": "agora",
+        "minutes": "há {{count}}m",
+        "hours": "há {{count}}h",
+        "days": "há {{count}}d",
+        "missing": "—"
+      },
+      "filters": {
+        "title": "Filtros",
+        "all": "Todos",
+        "danger": "Crítico",
+        "warning": "Atenção"
       },
       "severity": {
         "none": "Sem alerta"
@@ -321,7 +341,8 @@
     "footer": {
       "navigate": "Navegar",
       "select": "Selecionar",
-      "close": "Fechar"
+      "close": "Fechar",
+      "modifier": "Ctrl/⌘"
     }
   }
 }

@@ -275,7 +275,6 @@ function groupAlertsByProcessId(
   return groupedAlerts
 }
 
-
 type DashboardProcessContext = {
   readonly process: DashboardProcessRecord
   readonly containersById: ReadonlyMap<string, DashboardContainerRecord>

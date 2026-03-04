@@ -24,6 +24,13 @@
         "info": "Info",
         "success": "Resolved"
       },
+      "subtitle": {
+        "total": "open now",
+        "severity": {
+          "danger": "act now",
+          "warning": "needs triage"
+        }
+      },
       "category": {
         "eta": "ETA",
         "movement": "Movement",
@@ -50,6 +57,19 @@
         "eta": "Current ETA",
         "dominantSeverity": "Dominant Severity",
         "activeAlerts": "Active Alerts"
+      },
+      "age": {
+        "now": "now",
+        "minutes": "{{count}}m ago",
+        "hours": "{{count}}h ago",
+        "days": "{{count}}d ago",
+        "missing": "—"
+      },
+      "filters": {
+        "title": "Filters",
+        "all": "All",
+        "danger": "Critical",
+        "warning": "Warning"
       },
       "severity": {
         "none": "None"
@@ -321,7 +341,8 @@
     "footer": {
       "navigate": "Navigate",
       "select": "Select",
-      "close": "Close"
+      "close": "Close",
+      "modifier": "Ctrl/⌘"
     }
   }
 }
