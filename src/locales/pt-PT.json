@@ -23,6 +23,33 @@
     "close": "Fechar"
   },
   "dashboard": {
+    "alertIndicators": {
+      "title": "Alertas Operacionais",
+      "total": "Total de Alertas Ativos",
+      "loading": "A carregar indicadores de alerta...",
+      "error": "Falha ao carregar indicadores de alerta",
+      "empty": "Sem alertas ativos neste momento.",
+      "severity": {
+        "danger": "Crítico",
+        "warning": "Atenção",
+        "info": "Informativo",
+        "success": "Resolvido"
+      },
+      "subtitle": {
+        "total": "abertos agora",
+        "severity": {
+          "danger": "agir já",
+          "warning": "exige triagem"
+        }
+      },
+      "category": {
+        "eta": "ETA",
+        "movement": "Movimentação",
+        "customs": "Alfândega",
+        "status": "Estado",
+        "data": "Dados"
+      }
+    },
     "metrics": {
       "activeShipments": "Expedições Ativas",
       "inTransit": "Em Trânsito",
@@ -54,16 +81,34 @@
       "removeChip": "Remover {{filter}}"
     },
     "table": {
-      "title": "Resumo das Expedições",
+      "title": "Exceções de Processos",
       "col": {
         "process": "Processo",
         "carrier": "Armador",
         "importerName": "Importador",
         "createdAt": "Criado em",
-        "route": "Origem → Destino",
+        "route": "Rota",
         "containers": "Contentores",
-        "status": "Estado",
-        "eta": "ETA"
+        "status": "Estado Derivado",
+        "eta": "ETA Atual",
+        "dominantSeverity": "Severidade Dominante",
+        "activeAlerts": "Alertas Ativos"
+      },
+      "age": {
+        "now": "agora",
+        "minutes": "há {{count}}m",
+        "hours": "há {{count}}h",
+        "days": "há {{count}}d",
+        "missing": "—"
+      },
+      "filters": {
+        "title": "Filtros",
+        "all": "Todos",
+        "danger": "Crítico",
+        "warning": "Atenção"
+      },
+      "severity": {
+        "none": "Sem alerta"
       }
     },
     "loading": "A carregar...",
@@ -130,6 +175,8 @@
       "expiredExpectedTooltip": "Este evento previsto não foi confirmado e o tempo planeado já passou",
       "viewOnCarrierSite": "Ver no site do armador",
       "systemCreated": "Processo registado no sistema",
+      "unknownEvent": "Evento desconhecido",
+      "nonMappedIndicator": "Não mapeado",
       "viewPredictionHistory": "Ver histórico de previsões",
       "predictionHistory": {
         "title": "Histórico de Previsões",
@@ -296,21 +343,36 @@
   "search": {
     "placeholder": "Pesquisar processo, contentor, BL, importador...",
     "loading": "A pesquisar...",
+    "error": "Falha na pesquisa. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
-    "hint": "Escreva pelo menos 2 caracteres para pesquisar",
+    "hint": "Escreva pelo menos {{count}} caracteres para pesquisar",
+    "notAvailable": "—",
     "close": "Fechar pesquisa",
     "clear": "Limpar pesquisa",
-    "groups": {
-      "processes": "Processos",
+    "fields": {
+      "processId": "ID do processo",
+      "importerName": "Importador",
       "containers": "Contentores",
-      "importers": "Importadores",
-      "exporters": "Exportadores",
-      "carriers": "Armadores"
+      "carrier": "Armador",
+      "vesselName": "Navio",
+      "bl": "BL",
+      "derivedStatus": "Estado",
+      "eta": "ETA"
+    },
+    "matchSource": {
+      "container": "Correspondência em contentor",
+      "process": "Correspondência em processo",
+      "importer": "Correspondência em importador",
+      "bl": "Correspondência em BL",
+      "vessel": "Correspondência em navio",
+      "status": "Correspondência em estado",
+      "carrier": "Correspondência em armador"
     },
     "footer": {
       "navigate": "Navegar",
       "select": "Selecionar",
-      "close": "Fechar"
+      "close": "Fechar",
+      "modifier": "Ctrl/⌘"
     }
   }
 }

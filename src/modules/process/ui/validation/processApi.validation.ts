@@ -7,7 +7,12 @@ import type {
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
+import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
+import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
+import type { DashboardProcessExceptionVM } from '~/modules/process/ui/viewmodels/dashboard-process-exception.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
+import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {
   CreateProcessResponseSchema,
   ProcessListResponseSchema,
@@ -105,6 +110,26 @@ export async function fetchDashboardProcessSummaries(
     ProcessListResponseSchema,
   )
   return toProcessSummaryVMs(data)
+}
+
+export async function fetchDashboardOperationalSummary() {
+  return typedFetch(
+    '/api/dashboard/operational-summary',
+    undefined,
+    DashboardOperationalSummaryResponseSchema,
+  )
+}
+
+export async function fetchDashboardGlobalAlertsSummary(): Promise<DashboardGlobalAlertsVM> {
+  const data = await fetchDashboardOperationalSummary()
+  return toDashboardGlobalAlertsVM(data)
+}
+
+export async function fetchDashboardProcessExceptions(): Promise<
+  readonly DashboardProcessExceptionVM[]
+> {
+  const data = await fetchDashboardOperationalSummary()
+  return toDashboardProcessExceptionVMs(data)
 }
 
 export async function createProcessRequest(input: CreateProcessInput): Promise<string> {

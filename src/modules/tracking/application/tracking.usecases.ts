@@ -1,5 +1,6 @@
 import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import { acknowledgeAlert } from '~/modules/tracking/application/usecases/acknowledge-alert.usecase'
 import { dismissAlert } from '~/modules/tracking/application/usecases/dismiss-alert.usecase'
 import {
@@ -17,10 +18,16 @@ import {
 import { getLatestSnapshot } from '~/modules/tracking/application/usecases/get-latest-snapshot.usecase'
 import { getSnapshotsForContainer } from '~/modules/tracking/application/usecases/get-snapshots-for-container.usecase'
 import {
+  type ListActiveAlertReadModelResult,
+  listActiveAlertReadModel,
+} from '~/modules/tracking/application/usecases/list-active-alert-read-model.usecase'
+import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
+import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
+import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
@@ -119,6 +126,26 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     },
 
     /**
+     * Search tracking read models by vessel name (case-insensitive partial).
+     */
+    async searchByVesselName(
+      query: string,
+      limit: number,
+    ): Promise<readonly TrackingSearchProjection[]> {
+      return searchTrackingByVesselName(deps, { query, limit, now: new Date() })
+    },
+
+    /**
+     * Search tracking read models by derived status text (case-insensitive exact).
+     */
+    async searchByDerivedStatusText(
+      query: string,
+      limit: number,
+    ): Promise<readonly TrackingSearchProjection[]> {
+      return searchTrackingByDerivedStatusText(deps, { query, limit, now: new Date() })
+    },
+
+    /**
      * Acknowledge a tracking alert.
      */
     async acknowledgeAlert(alertId: string): Promise<void> {
@@ -155,6 +182,13 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerId: string,
     ): Promise<ListActiveAlertsByContainerIdResult> {
       return listActiveAlertsByContainerId(deps, { containerId })
+    },
+
+    /**
+     * List global active alerts read model for operational dashboards.
+     */
+    async listActiveAlertReadModel(): Promise<ListActiveAlertReadModelResult> {
+      return listActiveAlertReadModel(deps)
     },
   }
 }

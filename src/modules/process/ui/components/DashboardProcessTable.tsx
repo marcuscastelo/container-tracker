@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
   DashboardSortDirection,
@@ -13,6 +13,9 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
+
+type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
+type SeverityFilter = 'all' | 'danger' | 'warning'
 
 type Props = {
   readonly processes: readonly ProcessSummaryVM[]
@@ -68,9 +71,7 @@ function toAriaSort(direction: DashboardSortDirection | null): 'none' | 'ascendi
   return 'none'
 }
 
-function SortDirectionIcon(props: {
-  readonly direction: DashboardSortDirection | null
-}): JSX.Element {
+function SortDirectionIcon(props: { readonly direction: DashboardSortDirection | null }): JSX.Element {
   const arrow = () => (props.direction === 'asc' ? '↑' : '↓')
 
   return (
@@ -108,15 +109,14 @@ function displayProcessRef(process: ProcessSummaryVM): string {
   return `<${process.id.slice(0, 8)}>`
 }
 
-function displayRoute(process: ProcessSummaryVM): { origin: string; destination: string } {
+function displayRoute(process: ProcessSummaryVM): {
+  origin: string
+  destination: string
+} {
   return {
-    origin: process.origin?.display_name || '—',
-    destination: process.destination?.display_name || '—',
+    origin: process.origin?.display_name ?? '—',
+    destination: process.destination?.display_name ?? '—',
   }
-}
-
-function displayImporterName(process: ProcessSummaryVM): string {
-  return process.importerName ?? '—'
 }
 
 function displayEta(eta: string | null): string {
@@ -124,17 +124,71 @@ function displayEta(eta: string | null): string {
   return formatDateForLocale(eta)
 }
 
-function displayCreatedAt(createdAt: string | null): string {
-  if (!createdAt) return '—'
-  return formatDateForLocale(createdAt)
+function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
+  const highestSeverity = process.highestAlertSeverity
+  if (highestSeverity === 'danger') return 'danger'
+  if (highestSeverity === 'warning') return 'warning'
+  if (highestSeverity === 'info') return 'info'
+  if (process.alertsCount > 0) return 'info'
+  return 'none'
+}
+
+function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
+  if (severity === 'danger') return 'border-red-200 bg-red-50 text-red-700'
+  if (severity === 'warning') return 'border-yellow-200 bg-yellow-50 text-yellow-700'
+  if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
+  if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
+  return 'border-slate-200 bg-slate-50 text-slate-500'
+}
+
+function getSeverityStripClass(severity: DashboardProcessSeverity): string {
+  if (severity === 'danger') return 'bg-red-500'
+  if (severity === 'warning') return 'bg-yellow-400'
+  return 'bg-slate-200'
 }
 
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const route = () => displayRoute(props.process)
 
+  function formatAge(ts: string | Date | null | undefined): string {
+    if (!ts) return t(keys.dashboard.table.age.missing)
+    const date = typeof ts === 'string' ? new Date(ts) : ts
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—'
+    const diff = Date.now() - date.getTime()
+    const s = Math.floor(diff / 1000)
+    if (s < 60) return t(keys.dashboard.table.age.now)
+    const m = Math.floor(s / 60)
+    if (m < 60) return t(keys.dashboard.table.age.minutes, { count: m })
+    const h = Math.floor(m / 60)
+    if (h < 24) return t(keys.dashboard.table.age.hours, { count: h })
+    const d = Math.floor(h / 24)
+    return t(keys.dashboard.table.age.days, { count: d })
+  }
+
+  const dominantSeverity = () => toDominantSeverity(props.process)
+
+  const severityLabel = () => {
+    if (dominantSeverity() === 'danger') {
+      return t(keys.dashboard.alertIndicators.severity.danger)
+    }
+    if (dominantSeverity() === 'warning') {
+      return t(keys.dashboard.alertIndicators.severity.warning)
+    }
+    if (dominantSeverity() === 'info') {
+      return t(keys.dashboard.alertIndicators.severity.info)
+    }
+    if (dominantSeverity() === 'success') {
+      return t(keys.dashboard.alertIndicators.severity.success)
+    }
+    return t(keys.dashboard.table.severity.none)
+  }
+
   return (
-    <tr class="group border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
+    <tr class="group relative border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
+      <td class="p-0 w-0">
+        <div class={`absolute left-0 top-0 bottom-0 w-1 ${getSeverityStripClass(dominantSeverity())}`} />
+      </td>
       <td class="px-4 py-2.5">
         <A
           href={`/shipments/${props.process.id}`}
@@ -144,40 +198,40 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </A>
       </td>
       <td class="px-4 py-2.5">
-        <span class="text-[13px] text-slate-600">{props.process.carrier ?? '—'}</span>
-      </td>
-      <td class="hidden px-4 py-2.5 xl:table-cell">
-        <span class="text-[13px] text-slate-500">{displayImporterName(props.process)}</span>
-      </td>
-      <td class="hidden px-4 py-2.5 lg:table-cell">
-        <span class="text-[13px] tabular-nums text-slate-500">
-          {displayCreatedAt(props.process.lastEventAt)}
-        </span>
-      </td>
-      <td class="hidden px-4 py-2.5 md:table-cell">
         <div class="flex items-center gap-1.5 text-[13px] text-slate-600">
-          <span class="truncate max-w-[120px]">{route().origin}</span>
+          <span class="max-w-[120px] truncate">{route().origin}</span>
           <ArrowIcon />
-          <span class="truncate max-w-[120px]">{route().destination}</span>
+          <span class="max-w-[120px] truncate">{route().destination}</span>
         </div>
-      </td>
-      <td class="px-4 py-2.5 text-center">
-        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-[11px] font-bold tabular-nums text-slate-700">
-          {props.process.containerCount}
-        </span>
       </td>
       <td class="px-4 py-2.5">
         <StatusBadge
           variant={props.process.status}
+          neutral={true}
           label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
         />
       </td>
       <td class="px-4 py-2.5 text-right">
         <Show when={props.process.eta} fallback={<span class="text-[13px] text-slate-300">—</span>}>
-          <span class="text-[13px] tabular-nums text-slate-600">
-            {displayEta(props.process.eta)}
-          </span>
+          <span class="text-[13px] tabular-nums text-slate-600">{displayEta(props.process.eta)}</span>
         </Show>
+      </td>
+      <td class="px-4 py-2.5">
+        <span
+          class={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-semibold ${toSeverityBadgeClasses(
+            dominantSeverity(),
+          )}`}
+        >
+          {severityLabel()}
+        </span>
+      </td>
+      <td class="px-4 py-2.5 text-center">
+        <div class="flex flex-col items-center gap-1">
+          <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-[11px] font-bold tabular-nums text-slate-700">
+            {props.process.alertsCount}
+          </span>
+          <span class="text-[11px] text-slate-400">{formatAge(props.process.lastEventAt)}</span>
+        </div>
       </td>
     </tr>
   )
@@ -188,12 +242,6 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 
   const processSortDirection = () =>
     getActiveDashboardSortDirection(props.sortSelection, 'processNumber')
-  const providerSortDirection = () =>
-    getActiveDashboardSortDirection(props.sortSelection, 'provider')
-  const importerSortDirection = () =>
-    getActiveDashboardSortDirection(props.sortSelection, 'importerName')
-  const createdAtSortDirection = () =>
-    getActiveDashboardSortDirection(props.sortSelection, 'createdAt')
   const statusSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'status')
   const etaSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'eta')
 
@@ -202,6 +250,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
       <table class="w-full">
         <thead>
           <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <th class="p-0 w-0" />
             <th class="px-4 py-2" aria-sort={toAriaSort(processSortDirection())}>
               <SortHeaderButton
                 field="processNumber"
@@ -210,38 +259,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
                 onToggle={props.onSortToggle}
               />
             </th>
-            <th class="px-4 py-2" aria-sort={toAriaSort(providerSortDirection())}>
-              <SortHeaderButton
-                field="provider"
-                label={t(keys.dashboard.table.col.carrier)}
-                direction={providerSortDirection()}
-                onToggle={props.onSortToggle}
-              />
-            </th>
-            <th
-              class="hidden px-4 py-2 xl:table-cell"
-              aria-sort={toAriaSort(importerSortDirection())}
-            >
-              <SortHeaderButton
-                field="importerName"
-                label={t(keys.dashboard.table.col.importerName)}
-                direction={importerSortDirection()}
-                onToggle={props.onSortToggle}
-              />
-            </th>
-            <th
-              class="hidden px-4 py-2 lg:table-cell"
-              aria-sort={toAriaSort(createdAtSortDirection())}
-            >
-              <SortHeaderButton
-                field="createdAt"
-                label={t(keys.dashboard.table.col.createdAt)}
-                direction={createdAtSortDirection()}
-                onToggle={props.onSortToggle}
-              />
-            </th>
-            <th class="hidden px-4 py-2 md:table-cell">{t(keys.dashboard.table.col.route)}</th>
-            <th class="px-4 py-2 text-center">{t(keys.dashboard.table.col.containers)}</th>
+            <th class="px-4 py-2">{t(keys.dashboard.table.col.route)}</th>
             <th class="px-4 py-2" aria-sort={toAriaSort(statusSortDirection())}>
               <SortHeaderButton
                 field="status"
@@ -259,6 +277,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
                 align="right"
               />
             </th>
+            <th class="px-4 py-2">{t(keys.dashboard.table.col.dominantSeverity)}</th>
+            <th class="px-4 py-2 text-center">{t(keys.dashboard.table.col.activeAlerts)}</th>
           </tr>
         </thead>
         <tbody>
@@ -272,12 +292,24 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 export function DashboardProcessTable(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const [selectedSeverity, setSelectedSeverity] = createSignal<SeverityFilter>('all')
+
+  const filteredBySeverity = () => {
+    if (selectedSeverity() === 'all') return props.processes
+    return props.processes.filter((process) => toDominantSeverity(process) === selectedSeverity())
+  }
+
+  const hasAnyActiveFilters = () => props.hasActiveFilters || selectedSeverity() !== 'all'
+
+  const clearAllFilters = () => {
+    setSelectedSeverity('all')
+    props.onClearFilters()
+  }
+
   const content = () => {
     if (props.loading) {
       return (
-        <div class="px-4 py-8 text-center text-[13px] text-slate-400">
-          {t(keys.dashboard.loading)}
-        </div>
+        <div class="px-4 py-8 text-center text-[13px] text-slate-400">{t(keys.dashboard.loading)}</div>
       )
     }
 
@@ -289,14 +321,14 @@ export function DashboardProcessTable(props: Props): JSX.Element {
       )
     }
 
-    if (props.processes.length === 0) {
-      if (props.hasActiveFilters) {
+    if (filteredBySeverity().length === 0) {
+      if (hasAnyActiveFilters()) {
         return (
           <EmptyState
             title={t(keys.dashboard.empty.filtered.title)}
             description={t(keys.dashboard.empty.filtered.description)}
             actionLabel={t(keys.dashboard.empty.filtered.action)}
-            onAction={props.onClearFilters}
+            onAction={clearAllFilters}
           />
         )
       }
@@ -312,11 +344,46 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     }
 
     return (
-      <DashboardProcessRows
-        processes={props.processes}
-        sortSelection={props.sortSelection}
-        onSortToggle={props.onSortToggle}
-      />
+      <div>
+        <div class="flex items-center gap-2 px-4 py-3">
+          <div class="text-[13px] font-semibold text-slate-700">{t(keys.dashboard.table.filters.title)}</div>
+          <div class="flex gap-2">
+            <button
+              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
+              type="button"
+              onClick={() => setSelectedSeverity('all')}
+              aria-pressed={selectedSeverity() === 'all'}
+            >
+              {t(keys.dashboard.table.filters.all)}
+            </button>
+            <button
+              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
+              type="button"
+              onClick={() => setSelectedSeverity('danger')}
+              aria-pressed={selectedSeverity() === 'danger'}
+            >
+              {t(keys.dashboard.table.filters.danger)}
+            </button>
+            <button
+              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
+              type="button"
+              onClick={() => setSelectedSeverity('warning')}
+              aria-pressed={selectedSeverity() === 'warning'}
+            >
+              {t(keys.dashboard.table.filters.warning)}
+            </button>
+          </div>
+          <div class="ml-auto text-[13px] text-slate-500">
+            {filteredBySeverity().length} / {props.processes.length}
+          </div>
+        </div>
+
+        <DashboardProcessRows
+          processes={filteredBySeverity()}
+          sortSelection={props.sortSelection}
+          onSortToggle={props.onSortToggle}
+        />
+      </div>
     )
   }
 

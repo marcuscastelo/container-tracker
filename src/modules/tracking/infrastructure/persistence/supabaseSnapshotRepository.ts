@@ -55,4 +55,26 @@ export const supabaseSnapshotRepository: SnapshotRepository = {
 
     return (data ?? []).map(snapshotRowToDomain)
   },
+
+  async findByIds(
+    containerId: string,
+    snapshotIds: readonly string[],
+  ): Promise<readonly Snapshot[]> {
+    if (snapshotIds.length === 0) return []
+
+    const uniqueSnapshotIds = [...new Set(snapshotIds)]
+    const result = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('container_id', containerId)
+      .in('id', uniqueSnapshotIds)
+      .order('fetched_at', { ascending: false })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findByIds',
+      table: TABLE,
+    })
+
+    return (data ?? []).map(snapshotRowToDomain)
+  },
 }

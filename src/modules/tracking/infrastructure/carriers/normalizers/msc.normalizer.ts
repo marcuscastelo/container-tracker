@@ -5,6 +5,7 @@ import type {
 } from '~/modules/tracking/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
@@ -35,12 +36,21 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'customs hold': 'CUSTOMS_HOLD',
   'customs release': 'CUSTOMS_RELEASE',
   'empty return': 'EMPTY_RETURN',
+  'container returned empty': 'EMPTY_RETURN',
+  'devolucao de conteiner vazio': 'EMPTY_RETURN',
 }
 
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
-  const key = description.toLowerCase().trim()
+  const key = toLookupMapKey(description)
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
+}
+
+function toCarrierLabelOrNull(label: string | null | undefined): string | null {
+  if (typeof label !== 'string') return null
+  // Preserve original provider text for audit/UI transparency;
+  // only use trim to detect blank values.
+  return label.trim().length > 0 ? label : null
 }
 
 function isEmptyEvent(
@@ -199,6 +209,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           confidence,
           provider: 'msc',
           snapshot_id: snapshot.id,
+          carrier_label: toCarrierLabelOrNull(event.Description),
           raw_event: event,
         }
 
@@ -231,6 +242,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
               confidence: 'medium', // ETA is provisional
               provider: 'msc',
               snapshot_id: snapshot.id,
+              carrier_label: null,
               raw_event: { source: 'PodEtaDate', value: podEtaDate },
             }
 

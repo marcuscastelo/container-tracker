@@ -8,6 +8,7 @@ import { createFindContainersByNumberUseCase } from '~/modules/container/applica
 import { createListContainersByProcessIdUseCase } from '~/modules/container/application/usecases/list-containers-by-process-id.usecase'
 import { createListContainersByProcessIdsUseCase } from '~/modules/container/application/usecases/list-containers-by-process-ids.usecase'
 import { createReconcileContainersUseCase } from '~/modules/container/application/usecases/reconcile-containers.usecase'
+import { createSearchContainersByNumberUseCase } from '~/modules/container/application/usecases/search-containers-by-number.usecase'
 
 /**
  * ContainerUseCases
@@ -24,6 +25,7 @@ export function createContainerUseCases(deps: { repository: ContainerRepository 
   const findByNumbers = createFindContainersByNumberUseCase(deps)
   const listByProcessId = createListContainersByProcessIdUseCase(deps)
   const listByProcessIds = createListContainersByProcessIdsUseCase(deps)
+  const searchByNumber = createSearchContainersByNumberUseCase(deps)
 
   return {
     createContainer,
@@ -32,6 +34,7 @@ export function createContainerUseCases(deps: { repository: ContainerRepository 
     deleteContainer,
     checkExistence,
     findByNumbers,
+    searchByNumber,
     listByProcessId,
     listByProcessIds,
   }

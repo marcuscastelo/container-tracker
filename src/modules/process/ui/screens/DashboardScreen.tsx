@@ -27,6 +27,7 @@ import {
 } from '~/modules/process/ui/validation/dashboardSortStorage.validation'
 import {
   createProcessRequest,
+  fetchDashboardGlobalAlertsSummary,
   fetchDashboardProcessSummaries,
   toCreateProcessInput,
 } from '~/modules/process/ui/validation/processApi.validation'
@@ -62,7 +63,12 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
-  const [processes, { refetch }] = createResource(() => fetchDashboardProcessSummaries())
+  const [processes, { refetch: refetchProcesses }] = createResource(() =>
+    fetchDashboardProcessSummaries(),
+  )
+  const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(() =>
+    fetchDashboardGlobalAlertsSummary(),
+  )
   const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
     parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
   )
@@ -78,9 +84,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const importerFilterOptions = createMemo(() =>
     deriveDashboardImporterFilterOptions(processes() ?? []),
   )
-  const statusFilterOptions = createMemo(() =>
-    deriveDashboardStatusFilterOptions(processes() ?? []),
-  )
+  const statusFilterOptions = createMemo(() => deriveDashboardStatusFilterOptions(processes() ?? []))
   const filteredProcesses = createMemo(() =>
     filterDashboardProcesses(processes() ?? [], filterSelection()),
   )
@@ -175,13 +179,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       const processId = await createProcessRequest(toCreateProcessInput(data))
 
-      // Refetch processes list
-      await refetch()
+      await Promise.all([refetchProcesses(), refetchGlobalAlerts()])
 
-      // Close dialog
       setIsCreateDialogOpen(false)
 
-      // Navigate to the new process
       navigate(`/shipments/${processId}`)
     } catch (err) {
       console.error('Failed to create process:', err)
@@ -220,7 +221,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           <div class="mb-4 flex justify-center">{props.searchSlot}</div>
         </Show>
 
-        {/* Error message */}
         <Show when={createError()}>
           <ExistingProcessError
             message={createErrorMessage()}
@@ -230,7 +230,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         </Show>
 
         <DashboardMetricsGrid
-          statuses={(processes() ?? []).map((process) => ({ status: process.status }))}
+          summary={globalAlerts() ?? null}
+          loading={globalAlerts.loading}
+          hasError={Boolean(globalAlerts.error)}
         />
         <DashboardProcessFiltersBar
           providers={providerFilterOptions()}

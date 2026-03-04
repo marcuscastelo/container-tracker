@@ -1,6 +1,9 @@
 {
   "name": "example-with-tailwindcss",
   "type": "module",
+  "imports": {
+    "#container-tracker-eslint-plugin": "./scripts/eslint-plugin-container-tracker.mjs"
+  },
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
@@ -12,6 +15,7 @@
     "i18n:enforce": "node scripts/enforce-i18n-no-hardcoded.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true && pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
     "lint": "pnpm exec biome check . --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx . --max-warnings=0",
+    "lint:no-iife:error-smoke": "node scripts/no-iife-in-jsx-error-smoke.mjs",
     "ui:complexity:report": "node scripts/ui-complexity-report.mjs",
     "ui:complexity:report:write": "node scripts/ui-complexity-report.mjs --write",
     "ui:complexity:lint:soft": "node scripts/ui-complexity-report.mjs",
@@ -26,6 +30,7 @@
     "ai:loop:input": "bash scripts/ai/ralph-loop-make-input.sh",
     "ai:loop:exec": "bash scripts/ai/ralph-loop-exec.sh",
     "ai:loop:update": "bash scripts/ai/ralph-loop-update.sh",
+    "ai:pr:feedback": "bash scripts/ai/github-pr-feedback.sh",
     "ai:wt-implement": "bash tools/worktrees/wt-implement.sh",
     "ai:skills:sync": "bash scripts/ai/sync-global-skills.sh",
     "agent:build": "pnpm exec tsc -p tools/agent/tsconfig.json",

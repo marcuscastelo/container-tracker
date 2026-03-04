@@ -11,3 +11,11 @@ export type ProcessWithContainers = Readonly<{
   process: ProcessEntity
   containers: readonly ProcessContainerRecord[]
 }>
+
+export type ProcessSearchProjection = Readonly<{
+  processId: string
+  reference: string | null
+  importerName: string | null
+  billOfLading: string | null
+  carrier: string | null
+}>

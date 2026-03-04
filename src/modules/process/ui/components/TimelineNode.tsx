@@ -1,6 +1,10 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
+import {
+  type NonMappedIndicatorVariant,
+  resolveTimelineEventLabelPresentation,
+} from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { TimelineNodeLayout } from '~/modules/process/ui/TimelineNode.layout'
 import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -109,44 +113,12 @@ function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
   )
 }
 
-function typeToLabel(
-  eventType: TrackingTimelineItem['type'],
-  t: ReturnType<typeof useTranslation>['t'],
-  keys: ReturnType<typeof useTranslation>['keys'],
-): string {
-  switch (eventType) {
-    case 'SYSTEM_CREATED':
-      return t(keys.shipmentView.timeline.systemCreated)
-    case 'GATE_IN':
-      return t(keys.tracking.observationType.GATE_IN)
-    case 'GATE_OUT':
-      return t(keys.tracking.observationType.GATE_OUT)
-    case 'LOAD':
-      return t(keys.tracking.observationType.LOAD)
-    case 'DEPARTURE':
-      return t(keys.tracking.observationType.DEPARTURE)
-    case 'ARRIVAL':
-      return t(keys.tracking.observationType.ARRIVAL)
-    case 'DISCHARGE':
-      return t(keys.tracking.observationType.DISCHARGE)
-    case 'DELIVERY':
-      return t(keys.tracking.observationType.DELIVERY)
-    case 'EMPTY_RETURN':
-      return t(keys.tracking.observationType.EMPTY_RETURN)
-    case 'CUSTOMS_HOLD':
-      return t(keys.tracking.observationType.CUSTOMS_HOLD)
-    case 'CUSTOMS_RELEASE':
-      return t(keys.tracking.observationType.CUSTOMS_RELEASE)
-    default:
-      return t(keys.tracking.observationType.OTHER)
-  }
-}
-
 export function TimelineNode(props: {
   readonly event: TrackingTimelineItem
   readonly isLast: boolean
   readonly carrier?: string | null
   readonly containerNumber?: string | null
+  readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
@@ -194,13 +166,23 @@ export function TimelineNode(props: {
     return typeof trackUrl === 'string' ? trackUrl : undefined
   })
 
-  const label = createMemo(() => {
-    let currentLabel = typeToLabel(props.event.type, t, keys)
+  const labelPresentation = createMemo(() => {
+    const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
+    const presentation = resolveTimelineEventLabelPresentation(
+      props.event,
+      t,
+      keys,
+      indicatorVariant,
+    )
+    let currentLabel = presentation.label
     if (props.event.vesselName) {
       currentLabel += ` — ${props.event.vesselName}`
       if (props.event.voyage) currentLabel += ` (${props.event.voyage})`
     }
-    return currentLabel
+    return {
+      ...presentation,
+      label: currentLabel,
+    }
   })
 
   const actualDateIso = createMemo(() =>
@@ -219,7 +201,12 @@ export function TimelineNode(props: {
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
-        label={label()}
+        label={labelPresentation().label}
+        nonMappedBadgeLabel={
+          labelPresentation().showNonMappedIndicator
+            ? labelPresentation().nonMappedIndicatorLabel
+            : undefined
+        }
         showPredictionHistoryButton={hasPredictionHistory()}
         onOpenPredictionHistory={() => setShowPredictionHistory(true)}
         predictionHistoryLabel={t(keys.shipmentView.timeline.viewPredictionHistory)}
@@ -250,7 +237,7 @@ export function TimelineNode(props: {
       {props.event.series ? (
         <PredictionHistoryModal
           series={props.event.series}
-          activityLabel={label()}
+          activityLabel={labelPresentation().label}
           isOpen={showPredictionHistory()}
           onClose={() => setShowPredictionHistory(false)}
         />

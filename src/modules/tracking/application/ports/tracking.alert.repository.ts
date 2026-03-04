@@ -1,3 +1,4 @@
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
@@ -12,6 +13,14 @@ export type TrackingAlertRepository = {
 
   /** Fetch the set of active alert types for a container (for dedup). */
   findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>>
+
+  /**
+   * Fetch operational alert read model rows enriched with process ownership.
+   *
+   * Implementations may return inactive rows; application read model enforces
+   * active-only output via `is_active`.
+   */
+  listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]>
 
   /** Acknowledge an alert by id. */
   acknowledge(alertId: string, ackedAt: string): Promise<void>
