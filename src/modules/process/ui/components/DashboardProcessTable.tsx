@@ -1,6 +1,6 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { For, Show, createSignal, createMemo } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
   DashboardProcessExceptionSeverity,
@@ -81,9 +81,30 @@ function toSeverityBadgeClasses(severity: DashboardProcessExceptionSeverity): st
   return 'border-slate-200 bg-slate-50 text-slate-500'
 }
 
+function getSeverityStripClass(severity: DashboardProcessExceptionSeverity): string {
+  if (severity === 'danger') return 'bg-red-500'
+  if (severity === 'warning') return 'bg-yellow-400'
+  return 'bg-slate-200'
+}
+
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const route = () => displayRoute(props.process)
+
+  function formatAge(ts: string | Date | null | undefined): string {
+    if (!ts) return t(keys.dashboard.table.age.missing)
+    const date = typeof ts === 'string' ? new Date(ts) : ts
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—'
+    const diff = Date.now() - date.getTime()
+    const s = Math.floor(diff / 1000)
+    if (s < 60) return t(keys.dashboard.table.age.now)
+    const m = Math.floor(s / 60)
+    if (m < 60) return t(keys.dashboard.table.age.minutes, { count: m })
+    const h = Math.floor(m / 60)
+    if (h < 24) return t(keys.dashboard.table.age.hours, { count: h })
+    const d = Math.floor(h / 24)
+    return t(keys.dashboard.table.age.days, { count: d })
+  }
 
   const severityLabel = () => {
     if (props.process.dominantSeverity === 'danger') {
@@ -105,13 +126,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <tr class="group relative border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80">
       <td class="p-0 w-0">
         <div
-          class={`absolute left-0 top-0 bottom-0 w-1 ${
-            props.process.dominantSeverity === 'danger'
-              ? 'bg-red-500'
-              : props.process.dominantSeverity === 'warning'
-              ? 'bg-yellow-400'
-              : 'bg-slate-200'
-          }`}
+          class={`absolute left-0 top-0 bottom-0 w-1 ${getSeverityStripClass(props.process.dominantSeverity)}`}
         />
       </td>
       <td class="px-4 py-2.5">
@@ -154,9 +169,14 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </span>
       </td>
       <td class="px-4 py-2.5 text-center">
-        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-[11px] font-bold tabular-nums text-slate-700">
-          {props.process.activeAlertCount}
-        </span>
+        <div class="flex flex-col items-center gap-1">
+          <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-[11px] font-bold tabular-nums text-slate-700">
+            {props.process.activeAlertCount}
+          </span>
+          <span class="text-[11px] text-slate-400">
+            {formatAge(props.process.oldestAlertGeneratedAt ?? null)}
+          </span>
+        </div>
       </td>
     </tr>
   )
@@ -169,9 +189,9 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
-            <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              <th class="p-0 w-0" />
-              <th class="px-4 py-2">{t(keys.dashboard.table.col.process)}</th>
+          <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <th class="p-0 w-0" />
+            <th class="px-4 py-2">{t(keys.dashboard.table.col.process)}</th>
             <th class="px-4 py-2">{t(keys.dashboard.table.col.route)}</th>
             <th class="px-4 py-2">{t(keys.dashboard.table.col.status)}</th>
             <th class="px-4 py-2 text-right">{t(keys.dashboard.table.col.eta)}</th>
@@ -230,28 +250,33 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     return (
       <div>
         <div class="flex items-center gap-2 px-4 py-3">
-          <div class="text-[13px] font-semibold text-slate-700">Filtros</div>
+          <div class="text-[13px] font-semibold text-slate-700">
+            {t(keys.dashboard.table.filters.title)}
+          </div>
           <div class="flex gap-2">
             <button
               class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
+              type="button"
               onClick={() => setSelectedSeverity('all')}
               aria-pressed={selectedSeverity() === 'all'}
             >
-              Todos
+              {t(keys.dashboard.table.filters.all)}
             </button>
             <button
               class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
+              type="button"
               onClick={() => setSelectedSeverity('danger')}
               aria-pressed={selectedSeverity() === 'danger'}
             >
-              Crítico
+              {t(keys.dashboard.table.filters.danger)}
             </button>
             <button
               class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
+              type="button"
               onClick={() => setSelectedSeverity('warning')}
               aria-pressed={selectedSeverity() === 'warning'}
             >
-              Atenção
+              {t(keys.dashboard.table.filters.warning)}
             </button>
           </div>
           <div class="ml-auto text-[13px] text-slate-500">

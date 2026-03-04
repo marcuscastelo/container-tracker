@@ -13,4 +13,5 @@ export type DashboardProcessExceptionVM = {
   readonly etaCurrent: string | null
   readonly dominantSeverity: DashboardProcessExceptionSeverity
   readonly activeAlertCount: number
+  readonly oldestAlertGeneratedAt?: string | null
 }

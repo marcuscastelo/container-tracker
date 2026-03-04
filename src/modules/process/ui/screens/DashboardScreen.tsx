@@ -1,17 +1,17 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createResource, createSignal, Show, createMemo } from 'solid-js'
+import { createMemo, createResource, createSignal, Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
+import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
+import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
 import {
   createProcessRequest,
   fetchDashboardOperationalSummary,
   toCreateProcessInput,
 } from '~/modules/process/ui/validation/processApi.validation'
-import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
-import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
 import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
@@ -23,8 +23,15 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const navigate = useNavigate()
   const [summary, { refetch: refetchSummary }] = createResource(fetchDashboardOperationalSummary)
 
-  const globalAlerts = createMemo(() => (summary() ? toDashboardGlobalAlertsVM(summary()!) : null))
-  const processes = createMemo(() => (summary() ? toDashboardProcessExceptionVMs(summary()!) : []))
+  const globalAlerts = createMemo(() => {
+    const s = summary()
+    return s ? toDashboardGlobalAlertsVM(s) : null
+  })
+
+  const processes = createMemo(() => {
+    const s = summary()
+    return s ? toDashboardProcessExceptionVMs(s) : []
+  })
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
