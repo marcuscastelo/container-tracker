@@ -11,7 +11,6 @@ import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { TransshipmentCard } from '~/modules/process/ui/components/TransshipmentCard'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
-import { toVisibleAlertsBySelectedContainer } from '~/modules/process/ui/utils/alerts-display'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import {
   createProcessRequest,
@@ -696,10 +695,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                 <div class="space-y-2">
                   <TransshipmentCard selectedContainer={props.selectedContainer} />
                   <AlertsPanel
-                    alerts={toVisibleAlertsBySelectedContainer(
-                      data().alerts,
-                      props.selectedContainer,
-                    )}
+                    alerts={data().alerts}
                   />
                 </div>
               </div>
