@@ -9,7 +9,7 @@ import ptBR from '~/locales/pt-BR.json'
 export type TranslationSchema = typeof ptBR
 
 // export the raw reference in case consumers want to inspect it
-export const referenceLocale = ptBR as TranslationSchema
+export const referenceLocale = ptBR
 
 // Nested object shape mirroring the translation JSON where leaves are the dotted key strings.
 type KeysObject<T, P extends string = ''> = {
