@@ -17,7 +17,7 @@ describe('tracking observation carrier label metadata', () => {
       created_at: '2026-02-10T10:00:00.000Z',
     })
 
-    expect(dto.carrierLabel).toBe('Custom Carrier Event')
+    expect(dto.carrier_label).toBe('Custom Carrier Event')
   })
 
   it('keeps carrierLabel undefined when source carrier_label is null', () => {
@@ -34,7 +34,7 @@ describe('tracking observation carrier label metadata', () => {
       created_at: '2026-02-10T10:00:00.000Z',
     })
 
-    expect(dto.carrierLabel).toBeUndefined()
+    expect(dto.carrier_label).toBeNull()
   })
 
   it('propagates carrierLabel into the timeline read model', () => {
@@ -43,7 +43,7 @@ describe('tracking observation carrier label metadata', () => {
         {
           id: 'obs-1',
           type: 'OTHER',
-          carrierLabel: 'Evento nao mapeado',
+          carrier_label: 'Evento nao mapeado',
           event_time: '2026-02-10T10:00:00.000Z',
           event_time_type: 'ACTUAL',
           location_code: null,

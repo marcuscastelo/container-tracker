@@ -1,3 +1,4 @@
+-- 20260303_01_add_carrier_label_to_observations
 -- Preserve original carrier labels for audit-friendly unknown event rendering.
-ALTER TABLE IF EXISTS public.container_observations
-ADD COLUMN IF NOT EXISTS carrier_label text;
+alter table if exists public.container_observations
+add column if not exists carrier_label text;

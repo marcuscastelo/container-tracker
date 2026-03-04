@@ -68,6 +68,8 @@ function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeTy
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
+  // Preserve the original provider text for audit/UI transparency.
+  // Use trim only to detect empty/blank values.
   return label.trim().length > 0 ? label : null
 }
 

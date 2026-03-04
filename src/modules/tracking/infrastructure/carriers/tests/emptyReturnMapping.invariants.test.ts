@@ -57,10 +57,10 @@ describe('empty-return mapping invariants', () => {
     expect(drafts[2]?.carrier_label).toBe('Container returned')
 
     const timeline = deriveTimelineWithSeriesReadModel(
-      drafts.map((draft, index) => ({
+          drafts.map((draft, index) => ({
         id: `obs-${index + 1}`,
         type: draft.type,
-        carrierLabel: draft.carrier_label ?? undefined,
+            carrier_label: draft.carrier_label ?? undefined,
         event_time: draft.event_time,
         event_time_type: draft.event_time_type,
         location_code: draft.location_code,

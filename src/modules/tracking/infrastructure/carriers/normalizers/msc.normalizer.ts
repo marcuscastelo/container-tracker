@@ -48,6 +48,8 @@ function mapMscDescription(description: string | null | undefined): ObservationT
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
+  // Preserve original provider text for audit/UI transparency;
+  // only use trim to detect blank values.
   return label.trim().length > 0 ? label : null
 }
 

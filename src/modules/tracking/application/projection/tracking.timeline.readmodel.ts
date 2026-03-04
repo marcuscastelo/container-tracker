@@ -45,7 +45,7 @@ export function observationToTrackingTimelineItem(
   return {
     id: obs.id ?? `obs-${index}`,
     type: obs.type,
-    carrierLabel: obs.carrierLabel,
+    carrierLabel: obs.carrier_label ?? undefined,
     location,
     eventTimeIso: obs.event_time ?? null,
     eventTimeType,
