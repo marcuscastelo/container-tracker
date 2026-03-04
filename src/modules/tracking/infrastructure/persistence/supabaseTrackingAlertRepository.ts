@@ -14,34 +14,9 @@ import {
 const TABLE = 'tracking_alerts' as const
 const CONTAINERS_TABLE = 'containers' as const
 
-function toAlertCategory(value: string): TrackingActiveAlertReadModel['category'] | null {
-  if (value === 'fact' || value === 'monitoring') {
-    return value
-  }
-  return null
-}
-
-function toAlertSeverity(value: string): TrackingActiveAlertReadModel['severity'] | null {
-  if (value === 'danger' || value === 'warning' || value === 'info') {
-    return value
-  }
-  return null
-}
-
-function toAlertType(value: string): TrackingActiveAlertReadModel['type'] | null {
-  if (
-    value === 'TRANSSHIPMENT' ||
-    value === 'CUSTOMS_HOLD' ||
-    value === 'PORT_CHANGE' ||
-    value === 'NO_MOVEMENT' ||
-    value === 'ETA_PASSED' ||
-    value === 'ETA_MISSING' ||
-    value === 'DATA_INCONSISTENT'
-  ) {
-    return value
-  }
-  return null
-}
+// NOTE: enum validation and normalization for alert rows is implemented in
+// `alertRowToDomain` (tracking.persistence.mappers). We prefer reusing that
+// centralized mapper to avoid duplication of enum logic here.
 
 export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
@@ -148,17 +123,17 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       // timestamp shapes. The mapper throws with a helpful message when rows
       // contain unexpected values; surface that error instead of silently
       // discarding rows.
-      let domainAlert
+      let domainAlert: TrackingAlert | null = null
       try {
         domainAlert = alertRowToDomain(row)
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
         throw new Error(
-          `listActiveAlertReadModel: invalid alert row (id=${String(row.id)}): ${String(
-            (err as Error).message,
-          )}`,
+          `listActiveAlertReadModel: invalid alert row (id=${String(row.id)}): ${message}`,
         )
       }
 
+      // domainAlert is assigned above or the function threw; TS knows it's non-null here
       readModel.push({
         alert_id: domainAlert.id,
         process_id: processId,
