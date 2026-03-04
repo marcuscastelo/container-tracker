@@ -116,6 +116,7 @@ UI must not:
 
 - Use `createSignal` for state, `createMemo` for derivation
 - Use `createEffect` only for side effects
+- In component helpers, read `props.*` inside JSX/tracked scopes (or through accessors) to satisfy `solid/reactivity`
 - Keep explicit UI states: `loading | empty | error | ready`
 - Do not use hardcoded literal keys in `t()`
 - Prefer `const { t, keys } = useTranslation()` and `t(keys.someKey)`
@@ -144,6 +145,9 @@ For domain-sensitive changes, tests should cover:
 - UI visibility for empty/error/conflict states
 
 Prefer deterministic fixtures and stable tests.
+
+Additional repo testing convention:
+- Keep large test suites under ESLint `max-lines-per-function` limits by extracting repeated fixture builders/helpers out of long `describe` callbacks.
 
 ---
 

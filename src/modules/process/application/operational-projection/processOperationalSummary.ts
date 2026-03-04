@@ -1,6 +1,6 @@
 import type {
   OperationalAlertSeverity,
-  OperationalStatus,
+  ProcessAggregatedStatus,
 } from '~/modules/process/application/operational-projection/operationalSemantics'
 
 /**
@@ -19,7 +19,7 @@ export type ProcessOperationalSummary = {
   readonly carrier: string | null
   readonly container_count: number
 
-  readonly process_status: OperationalStatus
+  readonly process_status: ProcessAggregatedStatus
   readonly eta: string | null
 
   readonly alerts_count: number

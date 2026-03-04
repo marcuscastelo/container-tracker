@@ -45,7 +45,7 @@ describe('aggregateOperationalSummary', () => {
     expect(result.last_event_at).toBeNull()
   })
 
-  it('aggregates status using dominance logic', () => {
+  it('aggregates status using conservative (lowest) logic', () => {
     const summaries = [
       makeSummary({ status: 'IN_PROGRESS' }),
       makeSummary({ status: 'IN_TRANSIT' }),
@@ -54,7 +54,7 @@ describe('aggregateOperationalSummary', () => {
 
     const result = aggregateOperationalSummary('p1', null, null, 3, summaries)
 
-    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.process_status).toBe('IN_PROGRESS')
   })
 
   it('selects earliest future ETA among containers', () => {

@@ -9,7 +9,8 @@
       "shipments": "Embarques",
       "containers": "Containers"
     },
-    "createProcess": "Criar Processo"
+    "createProcess": "Criar Processo",
+    "alertsBadge": "{{count}} Alertas"
   },
   "app": {
     "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes."
@@ -56,19 +57,57 @@
       "delays": "Atrasos",
       "arrivalsToday": "Chegadas Hoje"
     },
+    "filters": {
+      "title": "Filtros",
+      "selectedCount": "{{count}} selecionados",
+      "provider": {
+        "label": "Armador",
+        "all": "Todos os armadores",
+        "empty": "Sem armadores"
+      },
+      "status": {
+        "label": "Status",
+        "all": "Todos os status",
+        "empty": "Sem status"
+      },
+      "importer": {
+        "label": "Importador",
+        "all": "Todos os importadores",
+        "empty": "Sem importadores",
+        "searchPlaceholder": "Buscar importador",
+        "noMatches": "Nenhum importador encontrado"
+      },
+      "clearAll": "Limpar filtros",
+      "active": "Filtros ativos",
+      "removeChip": "Remover {{filter}}"
+    },
+    "triageSummary": {
+      "alerts": "Alertas",
+      "critical": "Críticos",
+      "warning": "Atenção",
+      "lastUpdate": "Última atualização"
+    },
     "table": {
       "title": "Exceções de Processos",
       "col": {
         "process": "Processo",
         "carrier": "Armador",
         "importerName": "Importador",
+        "createdAt": "Criado em",
         "route": "Rota",
         "containers": "Containers",
         "status": "Status Derivado",
         "eta": "ETA Atual",
         "dominantSeverity": "Severidade Dominante",
+        "dominantAlert": "Alerta Dominante",
         "activeAlerts": "Alertas Ativos"
       },
+      "dominantAlertLabel": {
+        "transshipment": "Transbordo detectado",
+        "alertsPresent": "{{count}} alerta(s)",
+        "noAlerts": "—"
+      },
+      "chipOverflow": "+{{count}}",
       "age": {
         "now": "agora",
         "minutes": "há {{count}}m",
@@ -84,6 +123,10 @@
       },
       "severity": {
         "none": "Sem alerta"
+      },
+      "groupHeader": {
+        "exceptions": "Exceções Operacionais",
+        "normal": "Outros Processos"
       }
     },
     "loading": "Carregando...",
@@ -93,7 +136,17 @@
     "empty": {
       "title": "Nenhum embarque ainda",
       "description": "Crie seu primeiro processo para começar a rastrear containers.",
-      "action": "Criar Processo"
+      "action": "Criar Processo",
+      "filtered": {
+        "title": "Nenhum embarque corresponde a estes filtros",
+        "description": "Ajuste ou limpe os filtros para ver embarques correspondentes.",
+        "action": "Limpar filtros"
+      },
+      "noExceptions": {
+        "title": "Nenhuma exceção operacional ativa.",
+        "description": "Todos os processos estão operando normalmente.",
+        "action": "Ver todos os processos"
+      }
     }
   },
   "shipmentView": {
@@ -104,12 +157,32 @@
     "status": "Status",
     "eta": "ETA",
     "etaMissing": "Não disponível",
+    "summaryStrip": {
+      "status": "Status",
+      "carrier": "Armador",
+      "eta": "ETA",
+      "containers": "Containers",
+      "alerts": "Alertas",
+      "lastUpdate": "Última atualização",
+      "noAlerts": "Sem alertas",
+      "unknown": "Indisponível"
+    },
+    "shipmentInfo": {
+      "title": "Informações do Embarque",
+      "carrier": "Armador",
+      "vessel": "Navio",
+      "bl": "BL",
+      "booking": "Booking",
+      "importer": "Importador",
+      "exporter": "Exportador",
+      "product": "Produto"
+    },
     "operational": {
       "chips": {
         "etaArrived": "Chegou",
         "etaExpected": "ETA",
         "etaDelayedSuffix": "atrasado",
-        "etaMissing": "ETA —",
+        "etaMissing": "Indisponível",
         "ts": "INT {{count}}",
         "dataIssue": "Dados"
       },
@@ -134,10 +207,12 @@
       "edit": "Editar"
     },
     "containers": {
-      "title": "Containers"
+      "title": "Containers",
+      "selectionHint": "Selecione um container para ver sua timeline."
     },
     "timeline": {
       "title": "Timeline do Container",
+      "vessel": "Navio",
       "expected": "Previsto",
       "actual": "Real",
       "predictedTooltip": "Este é um evento previsto, ainda não confirmado",
@@ -148,6 +223,22 @@
       "unknownEvent": "Evento desconhecido",
       "nonMappedIndicator": "Não mapeado",
       "viewPredictionHistory": "Ver histórico de previsões",
+      "blocks": {
+        "voyage": "Viagem",
+        "voyageRoute": "{{origin}} → {{destination}}",
+        "terminalInland": "Terminal / Terrestre",
+        "preCarriage": "Pré-transporte",
+        "postCarriage": "Pós-transporte / Entrega",
+        "transshipmentTerminal": "Terminal de Transbordo",
+        "transshipment": "Transbordo",
+        "transshipmentPort": "Transbordo — {{port}}",
+        "vesselChange": "Troca de navio",
+        "gapTransit": "{{days}} dias em trânsito",
+        "gapGeneric": "Intervalo: {{days}} dias sem novos eventos",
+        "portRiskClosed": "No porto por {{days}} dias",
+        "portRiskOngoing": "No porto por {{days}} dias (risco de armazenagem)",
+        "portRiskShort": "No porto por {{days}} dias"
+      },
       "predictionHistory": {
         "title": "Histórico de Previsões",
         "eventType": "Tipo",
@@ -169,7 +260,25 @@
     },
     "alerts": {
       "title": "Alertas",
-      "empty": "Nenhum alerta para este embarque."
+      "empty": "Nenhum alerta para este embarque.",
+      "category": {
+        "eta": "eta",
+        "movement": "movement",
+        "customs": "customs",
+        "status": "status",
+        "data": "data"
+      },
+      "aging": {
+        "now": "agora",
+        "minutes": "{{count}}m",
+        "hours": "{{count}}h",
+        "days": "{{count}}d"
+      },
+      "severity": {
+        "danger": "CRÍTICO",
+        "warning": "ATENÇÃO",
+        "info": "INFO"
+      }
     },
     "transshipment": {
       "title": "Portos intermediários",
@@ -262,7 +371,8 @@
       "DISCHARGED": "Descarregado",
       "AVAILABLE_FOR_PICKUP": "Disponível para Retirada",
       "DELIVERED": "Entregue",
-      "EMPTY_RETURNED": "Vazio Devolvido"
+      "EMPTY_RETURNED": "Vazio Devolvido",
+      "PARTIALLY_DELIVERED": "Parcialmente Entregue"
     },
     "observationType": {
       "GATE_IN": "Entrada no Terminal",

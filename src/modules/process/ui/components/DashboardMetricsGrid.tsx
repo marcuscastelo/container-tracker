@@ -1,4 +1,5 @@
 import type { JSX } from 'solid-js'
+import { For } from 'solid-js'
 import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { MetricCard } from '~/shared/ui/MetricCard'
@@ -9,7 +10,7 @@ type Props = {
   readonly hasError: boolean
 }
 
-function TotalIcon(): JSX.Element {
+function _TotalIcon(): JSX.Element {
   return (
     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v18m9-9H3" />
@@ -60,6 +61,15 @@ function computeSeveritySubtitle(key: string): string | undefined {
   if (key === 'danger') return 'danger'
   if (key === 'warning') return 'warning'
   return undefined
+}
+
+function CategorySummaryChip(props: { value: number; label: string }): JSX.Element {
+  return (
+    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+      <span class="font-bold tabular-nums">{props.value}</span>
+      {props.label}
+    </span>
+  )
 }
 
 export function DashboardMetricsGrid(props: Props): JSX.Element {
@@ -145,7 +155,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     return undefined
   }
 
-  const severityNodes = () =>
+  const _severityNodes = () =>
     visibleSeverityCards().map((card) => (
       <div class="flex-1 min-w-[220px] basis-[220px]">
         <MetricCard
@@ -158,7 +168,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       </div>
     ))
 
-  const categoryNodes = () =>
+  const _categoryNodes = () =>
     visibleCategoryCards().map((card) => (
       <div class="flex-1 min-w-[220px] basis-[220px]">
         <MetricCard
@@ -198,23 +208,64 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       )}
 
       {(state() === 'empty' || state() === 'ready') && (
-        <div class="space-y-4 px-4 py-3">
-          <div class="flex flex-wrap gap-2 items-stretch">
-            <div class="flex-1 min-w-[220px] basis-[220px]">
-              <MetricCard
-                icon={<TotalIcon />}
-                label={t(keys.dashboard.alertIndicators.total)}
-                value={safeSummary().totalActiveAlerts}
-                subtitle={t(keys.dashboard.alertIndicators.subtitle.total)}
-              />
+        <div class="px-4 py-2.5">
+          {/* Phase 10: Compact Triage Summary Bar */}
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[22px] font-bold tabular-nums text-slate-900">
+                {safeSummary().totalActiveAlerts}
+              </span>
+              <span class="text-[11px] font-medium text-slate-500">
+                {t(keys.dashboard.alertIndicators.total)}
+              </span>
             </div>
-            {severityNodes()}
+
+            {safeSummary().bySeverity.danger > 0 && (
+              <div class="flex items-center gap-1">
+                <span class="h-2 w-2 rounded-full bg-red-500" />
+                <span class="text-[13px] font-bold tabular-nums text-red-700">
+                  {safeSummary().bySeverity.danger}
+                </span>
+                <span class="text-[11px] font-medium text-red-600">
+                  {t(keys.dashboard.triageSummary.critical)}
+                </span>
+              </div>
+            )}
+
+            {safeSummary().bySeverity.warning > 0 && (
+              <div class="flex items-center gap-1">
+                <span class="h-2 w-2 rounded-full bg-yellow-400" />
+                <span class="text-[13px] font-bold tabular-nums text-yellow-700">
+                  {safeSummary().bySeverity.warning}
+                </span>
+                <span class="text-[11px] font-medium text-yellow-600">
+                  {t(keys.dashboard.triageSummary.warning)}
+                </span>
+              </div>
+            )}
+
+            {safeSummary().bySeverity.info > 0 && (
+              <div class="flex items-center gap-1">
+                <span class="h-2 w-2 rounded-full bg-blue-400" />
+                <span class="text-[13px] font-bold tabular-nums text-blue-700">
+                  {safeSummary().bySeverity.info}
+                </span>
+                <span class="text-[11px] font-medium text-blue-600">
+                  {t(keys.dashboard.alertIndicators.severity.info)}
+                </span>
+              </div>
+            )}
+
+            {/* Phase 12: Category chips in dashboard */}
+            <div class="ml-auto flex items-center gap-1.5">
+              <For each={visibleCategoryCards()}>
+                {(card) => <CategorySummaryChip value={card.value} label={card.label} />}
+              </For>
+            </div>
           </div>
 
-          <div class="flex flex-wrap gap-2 items-stretch">{categoryNodes()}</div>
-
           {state() === 'empty' && (
-            <p class="text-center text-[12px] text-slate-500">
+            <p class="mt-2 text-center text-[12px] text-slate-500">
               {t(keys.dashboard.alertIndicators.empty)}
             </p>
           )}

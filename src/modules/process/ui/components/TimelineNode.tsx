@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
+import { timelineEventIconPath } from '~/modules/process/ui/components/Icons'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
   type NonMappedIndicatorVariant,
@@ -42,12 +43,14 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
       when={props.actualDateIso}
       fallback={
         props.expectedDateIso ? (
-          <p
-            class="text-[10px] tabular-nums text-slate-300"
-            title={props.toTooltip(props.expectedDateIso)}
-          >
-            {props.expectedLabel} {formatDateForLocale(props.expectedDateIso, props.locale)}
-          </p>
+          <div class="flex flex-col items-end" title={props.toTooltip(props.expectedDateIso)}>
+            <span class="tabular-nums text-sm font-medium text-slate-700">
+              {formatDateForLocale(props.expectedDateIso, props.locale)}
+            </span>
+            <span class="text-[10px] text-slate-500 leading-tight mt-0.5">
+              {props.expectedLabel}
+            </span>
+          </div>
         ) : null
       }
     >
@@ -119,6 +122,7 @@ export function TimelineNode(props: {
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
+  readonly highlighted?: boolean
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
@@ -185,6 +189,11 @@ export function TimelineNode(props: {
     }
   })
 
+  const etaChipLabel = createMemo(() => {
+    // ETA chip removed: render expected date on the right instead.
+    return null
+  })
+
   const actualDateIso = createMemo(() =>
     props.event.eventTimeType === 'ACTUAL' ? props.event.eventTimeIso : null,
   )
@@ -198,10 +207,13 @@ export function TimelineNode(props: {
         isLast={props.isLast}
         isExpected={isExpected()}
         isExpiredExpected={isExpiredExpected()}
+        highlighted={props.highlighted ?? false}
         dotClass={styles().dot}
         lineClass={styles().line}
         textClass={styles().text}
         label={labelPresentation().label}
+        eventIconPath={timelineEventIconPath(props.event.type)}
+        etaChipLabel={etaChipLabel()}
         nonMappedBadgeLabel={
           labelPresentation().showNonMappedIndicator
             ? labelPresentation().nonMappedIndicatorLabel
@@ -220,7 +232,7 @@ export function TimelineNode(props: {
             actualDateIso={actualDateIso()}
             expectedDateIso={expectedDateIso()}
             locale={locale()}
-            expectedLabel={t(keys.shipmentView.timeline.expected)}
+            expectedLabel={t(keys.shipmentView.timeline.expected).toLowerCase()}
             actualLabel={t(keys.shipmentView.timeline.actual)}
             toTooltip={toIsoTooltip}
           />

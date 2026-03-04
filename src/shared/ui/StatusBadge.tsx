@@ -8,6 +8,7 @@ export type StatusVariant =
   | 'customs'
   | 'released'
   | 'delivered'
+  | 'partial'
   | 'pending'
   | 'unknown'
 
@@ -47,6 +48,11 @@ const statusConfig: Record<StatusVariant, { icon: string; bgClass: string; textC
     icon: '✓',
     bgClass: 'bg-green-50',
     textClass: 'text-green-700',
+  },
+  partial: {
+    icon: '◐',
+    bgClass: 'bg-amber-50',
+    textClass: 'text-amber-700',
   },
   pending: {
     icon: '○',

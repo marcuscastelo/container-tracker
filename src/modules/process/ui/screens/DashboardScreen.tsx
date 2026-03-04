@@ -1,43 +1,178 @@
-import { useNavigate } from '@solidjs/router'
+import { useLocation, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, onMount, Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
+import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/DashboardProcessFiltersBar'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
-import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
-import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
+import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
+import {
+  applyDashboardFiltersToSearchParams,
+  hydrateDashboardFiltersFromQueryAndStorage,
+  parseDashboardFiltersFromSearchParams,
+} from '~/modules/process/ui/validation/dashboardFilterQuery.validation'
+import {
+  readDashboardFiltersFromLocalStorage,
+  writeDashboardFiltersToLocalStorage,
+} from '~/modules/process/ui/validation/dashboardFilterStorage.validation'
+import {
+  applyDashboardSortToSearchParams,
+  hydrateDashboardSortFromQueryAndStorage,
+  parseDashboardSortFromSearchParams,
+} from '~/modules/process/ui/validation/dashboardSortQuery.validation'
+import {
+  readDashboardSortFromLocalStorage,
+  writeDashboardSortToLocalStorage,
+} from '~/modules/process/ui/validation/dashboardSortStorage.validation'
 import {
   createProcessRequest,
-  fetchDashboardOperationalSummary,
+  fetchDashboardGlobalAlertsSummary,
+  fetchDashboardProcessSummaries,
   toCreateProcessInput,
 } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
+import {
+  DASHBOARD_DEFAULT_FILTER_SELECTION,
+  type DashboardFilterSelection,
+  type DashboardImporterFilterValue,
+  deriveDashboardImporterFilterOptions,
+  deriveDashboardProviderFilterOptions,
+  deriveDashboardStatusFilterOptions,
+  filterDashboardProcesses,
+  hasActiveDashboardFilters,
+  setDashboardImporterFilter,
+  toggleDashboardProviderFilter,
+  toggleDashboardStatusFilter,
+} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+import type {
+  DashboardSortField,
+  DashboardSortSelection,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import {
+  nextDashboardSortSelection,
+  sortDashboardProcesses,
+} from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
+import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
+  const location = useLocation()
   const navigate = useNavigate()
-  const [summary, { refetch: refetchSummary }] = createResource(fetchDashboardOperationalSummary)
-
-  const globalAlerts = createMemo(() => {
-    const s = summary()
-    return s ? toDashboardGlobalAlertsVM(s) : null
-  })
-
-  const processes = createMemo(() => {
-    const s = summary()
-    return s ? toDashboardProcessExceptionVMs(s) : []
-  })
+  const [processes, { refetch: refetchProcesses }] = createResource(() =>
+    fetchDashboardProcessSummaries(),
+  )
+  const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(() =>
+    fetchDashboardGlobalAlertsSummary(),
+  )
+  const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
+    parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
+  )
+  const [filterSelection, setFilterSelection] = createSignal<DashboardFilterSelection>(
+    parseDashboardFiltersFromSearchParams(new URLSearchParams(location.search)),
+  )
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+
+  const providerFilterOptions = createMemo(() =>
+    deriveDashboardProviderFilterOptions(processes() ?? []),
+  )
+  const importerFilterOptions = createMemo(() =>
+    deriveDashboardImporterFilterOptions(processes() ?? []),
+  )
+  const statusFilterOptions = createMemo(() =>
+    deriveDashboardStatusFilterOptions(processes() ?? []),
+  )
+  const filteredProcesses = createMemo(() =>
+    filterDashboardProcesses(processes() ?? [], filterSelection()),
+  )
+  const hasActiveFilters = createMemo(() => hasActiveDashboardFilters(filterSelection()))
+  const sortedProcesses = createMemo(() =>
+    sortDashboardProcesses(filteredProcesses(), sortSelection()),
+  )
+
+  onMount(() => {
+    const currentSearchParams = new URLSearchParams(location.search)
+    const hydratedSort = hydrateDashboardSortFromQueryAndStorage(
+      currentSearchParams,
+      readDashboardSortFromLocalStorage(),
+    )
+    const hydratedFilters = hydrateDashboardFiltersFromQueryAndStorage(
+      hydratedSort.searchParams,
+      readDashboardFiltersFromLocalStorage(),
+    )
+    const resolvedSortSelection = hydratedSort.sortSelection
+    const resolvedFilterSelection = hydratedFilters.filterSelection
+    const nextSearchParams = hydratedFilters.searchParams
+
+    setSortSelection(resolvedSortSelection)
+    setFilterSelection(resolvedFilterSelection)
+    writeDashboardSortToLocalStorage(resolvedSortSelection)
+    writeDashboardFiltersToLocalStorage(resolvedFilterSelection)
+
+    const currentQuery = currentSearchParams.toString()
+    const nextQuery = nextSearchParams.toString()
+    if (nextQuery === currentQuery) {
+      return
+    }
+
+    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+    void navigate(nextPath, { replace: true })
+  })
+
+  const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
+    setFilterSelection(nextFilterSelection)
+    writeDashboardFiltersToLocalStorage(nextFilterSelection)
+
+    const nextSearchParams = applyDashboardFiltersToSearchParams(
+      new URLSearchParams(location.search),
+      nextFilterSelection,
+    )
+    const nextQuery = nextSearchParams.toString()
+    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+
+    void navigate(nextPath, { replace: true })
+  }
 
   const handleCreateProcess = () => {
     setCreateError(null)
     setIsCreateDialogOpen(true)
+  }
+
+  const handleSortToggle = (field: DashboardSortField) => {
+    const nextSelection = nextDashboardSortSelection(sortSelection(), field)
+    setSortSelection(nextSelection)
+    emitDashboardSortChangedTelemetry('user', field, nextSelection)
+    writeDashboardSortToLocalStorage(nextSelection)
+
+    const nextSearchParams = applyDashboardSortToSearchParams(
+      new URLSearchParams(location.search),
+      nextSelection,
+    )
+    const nextQuery = nextSearchParams.toString()
+    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+
+    void navigate(nextPath, { replace: true })
+  }
+
+  const handleProviderFilterToggle = (provider: string) => {
+    persistDashboardFilters(toggleDashboardProviderFilter(filterSelection(), provider))
+  }
+
+  const handleStatusFilterToggle = (status: TrackingStatusCode) => {
+    persistDashboardFilters(toggleDashboardStatusFilter(filterSelection(), status))
+  }
+
+  const handleImporterFilterSelect = (importer: DashboardImporterFilterValue | null) => {
+    persistDashboardFilters(setDashboardImporterFilter(filterSelection(), importer))
+  }
+
+  const handleClearAllFilters = () => {
+    persistDashboardFilters(DASHBOARD_DEFAULT_FILTER_SELECTION)
   }
 
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
@@ -46,13 +181,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       const processId = await createProcessRequest(toCreateProcessInput(data))
 
-      // Refetch dashboard summary
-      await refetchSummary()
+      await Promise.all([refetchProcesses(), refetchGlobalAlerts()])
 
-      // Close dialog
       setIsCreateDialogOpen(false)
 
-      // Navigate to the new process
       navigate(`/shipments/${processId}`)
     } catch (err) {
       console.error('Failed to create process:', err)
@@ -79,7 +211,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
   return (
     <div class="min-h-screen bg-slate-50/80">
-      <AppHeader onCreateProcess={handleCreateProcess} />
+      <AppHeader
+        onCreateProcess={handleCreateProcess}
+        alertCount={globalAlerts()?.totalActiveAlerts ?? 0}
+      />
       <CreateProcessDialog
         open={isCreateDialogOpen()}
         onClose={() => setIsCreateDialogOpen(false)}
@@ -91,7 +226,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           <div class="mb-4 flex justify-center">{props.searchSlot}</div>
         </Show>
 
-        {/* Error message */}
         <Show when={createError()}>
           <ExistingProcessError
             message={createErrorMessage()}
@@ -102,14 +236,31 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
         <DashboardMetricsGrid
           summary={globalAlerts() ?? null}
-          loading={summary.loading}
-          hasError={Boolean(summary.error)}
+          loading={globalAlerts.loading}
+          hasError={Boolean(globalAlerts.error)}
+        />
+        <DashboardProcessFiltersBar
+          providers={providerFilterOptions()}
+          statuses={statusFilterOptions()}
+          importers={importerFilterOptions()}
+          selectedProviders={filterSelection().providers}
+          selectedStatuses={filterSelection().statuses}
+          selectedImporterId={filterSelection().importerId}
+          selectedImporterName={filterSelection().importerName}
+          onProviderToggle={handleProviderFilterToggle}
+          onStatusToggle={handleStatusFilterToggle}
+          onImporterSelect={handleImporterFilterSelect}
+          onClearAllFilters={handleClearAllFilters}
         />
         <DashboardProcessTable
-          processes={processes() ?? []}
-          loading={summary.loading}
-          hasError={Boolean(summary.error)}
+          processes={sortedProcesses()}
+          loading={processes.loading}
+          hasError={Boolean(processes.error)}
+          hasActiveFilters={hasActiveFilters()}
           onCreateProcess={handleCreateProcess}
+          onClearFilters={handleClearAllFilters}
+          sortSelection={sortSelection()}
+          onSortToggle={handleSortToggle}
         />
       </main>
     </div>

@@ -2,14 +2,84 @@ import type { CreateProcessInput } from '~/modules/process/interface/http/proces
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
 import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
+import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
 import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
 import type { DashboardProcessExceptionVM } from '~/modules/process/ui/viewmodels/dashboard-process-exception.vm'
+import type {
+  DashboardSortDirection,
+  DashboardSortField,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {
   CreateProcessResponseSchema,
+  ProcessListResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+
+const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
+
+export type DashboardProcessFiltersQuery = {
+  readonly provider?: readonly string[]
+  readonly status?: readonly TrackingStatusCode[]
+  readonly importerId?: string
+  readonly importerName?: string
+}
+
+export type DashboardProcessSummariesQuery = {
+  readonly sortField?: DashboardSortField
+  readonly sortDir?: DashboardSortDirection
+  readonly filters?: DashboardProcessFiltersQuery
+}
+
+function appendNonBlankQueryValues(
+  searchParams: URLSearchParams,
+  key: string,
+  values: readonly string[] | undefined,
+): void {
+  if (values === undefined) return
+
+  for (const value of values) {
+    if (value.trim().length === 0) continue
+    searchParams.append(key, value)
+  }
+}
+
+function appendOptionalNonBlankQueryValue(
+  searchParams: URLSearchParams,
+  key: string,
+  value: string | undefined,
+): void {
+  if (value === undefined) return
+  if (value.trim().length === 0) return
+  searchParams.set(key, value)
+}
+
+function toDashboardProcessesPath(query?: DashboardProcessSummariesQuery): string {
+  const searchParams = new URLSearchParams()
+
+  if (query !== undefined) {
+    if (query.sortField !== undefined && query.sortDir !== undefined) {
+      searchParams.set('sortField', query.sortField)
+      searchParams.set('sortDir', query.sortDir)
+    }
+
+    const filters = query.filters
+    if (filters !== undefined) {
+      appendNonBlankQueryValues(searchParams, 'provider', filters.provider)
+      appendNonBlankQueryValues(searchParams, 'status', filters.status)
+      appendOptionalNonBlankQueryValue(searchParams, 'importerId', filters.importerId)
+      appendOptionalNonBlankQueryValue(searchParams, 'importerName', filters.importerName)
+    }
+  }
+
+  const queryString = searchParams.toString()
+  if (queryString.length === 0) return DASHBOARD_PROCESSES_ENDPOINT
+
+  return `${DASHBOARD_PROCESSES_ENDPOINT}?${queryString}`
+}
 
 export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateProcessInput {
   return {
@@ -29,6 +99,17 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
       carrier_code: data.carrier || null,
     })),
   }
+}
+
+export async function fetchDashboardProcessSummaries(
+  query?: DashboardProcessSummariesQuery,
+): Promise<readonly ProcessSummaryVM[]> {
+  const data = await typedFetch(
+    toDashboardProcessesPath(query),
+    undefined,
+    ProcessListResponseSchema,
+  )
+  return toProcessSummaryVMs(data)
 }
 
 export async function fetchDashboardOperationalSummary() {

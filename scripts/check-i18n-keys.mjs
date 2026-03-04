@@ -85,7 +85,10 @@ async function main() {
       const varName = m[1]
       const body = m[2]
       for (let e = keyEntryRegex.exec(body); e; e = keyEntryRegex.exec(body)) {
-        if (e[2]?.includes('.')) {
+        // only consider values that look like i18n keys (contain a dot and at least
+        // one alphabetic character). This avoids picking up timestamps like
+        // '2026-01-15T10:00:00.000Z' which contain dots but are not i18n keys.
+        if (e[2]?.includes('.') && /[A-Za-z]/.test(e[2])) {
           globalKeyMap[varName] = globalKeyMap[varName] || {}
           globalKeyMap[varName][e[1]] = e[2]
         }
@@ -142,8 +145,10 @@ async function main() {
 
     for (let m = literalRegex.exec(content); m; m = literalRegex.exec(content)) {
       const cand = m[1].trim()
-      // only accept candidates that look like i18n keys (e.g. contain a dot)
-      if (cand.includes('.')) {
+      // only accept candidates that look like i18n keys (e.g. contain a dot and
+      // at least one alphabetic character). This prevents accidental matching of
+      // timestamps or numeric literals that include dots.
+      if (cand.includes('.') && /[A-Za-z]/.test(cand)) {
         markUsed(cand, file)
       }
     }

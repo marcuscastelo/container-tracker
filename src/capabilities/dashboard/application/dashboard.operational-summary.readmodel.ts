@@ -1,6 +1,6 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
 import {
-  type OperationalStatus,
+  type ProcessAggregatedStatus,
   toOperationalStatus,
 } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
@@ -105,7 +105,7 @@ export type DashboardOperationalProcessReadModel = {
   readonly reference: string | null
   readonly origin: string | null
   readonly destination: string | null
-  readonly status: OperationalStatus
+  readonly status: ProcessAggregatedStatus
   readonly eta: string | null
   readonly dominantSeverity: DashboardDominantSeverity
   readonly activeAlertsCount: number
@@ -237,7 +237,7 @@ function summarizeGlobalActiveAlerts(
 
 function deriveDashboardStatus(
   containerSummaries: readonly TrackingOperationalSummary[],
-): OperationalStatus {
+): ProcessAggregatedStatus {
   const statuses = containerSummaries.map((summary) => toOperationalStatus(summary.status))
   return deriveProcessStatusFromContainers(statuses)
 }

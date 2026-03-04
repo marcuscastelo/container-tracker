@@ -1,9 +1,12 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
+import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 import { CopyButton } from '~/shared/ui/CopyButton'
+import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 function etaChipClass(tone: ContainerDetailVM['etaChipVm']['tone'], selected: boolean): string {
   if (selected) {
@@ -32,64 +35,89 @@ type ContainerSelectorItemLabels = {
   readonly copyContainerNumber: string
 }
 
+/** Status codes for which ETA is no longer meaningful */
+const COMPLETED_STATUS_CODES: ReadonlySet<TrackingStatusCode> = new Set([
+  'DELIVERED',
+  'EMPTY_RETURNED',
+  'DISCHARGED',
+  'AVAILABLE_FOR_PICKUP',
+])
+
+function isContainerCompleted(statusCode: TrackingStatusCode): boolean {
+  return COMPLETED_STATUS_CODES.has(statusCode)
+}
+
 function ContainerSelectorItem(props: {
   readonly container: ContainerDetailVM
   readonly selected: boolean
   readonly onSelect: (id: string) => void
   readonly labels: ContainerSelectorItemLabels
+  readonly statusLabel: string
 }): JSX.Element {
+  const completed = () => isContainerCompleted(props.container.statusCode)
+  const showEtaChip = () => !completed()
+
   return (
     <div
       data-testid={`container-card-${props.container.id}`}
-      class={`flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium transition-colors ${
+      class={`flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-all cursor-pointer ${
         props.selected
-          ? 'border-slate-600 bg-slate-700 text-white'
-          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+          ? 'border-slate-600 bg-slate-700 text-white shadow-sm ring-2 ring-slate-400/30'
+          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-gray-100 hover:shadow-sm active:bg-slate-100'
       }`}
     >
       <button
         type="button"
         onClick={() => props.onSelect(props.container.id)}
-        class="flex min-w-0 flex-1 cursor-pointer items-center gap-1 text-left"
+        class="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
       >
-        <span class="font-semibold tracking-wide text-[11px] leading-tight">
-          {props.container.number}
-        </span>
-        <span
-          data-testid={`container-eta-chip-${props.container.id}`}
-          class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${etaChipClass(
-            props.container.etaChipVm.tone,
-            props.selected,
-          )}`}
-        >
-          {toContainerEtaChipLabel(props.container.etaChipVm, {
-            arrived: props.labels.etaArrived,
-            expectedPrefix: props.labels.etaExpectedPrefix,
-            delayed: props.labels.etaDelayed,
-            missing: props.labels.etaMissing,
-          })}
-        </span>
-        {props.container.tsChipVm.visible ? (
-          <span
-            data-testid={`container-int-chip-${props.container.id}`}
-            class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${
-              props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-slate-100 text-slate-400'
-            }`}
-            title={props.container.tsChipVm.portsTooltip ?? undefined}
-          >
-            {props.labels.ts(props.container.tsChipVm.count)}
+        {/* Row 1: Container number + status badge */}
+        <div class="flex items-center gap-1">
+          <span class="font-semibold tracking-wide text-[11px] leading-tight">
+            {props.container.number}
           </span>
-        ) : null}
-        {props.container.dataIssueChipVm.visible ? (
-          <span
-            data-testid={`container-data-chip-${props.container.id}`}
-            class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${
-              props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-amber-50 text-amber-600'
-            }`}
-          >
-            {props.labels.dataIssue}
-          </span>
-        ) : null}
+          <StatusBadge variant={props.container.status} label={props.statusLabel} />
+        </div>
+        {/* Row 2: ETA / TS / Data chips */}
+        <div class="flex items-center gap-1">
+          {showEtaChip() ? (
+            <span
+              data-testid={`container-eta-chip-${props.container.id}`}
+              class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${etaChipClass(
+                props.container.etaChipVm.tone,
+                props.selected,
+              )}`}
+            >
+              {toContainerEtaChipLabel(props.container.etaChipVm, {
+                arrived: props.labels.etaArrived,
+                expectedPrefix: props.labels.etaExpectedPrefix,
+                delayed: props.labels.etaDelayed,
+                missing: props.labels.etaMissing,
+              })}
+            </span>
+          ) : null}
+          {props.container.tsChipVm.visible ? (
+            <span
+              data-testid={`container-int-chip-${props.container.id}`}
+              class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${
+                props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-slate-100 text-slate-400'
+              }`}
+              title={props.container.tsChipVm.portsTooltip ?? undefined}
+            >
+              {props.labels.ts(props.container.tsChipVm.count)}
+            </span>
+          ) : null}
+          {props.container.dataIssueChipVm.visible ? (
+            <span
+              data-testid={`container-data-chip-${props.container.id}`}
+              class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${
+                props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-amber-50 text-amber-600'
+              }`}
+            >
+              {props.labels.dataIssue}
+            </span>
+          ) : null}
+        </div>
       </button>
       <CopyButton
         text={props.container.number}
@@ -125,6 +153,7 @@ export function ContainerSelector(props: {
             selected={String(props.selectedId) === String(container.id)}
             onSelect={props.onSelect}
             labels={labels}
+            statusLabel={t(trackingStatusToLabelKey(keys, container.statusCode))}
           />
         )}
       </For>

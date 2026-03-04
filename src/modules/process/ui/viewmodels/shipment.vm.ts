@@ -78,6 +78,8 @@ export type ShipmentDetailVM = {
   readonly destination: string
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
+  /** Process-level aggregated status when available (e.g. PARTIALLY_DELIVERED) */
+  readonly aggregatedStatus?: 'PARTIALLY_DELIVERED' | null
   readonly eta: string | null
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
   readonly containers: readonly ContainerDetailVM[]

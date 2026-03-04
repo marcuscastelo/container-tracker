@@ -13,6 +13,7 @@ describe('toProcessSummaryVMs', () => {
         origin: { display_name: 'Shanghai' },
         destination: { display_name: 'Santos' },
         carrier: 'Maersk',
+        importer_id: 'importer-1',
         importer_name: 'Empresa ABC',
         bill_of_lading: null,
         booking_number: null,
@@ -28,6 +29,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].id).toBe('p1')
     expect(result[0].containerCount).toBe(1)
     expect(result[0].carrier).toBe('Maersk')
+    expect(result[0].importerId).toBe('importer-1')
     expect(result[0].importerName).toBe('Empresa ABC')
   })
 
@@ -53,7 +55,9 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('in-transit')
     expect(result[0].statusCode).toBe('IN_TRANSIT')
+    expect(result[0].statusRank).toBeGreaterThan(0)
     expect(result[0].eta).toBe('2025-06-01T00:00:00Z')
+    expect(result[0].etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
     expect(result[0].alertsCount).toBe(2)
     expect(result[0].highestAlertSeverity).toBe('warning')
     expect(result[0].hasTransshipment).toBe(true)
@@ -74,7 +78,9 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('unknown')
     expect(result[0].statusCode).toBe('UNKNOWN')
+    expect(result[0].statusRank).toBe(0)
     expect(result[0].eta).toBeNull()
+    expect(result[0].etaMsOrNull).toBeNull()
     expect(result[0].alertsCount).toBe(0)
     expect(result[0].highestAlertSeverity).toBeNull()
     expect(result[0].hasTransshipment).toBe(false)
@@ -96,6 +102,24 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('delivered')
     expect(result[0].statusCode).toBe('DELIVERED')
+    expect(result[0].statusRank).toBeGreaterThan(0)
+  })
+
+  it('maps invalid eta string to etaMsOrNull = null', () => {
+    const example: ProcessListItemSource[] = [
+      {
+        id: 'p7',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        containers: [],
+        eta: 'not-a-date',
+      },
+    ]
+
+    const result = toProcessSummaryVMs(example)
+    expect(result[0].eta).toBe('not-a-date')
+    expect(result[0].etaMsOrNull).toBeNull()
   })
 
   it('normalizes blank importer_name to null', () => {
@@ -111,6 +135,7 @@ describe('toProcessSummaryVMs', () => {
     ]
 
     const result = toProcessSummaryVMs(example)
+    expect(result[0].importerId).toBeNull()
     expect(result[0].importerName).toBeNull()
   })
 

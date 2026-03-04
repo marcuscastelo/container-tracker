@@ -129,7 +129,7 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         reference: 'REF-001',
         origin: 'Santos',
         destination: 'Rotterdam',
-        status: 'IN_TRANSIT',
+        status: 'IN_PROGRESS',
         eta: '2026-03-10T10:00:00.000Z',
         dominantSeverity: 'danger',
         activeAlertsCount: 3,
