@@ -119,7 +119,8 @@ type RefreshContainersParams = {
   readonly setRefreshRetry: (value: RefreshRetryState | null) => void
   readonly setLastRefreshDoneAt: (value: Date | null) => void
   readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
-  readonly refreshTrackingData: () => Promise<void>
+  // This line contains a type annotation that the i18n-enforce tool may false-positive as JSX text.
+  readonly refreshTrackingData: () => Promise<void> // i18n-enforce-ignore
   readonly isDisposed: () => boolean
   readonly toTimeoutMessage: (totalRetries: number) => string
   readonly toFailedMessage: (failedCount: number, firstError: string) => string
@@ -565,10 +566,10 @@ type ShipmentViewLayoutProps = {
   readonly onCloseEdit: () => void
   readonly editInitialData: CreateProcessDialogFormData | null
   readonly focusFieldOnOpen: 'reference' | 'carrier' | null
-  readonly onEditSubmit: (formData: CreateProcessDialogFormData) => Promise<void>
+  readonly onEditSubmit: (formData: CreateProcessDialogFormData) => Promise<void> // i18n-enforce-ignore
   readonly isCreateDialogOpen: boolean
   readonly onCloseCreate: () => void
-  readonly onCreateSubmit: (formData: CreateProcessDialogFormData) => Promise<void>
+  readonly onCreateSubmit: (formData: CreateProcessDialogFormData) => Promise<void> // i18n-enforce-ignore
   readonly hasCreateError: boolean
   readonly createErrorMessage: string
   readonly createErrorExisting: ExistingProcessConflict | undefined

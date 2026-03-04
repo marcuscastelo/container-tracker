@@ -43,6 +43,7 @@ function makeAlert(
     readonly category: TrackingActiveAlertReadModel['category']
     readonly generated_at?: TrackingActiveAlertReadModel['generated_at']
     readonly retroactive?: TrackingActiveAlertReadModel['retroactive']
+    readonly is_active?: TrackingActiveAlertReadModel['is_active']
   },
 ): TrackingActiveAlertReadModel {
   return {
@@ -54,7 +55,7 @@ function makeAlert(
     type: args.type,
     generated_at: args.generated_at ?? '2026-03-03T00:00:00.000Z',
     fingerprint: null,
-    is_active: true,
+    is_active: args.is_active ?? true,
     retroactive: args.retroactive ?? false,
   }
 }
@@ -171,7 +172,92 @@ describe('dashboard operational summary read model integration', () => {
     })
   })
 
-  it('builds consolidated active-alert panel preserving fact/monitoring, retroactive and raw generated_at', async () => {
+  it('exposes global indicator keys and computes totals from active alerts only', async () => {
+    const fixedNow = new Date('2026-03-03T00:00:00.000Z')
+    const processes: ProcessesProjection = [
+      {
+        process: {
+          id: 'process-1',
+          reference: 'REF-001',
+          origin: 'Santos',
+          destination: 'Hamburg',
+        },
+        containers: [{ id: 'container-1', containerNumber: 'MSCU1111111' }],
+      },
+    ]
+
+    const listProcessesWithContainers = vi.fn(async () => ({ processes }))
+    const getContainersSummary = vi.fn(
+      async (): Promise<ReadonlyMap<string, TrackingOperationalSummary>> =>
+        new Map([['container-1', makeTrackingOperationalSummary('IN_TRANSIT')]]),
+    )
+    const alerts: readonly TrackingActiveAlertReadModel[] = [
+      makeAlert({
+        alert_id: 'alert-active',
+        process_id: 'process-1',
+        container_id: 'container-1',
+        category: 'monitoring',
+        severity: 'warning',
+        type: 'ETA_PASSED',
+        is_active: true,
+      }),
+      makeAlert({
+        alert_id: 'alert-inactive',
+        process_id: 'process-1',
+        container_id: 'container-1',
+        category: 'fact',
+        severity: 'danger',
+        type: 'CUSTOMS_HOLD',
+        is_active: false,
+      }),
+    ]
+    const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
+
+    const useCases = createDashboardUseCases({
+      processUseCases: { listProcessesWithContainers },
+      trackingUseCases: { getContainersSummary, listActiveAlertReadModel },
+      nowFactory: () => fixedNow,
+    })
+    const result = await useCases.getOperationalSummaryReadModel()
+
+    expect(Object.keys(result.globalAlerts)).toEqual([
+      'totalActiveAlerts',
+      'bySeverity',
+      'byCategory',
+    ])
+    expect(Object.keys(result.globalAlerts.bySeverity)).toEqual([
+      'danger',
+      'warning',
+      'info',
+      'success',
+    ])
+    expect(Object.keys(result.globalAlerts.byCategory)).toEqual([
+      'eta',
+      'movement',
+      'customs',
+      'status',
+      'data',
+    ])
+
+    expect(result.globalAlerts).toEqual({
+      totalActiveAlerts: 1,
+      bySeverity: {
+        danger: 0,
+        warning: 1,
+        info: 0,
+        success: 0,
+      },
+      byCategory: {
+        eta: 1,
+        movement: 0,
+        customs: 0,
+        status: 0,
+        data: 0,
+      },
+    })
+  })
+
+  it('builds consolidated active-alert panel with mixed types and generated_at descending order', async () => {
     const fixedNow = new Date('2026-03-03T00:00:00.000Z')
 
     const processes: ProcessesProjection = [
@@ -206,23 +292,33 @@ describe('dashboard operational summary read model integration', () => {
 
     const alerts: readonly TrackingActiveAlertReadModel[] = [
       makeAlert({
-        alert_id: 'alert-fact-retroactive',
-        process_id: 'process-fact',
-        container_id: 'container-fact',
-        category: 'fact',
-        severity: 'danger',
-        type: 'CUSTOMS_HOLD',
-        generated_at: '2026-03-01T14:10:00.000Z',
-        retroactive: true,
-      }),
-      makeAlert({
-        alert_id: 'alert-monitoring',
+        alert_id: 'alert-monitoring-eta-passed',
         process_id: 'process-monitoring',
         container_id: 'container-monitoring',
         category: 'monitoring',
         severity: 'warning',
         type: 'ETA_PASSED',
         generated_at: '2026-03-03T10:00:00.000Z',
+      }),
+      makeAlert({
+        alert_id: 'alert-fact-data-inconsistent',
+        process_id: 'process-fact',
+        container_id: 'container-fact',
+        category: 'fact',
+        severity: 'danger',
+        type: 'DATA_INCONSISTENT',
+        generated_at: '2026-03-03T12:45:00.000Z',
+        retroactive: true,
+      }),
+      makeAlert({
+        alert_id: 'alert-fact-customs-hold',
+        process_id: 'process-fact',
+        container_id: 'container-fact',
+        category: 'fact',
+        severity: 'warning',
+        type: 'CUSTOMS_HOLD',
+        generated_at: '2026-03-01T14:10:00.000Z',
+        retroactive: true,
       }),
     ]
     const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
@@ -247,11 +343,11 @@ describe('dashboard operational summary read model integration', () => {
           containerId: 'container-fact',
           containerNumber: 'MSCU2000001',
         },
-        category: 'customs',
+        category: 'data',
         severity: 'danger',
         type: 'fact',
-        description: 'CUSTOMS_HOLD',
-        generated_at: '2026-03-01T14:10:00.000Z',
+        description: 'DATA_INCONSISTENT',
+        generated_at: '2026-03-03T12:45:00.000Z',
         retroactive: true,
       },
       {
@@ -272,6 +368,30 @@ describe('dashboard operational summary read model integration', () => {
         generated_at: '2026-03-03T10:00:00.000Z',
         retroactive: false,
       },
+      {
+        process: {
+          processId: 'process-fact',
+          reference: 'REF-FACT',
+          origin: 'Santos',
+          destination: 'Antwerp',
+        },
+        container: {
+          containerId: 'container-fact',
+          containerNumber: 'MSCU2000001',
+        },
+        category: 'customs',
+        severity: 'warning',
+        type: 'fact',
+        description: 'CUSTOMS_HOLD',
+        generated_at: '2026-03-01T14:10:00.000Z',
+        retroactive: true,
+      },
+    ])
+
+    expect(result.activeAlertsPanel.map((alert) => alert.generated_at)).toEqual([
+      '2026-03-03T12:45:00.000Z',
+      '2026-03-03T10:00:00.000Z',
+      '2026-03-01T14:10:00.000Z',
     ])
   })
 
@@ -290,12 +410,12 @@ describe('dashboard operational summary read model integration', () => {
       },
       {
         process: {
-          id: 'process-warning',
-          reference: 'REF-WARN',
+          id: 'process-warning-z',
+          reference: 'REF-WARN-Z',
           origin: 'Shanghai',
           destination: 'Rotterdam',
         },
-        containers: [{ id: 'container-warning', containerNumber: 'MSCU1000002' }],
+        containers: [{ id: 'container-warning-z', containerNumber: 'MSCU1000002' }],
       },
       {
         process: {
@@ -305,6 +425,15 @@ describe('dashboard operational summary read model integration', () => {
           destination: 'Hamburg',
         },
         containers: [{ id: 'container-info', containerNumber: 'MSCU1000003' }],
+      },
+      {
+        process: {
+          id: 'process-warning-a',
+          reference: 'REF-WARN-A',
+          origin: 'Xiamen',
+          destination: 'Le Havre',
+        },
+        containers: [{ id: 'container-warning-a', containerNumber: 'MSCU1000005' }],
       },
       {
         process: {
@@ -323,12 +452,16 @@ describe('dashboard operational summary read model integration', () => {
         new Map([
           ['container-none', makeTrackingOperationalSummary('LOADED', null)],
           [
-            'container-warning',
-            makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-12T10:00:00.000Z'),
+            'container-warning-z',
+            makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-13T10:00:00.000Z'),
           ],
           [
             'container-info',
             makeTrackingOperationalSummary('IN_PROGRESS', '2026-03-14T10:00:00.000Z'),
+          ],
+          [
+            'container-warning-a',
+            makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-12T10:00:00.000Z'),
           ],
           [
             'container-danger',
@@ -339,12 +472,20 @@ describe('dashboard operational summary read model integration', () => {
 
     const alerts: readonly TrackingActiveAlertReadModel[] = [
       makeAlert({
-        alert_id: 'alert-warning',
-        process_id: 'process-warning',
-        container_id: 'container-warning',
+        alert_id: 'alert-warning-z',
+        process_id: 'process-warning-z',
+        container_id: 'container-warning-z',
         category: 'monitoring',
         severity: 'warning',
         type: 'NO_MOVEMENT',
+      }),
+      makeAlert({
+        alert_id: 'alert-warning-a',
+        process_id: 'process-warning-a',
+        container_id: 'container-warning-a',
+        category: 'monitoring',
+        severity: 'warning',
+        type: 'ETA_PASSED',
       }),
       makeAlert({
         alert_id: 'alert-danger',
@@ -396,12 +537,22 @@ describe('dashboard operational summary read model integration', () => {
         activeAlertsCount: 1,
       },
       {
-        processId: 'process-warning',
-        reference: 'REF-WARN',
+        processId: 'process-warning-a',
+        reference: 'REF-WARN-A',
+        origin: 'Xiamen',
+        destination: 'Le Havre',
+        status: 'IN_TRANSIT',
+        eta: '2026-03-12T10:00:00.000Z',
+        dominantSeverity: 'warning',
+        activeAlertsCount: 1,
+      },
+      {
+        processId: 'process-warning-z',
+        reference: 'REF-WARN-Z',
         origin: 'Shanghai',
         destination: 'Rotterdam',
         status: 'IN_TRANSIT',
-        eta: '2026-03-12T10:00:00.000Z',
+        eta: '2026-03-13T10:00:00.000Z',
         dominantSeverity: 'warning',
         activeAlertsCount: 1,
       },

@@ -12,6 +12,33 @@
     "createProcess": "Create Process"
   },
   "dashboard": {
+    "alertIndicators": {
+      "title": "Operational Alerts",
+      "total": "Total Active Alerts",
+      "loading": "Loading alert indicators...",
+      "error": "Failed to load alert indicators",
+      "empty": "No active alerts at the moment.",
+      "severity": {
+        "danger": "Critical",
+        "warning": "Warning",
+        "info": "Info",
+        "success": "Resolved"
+      },
+      "subtitle": {
+        "total": "open now",
+        "severity": {
+          "danger": "act now",
+          "warning": "needs triage"
+        }
+      },
+      "category": {
+        "eta": "ETA",
+        "movement": "Movement",
+        "customs": "Customs",
+        "status": "Status",
+        "data": "Data"
+      }
+    },
     "metrics": {
       "activeShipments": "Active Shipments",
       "inTransit": "In Transit",
@@ -19,15 +46,33 @@
       "arrivalsToday": "Arrivals Today"
     },
     "table": {
-      "title": "Shipments Overview",
+      "title": "Process Exceptions",
       "col": {
         "process": "Process",
         "carrier": "Carrier",
         "importerName": "Importer",
-        "route": "Origin → Destination",
+        "route": "Route",
         "containers": "Containers",
-        "status": "Status",
-        "eta": "ETA"
+        "status": "Derived Status",
+        "eta": "Current ETA",
+        "dominantSeverity": "Dominant Severity",
+        "activeAlerts": "Active Alerts"
+      },
+      "age": {
+        "now": "now",
+        "minutes": "{{count}}m ago",
+        "hours": "{{count}}h ago",
+        "days": "{{count}}d ago",
+        "missing": "—"
+      },
+      "filters": {
+        "title": "Filters",
+        "all": "All",
+        "danger": "Critical",
+        "warning": "Warning"
+      },
+      "severity": {
+        "none": "None"
       }
     },
     "loading": "Loading...",
@@ -296,7 +341,8 @@
     "footer": {
       "navigate": "Navigate",
       "select": "Select",
-      "close": "Close"
+      "close": "Close",
+      "modifier": "Ctrl/⌘"
     }
   }
 }

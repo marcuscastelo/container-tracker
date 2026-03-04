@@ -23,6 +23,33 @@
     "close": "Fechar"
   },
   "dashboard": {
+    "alertIndicators": {
+      "title": "Alertas Operacionais",
+      "total": "Total de Alertas Ativos",
+      "loading": "Carregando indicadores de alerta...",
+      "error": "Falha ao carregar indicadores de alerta",
+      "empty": "Nenhum alerta ativo no momento.",
+      "severity": {
+        "danger": "Crítico",
+        "warning": "Atenção",
+        "info": "Informativo",
+        "success": "Resolvido"
+      },
+      "subtitle": {
+        "total": "abertos agora",
+        "severity": {
+          "danger": "agir já",
+          "warning": "exige triagem"
+        }
+      },
+      "category": {
+        "eta": "ETA",
+        "movement": "Movimentação",
+        "customs": "Alfândega",
+        "status": "Status",
+        "data": "Dados"
+      }
+    },
     "metrics": {
       "activeShipments": "Embarques Ativos",
       "inTransit": "Em Trânsito",
@@ -30,15 +57,33 @@
       "arrivalsToday": "Chegadas Hoje"
     },
     "table": {
-      "title": "Resumo dos Embarques",
+      "title": "Exceções de Processos",
       "col": {
         "process": "Processo",
         "carrier": "Armador",
         "importerName": "Importador",
-        "route": "Origem → Destino",
+        "route": "Rota",
         "containers": "Containers",
-        "status": "Status",
-        "eta": "ETA"
+        "status": "Status Derivado",
+        "eta": "ETA Atual",
+        "dominantSeverity": "Severidade Dominante",
+        "activeAlerts": "Alertas Ativos"
+      },
+      "age": {
+        "now": "agora",
+        "minutes": "há {{count}}m",
+        "hours": "há {{count}}h",
+        "days": "há {{count}}d",
+        "missing": "—"
+      },
+      "filters": {
+        "title": "Filtros",
+        "all": "Todos",
+        "danger": "Crítico",
+        "warning": "Atenção"
+      },
+      "severity": {
+        "none": "Sem alerta"
       }
     },
     "loading": "Carregando...",
@@ -296,7 +341,8 @@
     "footer": {
       "navigate": "Navegar",
       "select": "Selecionar",
-      "close": "Fechar"
+      "close": "Fechar",
+      "modifier": "Ctrl/⌘"
     }
   }
 }

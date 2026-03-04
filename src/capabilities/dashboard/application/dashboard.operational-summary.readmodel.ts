@@ -346,20 +346,47 @@ function buildDashboardActiveAlertsPanel(
   alerts: readonly TrackingActiveAlertReadModel[],
   contextByProcessId: ReadonlyMap<string, DashboardProcessContext>,
 ): readonly DashboardOperationalAlertReadModel[] {
-  return alerts.map((alert) => {
-    const context = contextByProcessId.get(alert.process_id)
+  return [...alerts]
+    .sort((left, right) => {
+      const rightTimestamp = Date.parse(right.generated_at)
+      const leftTimestamp = Date.parse(left.generated_at)
+      if (!Number.isNaN(rightTimestamp) && !Number.isNaN(leftTimestamp)) {
+        const byTimestamp = rightTimestamp - leftTimestamp
+        if (byTimestamp !== 0) {
+          return byTimestamp
+        }
+      }
 
-    return {
-      process: toDashboardAlertProcessReadModel(alert.process_id, context),
-      container: toDashboardAlertContainerReadModel(alert.container_id, context),
-      category: toTrackingOperationalAlertCategory(alert.type),
-      severity: alert.severity,
-      type: alert.category,
-      description: alert.type,
-      generated_at: alert.generated_at,
-      retroactive: alert.retroactive,
-    }
-  })
+      if (left.generated_at !== right.generated_at) {
+        return left.generated_at < right.generated_at ? 1 : -1
+      }
+
+      const byProcessId = left.process_id.localeCompare(right.process_id)
+      if (byProcessId !== 0) {
+        return byProcessId
+      }
+
+      const byContainerId = left.container_id.localeCompare(right.container_id)
+      if (byContainerId !== 0) {
+        return byContainerId
+      }
+
+      return left.alert_id.localeCompare(right.alert_id)
+    })
+    .map((alert) => {
+      const context = contextByProcessId.get(alert.process_id)
+
+      return {
+        process: toDashboardAlertProcessReadModel(alert.process_id, context),
+        container: toDashboardAlertContainerReadModel(alert.container_id, context),
+        category: toTrackingOperationalAlertCategory(alert.type),
+        severity: alert.severity,
+        type: alert.category,
+        description: alert.type,
+        generated_at: alert.generated_at,
+        retroactive: alert.retroactive,
+      }
+    })
 }
 
 function toTrackingSummaryOrFallback(
@@ -372,6 +399,14 @@ function toTrackingSummaryOrFallback(
 function sortDashboardProcessesByDominantSeverity(
   processes: readonly DashboardOperationalProcessReadModel[],
 ): readonly DashboardOperationalProcessReadModel[] {
+  function normalizeReference(reference: string | null): string {
+    if (reference === null) {
+      return '~'
+    }
+
+    return reference.trim().toUpperCase()
+  }
+
   return processes
     .map((process, index) => ({ process, index }))
     .sort((left, right) => {
@@ -379,6 +414,17 @@ function sortDashboardProcessesByDominantSeverity(
       const leftPriority = DASHBOARD_SEVERITY_ORDER[left.process.dominantSeverity]
       if (rightPriority !== leftPriority) {
         return rightPriority - leftPriority
+      }
+
+      const leftReference = normalizeReference(left.process.reference)
+      const rightReference = normalizeReference(right.process.reference)
+      if (leftReference !== rightReference) {
+        return leftReference < rightReference ? -1 : 1
+      }
+
+      const byProcessId = left.process.processId.localeCompare(right.process.processId)
+      if (byProcessId !== 0) {
+        return byProcessId
       }
 
       return left.index - right.index
@@ -405,13 +451,13 @@ export function createDashboardOperationalSummaryReadModelUseCase(
       deps.trackingUseCases.listActiveAlertReadModel(),
     ])
 
-    const globalAlerts = summarizeGlobalActiveAlerts(activeAlertsResult.alerts)
+    const activeAlerts = activeAlertsResult.alerts
+    // ensure we only consider alerts that are currently active
+    const activeOnly = activeAlerts.filter((a) => a.is_active === true)
+    const globalAlerts = summarizeGlobalActiveAlerts(activeOnly)
     const processContextById = indexDashboardProcessContextById(processes)
-    const activeAlertsPanel = buildDashboardActiveAlertsPanel(
-      activeAlertsResult.alerts,
-      processContextById,
-    )
-    const alertsByProcessId = groupAlertsByProcessId(activeAlertsResult.alerts)
+    const activeAlertsPanel = buildDashboardActiveAlertsPanel(activeOnly, processContextById)
+    const alertsByProcessId = groupAlertsByProcessId(activeOnly)
     const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
       sortDashboardProcessesByDominantSeverity(
         processes.map((entry) => {

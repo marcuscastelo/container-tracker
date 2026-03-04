@@ -1,4 +1,5 @@
 import type { JSX } from 'solid-js'
+import { createMemo } from 'solid-js'
 
 export type StatusVariant =
   | 'in-transit'
@@ -13,6 +14,7 @@ export type StatusVariant =
 type Props = {
   readonly variant: StatusVariant
   readonly label: string
+  readonly neutral?: boolean
 }
 
 const statusConfig: Record<StatusVariant, { icon: string; bgClass: string; textClass: string }> = {
@@ -59,13 +61,17 @@ const statusConfig: Record<StatusVariant, { icon: string; bgClass: string; textC
 }
 
 export function StatusBadge(props: Props): JSX.Element {
-  const config = () => statusConfig[props.variant] ?? statusConfig.unknown
+  const config = createMemo(() => statusConfig[props.variant] ?? statusConfig.unknown)
+
+  const bgClass = createMemo(() => (props.neutral ? 'bg-slate-50' : config().bgClass))
+  const textClass = createMemo(() => (props.neutral ? 'text-slate-600' : config().textClass))
+  const iconColorClass = createMemo(() => (props.neutral ? 'text-slate-400' : ''))
 
   return (
     <span
-      class={`inline-flex items-center gap-1 rounded px-1.5 py-px text-[10px] font-semibold leading-none tracking-wide ${config().bgClass} ${config().textClass}`}
+      class={`inline-flex items-center gap-1 rounded px-1.5 py-px text-[10px] font-semibold leading-none tracking-wide ${bgClass()} ${textClass()}`}
     >
-      <span class="text-[7px]" aria-hidden="true">
+      <span class={`text-[7px] ${iconColorClass()}`} aria-hidden="true">
         {config().icon}
       </span>
       <span>{props.label}</span>
