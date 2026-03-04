@@ -56,6 +56,7 @@ export function AppHeader(props: Props): JSX.Element {
               {t(keys.header.nav.dashboard)}
             </NavLink>
             <NavLink href="/shipments">{t(keys.header.nav.shipments)}</NavLink>
+            <NavLink href="/processes/board">{t(keys.header.nav.board)}</NavLink>
             <NavLink href="/containers">{t(keys.header.nav.containers)}</NavLink>
           </nav>
         </div>

@@ -13,6 +13,7 @@ import {
   createListProcessesWithOperationalSummaryUseCase,
   type ListProcessesWithOperationalSummaryDeps,
 } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
+import { createMoveProcessToWorkflowColumnUseCase } from '~/modules/process/application/usecases/move-process-to-workflow-column.usecase'
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
@@ -53,6 +54,9 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
   })
 
   const deleteProcess = createDeleteProcessUseCase({ repository: deps.repository })
+  const moveProcessToWorkflowColumn = createMoveProcessToWorkflowColumnUseCase({
+    repository: deps.repository,
+  })
 
   const removeContainerFromProcess = createRemoveContainerFromProcessUseCase({
     repository: deps.repository,
@@ -76,6 +80,7 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     findProcessByIdWithContainers,
     createProcess,
     updateProcess,
+    moveProcessToWorkflowColumn,
     deleteProcess,
     removeContainerFromProcess,
     searchByText,

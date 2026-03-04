@@ -13,6 +13,17 @@ export const ProcessResponseSchema = z.object({
   reference_importer: z.string().nullish(),
   product: z.string().nullish(),
   redestination_number: z.string().nullish(),
+  operational_workflow_state: z
+    .enum([
+      'WAITING_BL',
+      'ARRIVAL_FORECAST',
+      'DELAYED_WAITING_CUSTOMS_PRESENCE',
+      'WAITING_FUNDS',
+      'WAITING_ICMS',
+      'LOADING',
+      'INVOICING',
+    ])
+    .optional(),
   source: z.string(),
   created_at: z.string(),
   updated_at: z.string(),

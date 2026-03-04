@@ -133,6 +133,7 @@ function processToResponseFields(p: ProcessEntity) {
     reference_importer: p.referenceImporter ?? null,
     product: p.product ?? null,
     redestination_number: p.redestinationNumber ?? null,
+    operational_workflow_state: p.operationalWorkflowState,
     source: p.source,
     created_at: p.createdAt.toISOString(),
     updated_at: p.updatedAt.toISOString(),

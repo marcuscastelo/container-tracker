@@ -2,6 +2,7 @@ import type { CarrierCode } from '~/modules/process/domain/identity/carrier-code
 import type { ProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import type { ProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import type { ProcessSource } from '~/modules/process/domain/identity/process-source.vo'
+import type { OperationalWorkflowState } from '~/modules/process/domain/operational-workflow-state.vo'
 import { type ProcessBrand, toProcessBrand } from '~/modules/process/domain/process.types'
 
 export type ProcessEntityProps = {
@@ -17,6 +18,7 @@ export type ProcessEntityProps = {
   referenceImporter: string | null
   product: string | null
   redestinationNumber: string | null
+  operationalWorkflowState: OperationalWorkflowState
   source: ProcessSource
   createdAt: Date
   updatedAt: Date

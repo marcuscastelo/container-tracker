@@ -7,7 +7,8 @@
     "nav": {
       "dashboard": "Dashboard",
       "shipments": "Embarques",
-      "containers": "Containers"
+      "containers": "Containers",
+      "board": "Kanban de Processos"
     },
     "createProcess": "Criar Processo"
   },
@@ -295,6 +296,19 @@
       "navigate": "Navegar",
       "select": "Selecionar",
       "close": "Fechar"
+    }
+  },
+  "kanban": {
+    "title": "Kanban Operacional de Processos",
+    "moveForward": "Mover para próxima",
+    "column": {
+      "waitingBl": "Aguardando BL",
+      "arrivalForecast": "Previsão de Chegada",
+      "delayedWaitingCustomsPresence": "Atrasado Agdo. Presença",
+      "waitingFunds": "Aguardando Numerário",
+      "waitingIcms": "Aguardando ICMS",
+      "loading": "Carregamento",
+      "invoicing": "Faturamento"
     }
   }
 }

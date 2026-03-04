@@ -1,6 +1,7 @@
 import type {
   InsertProcessRecord,
   UpdateProcessRecord,
+  UpdateProcessWorkflowRecord,
 } from '~/modules/process/application/process.records'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 
@@ -11,6 +12,10 @@ export type ProcessRepository = {
 
   create(record: InsertProcessRecord): Promise<ProcessEntity>
   update(processId: string, record: UpdateProcessRecord): Promise<ProcessEntity>
+  updateWorkflowState(
+    processId: string,
+    record: UpdateProcessWorkflowRecord,
+  ): Promise<ProcessEntity>
 
   delete(processId: string): Promise<void>
 }

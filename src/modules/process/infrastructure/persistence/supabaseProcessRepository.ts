@@ -1,6 +1,7 @@
 import type {
   InsertProcessRecord,
   UpdateProcessRecord,
+  UpdateProcessWorkflowRecord,
 } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
@@ -67,5 +68,28 @@ export const supabaseProcessRepository: ProcessRepository = {
   async delete(processId: string): Promise<void> {
     const result = await supabase.from(PROCESSES_TABLE).delete().eq('id', processId)
     unwrapSupabaseSingleOrNull(result, { operation: 'delete', table: PROCESSES_TABLE })
+  },
+
+  async updateWorkflowState(
+    processId: string,
+    record: UpdateProcessWorkflowRecord,
+  ): Promise<ProcessEntity> {
+    const now = new Date().toISOString()
+
+    const result = await supabase
+      .from(PROCESSES_TABLE)
+      .update({
+        operational_workflow_state: record.operational_workflow_state,
+        updated_at: now,
+      })
+      .eq('id', processId)
+      .select()
+      .single()
+
+    const row = unwrapSupabaseResultOrThrow(result, {
+      operation: 'updateWorkflowState',
+      table: PROCESSES_TABLE,
+    })
+    return processMappers.rowToProcess(row)
   },
 }

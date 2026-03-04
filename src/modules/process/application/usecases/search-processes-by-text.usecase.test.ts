@@ -33,6 +33,7 @@ function createProcess(overrides: {
     referenceImporter: null,
     product: null,
     redestinationNumber: null,
+    operationalWorkflowState: 'WAITING_BL',
     source: toProcessSource('manual'),
     createdAt: new Date('2026-03-01T00:00:00.000Z'),
     updatedAt: new Date('2026-03-01T00:00:00.000Z'),
@@ -50,6 +51,9 @@ function createRepository(processes: readonly ProcessEntity[]): ProcessRepositor
       throw new Error('Not implemented in search tests')
     }),
     delete: vi.fn(async (_processId: string) => {
+      throw new Error('Not implemented in search tests')
+    }),
+    updateWorkflowState: vi.fn(async (_processId: string) => {
       throw new Error('Not implemented in search tests')
     }),
   }

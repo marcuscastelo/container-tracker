@@ -7,7 +7,8 @@
     "nav": {
       "dashboard": "Dashboard",
       "shipments": "Shipments",
-      "containers": "Containers"
+      "containers": "Containers",
+      "board": "Process Board"
     },
     "createProcess": "Create Process"
   },
@@ -295,6 +296,19 @@
       "navigate": "Navigate",
       "select": "Select",
       "close": "Close"
+    }
+  },
+  "kanban": {
+    "title": "Operational Process Board",
+    "moveForward": "Move forward",
+    "column": {
+      "waitingBl": "Aguardando BL",
+      "arrivalForecast": "Previsão de Chegada",
+      "delayedWaitingCustomsPresence": "Atrasado Agdo. Presença",
+      "waitingFunds": "Aguardando Numerário",
+      "waitingIcms": "Aguardando ICMS",
+      "loading": "Carregamento",
+      "invoicing": "Faturamento"
     }
   }
 }

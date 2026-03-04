@@ -5,6 +5,15 @@ import z from 'zod/v4'
  * This is the interface layer's own schema — domain types are plain.
  */
 const CarrierSchema = z.enum(['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'])
+const OperationalWorkflowStateSchema = z.enum([
+  'WAITING_BL',
+  'ARRIVAL_FORECAST',
+  'DELAYED_WAITING_CUSTOMS_PRESENCE',
+  'WAITING_FUNDS',
+  'WAITING_ICMS',
+  'LOADING',
+  'INVOICING',
+])
 /**
  * Schema for creating a new process (input from UI)
  */
@@ -40,3 +49,7 @@ export const CreateProcessInputSchema = z.object({
     .min(1, 'At least one container is required'),
 })
 export type CreateProcessInput = z.infer<typeof CreateProcessInputSchema>
+
+export const MoveProcessWorkflowInputSchema = z.object({
+  targetState: OperationalWorkflowStateSchema,
+})

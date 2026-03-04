@@ -9,7 +9,10 @@ import {
   toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
-import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
+import {
+  CreateProcessInputSchema,
+  MoveProcessWorkflowInputSchema,
+} from '~/modules/process/interface/http/process.schemas'
 import { createTrackingOperationalSummaryFallback } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
@@ -30,6 +33,7 @@ export type ProcessControllerDeps = {
     | 'createProcess'
     | 'findProcessByIdWithContainers'
     | 'updateProcess'
+    | 'moveProcessToWorkflowColumn'
     | 'findProcessById'
     | 'deleteProcess'
   >
@@ -295,11 +299,43 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     }
   }
 
+  async function moveProcessWorkflowById({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    try {
+      const processId = params.id
+      if (!processId) {
+        return jsonResponse({ error: 'Process ID is required' }, 400)
+      }
+
+      const rawBody = await request.json().catch(() => ({}))
+      const parsed = MoveProcessWorkflowInputSchema.safeParse(rawBody)
+      if (!parsed.success) {
+        return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
+      }
+
+      const result = await processUseCases.moveProcessToWorkflowColumn({
+        processId,
+        targetState: parsed.data.targetState,
+      })
+
+      return jsonResponse(result, 200)
+    } catch (err) {
+      console.error('PATCH /api/processes/[id]/workflow error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
   return {
     listProcesses,
     createProcess,
     getProcessById,
     updateProcessById,
     deleteProcessById,
+    moveProcessWorkflowById,
   }
 }

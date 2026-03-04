@@ -2,6 +2,7 @@ import type { ContainerUseCasesForProcess } from '~/modules/process/application/
 import type { ProcessContainerRecord } from '~/modules/process/application/process.readmodels'
 import type { InsertProcessRecord } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
+import { DEFAULT_OPERATIONAL_WORKFLOW_STATE } from '~/modules/process/domain/operational-workflow-state.vo'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import { ContainerAlreadyExistsError } from '~/shared/errors/container-process.errors'
 
@@ -56,7 +57,10 @@ export function createCreateProcessUseCase(deps: {
       }
     }
 
-    const process = await deps.repository.create(command.record)
+    const process = await deps.repository.create({
+      ...command.record,
+      operational_workflow_state: DEFAULT_OPERATIONAL_WORKFLOW_STATE,
+    })
 
     const { containers, warnings } = await deps.containerUseCases.createManyForProcess({
       processId: process.id,

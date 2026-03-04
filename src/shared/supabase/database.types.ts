@@ -242,6 +242,7 @@ export type Database = {
           exporter_name: string | null
           id: string
           importer_name: string | null
+          operational_workflow_state: string
           origin: Json | null
           product: string | null
           redestination_number: string | null
@@ -263,6 +264,7 @@ export type Database = {
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
+          operational_workflow_state?: string
           origin?: Json | null
           product?: string | null
           redestination_number?: string | null
@@ -284,6 +286,7 @@ export type Database = {
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
+          operational_workflow_state?: string
           origin?: Json | null
           product?: string | null
           redestination_number?: string | null

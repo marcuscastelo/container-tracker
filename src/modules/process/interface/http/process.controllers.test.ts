@@ -51,6 +51,7 @@ function createProcessWithContainers(destination: string) {
     referenceImporter: null,
     product: null,
     redestinationNumber: null,
+    operationalWorkflowState: 'WAITING_BL',
     source: toProcessSource('manual'),
     createdAt: new Date('2026-02-01T10:00:00.000Z'),
     updatedAt: new Date('2026-02-01T10:00:00.000Z'),
@@ -142,6 +143,10 @@ function createControllers(destination: string, getContainerSummary: GetContaine
         process: processWithContainers,
       })),
       updateProcess: vi.fn(async () => ({ process: processWithContainers })),
+      moveProcessToWorkflowColumn: vi.fn(async () => ({
+        processId: 'process-1',
+        newState: 'LOADING' as const,
+      })),
       findProcessById: vi.fn(async () => ({ process })),
       deleteProcess: vi.fn(async () => ({ deleted: true as const })),
     },

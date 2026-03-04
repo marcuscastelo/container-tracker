@@ -6,6 +6,10 @@ import { toCarrierCode } from '~/modules/process/domain/identity/carrier-code.vo
 import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import { toProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import { toProcessSource } from '~/modules/process/domain/identity/process-source.vo'
+import {
+  DEFAULT_OPERATIONAL_WORKFLOW_STATE,
+  isOperationalWorkflowState,
+} from '~/modules/process/domain/operational-workflow-state.vo'
 import { createProcessEntity, type ProcessEntity } from '~/modules/process/domain/process.entity'
 import type {
   ProcessInsertRow,
@@ -16,6 +20,11 @@ import type {
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
   rowToProcess(row: ProcessRow): ProcessEntity {
+    const workflowStateRaw = String(row.operational_workflow_state)
+    const operationalWorkflowState = isOperationalWorkflowState(workflowStateRaw)
+      ? workflowStateRaw
+      : DEFAULT_OPERATIONAL_WORKFLOW_STATE
+
     return createProcessEntity({
       id: toProcessId(row.id),
       reference: row.reference ? toProcessReference(row.reference) : null,
@@ -30,6 +39,7 @@ export const processMappers = {
       product: row.product == null ? null : String(row.product),
       redestinationNumber:
         row.redestination_number == null ? null : String(row.redestination_number),
+      operationalWorkflowState,
       source: toProcessSource(row.source),
       createdAt: new Date(String(row.created_at)),
       updatedAt: new Date(String(row.updated_at)),
@@ -49,6 +59,8 @@ export const processMappers = {
       reference_importer: record.reference_importer,
       product: record.product ?? null,
       redestination_number: record.redestination_number ?? null,
+      operational_workflow_state:
+        record.operational_workflow_state ?? DEFAULT_OPERATIONAL_WORKFLOW_STATE,
       source: record.source,
       created_at: nowIso,
       updated_at: nowIso,

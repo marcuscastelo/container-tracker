@@ -1,3 +1,5 @@
+import type { OperationalWorkflowState } from '~/modules/process/domain/operational-workflow-state.vo'
+
 export type InsertProcessRecord = Readonly<{
   reference: string | null
   origin?: string | null
@@ -10,6 +12,7 @@ export type InsertProcessRecord = Readonly<{
   reference_importer: string | null
   product?: string | null
   redestination_number?: string | null
+  operational_workflow_state?: OperationalWorkflowState
   source: string
 }>
 
@@ -26,4 +29,8 @@ export type UpdateProcessRecord = Readonly<{
   product?: string | null
   redestination_number?: string | null
   source?: string
+}>
+
+export type UpdateProcessWorkflowRecord = Readonly<{
+  operational_workflow_state: OperationalWorkflowState
 }>
