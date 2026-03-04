@@ -30,6 +30,7 @@
     "ai:loop:input": "bash scripts/ai/ralph-loop-make-input.sh",
     "ai:loop:exec": "bash scripts/ai/ralph-loop-exec.sh",
     "ai:loop:update": "bash scripts/ai/ralph-loop-update.sh",
+    "ai:pr:feedback": "bash scripts/ai/github-pr-feedback.sh",
     "ai:wt-implement": "bash tools/worktrees/wt-implement.sh",
     "ai:skills:sync": "bash scripts/ai/sync-global-skills.sh",
     "agent:build": "pnpm exec tsc -p tools/agent/tsconfig.json",

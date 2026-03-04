@@ -51,6 +51,8 @@ If changing:
 - timeline derivation -> update derive/reconcile read-model tests
 
 Prefer deterministic fixtures and stable tests.
+- `deriveTimelineWithSeriesReadModel()` emits only series with a valid primary; a series containing only expired EXPECTED events is omitted, so test timestamps/`now` must reflect the intended visibility.
+- For metadata-only additions on observations, add an A/B invariant regression using the same fixture with metadata present vs stripped (`null`) and assert timeline semantics, status derivation, and alert derivation are identical.
 
 ---
 

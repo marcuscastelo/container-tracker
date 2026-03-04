@@ -5,6 +5,7 @@ import type {
 } from '~/modules/tracking/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
 import { parseIsoOrRfcString, parseMsDateString } from '~/shared/utils/parseDate'
 
@@ -58,25 +59,15 @@ const CMACGM_STATUS_MAP: Record<string, ObservationType> = {
   'customs release': 'CUSTOMS_RELEASE',
 }
 
-function toStatusMapKey(description: string): string {
-  return description
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-}
-
 function mapCmaCgmDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
-  const key = toStatusMapKey(description)
+  const key = toLookupMapKey(description)
   return CMACGM_STATUS_MAP[key] ?? 'OTHER'
 }
 
-function normalizeCarrierLabel(label: string | null | undefined): string | null {
+function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
-  const normalized = label.trim()
-  return normalized.length > 0 ? normalized : null
+  return label.trim().length > 0 ? label : null
 }
 
 /**
@@ -213,7 +204,7 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
       confidence,
       provider: 'cmacgm',
       snapshot_id: snapshot.id,
-      carrier_label: normalizeCarrierLabel(move.StatusDescription),
+      carrier_label: toCarrierLabelOrNull(move.StatusDescription),
       raw_event: move,
     }
 

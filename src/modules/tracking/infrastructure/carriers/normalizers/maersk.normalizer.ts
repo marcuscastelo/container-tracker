@@ -5,6 +5,7 @@ import type {
 } from '~/modules/tracking/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MaerskApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/maersk.api.schema'
 
 /**
@@ -44,18 +45,9 @@ const MAERSK_ACTIVITY_MAP: Record<string, ObservationType> = {
   'empty to shipper': 'GATE_OUT',
 }
 
-function toActivityMapKey(activity: string): string {
-  return activity
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
-}
-
 function mapMaerskActivity(activity: string | null | undefined): ObservationType {
   if (!activity) return 'OTHER'
-  const key = toActivityMapKey(activity)
+  const key = toLookupMapKey(activity)
   return MAERSK_ACTIVITY_MAP[key] ?? 'OTHER'
 }
 
@@ -74,10 +66,9 @@ function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeTy
   return 'EXPECTED'
 }
 
-function normalizeCarrierLabel(label: string | null | undefined): string | null {
+function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
-  const normalized = label.trim()
-  return normalized.length > 0 ? normalized : null
+  return label.trim().length > 0 ? label : null
 }
 
 function computeConfidence(
@@ -145,7 +136,7 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
           confidence,
           provider: 'maersk',
           snapshot_id: snapshot.id,
-          carrier_label: normalizeCarrierLabel(event.activity),
+          carrier_label: toCarrierLabelOrNull(event.activity),
           raw_event: event,
         }
 
