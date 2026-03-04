@@ -591,6 +591,59 @@ type ShipmentViewLayoutProps = {
   readonly onOpenCreateProcess: () => void
 }
 
+type ShipmentDataViewProps = {
+  readonly data: ShipmentDetailVM
+  readonly onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
+  readonly isRefreshing: boolean
+  readonly refreshRetry: RefreshRetryState | null
+  readonly refreshHint: string | null
+  readonly onTriggerRefresh: () => void
+  readonly selectedContainerId: string
+  readonly onSelectContainer: (containerId: string) => void
+  readonly selectedContainer: ShipmentContainer | null
+}
+
+function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
+  return (
+    <>
+      <ShipmentHeader
+        data={props.data}
+        isRefreshing={props.isRefreshing}
+        refreshRetry={props.refreshRetry}
+        refreshHint={props.refreshHint}
+        onTriggerRefresh={props.onTriggerRefresh}
+        onOpenEdit={props.onOpenEdit}
+      />
+
+      {/* Phase 1: Operational Summary Strip */}
+      <OperationalSummaryStrip data={props.data} />
+
+      <div class="grid gap-2 lg:grid-cols-3">
+        <div class="space-y-2 lg:col-span-2">
+          {/* Phase 3+4: Alerts first, sticky */}
+          <div class="sticky top-16 z-10">
+            <AlertsPanel alerts={props.data.alerts} />
+          </div>
+          <ContainersPanel
+            containers={props.data.containers}
+            selectedId={props.selectedContainerId}
+            onSelect={props.onSelectContainer}
+          />
+          <TimelinePanel
+            selectedContainer={props.selectedContainer}
+            carrier={props.data.carrier}
+            alerts={props.data.alerts}
+          />
+        </div>
+        <div class="space-y-2">
+          {/* Phase 9: Unified Shipment Info */}
+          <ShipmentInfoCard data={props.data} />
+        </div>
+      </div>
+    </>
+  )
+}
+
 function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
   const { t, keys } = useTranslation()
   const shouldShowNotFound = () =>
@@ -671,44 +724,19 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
 
         <Show when={props.shipmentData}>
           {(data) => (
-            <>
-              <ShipmentHeader
-                data={data()}
-                isRefreshing={props.isRefreshing}
-                refreshRetry={props.refreshRetry}
-                refreshHint={props.refreshHint}
-                onTriggerRefresh={props.onTriggerRefresh}
-                onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
-                  props.onOpenEditForShipment(data(), focus)
-                }
-              />
-
-              {/* Phase 1: Operational Summary Strip */}
-              <OperationalSummaryStrip data={data()} />
-
-              <div class="grid gap-2 lg:grid-cols-3">
-                <div class="space-y-2 lg:col-span-2">
-                  {/* Phase 3+4: Alerts first, sticky */}
-                  <div class="sticky top-16 z-10">
-                    <AlertsPanel alerts={data().alerts} />
-                  </div>
-                  <ContainersPanel
-                    containers={data().containers}
-                    selectedId={props.selectedContainerId}
-                    onSelect={props.onSelectContainer}
-                  />
-                  <TimelinePanel
-                    selectedContainer={props.selectedContainer}
-                    carrier={data().carrier}
-                    alerts={data().alerts}
-                  />
-                </div>
-                <div class="space-y-2">
-                  {/* Phase 9: Unified Shipment Info */}
-                  <ShipmentInfoCard data={data()} />
-                </div>
-              </div>
-            </>
+            <ShipmentDataView
+              data={data()}
+              isRefreshing={props.isRefreshing}
+              refreshRetry={props.refreshRetry}
+              refreshHint={props.refreshHint}
+              onTriggerRefresh={props.onTriggerRefresh}
+              onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
+                props.onOpenEditForShipment(data(), focus)
+              }
+              selectedContainerId={props.selectedContainerId}
+              onSelectContainer={props.onSelectContainer}
+              selectedContainer={props.selectedContainer}
+            />
           )}
         </Show>
       </main>

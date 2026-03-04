@@ -93,42 +93,11 @@ export function TimelinePanel(props: Props): JSX.Element {
         {/* Phase 6 — Timeline Header: Selected Container Context */}
         <Show when={props.selectedContainer}>
           {(container) => (
-            <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
-              {/* Container identity + status */}
-              <div class="flex items-center gap-1.5">
-                <span class="text-[11px] font-semibold tracking-wide text-slate-700">
-                  {container().number}
-                </span>
-                <StatusBadge
-                  variant={container().status}
-                  label={t(trackingStatusToLabelKey(keys, container().statusCode))}
-                />
-              </div>
-              {/* Current vessel */}
-              <Show when={currentVessel()}>
-                {(vessel) => (
-                  <div class="flex items-center gap-1">
-                    <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                      {t(keys.shipmentView.timeline.vessel)}
-                    </span>
-                    <span class="text-[10px] font-semibold text-slate-600">{vessel()}</span>
-                  </div>
-                )}
-              </Show>
-              {/* Intermediate ports route */}
-              <Show when={portsRoute()}>
-                {(route) => (
-                  <div class="flex items-center gap-1">
-                    <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                      {t(keys.shipmentView.transshipment.title)}
-                    </span>
-                    <span class="text-[10px] font-medium tabular-nums text-slate-500">
-                      {route()}
-                    </span>
-                  </div>
-                )}
-              </Show>
-            </div>
+            <ContainerContextHeader
+              container={container()}
+              currentVessel={currentVessel()}
+              portsRoute={portsRoute()}
+            />
           )}
         </Show>
         <Show
@@ -149,6 +118,52 @@ export function TimelinePanel(props: Props): JSX.Element {
         </Show>
       </div>
     </Panel>
+  )
+}
+
+type ContainerContextHeaderProps = {
+  container: ContainerDetailVM
+  currentVessel: string | null
+  portsRoute: string | null
+}
+
+function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element {
+  const { t, keys } = useTranslation()
+  return (
+    <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
+      {/* Container identity + status */}
+      <div class="flex items-center gap-1.5">
+        <span class="text-[11px] font-semibold tracking-wide text-slate-700">
+          {props.container.number}
+        </span>
+        <StatusBadge
+          variant={props.container.status}
+          label={t(trackingStatusToLabelKey(keys, props.container.statusCode))}
+        />
+      </div>
+      {/* Current vessel */}
+      <Show when={props.currentVessel}>
+        {(vessel) => (
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              {t(keys.shipmentView.timeline.vessel)}
+            </span>
+            <span class="text-[10px] font-semibold text-slate-600">{vessel()}</span>
+          </div>
+        )}
+      </Show>
+      {/* Intermediate ports route */}
+      <Show when={props.portsRoute}>
+        {(route) => (
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              {t(keys.shipmentView.transshipment.title)}
+            </span>
+            <span class="text-[10px] font-medium tabular-nums text-slate-500">{route()}</span>
+          </div>
+        )}
+      </Show>
+    </div>
   )
 }
 

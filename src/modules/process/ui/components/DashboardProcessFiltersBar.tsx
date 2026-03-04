@@ -43,6 +43,51 @@ type Props = {
   readonly onClearAllFilters: () => void
 }
 
+function MultiSelectOptionItem<T extends string>(props: {
+  readonly option: FilterControlOption<T>
+  readonly checked: boolean
+  readonly onToggle: () => void
+}): JSX.Element {
+  return (
+    <li>
+      <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] text-slate-700 hover:bg-slate-50">
+        <input
+          type="checkbox"
+          class="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          checked={props.checked}
+          onInput={() => props.onToggle()}
+        />
+        <span class="min-w-0 flex-1 truncate">{props.option.label}</span>
+        <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{props.option.count}</span>
+      </label>
+    </li>
+  )
+}
+
+function ImporterOptionItem(props: {
+  readonly option: DashboardImporterFilterOption
+  readonly isSelected: boolean
+  readonly onSelect: (
+    event: MouseEvent & { readonly currentTarget: HTMLButtonElement },
+    option: DashboardImporterFilterOption,
+  ) => void
+}): JSX.Element {
+  return (
+    <li>
+      <button
+        type="button"
+        class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] transition-colors ${
+          props.isSelected ? 'bg-slate-100 text-slate-800' : 'text-slate-700 hover:bg-slate-50'
+        }`}
+        onClick={(event) => props.onSelect(event, props.option)}
+      >
+        <span class="min-w-0 flex-1 truncate">{props.option.label}</span>
+        <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{props.option.count}</span>
+      </button>
+    </li>
+  )
+}
+
 function MultiSelectFilterControl<T extends string>(
   props: MultiSelectFilterControlProps<T>,
 ): JSX.Element {
@@ -75,20 +120,11 @@ function MultiSelectFilterControl<T extends string>(
           <ul class="max-h-56 overflow-y-auto p-1">
             <For each={props.options}>
               {(option) => (
-                <li>
-                  <label class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] text-slate-700 hover:bg-slate-50">
-                    <input
-                      type="checkbox"
-                      class="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      checked={isSelected(option.value)}
-                      onInput={() => props.onToggle(option.value)}
-                    />
-                    <span class="min-w-0 flex-1 truncate">{option.label}</span>
-                    <span class="shrink-0 tabular-nums text-[11px] text-slate-400">
-                      {option.count}
-                    </span>
-                  </label>
-                </li>
+                <MultiSelectOptionItem
+                  option={option}
+                  checked={isSelected(option.value)}
+                  onToggle={() => props.onToggle(option.value)}
+                />
               )}
             </For>
           </ul>
@@ -213,37 +249,24 @@ function ImporterFilterControl(props: ImporterFilterControlProps): JSX.Element {
             onInput={(event) => setSearchValue(event.currentTarget.value)}
           />
         </div>
-        <Show
-          when={props.options.length > 0}
-          fallback={<p class="px-3 py-2 text-[12px] text-slate-500">{props.emptyLabel}</p>}
-        >
-          <Show
-            when={filteredOptions().length > 0}
-            fallback={<p class="px-3 py-2 text-[12px] text-slate-500">{props.noMatchesLabel}</p>}
-          >
-            <ul class="max-h-56 overflow-y-auto p-1">
-              <For each={filteredOptions()}>
-                {(option) => (
-                  <li>
-                    <button
-                      type="button"
-                      class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[12px] transition-colors ${
-                        isOptionSelected(option)
-                          ? 'bg-slate-100 text-slate-800'
-                          : 'text-slate-700 hover:bg-slate-50'
-                      }`}
-                      onClick={(event) => handleOptionSelect(event, option)}
-                    >
-                      <span class="min-w-0 flex-1 truncate">{option.label}</span>
-                      <span class="shrink-0 tabular-nums text-[11px] text-slate-400">
-                        {option.count}
-                      </span>
-                    </button>
-                  </li>
-                )}
-              </For>
-            </ul>
-          </Show>
+        <Show when={props.options.length === 0}>
+          <p class="px-3 py-2 text-[12px] text-slate-500">{props.emptyLabel}</p>
+        </Show>
+        <Show when={props.options.length > 0 && filteredOptions().length === 0}>
+          <p class="px-3 py-2 text-[12px] text-slate-500">{props.noMatchesLabel}</p>
+        </Show>
+        <Show when={props.options.length > 0 && filteredOptions().length > 0}>
+          <ul class="max-h-56 overflow-y-auto p-1">
+            <For each={filteredOptions()}>
+              {(option) => (
+                <ImporterOptionItem
+                  option={option}
+                  isSelected={isOptionSelected(option)}
+                  onSelect={handleOptionSelect}
+                />
+              )}
+            </For>
+          </ul>
         </Show>
       </div>
     </details>

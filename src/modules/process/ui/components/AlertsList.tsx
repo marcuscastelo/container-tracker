@@ -84,6 +84,19 @@ function toAlertCardClasses(severity: AlertDisplayVM['severity'], isFirst: boole
   return 'border-slate-100 bg-slate-50/40 border-l-slate-300 border-l-2'
 }
 
+function AlertCategoryChip(props: {
+  type: AlertCategoryChipType
+  t: ReturnType<typeof useTranslation>['t']
+  keys: ReturnType<typeof useTranslation>['keys']
+}): JSX.Element {
+  return (
+    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium leading-none text-slate-500">
+      <span aria-hidden="true">{toAlertCategoryIcon(props.type)}</span>
+      {toAlertCategoryLabel(props.type, props.t, props.keys)}
+    </span>
+  )
+}
+
 export function AlertsList(props: { alerts: readonly AlertDisplayVM[] }): JSX.Element {
   const { t, keys } = useTranslation()
 
@@ -102,10 +115,7 @@ export function AlertsList(props: { alerts: readonly AlertDisplayVM[] }): JSX.El
                 >
                   {toSeverityLabel(alert.severity, t, keys)}
                 </span>
-                <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium leading-none text-slate-500">
-                  <span aria-hidden="true">{toAlertCategoryIcon(alert.type)}</span>
-                  {toAlertCategoryLabel(alert.type, t, keys)}
-                </span>
+                <AlertCategoryChip type={alert.type} t={t} keys={keys} />
                 <span class="text-[10px] font-medium tabular-nums text-slate-500">
                   {formatAlertAge(alert.triggeredAtIso, t, keys)}
                 </span>

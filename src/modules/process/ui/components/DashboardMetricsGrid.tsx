@@ -63,6 +63,15 @@ function computeSeveritySubtitle(key: string): string | undefined {
   return undefined
 }
 
+function CategorySummaryChip(props: { value: number; label: string }): JSX.Element {
+  return (
+    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+      <span class="font-bold tabular-nums">{props.value}</span>
+      {props.label}
+    </span>
+  )
+}
+
 export function DashboardMetricsGrid(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
@@ -250,12 +259,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
             {/* Phase 12: Category chips in dashboard */}
             <div class="ml-auto flex items-center gap-1.5">
               <For each={visibleCategoryCards()}>
-                {(card) => (
-                  <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                    <span class="font-bold tabular-nums">{card.value}</span>
-                    {card.label}
-                  </span>
-                )}
+                {(card) => <CategorySummaryChip value={card.value} label={card.label} />}
               </For>
             </div>
           </div>
