@@ -275,11 +275,6 @@ function groupAlertsByProcessId(
   return groupedAlerts
 }
 
-function filterActiveAlerts(
-  alerts: readonly TrackingActiveAlertReadModel[],
-): readonly TrackingActiveAlertReadModel[] {
-  return alerts.filter((alert) => alert.is_active)
-}
 
 type DashboardProcessContext = {
   readonly process: DashboardProcessRecord
@@ -457,7 +452,7 @@ export function createDashboardOperationalSummaryReadModelUseCase(
       deps.trackingUseCases.listActiveAlertReadModel(),
     ])
 
-    const activeAlerts = filterActiveAlerts(activeAlertsResult.alerts)
+    const activeAlerts = activeAlertsResult.alerts
     const globalAlerts = summarizeGlobalActiveAlerts(activeAlerts)
     const processContextById = indexDashboardProcessContextById(processes)
     const activeAlertsPanel = buildDashboardActiveAlertsPanel(activeAlerts, processContextById)

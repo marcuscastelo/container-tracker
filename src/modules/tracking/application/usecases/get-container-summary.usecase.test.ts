@@ -111,6 +111,7 @@ function createDeps(
     },
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
+      listActiveAlertReadModel: vi.fn(async (): Promise<readonly any[]> => []),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),

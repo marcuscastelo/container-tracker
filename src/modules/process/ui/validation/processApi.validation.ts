@@ -31,7 +31,7 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
   }
 }
 
-async function fetchDashboardOperationalSummary() {
+export async function fetchDashboardOperationalSummary() {
   return typedFetch(
     '/api/dashboard/operational-summary',
     undefined,
