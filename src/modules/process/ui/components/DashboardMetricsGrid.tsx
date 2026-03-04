@@ -57,12 +57,10 @@ function InfoIcon(): JSX.Element {
   )
 }
 
-function SuccessIcon(): JSX.Element {
-  return (
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
-    </svg>
-  )
+function computeSeveritySubtitle(key: string): string | undefined {
+  if (key === 'danger') return 'danger'
+  if (key === 'warning') return 'warning'
+  return undefined
 }
 
 export function DashboardMetricsGrid(props: Props): JSX.Element {
@@ -171,33 +169,51 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
       {(state() === 'empty' || state() === 'ready') && (
         <div class="space-y-4 px-4 py-3">
-          <div class="grid grid-cols-2 gap-2 lg:grid-cols-5">
-            <MetricCard
-              icon={<TotalIcon />}
-              label={t(keys.dashboard.alertIndicators.total)}
-              value={safeSummary().totalActiveAlerts}
-            />
+          <div class="flex flex-wrap gap-2 items-stretch">
+            <div class="flex-1 min-w-[220px] basis-[220px]">
+              <MetricCard
+                icon={<TotalIcon />}
+                label={t(keys.dashboard.alertIndicators.total)}
+                value={safeSummary().totalActiveAlerts}
+                subtitle={t(keys.dashboard.alertIndicators.subtitle.total)}
+              />
+            </div>
             <For each={visibleSeverityCards()}>
-              {(card) => (
-                <MetricCard
-                  icon={card.icon}
-                  label={card.label}
-                  value={card.value}
-                  variant={card.variant}
-                />
-              )}
+              {(card) => {
+                const subtitleKey = computeSeveritySubtitle(card.key)
+                let subtitleText: string | undefined
+                if (subtitleKey === 'danger')
+                  subtitleText = t('dashboard.alertIndicators.subtitle.severity.danger')
+                else if (subtitleKey === 'warning')
+                  subtitleText = t('dashboard.alertIndicators.subtitle.severity.warning')
+                else subtitleText = undefined
+
+                return (
+                  <div class="flex-1 min-w-[220px] basis-[220px]">
+                    <MetricCard
+                      icon={card.icon}
+                      label={card.label}
+                      value={card.value}
+                      variant={card.variant}
+                      subtitle={subtitleText}
+                    />
+                  </div>
+                )
+              }}
             </For>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <div class="flex flex-wrap gap-2 items-stretch">
             <For each={visibleCategoryCards()}>
               {(card) => (
-                <MetricCard
-                  icon={<InfoIcon />}
-                  label={card.label}
-                  value={card.value}
-                  variant={card.value > 0 ? 'info' : 'default'}
-                />
+                <div class="flex-1 min-w-[220px] basis-[220px]">
+                  <MetricCard
+                    icon={<InfoIcon />}
+                    label={card.label}
+                    value={card.value}
+                    variant={card.value > 0 ? 'info' : 'default'}
+                  />
+                </div>
               )}
             </For>
           </div>
