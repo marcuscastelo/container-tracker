@@ -79,6 +79,7 @@ export type Database = {
       }
       container_observations: {
         Row: {
+          carrier_label: string | null
           confidence: string
           container_id: string
           container_number: string
@@ -98,6 +99,7 @@ export type Database = {
           voyage: string | null
         }
         Insert: {
+          carrier_label?: string | null
           confidence: string
           container_id: string
           container_number: string
@@ -117,6 +119,7 @@ export type Database = {
           voyage?: string | null
         }
         Update: {
+          carrier_label?: string | null
           confidence?: string
           container_id?: string
           container_number?: string

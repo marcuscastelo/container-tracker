@@ -34,6 +34,7 @@ describe('observationRowToDomain', () => {
     confidence: 'high',
     provider: 'maersk',
     created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
+    carrier_label: 'Loaded on board',
     created_at: '2026-01-15T12:00:00.000Z',
     retroactive: false,
   }
@@ -45,6 +46,7 @@ describe('observationRowToDomain', () => {
     expect(result.provider).toBe('maersk')
     expect(result.confidence).toBe('high')
     expect(result.event_time_type).toBe('ACTUAL')
+    expect(result.carrier_label).toBe('Loaded on board')
   })
 
   it('should throw for invalid provider', () => {
@@ -94,6 +96,7 @@ describe('observationToInsertRow', () => {
       confidence: 'high' as const,
       provider: 'maersk' as const,
       created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
+      carrier_label: 'Loaded on board',
       retroactive: false,
     }
 
@@ -101,6 +104,7 @@ describe('observationToInsertRow', () => {
     expect(row.fingerprint).toBe(obs.fingerprint)
     expect(row.type).toBe('LOAD')
     expect(row.provider).toBe('maersk')
+    expect(row.carrier_label).toBe('Loaded on board')
   })
 })
 

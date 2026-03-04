@@ -83,6 +83,9 @@ export type Observation = {
   /** Snapshot that first introduced this observation */
   created_from_snapshot_id: string
 
+  /** Original provider event label preserved for auditability */
+  carrier_label?: string | null
+
   /** When the observation was first persisted (UTC ISO) */
   created_at: string
 

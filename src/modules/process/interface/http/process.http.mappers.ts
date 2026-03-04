@@ -76,6 +76,7 @@ type TrackingObservationRecord = {
   readonly id: string
   readonly fingerprint: string
   readonly type: string
+  readonly carrier_label?: string | null
   readonly event_time: string | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
@@ -171,6 +172,7 @@ function toObservationResponse(obs: TrackingObservationRecord) {
     id: obs.id,
     fingerprint: obs.fingerprint,
     type: obs.type,
+    carrier_label: obs.carrier_label ?? null,
     event_time: obs.event_time,
     event_time_type: obs.event_time_type,
     location_code: obs.location_code,

@@ -215,6 +215,7 @@ export function observationRowToDomain(row: TrackingObservationRow): Observation
       row.created_from_snapshot_id,
       'observation.created_from_snapshot_id',
     ),
+    carrier_label: row.carrier_label,
     created_at: requireTimestamp(row.created_at, 'observation.created_at'),
     retroactive: row.retroactive,
   }
@@ -235,6 +236,7 @@ export function observationToInsertRow(obs: NewObservation): InsertTrackingObser
     confidence: obs.confidence,
     provider: obs.provider,
     created_from_snapshot_id: obs.created_from_snapshot_id,
+    carrier_label: obs.carrier_label ?? null,
     retroactive: obs.retroactive ?? false,
     event_time_type: obs.event_time_type,
   }

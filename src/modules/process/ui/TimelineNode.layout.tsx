@@ -9,6 +9,7 @@ type Props = {
   readonly lineClass: string
   readonly textClass: string
   readonly label: string
+  readonly nonMappedBadgeLabel?: string
   readonly showPredictionHistoryButton: boolean
   readonly onOpenPredictionHistory: () => void
   readonly predictionHistoryLabel: string
@@ -65,6 +66,15 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                     />
                   </svg>
                 </button>
+              ) : null}
+
+              {props.nonMappedBadgeLabel ? (
+                <span
+                  class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-[9px] font-medium leading-none text-slate-500"
+                  title={props.nonMappedBadgeLabel}
+                >
+                  {props.nonMappedBadgeLabel}
+                </span>
               ) : null}
 
               {props.isExpiredExpected ? (

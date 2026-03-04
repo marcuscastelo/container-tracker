@@ -347,3 +347,30 @@ Output expectation for UI tasks:
 - Provide screenshot file paths in the response.
 - Mention which route was validated.
 - Explicitly state whether UI is aligned and visually good based on the two quality questions above.
+
+---
+
+## 20) PR Review Feedback Retrieval (GitHub API + Credential Helper)
+
+Use this flow when the user asks to read/apply PR suggestions, review comments, or "implementar sugestões do PR".
+
+Preferred command:
+
+- `pnpm run ai:pr:feedback -- <pr-number>`
+
+Direct script:
+
+- `bash scripts/ai/github-pr-feedback.sh <pr-number> [--repo <owner/repo>] [--kind <all|comments|reviews|issue-comments>]`
+
+Behavior:
+
+- The script authenticates via `git credential fill` (no manual token copy/paste).
+- If `--repo` is omitted, it infers `<owner/repo>` from `origin`.
+- `--kind all` returns review comments (`pulls/:number/comments`), reviews (`pulls/:number/reviews`), and issue comments (`issues/:number/comments`) in one JSON payload.
+
+Execution guideline for PR-suggestion tasks:
+
+1. Fetch feedback with `ai:pr:feedback`.
+2. Prioritize actionable code suggestions (correctness/performance/tests/clarity).
+3. Implement what is technically sound and aligned with architecture/invariants.
+4. Run required checks/build and keep it green before commit.
