@@ -23,6 +23,8 @@ type Props = {
 
   readonly expiredExpectedLabel: string
   readonly expiredExpectedTooltip: string
+  readonly expectedLabel?: string
+  readonly predictedTooltip?: string
 
   readonly etaChipLabel?: string | null
   readonly location?: string | null
@@ -60,8 +62,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
             class={clsx(
               'w-px flex-1 min-h-3',
               props.lineClass,
-              props.isExpected &&
-                'border-l border-dashed border-slate-300 bg-transparent'
+              props.isExpected && 'border-l border-dashed border-slate-300 bg-transparent',
             )}
           />
         )}
@@ -89,13 +90,9 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 </svg>
               )}
 
-              {showInlineEta() && (
-                <EtaChip label={props.etaChipLabel!} />
-              )}
+              {showInlineEta() && props.etaChipLabel && <EtaChip label={props.etaChipLabel} />}
 
-              <p class={`text-[12px] leading-tight ${props.textClass}`}>
-                {props.label}
-              </p>
+              <p class={`text-[12px] leading-tight ${props.textClass}`}>{props.label}</p>
 
               {props.showPredictionHistoryButton && (
                 <button
@@ -105,12 +102,8 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                   title={props.predictionHistoryLabel}
                   aria-label={props.predictionHistoryLabel}
                 >
-                  <svg
-                    class="h-3 w-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <title>{props.predictionHistoryLabel}</title>
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -140,16 +133,14 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
               )}
             </div>
 
-            {showEtaBelow() && (
+            {showEtaBelow() && props.etaChipLabel && (
               <div class="mt-px">
-                <EtaChip label={props.etaChipLabel!} />
+                <EtaChip label={props.etaChipLabel} />
               </div>
             )}
 
             {showLocation() && (
-              <p class="mt-px text-[10px] leading-tight text-gray-500 truncate">
-                {props.location}
-              </p>
+              <p class="mt-px text-[10px] leading-tight text-gray-500 truncate">{props.location}</p>
             )}
           </div>
 

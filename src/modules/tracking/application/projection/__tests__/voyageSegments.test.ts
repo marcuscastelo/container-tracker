@@ -21,7 +21,12 @@ describe('groupVoyageSegments', () => {
 
   it('groups a single voyage (LOAD → events → DISCHARGE)', () => {
     const events = [
-      makeEvent({ type: 'LOAD', vesselName: 'MSC PARIS', voyage: 'MZ546A', location: 'Alexandria' }),
+      makeEvent({
+        type: 'LOAD',
+        vesselName: 'MSC PARIS',
+        voyage: 'MZ546A',
+        location: 'Alexandria',
+      }),
       makeEvent({ type: 'DEPARTURE', location: 'Alexandria' }),
       makeEvent({ type: 'ARRIVAL', location: 'Algeciras' }),
       makeEvent({ type: 'DISCHARGE', location: 'Algeciras' }),
@@ -38,11 +43,21 @@ describe('groupVoyageSegments', () => {
 
   it('groups two consecutive voyages (transshipment)', () => {
     const events = [
-      makeEvent({ type: 'LOAD', vesselName: 'MSC PARIS', voyage: 'MZ546A', location: 'Alexandria' }),
+      makeEvent({
+        type: 'LOAD',
+        vesselName: 'MSC PARIS',
+        voyage: 'MZ546A',
+        location: 'Alexandria',
+      }),
       makeEvent({ type: 'DEPARTURE' }),
       makeEvent({ type: 'ARRIVAL', location: 'Algeciras' }),
       makeEvent({ type: 'DISCHARGE', location: 'Algeciras' }),
-      makeEvent({ type: 'LOAD', vesselName: 'MAERSK LAMANAI', voyage: 'ML123', location: 'Algeciras' }),
+      makeEvent({
+        type: 'LOAD',
+        vesselName: 'MAERSK LAMANAI',
+        voyage: 'ML123',
+        location: 'Algeciras',
+      }),
       makeEvent({ type: 'DEPARTURE' }),
       makeEvent({ type: 'ARRIVAL', location: 'Santos' }),
       makeEvent({ type: 'DISCHARGE', location: 'Santos' }),

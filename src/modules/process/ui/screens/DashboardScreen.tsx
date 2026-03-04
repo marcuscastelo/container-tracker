@@ -84,7 +84,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const importerFilterOptions = createMemo(() =>
     deriveDashboardImporterFilterOptions(processes() ?? []),
   )
-  const statusFilterOptions = createMemo(() => deriveDashboardStatusFilterOptions(processes() ?? []))
+  const statusFilterOptions = createMemo(() =>
+    deriveDashboardStatusFilterOptions(processes() ?? []),
+  )
   const filteredProcesses = createMemo(() =>
     filterDashboardProcesses(processes() ?? [], filterSelection()),
   )
@@ -209,7 +211,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
   return (
     <div class="min-h-screen bg-slate-50/80">
-      <AppHeader onCreateProcess={handleCreateProcess} alertCount={globalAlerts()?.totalActiveAlerts ?? 0} />
+      <AppHeader
+        onCreateProcess={handleCreateProcess}
+        alertCount={globalAlerts()?.totalActiveAlerts ?? 0}
+      />
       <CreateProcessDialog
         open={isCreateDialogOpen()}
         onClose={() => setIsCreateDialogOpen(false)}

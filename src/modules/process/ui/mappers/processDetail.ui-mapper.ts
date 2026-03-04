@@ -1,6 +1,6 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
-import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
+import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,

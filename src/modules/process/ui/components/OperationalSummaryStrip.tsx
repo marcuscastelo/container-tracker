@@ -9,7 +9,11 @@ type Props = {
   readonly data: ShipmentDetailVM
 }
 
-function formatAge(ts: string | Date | null | undefined, t: ReturnType<typeof useTranslation>['t'], keys: ReturnType<typeof useTranslation>['keys']): string {
+function formatAge(
+  ts: string | Date | null | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string {
   if (!ts) return '—'
   const date = typeof ts === 'string' ? new Date(ts) : ts
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—'

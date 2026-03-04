@@ -72,7 +72,8 @@ function toSeverityLabel(
 function toAlertCardClasses(severity: AlertDisplayVM['severity'], isFirst: boolean): string {
   if (isFirst) {
     if (severity === 'danger') return 'border-red-200 bg-red-50/80 border-l-red-500 border-l-4'
-    if (severity === 'warning') return 'border-amber-200 bg-amber-50/80 border-l-amber-400 border-l-4'
+    if (severity === 'warning')
+      return 'border-amber-200 bg-amber-50/80 border-l-amber-400 border-l-4'
     return 'border-slate-200 bg-slate-50/80 border-l-slate-400 border-l-4'
   }
   if (severity === 'danger') return 'border-red-100 bg-red-50/40 border-l-red-400 border-l-2'

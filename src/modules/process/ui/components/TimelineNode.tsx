@@ -189,7 +189,7 @@ export function TimelineNode(props: {
     }
   })
 
-  const ARRIVAL_EVENT_TYPES: ReadonlySet<string> = new Set(['ARRIVAL', 'DISCHARGE'])
+  const _ARRIVAL_EVENT_TYPES: ReadonlySet<string> = new Set(['ARRIVAL', 'DISCHARGE'])
 
   const etaChipLabel = createMemo(() => {
     // ETA chip removed: render expected date on the right instead.

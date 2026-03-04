@@ -223,6 +223,22 @@
       "unknownEvent": "Evento desconhecido",
       "nonMappedIndicator": "Não mapeado",
       "viewPredictionHistory": "Ver histórico de previsões",
+      "blocks": {
+        "voyage": "Viagem",
+        "voyageRoute": "{{origin}} → {{destination}}",
+        "terminalInland": "Terminal / Terrestre",
+        "preCarriage": "Pré-transporte",
+        "postCarriage": "Pós-transporte / Entrega",
+        "transshipmentTerminal": "Terminal de Transbordo",
+        "transshipment": "Transbordo",
+        "transshipmentPort": "Transbordo — {{port}}",
+        "vesselChange": "Troca de navio",
+        "gapTransit": "{{days}} dias em trânsito",
+        "gapGeneric": "Intervalo: {{days}} dias sem novos eventos",
+        "portRiskClosed": "No porto por {{days}} dias",
+        "portRiskOngoing": "No porto por {{days}} dias (risco de armazenagem)",
+        "portRiskShort": "No porto por {{days}} dias"
+      },
       "predictionHistory": {
         "title": "Histórico de Previsões",
         "eventType": "Tipo",

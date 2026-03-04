@@ -1,4 +1,5 @@
 import type { JSX } from 'solid-js'
+import { For } from 'solid-js'
 import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { MetricCard } from '~/shared/ui/MetricCard'
@@ -9,7 +10,7 @@ type Props = {
   readonly hasError: boolean
 }
 
-function TotalIcon(): JSX.Element {
+function _TotalIcon(): JSX.Element {
   return (
     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v18m9-9H3" />
@@ -145,7 +146,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     return undefined
   }
 
-  const severityNodes = () =>
+  const _severityNodes = () =>
     visibleSeverityCards().map((card) => (
       <div class="flex-1 min-w-[220px] basis-[220px]">
         <MetricCard
@@ -158,7 +159,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       </div>
     ))
 
-  const categoryNodes = () =>
+  const _categoryNodes = () =>
     visibleCategoryCards().map((card) => (
       <div class="flex-1 min-w-[220px] basis-[220px]">
         <MetricCard
@@ -248,12 +249,14 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
             {/* Phase 12: Category chips in dashboard */}
             <div class="ml-auto flex items-center gap-1.5">
-              {visibleCategoryCards().map((card) => (
-                <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                  <span class="font-bold tabular-nums">{card.value}</span>
-                  {card.label.toLowerCase()}
-                </span>
-              ))}
+              <For each={visibleCategoryCards()}>
+                {(card) => (
+                  <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                    <span class="font-bold tabular-nums">{card.value}</span>
+                    {card.label.toLowerCase()}
+                  </span>
+                )}
+              </For>
             </div>
           </div>
 

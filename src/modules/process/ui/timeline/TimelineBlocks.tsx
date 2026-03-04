@@ -29,7 +29,9 @@ export function VoyageBlockHeader(props: { readonly block: VoyageBlock }): JSX.E
     <div class="mb-1 rounded-t border-b border-slate-100 bg-slate-50/80 px-2 py-1.5">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
-        <span class="text-sm shrink-0" aria-hidden="true">🚢</span>
+        <span class="text-sm shrink-0" aria-hidden="true">
+          🚢
+        </span>
         <span class="text-[13px] font-semibold text-slate-900">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
@@ -82,7 +84,9 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   return (
     <div class="mb-1 rounded-t border-b border-slate-100 bg-white px-2 py-1.5">
       <div class="flex items-center gap-1.5">
-        <span class="text-sm shrink-0" aria-hidden="true">{icon()}</span>
+        <span class="text-sm shrink-0" aria-hidden="true">
+          {icon()}
+        </span>
         <span class="text-[12px] font-semibold text-slate-700">{title()}</span>
       </div>
       <Show when={props.block.location}>
@@ -102,7 +106,9 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   return (
     <div class="my-1.5 rounded border-l-4 border-amber-400 bg-amber-50 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
-        <span class="text-sm" aria-hidden="true">🔁</span>
+        <span class="text-sm" aria-hidden="true">
+          🔁
+        </span>
         <span class="text-[12px] font-semibold text-amber-900">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>

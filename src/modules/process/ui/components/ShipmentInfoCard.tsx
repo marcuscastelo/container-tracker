@@ -36,9 +36,18 @@ export function ShipmentInfoCard(props: Props): JSX.Element {
       <div class="divide-y divide-slate-50 px-2.5 py-0.5">
         <InfoRow label={t(keys.shipmentView.shipmentInfo.carrier)} value={props.data.carrier} />
         <InfoRow label={t(keys.shipmentView.shipmentInfo.bl)} value={props.data.bill_of_lading} />
-        <InfoRow label={t(keys.shipmentView.shipmentInfo.booking)} value={props.data.booking_number} />
-        <InfoRow label={t(keys.shipmentView.shipmentInfo.importer)} value={props.data.importer_name} />
-        <InfoRow label={t(keys.shipmentView.shipmentInfo.exporter)} value={props.data.exporter_name} />
+        <InfoRow
+          label={t(keys.shipmentView.shipmentInfo.booking)}
+          value={props.data.booking_number}
+        />
+        <InfoRow
+          label={t(keys.shipmentView.shipmentInfo.importer)}
+          value={props.data.importer_name}
+        />
+        <InfoRow
+          label={t(keys.shipmentView.shipmentInfo.exporter)}
+          value={props.data.exporter_name}
+        />
         <InfoRow label={t(keys.shipmentView.shipmentInfo.product)} value={props.data.product} />
       </div>
     </Panel>

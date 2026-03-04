@@ -3,10 +3,10 @@ import { For } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 import { CopyButton } from '~/shared/ui/CopyButton'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 
 function etaChipClass(tone: ContainerDetailVM['etaChipVm']['tone'], selected: boolean): string {
   if (selected) {
@@ -76,10 +76,7 @@ function ContainerSelectorItem(props: {
           <span class="font-semibold tracking-wide text-[11px] leading-tight">
             {props.container.number}
           </span>
-          <StatusBadge
-            variant={props.container.status}
-            label={props.statusLabel}
-          />
+          <StatusBadge variant={props.container.status} label={props.statusLabel} />
         </div>
         {/* Row 2: ETA / TS / Data chips */}
         <div class="flex items-center gap-1">

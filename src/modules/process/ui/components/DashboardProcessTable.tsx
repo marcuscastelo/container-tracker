@@ -195,12 +195,7 @@ function CheckIcon(): JSX.Element {
       viewBox="0 0 24 24"
       aria-hidden="true"
     >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2.5"
-        d="M5 13l4 4L19 7"
-      />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
     </svg>
   )
 }
@@ -253,7 +248,8 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
 
   const handleRowClick = (e: MouseEvent) => {
     // Avoid double navigation when clicking inner links/buttons
-    const target = e.target as HTMLElement
+    const target = e.target
+    if (!(target instanceof HTMLElement)) return
     if (target.closest('a') || target.closest('button')) return
     navigate(`/shipments/${props.process.id}`)
   }
@@ -262,9 +258,10 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <tr
       class={`group border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-gray-50 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
       onClick={handleRowClick}
-      role="link"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/shipments/${props.process.id}`) }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') navigate(`/shipments/${props.process.id}`)
+      }}
     >
       {/* Severity + Age */}
       <td class="px-3 py-2.5">
@@ -359,10 +356,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const statusSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'status')
   const etaSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'eta')
 
-  const exceptionsGroup = () =>
-    props.processes.filter((p) => toDominantSeverity(p) !== 'none')
-  const normalGroup = () =>
-    props.processes.filter((p) => toDominantSeverity(p) === 'none')
+  const exceptionsGroup = () => props.processes.filter((p) => toDominantSeverity(p) !== 'none')
+  const normalGroup = () => props.processes.filter((p) => toDominantSeverity(p) === 'none')
 
   const tableHeader = (
     <thead>
