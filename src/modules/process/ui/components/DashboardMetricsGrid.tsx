@@ -141,8 +141,8 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   const visibleCategoryCards = () => categoryCards().filter((c) => c.value > 0)
 
   const computeSubtitleText = (key: string | undefined): string | undefined => {
-    if (key === 'danger') return t('dashboard.alertIndicators.subtitle.severity.danger')
-    if (key === 'warning') return t('dashboard.alertIndicators.subtitle.severity.warning')
+    if (key === 'danger') return t(keys.dashboard.alertIndicators.subtitle.severity.danger)
+    if (key === 'warning') return t(keys.dashboard.alertIndicators.subtitle.severity.warning)
     return undefined
   }
 
