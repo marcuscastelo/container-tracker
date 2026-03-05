@@ -19,7 +19,7 @@ export type ContainerEtaDetailVM = {
   readonly type: string
 } | null
 
-export type ContainerTransshipmentPortVM = {
+type ContainerTransshipmentPortVM = {
   readonly code: string
   readonly display: string | null
 }

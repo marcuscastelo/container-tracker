@@ -18,31 +18,6 @@ export type TimelineHole = {
 }
 
 /**
- * TimelineItem — projection layer abstraction for timeline entries.
- *
- * Represents either a semantic event (with optional series history)
- * or an explicit hole in the timeline.
- *
- * This is a projection-level type — it does NOT modify persistence.
- *
- * @see Issue: Event Series & Prediction History
- */
-export type TimelineItem =
-  | {
-      readonly kind: 'event'
-      /** The visible observation in the timeline */
-      readonly primary: Observation
-      /** Full series history (if multiple observations exist for this semantic event) */
-      readonly series?: readonly Observation[]
-    }
-  | {
-      readonly kind: 'hole'
-      readonly from: string | null
-      readonly to: string | null
-      readonly reason: 'gap' | 'missing_data'
-    }
-
-/**
  * Timeline is a runtime-only structure (not persisted).
  * It aggregates observations ordered by event_time.
  */

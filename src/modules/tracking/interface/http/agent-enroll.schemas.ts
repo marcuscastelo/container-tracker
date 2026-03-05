@@ -6,15 +6,13 @@ export const AgentEnrollRequestSchema = z.object({
   os: z.string().min(1).max(128),
   agentVersion: z.string().min(1).max(128),
 })
-export type AgentEnrollRequest = z.infer<typeof AgentEnrollRequestSchema>
 
-export const AgentEnrollProvidersSchema = z.object({
+const AgentEnrollProvidersSchema = z.object({
   maerskEnabled: z.boolean(),
   maerskHeadless: z.boolean(),
   maerskTimeoutMs: z.number().int().positive(),
   maerskUserDataDir: z.string().min(1).optional(),
 })
-export type AgentEnrollProviders = z.infer<typeof AgentEnrollProvidersSchema>
 
 export const AgentEnrollResponseSchema = z.object({
   agentToken: z.string().min(1),

@@ -3,7 +3,7 @@ import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 
-export type DashboardControllersDeps = {
+type DashboardControllersDeps = {
   readonly dashboardUseCases: Pick<DashboardUseCases, 'getOperationalSummaryReadModel'>
 }
 

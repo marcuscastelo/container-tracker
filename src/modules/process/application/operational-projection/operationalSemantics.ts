@@ -16,7 +16,7 @@ export type OperationalStatus =
  */
 export type ProcessAggregatedStatus = OperationalStatus | 'PARTIALLY_DELIVERED'
 
-export const OPERATIONAL_STATUSES: readonly OperationalStatus[] = [
+const OPERATIONAL_STATUSES: readonly OperationalStatus[] = [
   'UNKNOWN',
   'IN_PROGRESS',
   'LOADED',

@@ -45,7 +45,7 @@ export const ProcessListResponseSchema = z.array(ProcessResponseSchema)
  * Observation shape as returned in the API.
  * Maps directly from the tracking domain Observation.
  */
-export const ObservationResponseSchema = z.object({
+const ObservationResponseSchema = z.object({
   id: z.string(),
   fingerprint: z.string(),
   type: z.string(),
@@ -67,7 +67,7 @@ export const ObservationResponseSchema = z.object({
  * Tracking alert shape as returned in the API.
  * Maps from the tracking domain TrackingAlert.
  */
-export const TrackingAlertResponseSchema = z.object({
+const TrackingAlertResponseSchema = z.object({
   id: z.string(),
   category: z.string(),
   type: z.string(),
@@ -81,7 +81,7 @@ export const TrackingAlertResponseSchema = z.object({
   dismissed_at: z.string().nullable(),
 })
 
-export const OperationalEtaResponseSchema = z.object({
+const OperationalEtaResponseSchema = z.object({
   event_time: z.string(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
@@ -90,25 +90,25 @@ export const OperationalEtaResponseSchema = z.object({
   location_display: z.string().nullable(),
 })
 
-export const OperationalTransshipmentPortResponseSchema = z.object({
+const OperationalTransshipmentPortResponseSchema = z.object({
   code: z.string(),
   display: z.string().nullable(),
 })
 
-export const OperationalTransshipmentResponseSchema = z.object({
+const OperationalTransshipmentResponseSchema = z.object({
   has_transshipment: z.boolean(),
   count: z.number(),
   ports: z.array(OperationalTransshipmentPortResponseSchema),
 })
 
-export const ContainerOperationalResponseSchema = z.object({
+const ContainerOperationalResponseSchema = z.object({
   status: z.string(),
   eta: OperationalEtaResponseSchema.nullable(),
   transshipment: OperationalTransshipmentResponseSchema,
   data_issue: z.boolean().optional(),
 })
 
-export const ProcessOperationalResponseSchema = z.object({
+const ProcessOperationalResponseSchema = z.object({
   eta_max: OperationalEtaResponseSchema.nullable(),
   coverage: z.object({
     total: z.number(),
@@ -142,11 +142,3 @@ export const CreateProcessResponseSchema = z.object({
 })
 
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>
-export type ObservationResponse = z.infer<typeof ObservationResponseSchema>
-export type TrackingAlertResponse = z.infer<typeof TrackingAlertResponseSchema>
-export type OperationalEtaResponse = z.infer<typeof OperationalEtaResponseSchema>
-export type OperationalTransshipmentResponse = z.infer<
-  typeof OperationalTransshipmentResponseSchema
->
-export type ContainerOperationalResponse = z.infer<typeof ContainerOperationalResponseSchema>
-export type ProcessOperationalResponse = z.infer<typeof ProcessOperationalResponseSchema>

@@ -6,11 +6,11 @@ import {
 import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 
-export type DashboardControllersBootstrapOverrides = {
+type DashboardControllersBootstrapOverrides = {
   readonly dashboardControllers?: DashboardControllers
 }
 
-export function bootstrapDashboardControllers(
+function bootstrapDashboardControllers(
   overrides: DashboardControllersBootstrapOverrides = {},
 ): DashboardControllers {
   if (overrides.dashboardControllers) {

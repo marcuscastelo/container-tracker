@@ -22,7 +22,7 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 // Dependency types
 // ---------------------------------------------------------------------------
 
-export type TrackingControllersDeps = {
+type TrackingControllersDeps = {
   readonly trackingUseCases: TrackingUseCases
 }
 

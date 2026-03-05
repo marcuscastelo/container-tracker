@@ -6,7 +6,7 @@ import type {
 
 export const DASHBOARD_SORT_CHANGED_EVENT = 'dashboard_sort_changed' as const
 
-export type DashboardSortChangeSource = 'user' | 'restore'
+type DashboardSortChangeSource = 'user' | 'restore'
 
 export type DashboardSortChangedTelemetryPayload = {
   readonly field: DashboardSortField

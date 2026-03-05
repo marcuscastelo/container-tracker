@@ -10,7 +10,6 @@ import z from 'zod/v4'
 export const ListAlertsQuerySchema = z.object({
   container_id: z.string().min(1, 'container_id is required'),
 })
-export type ListAlertsQuery = z.infer<typeof ListAlertsQuerySchema>
 
 /**
  * Body for PATCH /api/alerts (acknowledge or dismiss).
@@ -19,7 +18,6 @@ export const AlertActionBodySchema = z.object({
   alert_id: z.string().min(1),
   action: z.enum(['acknowledge', 'dismiss']),
 })
-export type AlertActionBody = z.infer<typeof AlertActionBodySchema>
 
 // ---------------------------------------------------------------------------
 // Alerts — Response DTOs
@@ -46,16 +44,6 @@ export const AlertResponseDtoSchema = z.object({
 })
 export type AlertResponseDto = z.infer<typeof AlertResponseDtoSchema>
 
-/**
- * Response for PATCH /api/alerts.
- */
-export const AlertActionResponseSchema = z.object({
-  ok: z.literal(true),
-  alert_id: z.string(),
-  action: z.enum(['acknowledge', 'dismiss']),
-})
-export type AlertActionResponse = z.infer<typeof AlertActionResponseSchema>
-
 // ---------------------------------------------------------------------------
 // Snapshots — Request DTOs
 // ---------------------------------------------------------------------------
@@ -66,7 +54,6 @@ export type AlertActionResponse = z.infer<typeof AlertActionResponseSchema>
 export const GetSnapshotsForContainerRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
-export type GetSnapshotsForContainerRequest = z.infer<typeof GetSnapshotsForContainerRequestSchema>
 
 /**
  * Path parameters for GET /api/tracking/containers/:containerId/snapshots/latest
@@ -74,7 +61,6 @@ export type GetSnapshotsForContainerRequest = z.infer<typeof GetSnapshotsForCont
 export const GetLatestSnapshotRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
-export type GetLatestSnapshotRequest = z.infer<typeof GetLatestSnapshotRequestSchema>
 
 // ---------------------------------------------------------------------------
 // Snapshots — Response DTOs

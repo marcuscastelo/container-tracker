@@ -1,4 +1,4 @@
-export type ExistingContainerConflict = {
+type ExistingContainerConflict = {
   readonly processId: string
   readonly containerId: string
   readonly containerNumber: string

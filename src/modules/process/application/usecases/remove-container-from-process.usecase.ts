@@ -1,12 +1,12 @@
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 
-export type RemoveContainerFromProcessCommand = {
+type RemoveContainerFromProcessCommand = {
   containerId: string
   processId: string
 }
 
-export type RemoveContainerFromProcessResult = {
+type RemoveContainerFromProcessResult = {
   removed: true
 }
 

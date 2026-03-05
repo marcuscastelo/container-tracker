@@ -1,6 +1,6 @@
-export type RefreshSyncRequestStatus = 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
+type RefreshSyncRequestStatus = 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
 
-export type RefreshSyncStatusItem = {
+type RefreshSyncStatusItem = {
   readonly syncRequestId: string
   readonly status: RefreshSyncRequestStatus
   readonly lastError: string | null
@@ -8,7 +8,7 @@ export type RefreshSyncStatusItem = {
   readonly refValue: string | null
 }
 
-export type RefreshSyncStatusResponse = {
+type RefreshSyncStatusResponse = {
   readonly ok: true
   readonly allTerminal: boolean
   readonly requests: readonly RefreshSyncStatusItem[]
@@ -31,7 +31,7 @@ type PollRefreshSyncStatusCommand = {
   readonly sleep?: (delayMs: number) => Promise<void>
 }
 
-export type PollRefreshSyncStatusResult =
+type PollRefreshSyncStatusResult =
   | {
       readonly kind: 'completed'
       readonly attempts: number

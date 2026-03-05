@@ -3,7 +3,7 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 /**
  * Command to acknowledge a tracking alert.
  */
-export type AcknowledgeAlertCommand = {
+type AcknowledgeAlertCommand = {
   readonly alertId: string
   readonly ackedAt: string
 }
@@ -11,7 +11,7 @@ export type AcknowledgeAlertCommand = {
 /**
  * Result of acknowledging an alert (void — fire-and-forget).
  */
-export type AcknowledgeAlertResult = undefined
+type AcknowledgeAlertResult = undefined
 
 /**
  * Acknowledge a tracking alert by id.

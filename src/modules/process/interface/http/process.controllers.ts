@@ -23,7 +23,7 @@ import {
 // Dependency types
 // ---------------------------------------------------------------------------
 
-export type ProcessControllerDeps = {
+type ProcessControllerDeps = {
   readonly processUseCases: Pick<
     ProcessUseCases,
     | 'listProcessesWithOperationalSummary'

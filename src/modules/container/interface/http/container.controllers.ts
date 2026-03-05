@@ -7,7 +7,7 @@ import {
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse, parseBody } from '~/shared/api/typedRoute'
 
-export type ContainerControllerDeps = {
+type ContainerControllerDeps = {
   readonly containerUseCases: Pick<ContainerUseCases, 'findByNumbers'>
 }
 

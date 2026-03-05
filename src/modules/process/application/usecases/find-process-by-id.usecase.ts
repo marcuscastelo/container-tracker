@@ -1,11 +1,11 @@
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 
-export type FindProcessByIdCommand = {
+type FindProcessByIdCommand = {
   processId: string
 }
 
-export type FindProcessByIdResult = {
+type FindProcessByIdResult = {
   process: ProcessEntity | null
 }
 

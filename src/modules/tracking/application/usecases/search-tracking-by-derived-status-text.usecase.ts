@@ -2,7 +2,7 @@ import type { TrackingSearchProjection } from '~/modules/tracking/application/pr
 import { listTrackingSearchProjections } from '~/modules/tracking/application/usecases/list-tracking-search-projections.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 
-export type SearchTrackingByDerivedStatusTextCommand = Readonly<{
+type SearchTrackingByDerivedStatusTextCommand = Readonly<{
   query: string
   limit: number
   now?: Date

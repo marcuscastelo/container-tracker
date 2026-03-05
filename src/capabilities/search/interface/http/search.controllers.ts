@@ -7,7 +7,7 @@ import {
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 
-export type SearchControllerDeps = {
+type SearchControllerDeps = {
   readonly searchController: SearchController
 }
 

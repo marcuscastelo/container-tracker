@@ -12,7 +12,7 @@ import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snap
  * Used by flows where the fetch is done externally (e.g. Maersk/Puppeteer)
  * and we just need to persist the captured JSON.
  */
-export type SaveAndProcessCommand = {
+type SaveAndProcessCommand = {
   readonly containerId: string
   readonly containerNumber: string
   readonly provider: Provider
@@ -24,7 +24,7 @@ export type SaveAndProcessCommand = {
 /**
  * Result of save-and-process — the persisted snapshot and pipeline derivations.
  */
-export type SaveAndProcessResult = {
+type SaveAndProcessResult = {
   readonly snapshot: Snapshot
   readonly pipeline: PipelineResult
 }

@@ -5,7 +5,7 @@ import {
   subscribeSyncRequestsByIds,
 } from '~/shared/supabase/sync-requests.realtime'
 
-export type { SyncRequestRealtimeEvent, SyncRequestsRealtimeStatusUpdate }
+export type { SyncRequestRealtimeEvent }
 
 export function subscribeToSyncRequestsRealtimeByIds(command: {
   readonly syncRequestIds: readonly string[]

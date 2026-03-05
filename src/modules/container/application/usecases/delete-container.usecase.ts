@@ -1,7 +1,7 @@
 import type { ContainerRepository } from '~/modules/container/application/container.repository'
 import { CannotRemoveLastContainerError } from '~/shared/errors/container-process.errors'
 
-export type DeleteContainerCommand = {
+type DeleteContainerCommand = {
   containerId: string
   processId: string
   currentContainersCount: number

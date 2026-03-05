@@ -13,13 +13,13 @@ import { supabaseObservationRepository } from '~/modules/tracking/infrastructure
 import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository'
 import { supabaseTrackingAlertRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository'
 
-export type TrackingBootstrapOverrides = Partial<{
+type TrackingBootstrapOverrides = Partial<{
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
 }>
 
-export type TrackingModule = {
+type TrackingModule = {
   readonly trackingUseCases: TrackingUseCases
 }
 

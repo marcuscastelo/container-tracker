@@ -29,17 +29,3 @@ export type ObservationType =
   | 'EMPTY_RETURN'
   /** Catch-all for unmapped events */
   | 'OTHER'
-
-export const OBSERVATION_TYPES: readonly ObservationType[] = [
-  'GATE_IN',
-  'GATE_OUT',
-  'LOAD',
-  'DISCHARGE',
-  'DEPARTURE',
-  'ARRIVAL',
-  'CUSTOMS_HOLD',
-  'CUSTOMS_RELEASE',
-  'DELIVERY',
-  'EMPTY_RETURN',
-  'OTHER',
-]

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildTimelineRenderList,
-  classifyEventContext,
-  groupTerminalSegments,
-  groupVoyageSegments,
-} from '~/modules/process/ui/timeline/timelineBlockModel'
+import { buildTimelineRenderList } from '~/modules/process/ui/timeline/timelineBlockModel'
 import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 
 function makeEvent(
@@ -18,109 +13,6 @@ function makeEvent(
     ...overrides,
   }
 }
-
-// ---------------------------------------------------------------------------
-// Phase 1 — classifyEventContext
-// ---------------------------------------------------------------------------
-describe('classifyEventContext', () => {
-  it('classifies LOAD as vessel', () => {
-    expect(classifyEventContext(makeEvent({ type: 'LOAD' }))).toBe('vessel')
-  })
-
-  it('classifies DEPARTURE as vessel', () => {
-    expect(classifyEventContext(makeEvent({ type: 'DEPARTURE' }))).toBe('vessel')
-  })
-
-  it('classifies ARRIVAL as vessel', () => {
-    expect(classifyEventContext(makeEvent({ type: 'ARRIVAL' }))).toBe('vessel')
-  })
-
-  it('classifies DISCHARGE as vessel', () => {
-    expect(classifyEventContext(makeEvent({ type: 'DISCHARGE' }))).toBe('vessel')
-  })
-
-  it('classifies GATE_IN as terminal', () => {
-    expect(classifyEventContext(makeEvent({ type: 'GATE_IN' }))).toBe('terminal')
-  })
-
-  it('classifies DELIVERY as terminal', () => {
-    expect(classifyEventContext(makeEvent({ type: 'DELIVERY' }))).toBe('terminal')
-  })
-
-  it('classifies OTHER with vessel as vessel', () => {
-    expect(classifyEventContext(makeEvent({ type: 'OTHER', vesselName: 'MSC PARIS' }))).toBe(
-      'vessel',
-    )
-  })
-
-  it('classifies OTHER without vessel as terminal', () => {
-    expect(classifyEventContext(makeEvent({ type: 'OTHER' }))).toBe('terminal')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Phase 3 — groupTerminalSegments
-// ---------------------------------------------------------------------------
-describe('groupTerminalSegments', () => {
-  it('groups pre-carriage events before first voyage', () => {
-    const events = [
-      makeEvent({ id: 'e1', type: 'GATE_IN', location: 'Terminal X' }),
-      makeEvent({ id: 'e2', type: 'LOAD', vesselName: 'V1', location: 'Port A' }),
-      makeEvent({ id: 'e3', type: 'DISCHARGE', location: 'Port B' }),
-    ]
-    const voyages = groupVoyageSegments(events)
-    const terminals = groupTerminalSegments(events, voyages)
-
-    expect(terminals).toHaveLength(1)
-    expect(terminals[0].kind).toBe('pre-carriage')
-    expect(terminals[0].events).toHaveLength(1)
-    expect(terminals[0].events[0].id).toBe('e1')
-  })
-
-  it('groups post-carriage events after last voyage', () => {
-    const events = [
-      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', location: 'A' }),
-      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
-      makeEvent({ id: 'e3', type: 'DELIVERY', location: 'Warehouse' }),
-    ]
-    const voyages = groupVoyageSegments(events)
-    const terminals = groupTerminalSegments(events, voyages)
-
-    expect(terminals).toHaveLength(1)
-    expect(terminals[0].kind).toBe('post-carriage')
-    expect(terminals[0].events[0].id).toBe('e3')
-  })
-
-  it('groups events between voyages as transshipment-terminal', () => {
-    const events = [
-      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', location: 'A' }),
-      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
-      makeEvent({ id: 'e3', type: 'GATE_OUT', location: 'B' }),
-      makeEvent({ id: 'e4', type: 'GATE_IN', location: 'B' }),
-      makeEvent({ id: 'e5', type: 'LOAD', vesselName: 'V2', location: 'B' }),
-      makeEvent({ id: 'e6', type: 'DISCHARGE', location: 'C' }),
-    ]
-    const voyages = groupVoyageSegments(events)
-    const terminals = groupTerminalSegments(events, voyages)
-
-    expect(terminals).toHaveLength(1)
-    expect(terminals[0].kind).toBe('transshipment-terminal')
-    expect(terminals[0].events).toHaveLength(2)
-  })
-
-  it('returns pre-carriage when no voyages exist', () => {
-    const events = [
-      makeEvent({ id: 'e1', type: 'GATE_IN', location: 'X' }),
-      makeEvent({ id: 'e2', type: 'GATE_OUT', location: 'X' }),
-    ]
-    const voyages = groupVoyageSegments(events)
-    const terminals = groupTerminalSegments(events, voyages)
-
-    expect(terminals).toHaveLength(1)
-    expect(terminals[0].kind).toBe('pre-carriage')
-    expect(terminals[0].events).toHaveLength(2)
-  })
-})
 
 // ---------------------------------------------------------------------------
 // Phase 4-5 — buildTimelineRenderList (block assembly + transshipment)

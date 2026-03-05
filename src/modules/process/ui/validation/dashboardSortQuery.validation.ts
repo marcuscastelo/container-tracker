@@ -74,7 +74,7 @@ export function resolveDashboardSortSelectionWithStorageFallback(
   return storageSortSelection
 }
 
-export type DashboardSortHydrationResult = {
+type DashboardSortHydrationResult = {
   readonly sortSelection: DashboardSortSelection
   readonly searchParams: URLSearchParams
 }

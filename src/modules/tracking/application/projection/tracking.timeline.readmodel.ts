@@ -28,7 +28,7 @@ export type TrackingTimelineItem = {
   readonly series?: readonly TrackingObservationDTO[]
 }
 
-export function observationToTrackingTimelineItem(
+function observationToTrackingTimelineItem(
   obs: TrackingObservationDTO,
   index: number,
   derivedState: DerivedObservationState = obs.event_time_type === 'ACTUAL'
@@ -55,7 +55,7 @@ export function observationToTrackingTimelineItem(
   }
 }
 
-export function timelineItemToTrackingItem(
+function timelineItemToTrackingItem(
   item: {
     readonly primary: TrackingObservationDTO
     readonly series?: readonly TrackingObservationDTO[]

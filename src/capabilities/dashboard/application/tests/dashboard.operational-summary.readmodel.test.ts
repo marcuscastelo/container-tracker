@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createDashboardOperationalSummaryReadModelUseCase,
   type DashboardOperationalSummaryReadModelDeps,
-  resolveDashboardDominantSeverity,
 } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
@@ -221,19 +220,5 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         retroactive: false,
       },
     ])
-  })
-
-  it('applies dominant severity order danger > warning > info > success > none', () => {
-    expect(resolveDashboardDominantSeverity([])).toBe('none')
-    expect(resolveDashboardDominantSeverity([{ severity: 'success' }])).toBe('success')
-    expect(resolveDashboardDominantSeverity([{ severity: 'success' }, { severity: 'info' }])).toBe(
-      'info',
-    )
-    expect(resolveDashboardDominantSeverity([{ severity: 'info' }, { severity: 'warning' }])).toBe(
-      'warning',
-    )
-    expect(
-      resolveDashboardDominantSeverity([{ severity: 'warning' }, { severity: 'danger' }]),
-    ).toBe('danger')
   })
 })

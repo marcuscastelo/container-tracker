@@ -3,8 +3,6 @@
 // ViewModel types for the search UI.
 // Maps from SearchResponseDto to UI-friendly shapes.
 
-import type { SearchResponseDto } from '~/capabilities/search/interface/http/search.schemas'
-
 export type SearchResultType = 'process' | 'container' | 'importer' | 'exporter' | 'carrier'
 
 export type SearchResultViewModel = {
@@ -62,19 +60,4 @@ export function groupSearchResults(
   }
 
   return result
-}
-
-/**
- * Maps API response DTO to view models.
- */
-export function toSearchViewModels(dto: SearchResponseDto): readonly SearchResultViewModel[] {
-  return dto.items.map((item) => ({
-    id: item.id,
-    type: item.type,
-    title: item.title,
-    subtitle: item.subtitle,
-    processId: item.processId,
-    status: item.status,
-    carrier: item.carrier,
-  }))
 }

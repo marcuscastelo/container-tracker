@@ -4,7 +4,7 @@ import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAler
 /**
  * Command to list active alerts for a container by its ID.
  */
-export type ListActiveAlertsByContainerIdCommand = {
+type ListActiveAlertsByContainerIdCommand = {
   readonly containerId: string
 }
 

@@ -4,8 +4,6 @@ export const CheckContainersBodySchema = z.object({
   containers: z.array(z.string()).nonempty(),
 })
 
-export type CheckContainersBody = z.infer<typeof CheckContainersBodySchema>
-
 const ContainerConflictSchema = z.object({
   containerNumber: z.string(),
   processId: z.string(),
@@ -17,5 +15,3 @@ const ContainerConflictSchema = z.object({
 export const CheckContainersResponseSchema = z.object({
   conflicts: z.array(ContainerConflictSchema),
 })
-
-export type CheckContainersResponse = z.infer<typeof CheckContainersResponseSchema>

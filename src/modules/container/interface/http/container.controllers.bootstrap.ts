@@ -4,7 +4,7 @@ import {
   createContainerControllers,
 } from '~/modules/container/interface/http/container.controllers'
 
-export type ContainerControllersBootstrapOverrides = Partial<{
+type ContainerControllersBootstrapOverrides = Partial<{
   readonly containerUseCases: typeof containerUseCases
 }>
 

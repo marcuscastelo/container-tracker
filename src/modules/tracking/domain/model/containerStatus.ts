@@ -40,17 +40,3 @@ export const CONTAINER_STATUSES: readonly ContainerStatus[] = [
   'DELIVERED',
   'EMPTY_RETURNED',
 ]
-
-/**
- * Dominance order — higher index means more advanced.
- * Used by deriveStatus to ensure monotonicity.
- */
-const STATUS_DOMINANCE: readonly ContainerStatus[] = CONTAINER_STATUSES
-
-/**
- * Returns the dominance index of a status (higher = more advanced).
- */
-export function statusDominanceIndex(status: ContainerStatus): number {
-  const idx = STATUS_DOMINANCE.indexOf(status)
-  return idx >= 0 ? idx : 0
-}
