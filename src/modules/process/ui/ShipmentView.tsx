@@ -493,6 +493,13 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
       return
     }
 
+    // Reflect queued sync requests immediately in chips/header (syncing state) before terminal wait.
+    try {
+      await params.refreshTrackingData()
+    } catch (err) {
+      console.error('Failed to refresh tracking data after enqueue:', err)
+    }
+
     const waitResult = await waitForTerminalSyncRequests({
       syncRequestIds: uniqueSyncRequestIds,
       setRefreshRetry: params.setRefreshRetry,
