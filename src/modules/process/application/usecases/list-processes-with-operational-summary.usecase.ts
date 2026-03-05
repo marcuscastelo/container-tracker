@@ -37,12 +37,12 @@ export type ListProcessesWithOperationalSummaryDeps = {
   readonly trackingUseCases: TrackingFacade
 }
 
-export type ProcessWithOperationalSummary = {
+type ProcessWithOperationalSummary = {
   readonly pwc: ProcessWithContainers
   readonly summary: ProcessOperationalSummary
 }
 
-export type ListProcessesWithOperationalSummaryResult = {
+type ListProcessesWithOperationalSummaryResult = {
   readonly processes: readonly ProcessWithOperationalSummary[]
 }
 

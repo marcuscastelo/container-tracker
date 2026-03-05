@@ -1,11 +1,11 @@
 import type { ContainerRepository } from '~/modules/container/application/container.repository'
 import { normalizeContainerNumber } from '~/modules/container/domain/container.validation'
 
-export type CheckContainerExistenceCommand = {
+type CheckContainerExistenceCommand = {
   containerNumbers: string[]
 }
 
-export type CheckContainerExistenceResult = {
+type CheckContainerExistenceResult = {
   existenceMap: Map<string, boolean>
 }
 

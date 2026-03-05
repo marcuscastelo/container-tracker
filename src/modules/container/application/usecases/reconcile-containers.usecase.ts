@@ -8,7 +8,7 @@ import {
   DuplicateContainersError,
 } from '~/shared/errors/container-process.errors'
 
-export type ReconcileContainersCommand = {
+type ReconcileContainersCommand = {
   processId: string
   existing: {
     id: string
@@ -20,7 +20,7 @@ export type ReconcileContainersCommand = {
   }[]
 }
 
-export type ReconcileContainersResult = {
+type ReconcileContainersResult = {
   added: {
     id: string
     containerNumber: string

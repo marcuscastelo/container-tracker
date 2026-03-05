@@ -48,9 +48,6 @@ export const DashboardOperationalSummaryResponseSchema =
 export type DashboardGlobalAlertsSummaryResponse = z.infer<
   typeof DashboardGlobalAlertsSummaryResponseSchema
 >
-export type DashboardProcessExceptionResponse = z.infer<
-  typeof DashboardProcessExceptionResponseSchema
->
 export type DashboardOperationalSummaryResponse = z.infer<
   typeof DashboardOperationalSummaryResponseSchema
 >

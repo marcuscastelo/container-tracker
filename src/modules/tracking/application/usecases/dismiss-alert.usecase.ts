@@ -3,7 +3,7 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 /**
  * Command to dismiss a tracking alert.
  */
-export type DismissAlertCommand = {
+type DismissAlertCommand = {
   readonly alertId: string
   readonly dismissedAt: string
 }
@@ -11,7 +11,7 @@ export type DismissAlertCommand = {
 /**
  * Result of dismissing an alert (void — fire-and-forget).
  */
-export type DismissAlertResult = undefined
+type DismissAlertResult = undefined
 
 /**
  * Dismiss a tracking alert by id.

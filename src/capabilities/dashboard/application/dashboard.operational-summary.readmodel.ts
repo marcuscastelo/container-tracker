@@ -10,17 +10,16 @@ import {
 } from '~/modules/tracking/application/projection/tracking.operational-alert-category.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 
-export type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
-export type DashboardGlobalAlertSeverity = Exclude<DashboardDominantSeverity, 'none'>
+type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
-export type DashboardGlobalAlertsBySeverityReadModel = {
+type DashboardGlobalAlertsBySeverityReadModel = {
   readonly danger: number
   readonly warning: number
   readonly info: number
   readonly success: number
 }
 
-export type DashboardGlobalAlertsByCategoryReadModel = {
+type DashboardGlobalAlertsByCategoryReadModel = {
   readonly eta: number
   readonly movement: number
   readonly customs: number
@@ -28,25 +27,25 @@ export type DashboardGlobalAlertsByCategoryReadModel = {
   readonly data: number
 }
 
-export type DashboardGlobalAlertsSummaryReadModel = {
+type DashboardGlobalAlertsSummaryReadModel = {
   readonly totalActiveAlerts: number
   readonly bySeverity: DashboardGlobalAlertsBySeverityReadModel
   readonly byCategory: DashboardGlobalAlertsByCategoryReadModel
 }
 
-export type DashboardOperationalAlertProcessReadModel = {
+type DashboardOperationalAlertProcessReadModel = {
   readonly processId: string
   readonly reference: string | null
   readonly origin: string | null
   readonly destination: string | null
 }
 
-export type DashboardOperationalAlertContainerReadModel = {
+type DashboardOperationalAlertContainerReadModel = {
   readonly containerId: string
   readonly containerNumber: string
 }
 
-export type DashboardOperationalAlertReadModel = {
+type DashboardOperationalAlertReadModel = {
   readonly process: DashboardOperationalAlertProcessReadModel
   readonly container: DashboardOperationalAlertContainerReadModel | null
   readonly category: TrackingOperationalAlertCategory
@@ -100,7 +99,7 @@ export type DashboardOperationalSummaryReadModelDeps = {
   readonly nowFactory?: () => Date
 }
 
-export type DashboardOperationalProcessReadModel = {
+type DashboardOperationalProcessReadModel = {
   readonly processId: string
   readonly reference: string | null
   readonly origin: string | null
@@ -145,7 +144,7 @@ function normalizeDashboardSeverity(severity: string): DashboardDominantSeverity
   return 'none'
 }
 
-export function resolveDashboardDominantSeverity(
+function resolveDashboardDominantSeverity(
   alerts: readonly { readonly severity: string }[],
 ): DashboardDominantSeverity {
   let dominantSeverity: DashboardDominantSeverity = 'none'

@@ -29,8 +29,6 @@ const SyncRequestIdListSchema = z.array(z.string().uuid()).min(1)
 
 const SyncRequestTenantIdSchema = z.string().uuid()
 
-export type SyncRequestRealtimeStatus = z.infer<typeof SyncRequestStatusSchema>
-
 export type SyncRequestRealtimeRow = z.infer<typeof SyncRequestRealtimeRowSchema>
 
 export type SyncRequestRealtimeEventType = z.infer<typeof RealtimeEventTypeSchema>

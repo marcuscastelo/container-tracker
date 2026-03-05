@@ -43,7 +43,7 @@
 /**
  * Input for location display resolution.
  */
-export type LocationDisplayInput = {
+type LocationDisplayInput = {
   /**
    * UN/LOCODE or carrier-specific location code.
    * Used for semantic identity in domain layer.

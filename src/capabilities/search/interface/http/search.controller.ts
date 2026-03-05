@@ -8,7 +8,7 @@ export type SearchController = {
   search(command: SearchCommand): Promise<readonly SearchResultItem[]>
 }
 
-export type CreateSearchControllerDeps = {
+type CreateSearchControllerDeps = {
   readonly searchFacade: SearchFacade
 }
 

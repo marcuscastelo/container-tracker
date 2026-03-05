@@ -2,11 +2,11 @@ import type { ContainerUseCasesForProcess } from '~/modules/process/application/
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 
-export type FindProcessByIdWithContainersCommand = {
+type FindProcessByIdWithContainersCommand = {
   processId: string
 }
 
-export type FindProcessByIdWithContainersResult = {
+type FindProcessByIdWithContainersResult = {
   process: ProcessWithContainers | null
 }
 

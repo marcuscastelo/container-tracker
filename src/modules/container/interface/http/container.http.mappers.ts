@@ -4,7 +4,7 @@ type ContainerLookupResult = {
   readonly containerNumber: string
 }
 
-export type ContainerConflictDto = {
+type ContainerConflictDto = {
   readonly containerNumber: string
   readonly processId: string
   readonly containerId: string

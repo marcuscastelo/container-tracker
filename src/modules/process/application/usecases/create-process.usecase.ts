@@ -5,7 +5,7 @@ import type { ProcessRepository } from '~/modules/process/application/process.re
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import { ContainerAlreadyExistsError } from '~/shared/errors/container-process.errors'
 
-export type CreateProcessCommand = {
+type CreateProcessCommand = {
   record: InsertProcessRecord
   containers: readonly {
     container_number: string
@@ -13,7 +13,7 @@ export type CreateProcessCommand = {
   }[]
 }
 
-export type CreateProcessResult = {
+type CreateProcessResult = {
   process: ProcessEntity
   containers: readonly ProcessContainerRecord[]
   warnings: readonly string[]

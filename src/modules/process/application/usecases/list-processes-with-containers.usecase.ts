@@ -2,9 +2,7 @@ import type { ContainerUseCasesForProcess } from '~/modules/process/application/
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 
-export type ListProcessesWithContainersCommand = never
-
-export type ListProcessesWithContainersResult = {
+type ListProcessesWithContainersResult = {
   processes: readonly ProcessWithContainers[]
 }
 

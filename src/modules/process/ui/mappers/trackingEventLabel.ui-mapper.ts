@@ -29,12 +29,12 @@ type TimelineLabelEvent = {
 
 type TranslateFn = (key: string) => string
 export type NonMappedIndicatorVariant = 'badge' | 'suffix'
-export type TimelineEventLabelSource = 'canonical' | 'carrier' | 'unknown'
-export type TimelineEventLabelResolution = {
+type TimelineEventLabelSource = 'canonical' | 'carrier' | 'unknown'
+type TimelineEventLabelResolution = {
   readonly label: string
   readonly source: TimelineEventLabelSource
 }
-export type TimelineEventLabelPresentation = {
+type TimelineEventLabelPresentation = {
   readonly label: string
   readonly showNonMappedIndicator: boolean
   readonly nonMappedIndicatorLabel: string

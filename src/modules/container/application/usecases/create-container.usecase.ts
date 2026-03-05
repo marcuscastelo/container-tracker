@@ -5,13 +5,13 @@ import {
   validateContainerWithWarnings,
 } from '~/modules/container/domain/container.validation'
 
-export type CreateContainerCommand = {
+type CreateContainerCommand = {
   containerNumber: string
   carrierCode: string
   processId: string
 }
 
-export type CreateContainerResult = {
+type CreateContainerResult = {
   container: ContainerEntity
   warnings: string[]
 }

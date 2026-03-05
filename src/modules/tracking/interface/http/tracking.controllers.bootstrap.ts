@@ -5,7 +5,7 @@ import {
   type TrackingControllers,
 } from '~/modules/tracking/interface/http/tracking.controllers'
 
-export type TrackingControllersBootstrapOverrides = Partial<{
+type TrackingControllersBootstrapOverrides = Partial<{
   readonly usecases: TrackingUseCases
 }>
 

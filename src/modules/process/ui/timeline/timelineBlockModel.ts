@@ -4,43 +4,9 @@ import {
   type VoyageSegment,
 } from '~/modules/tracking/application/projection/voyageSegments'
 
-// ---------------------------------------------------------------------------
-// Phase 1 — Event Context Classification (UI-only)
-// ---------------------------------------------------------------------------
-
-/** Classifies an event's transport context for block assignment. */
-export type EventContext = 'terminal' | 'vessel'
-
-const VESSEL_EVENT_TYPES: ReadonlySet<string> = new Set([
-  'LOAD',
-  'DEPARTURE',
-  'ARRIVAL',
-  'DISCHARGE',
-])
-
-/**
- * Classify a single event as terminal or vessel based on event type and
- * vessel metadata. This is a UI-only derivation — it does NOT alter event data.
- */
-export function classifyEventContext(event: TrackingTimelineItem): EventContext {
-  if (VESSEL_EVENT_TYPES.has(event.type)) return 'vessel'
-  if (event.vesselName) return 'vessel'
-  return 'terminal'
-}
-
-// ---------------------------------------------------------------------------
-// Phase 2 — Voyage Segmentation (re-export from application projection)
-// ---------------------------------------------------------------------------
-
-export { groupVoyageSegments, type VoyageSegment }
-
-// ---------------------------------------------------------------------------
-// Phase 3 — Terminal Segmentation
-// ---------------------------------------------------------------------------
-
 export type TerminalSegmentKind = 'pre-carriage' | 'transshipment-terminal' | 'post-carriage'
 
-export type TerminalSegment = {
+type TerminalSegment = {
   readonly kind: TerminalSegmentKind
   readonly title: string
   readonly location: string | null
@@ -77,7 +43,7 @@ function dominantLocation(events: readonly TrackingTimelineItem[]): string | nul
  * - Events between voyages → "transshipment-terminal"
  * - Events after the last voyage → "post-carriage"
  */
-export function groupTerminalSegments(
+function groupTerminalSegments(
   events: readonly TrackingTimelineItem[],
   voyageSegments: readonly VoyageSegment[],
 ): readonly TerminalSegment[] {
@@ -197,13 +163,6 @@ export type PortRiskMarker = {
   readonly ongoing: boolean
   readonly severity: 'info' | 'warning' | 'danger'
 }
-
-export type TimelineBlock =
-  | VoyageBlock
-  | TerminalBlock
-  | TransshipmentBlock
-  | GapMarker
-  | PortRiskMarker
 
 // ---------------------------------------------------------------------------
 // Phase 5 — Transshipment Detection

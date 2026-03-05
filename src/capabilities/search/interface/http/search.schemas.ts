@@ -39,39 +39,5 @@ export const SearchHttpResultItemSchema = z.object({
 
 export const SearchHttpResponseSchema = z.array(SearchHttpResultItemSchema)
 
-export type SearchHttpQueryInput = z.infer<typeof SearchHttpQuerySchema>
 export type SearchHttpResultItemDto = z.infer<typeof SearchHttpResultItemSchema>
 export type SearchHttpResponseDto = z.infer<typeof SearchHttpResponseSchema>
-
-/**
- * Query parameter schema for GET /api/search?q=...&limit=...
- */
-const SearchQuerySchema = z.object({
-  q: z.string().min(1, 'Search query is required'),
-  limit: z.coerce.number().int().min(1).max(20).optional(),
-})
-
-export type SearchQueryInput = z.infer<typeof SearchQuerySchema>
-
-/**
- * Shape of a single search result item in the API response.
- */
-const SearchResultItemSchema = z.object({
-  id: z.string(),
-  type: z.enum(['process', 'container', 'importer', 'exporter', 'carrier']),
-  title: z.string(),
-  subtitle: z.string().nullable(),
-  processId: z.string().nullable(),
-  status: z.string().nullable(),
-  carrier: z.string().nullable(),
-})
-
-/**
- * Full search response shape.
- */
-const SearchResponseSchema = z.object({
-  items: z.array(SearchResultItemSchema),
-  query: z.string(),
-})
-
-export type SearchResponseDto = z.infer<typeof SearchResponseSchema>

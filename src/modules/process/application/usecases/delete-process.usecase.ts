@@ -1,10 +1,10 @@
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 
-export type DeleteProcessCommand = {
+type DeleteProcessCommand = {
   processId: string
 }
 
-export type DeleteProcessResult = {
+type DeleteProcessResult = {
   deleted: true
 }
 

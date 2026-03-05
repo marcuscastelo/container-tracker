@@ -5,7 +5,7 @@ import {
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassification'
 
-export type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
 
 export type TrackingOperationalEta = {
   readonly eventTimeIso: string
@@ -16,7 +16,7 @@ export type TrackingOperationalEta = {
   readonly locationDisplay: string | null
 }
 
-export type TrackingOperationalTransshipmentPort = {
+type TrackingOperationalTransshipmentPort = {
   readonly code: string
   readonly display: string | null
 }
@@ -46,7 +46,7 @@ export type TrackingOperationalSummary = {
   readonly dataIssue: boolean
 }
 
-export type DeriveTrackingOperationalSummaryArgs = {
+type DeriveTrackingOperationalSummaryArgs = {
   readonly observations: readonly TrackingObservationForOperationalSummary[]
   readonly status: string
   readonly transshipment: TransshipmentInfo

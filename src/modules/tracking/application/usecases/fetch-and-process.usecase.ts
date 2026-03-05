@@ -11,7 +11,7 @@ import { getRestFetcher } from '~/modules/tracking/infrastructure/carriers/fetch
 /**
  * Command to fetch tracking data from a carrier and run the full pipeline.
  */
-export type FetchAndProcessCommand = {
+type FetchAndProcessCommand = {
   readonly containerId: string
   readonly containerNumber: string
   readonly provider: Provider

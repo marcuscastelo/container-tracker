@@ -12,7 +12,7 @@ export type TrackingObservationDTO = {
   readonly created_at: string
 }
 
-export type TrackingObservationSource = {
+type TrackingObservationSource = {
   readonly id: string
   readonly type: string
   readonly carrier_label?: string | null

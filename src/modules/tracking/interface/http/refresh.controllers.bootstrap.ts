@@ -33,7 +33,7 @@ const RefreshStatusRowSchema = z.object({
 
 const RefreshStatusRowsSchema = z.array(RefreshStatusRowSchema)
 
-export type RefreshControllersBootstrapOverrides = Partial<{
+type RefreshControllersBootstrapOverrides = Partial<{
   readonly refreshRestDeps: RefreshRestContainerDeps
 }>
 

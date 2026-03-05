@@ -142,11 +142,3 @@ export const CreateProcessResponseSchema = z.object({
 })
 
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>
-export type ObservationResponse = z.infer<typeof ObservationResponseSchema>
-export type TrackingAlertResponse = z.infer<typeof TrackingAlertResponseSchema>
-export type OperationalEtaResponse = z.infer<typeof OperationalEtaResponseSchema>
-export type OperationalTransshipmentResponse = z.infer<
-  typeof OperationalTransshipmentResponseSchema
->
-export type ContainerOperationalResponse = z.infer<typeof ContainerOperationalResponseSchema>
-export type ProcessOperationalResponse = z.infer<typeof ProcessOperationalResponseSchema>

@@ -101,7 +101,7 @@ export function resolveDashboardFilterSelectionWithStorageFallback(
   return storageFilterSelection
 }
 
-export type DashboardFilterHydrationResult = {
+type DashboardFilterHydrationResult = {
   readonly filterSelection: DashboardFilterSelection
   readonly searchParams: URLSearchParams
 }

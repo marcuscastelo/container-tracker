@@ -21,7 +21,7 @@ type RefreshSyncRequestStatus = {
   readonly refValue: string | null
 }
 
-export type RefreshControllersDeps = {
+type RefreshControllersDeps = {
   readonly refreshRestUseCase: RefreshRestUseCase
   readonly getSyncRequestStatuses: (command: {
     readonly syncRequestIds: readonly string[]

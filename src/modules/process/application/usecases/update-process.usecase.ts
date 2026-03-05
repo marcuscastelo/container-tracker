@@ -3,18 +3,18 @@ import type { ProcessWithContainers } from '~/modules/process/application/proces
 import type { UpdateProcessRecord } from '~/modules/process/application/process.records'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 
-export type UpdateProcessContainerInput = {
+type UpdateProcessContainerInput = {
   container_number: string
   carrier_code: string | null
 }
 
-export type UpdateProcessCommand = {
+type UpdateProcessCommand = {
   processId: string
   record: UpdateProcessRecord
   containers?: readonly UpdateProcessContainerInput[]
 }
 
-export type UpdateProcessResult = {
+type UpdateProcessResult = {
   process: ProcessWithContainers | null
 }
 

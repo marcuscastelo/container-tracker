@@ -1,11 +1,11 @@
 import type { ContainerRepository } from '~/modules/container/application/container.repository'
 import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 
-export type ListContainersByProcessIdsCommand = {
+type ListContainersByProcessIdsCommand = {
   processIds: readonly string[]
 }
 
-export type ListContainersByProcessIdsResult = {
+type ListContainersByProcessIdsResult = {
   containersByProcessId: ReadonlyMap<string, readonly ContainerEntity[]>
 }
 

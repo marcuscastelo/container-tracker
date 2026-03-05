@@ -2,11 +2,11 @@ import type { ContainerRepository } from '~/modules/container/application/contai
 import type { ContainerEntity } from '~/modules/container/domain/container.entity'
 import { normalizeContainerNumber } from '~/modules/container/domain/container.validation'
 
-export type FindContainersByNumberCommand = {
+type FindContainersByNumberCommand = {
   containerNumbers: string[]
 }
 
-export type FindContainersByNumberResult = {
+type FindContainersByNumberResult = {
   containers: ContainerEntity[]
 }
 

@@ -6,7 +6,7 @@ import {
 } from '~/modules/container/domain/container.validation'
 import { DuplicateContainersError } from '~/shared/errors/container-process.errors'
 
-export type CreateManyContainersCommand = {
+type CreateManyContainersCommand = {
   processId: string
   inputs: {
     containerNumber: string
@@ -14,7 +14,7 @@ export type CreateManyContainersCommand = {
   }[]
 }
 
-export type CreateManyContainersResult = {
+type CreateManyContainersResult = {
   containers: ContainerEntity[]
   warnings: string[]
 }
