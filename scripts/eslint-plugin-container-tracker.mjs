@@ -99,7 +99,7 @@ const noJsxShortCircuitRule = {
     schema: [],
     messages: {
       avoidJsxShortCircuit:
-        'Não use cond && <JSX /> para render condicional. Use <Show when={cond}>...</Show>.',
+        'Do not use cond && <JSX /> for conditional rendering. Use <Show when={cond}>...</Show> instead.',
     },
   },
   create(context) {

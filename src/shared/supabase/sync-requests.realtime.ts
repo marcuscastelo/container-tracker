@@ -82,7 +82,7 @@ export type SyncRequestsRealtimeClient<
   removeChannel: (channel: TChannel) => Promise<unknown>
 }
 
-type SubscriptionScope = 'ids' | 'tenant'
+type SubscriptionScope = 'ids' | 'tenant' | 'container_refs'
 
 export type SyncRequestsRealtimeStatusUpdate = {
   readonly state: SyncRequestsRealtimeChannelState
@@ -250,8 +250,11 @@ export function subscribeSyncRequestsByContainerRefs<
   return subscribeToSyncRequestsFilters({
     client: command.client,
     filters: uniqueContainerNumbers.map((containerNumber) => ({
-      scope: 'ids' as const,
-      key: `ref_value=eq.${containerNumber}`,
+      // Use a dedicated scope name for container ref subscriptions and
+      // filter by both ref_type and ref_value to avoid matching unrelated
+      // sync_requests rows that share the same ref_value for other ref_types.
+      scope: 'container_refs' as const,
+      key: `ref_type=eq.container&ref_value=eq.${containerNumber}`,
     })),
     onEvent: command.onEvent,
     onStatus: command.onStatus,

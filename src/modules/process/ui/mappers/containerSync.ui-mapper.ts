@@ -81,13 +81,20 @@ export function normalizeContainerNumber(containerNumber: string): string {
 export function toContainerSyncVM(dto: ContainerSyncDTO, now: Date): ContainerSyncVM {
   const state = toState(dto)
 
+  const lastSuccessAtTimestamp =
+    dto.lastSuccessAt === null ? null : toTimestampOrNegativeInfinity(dto.lastSuccessAt)
+
   return {
     containerNumber: normalizeContainerNumber(dto.containerNumber),
     carrier: dto.carrier,
     state,
     relativeTimeAt: toRelativeTimeAt(state, dto),
-    isStale: state === 'ok' ? toIsStale(dto.lastSuccessAt, now) : false,
-  }
+    get isStale() {
+      if (state !== 'ok' || lastSuccessAtTimestamp === null) return false
+      if (!Number.isFinite(lastSuccessAtTimestamp)) return false
+      return now.getTime() - lastSuccessAtTimestamp > SYNC_STALE_THRESHOLD_MS
+    },
+  } as ContainerSyncVM
 }
 
 export function createNeverContainerSyncVM(containerNumber: string): ContainerSyncVM {

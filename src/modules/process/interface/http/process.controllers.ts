@@ -177,7 +177,9 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       // Destination can be a canonical code or a serialized location payload.
       // If we cannot extract a canonical POD code, tracking falls back safely.
       const podLocationCode = extractPodLocationCode(pwc.process.destination)
-      const containerNumbers = pwc.containers.map((container) => String(container.containerNumber))
+      const containerNumbers = pwc.containers.map((container) =>
+        String(container.containerNumber).trim().toUpperCase(),
+      )
       let containersSync: readonly ContainerSyncDTO[] = containerNumbers.map((containerNumber) =>
         createContainerSyncMetadataFallback(containerNumber),
       )
