@@ -2,42 +2,95 @@ import { resolveLocationDisplay } from '~/modules/tracking/application/projectio
 import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
+import type { Observation } from '~/modules/tracking/domain/model/observation'
 import type { Timeline } from '~/modules/tracking/domain/model/timeline'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+
+/**
+ * Internal representation of a confirmed transshipment event.
+ * Used to drive both TransshipmentInfo derivation and per-pair alert generation.
+ */
+type TransshipmentPair = {
+  readonly dischargeObs: Observation
+  readonly loadObs: Observation
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+}
+
+/**
+ * Find consecutive DISCHARGE → LOAD pairs where the vessel changed.
+ *
+ * Rules:
+ * - Only ACTUAL observations are considered
+ * - Only LOAD and DISCHARGE events are relevant
+ * - Both vessel names must be present and different
+ * - ARRIVAL/DEPARTURE are irrelevant for vessel-change detection
+ * - Ordering is deterministic: event_time → type → location_code → fingerprint
+ *
+ * @see docs/TRACKING_INVARIANTS.md
+ */
+function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[] {
+  const events = [...timeline.observations]
+    .filter((o) => (o.type === 'LOAD' || o.type === 'DISCHARGE') && o.event_time_type === 'ACTUAL')
+    .sort((a, b) => {
+      const timeCompare = (a.event_time ?? '').localeCompare(b.event_time ?? '')
+      if (timeCompare !== 0) return timeCompare
+      const typeCompare = a.type.localeCompare(b.type)
+      if (typeCompare !== 0) return typeCompare
+      const locCompare = (a.location_code ?? '').localeCompare(b.location_code ?? '')
+      if (locCompare !== 0) return locCompare
+      return a.fingerprint.localeCompare(b.fingerprint)
+    })
+
+  const pairs: TransshipmentPair[] = []
+
+  for (let i = 0; i < events.length - 1; i++) {
+    const prev = events[i]
+    const curr = events[i + 1]
+
+    if (prev === undefined || curr === undefined) continue
+    if (prev.type !== 'DISCHARGE' || curr.type !== 'LOAD') continue
+
+    const vesselFrom = prev.vessel_name?.trim() || null
+    const vesselTo = curr.vessel_name?.trim() || null
+
+    // Cannot determine transshipment without both vessel names — conservative: skip
+    if (vesselFrom === null || vesselTo === null) continue
+
+    if (vesselFrom !== vesselTo) {
+      const port = (curr.location_code ?? prev.location_code ?? 'UNKNOWN').toUpperCase()
+      pairs.push({ dischargeObs: prev, loadObs: curr, port, vesselFrom, vesselTo })
+    }
+  }
+
+  return pairs
+}
 
 /**
  * Derive transshipment info from a timeline.
  *
  * Transshipment is NOT a status — it's a derived attribute.
- * Rule: unique ports involved in LOAD/DISCHARGE events.
- * If more than 2 unique ports → transshipment occurred.
+ * Definition: a transshipment occurs only when a container is DISCHARGED from vessel A
+ * and LOADED onto vessel B, where vessel A ≠ vessel B.
  *
- * @see docs/master-consolidated-0209.md §4.4
+ * Rules:
+ * - Only ACTUAL observations are considered
+ * - Only LOAD and DISCHARGE events are relevant
+ * - Port calls (ARRIVAL/DEPARTURE) without vessel change are NOT transshipment
+ * - Restow (DISCHARGE + LOAD on the same vessel) is NOT transshipment
+ * - Carrier data without vessel names → transshipment unknown (conservative: false)
+ *
+ * @see docs/TRACKING_INVARIANTS.md
  */
 export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
-  const ports = new Set<string>()
-
-  // Consider LOAD/DISCHARGE events as primary indicators, but also include
-  // ARRIVAL/DEPARTURE observations when they carry a location_code. Some
-  // carriers (Maersk, etc.) may not emit explicit LOAD/DISCHARGE pairs for
-  // transshipment legs — they only show ARRIVAL/DEPARTURE on different
-  // vessels. Including these types improves transshipment detection for
-  // real-world carrier data while remaining conservative (we still require
-  // ACTUAL evidence when creating a fact alert below).
-  for (const obs of timeline.observations) {
-    const relevantTypes = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
-    if (relevantTypes.includes(obs.type) && obs.location_code) {
-      ports.add(obs.location_code.toUpperCase())
-    }
-  }
-
-  const uniquePorts = [...ports]
-  const count = Math.max(0, uniquePorts.length - 2)
+  const pairs = findTransshipmentPairs(timeline)
+  const ports = [...new Set(pairs.map((p) => p.port))]
 
   return {
-    hasTransshipment: count > 0,
-    transshipmentCount: count,
-    ports: uniquePorts,
+    hasTransshipment: pairs.length > 0,
+    transshipmentCount: pairs.length,
+    ports,
   }
 }
 
@@ -91,45 +144,33 @@ export function deriveAlerts(
   // === FACT-BASED ALERTS ===
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
-  // 1. Transshipment detection
-  const transshipment = deriveTransshipment(timeline)
-  if (transshipment.hasTransshipment) {
-    // Find the ACTUAL observations that indicate transshipment
-    const transshipmentObs = timeline.observations.filter(
-      (o) =>
-        o.event_time_type === 'ACTUAL' &&
-        (o.type === 'LOAD' || o.type === 'DISCHARGE') &&
-        o.location_code !== null,
-    )
+  // 1. Transshipment detection — one alert per confirmed DISCHARGE → LOAD vessel-change pair
+  const transshipmentPairs = findTransshipmentPairs(timeline)
+  for (const pair of transshipmentPairs) {
+    const pairFingerprints = [pair.dischargeObs.fingerprint, pair.loadObs.fingerprint]
+    const alertFingerprint = computeAlertFingerprint('TRANSSHIPMENT', pairFingerprints)
 
-    // Only create alert if we have ACTUAL evidence
-    if (transshipmentObs.length > 0) {
-      const fingerprints = transshipmentObs.map((o) => o.fingerprint)
-      const alertFingerprint = computeAlertFingerprint('TRANSSHIPMENT', fingerprints)
+    // Deduplicate by fingerprint — same DISCHARGE+LOAD pair must not create duplicate alerts
+    if (!existingFactFingerprints.has(alertFingerprint)) {
+      // detected_at = time the LOAD onto the new vessel was confirmed
+      const detectedAt = pair.loadObs.event_time ?? nowIso
+      const message = `Transshipment detected at ${pair.port} — Vessel change: ${pair.vesselFrom} → ${pair.vesselTo}`
 
-      // Deduplicate by fingerprint (not just TYPE)
-      if (!existingFactFingerprints.has(alertFingerprint)) {
-        // For fact alerts, detected_at = time of the earliest transshipment evidence
-        const earliestTime = transshipmentObs
-          .filter((o) => o.event_time !== null)
-          .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))[0]?.event_time
-
-        alerts.push({
-          container_id: timeline.container_id,
-          category: 'fact',
-          type: 'TRANSSHIPMENT',
-          severity: 'warning',
-          message: `Transshipment detected: ${transshipment.transshipmentCount} intermediate port(s) — ${transshipment.ports.join(', ')}`,
-          detected_at: earliestTime ?? nowIso,
-          triggered_at: nowIso,
-          source_observation_fingerprints: fingerprints,
-          alert_fingerprint: alertFingerprint,
-          retroactive: isBackfill,
-          provider: null,
-          acked_at: null,
-          dismissed_at: null,
-        })
-      }
+      alerts.push({
+        container_id: timeline.container_id,
+        category: 'fact',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        message,
+        detected_at: detectedAt,
+        triggered_at: nowIso,
+        source_observation_fingerprints: pairFingerprints,
+        alert_fingerprint: alertFingerprint,
+        retroactive: isBackfill,
+        provider: null,
+        acked_at: null,
+        dismissed_at: null,
+      })
     }
   }
 

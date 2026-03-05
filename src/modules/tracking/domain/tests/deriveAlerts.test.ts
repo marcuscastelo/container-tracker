@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveTimeline } from '~/modules/tracking/domain/derive/deriveTimeline'
+import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
 import type { Observation } from '~/modules/tracking/domain/model/observation'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
@@ -30,17 +31,20 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
 }
 
 describe('deriveTransshipment', () => {
-  it('should return no transshipment for direct route (2 ports)', () => {
+  it('should return no transshipment for a direct route (same vessel)', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({
         type: 'LOAD',
-        location_code: 'ITNAP',
+        location_code: 'CNSHA',
+        vessel_name: 'VesselA',
         id: '00000000-0000-0000-0000-000000000011',
         fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
       }),
       makeObs({
         type: 'DISCHARGE',
-        location_code: 'BRIOA',
+        location_code: 'NLRTM',
+        vessel_name: 'VesselA',
         id: '00000000-0000-0000-0000-000000000012',
         fingerprint: 'fp2',
         event_time: '2026-02-02T00:00:00.000Z',
@@ -49,34 +53,161 @@ describe('deriveTransshipment', () => {
     const result = deriveTransshipment(timeline)
     expect(result.hasTransshipment).toBe(false)
     expect(result.transshipmentCount).toBe(0)
-    expect(result.ports).toHaveLength(2)
+    expect(result.ports).toHaveLength(0)
   })
 
-  it('should detect transshipment when > 2 ports involved', () => {
+  it('should return false for a port call / layover with no vessel change', () => {
+    // ARRIVAL and DEPARTURE mid-route on the same vessel MUST NOT trigger transshipment
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({
         type: 'LOAD',
-        location_code: 'ITNAP',
+        location_code: 'CNSHA',
+        vessel_name: 'VesselA',
         id: '00000000-0000-0000-0000-000000000011',
         fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'ARRIVAL',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2025-12-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DEPARTURE',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2025-12-02T00:00:00.000Z',
       }),
       makeObs({
         type: 'DISCHARGE',
-        location_code: 'ITLIV',
+        location_code: 'NLRTM',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000014',
+        fingerprint: 'fp4',
+        event_time: '2026-02-02T00:00:00.000Z',
+      }),
+    ])
+    const result = deriveTransshipment(timeline)
+    expect(result.hasTransshipment).toBe(false)
+    expect(result.transshipmentCount).toBe(0)
+  })
+
+  it('should return false for a restow (DISCHARGE + LOAD on the same vessel)', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
         id: '00000000-0000-0000-0000-000000000012',
         fingerprint: 'fp2',
-        event_time: '2025-11-29T00:00:00.000Z',
+        event_time: '2025-12-01T00:00:00.000Z',
       }),
       makeObs({
         type: 'LOAD',
-        location_code: 'ITLIV',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
         id: '00000000-0000-0000-0000-000000000013',
         fingerprint: 'fp3',
-        event_time: '2025-11-30T00:00:00.000Z',
+        event_time: '2025-12-02T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'NLRTM',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000014',
+        fingerprint: 'fp4',
+        event_time: '2026-02-02T00:00:00.000Z',
+      }),
+    ])
+    const result = deriveTransshipment(timeline)
+    expect(result.hasTransshipment).toBe(false)
+    expect(result.transshipmentCount).toBe(0)
+  })
+
+  it('should detect a real transshipment (DISCHARGE vessel A → LOAD vessel B)', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2025-12-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'LOAD',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselB',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2025-12-03T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'NLRTM',
+        vessel_name: 'VesselB',
+        id: '00000000-0000-0000-0000-000000000014',
+        fingerprint: 'fp4',
+        event_time: '2026-02-02T00:00:00.000Z',
+      }),
+    ])
+    const result = deriveTransshipment(timeline)
+    expect(result.hasTransshipment).toBe(true)
+    expect(result.transshipmentCount).toBe(1)
+    expect(result.ports).toEqual(['SGSIN'])
+  })
+
+  it('should detect multiple transshipments when vessel changes twice', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2025-12-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'LOAD',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselB',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2025-12-03T00:00:00.000Z',
       }),
       makeObs({
         type: 'DISCHARGE',
         location_code: 'BRSSZ',
+        vessel_name: 'VesselB',
         id: '00000000-0000-0000-0000-000000000014',
         fingerprint: 'fp4',
         event_time: '2026-01-07T00:00:00.000Z',
@@ -84,13 +215,15 @@ describe('deriveTransshipment', () => {
       makeObs({
         type: 'LOAD',
         location_code: 'BRSSZ',
+        vessel_name: 'VesselC',
         id: '00000000-0000-0000-0000-000000000015',
         fingerprint: 'fp5',
-        event_time: '2026-01-20T00:00:00.000Z',
+        event_time: '2026-01-10T00:00:00.000Z',
       }),
       makeObs({
         type: 'DISCHARGE',
         location_code: 'BRIOA',
+        vessel_name: 'VesselC',
         id: '00000000-0000-0000-0000-000000000016',
         fingerprint: 'fp6',
         event_time: '2026-02-02T00:00:00.000Z',
@@ -98,67 +231,128 @@ describe('deriveTransshipment', () => {
     ])
     const result = deriveTransshipment(timeline)
     expect(result.hasTransshipment).toBe(true)
-    expect(result.transshipmentCount).toBe(2) // ITLIV + BRSSZ are intermediate
-    expect(result.ports).toContain('ITNAP')
-    expect(result.ports).toContain('ITLIV')
+    expect(result.transshipmentCount).toBe(2)
+    expect(result.ports).toContain('SGSIN')
     expect(result.ports).toContain('BRSSZ')
-    expect(result.ports).toContain('BRIOA')
   })
 
-  it('should ignore events without location_code', () => {
+  it('should return false when vessel names are unknown (cannot determine change)', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({
         type: 'LOAD',
-        location_code: null,
+        location_code: 'CNSHA',
+        vessel_name: null,
         id: '00000000-0000-0000-0000-000000000011',
         fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
       }),
       makeObs({
         type: 'DISCHARGE',
-        location_code: 'BRIOA',
+        location_code: 'SGSIN',
+        vessel_name: null,
         id: '00000000-0000-0000-0000-000000000012',
         fingerprint: 'fp2',
+        event_time: '2025-12-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'LOAD',
+        location_code: 'SGSIN',
+        vessel_name: null,
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2025-12-03T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'NLRTM',
+        vessel_name: null,
+        id: '00000000-0000-0000-0000-000000000014',
+        fingerprint: 'fp4',
         event_time: '2026-02-02T00:00:00.000Z',
       }),
     ])
     const result = deriveTransshipment(timeline)
     expect(result.hasTransshipment).toBe(false)
-    expect(result.ports).toHaveLength(1)
+    expect(result.transshipmentCount).toBe(0)
+  })
+
+  it('should ignore EXPECTED observations', () => {
+    // Even if vessel names differ, EXPECTED events must not drive transshipment
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        vessel_name: 'VesselA',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2025-11-17T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselA',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2025-12-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'LOAD',
+        location_code: 'SGSIN',
+        vessel_name: 'VesselB',
+        event_time_type: 'EXPECTED',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2025-12-03T00:00:00.000Z',
+      }),
+    ])
+    const result = deriveTransshipment(timeline)
+    expect(result.hasTransshipment).toBe(false)
   })
 })
 
 describe('deriveAlerts', () => {
   describe('TRANSSHIPMENT alert (fact-based)', () => {
-    it('should create a TRANSSHIPMENT alert when transshipment is detected', () => {
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+    function makeTransshipmentTimeline(dischargeFingerprint: string, loadFingerprint: string) {
+      return deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
-          location_code: 'ITNAP',
+          location_code: 'CNSHA',
+          vessel_name: 'VesselA',
           id: '00000000-0000-0000-0000-000000000011',
-          fingerprint: 'fp1',
+          fingerprint: 'fp-load-origin',
+          event_time: '2025-11-17T00:00:00.000Z',
         }),
         makeObs({
           type: 'DISCHARGE',
-          location_code: 'ITLIV',
+          location_code: 'SGSIN',
+          vessel_name: 'VesselA',
           id: '00000000-0000-0000-0000-000000000012',
-          fingerprint: 'fp2',
-          event_time: '2025-11-29T00:00:00.000Z',
+          fingerprint: dischargeFingerprint,
+          event_time: '2025-12-01T00:00:00.000Z',
         }),
         makeObs({
           type: 'LOAD',
-          location_code: 'ITLIV',
+          location_code: 'SGSIN',
+          vessel_name: 'VesselB',
           id: '00000000-0000-0000-0000-000000000013',
-          fingerprint: 'fp3',
-          event_time: '2025-11-30T00:00:00.000Z',
+          fingerprint: loadFingerprint,
+          event_time: '2025-12-03T00:00:00.000Z',
         }),
         makeObs({
           type: 'DISCHARGE',
-          location_code: 'BRIOA',
-          id: '00000000-0000-0000-0000-000000000016',
-          fingerprint: 'fp6',
+          location_code: 'NLRTM',
+          vessel_name: 'VesselB',
+          id: '00000000-0000-0000-0000-000000000014',
+          fingerprint: 'fp-discharge-dest',
           event_time: '2026-02-02T00:00:00.000Z',
         }),
       ])
+    }
+
+    it('should create a TRANSSHIPMENT alert for a vessel change', () => {
+      const timeline = makeTransshipmentTimeline('fp-discharge-sgsin', 'fp-load-sgsin')
 
       const alerts = deriveAlerts(timeline, 'DISCHARGED', [])
       const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
@@ -167,76 +361,30 @@ describe('deriveAlerts', () => {
       expect(transAlert?.severity).toBe('warning')
       expect(transAlert?.retroactive).toBe(false)
       expect(transAlert?.alert_fingerprint).toBeTruthy()
+      // detected_at = time of LOAD onto new vessel
+      expect(transAlert?.detected_at).toBe('2025-12-03T00:00:00.000Z')
+      expect(transAlert?.message).toContain('SGSIN')
+      expect(transAlert?.message).toContain('VesselA')
+      expect(transAlert?.message).toContain('VesselB')
+      // source fingerprints = [discharge, load]
+      expect(transAlert?.source_observation_fingerprints).toContain('fp-discharge-sgsin')
+      expect(transAlert?.source_observation_fingerprints).toContain('fp-load-sgsin')
     })
 
     it('should mark TRANSSHIPMENT alert as retroactive during backfill', () => {
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          location_code: 'ITNAP',
-          id: '00000000-0000-0000-0000-000000000011',
-          fingerprint: 'fp1',
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          location_code: 'ITLIV',
-          id: '00000000-0000-0000-0000-000000000012',
-          fingerprint: 'fp2',
-          event_time: '2025-11-29T00:00:00.000Z',
-        }),
-        makeObs({
-          type: 'LOAD',
-          location_code: 'ITLIV',
-          id: '00000000-0000-0000-0000-000000000013',
-          fingerprint: 'fp3',
-          event_time: '2025-11-30T00:00:00.000Z',
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          location_code: 'BRIOA',
-          id: '00000000-0000-0000-0000-000000000016',
-          fingerprint: 'fp6',
-          event_time: '2026-02-02T00:00:00.000Z',
-        }),
-      ])
-
+      const timeline = makeTransshipmentTimeline('fp-discharge-sgsin', 'fp-load-sgsin')
       const alerts = deriveAlerts(timeline, 'DISCHARGED', [], true)
       const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
       expect(transAlert?.retroactive).toBe(true)
     })
 
-    it('should NOT create duplicate TRANSSHIPMENT alert if already exists', () => {
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          location_code: 'ITNAP',
-          id: '00000000-0000-0000-0000-000000000011',
-          fingerprint: 'fp1',
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          location_code: 'ITLIV',
-          id: '00000000-0000-0000-0000-000000000012',
-          fingerprint: 'fp2',
-          event_time: '2025-11-29T00:00:00.000Z',
-        }),
-        makeObs({
-          type: 'LOAD',
-          location_code: 'ITLIV',
-          id: '00000000-0000-0000-0000-000000000013',
-          fingerprint: 'fp3',
-          event_time: '2025-11-30T00:00:00.000Z',
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          location_code: 'BRIOA',
-          id: '00000000-0000-0000-0000-000000000016',
-          fingerprint: 'fp6',
-          event_time: '2026-02-02T00:00:00.000Z',
-        }),
-      ])
+    it('should NOT create duplicate TRANSSHIPMENT alert if already exists (dedup by fingerprint)', () => {
+      const timeline = makeTransshipmentTimeline('fp-discharge-sgsin', 'fp-load-sgsin')
 
-      // Simulate existing TRANSSHIPMENT alert with same fingerprint
+      const existingFingerprint = computeAlertFingerprint('TRANSSHIPMENT', [
+        'fp-discharge-sgsin',
+        'fp-load-sgsin',
+      ])
       const existingAlerts = [
         {
           id: '00000000-0000-0000-0000-999999999999',
@@ -245,10 +393,10 @@ describe('deriveAlerts', () => {
           type: 'TRANSSHIPMENT' as const,
           severity: 'warning' as const,
           message: 'Existing transshipment',
-          detected_at: '2025-11-17T00:00:00.000Z',
-          triggered_at: '2025-11-17T00:00:00.000Z',
-          source_observation_fingerprints: ['fp1', 'fp2', 'fp3', 'fp6'],
-          alert_fingerprint: '183204746fc84fd24244714d1c8f296e', // Real hash of TRANSSHIPMENT:fp1,fp2,fp3,fp6
+          detected_at: '2025-12-03T00:00:00.000Z',
+          triggered_at: '2025-12-03T00:00:00.000Z',
+          source_observation_fingerprints: ['fp-discharge-sgsin', 'fp-load-sgsin'],
+          alert_fingerprint: existingFingerprint,
           retroactive: false,
           provider: null,
           acked_at: null,
@@ -260,111 +408,163 @@ describe('deriveAlerts', () => {
       expect(transAlert).toBeUndefined()
     })
 
-    it('should create different alerts for different transshipments', () => {
-      // First transshipment: ITNAP → ITLIV → BRIOA
-      const timeline1 = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+    it('should create separate alerts for each vessel-change pair', () => {
+      // Two transshipments: CNSHA → SGSIN (A→B) → BRSSZ (B→C) → BRIOA
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
-          location_code: 'ITNAP',
+          location_code: 'CNSHA',
+          vessel_name: 'VesselA',
           id: '00000000-0000-0000-0000-000000000011',
           fingerprint: 'fp1',
+          event_time: '2025-11-17T00:00:00.000Z',
         }),
         makeObs({
           type: 'DISCHARGE',
-          location_code: 'ITLIV',
+          location_code: 'SGSIN',
+          vessel_name: 'VesselA',
           id: '00000000-0000-0000-0000-000000000012',
           fingerprint: 'fp2',
-          event_time: '2025-11-29T00:00:00.000Z',
+          event_time: '2025-12-01T00:00:00.000Z',
         }),
         makeObs({
           type: 'LOAD',
-          location_code: 'ITLIV',
+          location_code: 'SGSIN',
+          vessel_name: 'VesselB',
           id: '00000000-0000-0000-0000-000000000013',
           fingerprint: 'fp3',
-          event_time: '2025-11-30T00:00:00.000Z',
+          event_time: '2025-12-03T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'DISCHARGE',
+          location_code: 'BRSSZ',
+          vessel_name: 'VesselB',
+          id: '00000000-0000-0000-0000-000000000014',
+          fingerprint: 'fp4',
+          event_time: '2026-01-07T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'LOAD',
+          location_code: 'BRSSZ',
+          vessel_name: 'VesselC',
+          id: '00000000-0000-0000-0000-000000000015',
+          fingerprint: 'fp5',
+          event_time: '2026-01-10T00:00:00.000Z',
         }),
         makeObs({
           type: 'DISCHARGE',
           location_code: 'BRIOA',
+          vessel_name: 'VesselC',
+          id: '00000000-0000-0000-0000-000000000016',
+          fingerprint: 'fp6',
+          event_time: '2026-02-02T00:00:00.000Z',
+        }),
+      ])
+
+      const alerts = deriveAlerts(timeline, 'DISCHARGED', [])
+      const transAlerts = alerts.filter((a) => a.type === 'TRANSSHIPMENT')
+      expect(transAlerts).toHaveLength(2)
+      expect(transAlerts[0]?.alert_fingerprint).not.toBe(transAlerts[1]?.alert_fingerprint)
+    })
+
+    it('should NOT create TRANSSHIPMENT alert for a direct route (same vessel)', () => {
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+        makeObs({
+          type: 'LOAD',
+          location_code: 'CNSHA',
+          vessel_name: 'VesselA',
+          id: '00000000-0000-0000-0000-000000000011',
+          fingerprint: 'fp1',
+          event_time: '2025-11-17T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'DISCHARGE',
+          location_code: 'NLRTM',
+          vessel_name: 'VesselA',
+          id: '00000000-0000-0000-0000-000000000012',
+          fingerprint: 'fp2',
+          event_time: '2026-02-02T00:00:00.000Z',
+        }),
+      ])
+
+      const alerts = deriveAlerts(timeline, 'DISCHARGED', [])
+      const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
+      expect(transAlert).toBeUndefined()
+    })
+
+    it('should NOT create TRANSSHIPMENT alert for a restow (same vessel)', () => {
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+        makeObs({
+          type: 'LOAD',
+          location_code: 'CNSHA',
+          vessel_name: 'VesselA',
+          id: '00000000-0000-0000-0000-000000000011',
+          fingerprint: 'fp1',
+          event_time: '2025-11-17T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'DISCHARGE',
+          location_code: 'SGSIN',
+          vessel_name: 'VesselA',
+          id: '00000000-0000-0000-0000-000000000012',
+          fingerprint: 'fp2',
+          event_time: '2025-12-01T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'LOAD',
+          location_code: 'SGSIN',
+          vessel_name: 'VesselA',
+          id: '00000000-0000-0000-0000-000000000013',
+          fingerprint: 'fp3',
+          event_time: '2025-12-02T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'DISCHARGE',
+          location_code: 'NLRTM',
+          vessel_name: 'VesselA',
           id: '00000000-0000-0000-0000-000000000014',
           fingerprint: 'fp4',
           event_time: '2026-02-02T00:00:00.000Z',
         }),
       ])
 
-      // Second transshipment: ITNAP → ESALG → BRIOA (different intermediate port)
-      const timeline2 = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          location_code: 'ITNAP',
-          id: '00000000-0000-0000-0000-000000000021',
-          fingerprint: 'fp5',
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          location_code: 'ESALG',
-          id: '00000000-0000-0000-0000-000000000022',
-          fingerprint: 'fp6',
-          event_time: '2025-11-29T00:00:00.000Z',
-        }),
-        makeObs({
-          type: 'LOAD',
-          location_code: 'ESALG',
-          id: '00000000-0000-0000-0000-000000000023',
-          fingerprint: 'fp7',
-          event_time: '2025-11-30T00:00:00.000Z',
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          location_code: 'BRIOA',
-          id: '00000000-0000-0000-0000-000000000024',
-          fingerprint: 'fp8',
-          event_time: '2026-02-02T00:00:00.000Z',
-        }),
-      ])
-
-      const alerts1 = deriveAlerts(timeline1, 'DISCHARGED', [])
-      const transAlert1 = alerts1.find((a) => a.type === 'TRANSSHIPMENT')
-      expect(transAlert1).toBeDefined()
-
-      // Simulate first alert as existing (convert NewTrackingAlert[] -> TrackingAlert[] with ids)
-      const existingAlerts = alerts1.map((a, i) => ({
-        id: `00000000-0000-0000-0000-9999999999${i}`,
-        container_id: a.container_id,
-        category: a.category,
-        type: a.type,
-        severity: a.severity,
-        message: a.message,
-        detected_at: a.detected_at,
-        triggered_at: a.triggered_at,
-        source_observation_fingerprints: a.source_observation_fingerprints,
-        alert_fingerprint: a.alert_fingerprint ?? null,
-        retroactive: a.retroactive,
-        provider: a.provider ?? null,
-        acked_at: null,
-        dismissed_at: null,
-      }))
-      const alerts2 = deriveAlerts(timeline2, 'DISCHARGED', existingAlerts)
-      const transAlert2 = alerts2.find((a) => a.type === 'TRANSSHIPMENT')
-
-      // Should create second alert because evidence is different
-      expect(transAlert2).toBeDefined()
-      expect(transAlert2?.alert_fingerprint).not.toBe(transAlert1?.alert_fingerprint)
+      const alerts = deriveAlerts(timeline, 'DISCHARGED', [])
+      const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
+      expect(transAlert).toBeUndefined()
     })
 
-    it('should NOT create TRANSSHIPMENT alert for direct route', () => {
+    it('should NOT create TRANSSHIPMENT alert when vessel names are unknown', () => {
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
-          location_code: 'ITNAP',
+          location_code: 'CNSHA',
+          vessel_name: null,
           id: '00000000-0000-0000-0000-000000000011',
           fingerprint: 'fp1',
+          event_time: '2025-11-17T00:00:00.000Z',
         }),
         makeObs({
           type: 'DISCHARGE',
-          location_code: 'BRIOA',
+          location_code: 'SGSIN',
+          vessel_name: null,
           id: '00000000-0000-0000-0000-000000000012',
           fingerprint: 'fp2',
+          event_time: '2025-12-01T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'LOAD',
+          location_code: 'SGSIN',
+          vessel_name: null,
+          id: '00000000-0000-0000-0000-000000000013',
+          fingerprint: 'fp3',
+          event_time: '2025-12-03T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'DISCHARGE',
+          location_code: 'NLRTM',
+          vessel_name: null,
+          id: '00000000-0000-0000-0000-000000000014',
+          fingerprint: 'fp4',
           event_time: '2026-02-02T00:00:00.000Z',
         }),
       ])
