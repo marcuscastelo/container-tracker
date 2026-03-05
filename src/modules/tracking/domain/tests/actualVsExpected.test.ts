@@ -346,7 +346,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
       // Should NOT create alert based on EXPECTED observations only
       expect(transAlertExpected).toBeUndefined()
 
-      // Timeline with ACTUAL transshipment observations
+      // Timeline with ACTUAL transshipment observations (with vessel change evidence)
       const timelineActual = deriveTimeline(
         CONTAINER_ID,
         CONTAINER_NUMBER,
@@ -355,6 +355,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
             type: 'LOAD',
             location_code: 'ITNAP',
             event_time_type: 'ACTUAL',
+            vessel_name: 'VesselA',
             id: '00000000-0000-0000-0000-000000000011',
             fingerprint: 'fp1',
           }),
@@ -362,6 +363,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
             type: 'DISCHARGE',
             location_code: 'ITLIV',
             event_time_type: 'ACTUAL',
+            vessel_name: 'VesselA',
             id: '00000000-0000-0000-0000-000000000012',
             fingerprint: 'fp2',
             event_time: '2025-11-25T00:00:00.000Z',
@@ -370,6 +372,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
             type: 'LOAD',
             location_code: 'ITLIV',
             event_time_type: 'ACTUAL',
+            vessel_name: 'VesselB',
             id: '00000000-0000-0000-0000-000000000013',
             fingerprint: 'fp3',
             event_time: '2025-11-26T00:00:00.000Z',
@@ -378,6 +381,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
             type: 'DISCHARGE',
             location_code: 'BRSSZ',
             event_time_type: 'ACTUAL',
+            vessel_name: 'VesselB',
             id: '00000000-0000-0000-0000-000000000014',
             fingerprint: 'fp4',
             event_time: '2025-12-10T00:00:00.000Z',
@@ -387,7 +391,7 @@ describe('ACTUAL vs EXPECTED differentiation', () => {
       )
       const alertsActual = deriveAlerts(timelineActual, 'DISCHARGED', [])
       const transAlertActual = alertsActual.find((a) => a.type === 'TRANSSHIPMENT')
-      // Should create alert based on ACTUAL observations
+      // Should create alert based on ACTUAL vessel-change evidence
       expect(transAlertActual).toBeDefined()
       expect(transAlertActual?.category).toBe('fact')
     })
