@@ -1,10 +1,8 @@
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
-import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
 import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
 import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
-import type { DashboardProcessExceptionVM } from '~/modules/process/ui/viewmodels/dashboard-process-exception.vm'
 import type {
   DashboardSortDirection,
   DashboardSortField,
@@ -21,14 +19,14 @@ import {
 
 const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
 
-export type DashboardProcessFiltersQuery = {
+type DashboardProcessFiltersQuery = {
   readonly provider?: readonly string[]
   readonly status?: readonly TrackingStatusCode[]
   readonly importerId?: string
   readonly importerName?: string
 }
 
-export type DashboardProcessSummariesQuery = {
+type DashboardProcessSummariesQuery = {
   readonly sortField?: DashboardSortField
   readonly sortDir?: DashboardSortDirection
   readonly filters?: DashboardProcessFiltersQuery
@@ -112,7 +110,7 @@ export async function fetchDashboardProcessSummaries(
   return toProcessSummaryVMs(data)
 }
 
-export async function fetchDashboardOperationalSummary() {
+async function fetchDashboardOperationalSummary() {
   return typedFetch(
     '/api/dashboard/operational-summary',
     undefined,
@@ -123,13 +121,6 @@ export async function fetchDashboardOperationalSummary() {
 export async function fetchDashboardGlobalAlertsSummary(): Promise<DashboardGlobalAlertsVM> {
   const data = await fetchDashboardOperationalSummary()
   return toDashboardGlobalAlertsVM(data)
-}
-
-export async function fetchDashboardProcessExceptions(): Promise<
-  readonly DashboardProcessExceptionVM[]
-> {
-  const data = await fetchDashboardOperationalSummary()
-  return toDashboardProcessExceptionVMs(data)
 }
 
 export async function createProcessRequest(input: CreateProcessInput): Promise<string> {

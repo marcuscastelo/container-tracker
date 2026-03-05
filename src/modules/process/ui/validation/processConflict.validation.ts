@@ -22,7 +22,7 @@ export type ExistingProcessConflict = {
   readonly containerNumber?: string
 }
 
-export function parseExistingProcessConflict(value: unknown): ExistingProcessConflict | null {
+function parseExistingProcessConflict(value: unknown): ExistingProcessConflict | null {
   const body = parseRecord(value)
   if (!body || !('existing' in body)) return null
 

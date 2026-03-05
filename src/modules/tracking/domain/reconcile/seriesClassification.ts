@@ -45,7 +45,7 @@ export type ClassifiedObservation<T extends ObservationLike = ObservationLike> =
 /**
  * Result of series classification analysis.
  */
-export type SeriesClassification<T extends ObservationLike = ObservationLike> = {
+type SeriesClassification<T extends ObservationLike = ObservationLike> = {
   /** Primary observation to display in main timeline */
   readonly primary: T | null
   /** All observations with derived labels */
@@ -200,53 +200,5 @@ export function classifySeries<T extends ObservationLike>(
     classified,
     hasActualConflict,
     conflictingActualCount,
-  }
-}
-
-/**
- * Get a human-readable label key for a series label.
- *
- * These keys should be mapped to i18n strings in the UI.
- *
- * @param label - SeriesLabel to get key for
- * @returns i18n key string
- */
-export function getSeriesLabelKey(label: SeriesLabel): string {
-  switch (label) {
-    case 'ACTIVE':
-      return 'shipmentView.timeline.predictionHistory.active'
-    case 'EXPIRED':
-      return 'shipmentView.timeline.predictionHistory.expired'
-    case 'REDUNDANT_AFTER_ACTUAL':
-      return 'shipmentView.timeline.predictionHistory.redundant'
-    case 'SUPERSEDED_EXPECTED':
-      return 'shipmentView.timeline.predictionHistory.superseded'
-    case 'CONFIRMED':
-      return 'shipmentView.timeline.predictionHistory.confirmed'
-    case 'CONFLICTING_ACTUAL':
-      return 'shipmentView.timeline.predictionHistory.conflicting'
-  }
-}
-
-/**
- * Get CSS class for a series label badge.
- *
- * @param label - SeriesLabel to get class for
- * @returns Tailwind CSS class string
- */
-export function getSeriesLabelClass(label: SeriesLabel): string {
-  switch (label) {
-    case 'ACTIVE':
-      return 'bg-blue-100 text-blue-700'
-    case 'EXPIRED':
-      return 'bg-amber-100 text-amber-700'
-    case 'REDUNDANT_AFTER_ACTUAL':
-      return 'bg-slate-100 text-slate-500'
-    case 'SUPERSEDED_EXPECTED':
-      return 'bg-slate-100 text-slate-600'
-    case 'CONFIRMED':
-      return 'bg-emerald-100 text-emerald-700'
-    case 'CONFLICTING_ACTUAL':
-      return 'bg-red-100 text-red-700'
   }
 }

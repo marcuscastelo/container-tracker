@@ -17,7 +17,7 @@ export type SearchUiState = 'loading' | 'empty' | 'error' | 'ready'
 
 export const MIN_SEARCH_QUERY_LENGTH = 3
 
-export function toSearchResultItemVm(item: SearchHttpResultItemDto): SearchResultItemVm {
+function toSearchResultItemVm(item: SearchHttpResultItemDto): SearchResultItemVm {
   return {
     processId: item.processId,
     processReference: item.processReference,

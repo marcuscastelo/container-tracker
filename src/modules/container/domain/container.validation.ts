@@ -34,22 +34,3 @@ function validateContainerNumber(containerNumber: string): {
 
   return { valid: true }
 }
-
-/**
- * Check for duplicate container numbers in a list
- */
-export function findDuplicateContainers(containerNumbers: readonly string[]): readonly string[] {
-  const normalized = containerNumbers.map((n) => n.toUpperCase().trim())
-  const seen = new Set<string>()
-  const duplicates: string[] = []
-
-  for (const num of normalized) {
-    if (seen.has(num)) {
-      duplicates.push(num)
-    } else {
-      seen.add(num)
-    }
-  }
-
-  return duplicates
-}

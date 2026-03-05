@@ -10,7 +10,7 @@ export type DashboardControllersBootstrapOverrides = {
   readonly dashboardControllers?: DashboardControllers
 }
 
-export function bootstrapDashboardControllers(
+function bootstrapDashboardControllers(
   overrides: DashboardControllersBootstrapOverrides = {},
 ): DashboardControllers {
   if (overrides.dashboardControllers) {
