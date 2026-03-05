@@ -1,6 +1,5 @@
 import clsx from 'clsx'
-import type { JSX } from 'solid-js'
-import { createMemo } from 'solid-js'
+import { createMemo, type JSX, Show } from 'solid-js'
 
 type Props = {
   readonly isLast: boolean
@@ -57,7 +56,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
           })}
         />
 
-        {!props.isLast && (
+        <Show when={!props.isLast}>
           <div
             class={clsx(
               'w-px flex-1 min-h-3',
@@ -65,7 +64,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
               props.isExpected && 'border-l border-dashed border-slate-300 bg-transparent',
             )}
           />
-        )}
+        </Show>
       </div>
 
       {/* Content */}
@@ -73,31 +72,35 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
         <div class="flex items-start justify-between gap-1.5">
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1">
-              {props.eventIconPath && (
-                <svg
-                  class={`h-3.5 w-3.5 shrink-0 ${props.textClass}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    d={props.eventIconPath}
-                  />
-                </svg>
-              )}
+              <Show when={props.eventIconPath}>
+                {(eventIconPath) => (
+                  <svg
+                    class={`h-3.5 w-3.5 shrink-0 ${props.textClass}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      d={eventIconPath()}
+                    />
+                  </svg>
+                )}
+              </Show>
 
-              {showInlineEta() && props.etaChipLabel && <EtaChip label={props.etaChipLabel} />}
+              <Show when={showInlineEta() && props.etaChipLabel}>
+                {(etaChipLabel) => <EtaChip label={etaChipLabel()} />}
+              </Show>
 
               <p class={`text-[12px] leading-tight ${props.textClass}`}>{props.label}</p>
 
-              {props.showPredictionHistoryButton && (
+              <Show when={props.showPredictionHistoryButton}>
                 <button
                   type="button"
-                  onClick={props.onOpenPredictionHistory}
+                  onClick={() => props.onOpenPredictionHistory()}
                   class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-blue-50 hover:text-blue-500"
                   title={props.predictionHistoryLabel}
                   aria-label={props.predictionHistoryLabel}
@@ -112,36 +115,42 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                     />
                   </svg>
                 </button>
-              )}
+              </Show>
 
-              {props.nonMappedBadgeLabel && (
-                <span
-                  class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-[9px] font-medium leading-none text-slate-500"
-                  title={props.nonMappedBadgeLabel}
-                >
-                  {props.nonMappedBadgeLabel}
-                </span>
-              )}
+              <Show when={props.nonMappedBadgeLabel}>
+                {(nonMappedBadgeLabel) => (
+                  <span
+                    class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-[9px] font-medium leading-none text-slate-500"
+                    title={nonMappedBadgeLabel()}
+                  >
+                    {nonMappedBadgeLabel()}
+                  </span>
+                )}
+              </Show>
 
-              {props.isExpiredExpected && (
+              <Show when={props.isExpiredExpected}>
                 <span
                   class="inline-flex items-center rounded bg-amber-50 px-1 py-px text-[9px] font-medium text-amber-600"
                   title={props.expiredExpectedTooltip}
                 >
                   {props.expiredExpectedLabel}
                 </span>
-              )}
+              </Show>
             </div>
 
-            {showEtaBelow() && props.etaChipLabel && (
-              <div class="mt-px">
-                <EtaChip label={props.etaChipLabel} />
-              </div>
-            )}
+            <Show when={showEtaBelow() && props.etaChipLabel}>
+              {(etaChipLabel) => (
+                <div class="mt-px">
+                  <EtaChip label={etaChipLabel()} />
+                </div>
+              )}
+            </Show>
 
-            {showLocation() && (
-              <p class="mt-px text-[10px] leading-tight text-gray-500 truncate">{props.location}</p>
-            )}
+            <Show when={showLocation()}>
+              {(location) => (
+                <p class="mt-px text-[10px] leading-tight text-gray-500 truncate">{location()}</p>
+              )}
+            </Show>
           </div>
 
           <div class="shrink-0 text-right">

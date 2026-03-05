@@ -10,6 +10,8 @@ type Props = {
   readonly hasError: boolean
 }
 
+type GridState = 'loading' | 'error' | 'empty' | 'ready'
+
 function _TotalIcon(): JSX.Element {
   return (
     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -187,6 +189,97 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     return 'ready'
   }
 
+  const severitySummaryItems = () => {
+    const summary = safeSummary()
+    return [
+      {
+        key: 'danger',
+        dotClass: 'bg-red-500',
+        valueClass: 'text-red-700',
+        labelClass: 'text-red-600',
+        value: summary.bySeverity.danger,
+        label: t(keys.dashboard.triageSummary.critical),
+      },
+      {
+        key: 'warning',
+        dotClass: 'bg-yellow-400',
+        valueClass: 'text-yellow-700',
+        labelClass: 'text-yellow-600',
+        value: summary.bySeverity.warning,
+        label: t(keys.dashboard.triageSummary.warning),
+      },
+      {
+        key: 'info',
+        dotClass: 'bg-blue-400',
+        valueClass: 'text-blue-700',
+        labelClass: 'text-blue-600',
+        value: summary.bySeverity.info,
+        label: t(keys.dashboard.alertIndicators.severity.info),
+      },
+    ].filter((item) => item.value > 0)
+  }
+
+  const renderBody = (currentState: GridState): JSX.Element => {
+    if (currentState === 'loading') {
+      return (
+        <div class="px-4 py-8 text-center text-[13px] text-slate-400">
+          {t(keys.dashboard.alertIndicators.loading)}
+        </div>
+      )
+    }
+
+    if (currentState === 'error') {
+      return (
+        <div class="px-4 py-8 text-center text-[13px] text-red-500">
+          {t(keys.dashboard.alertIndicators.error)}
+        </div>
+      )
+    }
+
+    const summary = safeSummary()
+
+    return (
+      <div class="px-4 py-2.5">
+        {/* Phase 10: Compact Triage Summary Bar */}
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[22px] font-bold tabular-nums text-slate-900">
+              {summary.totalActiveAlerts}
+            </span>
+            <span class="text-[11px] font-medium text-slate-500">
+              {t(keys.dashboard.alertIndicators.total)}
+            </span>
+          </div>
+
+          <For each={severitySummaryItems()}>
+            {(item) => (
+              <div class="flex items-center gap-1">
+                <span class={`h-2 w-2 rounded-full ${item.dotClass}`} />
+                <span class={`text-[13px] font-bold tabular-nums ${item.valueClass}`}>
+                  {item.value}
+                </span>
+                <span class={`text-[11px] font-medium ${item.labelClass}`}>{item.label}</span>
+              </div>
+            )}
+          </For>
+
+          {/* Phase 12: Category chips in dashboard */}
+          <div class="ml-auto flex items-center gap-1.5">
+            <For each={visibleCategoryCards()}>
+              {(card) => <CategorySummaryChip value={card.value} label={card.label} />}
+            </For>
+          </div>
+        </div>
+
+        {currentState === 'empty' ? (
+          <p class="mt-2 text-center text-[12px] text-slate-500">
+            {t(keys.dashboard.alertIndicators.empty)}
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <section class="mb-4 overflow-hidden rounded border border-slate-200 bg-white">
       <header class="border-b border-slate-200 px-4 py-2.5">
@@ -194,83 +287,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
           {t(keys.dashboard.alertIndicators.title)}
         </h2>
       </header>
-
-      {state() === 'loading' && (
-        <div class="px-4 py-8 text-center text-[13px] text-slate-400">
-          {t(keys.dashboard.alertIndicators.loading)}
-        </div>
-      )}
-
-      {state() === 'error' && (
-        <div class="px-4 py-8 text-center text-[13px] text-red-500">
-          {t(keys.dashboard.alertIndicators.error)}
-        </div>
-      )}
-
-      {(state() === 'empty' || state() === 'ready') && (
-        <div class="px-4 py-2.5">
-          {/* Phase 10: Compact Triage Summary Bar */}
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="flex items-center gap-1.5">
-              <span class="text-[22px] font-bold tabular-nums text-slate-900">
-                {safeSummary().totalActiveAlerts}
-              </span>
-              <span class="text-[11px] font-medium text-slate-500">
-                {t(keys.dashboard.alertIndicators.total)}
-              </span>
-            </div>
-
-            {safeSummary().bySeverity.danger > 0 && (
-              <div class="flex items-center gap-1">
-                <span class="h-2 w-2 rounded-full bg-red-500" />
-                <span class="text-[13px] font-bold tabular-nums text-red-700">
-                  {safeSummary().bySeverity.danger}
-                </span>
-                <span class="text-[11px] font-medium text-red-600">
-                  {t(keys.dashboard.triageSummary.critical)}
-                </span>
-              </div>
-            )}
-
-            {safeSummary().bySeverity.warning > 0 && (
-              <div class="flex items-center gap-1">
-                <span class="h-2 w-2 rounded-full bg-yellow-400" />
-                <span class="text-[13px] font-bold tabular-nums text-yellow-700">
-                  {safeSummary().bySeverity.warning}
-                </span>
-                <span class="text-[11px] font-medium text-yellow-600">
-                  {t(keys.dashboard.triageSummary.warning)}
-                </span>
-              </div>
-            )}
-
-            {safeSummary().bySeverity.info > 0 && (
-              <div class="flex items-center gap-1">
-                <span class="h-2 w-2 rounded-full bg-blue-400" />
-                <span class="text-[13px] font-bold tabular-nums text-blue-700">
-                  {safeSummary().bySeverity.info}
-                </span>
-                <span class="text-[11px] font-medium text-blue-600">
-                  {t(keys.dashboard.alertIndicators.severity.info)}
-                </span>
-              </div>
-            )}
-
-            {/* Phase 12: Category chips in dashboard */}
-            <div class="ml-auto flex items-center gap-1.5">
-              <For each={visibleCategoryCards()}>
-                {(card) => <CategorySummaryChip value={card.value} label={card.label} />}
-              </For>
-            </div>
-          </div>
-
-          {state() === 'empty' && (
-            <p class="mt-2 text-center text-[12px] text-slate-500">
-              {t(keys.dashboard.alertIndicators.empty)}
-            </p>
-          )}
-        </div>
-      )}
+      {renderBody(state())}
     </section>
   )
 }
