@@ -4,7 +4,7 @@ import {
 } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 
-export type ListTrackingSearchProjectionsCommand = Readonly<{
+type ListTrackingSearchProjectionsCommand = Readonly<{
   now?: Date
 }>
 

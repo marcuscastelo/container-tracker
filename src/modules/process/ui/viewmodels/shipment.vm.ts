@@ -46,7 +46,7 @@ export type ContainerSyncVM = {
   readonly containerNumber: string
   readonly carrier: string | null
   readonly state: ContainerSyncState
-  readonly relativeTimeLabel: string | null
+  readonly relativeTimeAt: string | null
   readonly isStale: boolean
 }
 

@@ -37,7 +37,6 @@ describe('container sync state mapping', () => {
         lastSuccessAt: '2026-03-01T10:00:00.000Z',
         lastErrorAt: '2026-03-02T10:00:00.000Z',
       }),
-      'en-US',
       new Date('2026-03-03T10:00:00.000Z'),
     )
 
@@ -51,13 +50,17 @@ describe('container sync state mapping', () => {
         lastSuccessAt: '2026-03-01T10:00:00.000Z',
         lastErrorAt: '2026-03-02T10:00:00.000Z',
       }),
-      'en-US',
       new Date('2026-03-03T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('error')
-    expect(vm.relativeTimeLabel).not.toBeNull()
-    expect(toContainerSyncLabel(vm, labelMessages).startsWith('failed ')).toBe(true)
+    expect(vm.relativeTimeAt).toBe('2026-03-02T10:00:00.000Z')
+    expect(
+      toContainerSyncLabel(vm, labelMessages, {
+        now: new Date('2026-03-03T10:00:00.000Z'),
+        locale: 'en-US',
+      }).startsWith('failed '),
+    ).toBe(true)
   })
 
   it('maps ok when success is present and no newer error exists', () => {
@@ -66,20 +69,24 @@ describe('container sync state mapping', () => {
         lastSuccessAt: '2026-03-02T10:00:00.000Z',
         lastErrorAt: '2026-03-01T10:00:00.000Z',
       }),
-      'en-US',
       new Date('2026-03-03T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('ok')
-    expect(vm.relativeTimeLabel).not.toBeNull()
-    expect(toContainerSyncLabel(vm, labelMessages).startsWith('updated ')).toBe(true)
+    expect(vm.relativeTimeAt).toBe('2026-03-02T10:00:00.000Z')
+    expect(
+      toContainerSyncLabel(vm, labelMessages, {
+        now: new Date('2026-03-03T10:00:00.000Z'),
+        locale: 'en-US',
+      }).startsWith('updated '),
+    ).toBe(true)
   })
 
   it('maps never when there is no success nor error history', () => {
-    const vm = toContainerSyncVM(makeSyncDTO(), 'en-US', new Date('2026-03-03T10:00:00.000Z'))
+    const vm = toContainerSyncVM(makeSyncDTO(), new Date('2026-03-03T10:00:00.000Z'))
 
     expect(vm.state).toBe('never')
-    expect(vm.relativeTimeLabel).toBeNull()
+    expect(vm.relativeTimeAt).toBeNull()
     expect(toContainerSyncLabel(vm, labelMessages)).toBe('never synced')
   })
 
@@ -88,11 +95,31 @@ describe('container sync state mapping', () => {
       makeSyncDTO({
         lastSuccessAt: '2026-03-01T09:59:59.000Z',
       }),
-      'en-US',
       new Date('2026-03-02T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('ok')
     expect(vm.isStale).toBe(true)
+  })
+
+  it('updates relative label when now changes without refetch', () => {
+    const vm = toContainerSyncVM(
+      makeSyncDTO({
+        lastSuccessAt: '2026-03-03T10:00:00.000Z',
+      }),
+      new Date('2026-03-03T10:00:00.000Z'),
+    )
+
+    const labelAtZero = toContainerSyncLabel(vm, labelMessages, {
+      now: new Date('2026-03-03T10:00:00.000Z'),
+      locale: 'en-US',
+    })
+    const labelAtOneMinute = toContainerSyncLabel(vm, labelMessages, {
+      now: new Date('2026-03-03T10:01:00.000Z'),
+      locale: 'en-US',
+    })
+
+    expect(labelAtZero).toContain('0 min')
+    expect(labelAtOneMinute).toContain('1 min')
   })
 })

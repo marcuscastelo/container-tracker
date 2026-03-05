@@ -14,6 +14,7 @@ import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   data: ShipmentDetailVM
+  syncNow: Date
   isRefreshing: boolean
   refreshRetry: {
     readonly current: number
@@ -256,7 +257,7 @@ function toCarrierDisplay(carrier: string | null): string | null {
 }
 
 export function ShipmentHeader(props: Props): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   const syncEntries = createMemo(() =>
     toProcessSyncHeaderEntries({
@@ -275,14 +276,21 @@ export function ShipmentHeader(props: Props): JSX.Element {
     const containerLabel = carrierDisplay
       ? `${entry.containerNumber} (${carrierDisplay})`
       : entry.containerNumber
-    const syncLabel = toContainerSyncLabel(entry.sync, {
-      syncing: t(keys.shipmentView.sync.syncing),
-      never: t(keys.shipmentView.sync.never),
-      updatedUnknownTime: t(keys.shipmentView.sync.updatedUnknownTime),
-      failedUnknownTime: t(keys.shipmentView.sync.failedUnknownTime),
-      updated: (relative: string) => t(keys.shipmentView.sync.updated, { relative }),
-      failed: (relative: string) => t(keys.shipmentView.sync.failed, { relative }),
-    })
+    const syncLabel = toContainerSyncLabel(
+      entry.sync,
+      {
+        syncing: t(keys.shipmentView.sync.syncing),
+        never: t(keys.shipmentView.sync.never),
+        updatedUnknownTime: t(keys.shipmentView.sync.updatedUnknownTime),
+        failedUnknownTime: t(keys.shipmentView.sync.failedUnknownTime),
+        updated: (relative: string) => t(keys.shipmentView.sync.updated, { relative }),
+        failed: (relative: string) => t(keys.shipmentView.sync.failed, { relative }),
+      },
+      {
+        now: props.syncNow,
+        locale: locale(),
+      },
+    )
 
     return `${containerLabel} ${syncLabel}`
   }

@@ -7,7 +7,6 @@ import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export { toTrackingStatusCode }
-export type { TrackingStatusCode }
 
 export function trackingStatusToRank(statusCode: TrackingStatusCode): number {
   const idx = TRACKING_STATUS_CODES.indexOf(statusCode)

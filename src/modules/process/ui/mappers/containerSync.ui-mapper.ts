@@ -11,7 +11,7 @@ const SYNC_STALE_THRESHOLD_MS = SYNC_STALE_THRESHOLD_HOURS * 60 * 60 * 1000
 
 type ContainerSyncDTO = ProcessDetailResponse['containersSync'][number]
 
-export type ProcessSyncHeaderEntry = {
+type ProcessSyncHeaderEntry = {
   readonly containerNumber: string
   readonly carrier: string | null
   readonly sync: ContainerSyncVM
@@ -56,22 +56,14 @@ function toIsStale(lastSuccessAt: string | null, now: Date): boolean {
   return now.getTime() - successAt > SYNC_STALE_THRESHOLD_MS
 }
 
-function toRelativeTimeLabel(
-  state: ContainerSyncState,
-  dto: ContainerSyncDTO,
-  locale: string,
-  now: Date,
-): string | null {
+function toRelativeTimeAt(state: ContainerSyncState, dto: ContainerSyncDTO): string | null {
   let timestamp: string | null = null
   if (state === 'ok') {
     timestamp = dto.lastSuccessAt
   } else if (state === 'error') {
     timestamp = dto.lastErrorAt
   }
-  if (!timestamp) return null
-
-  const relative = formatRelativeTime(timestamp, now, locale)
-  return relative.length > 0 ? relative : null
+  return timestamp
 }
 
 function toSyncPriority(sync: ContainerSyncVM): number {
@@ -86,18 +78,14 @@ export function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.trim().toUpperCase()
 }
 
-export function toContainerSyncVM(
-  dto: ContainerSyncDTO,
-  locale: string,
-  now: Date,
-): ContainerSyncVM {
+export function toContainerSyncVM(dto: ContainerSyncDTO, now: Date): ContainerSyncVM {
   const state = toState(dto)
 
   return {
     containerNumber: normalizeContainerNumber(dto.containerNumber),
     carrier: dto.carrier,
     state,
-    relativeTimeLabel: toRelativeTimeLabel(state, dto, locale, now),
+    relativeTimeAt: toRelativeTimeAt(state, dto),
     isStale: state === 'ok' ? toIsStale(dto.lastSuccessAt, now) : false,
   }
 }
@@ -107,7 +95,7 @@ export function createNeverContainerSyncVM(containerNumber: string): ContainerSy
     containerNumber: normalizeContainerNumber(containerNumber),
     carrier: null,
     state: 'never',
-    relativeTimeLabel: null,
+    relativeTimeAt: null,
     isStale: false,
   }
 }
@@ -131,19 +119,28 @@ export function resolveProcessSyncHeaderMode(
 export function toContainerSyncLabel(
   sync: ContainerSyncVM,
   messages: ContainerSyncLabelMessages,
+  command?: {
+    readonly now?: Date
+    readonly locale?: string
+  },
 ): string {
   if (sync.state === 'syncing') return messages.syncing
   if (sync.state === 'never') return messages.never
 
+  const relativeTimeLabel = sync.relativeTimeAt
+    ? formatRelativeTime(
+        sync.relativeTimeAt,
+        command?.now ?? new Date(),
+        command?.locale ?? 'en-US',
+      )
+    : ''
+  const hasRelativeTimeLabel = relativeTimeLabel.length > 0
+
   if (sync.state === 'error') {
-    return sync.relativeTimeLabel
-      ? messages.failed(sync.relativeTimeLabel)
-      : messages.failedUnknownTime
+    return hasRelativeTimeLabel ? messages.failed(relativeTimeLabel) : messages.failedUnknownTime
   }
 
-  return sync.relativeTimeLabel
-    ? messages.updated(sync.relativeTimeLabel)
-    : messages.updatedUnknownTime
+  return hasRelativeTimeLabel ? messages.updated(relativeTimeLabel) : messages.updatedUnknownTime
 }
 
 export function toProcessSyncHeaderEntries(command: {

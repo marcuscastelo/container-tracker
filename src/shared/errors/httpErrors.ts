@@ -8,13 +8,6 @@ export class HttpError extends Error {
   }
 }
 
-export class NotFoundError extends HttpError {
-  constructor(message = 'Not found') {
-    super(message, 404)
-    this.name = 'NotFoundError'
-  }
-}
-
 export class InfrastructureError extends HttpError {
   constructor(
     message = 'Internal server error',

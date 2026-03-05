@@ -13,6 +13,7 @@ import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCa
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
+import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-realtime-coordinator'
 import {
   createProcessRequest,
   toCreateProcessInput,
@@ -579,6 +580,7 @@ type ShipmentViewLayoutProps = {
   readonly shipmentError: unknown
   readonly isRefreshing: boolean
   readonly refreshRetry: RefreshRetryState | null
+  readonly syncNow: Date
   readonly onTriggerRefresh: () => void
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
@@ -597,6 +599,7 @@ type ShipmentDataViewProps = {
   readonly isRefreshing: boolean
   readonly refreshRetry: RefreshRetryState | null
   readonly refreshHint: string | null
+  readonly syncNow: Date
   readonly onTriggerRefresh: () => void
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
@@ -608,6 +611,7 @@ function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
     <>
       <ShipmentHeader
         data={props.data}
+        syncNow={props.syncNow}
         isRefreshing={props.isRefreshing}
         refreshRetry={props.refreshRetry}
         refreshHint={props.refreshHint}
@@ -628,6 +632,7 @@ function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             containers={props.data.containers}
             selectedId={props.selectedContainerId}
             onSelect={props.onSelectContainer}
+            syncNow={props.syncNow}
           />
           <TimelinePanel
             selectedContainer={props.selectedContainer}
@@ -729,6 +734,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
               isRefreshing={props.isRefreshing}
               refreshRetry={props.refreshRetry}
               refreshHint={props.refreshHint}
+              syncNow={props.syncNow}
               onTriggerRefresh={props.onTriggerRefresh}
               onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
                 props.onOpenEditForShipment(data(), focus)
@@ -778,12 +784,10 @@ function toCreateErrorExisting(
 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { locale, t, keys } = useTranslation()
-
   const [shipment, { refetch, mutate }] = createResource(
     () => [props.params.id, locale()] as const,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
-
   const [isRefreshing, setIsRefreshing] = createSignal(false)
   const [refreshRetry, setRefreshRetry] = createSignal<RefreshRetryState | null>(null)
   const [refreshError, setRefreshError] = createSignal<string | null>(null)
@@ -791,7 +795,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Date | null>(null)
   let disposed = false
   let activeRealtimeCleanup: (() => void) | null = null
-
   onCleanup(() => {
     if (activeRealtimeCleanup) {
       activeRealtimeCleanup()
@@ -799,7 +802,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     }
     disposed = true
   })
-
   const refreshTrackingData = () =>
     refreshTrackingDataOnly({
       processId: props.params.id,
@@ -807,7 +809,12 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       current: shipment(),
       apply: mutate,
     })
-
+  const syncNow = useSyncRealtimeCoordinator({
+    shipment,
+    isRefreshing,
+    refreshTrackingData,
+    isDisposed: () => disposed,
+  })
   const triggerRefresh = async () => {
     const doneAt = lastRefreshDoneAt()
     if (doneAt) {
@@ -983,6 +990,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       shipmentError={shipment.error}
       isRefreshing={isRefreshing()}
       refreshRetry={refreshRetry()}
+      syncNow={syncNow()}
       onTriggerRefresh={triggerRefresh}
       selectedContainerId={selectedContainerId()}
       onSelectContainer={(id) => setSelectedContainerId(String(id))}

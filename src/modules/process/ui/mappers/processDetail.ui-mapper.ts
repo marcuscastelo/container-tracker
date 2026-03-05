@@ -148,7 +148,7 @@ export function toShipmentDetailVM(
   const syncByContainerNumber = new Map(
     data.containersSync.map((containerSync) => [
       normalizeContainerNumber(containerSync.containerNumber),
-      toContainerSyncVM(containerSync, locale, referenceNow),
+      toContainerSyncVM(containerSync, referenceNow),
     ]),
   )
 

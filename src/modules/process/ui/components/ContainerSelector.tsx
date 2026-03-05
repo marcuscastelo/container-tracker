@@ -60,18 +60,27 @@ function ContainerSelectorItem(props: {
   readonly onSelect: (id: string) => void
   readonly labels: ContainerSelectorItemLabels
   readonly statusLabel: string
+  readonly syncNow: Date
+  readonly locale: string
 }): JSX.Element {
   const completed = () => isContainerCompleted(props.container.statusCode)
   const showEtaChip = () => !completed()
   const syncLabel = () =>
-    toContainerSyncLabel(props.container.sync, {
-      syncing: props.labels.syncing,
-      never: props.labels.never,
-      updatedUnknownTime: props.labels.updatedUnknownTime,
-      failedUnknownTime: props.labels.failedUnknownTime,
-      updated: props.labels.updated,
-      failed: props.labels.failed,
-    })
+    toContainerSyncLabel(
+      props.container.sync,
+      {
+        syncing: props.labels.syncing,
+        never: props.labels.never,
+        updatedUnknownTime: props.labels.updatedUnknownTime,
+        failedUnknownTime: props.labels.failedUnknownTime,
+        updated: props.labels.updated,
+        failed: props.labels.failed,
+      },
+      {
+        now: props.syncNow,
+        locale: props.locale,
+      },
+    )
 
   return (
     <div
@@ -154,8 +163,9 @@ export function ContainerSelector(props: {
   containers: readonly ContainerDetailVM[]
   selectedId: string
   onSelect: (id: string) => void
+  syncNow: Date
 }): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
   const labels: ContainerSelectorItemLabels = {
     etaArrived: t(keys.shipmentView.operational.chips.etaArrived),
     etaExpectedPrefix: t(keys.shipmentView.operational.chips.etaExpected),
@@ -182,6 +192,8 @@ export function ContainerSelector(props: {
             onSelect={props.onSelect}
             labels={labels}
             statusLabel={t(trackingStatusToLabelKey(keys, container.statusCode))}
+            syncNow={props.syncNow}
+            locale={locale()}
           />
         )}
       </For>

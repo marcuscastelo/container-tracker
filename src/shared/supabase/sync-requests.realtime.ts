@@ -26,6 +26,7 @@ const RealtimePayloadSchema = z.object({
 const RealtimeChannelStateSchema = z.enum(['SUBSCRIBED', 'CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'])
 
 const SyncRequestIdListSchema = z.array(z.string().uuid()).min(1)
+const SyncRequestContainerRefListSchema = z.array(z.string()).min(1)
 
 const SyncRequestTenantIdSchema = z.string().uuid()
 
@@ -215,6 +216,42 @@ export function subscribeSyncRequestsByIds<
     filters: uniqueSyncRequestIds.map((syncRequestId) => ({
       scope: 'ids' as const,
       key: `id=eq.${syncRequestId}`,
+    })),
+    onEvent: command.onEvent,
+    onStatus: command.onStatus,
+  })
+}
+
+function normalizeContainerRefValue(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+export function subscribeSyncRequestsByContainerRefs<
+  TChannel extends SyncRequestsRealtimeChannelLike<TChannel>,
+>(command: {
+  readonly client: SyncRequestsRealtimeClient<TChannel>
+  readonly containerNumbers: readonly string[]
+  readonly onEvent: (event: SyncRequestRealtimeEvent) => void
+  readonly onStatus?: (status: SyncRequestsRealtimeStatusUpdate) => void
+}): { readonly unsubscribe: () => void } {
+  const parsedContainerNumbers = SyncRequestContainerRefListSchema.parse(command.containerNumbers)
+  const uniqueContainerNumbers = Array.from(
+    new Set(
+      parsedContainerNumbers
+        .map((containerNumber) => normalizeContainerRefValue(containerNumber))
+        .filter((containerNumber) => containerNumber.length > 0),
+    ),
+  )
+
+  if (uniqueContainerNumbers.length === 0) {
+    throw new Error('containerNumbers must contain at least one non-empty container reference')
+  }
+
+  return subscribeToSyncRequestsFilters({
+    client: command.client,
+    filters: uniqueContainerNumbers.map((containerNumber) => ({
+      scope: 'ids' as const,
+      key: `ref_value=eq.${containerNumber}`,
     })),
     onEvent: command.onEvent,
     onStatus: command.onStatus,
