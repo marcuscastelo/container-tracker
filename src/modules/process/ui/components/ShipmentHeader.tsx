@@ -378,9 +378,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 <span data-testid={`process-sync-item-${entry.containerNumber}`}>
                   {toSyncEntryLabel(entry)}
                 </span>
-                <Show when={index() < syncEntries().length - 1}>
+                {index() < syncEntries().length - 1 ? (
                   <span class="text-slate-300">•</span>
-                </Show>
+                ) : null}
               </>
             )}
           </For>
