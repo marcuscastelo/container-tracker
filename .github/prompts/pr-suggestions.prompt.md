@@ -104,8 +104,10 @@ PASSO 6 — Testes obrigatórios do que mudou
 PASSO 7 — Garantir verde
 - Rode no mínimo:
   - `pnpm run type-check`
+  - `pnpm run test`
   - `pnpm run build`
   - `pnpm run flint`
+  - `pnpm run ui:complexity:ci`
 - Se algo falhar, corrija antes de commit.
 
 PASSO 8 — Revisão final do diff
@@ -127,7 +129,7 @@ PASSO 10 — Relatório final (formato obrigatório)
 Responda com:
 1. `Sugestoes aplicadas` (item por item com arquivo(s) e motivo).
 2. `Sugestoes nao aplicadas` (item por item com motivo técnico).
-3. `Validacao` (testes rodados e status; build/type-check/lint e status).
+3. `Validacao` (testes rodados e status; build/type-check/lint/ui:complexity:ci e status).
 4. `Commit` (hash curto, mensagem, branch).
 
 CRITÉRIOS DE QUALIDADE (CHECKLIST)
@@ -144,7 +146,10 @@ COMANDO RÁPIDO DE REFERÊNCIA
 - editar arquivos
 - `pnpm exec vitest run <tests_afetados>`
 - `pnpm run type-check`
+- `pnpm run test`
 - `pnpm run build`
+- `pnpm run flint`
+- `pnpm run ui:complexity:ci`
 - `git add <arquivos>`
 - `git commit -S -m "<COMMIT_MSG>"`
 
