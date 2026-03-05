@@ -41,6 +41,7 @@ describe('toShipmentDetailVM', () => {
           ],
         },
       ],
+      containersSync: [],
       alerts: [],
     }
 
@@ -55,6 +56,8 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].timeline[0].type).toBe('LOAD')
     expect(result.containers[0].timeline[0].vesselName).toBe('MAERSK SEVILLE')
     expect(result.containers[0].timeline[0].voyage).toBe('123W')
+    expect(result.containers[0].carrierCode).toBe('MAERSK')
+    expect(result.containers[0].sync.state).toBe('never')
     expect(result.containers[0].etaChipVm.state).toBe('UNAVAILABLE')
     expect(result.containers[0].dataIssueChipVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.visible).toBe(false)
@@ -82,6 +85,7 @@ describe('toShipmentDetailVM', () => {
           observations: [],
         },
       ],
+      containersSync: [],
       alerts: [
         {
           id: 'alert-1',
@@ -109,6 +113,44 @@ describe('toShipmentDetailVM', () => {
     expect(result.alerts[0].triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
   })
 
+  it('maps container sync metadata by normalized container number', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-sync',
+      reference: 'REF-SYNC',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      containers: [
+        {
+          id: 'c-sync',
+          container_number: 'MSCU8888888',
+          carrier_code: 'MSC',
+          status: 'IN_TRANSIT',
+          observations: [],
+        },
+      ],
+      containersSync: [
+        {
+          containerNumber: '  mscu8888888 ',
+          carrier: 'maersk',
+          lastSuccessAt: '2026-02-01T10:00:00.000Z',
+          lastAttemptAt: '2026-02-02T10:00:00.000Z',
+          isSyncing: false,
+          lastErrorCode: 'timeout',
+          lastErrorAt: '2026-02-03T10:00:00.000Z',
+        },
+      ],
+      alerts: [],
+    }
+
+    const result = toShipmentDetailVM(example, 'en-US')
+    expect(result.containers[0].sync.state).toBe('error')
+    expect(result.containers[0].sync.carrier).toBe('maersk')
+  })
+
   it('filters out dismissed alerts', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-3',
@@ -120,6 +162,7 @@ describe('toShipmentDetailVM', () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       containers: [{ id: 'c3', container_number: 'TEST1234567' }],
+      containersSync: [],
       alerts: [
         {
           id: 'alert-dismissed',
@@ -159,6 +202,7 @@ describe('toShipmentDetailVM', () => {
           observations: [],
         },
       ],
+      containersSync: [],
       alerts: [],
     }
 
@@ -231,6 +275,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           },
         },
       ],
+      containersSync: [],
       alerts: [],
       process_operational: {
         eta_max: {
@@ -292,6 +337,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           },
         },
       ],
+      containersSync: [],
       alerts: [],
     }
 
@@ -358,6 +404,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           },
         },
       ],
+      containersSync: [],
       alerts: [],
       process_operational: {
         eta_max: {

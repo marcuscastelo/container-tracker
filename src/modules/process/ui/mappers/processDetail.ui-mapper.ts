@@ -1,6 +1,11 @@
 import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
 import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
+import {
+  createNeverContainerSyncVM,
+  normalizeContainerNumber,
+  toContainerSyncVM,
+} from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
@@ -139,6 +144,14 @@ export function toShipmentDetailVM(
   data: ProcessDetailResponse,
   locale: string = 'en-US',
 ): ShipmentDetailVM {
+  const referenceNow = new Date()
+  const syncByContainerNumber = new Map(
+    data.containersSync.map((containerSync) => [
+      normalizeContainerNumber(containerSync.containerNumber),
+      toContainerSyncVM(containerSync, locale, referenceNow),
+    ]),
+  )
+
   const containers = data.containers.map((container) => {
     const observations = toTrackingObservationDTOs(container.observations ?? [])
     const timeline: TrackingTimelineItem[] = deriveTimelineWithSeriesReadModel(observations)
@@ -158,12 +171,17 @@ export function toShipmentDetailVM(
     const etaChipVm = toContainerEtaChipVm(container.operational?.eta, locale)
     const selectedEtaVm = toContainerEtaDetailVm(container.operational?.eta, locale)
     const transshipment = toTransshipmentVm(container.operational?.transshipment)
+    const sync =
+      syncByContainerNumber.get(normalizeContainerNumber(container.container_number)) ??
+      createNeverContainerSyncVM(container.container_number)
 
     return {
       id: container.id,
       number: container.container_number,
+      carrierCode: container.carrier_code ?? null,
       status: trackingStatusToVariant(statusCode),
       statusCode,
+      sync,
       eta: null,
       etaChipVm,
       selectedEtaVm,

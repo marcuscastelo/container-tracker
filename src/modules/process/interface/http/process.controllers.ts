@@ -12,6 +12,10 @@ import {
 import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
 import { createTrackingOperationalSummaryFallback } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
+import {
+  type ContainerSyncDTO,
+  createContainerSyncMetadataFallback,
+} from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
@@ -33,7 +37,10 @@ type ProcessControllerDeps = {
     | 'findProcessById'
     | 'deleteProcess'
   >
-  readonly trackingUseCases: Pick<TrackingUseCases, 'getContainerSummary'>
+  readonly trackingUseCases: Pick<
+    TrackingUseCases,
+    'getContainerSummary' | 'getContainersSyncMetadata'
+  >
 }
 
 function normalizeStructuredLocationCode(value: string): string | null {
@@ -170,6 +177,18 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       // Destination can be a canonical code or a serialized location payload.
       // If we cannot extract a canonical POD code, tracking falls back safely.
       const podLocationCode = extractPodLocationCode(pwc.process.destination)
+      const containerNumbers = pwc.containers.map((container) => String(container.containerNumber))
+      let containersSync: readonly ContainerSyncDTO[] = containerNumbers.map((containerNumber) =>
+        createContainerSyncMetadataFallback(containerNumber),
+      )
+
+      try {
+        containersSync = await trackingUseCases.getContainersSyncMetadata({
+          containerNumbers,
+        })
+      } catch (err) {
+        console.error('Failed to get container sync metadata:', err)
+      }
 
       // For each container, get tracking summary (observations, status, alerts)
       const trackingResults = await Promise.all(
@@ -213,6 +232,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
         containersWithTracking,
         allAlerts,
         operationalByContainerId,
+        containersSync,
       )
 
       return jsonResponse(response, 200, ProcessDetailResponseSchema)

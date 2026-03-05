@@ -296,6 +296,16 @@
     "refreshRetry": "tentativa {{current}}/{{total}}",
     "refreshSyncTimeout": "A sincronização do refresh continua pendente após {{total}} tentativas. Tente novamente em instantes.",
     "refreshSyncFailed": "Refresh concluído com {{failedCount}} pedido(s) com falha. Primeiro erro: {{firstError}}",
+    "sync": {
+      "headerSyncingPrefix": "A sincronizar:",
+      "headerUpdatedPrefix": "Atualizado:",
+      "syncing": "a sincronizar…",
+      "updated": "atualizado {{relative}}",
+      "updatedUnknownTime": "atualizado",
+      "failed": "falhou {{relative}}",
+      "failedUnknownTime": "falhou",
+      "never": "nunca sincronizado"
+    },
     "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
     "refreshCarrierUnknownMessage": "Esta expedição não tem um armador selecionado, por isso não é possível executar um refresh automático. Pode editar o processo e escolher o armador correto para habilitar o refresh.",
     "refreshCarrierUnknownEditCTA": "Editar processo",

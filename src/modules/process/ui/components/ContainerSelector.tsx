@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
+import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -33,6 +34,12 @@ type ContainerSelectorItemLabels = {
   readonly ts: (count: number) => string
   readonly dataIssue: string
   readonly copyContainerNumber: string
+  readonly syncing: string
+  readonly never: string
+  readonly updatedUnknownTime: string
+  readonly failedUnknownTime: string
+  readonly updated: (relative: string) => string
+  readonly failed: (relative: string) => string
 }
 
 /** Status codes for which ETA is no longer meaningful */
@@ -56,6 +63,15 @@ function ContainerSelectorItem(props: {
 }): JSX.Element {
   const completed = () => isContainerCompleted(props.container.statusCode)
   const showEtaChip = () => !completed()
+  const syncLabel = () =>
+    toContainerSyncLabel(props.container.sync, {
+      syncing: props.labels.syncing,
+      never: props.labels.never,
+      updatedUnknownTime: props.labels.updatedUnknownTime,
+      failedUnknownTime: props.labels.failedUnknownTime,
+      updated: props.labels.updated,
+      failed: props.labels.failed,
+    })
 
   return (
     <div
@@ -118,6 +134,12 @@ function ContainerSelectorItem(props: {
             </span>
           ) : null}
         </div>
+        <div
+          data-testid={`container-sync-chip-${props.container.id}`}
+          class={`text-[9px] leading-none ${props.selected ? 'text-slate-200' : 'text-slate-400'}`}
+        >
+          {syncLabel()}
+        </div>
       </button>
       <CopyButton
         text={props.container.number}
@@ -142,6 +164,12 @@ export function ContainerSelector(props: {
     ts: (count: number) => t(keys.shipmentView.operational.chips.ts, { count }),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
     copyContainerNumber: t(keys.process.containerSelector.copyContainerNumber),
+    syncing: t(keys.shipmentView.sync.syncing),
+    never: t(keys.shipmentView.sync.never),
+    updatedUnknownTime: t(keys.shipmentView.sync.updatedUnknownTime),
+    failedUnknownTime: t(keys.shipmentView.sync.failedUnknownTime),
+    updated: (relative: string) => t(keys.shipmentView.sync.updated, { relative }),
+    failed: (relative: string) => t(keys.shipmentView.sync.failed, { relative }),
   }
 
   return (

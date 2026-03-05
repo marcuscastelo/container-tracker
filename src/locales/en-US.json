@@ -285,6 +285,16 @@
     "refreshRetry": "retry {{current}}/{{total}}",
     "refreshSyncTimeout": "Refresh sync is still pending after {{total}} retries. Try again shortly.",
     "refreshSyncFailed": "Refresh finished with {{failedCount}} failed request(s). First error: {{firstError}}",
+    "sync": {
+      "headerSyncingPrefix": "Syncing:",
+      "headerUpdatedPrefix": "Updated:",
+      "syncing": "syncing…",
+      "updated": "updated {{relative}}",
+      "updatedUnknownTime": "updated",
+      "failed": "failed {{relative}}",
+      "failedUnknownTime": "failed",
+      "never": "never synced"
+    },
     "refreshCarrierUnknownTitle": "Cannot refresh — unknown carrier",
     "refreshCarrierUnknownMessage": "This shipment has no carrier selected, so an automatic refresh cannot be performed. You can edit the process and choose the correct carrier to enable refresh.",
     "refreshCarrierUnknownEditCTA": "Edit process",

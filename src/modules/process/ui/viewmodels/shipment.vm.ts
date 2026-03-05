@@ -40,11 +40,23 @@ export type ContainerDataIssueChipVM = {
   readonly visible: boolean
 }
 
+export type ContainerSyncState = 'syncing' | 'ok' | 'error' | 'never'
+
+export type ContainerSyncVM = {
+  readonly containerNumber: string
+  readonly carrier: string | null
+  readonly state: ContainerSyncState
+  readonly relativeTimeLabel: string | null
+  readonly isStale: boolean
+}
+
 export type ContainerDetailVM = {
   readonly id: string
   readonly number: string
+  readonly carrierCode: string | null
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
+  readonly sync: ContainerSyncVM
   readonly eta: string | null
   readonly etaChipVm: ContainerEtaChipVM
   readonly selectedEtaVm: ContainerEtaDetailVM

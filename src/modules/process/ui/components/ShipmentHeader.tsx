@@ -1,6 +1,11 @@
 import type { JSX } from 'solid-js'
-import { createSignal, Show } from 'solid-js'
+import { createMemo, createSignal, For, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
+import {
+  resolveProcessSyncHeaderMode,
+  toContainerSyncLabel,
+  toProcessSyncHeaderEntries,
+} from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -243,9 +248,44 @@ function ProcessEtaSummary(props: {
   )
 }
 
+function toCarrierDisplay(carrier: string | null): string | null {
+  if (carrier === null) return null
+  const normalized = carrier.trim()
+  if (normalized.length === 0) return null
+  return normalized.toUpperCase()
+}
+
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
+  const syncEntries = createMemo(() =>
+    toProcessSyncHeaderEntries({
+      containers: props.data.containers,
+      processCarrier: props.data.carrier,
+    }),
+  )
+  const syncHeaderPrefix = createMemo(() =>
+    resolveProcessSyncHeaderMode(syncEntries()) === 'syncing'
+      ? t(keys.shipmentView.sync.headerSyncingPrefix)
+      : t(keys.shipmentView.sync.headerUpdatedPrefix),
+  )
+
+  const toSyncEntryLabel = (entry: ReturnType<typeof syncEntries>[number]): string => {
+    const carrierDisplay = toCarrierDisplay(entry.carrier)
+    const containerLabel = carrierDisplay
+      ? `${entry.containerNumber} (${carrierDisplay})`
+      : entry.containerNumber
+    const syncLabel = toContainerSyncLabel(entry.sync, {
+      syncing: t(keys.shipmentView.sync.syncing),
+      never: t(keys.shipmentView.sync.never),
+      updatedUnknownTime: t(keys.shipmentView.sync.updatedUnknownTime),
+      failedUnknownTime: t(keys.shipmentView.sync.failedUnknownTime),
+      updated: (relative: string) => t(keys.shipmentView.sync.updated, { relative }),
+      failed: (relative: string) => t(keys.shipmentView.sync.failed, { relative }),
+    })
+
+    return `${containerLabel} ${syncLabel}`
+  }
 
   return (
     <section class="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 sm:px-4 sm:py-2.5">
@@ -294,9 +334,6 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 })}
               </span>
             ) : null}
-            {props.isRefreshing && !props.refreshRetry ? (
-              <span class="text-[10px] text-slate-500">{t(keys.shipmentView.refreshSyncing)}</span>
-            ) : null}
             {!props.isRefreshing && props.refreshHint ? (
               <span class="text-[10px] text-slate-500">{props.refreshHint}</span>
             ) : null}
@@ -321,6 +358,26 @@ export function ShipmentHeader(props: Props): JSX.Element {
           </div>
         </div>
       </div>
+
+      <Show when={syncEntries().length > 0}>
+        <div class="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-slate-500">
+          <span data-testid="process-sync-prefix" class="font-medium text-slate-400">
+            {syncHeaderPrefix()}
+          </span>
+          <For each={syncEntries()}>
+            {(entry, index) => (
+              <>
+                <span data-testid={`process-sync-item-${entry.containerNumber}`}>
+                  {toSyncEntryLabel(entry)}
+                </span>
+                <Show when={index() < syncEntries().length - 1}>
+                  <span class="text-slate-300">•</span>
+                </Show>
+              </>
+            )}
+          </For>
+        </div>
+      </Show>
 
       {/* Row 2: Process-level ETA summary + containers/alerts count */}
       <div class="mt-1.5 flex items-center gap-2 flex-wrap">

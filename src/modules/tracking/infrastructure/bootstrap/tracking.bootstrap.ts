@@ -4,6 +4,7 @@ import type { TrackingAlertRepository } from '~/modules/tracking/application/por
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 // Ports (agora em application, como você moveu)
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
+import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
 import {
   createTrackingUseCases,
   type TrackingUseCases,
@@ -11,12 +12,14 @@ import {
 import { supabaseObservationRepository } from '~/modules/tracking/infrastructure/persistence/supabaseObservationRepository'
 // Repos (infra/persistence)
 import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository'
+import { supabaseSyncMetadataRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository'
 import { supabaseTrackingAlertRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository'
 
 type TrackingBootstrapOverrides = Partial<{
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
+  readonly syncMetadataRepository: SyncMetadataRepository
 }>
 
 type TrackingModule = {
@@ -37,11 +40,13 @@ export function bootstrapTrackingModule(
   const observationRepository = overrides.observationRepository ?? supabaseObservationRepository
   const trackingAlertRepository =
     overrides.trackingAlertRepository ?? supabaseTrackingAlertRepository
+  const syncMetadataRepository = overrides.syncMetadataRepository ?? supabaseSyncMetadataRepository
 
   const trackingUseCases = createTrackingUseCases({
     snapshotRepository,
     observationRepository,
     trackingAlertRepository,
+    syncMetadataRepository,
   })
 
   return { trackingUseCases }

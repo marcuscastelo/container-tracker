@@ -116,6 +116,16 @@ const ProcessOperationalResponseSchema = z.object({
   }),
 })
 
+const ContainerSyncResponseSchema = z.object({
+  containerNumber: z.string(),
+  carrier: z.string().nullable(),
+  lastSuccessAt: z.string().nullable(),
+  lastAttemptAt: z.string().nullable(),
+  isSyncing: z.boolean(),
+  lastErrorCode: z.string().nullable(),
+  lastErrorAt: z.string().nullable(),
+})
+
 export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
   containers: z.array(
     z.object({
@@ -134,6 +144,8 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
   alerts: z.array(TrackingAlertResponseSchema).optional(),
   /** Process-level operational projection */
   process_operational: ProcessOperationalResponseSchema.optional(),
+  /** Container-level operational sync metadata */
+  containersSync: z.array(ContainerSyncResponseSchema),
 })
 
 export const CreateProcessResponseSchema = z.object({
