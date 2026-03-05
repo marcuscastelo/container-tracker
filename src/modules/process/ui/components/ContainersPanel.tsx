@@ -8,6 +8,7 @@ type Props = {
   containers: readonly ContainerDetailVM[]
   selectedId: string
   onSelect: (id: string) => void
+  syncNow: Date
 }
 
 export function ContainersPanel(props: Props): JSX.Element {
@@ -21,6 +22,7 @@ export function ContainersPanel(props: Props): JSX.Element {
         containers={props.containers}
         selectedId={props.selectedId}
         onSelect={props.onSelect}
+        syncNow={props.syncNow}
       />
     </Panel>
   )

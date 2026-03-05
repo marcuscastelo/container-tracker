@@ -26,6 +26,7 @@ const RealtimePayloadSchema = z.object({
 const RealtimeChannelStateSchema = z.enum(['SUBSCRIBED', 'CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'])
 
 const SyncRequestIdListSchema = z.array(z.string().uuid()).min(1)
+const SyncRequestContainerRefListSchema = z.array(z.string()).min(1)
 
 const SyncRequestTenantIdSchema = z.string().uuid()
 
@@ -81,7 +82,7 @@ export type SyncRequestsRealtimeClient<
   removeChannel: (channel: TChannel) => Promise<unknown>
 }
 
-type SubscriptionScope = 'ids' | 'tenant'
+type SubscriptionScope = 'ids' | 'tenant' | 'container_refs'
 
 export type SyncRequestsRealtimeStatusUpdate = {
   readonly state: SyncRequestsRealtimeChannelState
@@ -215,6 +216,45 @@ export function subscribeSyncRequestsByIds<
     filters: uniqueSyncRequestIds.map((syncRequestId) => ({
       scope: 'ids' as const,
       key: `id=eq.${syncRequestId}`,
+    })),
+    onEvent: command.onEvent,
+    onStatus: command.onStatus,
+  })
+}
+
+function normalizeContainerRefValue(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+export function subscribeSyncRequestsByContainerRefs<
+  TChannel extends SyncRequestsRealtimeChannelLike<TChannel>,
+>(command: {
+  readonly client: SyncRequestsRealtimeClient<TChannel>
+  readonly containerNumbers: readonly string[]
+  readonly onEvent: (event: SyncRequestRealtimeEvent) => void
+  readonly onStatus?: (status: SyncRequestsRealtimeStatusUpdate) => void
+}): { readonly unsubscribe: () => void } {
+  const parsedContainerNumbers = SyncRequestContainerRefListSchema.parse(command.containerNumbers)
+  const uniqueContainerNumbers = Array.from(
+    new Set(
+      parsedContainerNumbers
+        .map((containerNumber) => normalizeContainerRefValue(containerNumber))
+        .filter((containerNumber) => containerNumber.length > 0),
+    ),
+  )
+
+  if (uniqueContainerNumbers.length === 0) {
+    throw new Error('containerNumbers must contain at least one non-empty container reference')
+  }
+
+  return subscribeToSyncRequestsFilters({
+    client: command.client,
+    filters: uniqueContainerNumbers.map((containerNumber) => ({
+      // Use a dedicated scope name for container ref subscriptions and
+      // filter by both ref_type and ref_value to avoid matching unrelated
+      // sync_requests rows that share the same ref_value for other ref_types.
+      scope: 'container_refs' as const,
+      key: `ref_type=eq.container&ref_value=eq.${containerNumber}`,
     })),
     onEvent: command.onEvent,
     onStatus: command.onStatus,

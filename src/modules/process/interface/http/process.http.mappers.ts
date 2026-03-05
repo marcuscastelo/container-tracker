@@ -13,6 +13,7 @@ import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { ContainerSyncDTO } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record
@@ -203,6 +204,18 @@ function toTrackingAlertResponse(a: TrackingAlertRecord) {
   }
 }
 
+function toContainerSyncResponse(sync: ContainerSyncDTO) {
+  return {
+    containerNumber: sync.containerNumber,
+    carrier: sync.carrier,
+    lastSuccessAt: sync.lastSuccessAt,
+    lastAttemptAt: sync.lastAttemptAt,
+    isSyncing: sync.isSyncing,
+    lastErrorCode: sync.lastErrorCode,
+    lastErrorAt: sync.lastErrorAt,
+  }
+}
+
 /**
  * Maps a container entity + its tracking summary to the detail response shape.
  * If tracking fetch fails, returns a fallback with status 'UNKNOWN' and empty observations.
@@ -291,6 +304,7 @@ export function toProcessDetailResponse(
   containersWithTracking: readonly ContainerWithTrackingResponse[],
   alerts: readonly TrackingAlertRecord[],
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
+  containersSync: readonly ContainerSyncDTO[],
 ) {
   const fallbackByContainerId = new Map<string, TrackingOperationalSummary>()
 
@@ -323,6 +337,7 @@ export function toProcessDetailResponse(
   return {
     ...processToResponseFields(pwc.process),
     containers,
+    containersSync: containersSync.map(toContainerSyncResponse),
     alerts: alerts.map(toTrackingAlertResponse),
     process_operational: toProcessOperationalResponse(summariesForProcess),
   }

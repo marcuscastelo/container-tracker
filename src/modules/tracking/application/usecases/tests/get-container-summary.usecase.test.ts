@@ -120,6 +120,9 @@ function createDeps(
       acknowledge: vi.fn(async () => undefined),
       dismiss: vi.fn(async () => undefined),
     },
+    syncMetadataRepository: {
+      listByContainerNumbers: vi.fn(async () => []),
+    },
   }
 
   return { deps, findSnapshotsByIds, findAllSnapshotsByContainerId }

@@ -296,6 +296,16 @@
     "refreshRetry": "tentativa {{current}}/{{total}}",
     "refreshSyncTimeout": "A sincronização do refresh ainda está pendente após {{total}} tentativas. Tente novamente em instantes.",
     "refreshSyncFailed": "Refresh concluído com {{failedCount}} requisição(ões) com falha. Primeiro erro: {{firstError}}",
+    "sync": {
+      "headerSyncingPrefix": "Sincronizando:",
+      "headerUpdatedPrefix": "Atualizado:",
+      "syncing": "sincronizando…",
+      "updated": "atualizado {{relative}}",
+      "updatedUnknownTime": "atualizado",
+      "failed": "falhou {{relative}}",
+      "failedUnknownTime": "falhou",
+      "never": "nunca sincronizado"
+    },
     "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
     "refreshCarrierUnknownMessage": "Este processo não tem um armador selecionado, portanto não é possível executar um refresh automático. Você pode editar o processo e escolher o armador correto para habilitar o refresh.",
     "refreshCarrierUnknownEditCTA": "Editar processo",

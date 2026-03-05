@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   type SyncRequestsRealtimeClient,
+  subscribeSyncRequestsByContainerRefs,
   subscribeSyncRequestsByIds,
   subscribeSyncRequestsByTenant,
 } from '~/shared/supabase/sync-requests.realtime'
@@ -114,6 +115,22 @@ describe('sync-requests realtime', () => {
     expect(fake.records.map((record) => record.filter)).toEqual([
       'id=eq.8cbdb7e4-6f98-4740-a26c-c95f8ab9ca89',
       'id=eq.5752efb8-da39-4007-95c8-e4046704a98a',
+    ])
+  })
+
+  it('subscribes by container refs with normalization and dedupe', () => {
+    const fake = createFakeRealtimeClient()
+
+    subscribeSyncRequestsByContainerRefs({
+      client: fake.client,
+      containerNumbers: [' mrku2733926 ', 'MRKU2733926', 'tghu9472160'],
+      onEvent: vi.fn(),
+    })
+
+    expect(fake.records).toHaveLength(2)
+    expect(fake.records.map((record) => record.filter)).toEqual([
+      'ref_type=eq.container&ref_value=eq.MRKU2733926',
+      'ref_type=eq.container&ref_value=eq.TGHU9472160',
     ])
   })
 
@@ -262,5 +279,26 @@ describe('sync-requests realtime', () => {
     await Promise.resolve()
 
     expect(removedNames).toHaveLength(2)
+  })
+
+  it('propagates status updates for container refs subscription', () => {
+    const fake = createFakeRealtimeClient()
+    const onStatus = vi.fn()
+
+    subscribeSyncRequestsByContainerRefs({
+      client: fake.client,
+      containerNumbers: ['mrku2733926'],
+      onEvent: vi.fn(),
+      onStatus,
+    })
+
+    fake.records[0]?.onStatus?.('TIMED_OUT', new Error('channel timeout'))
+
+    expect(onStatus).toHaveBeenCalledWith({
+      state: 'TIMED_OUT',
+      scope: 'container_refs',
+      key: 'ref_type=eq.container&ref_value=eq.MRKU2733926',
+      errorMessage: 'channel timeout',
+    })
   })
 })

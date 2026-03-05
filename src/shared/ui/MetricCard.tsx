@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js'
+import { type JSX, Show } from 'solid-js'
 
 type Variant = 'default' | 'warning' | 'info' | 'danger' | 'success'
 
@@ -63,7 +63,9 @@ export function MetricCard(props: Props): JSX.Element {
         <span class={`text-[11px] font-medium leading-tight ${styles().labelClass}`}>
           {props.label}
         </span>
-        {props.subtitle && <span class="text-[11px] mt-0.5 text-slate-400">{props.subtitle}</span>}
+        <Show when={props.subtitle}>
+          {(subtitle) => <span class="text-[11px] mt-0.5 text-slate-400">{subtitle()}</span>}
+        </Show>
       </div>
     </div>
   )

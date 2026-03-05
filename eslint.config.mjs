@@ -251,6 +251,16 @@ export default [
     },
   },
   {
+    files: [
+      'src/modules/*/ui/**/*.tsx',
+      'src/capabilities/*/ui/**/*.tsx',
+      'src/shared/ui/**/*.tsx',
+    ],
+    rules: {
+      'container-tracker/no-jsx-short-circuit': 'error',
+    },
+  },
+  {
     files: ['src/capabilities/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [

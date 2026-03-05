@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js'
+import { type JSX, Show } from 'solid-js'
 
 type Props = {
   readonly title: string
@@ -28,15 +28,21 @@ export function EmptyState(props: Props): JSX.Element {
       </div>
       <h3 class="mb-2 text-lg font-semibold text-slate-900">{props.title}</h3>
       <p class="mb-6 max-w-sm text-sm text-slate-500">{props.description}</p>
-      {props.actionLabel && props.onAction && (
-        <button
-          type="button"
-          onClick={props.onAction}
-          class="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
-        >
-          {props.actionLabel}
-        </button>
-      )}
+      <Show when={props.actionLabel}>
+        {(actionLabel) => (
+          <Show when={props.onAction}>
+            {(onAction) => (
+              <button
+                type="button"
+                onClick={onAction()}
+                class="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+              >
+                {actionLabel()}
+              </button>
+            )}
+          </Show>
+        )}
+      </Show>
     </div>
   )
 }

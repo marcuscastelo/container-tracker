@@ -21,10 +21,10 @@ class LocalStorageMock {
 globalThis.localStorage = new LocalStorageMock()
 
 // Provide default VITE_* env variables expected by zod checks in tests
-process.env.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY =
-  process.env.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY || 'supabase-anon-key'
-process.env.VITE_NEXT_PUBLIC_SUPABASE_URL =
-  process.env.VITE_NEXT_PUBLIC_SUPABASE_URL || 'https://supabase.test'
+process.env.VITE_PUBLIC_SUPABASE_ANON_KEY =
+  process.env.VITE_PUBLIC_SUPABASE_ANON_KEY || 'supabase-anon-key'
+process.env.VITE_PUBLIC_SUPABASE_URL =
+  process.env.VITE_PUBLIC_SUPABASE_URL || 'https://supabase.test'
 process.env.VITE_EXTERNAL_API_FOOD_PARAMS = process.env.VITE_EXTERNAL_API_FOOD_PARAMS || '{}'
 process.env.VITE_EXTERNAL_API_REFERER =
   process.env.VITE_EXTERNAL_API_REFERER || 'https://example.test'

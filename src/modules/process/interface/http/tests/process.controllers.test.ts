@@ -10,6 +10,7 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
+import type { ContainerSyncDTO } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
 
 type GetContainerSummaryMock = (
@@ -18,6 +19,10 @@ type GetContainerSummaryMock = (
   podLocationCode?: string | null,
   now?: Date,
 ) => Promise<GetContainerSummaryResult>
+
+type GetContainersSyncMetadataMock = (command: {
+  readonly containerNumbers: readonly string[]
+}) => Promise<readonly ContainerSyncDTO[]>
 
 type ContainerSummaryStatus = GetContainerSummaryResult['status']
 
@@ -128,6 +133,26 @@ function createSummary(
 }
 
 function createControllers(destination: string, getContainerSummary: GetContainerSummaryMock) {
+  const getContainersSyncMetadata = vi.fn<GetContainersSyncMetadataMock>(async (command) =>
+    command.containerNumbers.map((containerNumber) => ({
+      containerNumber,
+      carrier: 'msc',
+      lastSuccessAt: '2026-02-25T12:00:00.000Z',
+      lastAttemptAt: '2026-02-25T12:00:00.000Z',
+      isSyncing: false,
+      lastErrorCode: null,
+      lastErrorAt: null,
+    })),
+  )
+
+  return createControllersWithSyncMock(destination, getContainerSummary, getContainersSyncMetadata)
+}
+
+function createControllersWithSyncMock(
+  destination: string,
+  getContainerSummary: GetContainerSummaryMock,
+  getContainersSyncMetadata: GetContainersSyncMetadataMock,
+) {
   const { process, processWithContainers } = createProcessWithContainers(destination)
 
   return createProcessControllers({
@@ -147,6 +172,7 @@ function createControllers(destination: string, getContainerSummary: GetContaine
     },
     trackingUseCases: {
       getContainerSummary,
+      getContainersSyncMetadata,
     },
   })
 }
@@ -197,6 +223,16 @@ describe('process controllers', () => {
     expect(body.process_operational?.eta_max?.event_time).toBe('2026-03-10T12:00:00.000Z')
     expect(body.process_operational?.coverage.total).toBe(2)
     expect(body.process_operational?.coverage.with_eta).toBe(1)
+    expect(body.containersSync).toHaveLength(2)
+    expect(body.containersSync[0]).toEqual({
+      containerNumber: 'MSCU1234567',
+      carrier: 'msc',
+      lastSuccessAt: '2026-02-25T12:00:00.000Z',
+      lastAttemptAt: '2026-02-25T12:00:00.000Z',
+      isSyncing: false,
+      lastErrorCode: null,
+      lastErrorAt: null,
+    })
     expect(Object.keys(body.containers[0]?.operational ?? {}).sort()).toEqual([
       'data_issue',
       'eta',
@@ -223,6 +259,49 @@ describe('process controllers', () => {
       'BRSSZBT',
       expect.any(Date),
     )
+  })
+
+  it('falls back to deterministic empty sync metadata when sync metadata lookup fails', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const getContainersSyncMetadata = vi.fn<GetContainersSyncMetadataMock>(async () => {
+      throw new Error('sync metadata lookup failed')
+    })
+
+    const controllers = createControllersWithSyncMock(
+      'Santos',
+      getContainerSummaryMock,
+      getContainersSyncMetadata,
+    )
+
+    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.containersSync).toEqual([
+      {
+        containerNumber: 'MSCU1234567',
+        carrier: null,
+        lastSuccessAt: null,
+        lastAttemptAt: null,
+        isSyncing: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      },
+      {
+        containerNumber: 'MSCU7654321',
+        carrier: null,
+        lastSuccessAt: null,
+        lastAttemptAt: null,
+        isSyncing: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      },
+    ])
   })
 
   it('does not infer POD code from free-text destination names', async () => {

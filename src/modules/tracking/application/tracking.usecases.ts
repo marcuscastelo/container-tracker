@@ -15,6 +15,11 @@ import {
   type GetContainersSummaryCommand,
   getContainersSummary as getContainersSummaryUseCase,
 } from '~/modules/tracking/application/usecases/get-containers-summary.usecase'
+import {
+  type ContainerSyncDTO,
+  createGetContainersSyncMetadataUseCase,
+  type GetContainersSyncMetadataCommand,
+} from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { getLatestSnapshot } from '~/modules/tracking/application/usecases/get-latest-snapshot.usecase'
 import { getSnapshotsForContainer } from '~/modules/tracking/application/usecases/get-snapshots-for-container.usecase'
 import {
@@ -54,6 +59,10 @@ type FetchAndProcessFacadeResult = {
  *   snapshot → normalize → diff → persist observations → derive timeline/status/alerts → persist alerts
  */
 export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
+  const getContainersSyncMetadata = createGetContainersSyncMetadataUseCase({
+    syncMetadataRepository: deps.syncMetadataRepository,
+  })
+
   return {
     /**
      * Fetch tracking data from a REST-based carrier, save as snapshot, and run the full pipeline.
@@ -123,6 +132,17 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       now: Date = new Date(),
     ): Promise<Map<string, TrackingOperationalSummary>> {
       return getContainersSummaryUseCase(deps, { containers, now })
+    },
+
+    /**
+     * List operational sync metadata for containers.
+     *
+     * This read model is operational-only and does not affect tracking semantics.
+     */
+    async getContainersSyncMetadata(
+      command: GetContainersSyncMetadataCommand,
+    ): Promise<readonly ContainerSyncDTO[]> {
+      return getContainersSyncMetadata(command)
     },
 
     /**
