@@ -49,7 +49,7 @@ export type AlertResponseDto = z.infer<typeof AlertResponseDtoSchema>
 /**
  * Response for PATCH /api/alerts.
  */
-export const AlertActionResponseSchema = z.object({
+const AlertActionResponseSchema = z.object({
   ok: z.literal(true),
   alert_id: z.string(),
   action: z.enum(['acknowledge', 'dismiss']),

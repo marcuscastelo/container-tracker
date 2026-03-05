@@ -1,9 +1,9 @@
 import z from 'zod/v4'
 
-export const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm'])
+const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm'])
 export type AgentProvider = z.infer<typeof AgentProviderSchema>
 
-export const SyncRequestStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
+const SyncRequestStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
 
 export const GetAgentTargetsQuerySchema = z.object({
   tenant_id: z.string().uuid('tenant_id must be a UUID'),
@@ -11,7 +11,7 @@ export const GetAgentTargetsQuerySchema = z.object({
 })
 export type GetAgentTargetsQuery = z.infer<typeof GetAgentTargetsQuerySchema>
 
-export const AgentTargetSchema = z.object({
+const AgentTargetSchema = z.object({
   sync_request_id: z.string().uuid(),
   provider: AgentProviderSchema,
   ref_type: z.literal('container'),

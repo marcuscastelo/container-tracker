@@ -8,7 +8,7 @@ export const AgentEnrollRequestSchema = z.object({
 })
 export type AgentEnrollRequest = z.infer<typeof AgentEnrollRequestSchema>
 
-export const AgentEnrollProvidersSchema = z.object({
+const AgentEnrollProvidersSchema = z.object({
   maerskEnabled: z.boolean(),
   maerskHeadless: z.boolean(),
   maerskTimeoutMs: z.number().int().positive(),

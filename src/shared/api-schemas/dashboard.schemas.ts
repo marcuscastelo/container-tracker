@@ -1,13 +1,13 @@
 import { z } from 'zod'
 
-export const DashboardGlobalAlertsBySeverityResponseSchema = z.object({
+const DashboardGlobalAlertsBySeverityResponseSchema = z.object({
   danger: z.number(),
   warning: z.number(),
   info: z.number(),
   success: z.number(),
 })
 
-export const DashboardGlobalAlertsByCategoryResponseSchema = z.object({
+const DashboardGlobalAlertsByCategoryResponseSchema = z.object({
   eta: z.number(),
   movement: z.number(),
   customs: z.number(),
@@ -15,13 +15,13 @@ export const DashboardGlobalAlertsByCategoryResponseSchema = z.object({
   data: z.number(),
 })
 
-export const DashboardGlobalAlertsSummaryResponseSchema = z.object({
+const DashboardGlobalAlertsSummaryResponseSchema = z.object({
   total_active_alerts: z.number(),
   by_severity: DashboardGlobalAlertsBySeverityResponseSchema,
   by_category: DashboardGlobalAlertsByCategoryResponseSchema,
 })
 
-export const DashboardProcessExceptionSeverityResponseSchema = z.enum([
+const DashboardProcessExceptionSeverityResponseSchema = z.enum([
   'danger',
   'warning',
   'info',
@@ -29,7 +29,7 @@ export const DashboardProcessExceptionSeverityResponseSchema = z.enum([
   'none',
 ])
 
-export const DashboardProcessExceptionResponseSchema = z.object({
+const DashboardProcessExceptionResponseSchema = z.object({
   process_id: z.string(),
   reference: z.string().nullable(),
   origin: z.string().nullable(),
