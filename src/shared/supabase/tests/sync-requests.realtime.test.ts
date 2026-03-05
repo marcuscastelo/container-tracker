@@ -129,8 +129,8 @@ describe('sync-requests realtime', () => {
 
     expect(fake.records).toHaveLength(2)
     expect(fake.records.map((record) => record.filter)).toEqual([
-      'ref_value=eq.MRKU2733926',
-      'ref_value=eq.TGHU9472160',
+      'ref_type=eq.container&ref_value=eq.MRKU2733926',
+      'ref_type=eq.container&ref_value=eq.TGHU9472160',
     ])
   })
 
@@ -296,8 +296,8 @@ describe('sync-requests realtime', () => {
 
     expect(onStatus).toHaveBeenCalledWith({
       state: 'TIMED_OUT',
-      scope: 'ids',
-      key: 'ref_value=eq.MRKU2733926',
+      scope: 'container_refs',
+      key: 'ref_type=eq.container&ref_value=eq.MRKU2733926',
       errorMessage: 'channel timeout',
     })
   })

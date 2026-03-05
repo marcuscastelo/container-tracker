@@ -49,13 +49,6 @@ function toState(dto: ContainerSyncDTO): ContainerSyncState {
   return 'never'
 }
 
-function toIsStale(lastSuccessAt: string | null, now: Date): boolean {
-  if (lastSuccessAt === null) return false
-  const successAt = Date.parse(lastSuccessAt)
-  if (!Number.isFinite(successAt)) return false
-  return now.getTime() - successAt > SYNC_STALE_THRESHOLD_MS
-}
-
 function toRelativeTimeAt(state: ContainerSyncState, dto: ContainerSyncDTO): string | null {
   let timestamp: string | null = null
   if (state === 'ok') {
@@ -83,18 +76,19 @@ export function toContainerSyncVM(dto: ContainerSyncDTO, now: Date): ContainerSy
 
   const lastSuccessAtTimestamp =
     dto.lastSuccessAt === null ? null : toTimestampOrNegativeInfinity(dto.lastSuccessAt)
+  const isStale =
+    state === 'ok' &&
+    lastSuccessAtTimestamp !== null &&
+    Number.isFinite(lastSuccessAtTimestamp) &&
+    now.getTime() - lastSuccessAtTimestamp > SYNC_STALE_THRESHOLD_MS
 
   return {
     containerNumber: normalizeContainerNumber(dto.containerNumber),
     carrier: dto.carrier,
     state,
     relativeTimeAt: toRelativeTimeAt(state, dto),
-    get isStale() {
-      if (state !== 'ok' || lastSuccessAtTimestamp === null) return false
-      if (!Number.isFinite(lastSuccessAtTimestamp)) return false
-      return now.getTime() - lastSuccessAtTimestamp > SYNC_STALE_THRESHOLD_MS
-    },
-  } as ContainerSyncVM
+    isStale,
+  }
 }
 
 export function createNeverContainerSyncVM(containerNumber: string): ContainerSyncVM {
