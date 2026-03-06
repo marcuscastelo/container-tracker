@@ -40,9 +40,9 @@ export const ProcessResponseSchema = z.object({
   /** Latest event time across all container timelines */
   last_event_at: z.string().nullish(),
   /** Last process sync status derived from sync_requests */
-  lastSyncStatus: ProcessLastSyncStatusSchema.optional(),
+  last_sync_status: ProcessLastSyncStatusSchema.optional(),
   /** Timestamp of latest known process sync activity */
-  lastSyncAt: z.string().nullish(),
+  last_sync_at: z.string().nullish(),
 })
 
 export const ProcessListResponseSchema = z.array(ProcessResponseSchema)

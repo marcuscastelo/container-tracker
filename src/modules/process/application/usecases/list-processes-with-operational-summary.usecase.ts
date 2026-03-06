@@ -75,10 +75,7 @@ function toTimestampOrNegativeInfinity(value: string | null): number {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
 }
 
-function pickMostRecentTimestamp(
-  current: string | null,
-  candidate: string | null,
-): string | null {
+function pickMostRecentTimestamp(current: string | null, candidate: string | null): string | null {
   if (!candidate) return current
   if (!current) return candidate
 
@@ -188,9 +185,7 @@ async function listSyncMetadataByContainerNumber(command: {
       containerNumbers: normalizedContainerNumbers,
     })
 
-    return new Map(
-      rows.map((row) => [normalizeContainerNumber(row.containerNumber), row] as const),
-    )
+    return new Map(rows.map((row) => [normalizeContainerNumber(row.containerNumber), row] as const))
   } catch (error) {
     console.error('Failed to get process sync metadata for dashboard list:', error)
     return new Map()

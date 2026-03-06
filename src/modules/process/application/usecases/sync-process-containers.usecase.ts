@@ -36,9 +36,7 @@ export type SyncProcessContainersDeps = {
   readonly fetchProcessById: (command: {
     readonly processId: string
   }) => Promise<{ readonly id: string } | null>
-  readonly listContainersByProcessId: (command: {
-    readonly processId: string
-  }) => Promise<{
+  readonly listContainersByProcessId: (command: { readonly processId: string }) => Promise<{
     readonly containers: readonly SyncProcessContainerRecord[]
   }>
   readonly enqueueContainerSyncRequest: (command: {

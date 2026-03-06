@@ -52,8 +52,8 @@ describe('toProcessSummaryVMs', () => {
         highest_alert_severity: 'warning',
         has_transshipment: true,
         last_event_at: '2025-05-01T00:00:00Z',
-        lastSyncStatus: 'DONE',
-        lastSyncAt: '2025-05-01T11:00:00Z',
+        last_sync_status: 'DONE',
+        last_sync_at: '2025-05-01T11:00:00Z',
       },
     ]
 
@@ -104,8 +104,8 @@ describe('toProcessSummaryVMs', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [],
-        lastSyncStatus: 'RUNNING',
-        lastSyncAt: '2026-03-05T10:00:00.000Z',
+        last_sync_status: 'RUNNING',
+        last_sync_at: '2026-03-05T10:00:00.000Z',
       },
       {
         id: 'p-sync-failed',
@@ -113,7 +113,7 @@ describe('toProcessSummaryVMs', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [],
-        lastSyncStatus: 'FAILED',
+        last_sync_status: 'FAILED',
       },
       {
         id: 'p-sync-unknown',
@@ -121,7 +121,7 @@ describe('toProcessSummaryVMs', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [],
-        lastSyncStatus: 'UNKNOWN',
+        last_sync_status: 'UNKNOWN',
       },
     ]
 

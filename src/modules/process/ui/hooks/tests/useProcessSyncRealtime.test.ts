@@ -3,7 +3,10 @@ import {
   deriveProcessSyncStateFromContainerStates,
   toProcessSyncStateFromRealtimeStatus,
 } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
-import { toProcessSummaryVMs, type ProcessListItemSource } from '~/modules/process/ui/mappers/processList.ui-mapper'
+import {
+  type ProcessListItemSource,
+  toProcessSummaryVMs,
+} from '~/modules/process/ui/mappers/processList.ui-mapper'
 
 describe('useProcessSyncRealtime helpers', () => {
   it('maps RUNNING-like realtime statuses to syncing', () => {
@@ -34,7 +37,7 @@ describe('useProcessSyncRealtime helpers', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [{ id: 'c-1', container_number: 'MSCU1234567', carrier_code: 'MSC' }],
-        lastSyncStatus: 'DONE',
+        last_sync_status: 'DONE',
       },
       {
         id: 'process-failed',
@@ -42,7 +45,7 @@ describe('useProcessSyncRealtime helpers', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         containers: [{ id: 'c-2', container_number: 'MRKU7654321', carrier_code: 'MAERSK' }],
-        lastSyncStatus: 'FAILED',
+        last_sync_status: 'FAILED',
       },
     ]
 

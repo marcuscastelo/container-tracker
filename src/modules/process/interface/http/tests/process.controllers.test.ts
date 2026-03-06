@@ -34,9 +34,7 @@ type SyncAllProcessesMock = () => Promise<{
   readonly syncedContainers: number
 }>
 
-type SyncProcessContainersMock = (command: {
-  readonly processId: string
-}) => Promise<{
+type SyncProcessContainersMock = (command: { readonly processId: string }) => Promise<{
   readonly processId: string
   readonly syncedContainers: number
 }>

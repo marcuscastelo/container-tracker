@@ -26,7 +26,8 @@ export function resolveProcessSyncVisualState(command: {
   // 3. Local ephemeral feedback (success / error) -> shown locally
   // 4. Otherwise idle
   if (command.isSubmitting) return 'syncing'
-  if (command.statusFromServer === 'syncing') return 'syncing'
+  // If server reports any non-idle state, prefer it over local ephemeral feedback.
+  if (command.statusFromServer !== 'idle') return command.statusFromServer
   if (command.localFeedback === 'success') return 'success'
   if (command.localFeedback === 'error') return 'error'
   return 'idle'

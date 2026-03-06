@@ -30,8 +30,8 @@ export type ProcessListItemSource = {
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
   has_transshipment?: boolean
   last_event_at?: string | null
-  lastSyncStatus?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
-  lastSyncAt?: string | null
+  last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
+  last_sync_at?: string | null
 }
 
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
@@ -50,7 +50,9 @@ function toTimestampOrNull(value: string | null | undefined): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-function toProcessSyncStatus(status: ProcessListItemSource['lastSyncStatus']): ProcessSummaryVM['syncStatus'] {
+function toProcessSyncStatus(
+  status: ProcessListItemSource['last_sync_status'],
+): ProcessSummaryVM['syncStatus'] {
   // Success/error are intentionally ephemeral in dashboard realtime state.
   // After reload we only keep "syncing" when backend still reports active work.
   if (status === 'RUNNING') return 'syncing'
@@ -99,8 +101,8 @@ export function toProcessSummaryVMs(
       highestAlertSeverity: process.highest_alert_severity ?? null,
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
-      syncStatus: toProcessSyncStatus(process.lastSyncStatus),
-      lastSyncAt: process.lastSyncAt ?? null,
+      syncStatus: toProcessSyncStatus(process.last_sync_status),
+      lastSyncAt: process.last_sync_at ?? null,
     }
   })
 }

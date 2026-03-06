@@ -161,7 +161,9 @@ async function getSyncRequestStatuses(command: {
   })
 
   const allTerminal = requests.every((request) => {
-    return request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
+    return (
+      request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
+    )
   })
 
   return {
