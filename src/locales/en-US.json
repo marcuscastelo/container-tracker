@@ -13,6 +13,14 @@
     "alertsBadge": "{{count}} Alerts"
   },
   "dashboard": {
+    "header": {
+      "title": "Dashboard"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "refreshFailed": "Last refresh failed"
+    },
     "alertIndicators": {
       "title": "Operational Alerts",
       "total": "Total Active Alerts",

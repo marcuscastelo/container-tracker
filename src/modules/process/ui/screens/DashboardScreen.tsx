@@ -6,7 +6,9 @@ import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
 import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/DashboardProcessFiltersBar'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
+import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
+import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
 import {
   applyDashboardFiltersToSearchParams,
   hydrateDashboardFiltersFromQueryAndStorage,
@@ -57,10 +59,12 @@ import {
   sortDashboardProcesses,
 } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
+  const { t, keys } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const [processes, { refetch: refetchProcesses }] = createResource(() =>
@@ -143,6 +147,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     setIsCreateDialogOpen(true)
   }
 
+  const handleDashboardRefresh = async () => {
+    await refreshDashboardData({
+      refetchProcesses,
+      refetchGlobalAlerts,
+    })
+  }
+
   const handleSortToggle = (field: DashboardSortField) => {
     const nextSelection = nextDashboardSortSelection(sortSelection(), field)
     setSortSelection(nextSelection)
@@ -222,6 +233,11 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       />
 
       <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
+        <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.header.title)}</h1>
+          <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
+        </section>
+
         <Show when={props.searchSlot}>
           <div class="mb-4 flex justify-center">{props.searchSlot}</div>
         </Show>

@@ -24,6 +24,14 @@
     "close": "Fechar"
   },
   "dashboard": {
+    "header": {
+      "title": "Painel"
+    },
+    "actions": {
+      "refresh": "Atualizar",
+      "refreshing": "A atualizar...",
+      "refreshFailed": "A última atualização falhou"
+    },
     "alertIndicators": {
       "title": "Alertas Operacionais",
       "total": "Total de Alertas Ativos",
