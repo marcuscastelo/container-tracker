@@ -313,7 +313,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
       {/* Row 1: Process + Status + Carrier + Actions */}
       <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
         <div class="flex items-center gap-2 min-w-0">
-          <h1 class="truncate text-sm font-semibold text-slate-900 sm:text-base leading-tight">
+          <h1 class="truncate text-sm font-bold text-slate-900 sm:text-base leading-tight">
             {t(keys.shipmentView.header)} {props.data.processRef}
             <Show when={!props.data.reference}>
               <InternalIdHint
@@ -323,7 +323,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
               />
             </Show>
           </h1>
-          <span class="hidden text-label text-slate-400 sm:inline-flex sm:items-center sm:gap-0.5">
+          <span class="hidden text-label text-slate-400/80 sm:inline-flex sm:items-center sm:gap-0.5">
             {props.data.origin}
             <ArrowIcon />
             {props.data.destination}
