@@ -58,7 +58,7 @@ export function toProcessSyncStateFromRealtimeStatus(
   return null
 }
 
-export function toTrackedContainerNumberFromSyncRealtimeEvent(
+function toTrackedContainerNumberFromSyncRealtimeEvent(
   event: SyncRequestRealtimeEvent,
 ): string | null {
   const row = event.row ?? event.oldRow
