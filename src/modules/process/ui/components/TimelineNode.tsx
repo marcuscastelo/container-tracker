@@ -142,9 +142,9 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'bg-emerald-500',
+          dot: 'bg-emerald-500 ring-1 ring-emerald-200',
           line: 'bg-emerald-300',
-          text: 'text-slate-700',
+          text: 'font-medium text-slate-800',
         }
       case 'current':
         return {

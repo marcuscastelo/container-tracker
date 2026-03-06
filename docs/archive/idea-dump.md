@@ -42,10 +42,6 @@ Os alertas de transbordo devem especificar o container, navio original e navio n
 
 Os alertas devem usar i18n parametrizado em vez de hardcoded.
 
-
-# Pedidos do cliente (alguns precisam de mais detalhes)
-Adicionar campo mercadoria (description of goods) no processo.
-
 # Debito tecnico
 CopyButton e ShipmentView duplicado clipboard utils
 ShipmentView, Dashboard, refresh, [id] route, estao com parsings e enrichment extensos que deveriam ser feitos na camada de dados/adapters e testáveis
