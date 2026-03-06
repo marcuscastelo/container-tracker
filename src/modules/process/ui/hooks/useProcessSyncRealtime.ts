@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, type Accessor } from 'solid-js'
+import { type Accessor, createEffect, createSignal, onCleanup, untrack } from 'solid-js'
 import { normalizeContainerNumber } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import type {
   ProcessSummaryVM,
@@ -118,9 +118,9 @@ export function useProcessSyncRealtime(command: {
   const [stateByProcessId, setStateByProcessId] = createSignal<ProcessSyncContainerStateMap>(
     new Map(),
   )
-  const [processSyncStates, setProcessSyncStates] = createSignal<Readonly<
-    Record<string, ProcessSyncStatus>
-  >>({})
+  const [processSyncStates, setProcessSyncStates] = createSignal<
+    Readonly<Record<string, ProcessSyncStatus>>
+  >({})
 
   let activeRealtimeCleanup: (() => void) | null = null
 
@@ -128,12 +128,18 @@ export function useProcessSyncRealtime(command: {
     const processes = command.processes()
     const containerToProcessId = toContainerToProcessIdMap(processes)
 
+    // Read current state without creating a reactive dependency on it to avoid
+    // the effect re-running when we setStateByProcessId below.
+    const currentState = untrack(() => stateByProcessId())
     const prunedState = pruneUnknownContainers({
-      stateByProcessId: stateByProcessId(),
+      stateByProcessId: currentState,
       containerToProcessId,
     })
+
+    // Only update if prunedState differs to avoid unnecessary writes
+    // (shallow Map size and content check could be added, but keep simple)
     setStateByProcessId(prunedState)
-    setProcessSyncStates(toProcessSyncStateRecord(prunedState))
+    queueMicrotask(() => setProcessSyncStates(toProcessSyncStateRecord(prunedState)))
 
     if (activeRealtimeCleanup) {
       activeRealtimeCleanup()
@@ -166,7 +172,8 @@ export function useProcessSyncRealtime(command: {
         })
 
         setStateByProcessId(nextStateByProcessId)
-        setProcessSyncStates(toProcessSyncStateRecord(nextStateByProcessId))
+        // Defer update to break potential synchronous cycles
+        queueMicrotask(() => setProcessSyncStates(toProcessSyncStateRecord(nextStateByProcessId)))
       },
     })
 
