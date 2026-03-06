@@ -2,6 +2,7 @@
 Criando novo processo: adiciona um container ja existente, edita para um nao existente. Adiciona outro container ja existente, REMOVE com a lixeira, readiciona so que nao existente. Resultado: soft-lock mensagem "container ja existente" e nao da para resolver pq o campo foi deletado.
 Nao da pra remover BL do processo no update (será que nao da pra remover nada? será que é qualquer tipo de update? testar)
 Bugs visuais nos botoes sync no dashboard, precisa de refresh para ver atualizando
+Nao da pra selecionar container acima e abaixo do botao copy, onClick so pega na esquerda
 
 # Ideas
 Assim que o processo for criado e ele redirecionado, o usuario poderia ver algo como "ultima edicao há 1s, 2s, 3s etc" para ter o feedback imediato de que a criacao foi bem sucedida. As vezes o usuario nao tem certeza se trocou de processo, principalmente se o processo novo for parecido com o anterior, e isso daria um feedback visual imediato.

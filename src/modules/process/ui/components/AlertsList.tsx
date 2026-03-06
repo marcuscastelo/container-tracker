@@ -164,7 +164,7 @@ export function AlertsList(props: {
                 <button
                   type="button"
                   disabled={isBusy()}
-                  class="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 transition hover:text-emerald-600 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-slate-400 transition hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label={t(keys.shipmentView.alerts.action.acknowledgeAria)}
                   title={t(keys.shipmentView.alerts.action.acknowledge)}
                   onClick={() => props.onAcknowledge(alert.id)}
