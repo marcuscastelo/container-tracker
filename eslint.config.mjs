@@ -258,6 +258,7 @@ export default [
     ],
     rules: {
       'container-tracker/no-jsx-short-circuit': 'error',
+      'container-tracker/no-jsx-ternary': 'error',
     },
   },
   {

@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import {
   seriesLabelToClass,
   seriesLabelToKey,
@@ -68,7 +68,7 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
         {formatDateForLocale(props.observation.created_at, props.locale)}
       </td>
       <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
-        {hasDelta() ? (
+        <Show when={hasDelta()} fallback="—">
           <span
             class={clsx(
               'inline-flex items-center',
@@ -78,9 +78,7 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
             {deltaPrefix()}
             {props.deltaDays} {t(keys.shipmentView.timeline.predictionHistory.days)}
           </span>
-        ) : (
-          '—'
-        )}
+        </Show>
       </td>
       <td class="whitespace-nowrap px-4 py-3 text-right text-sm">
         <span

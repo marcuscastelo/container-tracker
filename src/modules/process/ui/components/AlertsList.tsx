@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import { AlertIcon } from '~/modules/process/ui/components/Icons'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -147,7 +147,20 @@ export function AlertsList(props: {
                 </div>
                 <p class="mt-0.5 text-[11px] leading-tight text-slate-600">{alert.message}</p>
               </div>
-              {props.mode === 'active' ? (
+              <Show
+                when={props.mode === 'active'}
+                fallback={
+                  <button
+                    type="button"
+                    disabled={isBusy()}
+                    class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
+                    onClick={() => props.onUnacknowledge(alert.id)}
+                  >
+                    {t(keys.shipmentView.alerts.action.unacknowledge)}
+                  </button>
+                }
+              >
                 <button
                   type="button"
                   disabled={isBusy()}
@@ -157,17 +170,7 @@ export function AlertsList(props: {
                 >
                   X
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isBusy()}
-                  class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
-                  onClick={() => props.onUnacknowledge(alert.id)}
-                >
-                  {t(keys.shipmentView.alerts.action.unacknowledge)}
-                </button>
-              )}
+              </Show>
             </li>
           )
         }}

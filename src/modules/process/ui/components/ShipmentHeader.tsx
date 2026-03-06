@@ -69,7 +69,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
       >
         i
       </button>
-      {open() ? (
+      <Show when={open()}>
         <InternalIdPopover
           message={props.message}
           ctaLabel={props.ctaLabel}
@@ -78,7 +78,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
             setOpen(false)
           }}
         />
-      ) : null}
+      </Show>
     </span>
   )
 }
@@ -106,14 +106,9 @@ function InternalIdPopover(props: InternalIdHintProps): JSX.Element {
 
 function RefreshIcon(props: { readonly spinning: boolean; readonly title: string }): JSX.Element {
   return (
-    <>
-      {props.spinning ? (
-        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <title>{props.title}</title>
-          <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
-          <path d="M22 12a10 10 0 00-10-10" stroke-width="2" stroke-linecap="round" />
-        </svg>
-      ) : (
+    <Show
+      when={props.spinning}
+      fallback={
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <title>{props.title}</title>
           <path
@@ -123,8 +118,14 @@ function RefreshIcon(props: { readonly spinning: boolean; readonly title: string
             d="M4 4v6h6M20 20v-6h-6"
           />
         </svg>
-      )}
-    </>
+      }
+    >
+      <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <title>{props.title}</title>
+        <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
+        <path d="M22 12a10 10 0 00-10-10" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </Show>
   )
 }
 
@@ -218,6 +219,14 @@ function EditButton(props: EditButtonProps): JSX.Element {
   )
 }
 
+function SyncSeparator(props: { readonly visible: boolean }): JSX.Element | null {
+  return (
+    <Show when={props.visible}>
+      <span class="text-slate-300">•</span>
+    </Show>
+  )
+}
+
 function ProcessEtaSummary(props: {
   readonly processEtaSecondaryVm: ShipmentDetailVM['processEtaSecondaryVm']
   readonly processEtaTitle: string
@@ -237,14 +246,14 @@ function ProcessEtaSummary(props: {
         <span data-testid="process-eta-coverage" class="tabular-nums text-slate-400">
           ({props.processEtaSecondaryVm.withEta}/{props.processEtaSecondaryVm.total})
         </span>
-        {props.processEtaSecondaryVm.incomplete ? (
+        <Show when={props.processEtaSecondaryVm.incomplete}>
           <span
             data-testid="process-eta-incomplete"
             class="rounded bg-slate-100/80 px-1 py-px text-[9px] font-medium text-slate-400"
           >
             {props.incomplete}
           </span>
-        ) : null}
+        </Show>
       </div>
     </Show>
   )
@@ -303,13 +312,13 @@ export function ShipmentHeader(props: Props): JSX.Element {
         <div class="flex items-center gap-2 min-w-0">
           <h1 class="truncate text-sm font-semibold text-slate-900 sm:text-base leading-tight">
             {t(keys.shipmentView.header)} {props.data.processRef}
-            {props.data.reference ? null : (
+            <Show when={!props.data.reference}>
               <InternalIdHint
                 message={t(keys.shipmentView.internalIdMessage)}
                 ctaLabel={t(keys.shipmentView.internalIdCTA)}
                 onOpenReference={() => props.onOpenEdit('reference')}
               />
-            )}
+            </Show>
           </h1>
           <span class="hidden text-[11px] text-slate-400 sm:inline-flex sm:items-center sm:gap-0.5">
             {props.data.origin}
@@ -335,17 +344,19 @@ export function ShipmentHeader(props: Props): JSX.Element {
               onTriggerRefresh={props.onTriggerRefresh}
               onUnknownCarrier={() => setShowUnknownCarrierDialog(true)}
             />
-            {props.isRefreshing && props.refreshRetry ? (
-              <span class="text-[10px] text-slate-500">
-                {t(keys.shipmentView.refreshRetry, {
-                  current: props.refreshRetry.current,
-                  total: props.refreshRetry.total,
-                })}
-              </span>
-            ) : null}
-            {!props.isRefreshing && props.refreshHint ? (
-              <span class="text-[10px] text-slate-500">{props.refreshHint}</span>
-            ) : null}
+            <Show when={props.isRefreshing ? props.refreshRetry : null}>
+              {(refreshRetry) => (
+                <span class="text-[10px] text-slate-500">
+                  {t(keys.shipmentView.refreshRetry, {
+                    current: refreshRetry().current,
+                    total: refreshRetry().total,
+                  })}
+                </span>
+              )}
+            </Show>
+            <Show when={props.isRefreshing ? null : props.refreshHint}>
+              {(refreshHint) => <span class="text-[10px] text-slate-500">{refreshHint()}</span>}
+            </Show>
 
             <UnknownCarrierDialog
               open={showUnknownCarrierDialog()}
@@ -379,7 +390,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
                 <span data-testid={`process-sync-item-${entry.containerNumber}`}>
                   {toSyncEntryLabel(entry)}
                 </span>
-                {index() < syncEntries().length - 1 ? <span class="text-slate-300">•</span> : null}
+                <SyncSeparator visible={index() < syncEntries().length - 1} />
               </>
             )}
           </For>
