@@ -317,7 +317,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <td class="px-3 py-3">
         <A
           href={`/shipments/${props.process.id}`}
-          class="text-[14px] font-semibold font-medium text-slate-900 hover:text-blue-600 hover:underline"
+          class="text-[14px] font-semibold text-slate-900 hover:text-blue-600 hover:underline"
         >
           {displayProcessRef(props.process)}
         </A>

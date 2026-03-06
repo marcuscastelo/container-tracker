@@ -8,8 +8,8 @@ function makeSource(overrides: Partial<ProcessListItemSource> = {}): ProcessList
   return {
     id: 'p-default',
     source: 'api',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
     containers: [],
     ...overrides,
   }
