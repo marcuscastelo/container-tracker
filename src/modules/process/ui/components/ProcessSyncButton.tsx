@@ -124,7 +124,7 @@ export function ProcessSyncButton(props: ProcessSyncButtonProps): JSX.Element {
     })
   })
 
-  const isBlocked = createMemo(() => isSubmitting() || props.status === 'syncing')
+  const isBlocked = createMemo(() => isSubmitting() || visualStatus() === 'syncing')
 
   const handleClick = async (): Promise<void> => {
     if (isBlocked()) {
@@ -153,7 +153,7 @@ export function ProcessSyncButton(props: ProcessSyncButtonProps): JSX.Element {
         void handleClick()
       }}
       disabled={isBlocked()}
-      aria-busy={isSubmitting()}
+      aria-busy={visualStatus() === 'syncing'}
       aria-label={title()}
       title={title()}
       class={toButtonClasses(visualStatus())}
