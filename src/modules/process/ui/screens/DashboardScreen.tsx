@@ -68,7 +68,57 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
-// eslint-disable-next-line max-lines-per-function
+function toPathWithSearch(pathname: string, searchParams: URLSearchParams): string {
+  const nextQuery = searchParams.toString()
+  return nextQuery ? `${pathname}?${nextQuery}` : pathname
+}
+
+function getCreateErrorMessage(error: string | ExistingProcessConflict | null): string {
+  if (typeof error === 'string') return error
+  return error?.message ?? ''
+}
+
+function getCreateErrorExisting(
+  error: string | ExistingProcessConflict | null,
+): ExistingProcessConflict | undefined {
+  if (typeof error === 'string') return undefined
+  return error ?? undefined
+}
+
+function hydrateDashboardQueryState(params: {
+  readonly currentSearch: string
+  readonly pathname: string
+  readonly navigate: ReturnType<typeof useNavigate>
+  readonly setSortSelection: (selection: DashboardSortSelection) => void
+  readonly setFilterSelection: (selection: DashboardFilterSelection) => void
+}): void {
+  const currentSearchParams = new URLSearchParams(params.currentSearch)
+  const hydratedSort = hydrateDashboardSortFromQueryAndStorage(
+    currentSearchParams,
+    readDashboardSortFromLocalStorage(),
+  )
+  const hydratedFilters = hydrateDashboardFiltersFromQueryAndStorage(
+    hydratedSort.searchParams,
+    readDashboardFiltersFromLocalStorage(),
+  )
+  const resolvedSortSelection = hydratedSort.sortSelection
+  const resolvedFilterSelection = hydratedFilters.filterSelection
+  const nextSearchParams = hydratedFilters.searchParams
+
+  params.setSortSelection(resolvedSortSelection)
+  params.setFilterSelection(resolvedFilterSelection)
+  writeDashboardSortToLocalStorage(resolvedSortSelection)
+  writeDashboardFiltersToLocalStorage(resolvedFilterSelection)
+
+  const nextPath = toPathWithSearch(params.pathname, nextSearchParams)
+  const currentPath = toPathWithSearch(params.pathname, currentSearchParams)
+  if (nextPath === currentPath) {
+    return
+  }
+
+  void params.navigate(nextPath, { replace: true })
+}
+
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys } = useTranslation()
   const location = useLocation()
@@ -120,32 +170,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   })
 
   onMount(() => {
-    const currentSearchParams = new URLSearchParams(location.search)
-    const hydratedSort = hydrateDashboardSortFromQueryAndStorage(
-      currentSearchParams,
-      readDashboardSortFromLocalStorage(),
-    )
-    const hydratedFilters = hydrateDashboardFiltersFromQueryAndStorage(
-      hydratedSort.searchParams,
-      readDashboardFiltersFromLocalStorage(),
-    )
-    const resolvedSortSelection = hydratedSort.sortSelection
-    const resolvedFilterSelection = hydratedFilters.filterSelection
-    const nextSearchParams = hydratedFilters.searchParams
-
-    setSortSelection(resolvedSortSelection)
-    setFilterSelection(resolvedFilterSelection)
-    writeDashboardSortToLocalStorage(resolvedSortSelection)
-    writeDashboardFiltersToLocalStorage(resolvedFilterSelection)
-
-    const currentQuery = currentSearchParams.toString()
-    const nextQuery = nextSearchParams.toString()
-    if (nextQuery === currentQuery) {
-      return
-    }
-
-    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
-    void navigate(nextPath, { replace: true })
+    hydrateDashboardQueryState({
+      currentSearch: location.search,
+      pathname: location.pathname,
+      navigate,
+      setSortSelection,
+      setFilterSelection,
+    })
   })
 
   const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
@@ -156,8 +187,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       new URLSearchParams(location.search),
       nextFilterSelection,
     )
-    const nextQuery = nextSearchParams.toString()
-    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+    const nextPath = toPathWithSearch(location.pathname, nextSearchParams)
 
     void navigate(nextPath, { replace: true })
   }
@@ -190,8 +220,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       new URLSearchParams(location.search),
       nextSelection,
     )
-    const nextQuery = nextSearchParams.toString()
-    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+    const nextPath = toPathWithSearch(location.pathname, nextSearchParams)
 
     void navigate(nextPath, { replace: true })
   }
@@ -234,18 +263,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     }
   }
 
-  const createErrorMessage = () => {
-    const value = createError()
-    if (typeof value === 'string') return value
-    return value?.message ?? ''
-  }
-
-  const createErrorExisting = () => {
-    const value = createError()
-    if (typeof value === 'string') return undefined
-    return value ?? undefined
-  }
-
   return (
     <div class="min-h-screen bg-slate-50/80">
       <AppHeader
@@ -270,8 +287,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
         <Show when={createError()}>
           <ExistingProcessError
-            message={createErrorMessage()}
-            existing={createErrorExisting()}
+            message={getCreateErrorMessage(createError())}
+            existing={getCreateErrorExisting(createError())}
             onAcknowledge={() => setCreateError(null)}
           />
         </Show>
