@@ -1,4 +1,5 @@
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import type { TrackingAlertAckSource } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Command to acknowledge a tracking alert.
@@ -6,6 +7,8 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 type AcknowledgeAlertCommand = {
   readonly alertId: string
   readonly ackedAt: string
+  readonly ackedBy: string | null
+  readonly ackedSource: TrackingAlertAckSource | null
 }
 
 /**
@@ -22,5 +25,8 @@ export async function acknowledgeAlert(
   deps: TrackingUseCasesDeps,
   cmd: AcknowledgeAlertCommand,
 ): Promise<AcknowledgeAlertResult> {
-  await deps.trackingAlertRepository.acknowledge(cmd.alertId, cmd.ackedAt)
+  await deps.trackingAlertRepository.acknowledge(cmd.alertId, cmd.ackedAt, {
+    ackedBy: cmd.ackedBy,
+    ackedSource: cmd.ackedSource,
+  })
 }

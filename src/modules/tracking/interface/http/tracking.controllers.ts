@@ -63,10 +63,13 @@ function createAlertsController(trackingUseCases: TrackingUseCases) {
         return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
       }
 
-      const { alert_id, action } = parsed.data
+      const { alert_id, action, acked_by, acked_source } = parsed.data
 
       if (action === 'acknowledge') {
-        await trackingUseCases.acknowledgeAlert(alert_id)
+        await trackingUseCases.acknowledgeAlert(alert_id, {
+          ackedBy: acked_by ?? null,
+          ackedSource: acked_source ?? null,
+        })
       } else {
         await trackingUseCases.unacknowledgeAlert(alert_id)
       }

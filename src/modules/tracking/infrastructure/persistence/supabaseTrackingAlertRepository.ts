@@ -166,10 +166,21 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     return readModel
   },
 
-  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+  async acknowledge(
+    alertId: string,
+    ackedAt: string,
+    metadata: {
+      readonly ackedBy: string | null
+      readonly ackedSource: 'dashboard' | 'process_view' | 'api' | null
+    },
+  ): Promise<void> {
     const result = await supabase
       .from(TABLE)
-      .update({ acked_at: ackedAt })
+      .update({
+        acked_at: ackedAt,
+        acked_by: metadata.ackedBy,
+        acked_source: metadata.ackedSource,
+      })
       .eq('id', alertId)
       .is('acked_at', null)
     unwrapSupabaseSingleOrNull(result, { operation: 'acknowledge', table: TABLE })
@@ -178,7 +189,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   async unacknowledge(alertId: string): Promise<void> {
     const result = await supabase
       .from(TABLE)
-      .update({ acked_at: null })
+      .update({ acked_at: null, acked_by: null, acked_source: null })
       .eq('id', alertId)
       .not('acked_at', 'is', 'null')
     unwrapSupabaseSingleOrNull(result, { operation: 'unacknowledge', table: TABLE })

@@ -1,5 +1,9 @@
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+  TrackingAlertAckSource,
+} from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Repository interface for TrackingAlert persistence.
@@ -26,7 +30,14 @@ export type TrackingAlertRepository = {
   listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]>
 
   /** Acknowledge an alert by id. */
-  acknowledge(alertId: string, ackedAt: string): Promise<void>
+  acknowledge(
+    alertId: string,
+    ackedAt: string,
+    metadata: {
+      readonly ackedBy: string | null
+      readonly ackedSource: TrackingAlertAckSource | null
+    },
+  ): Promise<void>
 
   /** Mark an acknowledged alert as active again by id. */
   unacknowledge(alertId: string): Promise<void>

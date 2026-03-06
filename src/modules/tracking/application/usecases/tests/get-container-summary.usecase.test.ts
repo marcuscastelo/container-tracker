@@ -221,6 +221,8 @@ describe('getContainerSummary', () => {
           retroactive: false,
           provider: null,
           acked_at: null,
+          acked_by: null,
+          acked_source: null,
         },
         {
           id: 'alert-acked',
@@ -236,6 +238,8 @@ describe('getContainerSummary', () => {
           retroactive: false,
           provider: null,
           acked_at: '2026-03-05T12:00:00.000Z',
+          acked_by: null,
+          acked_source: null,
         },
       ],
     )

@@ -28,6 +28,8 @@ export type TrackingAlertType =
   /** Data inconsistency detected */
   | 'DATA_INCONSISTENT'
 
+export type TrackingAlertAckSource = 'dashboard' | 'process_view' | 'api'
+
 export type TrackingAlert = {
   /** Primary key (UUID) */
   id: string
@@ -71,6 +73,12 @@ export type TrackingAlert = {
 
   /** When acknowledged by user (UTC ISO) */
   acked_at: string | null
+
+  /** Optional user identifier that acknowledged this alert */
+  acked_by: string | null
+
+  /** Optional source context where this alert was acknowledged */
+  acked_source: TrackingAlertAckSource | null
 }
 
 /**

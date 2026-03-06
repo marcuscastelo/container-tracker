@@ -47,6 +47,11 @@ export const ProcessResponseSchema = z.object({
 
 export const ProcessListResponseSchema = z.array(ProcessResponseSchema)
 
+export const ProcessesV2ResponseSchema = z.object({
+  generated_at: z.string(),
+  processes: ProcessListResponseSchema,
+})
+
 /**
  * Observation shape as returned in the API.
  * Maps directly from the tracking domain Observation.
@@ -168,6 +173,47 @@ export const SyncProcessResponseSchema = z.object({
   ok: z.literal(true),
   processId: z.string(),
   syncedContainers: z.number().int().nonnegative(),
+})
+
+const ProcessSyncVisibilitySchema = z.enum(['active', 'archived_in_flight'])
+const ProcessSyncStateSchema = z.enum(['idle', 'syncing', 'completed', 'failed'])
+
+export const ProcessSyncStateResponseSchema = z.object({
+  process_id: z.string(),
+  sync_status: ProcessSyncStateSchema,
+  started_at: z.string().nullable(),
+  finished_at: z.string().nullable(),
+  container_count: z.number().int().nonnegative(),
+  completed_containers: z.number().int().nonnegative(),
+  failed_containers: z.number().int().nonnegative(),
+  visibility: ProcessSyncVisibilitySchema,
+})
+
+export const ProcessesSyncStatusResponseSchema = z.object({
+  generated_at: z.string(),
+  processes: z.array(ProcessSyncStateResponseSchema),
+})
+
+export const ProcessRefreshRequestItemSchema = z.object({
+  container_number: z.string(),
+  sync_request_id: z.string().uuid(),
+  deduped: z.boolean(),
+})
+
+export const ProcessRefreshFailureItemSchema = z.object({
+  container_number: z.string(),
+  error: z.string(),
+})
+
+export const ProcessRefreshResponseSchema = z.object({
+  ok: z.literal(true),
+  processId: z.string(),
+  mode: z.enum(['process', 'container']),
+  requestedContainers: z.number().int().nonnegative(),
+  queuedContainers: z.number().int().nonnegative(),
+  syncRequestIds: z.array(z.string().uuid()),
+  requests: z.array(ProcessRefreshRequestItemSchema),
+  failures: z.array(ProcessRefreshFailureItemSchema),
 })
 
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>

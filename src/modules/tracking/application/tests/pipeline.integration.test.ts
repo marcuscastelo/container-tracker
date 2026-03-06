@@ -135,17 +135,29 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
     return []
   }
-  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+  async acknowledge(
+    alertId: string,
+    ackedAt: string,
+    metadata: {
+      readonly ackedBy: string | null
+      readonly ackedSource: 'dashboard' | 'process_view' | 'api' | null
+    },
+  ): Promise<void> {
     const alert = this.alerts.get(alertId)
     if (alert) {
-      this.alerts.set(alertId, { ...alert, acked_at: ackedAt })
+      this.alerts.set(alertId, {
+        ...alert,
+        acked_at: ackedAt,
+        acked_by: metadata.ackedBy,
+        acked_source: metadata.ackedSource,
+      })
     }
     return
   }
   async unacknowledge(alertId: string): Promise<void> {
     const alert = this.alerts.get(alertId)
     if (alert) {
-      this.alerts.set(alertId, { ...alert, acked_at: null })
+      this.alerts.set(alertId, { ...alert, acked_at: null, acked_by: null, acked_source: null })
     }
     return
   }

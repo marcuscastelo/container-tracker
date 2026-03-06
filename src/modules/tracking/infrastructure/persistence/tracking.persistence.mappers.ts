@@ -139,6 +139,22 @@ const ALERT_SEVERITY_MAP: Record<string, AlertSeverity> = {
   warning: 'warning',
   danger: 'danger',
 }
+
+type AlertAckSource = NonNullable<TrackingAlert['acked_source']>
+const ALERT_ACK_SOURCE_MAP: Record<string, AlertAckSource> = {
+  dashboard: 'dashboard',
+  process_view: 'process_view',
+  api: 'api',
+}
+function optionalAlertAckSource(value: unknown, field: string): AlertAckSource | null {
+  if (value === null || value === undefined) return null
+  const s = requireString(value, field)
+  const mapped = ALERT_ACK_SOURCE_MAP[s]
+  if (mapped === undefined) {
+    throw new Error(`tracking persistence mapper: ${field} is not a valid ack source: ${s}`)
+  }
+  return mapped
+}
 function requireAlertSeverity(value: unknown, field: string): AlertSeverity {
   const s = requireString(value, field)
   const mapped = ALERT_SEVERITY_MAP[s]
@@ -293,6 +309,8 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     retroactive: row.retroactive,
     provider: optionalProvider(row.provider, 'alert.provider'),
     acked_at: normalizeAlertIso(row.acked_at),
+    acked_by: row.acked_by ?? null,
+    acked_source: optionalAlertAckSource(row.acked_source, 'alert.acked_source'),
   }
 }
 
@@ -310,5 +328,7 @@ export function alertToInsertRow(alert: NewTrackingAlert): InsertTrackingAlertRo
     retroactive: alert.retroactive,
     provider: alert.provider,
     acked_at: alert.acked_at,
+    acked_by: alert.acked_by,
+    acked_source: alert.acked_source,
   }
 }

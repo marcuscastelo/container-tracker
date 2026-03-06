@@ -400,6 +400,8 @@ describe('deriveAlerts', () => {
           retroactive: false,
           provider: null,
           acked_at: null,
+          acked_by: null,
+          acked_source: null,
         },
       ]
       const alerts = deriveAlerts(timeline, 'DISCHARGED', existingAlerts)

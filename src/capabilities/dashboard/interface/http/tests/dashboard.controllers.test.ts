@@ -61,6 +61,7 @@ describe('dashboard controllers', () => {
     const body = DashboardOperationalSummaryResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
+    expect(typeof body.generated_at).toBe('string')
     expect(body.total_active_alerts).toBe(3)
     expect(body.by_severity).toEqual({
       danger: 1,

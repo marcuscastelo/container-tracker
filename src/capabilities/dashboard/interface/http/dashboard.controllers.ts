@@ -49,7 +49,9 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
   async function getOperationalSummary(): Promise<Response> {
     try {
       const result = await dashboardUseCases.getOperationalSummaryReadModel()
+      const generatedAt = new Date().toISOString()
       const response = {
+        generated_at: generatedAt,
         ...toDashboardGlobalAlertsResponse(result.globalAlerts),
         process_exceptions: toDashboardProcessExceptionsResponse(result.processes),
       }

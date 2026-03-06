@@ -16,6 +16,7 @@ const DashboardGlobalAlertsByCategoryResponseSchema = z.object({
 })
 
 const DashboardGlobalAlertsSummaryResponseSchema = z.object({
+  generated_at: z.string(),
   total_active_alerts: z.number(),
   by_severity: DashboardGlobalAlertsBySeverityResponseSchema,
   by_category: DashboardGlobalAlertsByCategoryResponseSchema,
