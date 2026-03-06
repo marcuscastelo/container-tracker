@@ -448,8 +448,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
         <tbody>
           <Show when={exceptionsGroup().length > 0}>
             <GroupHeaderRow
-              rowClass="bg-red-50/30"
-              labelClass="text-red-400"
+              rowClass="bg-red-50/50"
+              labelClass="text-red-500"
               label={t(keys.dashboard.table.groupHeader.exceptions)}
             />
             <For each={exceptionsGroup()}>
