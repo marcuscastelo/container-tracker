@@ -46,6 +46,8 @@ type UnknownCarrierDialogProps = {
 type RefreshButtonProps = {
   readonly isRefreshing: boolean
   readonly title: string
+  readonly label: string
+  readonly refreshingLabel: string
   readonly carrier: string | null | undefined
   readonly onTriggerRefresh: () => void
   readonly onUnknownCarrier: () => void
@@ -138,18 +140,19 @@ function RefreshButton(props: RefreshButtonProps): JSX.Element {
     props.onTriggerRefresh()
   }
 
-  const disabledClass = () => (props.isRefreshing ? 'opacity-60 pointer-events-none' : '')
-
   return (
     <button
       type="button"
       onClick={handleClick}
-      class={`rounded-md p-2 text-slate-500 hover:bg-slate-100 ${disabledClass()}`}
+      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 min-w-[110px] md:min-w-[120px] justify-center ${
+        props.isRefreshing ? 'opacity-80 pointer-events-none' : ''
+      }`}
       title={props.title}
       aria-busy={props.isRefreshing}
       disabled={props.isRefreshing}
     >
       <RefreshIcon spinning={props.isRefreshing} title={props.title} />
+      <span>{props.isRefreshing ? props.refreshingLabel : props.label}</span>
     </button>
   )
 }
@@ -237,10 +240,10 @@ function ProcessEtaSummary(props: {
     <Show when={props.processEtaSecondaryVm.visible}>
       <div
         data-testid="process-eta-summary"
-        class="inline-flex items-center gap-1 text-[10px] text-slate-400"
+        class="inline-flex items-center gap-1 text-micro text-slate-400"
       >
         <span class="font-medium">{props.processEtaTitle}:</span>
-        <span data-testid="process-eta-date" class="font-medium text-slate-500">
+        <span data-testid="process-eta-date" class="text-label font-semibold text-slate-600">
           {props.processEtaSecondaryVm.date ?? props.noEta}
         </span>
         <span data-testid="process-eta-coverage" class="tabular-nums text-slate-400">
@@ -320,7 +323,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
               />
             </Show>
           </h1>
-          <span class="hidden text-[11px] text-slate-400 sm:inline-flex sm:items-center sm:gap-0.5">
+          <span class="hidden text-label text-slate-400 sm:inline-flex sm:items-center sm:gap-0.5">
             {props.data.origin}
             <ArrowIcon />
             {props.data.destination}
@@ -332,7 +335,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
             variant={props.data.status}
             label={t(trackingStatusToLabelKey(keys, props.data.statusCode))}
           />
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span class="text-micro font-semibold uppercase tracking-wider text-slate-400">
             {props.data.carrier ?? '—'}
           </span>
 
@@ -341,12 +344,14 @@ export function ShipmentHeader(props: Props): JSX.Element {
               isRefreshing={props.isRefreshing}
               carrier={props.data.carrier}
               title={t(keys.shipmentView.actions.refresh)}
+              label={t(keys.shipmentView.actions.refresh)}
+              refreshingLabel={t(keys.shipmentView.actions.refreshing)}
               onTriggerRefresh={props.onTriggerRefresh}
               onUnknownCarrier={() => setShowUnknownCarrierDialog(true)}
             />
             <Show when={props.isRefreshing ? props.refreshRetry : null}>
               {(refreshRetry) => (
-                <span class="text-[10px] text-slate-500">
+                <span class="text-micro text-slate-500">
                   {t(keys.shipmentView.refreshRetry, {
                     current: refreshRetry().current,
                     total: refreshRetry().total,
@@ -355,7 +360,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
               )}
             </Show>
             <Show when={props.isRefreshing ? null : props.refreshHint}>
-              {(refreshHint) => <span class="text-[10px] text-slate-500">{refreshHint()}</span>}
+              {(refreshHint) => <span class="text-micro text-slate-500">{refreshHint()}</span>}
             </Show>
 
             <UnknownCarrierDialog
@@ -380,7 +385,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
       </div>
 
       <Show when={syncEntries().length > 0}>
-        <div class="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-slate-500">
+        <div class="mt-1 flex flex-wrap items-center gap-1 text-micro text-slate-500">
           <span data-testid="process-sync-prefix" class="font-medium text-slate-400">
             {syncHeaderPrefix()}
           </span>
@@ -405,7 +410,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
           noEta={t(keys.shipmentView.operational.header.noEta)}
           incomplete={t(keys.shipmentView.operational.header.incomplete)}
         />
-        <div class="inline-flex items-center gap-2 text-[10px] text-slate-400">
+        <div class="inline-flex items-center gap-2 text-micro text-slate-400">
           <span>
             <span class="font-medium">{t(keys.shipmentView.containers.title)}:</span>{' '}
             <span class="text-slate-500">{props.data.containers.length}</span>

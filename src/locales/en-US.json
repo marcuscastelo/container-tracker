@@ -211,6 +211,7 @@
     },
     "actions": {
       "refresh": "Refresh",
+      "refreshing": "Refreshing…",
       "edit": "Edit"
     },
     "containers": {
@@ -267,6 +268,7 @@
     },
     "alerts": {
       "title": "Alerts",
+      "sectionTitle": "Operational Alerts",
       "empty": "No alerts for this shipment.",
       "activeEmpty": "No active alerts for this shipment.",
       "category": {

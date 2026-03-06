@@ -48,7 +48,7 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
               <span class="tabular-nums text-sm font-medium text-slate-700">
                 {formatDateForLocale(expectedDateIso(), props.locale)}
               </span>
-              <span class="text-[10px] text-slate-500 leading-tight mt-0.5">
+              <span class="text-micro text-slate-500 leading-tight mt-0.5">
                 {props.expectedLabel}
               </span>
             </div>
@@ -58,7 +58,7 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
     >
       {(actualDateIso) => (
         <p
-          class="text-[10px] tabular-nums text-slate-500"
+          class="text-micro tabular-nums text-slate-500"
           title={props.toTooltip(actualDateIso() ?? undefined)}
         >
           <span class="sr-only">{props.actualLabel}</span>

@@ -103,7 +103,7 @@ export function TimelinePanel(props: Props): JSX.Element {
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-3 text-center text-[11px] text-slate-400">
+            <p class="py-3 text-center text-label text-slate-400">
               {t(keys.shipmentView.noEvents)}
             </p>
           }
@@ -133,7 +133,7 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
     <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
       {/* Container identity + status */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[11px] font-semibold tracking-wide text-slate-700">
+        <span class="text-label font-semibold tracking-wide text-slate-700">
           {props.container.number}
         </span>
         <StatusBadge
@@ -145,10 +145,10 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.currentVessel}>
         {(vessel) => (
           <div class="flex items-center gap-1">
-            <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
               {t(keys.shipmentView.timeline.vessel)}
             </span>
-            <span class="text-[10px] font-semibold text-slate-600">{vessel()}</span>
+            <span class="text-micro font-semibold text-slate-600">{vessel()}</span>
           </div>
         )}
       </Show>
@@ -156,10 +156,10 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.portsRoute}>
         {(route) => (
           <div class="flex items-center gap-1">
-            <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
               {t(keys.shipmentView.transshipment.title)}
             </span>
-            <span class="text-[10px] font-medium tabular-nums text-slate-500">{route()}</span>
+            <span class="text-micro font-medium tabular-nums text-slate-500">{route()}</span>
           </div>
         )}
       </Show>

@@ -711,7 +711,7 @@ function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
       <OperationalSummaryStrip data={props.data} alerts={props.activeAlerts} />
 
       <div class="grid gap-2 lg:grid-cols-3">
-        <div class="space-y-2 lg:col-span-2">
+        <div class="space-y-3 lg:col-span-2">
           {/* Keep parent overflow visible. Sticky breaks when ancestors use overflow hidden/auto/scroll. */}
           <div class="sticky top-0 z-50">
             <AlertsPanel
@@ -815,7 +815,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
       <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">
         <A
           href="/"
-          class="mb-1.5 inline-flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-700"
+          class="mb-1.5 inline-flex items-center gap-1 text-micro text-slate-400 hover:text-slate-700"
         >
           <ChevronLeftIcon />
           {t(keys.shipmentView.backToList)}
