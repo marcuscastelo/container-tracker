@@ -137,7 +137,7 @@ const noJsxTernaryRule = {
     schema: [],
     messages: {
       avoidJsxTernary:
-        'Não use ternário JSX para render condicional. Use <Show when={cond}>...</Show>.',
+        'Do not use JSX ternary for conditional rendering. Use <Show when={cond}>...</Show> instead.',
     },
   },
   create(context) {
