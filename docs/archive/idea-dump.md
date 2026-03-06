@@ -9,10 +9,12 @@ Plano futuro: deixar templates de email prontos para serem preenchidos para aler
 Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar identificar o armador, testando APIs em ordem de probabilidade (maersk, then hapag, etc) e caso o container seja encontrado em alguma delas, atualizar o processo com o armador identificado e os dados retornados. Risco: Processo com containers de 2 armadores diferentes, mas isso hoje é tratado como impossível. Revisar.
 No Status, em vez de "Discharged", "Loaded", etc. poderia ter "Discharged (3/7)", "Loaded (5/10)", etc. para dar uma ideia de quantos eventos ainda falta para o "Arrived at destination" acontecer, e dar uma ideia melhor do progresso do container, lembrando que no X/Y X é o ultimo ACTUAL e Y é o último EXPECTED e pode mudar. Talvez seja melhor criar outro campo na UI (progresso?) para permitir futuros filtros por status sem poluir com progresso meramente visual.
 Fazer efeitos de blur serem transicionados para nao ser abrupto (searchoverlay)
+Exibir barra de busca global na pagina processo tambem para facilitar a busca por outro processo sem precisar voltar para o dashboard. (talvez colocar na navbar?)
 Animacoes ao abrir e fechar dialogs, trocar de pagina, etc.
 Paginacao na pagina dashboard e outras listas de processo etc.
 Permitir colar multiplos containers e ja adiciona varios.
 Permitir colar um markdown ou csv ou formato especifico human-friendly com todos os campos do processo para criar fácil. (Alinhar com a forma que o trello é usado hoje)
+Agents fazem heartbeat periodico e UI exibe erro "Nenhum agente capaz de sincronizar o processo/container está online" se nao tiver ninguem e a queue de sync falhar.
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
