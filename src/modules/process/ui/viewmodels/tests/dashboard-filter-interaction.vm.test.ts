@@ -49,12 +49,14 @@ function createFilters(input?: {
   readonly statuses?: DashboardFilterSelection['statuses']
   readonly importerId?: DashboardFilterSelection['importerId']
   readonly importerName?: DashboardFilterSelection['importerName']
+  readonly severity?: DashboardFilterSelection['severity']
 }): DashboardFilterSelection {
   return {
     providers: input?.providers ?? DASHBOARD_DEFAULT_FILTER_SELECTION.providers,
     statuses: input?.statuses ?? DASHBOARD_DEFAULT_FILTER_SELECTION.statuses,
     importerId: input?.importerId ?? DASHBOARD_DEFAULT_FILTER_SELECTION.importerId,
     importerName: input?.importerName ?? DASHBOARD_DEFAULT_FILTER_SELECTION.importerName,
+    severity: input?.severity ?? DASHBOARD_DEFAULT_FILTER_SELECTION.severity,
   }
 }
 
@@ -192,12 +194,14 @@ describe('dashboard filter interactions', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-9',
       importerName: 'Empresa Delta',
+      severity: null,
     })
     expect(clearedSelection).toEqual({
       providers: ['MAERSK'],
       statuses: ['IN_TRANSIT'],
       importerId: null,
       importerName: null,
+      severity: null,
     })
   })
 })

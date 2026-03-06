@@ -74,6 +74,13 @@
         "searchPlaceholder": "Search importer",
         "noMatches": "No importers found"
       },
+      "severity": {
+        "label": "Severity",
+        "all": "All severities",
+        "danger": "Critical",
+        "warning": "Attention",
+        "none": "No alert"
+      },
       "clearAll": "Clear all",
       "active": "Active filters",
       "removeChip": "Remove {{filter}}"

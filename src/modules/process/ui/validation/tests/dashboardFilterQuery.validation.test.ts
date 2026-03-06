@@ -28,6 +28,7 @@ describe('dashboard filter query parsing contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     })
   })
 
@@ -64,6 +65,7 @@ describe('dashboard filter query parsing contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-7',
       importerName: null,
+      severity: null,
     })
   })
 
@@ -91,6 +93,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -99,6 +102,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: [],
       importerId: null,
       importerName: null,
+      severity: null,
     })
   })
 
@@ -108,6 +112,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     }
 
     const result = resolveDashboardFilterSelectionWithStorageFallback(
@@ -141,6 +146,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -158,6 +164,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -166,6 +173,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     })
     expect(result.searchParams.get('sortField')).toBe('createdAt')
     expect(result.searchParams.get('sortDir')).toBe('desc')
@@ -188,6 +196,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -196,6 +205,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: ['DELIVERED'],
       importerId: null,
       importerName: 'Importadora Sul',
+      severity: null,
     })
     expect(result.searchParams.getAll('provider')).toEqual(['HAPAG'])
     expect(result.searchParams.getAll('status')).toEqual(['DELIVERED'])
@@ -218,6 +228,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -237,6 +248,7 @@ describe('dashboard filter query serialization contract', () => {
       statuses: ['IN_TRANSIT', 'UNKNOWN', 'IN_TRANSIT'],
       importerId: '  importer-42  ',
       importerName: '   ',
+      severity: null,
     })
 
     expect(result.toString()).toBe(
@@ -260,6 +272,7 @@ describe('dashboard filter query serialization contract', () => {
         statuses: ['LOADED'],
         importerId: 'importer-42',
         importerName: 'Empresa',
+        severity: null,
       },
     )
 

@@ -8,9 +8,9 @@ import {
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
-import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/DashboardProcessFiltersBar'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
+import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
 import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
@@ -46,12 +46,15 @@ import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
   type DashboardImporterFilterValue,
+  type DashboardSeverityFilterValue,
   deriveDashboardImporterFilterOptions,
   deriveDashboardProviderFilterOptions,
+  deriveDashboardSeverityFilterOptions,
   deriveDashboardStatusFilterOptions,
   filterDashboardProcesses,
   hasActiveDashboardFilters,
   setDashboardImporterFilter,
+  setDashboardSeverityFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
@@ -147,6 +150,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const statusFilterOptions = createMemo(() =>
     deriveDashboardStatusFilterOptions(processes() ?? []),
   )
+  const severityFilterOptions = createMemo(() =>
+    deriveDashboardSeverityFilterOptions(processes() ?? []),
+  )
   const filteredProcesses = createMemo(() =>
     filterDashboardProcesses(processes() ?? [], filterSelection()),
   )
@@ -237,6 +243,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     persistDashboardFilters(setDashboardImporterFilter(filterSelection(), importer))
   }
 
+  const handleSeverityFilterSelect = (severity: DashboardSeverityFilterValue | null) => {
+    persistDashboardFilters(setDashboardSeverityFilter(filterSelection(), severity))
+  }
+
   const handleClearAllFilters = () => {
     persistDashboardFilters(DASHBOARD_DEFAULT_FILTER_SELECTION)
   }
@@ -298,17 +308,20 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           loading={globalAlerts.loading}
           hasError={Boolean(globalAlerts.error)}
         />
-        <DashboardProcessFiltersBar
+        <UnifiedDashboardFilters
           providers={providerFilterOptions()}
           statuses={statusFilterOptions()}
           importers={importerFilterOptions()}
+          severities={severityFilterOptions()}
           selectedProviders={filterSelection().providers}
           selectedStatuses={filterSelection().statuses}
           selectedImporterId={filterSelection().importerId}
           selectedImporterName={filterSelection().importerName}
+          selectedSeverity={filterSelection().severity}
           onProviderToggle={handleProviderFilterToggle}
           onStatusToggle={handleStatusFilterToggle}
           onImporterSelect={handleImporterFilterSelect}
+          onSeveritySelect={handleSeverityFilterSelect}
           onClearAllFilters={handleClearAllFilters}
         />
         <DashboardProcessTable
