@@ -40,6 +40,7 @@ Mappers duplicados, F1, UI, etc. api collections deprecated? Avaliar se ja resol
 Aparentemente o check se o container já existe é naive, nao checa o erro de fato e assume que qualquer erro é por container existente. Melhorar isso, se ainda estiver assim.
 CreateProcessDialog exige reimplementacao de logica de submit, duplicacao para permitir edit, etc. em todos os lugares que usam. Refatorar para um hook ou componente separado.
 A pasta tools está ficando bloated com scripts, prompts, e o nosso agent, que é software real. Precisamos repensar como estruturar isso. Talvez um submodule para agent e common AI prompts/skills. Mas tools/ é genérico demais e pode ficar bagunçado. Pensar em uma estrutura melhor para organizar isso.
+Processes v2 API. Remover a v1 e renomear a v2? Nao sei se é ideal ficar com um monte de versoes.
 
 # Erros VSCode
 [INFO 1:48:07 AM] [v1.44.1] Vitest extension is activated because Vitest is installed or there is a Vite/Vitest config file in the workspace.
