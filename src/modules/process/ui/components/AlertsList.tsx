@@ -94,8 +94,8 @@ function AlertCategoryChip(props: {
 }): JSX.Element {
   return (
     <span
-      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-medium leading-none ${
-        props.mode === 'archived' ? 'bg-slate-200 text-slate-500' : 'bg-slate-100 text-slate-500'
+      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-normal leading-none ${
+        props.mode === 'archived' ? 'bg-slate-200 text-slate-400' : 'bg-slate-100 text-slate-400'
       }`}
     >
       <span aria-hidden="true">{toAlertCategoryIcon(props.type)}</span>
