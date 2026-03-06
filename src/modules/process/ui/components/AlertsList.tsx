@@ -123,7 +123,7 @@ export function AlertsList(props: {
           const actionDateIso = () => alert.ackedAtIso ?? alert.triggeredAtIso
           return (
             <li
-              class={`list-none rounded border px-2 py-1.5 transition-all duration-200 ease-out overflow-hidden ${toAlertCardClasses(
+              class={`list-none rounded border px-2 py-1.5 transition-all duration-200 ease-out overflow-hidden hover:shadow-sm ${toAlertCardClasses(
                 alert.severity,
                 props.mode,
               )} ${
