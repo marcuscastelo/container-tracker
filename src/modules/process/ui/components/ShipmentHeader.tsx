@@ -243,7 +243,7 @@ function ProcessEtaSummary(props: {
         class="inline-flex items-center gap-1 text-micro text-slate-400"
       >
         <span class="font-medium">{props.processEtaTitle}:</span>
-        <span data-testid="process-eta-date" class="text-label font-semibold text-slate-600">
+        <span data-testid="process-eta-date" class="text-label font-bold text-slate-800">
           {props.processEtaSecondaryVm.date ?? props.noEta}
         </span>
         <span data-testid="process-eta-coverage" class="tabular-nums text-slate-400">
