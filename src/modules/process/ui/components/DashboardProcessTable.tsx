@@ -406,7 +406,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 
   const tableHeader = (
     <thead>
-      <tr class="border-b border-slate-200 text-left text-caption font-semibold uppercase tracking-wider text-slate-400">
+      <tr class="border-b border-slate-200 text-left text-caption font-medium uppercase tracking-wider text-slate-400/80">
         <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantSeverity)}</th>
         <th class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
           <SortHeaderButton
