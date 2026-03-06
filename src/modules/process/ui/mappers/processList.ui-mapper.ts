@@ -30,6 +30,7 @@ export type ProcessListItemSource = {
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
   has_transshipment?: boolean
   last_event_at?: string | null
+  redestination_number?: string | null
   last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
   last_sync_at?: string | null
 }
@@ -99,6 +100,7 @@ export function toProcessSummaryVMs(
       carrier: toOptionalNonBlankString(process.carrier),
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,
+      redestinationNumber: process.redestination_number ?? null,
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
       syncStatus: toProcessSyncStatus(process.last_sync_status),
