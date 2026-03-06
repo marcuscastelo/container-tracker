@@ -1,6 +1,10 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+  TrackingAlertAckSource,
+} from '~/modules/tracking/domain/model/trackingAlert'
 import {
   alertRowToDomain,
   alertToInsertRow,
@@ -166,10 +170,21 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     return readModel
   },
 
-  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+  async acknowledge(
+    alertId: string,
+    ackedAt: string,
+    metadata: {
+      readonly ackedBy: string | null
+      readonly ackedSource: TrackingAlertAckSource | null
+    },
+  ): Promise<void> {
     const result = await supabase
       .from(TABLE)
-      .update({ acked_at: ackedAt })
+      .update({
+        acked_at: ackedAt,
+        acked_by: metadata.ackedBy,
+        acked_source: metadata.ackedSource,
+      })
       .eq('id', alertId)
       .is('acked_at', null)
     unwrapSupabaseSingleOrNull(result, { operation: 'acknowledge', table: TABLE })
@@ -178,7 +193,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   async unacknowledge(alertId: string): Promise<void> {
     const result = await supabase
       .from(TABLE)
-      .update({ acked_at: null })
+      .update({ acked_at: null, acked_by: null, acked_source: null })
       .eq('id', alertId)
       .not('acked_at', 'is', 'null')
     unwrapSupabaseSingleOrNull(result, { operation: 'unacknowledge', table: TABLE })

@@ -15,6 +15,8 @@ import {
   type CreateProcessUseCasesDeps,
   createProcessUseCases,
 } from '~/modules/process/application/process.usecases'
+import type { ListProcessSyncStatesDeps } from '~/modules/process/application/usecases/list-process-sync-states.usecase'
+import type { RefreshProcessDeps } from '~/modules/process/application/usecases/refresh-process.usecase'
 import type { SyncAllProcessesDeps } from '~/modules/process/application/usecases/sync-all-processes.usecase'
 import type { SyncProcessContainersDeps } from '~/modules/process/application/usecases/sync-process-containers.usecase'
 import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
@@ -28,6 +30,13 @@ const ActiveProcessIdRowSchema = z.object({
 })
 
 const ActiveProcessIdRowsSchema = z.array(ActiveProcessIdRowSchema)
+
+const ProcessSyncCandidateRowSchema = z.object({
+  id: z.string(),
+  archived_at: z.string().nullable(),
+})
+
+const ProcessSyncCandidateRowsSchema = z.array(ProcessSyncCandidateRowSchema)
 
 const EnqueueSyncRequestRowSchema = z.object({
   id: z.string().uuid(),
@@ -46,6 +55,15 @@ const SyncStatusRowSchema = z.object({
 })
 
 const SyncStatusRowsSchema = z.array(SyncStatusRowSchema)
+
+const SyncStatusByContainerRowSchema = z.object({
+  ref_value: z.string(),
+  status: z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED']),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+const SyncStatusByContainerRowsSchema = z.array(SyncStatusByContainerRowSchema)
 
 async function sleep(delayMs: number): Promise<void> {
   await new Promise<void>((resolve) => {
@@ -172,6 +190,112 @@ async function getSyncRequestStatuses(command: {
   }
 }
 
+async function listProcessSyncCandidates(): Promise<
+  readonly { readonly processId: string; readonly archivedAt: string | null }[]
+> {
+  const result = await supabaseServer
+    .from('processes')
+    .select('id,archived_at')
+    .is('deleted_at', null)
+
+  const data = unwrapSupabaseResultOrThrow(result, {
+    operation: 'list_process_sync_candidates',
+    table: 'processes',
+  })
+
+  const rows = ProcessSyncCandidateRowsSchema.parse(data)
+  return rows.map((row) => ({
+    processId: row.id,
+    archivedAt: row.archived_at,
+  }))
+}
+
+async function listSyncRequestsByContainerNumbers(command: {
+  readonly containerNumbers: readonly string[]
+}): Promise<
+  readonly {
+    readonly containerNumber: string
+    readonly status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'
+    readonly createdAt: string
+    readonly updatedAt: string
+  }[]
+> {
+  const normalizedContainerNumbers = Array.from(
+    new Set(
+      command.containerNumbers
+        .map((containerNumber) => containerNumber.toUpperCase().trim())
+        .filter((containerNumber) => containerNumber.length > 0),
+    ),
+  )
+
+  if (normalizedContainerNumbers.length === 0) {
+    return []
+  }
+
+  const result = await supabaseServer
+    .from('sync_requests')
+    .select('ref_value,status,created_at,updated_at')
+    .eq('tenant_id', serverEnv.SYNC_DEFAULT_TENANT_ID)
+    .eq('ref_type', 'container')
+    .in('ref_value', normalizedContainerNumbers)
+
+  const data = unwrapSupabaseResultOrThrow(result, {
+    operation: 'list_sync_requests_by_container_numbers',
+    table: 'sync_requests',
+  })
+
+  const rows = SyncStatusByContainerRowsSchema.parse(data)
+  return rows.map((row) => ({
+    containerNumber: row.ref_value.toUpperCase().trim(),
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }))
+}
+
+async function listContainersByProcessIdForSync(command: { readonly processId: string }): Promise<{
+  readonly containers: readonly {
+    readonly containerNumber: string
+    readonly carrierCode: string | null
+  }[]
+}> {
+  const result = await containerDepsForProcess.listByProcessId({
+    processId: command.processId,
+  })
+
+  return {
+    containers: result.containers.map((container) => ({
+      containerNumber: String(container.containerNumber),
+      carrierCode: container.carrierCode ? String(container.carrierCode) : null,
+    })),
+  }
+}
+
+async function listContainersByProcessIdsForSync(command: {
+  readonly processIds: readonly string[]
+}): Promise<{
+  readonly containersByProcessId: ReadonlyMap<
+    string,
+    readonly {
+      readonly containerNumber: string
+    }[]
+  >
+}> {
+  const result = await containerDepsForProcess.listByProcessIds(command)
+
+  const mapped = new Map<string, readonly { readonly containerNumber: string }[]>()
+  for (const [processId, containers] of result.containersByProcessId.entries()) {
+    mapped.set(
+      processId,
+      containers.map((container) => ({
+        containerNumber: String(container.containerNumber),
+      })),
+    )
+  }
+
+  return { containersByProcessId: mapped }
+}
+
 const syncAllProcessesDeps: SyncAllProcessesDeps = {
   async listActiveProcessIds() {
     const result = await supabaseServer
@@ -201,22 +325,29 @@ const syncProcessContainersDeps: SyncProcessContainersDeps = {
   async fetchProcessById(command) {
     return supabaseProcessRepository.fetchById(command.processId)
   },
-  async listContainersByProcessId(command) {
-    const result = await containerDepsForProcess.listByProcessId({
-      processId: command.processId,
-    })
-
-    return {
-      containers: result.containers.map((container) => ({
-        containerNumber: String(container.containerNumber),
-        carrierCode: container.carrierCode ? String(container.carrierCode) : null,
-      })),
-    }
+  listContainersByProcessId(command) {
+    return listContainersByProcessIdForSync(command)
   },
   enqueueContainerSyncRequest,
   getSyncRequestStatuses,
   nowMs: Date.now,
   sleep,
+}
+
+const listProcessSyncStatesDeps: ListProcessSyncStatesDeps = {
+  listProcessSyncCandidates,
+  listContainersByProcessIds: listContainersByProcessIdsForSync,
+  listSyncRequestsByContainerNumbers,
+}
+
+const refreshProcessDeps: RefreshProcessDeps = {
+  async fetchProcessById(command) {
+    return supabaseProcessRepository.fetchById(command.processId)
+  },
+  listContainersByProcessId(command) {
+    return listContainersByProcessIdForSync(command)
+  },
+  enqueueContainerSyncRequest,
 }
 
 const deps: CreateProcessUseCasesDeps = {
@@ -225,6 +356,8 @@ const deps: CreateProcessUseCasesDeps = {
   trackingUseCases,
   syncAllProcessesDeps,
   syncProcessContainersDeps,
+  listProcessSyncStatesDeps,
+  refreshProcessDeps,
 }
 
 export const processUseCases = createProcessUseCases(deps)

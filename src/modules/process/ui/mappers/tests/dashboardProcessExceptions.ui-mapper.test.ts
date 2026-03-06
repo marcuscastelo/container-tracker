@@ -4,6 +4,7 @@ import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/das
 describe('toDashboardProcessExceptionVMs', () => {
   it('maps process exceptions while preserving backend order', () => {
     const result = toDashboardProcessExceptionVMs({
+      generated_at: '2026-03-06T12:00:00.000Z',
       total_active_alerts: 3,
       by_severity: {
         danger: 1,

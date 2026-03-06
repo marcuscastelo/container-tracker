@@ -40,3 +40,20 @@ export const CreateProcessInputSchema = z.object({
     .min(1, 'At least one container is required'),
 })
 export type CreateProcessInput = z.infer<typeof CreateProcessInputSchema>
+
+export const ProcessRefreshRequestSchema = z
+  .object({
+    mode: z.enum(['process', 'container']),
+    container_number: z.string().min(1).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === 'container' && !value.container_number) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['container_number'],
+        message: 'container_number is required when mode=container',
+      })
+    }
+  })
+
+export type ProcessRefreshRequest = z.infer<typeof ProcessRefreshRequestSchema>

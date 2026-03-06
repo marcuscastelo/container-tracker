@@ -7,7 +7,11 @@ import type { SnapshotRepository } from '~/modules/tracking/application/ports/tr
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+  TrackingAlertAckSource,
+} from '~/modules/tracking/domain/model/trackingAlert'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 
 // Note: repositories now throw on infra errors and return direct types.
@@ -135,17 +139,29 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
     return []
   }
-  async acknowledge(alertId: string, ackedAt: string): Promise<void> {
+  async acknowledge(
+    alertId: string,
+    ackedAt: string,
+    metadata: {
+      readonly ackedBy: string | null
+      readonly ackedSource: TrackingAlertAckSource | null
+    },
+  ): Promise<void> {
     const alert = this.alerts.get(alertId)
     if (alert) {
-      this.alerts.set(alertId, { ...alert, acked_at: ackedAt })
+      this.alerts.set(alertId, {
+        ...alert,
+        acked_at: ackedAt,
+        acked_by: metadata.ackedBy,
+        acked_source: metadata.ackedSource,
+      })
     }
     return
   }
   async unacknowledge(alertId: string): Promise<void> {
     const alert = this.alerts.get(alertId)
     if (alert) {
-      this.alerts.set(alertId, { ...alert, acked_at: null })
+      this.alerts.set(alertId, { ...alert, acked_at: null, acked_by: null, acked_source: null })
     }
     return
   }

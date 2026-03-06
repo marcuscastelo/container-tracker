@@ -36,6 +36,7 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import { unacknowledgeAlert } from '~/modules/tracking/application/usecases/unacknowledge-alert.usecase'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { TrackingAlertAckSource } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.
@@ -175,8 +176,19 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     /**
      * Acknowledge a tracking alert.
      */
-    async acknowledgeAlert(alertId: string): Promise<void> {
-      await acknowledgeAlert(deps, { alertId, ackedAt: new Date().toISOString() })
+    async acknowledgeAlert(
+      alertId: string,
+      metadata?: {
+        readonly ackedBy: string | null
+        readonly ackedSource: TrackingAlertAckSource | null
+      },
+    ): Promise<void> {
+      await acknowledgeAlert(deps, {
+        alertId,
+        ackedAt: new Date().toISOString(),
+        ackedBy: metadata?.ackedBy ?? null,
+        ackedSource: metadata?.ackedSource ?? null,
+      })
     },
 
     /**

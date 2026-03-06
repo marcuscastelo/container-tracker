@@ -29,6 +29,7 @@ REGRAS GERAIS DE EXECUÇÃO
 6. NÃO finalize sem build verde.
 7. Se houver chave de assinatura disponível, use commit assinado.
 8. Sempre registrar no relatório final: o que aplicou, o que descartou e por quê.
+9. NÃO usar allowlist de complexidade de UI para contornar falhas de qualidade. **Nunca** editar `docs/plans/ui-complexity-allowlist.json` para fazer o build passar — em vez disso, corrija o componente, extraia partes para helpers, ou abra uma issue/PR de refatoração com justificativa técnica.
 
 PASSO A PASSO DETALHADO
 
@@ -102,13 +103,14 @@ PASSO 6 — Testes obrigatórios do que mudou
 - Exemplo: `pnpm exec vitest run <arquivo1.test.ts> <arquivo2.test.ts>`
 
 PASSO 7 — Garantir verde
+Nota: não use allowlist para ocultar regressões de complexidade; siga a regra 9 acima.
 - Rode no mínimo:
   - `pnpm run type-check`
   - `pnpm run test`
   - `pnpm run build`
   - `pnpm run flint`
   - `pnpm run ui:complexity:ci`
-- Se algo falhar, corrija antes de commit.
+Se algo falhar (incluindo `ui:complexity:ci`), NÃO adicione/altere entries em `docs/plans/ui-complexity-allowlist.json` para contornar — corrija o código ou documente e abra issue/PR de refatoração.
 
 PASSO 8 — Revisão final do diff
 - Verifique:

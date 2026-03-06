@@ -98,7 +98,7 @@ function ContainerSelectorItem(props: {
       >
         {/* Row 1: Container number + status badge */}
         <div class="flex items-center gap-1">
-          <span class="font-semibold tracking-wide text-[11px] leading-tight">
+          <span class="font-semibold tracking-wide text-label leading-tight">
             {props.container.number}
           </span>
           <StatusBadge variant={props.container.status} label={props.statusLabel} />

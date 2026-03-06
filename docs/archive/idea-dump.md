@@ -2,6 +2,9 @@
 Criando novo processo: adiciona um container ja existente, edita para um nao existente. Adiciona outro container ja existente, REMOVE com a lixeira, readiciona so que nao existente. Resultado: soft-lock mensagem "container ja existente" e nao da para resolver pq o campo foi deletado.
 Nao da pra remover BL do processo no update (será que nao da pra remover nada? será que é qualquer tipo de update? testar)
 Bugs visuais nos botoes sync no dashboard, precisa de refresh para ver atualizando
+Nao da pra selecionar container acima e abaixo do botao copy, onClick so pega na esquerda
+No dashboard, os alertas sempre ficam, ATENCAO (agora) na SEVERIDADE DOMINANTE, mesmo quando o alerta ja faz 8h ou mais
+Quando todos os alertas de transbordo ja foram reconhecidos, um sync causa os mesmos alertas nascerem novamente (outra instance, mesmo transhipment), era para ele perceber que ja avisou esse transbordo e nao criar outro alerta, e criar outro apenas se houver um novo transbordo (novo navio que nunca foi avisado PARA AQUELE CONTAINER (alertas de transbordo sao por container+navio, entao se aquele navio ja apareceu em alerta do processo, mas nao do container, ainda assim cria alerta. Tambem se atentar para casos raros como Navio A -> Navio B -> Navio A -> Navio B. Nao filtrar só por container+navio, mas talvez por voyage id ou algo parecido))
 
 # Ideas
 Assim que o processo for criado e ele redirecionado, o usuario poderia ver algo como "ultima edicao há 1s, 2s, 3s etc" para ter o feedback imediato de que a criacao foi bem sucedida. As vezes o usuario nao tem certeza se trocou de processo, principalmente se o processo novo for parecido com o anterior, e isso daria um feedback visual imediato.
@@ -9,10 +12,15 @@ Plano futuro: deixar templates de email prontos para serem preenchidos para aler
 Se armador desconhecido, ao tentar o refresh, usar heuristicas para tentar identificar o armador, testando APIs em ordem de probabilidade (maersk, then hapag, etc) e caso o container seja encontrado em alguma delas, atualizar o processo com o armador identificado e os dados retornados. Risco: Processo com containers de 2 armadores diferentes, mas isso hoje é tratado como impossível. Revisar.
 No Status, em vez de "Discharged", "Loaded", etc. poderia ter "Discharged (3/7)", "Loaded (5/10)", etc. para dar uma ideia de quantos eventos ainda falta para o "Arrived at destination" acontecer, e dar uma ideia melhor do progresso do container, lembrando que no X/Y X é o ultimo ACTUAL e Y é o último EXPECTED e pode mudar. Talvez seja melhor criar outro campo na UI (progresso?) para permitir futuros filtros por status sem poluir com progresso meramente visual.
 Fazer efeitos de blur serem transicionados para nao ser abrupto (searchoverlay)
+Exibir barra de busca global na pagina processo tambem para facilitar a busca por outro processo sem precisar voltar para o dashboard. (talvez colocar na navbar?)
 Animacoes ao abrir e fechar dialogs, trocar de pagina, etc.
 Paginacao na pagina dashboard e outras listas de processo etc.
 Permitir colar multiplos containers e ja adiciona varios.
 Permitir colar um markdown ou csv ou formato especifico human-friendly com todos os campos do processo para criar fácil. (Alinhar com a forma que o trello é usado hoje)
+Agents fazem heartbeat periodico e UI exibe erro "Nenhum agente capaz de sincronizar o processo/container está online" se nao tiver ninguem e a queue de sync falhar.
+Em todos os lugares que tiver "N Alertas", adicionar uma interacao de clique que abre um overlay com os processos/containers que tem esses alertas, para facilitar o acesso a eles.
+Permitir que o usuario escolha quais colunas quer ver no dashboard, e salvar isso para a proxima vez. (ex: nao quero ver a coluna de ETA, ou quero ver a coluna de booking number, etc.)
+Permitir que o usuario copie valores da tabela no dashboard, como process number, redestinacao, booking number, etc. com um clique, e dar um feedback visual de que o valor foi copiado (ex: tooltip "Copiado!" ou algo do tipo).
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
@@ -29,9 +37,10 @@ Tratar casos que o container é removido do processo, seja por erro ou porque o 
 
 Atualmente, o sistema nao lida bem com promocao de observations EXPECTED para ACTUAL, o que pode acontecer quando um evento esperado acontece de fato. Atualmente o sistema duplica o observation, criando um novo ACTUAL e mantendo o EXPECTED, o que pode gerar confusao e poluir a timeline. Melhorar isso para que quando um evento esperado acontece, ele seja promovido a ACTUAL sem criar um novo registro, ou seja, atualizando o registro existente de EXPECTED para ACTUAL. Isso vai manter a timeline mais limpa e evitar confusao entre eventos duplicados.
 
+Os alertas de transbordo devem especificar o container, navio original e navio novo para facilitar a identificacao do problema e a comunicacao com o cliente, terminal, etc. Se possivel, adicionar no alerta o numero de redestinacao do processo no momento que o transbordo é identificado, para facilitar o acompanhamento do processo e a comunicacao com o cliente.
 
-# Pedidos do cliente (alguns precisam de mais detalhes)
-Adicionar campo mercadoria (description of goods) no processo.
+Os alertas devem usar i18n parametrizado em vez de hardcoded.
+Varios textos ainda nao usam i18n ("Vessel change", etc)
 
 # Debito tecnico
 CopyButton e ShipmentView duplicado clipboard utils
@@ -40,6 +49,7 @@ Mappers duplicados, F1, UI, etc. api collections deprecated? Avaliar se ja resol
 Aparentemente o check se o container já existe é naive, nao checa o erro de fato e assume que qualquer erro é por container existente. Melhorar isso, se ainda estiver assim.
 CreateProcessDialog exige reimplementacao de logica de submit, duplicacao para permitir edit, etc. em todos os lugares que usam. Refatorar para um hook ou componente separado.
 A pasta tools está ficando bloated com scripts, prompts, e o nosso agent, que é software real. Precisamos repensar como estruturar isso. Talvez um submodule para agent e common AI prompts/skills. Mas tools/ é genérico demais e pode ficar bagunçado. Pensar em uma estrutura melhor para organizar isso.
+Processes v2 API. Remover a v1 e renomear a v2? Nao sei se é ideal ficar com um monte de versoes.
 
 # Erros VSCode
 [INFO 1:48:07 AM] [v1.44.1] Vitest extension is activated because Vitest is installed or there is a Vite/Vitest config file in the workspace.

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --font-size-micro: 10px;
+  --font-size-label: 11px;
+  --font-size-caption: 12px;
+  --font-size-body-sm: 13px;
+  --font-size-body: 14px;
+}
+
 /* https://base-ui-docs-solid.vercel.app/solid/overview/quick-start */
 /* BaseUI Portals isolation (to be on top) */
 .root {

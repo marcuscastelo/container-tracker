@@ -84,7 +84,7 @@ function SortDirectionIcon(props: {
   return (
     <Show when={props.direction !== null}>
       <span
-        class="inline-flex h-4 w-4 items-center justify-center text-[11px] leading-none text-slate-600"
+        class="inline-flex h-4 w-4 items-center justify-center text-label leading-none text-slate-600"
         aria-hidden="true"
       >
         {arrow()}
@@ -176,8 +176,8 @@ const CATEGORY_ICON: Record<AlertCategoryChip, string> = {
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-red-200 bg-red-50 text-red-700'
-  if (severity === 'warning') return 'border-yellow-200 bg-yellow-50 text-yellow-700'
+  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
+  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
   if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
   if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
   return 'border-slate-200 bg-slate-50 text-slate-500'
@@ -213,14 +213,14 @@ function AlertChipList(props: {
     <div class="flex items-center gap-1">
       <For each={props.chips}>
         {(chip) => (
-          <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-500">
+          <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium leading-none text-slate-500">
             <span aria-hidden="true">{CATEGORY_ICON[chip]}</span>
             {chip}
           </span>
         )}
       </For>
       <Show when={props.overflowCount > 0}>
-        <span class="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-400">
+        <span class="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium leading-none text-slate-400">
           {props.overflowLabel}
         </span>
       </Show>
@@ -284,7 +284,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
 
   return (
     <tr
-      class={`group border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-gray-50 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      class={`group border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-gray-50 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())} [&>td]:align-middle`}
       onClick={handleRowClick}
       tabIndex={0}
       onKeyDown={(e) => {
@@ -298,41 +298,37 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           fallback={
             <div class="flex items-center gap-1">
               <CheckIcon />
-              <span class="text-[11px] text-slate-400">{severityLabel()}</span>
+              <span class="text-label text-slate-400">{severityLabel()}</span>
             </div>
           }
         >
           <div class="flex flex-col items-start gap-0.5">
             <span
-              class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none ${toSeverityBadgeClasses(
+              class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-bold uppercase tracking-wide leading-none ${toSeverityBadgeClasses(
                 dominantSeverity(),
               )}`}
             >
               {severityLabel()}
             </span>
-            <span class="text-[10px] font-medium tabular-nums text-slate-500">{ageLabel()}</span>
+            <span class="text-micro tabular-nums text-slate-400">{ageLabel()}</span>
           </div>
         </Show>
       </td>
       <td class="px-3 py-3">
         <A
           href={`/shipments/${props.process.id}`}
-          class="text-[14px] font-semibold text-slate-900 hover:text-blue-600 hover:underline"
+          class="text-body font-bold text-blue-700 hover:text-blue-800 hover:underline"
         >
           {displayProcessRef(props.process)}
         </A>
       </td>
       <td class="px-3 py-3">
-        <div class="flex flex-col leading-tight">
-          <div class="flex items-center gap-1.5 text-[14px] text-slate-700">
-            <span class="max-w-[120px] truncate">{route().origin}</span>
-            <ArrowIcon />
-            <span class="max-w-[120px] truncate font-medium">{route().destination}</span>
-          </div>
+        <div class="flex items-center gap-1.5 text-body text-slate-700 leading-tight">
+          <span class="max-w-[120px] truncate">{route().origin}</span>
+          <ArrowIcon />
+          <span class="max-w-[120px] truncate font-medium">{route().destination}</span>
           <Show when={props.process.redestinationNumber}>
-            <span class="text-[12px] text-slate-400">
-              {t(keys.dashboard.table.routeRedestination)}: {props.process.redestinationNumber}
-            </span>
+            <span class="text-label text-slate-400">({props.process.redestinationNumber})</span>
           </Show>
         </div>
       </td>
@@ -343,8 +339,8 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         />
       </td>
       <td class="px-3 py-3 text-right">
-        <Show when={props.process.eta} fallback={<span class="text-[14px] text-slate-300">—</span>}>
-          <span class="text-[14px] font-bold tabular-nums text-slate-600">
+        <Show when={props.process.eta} fallback={<span class="text-body text-slate-300">—</span>}>
+          <span class="text-sm font-bold tabular-nums text-slate-900">
             {displayEta(props.process.eta)}
           </span>
         </Show>
@@ -360,7 +356,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       {/* Dominant Alert — emphasized */}
       <td class="px-3 py-3">
         <div class="flex items-center gap-1.5">
-          <span class="text-[14px] font-medium text-slate-900 truncate max-w-[180px]">
+          <span class="text-body font-medium text-slate-900 truncate max-w-[180px]">
             {dominantAlertLabel()}
           </span>
           <Show when={visibleChips().length > 0}>
@@ -373,7 +369,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </div>
       </td>
       <td class="px-3 py-3 text-center">
-        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-[11px] font-bold tabular-nums text-slate-700">
+        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-label font-bold tabular-nums text-slate-700">
           {props.process.alertsCount}
         </span>
       </td>
@@ -389,7 +385,7 @@ function GroupHeaderRow(props: {
   return (
     <tr class={`border-b border-slate-100 ${props.rowClass}`}>
       <td colspan="8" class="px-3 py-1.5">
-        <span class={`text-[10px] font-bold uppercase tracking-wider ${props.labelClass}`}>
+        <span class={`text-micro font-bold uppercase tracking-wider ${props.labelClass}`}>
           {props.label}
         </span>
       </td>
@@ -410,7 +406,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 
   const tableHeader = (
     <thead>
-      <tr class="border-b border-slate-200 text-left text-[12px] font-semibold uppercase tracking-wider text-slate-400">
+      <tr class="border-b border-slate-200 text-left text-caption font-medium uppercase tracking-wider text-slate-400/80">
         <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantSeverity)}</th>
         <th class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
           <SortHeaderButton
@@ -452,8 +448,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
         <tbody>
           <Show when={exceptionsGroup().length > 0}>
             <GroupHeaderRow
-              rowClass="bg-red-50/30"
-              labelClass="text-red-400"
+              rowClass="bg-red-50/50"
+              labelClass="text-red-500"
               label={t(keys.dashboard.table.groupHeader.exceptions)}
             />
             <For each={exceptionsGroup()}>
@@ -508,7 +504,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const content = () => {
     if (props.loading) {
       return (
-        <div class="px-4 py-8 text-center text-[14px] text-slate-400">
+        <div class="px-4 py-8 text-center text-body text-slate-400">
           {t(keys.dashboard.loading)}
         </div>
       )
@@ -516,7 +512,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
     if (props.hasError) {
       return (
-        <div class="px-4 py-8 text-center text-[14px] text-red-500">
+        <div class="px-4 py-8 text-center text-body text-red-500">
           {t(keys.dashboard.error.loadProcesses)}
         </div>
       )
@@ -557,7 +553,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
             <h3 class="mb-1 text-sm font-semibold text-slate-700">
               {t(keys.dashboard.empty.noExceptions.title)}
             </h3>
-            <p class="text-[12px] text-slate-400">
+            <p class="text-caption text-slate-400">
               {t(keys.dashboard.empty.noExceptions.description)}
             </p>
           </div>
@@ -577,12 +573,12 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     return (
       <div>
         <div class="flex items-center gap-2 px-4 py-3">
-          <div class="text-[14px] font-semibold text-slate-700">
+          <div class="text-body font-semibold text-slate-700">
             {t(keys.dashboard.table.filters.title)}
           </div>
           <div class="flex gap-2">
             <button
-              class={`px-3 py-1.5 text-[14px] rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
+              class={`px-3 py-1.5 text-body rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
               type="button"
               onClick={() => setSelectedSeverity('all')}
               aria-pressed={selectedSeverity() === 'all'}
@@ -590,7 +586,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
               {t(keys.dashboard.table.filters.all)}
             </button>
             <button
-              class={`px-3 py-1.5 text-[14px] rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
+              class={`px-3 py-1.5 text-body rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
               type="button"
               onClick={() => setSelectedSeverity('danger')}
               aria-pressed={selectedSeverity() === 'danger'}
@@ -598,7 +594,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
               {t(keys.dashboard.table.filters.danger)}
             </button>
             <button
-              class={`px-3 py-1.5 text-[14px] rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
+              class={`px-3 py-1.5 text-body rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
               type="button"
               onClick={() => setSelectedSeverity('warning')}
               aria-pressed={selectedSeverity() === 'warning'}
@@ -606,7 +602,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
               {t(keys.dashboard.table.filters.warning)}
             </button>
           </div>
-          <div class="ml-auto text-[14px] text-slate-500">
+          <div class="ml-auto text-body text-slate-500">
             {filteredBySeverity().length} / {props.processes.length}
           </div>
         </div>
@@ -622,9 +618,9 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   return (
-    <section class="overflow-hidden rounded border border-slate-200 bg-white">
-      <header class="border-b border-slate-200 px-4 py-3">
-        <h2 class="text-[14px] font-semibold text-slate-900">{t(keys.dashboard.table.title)}</h2>
+    <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <header class="border-b border-slate-200 bg-slate-50/60 px-4 py-3">
+        <h2 class="text-sm font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
     </section>

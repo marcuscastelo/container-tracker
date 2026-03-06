@@ -15,7 +15,7 @@ export function ContainersPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   return (
     <Panel title={`${t(keys.shipmentView.containers.title)} (${props.containers.length})`}>
-      <p class="px-2.5 pt-1 text-[10px] text-slate-400">
+      <p class="px-2.5 pt-1 text-micro text-slate-400">
         {t(keys.shipmentView.containers.selectionHint)}
       </p>
       <ContainerSelector

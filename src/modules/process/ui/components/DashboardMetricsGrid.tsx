@@ -67,7 +67,7 @@ function computeSeveritySubtitle(key: string): string | undefined {
 
 function CategorySummaryChip(props: { value: number; label: string }): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium text-slate-600">
       <span class="font-bold tabular-nums">{props.value}</span>
       {props.label}
     </span>
@@ -222,7 +222,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   const renderBody = (currentState: GridState): JSX.Element => {
     if (currentState === 'loading') {
       return (
-        <div class="px-4 py-8 text-center text-[14px] text-slate-400">
+        <div class="px-4 py-8 text-center text-body text-slate-400">
           {t(keys.dashboard.alertIndicators.loading)}
         </div>
       )
@@ -230,7 +230,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
     if (currentState === 'error') {
       return (
-        <div class="px-4 py-8 text-center text-[14px] text-red-500">
+        <div class="px-4 py-8 text-center text-body text-red-500">
           {t(keys.dashboard.alertIndicators.error)}
         </div>
       )
@@ -239,14 +239,14 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     const summary = safeSummary()
 
     return (
-      <div class="px-4 py-3">
+      <div class={currentState === 'empty' ? 'px-4 py-2' : 'px-4 py-3'}>
         {/* Phase 10: Compact Triage Summary Bar */}
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1.5">
             <span class="text-[22px] font-bold tabular-nums text-slate-900">
               {summary.totalActiveAlerts}
             </span>
-            <span class="text-[12px] font-medium text-slate-500">
+            <span class="text-caption font-medium text-slate-500">
               {t(keys.dashboard.alertIndicators.total)}
             </span>
           </div>
@@ -255,10 +255,10 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
             {(item) => (
               <div class="flex items-center gap-1">
                 <span class={`h-2 w-2 rounded-full ${item.dotClass}`} />
-                <span class={`text-[14px] font-bold tabular-nums ${item.valueClass}`}>
+                <span class={`text-body font-bold tabular-nums ${item.valueClass}`}>
                   {item.value}
                 </span>
-                <span class={`text-[12px] font-medium ${item.labelClass}`}>{item.label}</span>
+                <span class={`text-caption font-medium ${item.labelClass}`}>{item.label}</span>
               </div>
             )}
           </For>
@@ -272,7 +272,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
         </div>
 
         <Show when={currentState === 'empty'}>
-          <p class="mt-2 text-center text-[13px] text-slate-500">
+          <p class="mt-2 text-center text-body-sm text-slate-500">
             {t(keys.dashboard.alertIndicators.empty)}
           </p>
         </Show>
@@ -281,9 +281,11 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   }
 
   return (
-    <section class="mb-4 overflow-hidden rounded border border-slate-200 bg-white">
+    <section
+      class={`overflow-hidden rounded border border-slate-200 bg-white ${state() === 'empty' ? 'mb-2' : 'mb-3'}`}
+    >
       <header class="border-b border-slate-200 px-4 py-3">
-        <h2 class="text-[14px] font-semibold text-slate-900">
+        <h2 class="text-body font-semibold text-slate-900">
           {t(keys.dashboard.alertIndicators.title)}
         </h2>
       </header>

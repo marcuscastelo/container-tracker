@@ -5,11 +5,16 @@ import {
   toContainerWithTrackingResponse,
   toInsertProcessRecord,
   toProcessDetailResponse,
+  toProcessRefreshResponse,
   toProcessResponse,
   toProcessResponseWithSummary,
+  toProcessSyncStateResponse,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
-import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
+import {
+  CreateProcessInputSchema,
+  ProcessRefreshRequestSchema,
+} from '~/modules/process/interface/http/process.schemas'
 import { createTrackingOperationalSummaryFallback } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
@@ -20,6 +25,9 @@ import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
+  ProcessesSyncStatusResponseSchema,
+  ProcessesV2ResponseSchema,
+  ProcessRefreshResponseSchema,
   ProcessResponseSchema,
   SyncAllProcessesResponseSchema,
   SyncProcessResponseSchema,
@@ -40,6 +48,8 @@ type ProcessControllerDeps = {
     | 'deleteProcess'
     | 'syncAllProcesses'
     | 'syncProcessContainers'
+    | 'listProcessSyncStates'
+    | 'refreshProcess'
   >
   readonly trackingUseCases: Pick<
     TrackingUseCases,
@@ -125,6 +135,51 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       return jsonResponse(response, 200)
     } catch (err) {
       console.error('GET /api/processes error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // GET /api/processes-v2 — list all processes in an envelope with generated timestamp
+  // -----------------------------------------------------------------------
+  async function listProcessesV2(): Promise<Response> {
+    try {
+      const result = await processUseCases.listProcessesWithOperationalSummary()
+      const response = {
+        generated_at: new Date().toISOString(),
+        processes: result.processes.map((p) =>
+          toProcessResponseWithSummary(p.pwc, p.summary, p.sync),
+        ),
+      }
+      return jsonResponse(response, 200, ProcessesV2ResponseSchema)
+    } catch (err) {
+      console.error('GET /api/processes-v2 error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // GET /api/processes/sync-status — process sync observability read model
+  // -----------------------------------------------------------------------
+  async function listProcessesSyncStatus(): Promise<Response> {
+    try {
+      const result = await processUseCases.listProcessSyncStates()
+      const response = {
+        generated_at: result.generatedAt,
+        processes: result.processes.map(toProcessSyncStateResponse),
+      }
+      const validated = ProcessesSyncStatusResponseSchema.parse(response)
+      return new Response(JSON.stringify(validated), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      })
+    } catch (err) {
+      console.error('GET /api/processes/sync-status error:', err)
       return mapErrorToResponse(err)
     }
   }
@@ -394,13 +449,51 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // POST /api/processes/[id]/refresh — enqueue async refresh for process/container mode
+  // -----------------------------------------------------------------------
+  async function refreshProcessById({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    const processId = params.id?.trim() ?? ''
+    if (processId.length === 0) {
+      return jsonResponse({ error: 'Process ID is required' }, 400)
+    }
+
+    try {
+      const rawBody = await request.json().catch(() => ({}))
+      const parsed = ProcessRefreshRequestSchema.safeParse(rawBody)
+      if (!parsed.success) {
+        return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
+      }
+
+      const result = await processUseCases.refreshProcess({
+        processId,
+        mode: parsed.data.mode,
+        containerNumber: parsed.data.container_number,
+      })
+
+      return jsonResponse(toProcessRefreshResponse(result), 202, ProcessRefreshResponseSchema)
+    } catch (err) {
+      console.error(`POST /api/processes/${processId}/refresh error:`, err)
+      return mapErrorToResponse(err)
+    }
+  }
+
   return {
     listProcesses,
+    listProcessesV2,
+    listProcessesSyncStatus,
     createProcess,
     getProcessById,
     updateProcessById,
     deleteProcessById,
     syncAllProcesses,
     syncProcessById,
+    refreshProcessById,
   }
 }

@@ -414,6 +414,8 @@ export type Database = {
       tracking_alerts: {
         Row: {
           acked_at: string | null
+          acked_by: string | null
+          acked_source: string | null
           alert_fingerprint: string | null
           category: string
           container_id: string
@@ -430,6 +432,8 @@ export type Database = {
         }
         Insert: {
           acked_at?: string | null
+          acked_by?: string | null
+          acked_source?: string | null
           alert_fingerprint?: string | null
           category: string
           container_id?: string
@@ -446,6 +450,8 @@ export type Database = {
         }
         Update: {
           acked_at?: string | null
+          acked_by?: string | null
+          acked_source?: string | null
           alert_fingerprint?: string | null
           category?: string
           container_id?: string

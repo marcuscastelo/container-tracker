@@ -4,6 +4,7 @@ import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboar
 describe('toDashboardGlobalAlertsVM', () => {
   it('maps dashboard global alert response to view model', () => {
     const result = toDashboardGlobalAlertsVM({
+      generated_at: '2026-03-06T12:00:00.000Z',
       total_active_alerts: 12,
       by_severity: {
         danger: 3,

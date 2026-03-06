@@ -222,6 +222,7 @@
     },
     "actions": {
       "refresh": "Atualizar",
+      "refreshing": "Atualizando…",
       "edit": "Editar"
     },
     "containers": {
@@ -278,6 +279,7 @@
     },
     "alerts": {
       "title": "Alertas",
+      "sectionTitle": "Alertas Operacionais",
       "empty": "Nenhum alerta para este embarque.",
       "activeEmpty": "Nenhum alerta ativo para este embarque.",
       "category": {

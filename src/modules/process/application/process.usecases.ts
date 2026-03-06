@@ -7,12 +7,20 @@ import { createCreateProcessUseCase } from '~/modules/process/application/usecas
 import { createDeleteProcessUseCase } from '~/modules/process/application/usecases/delete-process.usecase'
 import { createFindProcessByIdUseCase } from '~/modules/process/application/usecases/find-process-by-id.usecase'
 import { createFindProcessByIdWithContainersUseCase } from '~/modules/process/application/usecases/find-process-by-id-with-containers.usecase'
+import {
+  createListProcessSyncStatesUseCase,
+  type ListProcessSyncStatesDeps,
+} from '~/modules/process/application/usecases/list-process-sync-states.usecase'
 import { createListProcessesUseCase } from '~/modules/process/application/usecases/list-processes.usecase'
 import { createListProcessesWithContainersUseCase } from '~/modules/process/application/usecases/list-processes-with-containers.usecase'
 import {
   createListProcessesWithOperationalSummaryUseCase,
   type ListProcessesWithOperationalSummaryDeps,
 } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
+import {
+  createRefreshProcessUseCase,
+  type RefreshProcessDeps,
+} from '~/modules/process/application/usecases/refresh-process.usecase'
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import {
@@ -31,6 +39,8 @@ export type CreateProcessUseCasesDeps = {
   trackingUseCases: ListProcessesWithOperationalSummaryDeps['trackingUseCases']
   syncAllProcessesDeps: SyncAllProcessesDeps
   syncProcessContainersDeps: SyncProcessContainersDeps
+  listProcessSyncStatesDeps: ListProcessSyncStatesDeps
+  refreshProcessDeps: RefreshProcessDeps
 }
 
 /**
@@ -79,6 +89,8 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
   })
   const syncAllProcesses = createSyncAllProcessesUseCase(deps.syncAllProcessesDeps)
   const syncProcessContainers = createSyncProcessContainersUseCase(deps.syncProcessContainersDeps)
+  const listProcessSyncStates = createListProcessSyncStatesUseCase(deps.listProcessSyncStatesDeps)
+  const refreshProcess = createRefreshProcessUseCase(deps.refreshProcessDeps)
 
   return {
     listProcesses,
@@ -93,6 +105,8 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     searchByText,
     syncAllProcesses,
     syncProcessContainers,
+    listProcessSyncStates,
+    refreshProcess,
   }
 }
 

@@ -13,6 +13,9 @@ import type { GetContainerSummaryResult } from '~/modules/tracking/application/u
 import type { ContainerSyncDTO } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import {
   ProcessDetailResponseSchema,
+  ProcessesSyncStatusResponseSchema,
+  ProcessesV2ResponseSchema,
+  ProcessRefreshResponseSchema,
   SyncAllProcessesResponseSchema,
   SyncProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
@@ -37,6 +40,38 @@ type SyncAllProcessesMock = () => Promise<{
 type SyncProcessContainersMock = (command: { readonly processId: string }) => Promise<{
   readonly processId: string
   readonly syncedContainers: number
+}>
+
+type ListProcessSyncStatesMock = () => Promise<{
+  readonly generatedAt: string
+  readonly processes: readonly {
+    readonly processId: string
+    readonly syncStatus: 'idle' | 'syncing' | 'completed' | 'failed'
+    readonly startedAt: string | null
+    readonly finishedAt: string | null
+    readonly containerCount: number
+    readonly completedContainers: number
+    readonly failedContainers: number
+    readonly visibility: 'active' | 'archived_in_flight'
+  }[]
+}>
+
+type RefreshProcessMock = (command: {
+  readonly processId: string
+  readonly mode: 'process' | 'container'
+  readonly containerNumber?: string
+}) => Promise<{
+  readonly processId: string
+  readonly mode: 'process' | 'container'
+  readonly requestedContainers: number
+  readonly queuedContainers: number
+  readonly syncRequestIds: readonly string[]
+  readonly requests: readonly {
+    readonly containerNumber: string
+    readonly syncRequestId: string
+    readonly deduped: boolean
+  }[]
+  readonly failures: readonly { readonly containerNumber: string; readonly error: string }[]
 }>
 
 type ContainerSummaryStatus = GetContainerSummaryResult['status']
@@ -175,6 +210,25 @@ function createControllersWithSyncMock(
     processId: command.processId,
     syncedContainers: 2,
   })),
+  listProcessSyncStates: ListProcessSyncStatesMock = vi.fn(async () => ({
+    generatedAt: '2026-03-06T12:00:00.000Z',
+    processes: [],
+  })),
+  refreshProcess: RefreshProcessMock = vi.fn(async (command) => ({
+    processId: command.processId,
+    mode: command.mode,
+    requestedContainers: 1,
+    queuedContainers: 1,
+    syncRequestIds: ['ac8c52bf-0e1d-49db-9441-5586f86f0e31'],
+    requests: [
+      {
+        containerNumber: 'MSCU1234567',
+        syncRequestId: 'ac8c52bf-0e1d-49db-9441-5586f86f0e31',
+        deduped: false,
+      },
+    ],
+    failures: [],
+  })),
 ) {
   const { process, processWithContainers } = createProcessWithContainers(destination)
 
@@ -194,6 +248,8 @@ function createControllersWithSyncMock(
       deleteProcess: vi.fn(async () => ({ deleted: true as const })),
       syncAllProcesses,
       syncProcessContainers,
+      listProcessSyncStates,
+      refreshProcess,
     },
     trackingUseCases: {
       getContainerSummary,
@@ -547,5 +603,147 @@ describe('process controllers', () => {
 
     expect(firstResponse.status).toBe(200)
     expect(syncProcessContainersMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns /api/processes-v2 envelope with generated_at and unchanged process items', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+
+    const controllers = createControllersWithSyncMock(
+      'Santos',
+      getContainerSummaryMock,
+      vi.fn<GetContainersSyncMetadataMock>(async () => []),
+    )
+
+    const response = await controllers.listProcessesV2()
+    const body = ProcessesV2ResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(typeof body.generated_at).toBe('string')
+    expect(Array.isArray(body.processes)).toBe(true)
+  })
+
+  it('returns process sync-status envelope with no-store cache headers', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const listProcessSyncStates = vi.fn<ListProcessSyncStatesMock>(async () => ({
+      generatedAt: '2026-03-06T12:00:00.000Z',
+      processes: [
+        {
+          processId: 'process-1',
+          syncStatus: 'syncing',
+          startedAt: '2026-03-06T11:00:00.000Z',
+          finishedAt: null,
+          containerCount: 2,
+          completedContainers: 1,
+          failedContainers: 0,
+          visibility: 'active',
+        },
+      ],
+    }))
+
+    const controllers = createControllersWithSyncMock(
+      'Santos',
+      getContainerSummaryMock,
+      vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      vi.fn<SyncAllProcessesMock>(async () => ({
+        syncedProcesses: 1,
+        syncedContainers: 2,
+      })),
+      vi.fn<SyncProcessContainersMock>(async (command) => ({
+        processId: command.processId,
+        syncedContainers: 2,
+      })),
+      listProcessSyncStates,
+    )
+
+    const response = await controllers.listProcessesSyncStatus()
+    const body = ProcessesSyncStatusResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.generated_at).toBe('2026-03-06T12:00:00.000Z')
+    expect(response.headers.get('Cache-Control')).toContain('no-store')
+    expect(response.headers.get('Pragma')).toBe('no-cache')
+    expect(response.headers.get('Expires')).toBe('0')
+  })
+
+  it('returns 202 for process refresh with queue ids and failure details', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const refreshProcess = vi.fn<RefreshProcessMock>(async () => ({
+      processId: 'process-1',
+      mode: 'process',
+      requestedContainers: 2,
+      queuedContainers: 1,
+      syncRequestIds: ['ac8c52bf-0e1d-49db-9441-5586f86f0e31'],
+      requests: [
+        {
+          containerNumber: 'MSCU1234567',
+          syncRequestId: 'ac8c52bf-0e1d-49db-9441-5586f86f0e31',
+          deduped: false,
+        },
+      ],
+      failures: [
+        { containerNumber: 'MSCU7654321', error: 'unsupported_sync_provider_for_container' },
+      ],
+    }))
+
+    const controllers = createControllersWithSyncMock(
+      'Santos',
+      getContainerSummaryMock,
+      vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      vi.fn<SyncAllProcessesMock>(async () => ({
+        syncedProcesses: 1,
+        syncedContainers: 2,
+      })),
+      vi.fn<SyncProcessContainersMock>(async (command) => ({
+        processId: command.processId,
+        syncedContainers: 2,
+      })),
+      vi.fn<ListProcessSyncStatesMock>(async () => ({
+        generatedAt: '2026-03-06T12:00:00.000Z',
+        processes: [],
+      })),
+      refreshProcess,
+    )
+
+    const request = new Request('http://localhost/api/processes/process-1/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ mode: 'process' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await controllers.refreshProcessById({
+      params: { id: 'process-1' },
+      request,
+    })
+    const body = ProcessRefreshResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(202)
+    expect(body.processId).toBe('process-1')
+    expect(body.syncRequestIds).toEqual(['ac8c52bf-0e1d-49db-9441-5586f86f0e31'])
+    expect(body.failures).toEqual([
+      {
+        container_number: 'MSCU7654321',
+        error: 'unsupported_sync_provider_for_container',
+      },
+    ])
+    expect(refreshProcess).toHaveBeenCalledWith({
+      processId: 'process-1',
+      mode: 'process',
+      containerNumber: undefined,
+    })
   })
 })

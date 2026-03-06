@@ -47,10 +47,10 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
   const latestAlertTs = () => findLatestAlertTimestamp(props.alerts)
 
   return (
-    <section class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-1.5">
+    <section class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-1.5">
       {/* Status */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+        <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.status)}
         </span>
         <StatusBadge
@@ -61,48 +61,48 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
 
       {/* Carrier */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+        <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.carrier)}
         </span>
-        <span class="text-[11px] font-semibold uppercase text-slate-700">
+        <span class="text-label font-semibold uppercase text-slate-700">
           {props.data.carrier ?? t(keys.shipmentView.summaryStrip.unknown)}
         </span>
       </div>
 
       {/* ETA */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+        <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.eta)}
         </span>
-        <span class="text-[11px] font-semibold tabular-nums text-slate-700">
+        <span class="text-label font-bold tabular-nums text-slate-900">
           {props.data.eta ?? t(keys.shipmentView.summaryStrip.unknown)}
         </span>
       </div>
 
       {/* Containers */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+        <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.containers)}
         </span>
-        <span class="text-[11px] font-bold tabular-nums text-slate-700">
+        <span class="text-label font-bold tabular-nums text-slate-700">
           {props.data.containers.length}
         </span>
       </div>
 
       {/* Alerts */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+        <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.alerts)}
         </span>
         <Show
           when={alertCount() > 0}
           fallback={
-            <span class="text-[11px] text-slate-400">
+            <span class="text-label text-slate-400">
               {t(keys.shipmentView.summaryStrip.noAlerts)}
             </span>
           }
         >
-          <span class="inline-flex items-center rounded bg-red-50 px-1.5 py-px text-[11px] font-bold tabular-nums text-red-700">
+          <span class="inline-flex items-center rounded bg-red-50 px-1.5 py-px text-label font-bold tabular-nums text-red-700">
             {alertCount()}
           </span>
         </Show>
@@ -110,10 +110,10 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
 
       {/* Last Update */}
       <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+        <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.lastUpdate)}
         </span>
-        <span class="text-[11px] tabular-nums text-slate-500">
+        <span class="text-label font-medium tabular-nums text-slate-500">
           {formatAge(latestAlertTs(), t, keys)}
         </span>
       </div>
