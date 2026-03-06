@@ -115,7 +115,7 @@ export function AlertsList(props: {
   const { t, keys } = useTranslation()
 
   return (
-    <div class="flex flex-col gap-1">
+    <div class="flex flex-col gap-1.5">
       <For each={props.alerts}>
         {(alert) => {
           const isBusy = () => props.busyAlertIds.has(alert.id)
