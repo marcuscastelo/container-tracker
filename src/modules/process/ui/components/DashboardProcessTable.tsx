@@ -618,8 +618,8 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   return (
-    <section class="overflow-hidden rounded border border-slate-200 bg-white">
-      <header class="border-b border-slate-200 px-4 py-3">
+    <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <header class="border-b border-slate-200 bg-slate-50/60 px-4 py-3">
         <h2 class="text-body font-semibold text-slate-900">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
