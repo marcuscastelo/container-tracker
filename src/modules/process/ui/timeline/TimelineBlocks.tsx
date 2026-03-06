@@ -220,8 +220,8 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () =>
     props.variant === 'voyage'
-      ? 'rounded border border-slate-200 bg-slate-50/40 mb-1.5'
-      : 'rounded border border-slate-100 bg-white mb-1.5'
+      ? 'rounded border border-slate-200/60 bg-slate-50/40 mb-1.5'
+      : 'rounded border border-slate-100/80 bg-white mb-1.5'
 
   return <div class={baseClass()}>{props.children}</div>
 }
