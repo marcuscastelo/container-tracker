@@ -36,7 +36,7 @@ export function AlertsPanel(props: Props): JSX.Element {
                 d="M12 9v3m0 3h.01m-7.732 4h15.464c1.308 0 2.126-1.417 1.472-2.55L13.732 4.45c-.654-1.133-2.29-1.133-2.944 0L2.806 16.45c-.654 1.133.164 2.55 1.472 2.55z"
               />
             </svg>
-            <span class="text-body-sm font-semibold text-slate-700">
+            <span class="text-sm font-bold text-slate-800">
               {t(keys.shipmentView.alerts.sectionTitle)}
             </span>
           </div>
