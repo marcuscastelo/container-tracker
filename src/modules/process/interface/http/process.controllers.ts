@@ -21,6 +21,8 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
   ProcessResponseSchema,
+  SyncAllProcessesResponseSchema,
+  SyncProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 
 // ---------------------------------------------------------------------------
@@ -36,12 +38,17 @@ type ProcessControllerDeps = {
     | 'updateProcess'
     | 'findProcessById'
     | 'deleteProcess'
+    | 'syncAllProcesses'
+    | 'syncProcessContainers'
   >
   readonly trackingUseCases: Pick<
     TrackingUseCases,
     'getContainerSummary' | 'getContainersSyncMetadata'
   >
 }
+
+let isSyncAllProcessesRunning = false
+const syncingProcessIds = new Set<string>()
 
 function normalizeStructuredLocationCode(value: string): string | null {
   const normalized = value.trim().toUpperCase()
@@ -112,7 +119,9 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   async function listProcesses(): Promise<Response> {
     try {
       const result = await processUseCases.listProcessesWithOperationalSummary()
-      const response = result.processes.map((p) => toProcessResponseWithSummary(p.pwc, p.summary))
+      const response = result.processes.map((p) =>
+        toProcessResponseWithSummary(p.pwc, p.summary, p.sync),
+      )
       return jsonResponse(response, 200)
     } catch (err) {
       console.error('GET /api/processes error:', err)
@@ -318,11 +327,80 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // POST /api/processes/sync — run global tracking sync for active processes
+  // -----------------------------------------------------------------------
+  async function syncAllProcesses(): Promise<Response> {
+    if (isSyncAllProcessesRunning || syncingProcessIds.size > 0) {
+      return jsonResponse({ error: 'sync_already_running' }, 409)
+    }
+
+    isSyncAllProcessesRunning = true
+    try {
+      const result = await processUseCases.syncAllProcesses()
+      return jsonResponse(
+        {
+          ok: true,
+          syncedProcesses: result.syncedProcesses,
+          syncedContainers: result.syncedContainers,
+        },
+        200,
+        SyncAllProcessesResponseSchema,
+      )
+    } catch (err) {
+      console.error('POST /api/processes/sync error:', err)
+      return mapErrorToResponse(err)
+    } finally {
+      isSyncAllProcessesRunning = false
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // POST /api/processes/[id]/sync — run tracking sync for a single process
+  // -----------------------------------------------------------------------
+  async function syncProcessById({
+    params,
+  }: {
+    readonly params: { readonly id?: string }
+  }): Promise<Response> {
+    const processId = params.id?.trim() ?? ''
+    if (processId.length === 0) {
+      return jsonResponse({ error: 'Process ID is required' }, 400)
+    }
+
+    if (isSyncAllProcessesRunning || syncingProcessIds.has(processId)) {
+      return jsonResponse({ error: 'sync_already_running' }, 409)
+    }
+
+    syncingProcessIds.add(processId)
+    try {
+      const result = await processUseCases.syncProcessContainers({
+        processId,
+      })
+      return jsonResponse(
+        {
+          ok: true,
+          processId: result.processId,
+          syncedContainers: result.syncedContainers,
+        },
+        200,
+        SyncProcessResponseSchema,
+      )
+    } catch (err) {
+      console.error(`POST /api/processes/${processId}/sync error:`, err)
+      return mapErrorToResponse(err)
+    } finally {
+      syncingProcessIds.delete(processId)
+    }
+  }
+
   return {
     listProcesses,
     createProcess,
     getProcessById,
     updateProcessById,
     deleteProcessById,
+    syncAllProcesses,
+    syncProcessById,
   }
 }

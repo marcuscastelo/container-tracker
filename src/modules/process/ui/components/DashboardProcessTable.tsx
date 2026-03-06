@@ -1,6 +1,7 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
+import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
   DashboardSortDirection,
@@ -26,17 +27,20 @@ type Props = {
   readonly onClearFilters: () => void
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
+  readonly onProcessSync: (processId: string) => Promise<void>
 }
 
 type RowProps = {
   readonly process: ProcessSummaryVM
   readonly index: number
+  readonly onProcessSync: (processId: string) => Promise<void>
 }
 
 type TableRowsProps = {
   readonly processes: readonly ProcessSummaryVM[]
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
+  readonly onProcessSync: (processId: string) => Promise<void>
 }
 
 type SortHeaderProps = {
@@ -338,6 +342,14 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           </span>
         </Show>
       </td>
+      <td class="px-3 py-2.5 text-center">
+        <ProcessSyncButton
+          processId={props.process.id}
+          status={props.process.syncStatus}
+          lastSyncAt={props.process.lastSyncAt}
+          onSync={props.onProcessSync}
+        />
+      </td>
       {/* Dominant Alert — emphasized */}
       <td class="px-3 py-2.5">
         <div class="flex items-center gap-1.5">
@@ -369,7 +381,7 @@ function GroupHeaderRow(props: {
 }): JSX.Element {
   return (
     <tr class={`border-b border-slate-100 ${props.rowClass}`}>
-      <td colspan="7" class="px-3 py-1.5">
+      <td colspan="8" class="px-3 py-1.5">
         <span class={`text-[10px] font-bold uppercase tracking-wider ${props.labelClass}`}>
           {props.label}
         </span>
@@ -419,6 +431,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
             align="right"
           />
         </th>
+        <th class="px-3 py-2 text-center">{t(keys.dashboard.table.col.sync)}</th>
         <th class="px-3 py-2">{t(keys.dashboard.table.col.dominantAlert)}</th>
         <th class="px-3 py-2 text-center">{t(keys.dashboard.table.col.activeAlerts)}</th>
       </tr>
@@ -437,7 +450,13 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
               label={t(keys.dashboard.table.groupHeader.exceptions)}
             />
             <For each={exceptionsGroup()}>
-              {(process, i) => <DashboardProcessRow process={process} index={i()} />}
+              {(process, i) => (
+                <DashboardProcessRow
+                  process={process}
+                  index={i()}
+                  onProcessSync={props.onProcessSync}
+                />
+              )}
             </For>
           </Show>
           <Show when={normalGroup().length > 0}>
@@ -447,7 +466,13 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
               label={t(keys.dashboard.table.groupHeader.normal)}
             />
             <For each={normalGroup()}>
-              {(process, i) => <DashboardProcessRow process={process} index={i()} />}
+              {(process, i) => (
+                <DashboardProcessRow
+                  process={process}
+                  index={i()}
+                  onProcessSync={props.onProcessSync}
+                />
+              )}
             </For>
           </Show>
         </tbody>
@@ -583,6 +608,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
           processes={filteredBySeverity()}
           sortSelection={props.sortSelection}
           onSortToggle={props.onSortToggle}
+          onProcessSync={props.onProcessSync}
         />
       </div>
     )

@@ -30,6 +30,8 @@ export type ProcessListItemSource = {
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
   has_transshipment?: boolean
   last_event_at?: string | null
+  last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
+  last_sync_at?: string | null
 }
 
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
@@ -38,10 +40,23 @@ function toOptionalNonBlankString(value: string | null | undefined): string | nu
   return trimmed.length > 0 ? value : null
 }
 
+function normalizeContainerNumber(containerNumber: string): string {
+  return containerNumber.trim().toUpperCase()
+}
+
 function toTimestampOrNull(value: string | null | undefined): number | null {
   if (!value) return null
   const parsed = Date.parse(value)
   return Number.isNaN(parsed) ? null : parsed
+}
+
+function toProcessSyncStatus(
+  status: ProcessListItemSource['last_sync_status'],
+): ProcessSummaryVM['syncStatus'] {
+  // Success/error are intentionally ephemeral in dashboard realtime state.
+  // After reload we only keep "syncing" when backend still reports active work.
+  if (status === 'RUNNING') return 'syncing'
+  return 'idle'
 }
 
 export function toProcessSummaryVMs(
@@ -69,6 +84,9 @@ export function toProcessSummaryVMs(
       importerId: toOptionalNonBlankString(process.importer_id),
       importerName: toOptionalNonBlankString(process.importer_name),
       containerCount: process.containers.length,
+      containerNumbers: process.containers.map((container) =>
+        normalizeContainerNumber(container.container_number),
+      ),
       status: trackingStatusToVariant(aggregatedStatus ?? statusCode),
       statusCode,
       aggregatedStatus,
@@ -83,6 +101,8 @@ export function toProcessSummaryVMs(
       highestAlertSeverity: process.highest_alert_severity ?? null,
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
+      syncStatus: toProcessSyncStatus(process.last_sync_status),
+      lastSyncAt: process.last_sync_at ?? null,
     }
   })
 }

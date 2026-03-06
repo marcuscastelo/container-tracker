@@ -1,12 +1,19 @@
 import { useLocation, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, onMount, Show } from 'solid-js'
+import {
+  syncAllProcessesRequest,
+  syncProcessRequest,
+} from '~/modules/process/ui/api/processSync.api'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
 import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/DashboardProcessFiltersBar'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
+import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
+import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
+import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
 import {
   applyDashboardFiltersToSearchParams,
   hydrateDashboardFiltersFromQueryAndStorage,
@@ -57,10 +64,63 @@ import {
   sortDashboardProcesses,
 } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
+function toPathWithSearch(pathname: string, searchParams: URLSearchParams): string {
+  const nextQuery = searchParams.toString()
+  return nextQuery ? `${pathname}?${nextQuery}` : pathname
+}
+
+function getCreateErrorMessage(error: string | ExistingProcessConflict | null): string {
+  if (typeof error === 'string') return error
+  return error?.message ?? ''
+}
+
+function getCreateErrorExisting(
+  error: string | ExistingProcessConflict | null,
+): ExistingProcessConflict | undefined {
+  if (typeof error === 'string') return undefined
+  return error ?? undefined
+}
+
+function hydrateDashboardQueryState(params: {
+  readonly currentSearch: string
+  readonly pathname: string
+  readonly navigate: ReturnType<typeof useNavigate>
+  readonly setSortSelection: (selection: DashboardSortSelection) => void
+  readonly setFilterSelection: (selection: DashboardFilterSelection) => void
+}): void {
+  const currentSearchParams = new URLSearchParams(params.currentSearch)
+  const hydratedSort = hydrateDashboardSortFromQueryAndStorage(
+    currentSearchParams,
+    readDashboardSortFromLocalStorage(),
+  )
+  const hydratedFilters = hydrateDashboardFiltersFromQueryAndStorage(
+    hydratedSort.searchParams,
+    readDashboardFiltersFromLocalStorage(),
+  )
+  const resolvedSortSelection = hydratedSort.sortSelection
+  const resolvedFilterSelection = hydratedFilters.filterSelection
+  const nextSearchParams = hydratedFilters.searchParams
+
+  params.setSortSelection(resolvedSortSelection)
+  params.setFilterSelection(resolvedFilterSelection)
+  writeDashboardSortToLocalStorage(resolvedSortSelection)
+  writeDashboardFiltersToLocalStorage(resolvedFilterSelection)
+
+  const nextPath = toPathWithSearch(params.pathname, nextSearchParams)
+  const currentPath = toPathWithSearch(params.pathname, currentSearchParams)
+  if (nextPath === currentPath) {
+    return
+  }
+
+  void params.navigate(nextPath, { replace: true })
+}
+
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
+  const { t, keys } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const [processes, { refetch: refetchProcesses }] = createResource(() =>
@@ -94,34 +154,29 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const sortedProcesses = createMemo(() =>
     sortDashboardProcesses(filteredProcesses(), sortSelection()),
   )
+  const realtimeSyncStateByProcessId = useProcessSyncRealtime({
+    processes: () => processes() ?? [],
+  })
+  const sortedProcessesWithRealtimeSync = createMemo(() => {
+    const stateByProcessId = realtimeSyncStateByProcessId()
+    return sortedProcesses().map((process) => {
+      const realtimeState = stateByProcessId[process.id]
+      if (!realtimeState) return process
+      return {
+        ...process,
+        syncStatus: realtimeState,
+      }
+    })
+  })
 
   onMount(() => {
-    const currentSearchParams = new URLSearchParams(location.search)
-    const hydratedSort = hydrateDashboardSortFromQueryAndStorage(
-      currentSearchParams,
-      readDashboardSortFromLocalStorage(),
-    )
-    const hydratedFilters = hydrateDashboardFiltersFromQueryAndStorage(
-      hydratedSort.searchParams,
-      readDashboardFiltersFromLocalStorage(),
-    )
-    const resolvedSortSelection = hydratedSort.sortSelection
-    const resolvedFilterSelection = hydratedFilters.filterSelection
-    const nextSearchParams = hydratedFilters.searchParams
-
-    setSortSelection(resolvedSortSelection)
-    setFilterSelection(resolvedFilterSelection)
-    writeDashboardSortToLocalStorage(resolvedSortSelection)
-    writeDashboardFiltersToLocalStorage(resolvedFilterSelection)
-
-    const currentQuery = currentSearchParams.toString()
-    const nextQuery = nextSearchParams.toString()
-    if (nextQuery === currentQuery) {
-      return
-    }
-
-    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
-    void navigate(nextPath, { replace: true })
+    hydrateDashboardQueryState({
+      currentSearch: location.search,
+      pathname: location.pathname,
+      navigate,
+      setSortSelection,
+      setFilterSelection,
+    })
   })
 
   const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
@@ -132,8 +187,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       new URLSearchParams(location.search),
       nextFilterSelection,
     )
-    const nextQuery = nextSearchParams.toString()
-    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+    const nextPath = toPathWithSearch(location.pathname, nextSearchParams)
 
     void navigate(nextPath, { replace: true })
   }
@@ -141,6 +195,19 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const handleCreateProcess = () => {
     setCreateError(null)
     setIsCreateDialogOpen(true)
+  }
+
+  const handleDashboardRefresh = async () => {
+    await refreshDashboardData({
+      syncAllProcesses: syncAllProcessesRequest,
+      refetchProcesses,
+      refetchGlobalAlerts,
+    })
+  }
+
+  const handleProcessSync = async (processId: string) => {
+    await syncProcessRequest(processId)
+    await refetchProcesses()
   }
 
   const handleSortToggle = (field: DashboardSortField) => {
@@ -153,8 +220,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       new URLSearchParams(location.search),
       nextSelection,
     )
-    const nextQuery = nextSearchParams.toString()
-    const nextPath = nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname
+    const nextPath = toPathWithSearch(location.pathname, nextSearchParams)
 
     void navigate(nextPath, { replace: true })
   }
@@ -197,18 +263,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     }
   }
 
-  const createErrorMessage = () => {
-    const value = createError()
-    if (typeof value === 'string') return value
-    return value?.message ?? ''
-  }
-
-  const createErrorExisting = () => {
-    const value = createError()
-    if (typeof value === 'string') return undefined
-    return value ?? undefined
-  }
-
   return (
     <div class="min-h-screen bg-slate-50/80">
       <AppHeader
@@ -222,14 +276,19 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       />
 
       <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
+        <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.header.title)}</h1>
+          <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
+        </section>
+
         <Show when={props.searchSlot}>
           <div class="mb-4 flex justify-center">{props.searchSlot}</div>
         </Show>
 
         <Show when={createError()}>
           <ExistingProcessError
-            message={createErrorMessage()}
-            existing={createErrorExisting()}
+            message={getCreateErrorMessage(createError())}
+            existing={getCreateErrorExisting(createError())}
             onAcknowledge={() => setCreateError(null)}
           />
         </Show>
@@ -253,7 +312,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onClearAllFilters={handleClearAllFilters}
         />
         <DashboardProcessTable
-          processes={sortedProcesses()}
+          processes={sortedProcessesWithRealtimeSync()}
           loading={processes.loading}
           hasError={Boolean(processes.error)}
           hasActiveFilters={hasActiveFilters()}
@@ -261,6 +320,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onClearFilters={handleClearAllFilters}
           sortSelection={sortSelection()}
           onSortToggle={handleSortToggle}
+          onProcessSync={handleProcessSync}
         />
       </main>
     </div>

@@ -7,6 +7,7 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
+import type { ProcessSyncSummaryReadModel } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import {
@@ -150,6 +151,7 @@ export function toProcessResponse(pwc: ProcessWithContainers) {
 export function toProcessResponseWithSummary(
   pwc: ProcessWithContainers,
   summary: ProcessOperationalSummary,
+  sync: ProcessSyncSummaryReadModel,
 ) {
   return {
     ...processToResponseFields(pwc.process),
@@ -160,6 +162,8 @@ export function toProcessResponseWithSummary(
     highest_alert_severity: summary.highest_alert_severity,
     has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
+    last_sync_status: sync.lastSyncStatus,
+    last_sync_at: sync.lastSyncAt,
   }
 }
 

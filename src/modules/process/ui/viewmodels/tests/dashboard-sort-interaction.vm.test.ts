@@ -38,6 +38,7 @@ function createProcess(
     importerId: input.importerId ?? null,
     importerName: input.importerName ?? null,
     containerCount: 1,
+    containerNumbers: [],
     status: input.status ?? 'unknown',
     statusCode: input.statusCode ?? 'UNKNOWN',
     statusRank: input.statusRank ?? 0,
@@ -48,6 +49,8 @@ function createProcess(
     highestAlertSeverity: null,
     hasTransshipment: false,
     lastEventAt: input.lastEventAt ?? null,
+    syncStatus: 'idle',
+    lastSyncAt: null,
   }
 }
 
