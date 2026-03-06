@@ -4,7 +4,7 @@ Nao da pra remover BL do processo no update (será que nao da pra remover nada? 
 Bugs visuais nos botoes sync no dashboard, precisa de refresh para ver atualizando
 Nao da pra selecionar container acima e abaixo do botao copy, onClick so pega na esquerda
 No dashboard, os alertas sempre ficam, ATENCAO (agora) na SEVERIDADE DOMINANTE, mesmo quando o alerta ja faz 8h ou mais
-Quando todos os alertas de transbordo ja foram reconhecidos, um sync causa os mesmos alertas nascerem novamente (outra instance, mesmo transhipment), era para ele perceber que ja avisou esse transbordo e nao criar outro alerta, e criar outro apenas se houver um novo transbordo (ex: navio A chega, navio B sai, navio C sai, navio B chega de novo, navio D sai, etc)
+Quando todos os alertas de transbordo ja foram reconhecidos, um sync causa os mesmos alertas nascerem novamente (outra instance, mesmo transhipment), era para ele perceber que ja avisou esse transbordo e nao criar outro alerta, e criar outro apenas se houver um novo transbordo (novo navio que nunca foi avisado PARA AQUELE CONTAINER (alertas de transbordo sao por container+navio, entao se aquele navio ja apareceu em alerta do processo, mas nao do container, ainda assim cria alerta. Tambem se atentar para casos raros como Navio A -> Navio B -> Navio A -> Navio B. Nao filtrar só por container+navio, mas talvez por voyage id ou algo parecido))
 
 # Ideas
 Assim que o processo for criado e ele redirecionado, o usuario poderia ver algo como "ultima edicao há 1s, 2s, 3s etc" para ter o feedback imediato de que a criacao foi bem sucedida. As vezes o usuario nao tem certeza se trocou de processo, principalmente se o processo novo for parecido com o anterior, e isso daria um feedback visual imediato.
