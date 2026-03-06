@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, onMount, Show } from 'solid-js'
+import { syncAllProcessesRequest } from '~/modules/process/ui/api/processSync.api'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
 import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
@@ -149,6 +150,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
   const handleDashboardRefresh = async () => {
     await refreshDashboardData({
+      syncAllProcesses: syncAllProcessesRequest,
       refetchProcesses,
       refetchGlobalAlerts,
     })

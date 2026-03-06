@@ -152,4 +152,10 @@ export const CreateProcessResponseSchema = z.object({
   warnings: z.array(z.string()).readonly(),
 })
 
+export const SyncAllProcessesResponseSchema = z.object({
+  ok: z.literal(true),
+  syncedProcesses: z.number().int().nonnegative(),
+  syncedContainers: z.number().int().nonnegative(),
+})
+
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>

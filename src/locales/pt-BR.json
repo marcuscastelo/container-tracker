@@ -28,9 +28,9 @@
       "title": "Dashboard"
     },
     "actions": {
-      "refresh": "Atualizar",
-      "refreshing": "Atualizando...",
-      "refreshFailed": "A última atualização falhou"
+      "sync": "Sincronizar",
+      "syncing": "Sincronizando...",
+      "syncFailed": "A última sincronização falhou"
     },
     "alertIndicators": {
       "title": "Alertas Operacionais",

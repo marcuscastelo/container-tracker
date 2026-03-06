@@ -1,4 +1,5 @@
 type DashboardRefreshCommand = {
+  readonly syncAllProcesses: () => unknown
   readonly refetchProcesses: () => unknown
   readonly refetchGlobalAlerts: () => unknown
 }
@@ -13,6 +14,8 @@ function toFirstRejectedReason(results: readonly PromiseSettledResult<unknown>[]
 }
 
 export async function refreshDashboardData(command: DashboardRefreshCommand): Promise<void> {
+  await Promise.resolve(command.syncAllProcesses())
+
   const results = await Promise.allSettled([
     Promise.resolve(command.refetchProcesses()),
     Promise.resolve(command.refetchGlobalAlerts()),

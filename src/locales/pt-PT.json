@@ -28,9 +28,9 @@
       "title": "Painel"
     },
     "actions": {
-      "refresh": "Atualizar",
-      "refreshing": "A atualizar...",
-      "refreshFailed": "A última atualização falhou"
+      "sync": "Sincronizar",
+      "syncing": "A sincronizar...",
+      "syncFailed": "A última sincronização falhou"
     },
     "alertIndicators": {
       "title": "Alertas Operacionais",

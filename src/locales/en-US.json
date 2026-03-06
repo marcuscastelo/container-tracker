@@ -17,9 +17,9 @@
       "title": "Dashboard"
     },
     "actions": {
-      "refresh": "Refresh",
-      "refreshing": "Refreshing...",
-      "refreshFailed": "Last refresh failed"
+      "sync": "Sync",
+      "syncing": "Syncing...",
+      "syncFailed": "Last sync failed"
     },
     "alertIndicators": {
       "title": "Operational Alerts",

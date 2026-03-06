@@ -98,20 +98,20 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
 
   const buttonLabel = createMemo(() => {
     if (visualState() === 'loading') {
-      return t(keys.dashboard.actions.refreshing)
+      return t(keys.dashboard.actions.syncing)
     }
 
-    return t(keys.dashboard.actions.refresh)
+    return t(keys.dashboard.actions.sync)
   })
 
   const buttonTitle = createMemo(() => {
     if (visualState() === 'error') {
-      return t(keys.dashboard.actions.refreshFailed)
+      return t(keys.dashboard.actions.syncFailed)
     }
     if (visualState() === 'loading') {
-      return t(keys.dashboard.actions.refreshing)
+      return t(keys.dashboard.actions.syncing)
     }
-    return t(keys.dashboard.actions.refresh)
+    return t(keys.dashboard.actions.sync)
   })
 
   const handleClick = async () => {
@@ -131,7 +131,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       await props.onRefresh()
       setVisualState('idle')
     } catch (error) {
-      console.error('Dashboard refresh failed:', error)
+      console.error('Dashboard sync failed:', error)
       setVisualState('error')
     } finally {
       setIsLoading(false)
