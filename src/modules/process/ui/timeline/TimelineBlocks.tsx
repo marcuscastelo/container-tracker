@@ -104,7 +104,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   const { t, keys } = useTranslation()
 
   return (
-    <div class="my-1.5 rounded border-l-4 border-amber-400 bg-amber-50 px-2.5 py-2">
+    <div class="my-1 rounded border-l-4 border-amber-400 bg-amber-50 px-2.5 py-1.5">
       <div class="flex items-center gap-1.5">
         <span class="text-sm" aria-hidden="true">
           🔁

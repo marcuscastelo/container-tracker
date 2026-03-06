@@ -47,7 +47,7 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
   const latestAlertTs = () => findLatestAlertTimestamp(props.alerts)
 
   return (
-    <section class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-1.5">
+    <section class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-1.5">
       {/* Status */}
       <div class="flex items-center gap-1.5">
         <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
