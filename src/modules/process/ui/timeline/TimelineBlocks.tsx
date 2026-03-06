@@ -26,7 +26,7 @@ export function VoyageBlockHeader(props: { readonly block: VoyageBlock }): JSX.E
   }
 
   return (
-    <div class="mb-1 rounded-t border-b border-slate-100 bg-slate-50/80 px-2 py-1.5">
+    <div class="mb-1 rounded-t border-b border-slate-100/70 bg-slate-50/60 px-2 py-1.5">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
         <span class="text-sm shrink-0" aria-hidden="true">
@@ -82,12 +82,12 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   }
 
   return (
-    <div class="mb-1 rounded-t border-b border-slate-100 bg-white px-2 py-1.5">
+    <div class="mb-1 rounded-t border-b border-slate-100/60 bg-white/80 px-2 py-1.5">
       <div class="flex items-center gap-1.5">
         <span class="text-sm shrink-0" aria-hidden="true">
           {icon()}
         </span>
-        <span class="text-[12px] font-semibold text-slate-700">{title()}</span>
+        <span class="text-[12px] font-medium text-slate-600">{title()}</span>
       </div>
       <Show when={props.block.location}>
         {(loc) => <p class="mt-0.5 text-[10px] text-slate-400">{loc()}</p>}
