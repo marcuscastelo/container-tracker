@@ -113,7 +113,7 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
         <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.lastUpdate)}
         </span>
-        <span class="text-label tabular-nums text-slate-500">
+        <span class="text-label font-medium tabular-nums text-slate-500">
           {formatAge(latestAlertTs(), t, keys)}
         </span>
       </div>

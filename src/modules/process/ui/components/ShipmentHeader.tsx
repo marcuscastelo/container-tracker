@@ -335,7 +335,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
             variant={props.data.status}
             label={t(trackingStatusToLabelKey(keys, props.data.statusCode))}
           />
-          <span class="text-micro font-semibold uppercase tracking-wider text-slate-400">
+          <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
             {props.data.carrier ?? '—'}
           </span>
 
