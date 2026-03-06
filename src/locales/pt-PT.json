@@ -144,7 +144,8 @@
         "error": "Sincronização com erro",
         "unknown": "Sem sincronização anterior",
         "lastSyncAt": "{{state}} · Último sync: {{timestamp}}"
-      }
+      },
+      "routeRedestination": "Redestinação"
     },
     "loading": "A carregar...",
     "error": {

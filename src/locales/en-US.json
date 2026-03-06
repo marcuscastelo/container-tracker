@@ -133,7 +133,8 @@
         "error": "Sync failed",
         "unknown": "No previous sync",
         "lastSyncAt": "{{state}} · Last sync: {{timestamp}}"
-      }
+      },
+      "routeRedestination": "Redestination"
     },
     "loading": "Loading...",
     "error": {

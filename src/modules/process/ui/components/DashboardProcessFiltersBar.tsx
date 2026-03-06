@@ -105,8 +105,8 @@ function MultiSelectFilterControl<T extends string>(
 
   return (
     <details class="group relative w-full" data-testid={props.testId}>
-      <summary class="flex cursor-pointer list-none items-center justify-between rounded border border-slate-200 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-slate-300">
-        <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <summary class="flex cursor-pointer list-none items-center justify-between rounded border border-slate-200 bg-white px-2.5 py-2 text-left transition-colors hover:border-slate-300">
+        <span class="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
           {props.label}
         </span>
         <span class="max-w-[65%] truncate text-[12px] text-slate-700">{summaryLabel()}</span>
@@ -232,8 +232,8 @@ function ImporterFilterControl(props: ImporterFilterControlProps): JSX.Element {
 
   return (
     <details class="group relative w-full" data-testid={props.testId}>
-      <summary class="flex cursor-pointer list-none items-center justify-between rounded border border-slate-200 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-slate-300">
-        <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <summary class="flex cursor-pointer list-none items-center justify-between rounded border border-slate-200 bg-white px-2.5 py-2 text-left transition-colors hover:border-slate-300">
+        <span class="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
           {props.label}
         </span>
         <span class="max-w-[65%] truncate text-[12px] text-slate-700">{summaryLabel()}</span>
@@ -321,9 +321,9 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
   })
 
   return (
-    <section class="mb-3 rounded border border-slate-200 bg-white px-3 py-2">
+    <section class="mb-3 rounded border border-slate-200 bg-white px-3 py-2.5">
       <div class="flex flex-col gap-2 md:flex-row md:items-start">
-        <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <span class="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
           {t(keys.dashboard.filters.title)}
         </span>
         <div class="grid flex-1 gap-2 md:grid-cols-3">
@@ -362,7 +362,7 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
         </div>
         <button
           type="button"
-          class="self-start rounded border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+          class="self-start rounded border border-slate-200 px-2.5 py-2 text-[12px] font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
           onClick={() => props.onClearAllFilters()}
           disabled={!hasActiveFilters()}
         >
@@ -374,7 +374,7 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
           class="mt-2 flex flex-wrap items-center gap-1.5"
           data-testid="dashboard-active-filter-chips"
         >
-          <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <span class="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
             {t(keys.dashboard.filters.active)}
           </span>
           <For each={props.selectedProviders}>
@@ -384,7 +384,7 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
               return (
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[12px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
                   aria-label={t(keys.dashboard.filters.removeChip, { filter: chipLabel() })}
                   onClick={() => props.onProviderToggle(provider)}
                 >
@@ -402,7 +402,7 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
               return (
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[12px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
                   aria-label={t(keys.dashboard.filters.removeChip, { filter: chipLabel() })}
                   onClick={() => props.onStatusToggle(status)}
                 >
@@ -419,7 +419,7 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
               return (
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+                  class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[12px] text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
                   aria-label={t(keys.dashboard.filters.removeChip, { filter: chipLabel() })}
                   onClick={() => props.onImporterSelect(null)}
                 >

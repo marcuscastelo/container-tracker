@@ -292,7 +292,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       }}
     >
       {/* Severity + Age */}
-      <td class="px-3 py-2.5">
+      <td class="px-3 py-3">
         <Show
           when={dominantSeverity() !== 'none'}
           fallback={
@@ -314,35 +314,42 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           </div>
         </Show>
       </td>
-      <td class="px-3 py-2.5">
+      <td class="px-3 py-3">
         <A
           href={`/shipments/${props.process.id}`}
-          class="text-[13px] font-semibold font-medium text-slate-900 hover:text-blue-600 hover:underline"
+          class="text-[14px] font-semibold text-slate-900 hover:text-blue-600 hover:underline"
         >
           {displayProcessRef(props.process)}
         </A>
       </td>
-      <td class="px-3 py-2.5">
-        <div class="flex items-center gap-1.5 text-[13px] text-slate-600">
-          <span class="max-w-[120px] truncate">{route().origin}</span>
-          <ArrowIcon />
-          <span class="max-w-[120px] truncate">{route().destination}</span>
+      <td class="px-3 py-3">
+        <div class="flex flex-col leading-tight">
+          <div class="flex items-center gap-1.5 text-[14px] text-slate-700">
+            <span class="max-w-[120px] truncate">{route().origin}</span>
+            <ArrowIcon />
+            <span class="max-w-[120px] truncate font-medium">{route().destination}</span>
+          </div>
+          <Show when={props.process.redestinationNumber}>
+            <span class="text-[12px] text-slate-400">
+              {t(keys.dashboard.table.routeRedestination)}: {props.process.redestinationNumber}
+            </span>
+          </Show>
         </div>
       </td>
-      <td class="px-3 py-2.5">
+      <td class="px-3 py-3">
         <StatusBadge
           variant={props.process.status}
           label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
         />
       </td>
-      <td class="px-3 py-2.5 text-right">
-        <Show when={props.process.eta} fallback={<span class="text-[13px] text-slate-300">—</span>}>
-          <span class="text-[13px] tabular-nums text-slate-600">
+      <td class="px-3 py-3 text-right">
+        <Show when={props.process.eta} fallback={<span class="text-[14px] text-slate-300">—</span>}>
+          <span class="text-[14px] font-bold tabular-nums text-slate-600">
             {displayEta(props.process.eta)}
           </span>
         </Show>
       </td>
-      <td class="px-3 py-2.5 text-center">
+      <td class="px-3 py-3 text-center">
         <ProcessSyncButton
           processId={props.process.id}
           status={props.process.syncStatus}
@@ -351,9 +358,9 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         />
       </td>
       {/* Dominant Alert — emphasized */}
-      <td class="px-3 py-2.5">
+      <td class="px-3 py-3">
         <div class="flex items-center gap-1.5">
-          <span class="text-[13px] font-medium text-slate-900 truncate max-w-[180px]">
+          <span class="text-[14px] font-medium text-slate-900 truncate max-w-[180px]">
             {dominantAlertLabel()}
           </span>
           <Show when={visibleChips().length > 0}>
@@ -365,7 +372,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           </Show>
         </div>
       </td>
-      <td class="px-3 py-2.5 text-center">
+      <td class="px-3 py-3 text-center">
         <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-[11px] font-bold tabular-nums text-slate-700">
           {props.process.alertsCount}
         </span>
@@ -403,9 +410,9 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 
   const tableHeader = (
     <thead>
-      <tr class="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        <th class="px-3 py-2">{t(keys.dashboard.table.col.dominantSeverity)}</th>
-        <th class="px-3 py-2" aria-sort={toAriaSort(processSortDirection())}>
+      <tr class="border-b border-slate-200 text-left text-[12px] font-semibold uppercase tracking-wider text-slate-400">
+        <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantSeverity)}</th>
+        <th class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
           <SortHeaderButton
             field="processNumber"
             label={t(keys.dashboard.table.col.process)}
@@ -413,8 +420,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
             onToggle={props.onSortToggle}
           />
         </th>
-        <th class="px-3 py-2">{t(keys.dashboard.table.col.route)}</th>
-        <th class="px-3 py-2" aria-sort={toAriaSort(statusSortDirection())}>
+        <th class="px-3 py-2.5">{t(keys.dashboard.table.col.route)}</th>
+        <th class="px-3 py-2.5" aria-sort={toAriaSort(statusSortDirection())}>
           <SortHeaderButton
             field="status"
             label={t(keys.dashboard.table.col.status)}
@@ -422,7 +429,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
             onToggle={props.onSortToggle}
           />
         </th>
-        <th class="px-3 py-2 text-right" aria-sort={toAriaSort(etaSortDirection())}>
+        <th class="px-3 py-2.5 text-right" aria-sort={toAriaSort(etaSortDirection())}>
           <SortHeaderButton
             field="eta"
             label={t(keys.dashboard.table.col.eta)}
@@ -431,9 +438,9 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
             align="right"
           />
         </th>
-        <th class="px-3 py-2 text-center">{t(keys.dashboard.table.col.sync)}</th>
-        <th class="px-3 py-2">{t(keys.dashboard.table.col.dominantAlert)}</th>
-        <th class="px-3 py-2 text-center">{t(keys.dashboard.table.col.activeAlerts)}</th>
+        <th class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.sync)}</th>
+        <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantAlert)}</th>
+        <th class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.activeAlerts)}</th>
       </tr>
     </thead>
   )
@@ -501,7 +508,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const content = () => {
     if (props.loading) {
       return (
-        <div class="px-4 py-8 text-center text-[13px] text-slate-400">
+        <div class="px-4 py-8 text-center text-[14px] text-slate-400">
           {t(keys.dashboard.loading)}
         </div>
       )
@@ -509,7 +516,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
     if (props.hasError) {
       return (
-        <div class="px-4 py-8 text-center text-[13px] text-red-500">
+        <div class="px-4 py-8 text-center text-[14px] text-red-500">
           {t(keys.dashboard.error.loadProcesses)}
         </div>
       )
@@ -570,12 +577,12 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     return (
       <div>
         <div class="flex items-center gap-2 px-4 py-3">
-          <div class="text-[13px] font-semibold text-slate-700">
+          <div class="text-[14px] font-semibold text-slate-700">
             {t(keys.dashboard.table.filters.title)}
           </div>
           <div class="flex gap-2">
             <button
-              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
+              class={`px-3 py-1.5 text-[14px] rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
               type="button"
               onClick={() => setSelectedSeverity('all')}
               aria-pressed={selectedSeverity() === 'all'}
@@ -583,7 +590,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
               {t(keys.dashboard.table.filters.all)}
             </button>
             <button
-              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
+              class={`px-3 py-1.5 text-[14px] rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
               type="button"
               onClick={() => setSelectedSeverity('danger')}
               aria-pressed={selectedSeverity() === 'danger'}
@@ -591,7 +598,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
               {t(keys.dashboard.table.filters.danger)}
             </button>
             <button
-              class={`px-3 py-1 text-[13px] rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
+              class={`px-3 py-1.5 text-[14px] rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
               type="button"
               onClick={() => setSelectedSeverity('warning')}
               aria-pressed={selectedSeverity() === 'warning'}
@@ -599,7 +606,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
               {t(keys.dashboard.table.filters.warning)}
             </button>
           </div>
-          <div class="ml-auto text-[13px] text-slate-500">
+          <div class="ml-auto text-[14px] text-slate-500">
             {filteredBySeverity().length} / {props.processes.length}
           </div>
         </div>
@@ -616,8 +623,8 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
   return (
     <section class="overflow-hidden rounded border border-slate-200 bg-white">
-      <header class="border-b border-slate-200 px-4 py-2.5">
-        <h2 class="text-[13px] font-semibold text-slate-900">{t(keys.dashboard.table.title)}</h2>
+      <header class="border-b border-slate-200 px-4 py-3">
+        <h2 class="text-[14px] font-semibold text-slate-900">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
     </section>
