@@ -340,7 +340,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </td>
       <td class="px-3 py-3 text-right">
         <Show when={props.process.eta} fallback={<span class="text-body text-slate-300">—</span>}>
-          <span class="text-body font-bold tabular-nums text-slate-800">
+          <span class="text-sm font-bold tabular-nums text-slate-900">
             {displayEta(props.process.eta)}
           </span>
         </Show>
