@@ -20,8 +20,13 @@ export function resolveProcessSyncVisualState(command: {
   readonly isSubmitting: boolean
   readonly localFeedback: LocalSyncFeedback
 }): SyncStatus {
+  // Priority:
+  // 1. Local submitting -> syncing
+  // 2. Server-reported syncing -> syncing
+  // 3. Local ephemeral feedback (success / error) -> shown locally
+  // 4. Otherwise idle
   if (command.isSubmitting) return 'syncing'
-  if (command.statusFromServer !== 'idle') return command.statusFromServer
+  if (command.statusFromServer === 'syncing') return 'syncing'
   if (command.localFeedback === 'success') return 'success'
   if (command.localFeedback === 'error') return 'error'
   return 'idle'
@@ -53,11 +58,7 @@ function SyncIcon(props: { readonly status: SyncStatus }): JSX.Element {
     return (
       <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-        <path
-          class="opacity-90"
-          fill="currentColor"
-          d="M21 12a9 9 0 00-9-9v2a7 7 0 017 7h2z"
-        />
+        <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 00-9-9v2a7 7 0 017 7h2z" />
       </svg>
     )
   }
@@ -65,7 +66,12 @@ function SyncIcon(props: { readonly status: SyncStatus }): JSX.Element {
   if (props.status === 'success') {
     return (
       <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7" />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2.2"
+          d="M5 13l4 4L19 7"
+        />
       </svg>
     )
   }
