@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
+import { ShipmentHeaderContainerSummary } from '~/modules/process/ui/components/ShipmentHeaderContainerSummary'
 import {
   resolveProcessSyncHeaderMode,
   toContainerSyncLabel,
@@ -423,6 +424,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
           </Show>
         </div>
       </div>
+
+      {/* Row 3: Container summary (passive, scannable) */}
+      <ShipmentHeaderContainerSummary containers={props.data.containers} syncNow={props.syncNow} />
     </section>
   )
 }

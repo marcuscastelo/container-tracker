@@ -229,6 +229,9 @@
       "title": "Containers",
       "selectionHint": "Selecione um container para ver sua timeline."
     },
+    "containerSummary": {
+      "moreContainers": "+{{count}} containers neste processo"
+    },
     "timeline": {
       "title": "Timeline do Container",
       "vessel": "Navio",

@@ -229,6 +229,9 @@
       "title": "Contentores",
       "selectionHint": "Selecione um contentor para ver a sua linha temporal."
     },
+    "containerSummary": {
+      "moreContainers": "+{{count}} contentores neste processo"
+    },
     "timeline": {
       "title": "Linha Temporal do Contentor",
       "vessel": "Navio",
