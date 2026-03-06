@@ -28,6 +28,7 @@ describe('toProcessSummaryVMs', () => {
     expect(Array.isArray(result)).toBe(true)
     expect(result[0].id).toBe('p1')
     expect(result[0].containerCount).toBe(1)
+    expect(result[0].containerNumbers).toEqual(['MRKU1111111'])
     expect(result[0].carrier).toBe('Maersk')
     expect(result[0].importerId).toBe('importer-1')
     expect(result[0].importerName).toBe('Empresa ABC')
@@ -66,7 +67,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].highestAlertSeverity).toBe('warning')
     expect(result[0].hasTransshipment).toBe(true)
     expect(result[0].lastEventAt).toBe('2025-05-01T00:00:00Z')
-    expect(result[0].syncStatus).toBe('success')
+    expect(result[0].syncStatus).toBe('idle')
     expect(result[0].lastSyncAt).toBe('2025-05-01T11:00:00Z')
   })
 
@@ -128,8 +129,8 @@ describe('toProcessSummaryVMs', () => {
 
     expect(result[0].syncStatus).toBe('syncing')
     expect(result[0].lastSyncAt).toBe('2026-03-05T10:00:00.000Z')
-    expect(result[1].syncStatus).toBe('error')
-    expect(result[2].syncStatus).toBe('unknown')
+    expect(result[1].syncStatus).toBe('idle')
+    expect(result[2].syncStatus).toBe('idle')
   })
 
   it('maps DELIVERED status correctly', () => {

@@ -1,7 +1,7 @@
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
-export type ProcessSyncStatus = 'idle' | 'syncing' | 'success' | 'error' | 'unknown'
+export type ProcessSyncStatus = 'idle' | 'syncing' | 'success' | 'error'
 
 export type ProcessSummaryVM = {
   readonly id: string
@@ -11,6 +11,7 @@ export type ProcessSummaryVM = {
   readonly importerId: string | null
   readonly importerName: string | null
   readonly containerCount: number
+  readonly containerNumbers: readonly string[]
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
   /** When the API provides a process-level aggregated status (e.g. PARTIALLY_DELIVERED),

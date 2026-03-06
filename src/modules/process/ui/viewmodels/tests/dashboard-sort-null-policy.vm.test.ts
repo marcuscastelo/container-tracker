@@ -24,6 +24,7 @@ function createProcess(
     importerId: null,
     importerName: input.importerName ?? null,
     containerCount: 1,
+    containerNumbers: [],
     status: 'unknown',
     statusCode: 'UNKNOWN',
     statusRank: 0,

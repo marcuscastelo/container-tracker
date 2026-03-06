@@ -11,6 +11,7 @@ import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardM
 import { DashboardProcessFiltersBar } from '~/modules/process/ui/components/DashboardProcessFiltersBar'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
+import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
 import {
@@ -102,6 +103,20 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const sortedProcesses = createMemo(() =>
     sortDashboardProcesses(filteredProcesses(), sortSelection()),
   )
+  const realtimeSyncStateByProcessId = useProcessSyncRealtime({
+    processes: () => processes() ?? [],
+  })
+  const sortedProcessesWithRealtimeSync = createMemo(() => {
+    const stateByProcessId = realtimeSyncStateByProcessId()
+    return sortedProcesses().map((process) => {
+      const realtimeState = stateByProcessId[process.id]
+      if (!realtimeState) return process
+      return {
+        ...process,
+        syncStatus: realtimeState,
+      }
+    })
+  })
 
   onMount(() => {
     const currentSearchParams = new URLSearchParams(location.search)
@@ -279,7 +294,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onClearAllFilters={handleClearAllFilters}
         />
         <DashboardProcessTable
-          processes={sortedProcesses()}
+          processes={sortedProcessesWithRealtimeSync()}
           loading={processes.loading}
           hasError={Boolean(processes.error)}
           hasActiveFilters={hasActiveFilters()}
