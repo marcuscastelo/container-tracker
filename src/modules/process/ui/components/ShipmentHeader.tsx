@@ -144,7 +144,7 @@ function RefreshButton(props: RefreshButtonProps): JSX.Element {
     <button
       type="button"
       onClick={handleClick}
-      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 min-w-[110px] md:min-w-[120px] justify-center ${
+      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 min-w-[120px] md:min-w-[130px] h-8 justify-center ${
         props.isRefreshing ? 'opacity-80 pointer-events-none' : ''
       }`}
       title={props.title}
