@@ -39,8 +39,8 @@ Atualmente, o sistema nao lida bem com promocao de observations EXPECTED para AC
 
 Os alertas de transbordo devem especificar o container, navio original e navio novo para facilitar a identificacao do problema e a comunicacao com o cliente, terminal, etc. Se possivel, adicionar no alerta o numero de redestinacao do processo no momento que o transbordo é identificado, para facilitar o acompanhamento do processo e a comunicacao com o cliente.
 
-
 Os alertas devem usar i18n parametrizado em vez de hardcoded.
+Varios textos ainda nao usam i18n ("Vessel change", etc)
 
 # Debito tecnico
 CopyButton e ShipmentView duplicado clipboard utils
