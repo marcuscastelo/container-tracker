@@ -284,7 +284,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
 
   return (
     <tr
-      class={`group border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-gray-50 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      class={`group border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-gray-50 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())} [&>td]:align-middle`}
       onClick={handleRowClick}
       tabIndex={0}
       onKeyDown={(e) => {
