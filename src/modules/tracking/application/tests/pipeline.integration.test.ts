@@ -7,7 +7,11 @@ import type { SnapshotRepository } from '~/modules/tracking/application/ports/tr
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+  TrackingAlertAckSource,
+} from '~/modules/tracking/domain/model/trackingAlert'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 
 // Note: repositories now throw on infra errors and return direct types.
@@ -140,7 +144,7 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     ackedAt: string,
     metadata: {
       readonly ackedBy: string | null
-      readonly ackedSource: 'dashboard' | 'process_view' | 'api' | null
+      readonly ackedSource: TrackingAlertAckSource | null
     },
   ): Promise<void> {
     const alert = this.alerts.get(alertId)

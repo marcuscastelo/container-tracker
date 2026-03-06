@@ -1,4 +1,14 @@
 {
   "version": 1,
-  "entries": []
+  "entries": [
+    {
+      "file": "src/modules/process/ui/components/AlertsList.tsx",
+      "reason": "Temporary allowance: PR-113 UI adjustments increased JSX depth; schedule refactor",
+      "expiresAt": "2026-06-01",
+      "baseline": {
+        "jsxDepth": 7,
+        "jsxElements": 50
+      }
+    }
+  ]
 }
