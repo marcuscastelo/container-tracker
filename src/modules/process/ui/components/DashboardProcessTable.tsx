@@ -176,8 +176,8 @@ const CATEGORY_ICON: Record<AlertCategoryChip, string> = {
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-red-200 bg-red-50 text-red-700'
-  if (severity === 'warning') return 'border-yellow-200 bg-yellow-50 text-yellow-700'
+  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
+  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
   if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
   if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
   return 'border-slate-200 bg-slate-50 text-slate-500'

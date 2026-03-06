@@ -15,6 +15,7 @@ Paginacao na pagina dashboard e outras listas de processo etc.
 Permitir colar multiplos containers e ja adiciona varios.
 Permitir colar um markdown ou csv ou formato especifico human-friendly com todos os campos do processo para criar fácil. (Alinhar com a forma que o trello é usado hoje)
 Agents fazem heartbeat periodico e UI exibe erro "Nenhum agente capaz de sincronizar o processo/container está online" se nao tiver ninguem e a queue de sync falhar.
+Em todos os lugares que tiver "N Alertas", adicionar uma interacao de clique que abre um overlay com os processos/containers que tem esses alertas, para facilitar o acesso a eles.
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
