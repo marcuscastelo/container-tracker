@@ -38,6 +38,8 @@ function createProcess(
     highestAlertSeverity: null,
     hasTransshipment: false,
     lastEventAt: null,
+    syncStatus: 'idle',
+    lastSyncAt: null,
   }
 }
 

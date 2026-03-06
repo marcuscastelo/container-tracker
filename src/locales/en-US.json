@@ -97,7 +97,8 @@
         "eta": "Current ETA",
         "dominantSeverity": "Dominant Severity",
         "dominantAlert": "Dominant Alert",
-        "activeAlerts": "Active Alerts"
+        "activeAlerts": "Active Alerts",
+        "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transshipment detected",
@@ -124,6 +125,14 @@
       "groupHeader": {
         "exceptions": "Operational Exceptions",
         "normal": "Other Processes"
+      },
+      "sync": {
+        "idle": "Sync process",
+        "syncing": "Syncing process",
+        "success": "Sync completed",
+        "error": "Sync failed",
+        "unknown": "No previous sync",
+        "lastSyncAt": "{{state}} · Last sync: {{timestamp}}"
       }
     },
     "loading": "Loading...",

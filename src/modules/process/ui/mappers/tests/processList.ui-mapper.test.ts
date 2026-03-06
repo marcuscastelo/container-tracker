@@ -31,6 +31,8 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].carrier).toBe('Maersk')
     expect(result[0].importerId).toBe('importer-1')
     expect(result[0].importerName).toBe('Empresa ABC')
+    expect(result[0].syncStatus).toBe('idle')
+    expect(result[0].lastSyncAt).toBeNull()
   })
 
   it('maps process_status from API to status code + StatusVariant', () => {
@@ -49,6 +51,8 @@ describe('toProcessSummaryVMs', () => {
         highest_alert_severity: 'warning',
         has_transshipment: true,
         last_event_at: '2025-05-01T00:00:00Z',
+        lastSyncStatus: 'DONE',
+        lastSyncAt: '2025-05-01T11:00:00Z',
       },
     ]
 
@@ -62,6 +66,8 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].highestAlertSeverity).toBe('warning')
     expect(result[0].hasTransshipment).toBe(true)
     expect(result[0].lastEventAt).toBe('2025-05-01T00:00:00Z')
+    expect(result[0].syncStatus).toBe('success')
+    expect(result[0].lastSyncAt).toBe('2025-05-01T11:00:00Z')
   })
 
   it('defaults to unknown status when process_status is absent', () => {
@@ -85,6 +91,45 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].highestAlertSeverity).toBeNull()
     expect(result[0].hasTransshipment).toBe(false)
     expect(result[0].lastEventAt).toBeNull()
+    expect(result[0].syncStatus).toBe('idle')
+    expect(result[0].lastSyncAt).toBeNull()
+  })
+
+  it('maps sync metadata to dashboard sync visual states', () => {
+    const example: ProcessListItemSource[] = [
+      {
+        id: 'p-sync-running',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        containers: [],
+        lastSyncStatus: 'RUNNING',
+        lastSyncAt: '2026-03-05T10:00:00.000Z',
+      },
+      {
+        id: 'p-sync-failed',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        containers: [],
+        lastSyncStatus: 'FAILED',
+      },
+      {
+        id: 'p-sync-unknown',
+        source: 'api',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        containers: [],
+        lastSyncStatus: 'UNKNOWN',
+      },
+    ]
+
+    const result = toProcessSummaryVMs(example)
+
+    expect(result[0].syncStatus).toBe('syncing')
+    expect(result[0].lastSyncAt).toBe('2026-03-05T10:00:00.000Z')
+    expect(result[1].syncStatus).toBe('error')
+    expect(result[2].syncStatus).toBe('unknown')
   })
 
   it('maps DELIVERED status correctly', () => {

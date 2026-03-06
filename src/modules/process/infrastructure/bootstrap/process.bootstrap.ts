@@ -16,6 +16,7 @@ import {
   createProcessUseCases,
 } from '~/modules/process/application/process.usecases'
 import type { SyncAllProcessesDeps } from '~/modules/process/application/usecases/sync-all-processes.usecase'
+import type { SyncProcessContainersDeps } from '~/modules/process/application/usecases/sync-process-containers.usecase'
 import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 import { serverEnv } from '~/shared/config/server-env'
@@ -73,6 +74,102 @@ const containerDepsForProcess = pickContainerUseCasesForProcess(containerUseCase
 // Tracking module wiring (for operational summary aggregation)
 const { trackingUseCases } = bootstrapTrackingModule()
 
+async function enqueueContainerSyncRequest(command: {
+  readonly provider: 'msc' | 'maersk' | 'cmacgm'
+  readonly containerNumber: string
+}): Promise<{
+  readonly id: string
+  readonly status: 'PENDING' | 'LEASED'
+  readonly isNew: boolean
+}> {
+  const result = await supabaseServer.rpc('enqueue_sync_request', {
+    p_tenant_id: serverEnv.SYNC_DEFAULT_TENANT_ID,
+    p_provider: command.provider,
+    p_ref_type: 'container',
+    p_ref_value: command.containerNumber.toUpperCase().trim(),
+    p_priority: 0,
+  })
+
+  const data = unwrapSupabaseResultOrThrow(result, {
+    operation: 'enqueue_sync_request',
+    table: 'sync_requests',
+  })
+
+  const parsed = EnqueueSyncRequestRowsSchema.parse(data)
+  const row = parsed[0]
+
+  return {
+    id: row.id,
+    status: row.status,
+    isNew: row.is_new,
+  }
+}
+
+async function getSyncRequestStatuses(command: {
+  readonly syncRequestIds: readonly string[]
+}): Promise<{
+  readonly allTerminal: boolean
+  readonly requests: readonly {
+    readonly syncRequestId: string
+    readonly status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
+    readonly lastError: string | null
+    readonly updatedAt: string | null
+    readonly refValue: string | null
+  }[]
+}> {
+  const uniqueSyncRequestIds = Array.from(new Set(command.syncRequestIds))
+  if (uniqueSyncRequestIds.length === 0) {
+    return {
+      allTerminal: true,
+      requests: [],
+    }
+  }
+
+  const result = await supabaseServer
+    .from('sync_requests')
+    .select('id,status,last_error,updated_at,ref_value')
+    .eq('tenant_id', serverEnv.SYNC_DEFAULT_TENANT_ID)
+    .in('id', uniqueSyncRequestIds)
+
+  const data = unwrapSupabaseResultOrThrow(result, {
+    operation: 'get_sync_request_statuses_for_process_sync',
+    table: 'sync_requests',
+  })
+
+  const rows = SyncStatusRowsSchema.parse(data)
+  const byId = new Map(rows.map((row) => [row.id, row]))
+
+  const requests = command.syncRequestIds.map((syncRequestId) => {
+    const row = byId.get(syncRequestId)
+    if (!row) {
+      return {
+        syncRequestId,
+        status: 'NOT_FOUND' as const,
+        lastError: 'sync_request_not_found',
+        updatedAt: null,
+        refValue: null,
+      }
+    }
+
+    return {
+      syncRequestId: row.id,
+      status: row.status,
+      lastError: row.last_error,
+      updatedAt: row.updated_at,
+      refValue: row.ref_value,
+    }
+  })
+
+  const allTerminal = requests.every((request) => {
+    return request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
+  })
+
+  return {
+    allTerminal,
+    requests,
+  }
+}
+
 const syncAllProcessesDeps: SyncAllProcessesDeps = {
   async listActiveProcessIds() {
     const result = await supabaseServer
@@ -92,84 +189,30 @@ const syncAllProcessesDeps: SyncAllProcessesDeps = {
   listContainersByProcessIds(command) {
     return containerDepsForProcess.listByProcessIds(command)
   },
-  async enqueueContainerSyncRequest(command) {
-    const result = await supabaseServer.rpc('enqueue_sync_request', {
-      p_tenant_id: serverEnv.SYNC_DEFAULT_TENANT_ID,
-      p_provider: command.provider,
-      p_ref_type: 'container',
-      p_ref_value: command.containerNumber.toUpperCase().trim(),
-      p_priority: 0,
-    })
+  enqueueContainerSyncRequest,
+  getSyncRequestStatuses,
+  nowMs: Date.now,
+  sleep,
+}
 
-    const data = unwrapSupabaseResultOrThrow(result, {
-      operation: 'enqueue_sync_request',
-      table: 'sync_requests',
-    })
-
-    const parsed = EnqueueSyncRequestRowsSchema.parse(data)
-    const row = parsed[0]
-
-    return {
-      id: row.id,
-      status: row.status,
-      isNew: row.is_new,
-    }
+const syncProcessContainersDeps: SyncProcessContainersDeps = {
+  async fetchProcessById(command) {
+    return supabaseProcessRepository.fetchById(command.processId)
   },
-  async getSyncRequestStatuses(command) {
-    const uniqueSyncRequestIds = Array.from(new Set(command.syncRequestIds))
-    if (uniqueSyncRequestIds.length === 0) {
-      return {
-        allTerminal: true,
-        requests: [],
-      }
-    }
-
-    const result = await supabaseServer
-      .from('sync_requests')
-      .select('id,status,last_error,updated_at,ref_value')
-      .eq('tenant_id', serverEnv.SYNC_DEFAULT_TENANT_ID)
-      .in('id', uniqueSyncRequestIds)
-
-    const data = unwrapSupabaseResultOrThrow(result, {
-      operation: 'get_sync_request_statuses_for_process_sync',
-      table: 'sync_requests',
-    })
-
-    const rows = SyncStatusRowsSchema.parse(data)
-    const byId = new Map(rows.map((row) => [row.id, row]))
-
-    const requests = command.syncRequestIds.map((syncRequestId) => {
-      const row = byId.get(syncRequestId)
-      if (!row) {
-        return {
-          syncRequestId,
-          status: 'NOT_FOUND' as const,
-          lastError: 'sync_request_not_found',
-          updatedAt: null,
-          refValue: null,
-        }
-      }
-
-      return {
-        syncRequestId: row.id,
-        status: row.status,
-        lastError: row.last_error,
-        updatedAt: row.updated_at,
-        refValue: row.ref_value,
-      }
-    })
-
-    const allTerminal = requests.every((request) => {
-      return (
-        request.status === 'DONE' || request.status === 'FAILED' || request.status === 'NOT_FOUND'
-      )
+  async listContainersByProcessId(command) {
+    const result = await containerDepsForProcess.listByProcessId({
+      processId: command.processId,
     })
 
     return {
-      allTerminal,
-      requests,
+      containers: result.containers.map((container) => ({
+        containerNumber: String(container.containerNumber),
+        carrierCode: container.carrierCode ? String(container.carrierCode) : null,
+      })),
     }
   },
+  enqueueContainerSyncRequest,
+  getSyncRequestStatuses,
   nowMs: Date.now,
   sleep,
 }
@@ -179,6 +222,7 @@ const deps: CreateProcessUseCasesDeps = {
   containerUseCases: containerDepsForProcess,
   trackingUseCases,
   syncAllProcessesDeps,
+  syncProcessContainersDeps,
 }
 
 export const processUseCases = createProcessUseCases(deps)

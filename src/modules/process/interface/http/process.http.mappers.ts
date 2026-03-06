@@ -1,4 +1,5 @@
 import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
+import type { ProcessSyncSummaryReadModel } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type {
   ProcessContainerRecord,
   ProcessWithContainers,
@@ -150,6 +151,7 @@ export function toProcessResponse(pwc: ProcessWithContainers) {
 export function toProcessResponseWithSummary(
   pwc: ProcessWithContainers,
   summary: ProcessOperationalSummary,
+  sync: ProcessSyncSummaryReadModel,
 ) {
   return {
     ...processToResponseFields(pwc.process),
@@ -160,6 +162,8 @@ export function toProcessResponseWithSummary(
     highest_alert_severity: summary.highest_alert_severity,
     has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
+    lastSyncStatus: sync.lastSyncStatus,
+    lastSyncAt: sync.lastSyncAt,
   }
 }
 

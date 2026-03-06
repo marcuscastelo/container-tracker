@@ -14,6 +14,7 @@ import type { ContainerSyncDTO } from '~/modules/tracking/application/usecases/g
 import {
   ProcessDetailResponseSchema,
   SyncAllProcessesResponseSchema,
+  SyncProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 
 type GetContainerSummaryMock = (
@@ -30,6 +31,13 @@ type GetContainersSyncMetadataMock = (command: {
 
 type SyncAllProcessesMock = () => Promise<{
   readonly syncedProcesses: number
+  readonly syncedContainers: number
+}>
+
+type SyncProcessContainersMock = (command: {
+  readonly processId: string
+}) => Promise<{
+  readonly processId: string
   readonly syncedContainers: number
 }>
 
@@ -165,6 +173,10 @@ function createControllersWithSyncMock(
     syncedProcesses: 1,
     syncedContainers: 2,
   })),
+  syncProcessContainers: SyncProcessContainersMock = vi.fn(async (command) => ({
+    processId: command.processId,
+    syncedContainers: 2,
+  })),
 ) {
   const { process, processWithContainers } = createProcessWithContainers(destination)
 
@@ -183,6 +195,7 @@ function createControllersWithSyncMock(
       findProcessById: vi.fn(async () => ({ process })),
       deleteProcess: vi.fn(async () => ({ deleted: true as const })),
       syncAllProcesses,
+      syncProcessContainers,
     },
     trackingUseCases: {
       getContainerSummary,
@@ -451,5 +464,90 @@ describe('process controllers', () => {
 
     expect(firstResponse.status).toBe(200)
     expect(syncAllProcessesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns 200 with process sync counters when process sync completes', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const syncProcessContainersMock = vi.fn<SyncProcessContainersMock>(async (command) => ({
+      processId: command.processId,
+      syncedContainers: 3,
+    }))
+
+    const controllers = createControllersWithSyncMock(
+      'Santos',
+      getContainerSummaryMock,
+      vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      vi.fn<SyncAllProcessesMock>(async () => ({
+        syncedProcesses: 1,
+        syncedContainers: 2,
+      })),
+      syncProcessContainersMock,
+    )
+
+    const response = await controllers.syncProcessById({ params: { id: 'process-1' } })
+    const body = SyncProcessResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      ok: true,
+      processId: 'process-1',
+      syncedContainers: 3,
+    })
+    expect(syncProcessContainersMock).toHaveBeenCalledWith({
+      processId: 'process-1',
+    })
+  })
+
+  it('returns 409 when sync for the same process is already in progress', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+
+    let releaseFirstSync: () => void = () => {}
+    const firstSyncGate = new Promise<void>((resolve) => {
+      releaseFirstSync = resolve
+    })
+
+    const syncProcessContainersMock = vi.fn<SyncProcessContainersMock>(async () => {
+      await firstSyncGate
+      return {
+        processId: 'process-1',
+        syncedContainers: 2,
+      }
+    })
+
+    const controllers = createControllersWithSyncMock(
+      'Santos',
+      getContainerSummaryMock,
+      vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      vi.fn<SyncAllProcessesMock>(async () => ({
+        syncedProcesses: 1,
+        syncedContainers: 2,
+      })),
+      syncProcessContainersMock,
+    )
+
+    const firstRequestPromise = controllers.syncProcessById({ params: { id: 'process-1' } })
+    await Promise.resolve()
+
+    const secondResponse = await controllers.syncProcessById({ params: { id: 'process-1' } })
+    const secondBody = await secondResponse.json()
+
+    expect(secondResponse.status).toBe(409)
+    expect(secondBody).toEqual({ error: 'sync_already_running' })
+
+    releaseFirstSync()
+    const firstResponse = await firstRequestPromise
+
+    expect(firstResponse.status).toBe(200)
+    expect(syncProcessContainersMock).toHaveBeenCalledTimes(1)
   })
 })

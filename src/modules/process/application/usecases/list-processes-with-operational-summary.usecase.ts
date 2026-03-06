@@ -24,11 +24,29 @@ type ContainerTrackingSummary = {
   }
 }
 
+type ContainerSyncMetadata = {
+  readonly containerNumber: string
+  readonly lastSuccessAt: string | null
+  readonly lastAttemptAt: string | null
+  readonly isSyncing: boolean
+  readonly lastErrorAt: string | null
+}
+
+export type ProcessLastSyncStatus = 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
+
+export type ProcessSyncSummaryReadModel = {
+  readonly lastSyncStatus: ProcessLastSyncStatus
+  readonly lastSyncAt: string | null
+}
+
 type TrackingFacade = {
   getContainerSummary(
     containerId: string,
     containerNumber: string,
   ): Promise<ContainerTrackingSummary>
+  getContainersSyncMetadata(command: {
+    readonly containerNumbers: readonly string[]
+  }): Promise<readonly ContainerSyncMetadata[]>
 }
 
 export type ListProcessesWithOperationalSummaryDeps = {
@@ -40,10 +58,143 @@ export type ListProcessesWithOperationalSummaryDeps = {
 type ProcessWithOperationalSummary = {
   readonly pwc: ProcessWithContainers
   readonly summary: ProcessOperationalSummary
+  readonly sync: ProcessSyncSummaryReadModel
 }
 
 type ListProcessesWithOperationalSummaryResult = {
   readonly processes: readonly ProcessWithOperationalSummary[]
+}
+
+function normalizeContainerNumber(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+function toTimestampOrNegativeInfinity(value: string | null): number {
+  if (!value) return Number.NEGATIVE_INFINITY
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+}
+
+function pickMostRecentTimestamp(
+  current: string | null,
+  candidate: string | null,
+): string | null {
+  if (!candidate) return current
+  if (!current) return candidate
+
+  return toTimestampOrNegativeInfinity(candidate) > toTimestampOrNegativeInfinity(current)
+    ? candidate
+    : current
+}
+
+function toContainerSyncStatus(sync: ContainerSyncMetadata): ProcessLastSyncStatus {
+  if (sync.isSyncing) return 'RUNNING'
+
+  const lastSuccessAtMs = toTimestampOrNegativeInfinity(sync.lastSuccessAt)
+  const lastErrorAtMs = toTimestampOrNegativeInfinity(sync.lastErrorAt)
+
+  if (lastErrorAtMs > lastSuccessAtMs) return 'FAILED'
+  if (lastSuccessAtMs !== Number.NEGATIVE_INFINITY) return 'DONE'
+  return 'UNKNOWN'
+}
+
+function toContainerLastSyncAt(sync: ContainerSyncMetadata): string | null {
+  let latest: string | null = null
+  latest = pickMostRecentTimestamp(latest, sync.lastAttemptAt)
+  latest = pickMostRecentTimestamp(latest, sync.lastSuccessAt)
+  latest = pickMostRecentTimestamp(latest, sync.lastErrorAt)
+  return latest
+}
+
+function createFallbackContainerSyncMetadata(containerNumber: string): ContainerSyncMetadata {
+  return {
+    containerNumber,
+    lastSuccessAt: null,
+    lastAttemptAt: null,
+    isSyncing: false,
+    lastErrorAt: null,
+  }
+}
+
+function deriveProcessSyncSummary(command: {
+  readonly containers: ProcessWithContainers['containers']
+  readonly syncByContainerNumber: ReadonlyMap<string, ContainerSyncMetadata>
+}): ProcessSyncSummaryReadModel {
+  if (command.containers.length === 0) {
+    return {
+      lastSyncStatus: 'UNKNOWN',
+      lastSyncAt: null,
+    }
+  }
+
+  const statuses: ProcessLastSyncStatus[] = []
+  let lastSyncAt: string | null = null
+
+  for (const container of command.containers) {
+    const normalizedContainerNumber = normalizeContainerNumber(String(container.containerNumber))
+    const sync =
+      command.syncByContainerNumber.get(normalizedContainerNumber) ??
+      createFallbackContainerSyncMetadata(normalizedContainerNumber)
+
+    statuses.push(toContainerSyncStatus(sync))
+    lastSyncAt = pickMostRecentTimestamp(lastSyncAt, toContainerLastSyncAt(sync))
+  }
+
+  if (statuses.some((status) => status === 'RUNNING')) {
+    return {
+      lastSyncStatus: 'RUNNING',
+      lastSyncAt,
+    }
+  }
+
+  if (statuses.some((status) => status === 'FAILED')) {
+    return {
+      lastSyncStatus: 'FAILED',
+      lastSyncAt,
+    }
+  }
+
+  if (statuses.some((status) => status === 'DONE')) {
+    return {
+      lastSyncStatus: 'DONE',
+      lastSyncAt,
+    }
+  }
+
+  return {
+    lastSyncStatus: 'UNKNOWN',
+    lastSyncAt,
+  }
+}
+
+async function listSyncMetadataByContainerNumber(command: {
+  readonly containerNumbers: readonly string[]
+  readonly trackingUseCases: Pick<TrackingFacade, 'getContainersSyncMetadata'>
+}): Promise<ReadonlyMap<string, ContainerSyncMetadata>> {
+  const normalizedContainerNumbers = Array.from(
+    new Set(
+      command.containerNumbers
+        .map(normalizeContainerNumber)
+        .filter((containerNumber) => containerNumber.length > 0),
+    ),
+  )
+
+  if (normalizedContainerNumbers.length === 0) {
+    return new Map()
+  }
+
+  try {
+    const rows = await command.trackingUseCases.getContainersSyncMetadata({
+      containerNumbers: normalizedContainerNumbers,
+    })
+
+    return new Map(
+      rows.map((row) => [normalizeContainerNumber(row.containerNumber), row] as const),
+    )
+  } catch (error) {
+    console.error('Failed to get process sync metadata for dashboard list:', error)
+    return new Map()
+  }
 }
 
 /**
@@ -144,6 +295,14 @@ export function createListProcessesWithOperationalSummaryUseCase(
       processIds,
     })
 
+    const allContainerNumbers = Array.from(containersByProcessId.values()).flatMap((containers) =>
+      containers.map((container) => String(container.containerNumber)),
+    )
+    const syncByContainerNumber = await listSyncMetadataByContainerNumber({
+      containerNumbers: allContainerNumbers,
+      trackingUseCases: deps.trackingUseCases,
+    })
+
     // Calculate 'now' once for consistent ETA comparison across all processes
     const now = new Date().toISOString()
 
@@ -184,8 +343,12 @@ export function createListProcessesWithOperationalSummaryUseCase(
           summaries,
           now,
         )
+        const sync = deriveProcessSyncSummary({
+          containers,
+          syncByContainerNumber,
+        })
 
-        return { pwc, summary }
+        return { pwc, summary, sync }
       }),
     )
 

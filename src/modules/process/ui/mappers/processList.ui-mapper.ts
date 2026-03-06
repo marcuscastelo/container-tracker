@@ -30,6 +30,8 @@ export type ProcessListItemSource = {
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
   has_transshipment?: boolean
   last_event_at?: string | null
+  lastSyncStatus?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
+  lastSyncAt?: string | null
 }
 
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
@@ -42,6 +44,14 @@ function toTimestampOrNull(value: string | null | undefined): number | null {
   if (!value) return null
   const parsed = Date.parse(value)
   return Number.isNaN(parsed) ? null : parsed
+}
+
+function toProcessSyncStatus(status: ProcessListItemSource['lastSyncStatus']): ProcessSummaryVM['syncStatus'] {
+  if (status === 'RUNNING') return 'syncing'
+  if (status === 'DONE') return 'success'
+  if (status === 'FAILED') return 'error'
+  if (status === 'UNKNOWN') return 'unknown'
+  return 'idle'
 }
 
 export function toProcessSummaryVMs(
@@ -83,6 +93,8 @@ export function toProcessSummaryVMs(
       highestAlertSeverity: process.highest_alert_severity ?? null,
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
+      syncStatus: toProcessSyncStatus(process.lastSyncStatus),
+      lastSyncAt: process.lastSyncAt ?? null,
     }
   })
 }

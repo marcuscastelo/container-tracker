@@ -108,7 +108,8 @@
         "eta": "ETA Atual",
         "dominantSeverity": "Severidade Dominante",
         "dominantAlert": "Alerta Dominante",
-        "activeAlerts": "Alertas Ativos"
+        "activeAlerts": "Alertas Ativos",
+        "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transbordo detectado",
@@ -135,6 +136,14 @@
       "groupHeader": {
         "exceptions": "Exceções Operacionais",
         "normal": "Outros Processos"
+      },
+      "sync": {
+        "idle": "Sincronizar processo",
+        "syncing": "Sincronizando processo",
+        "success": "Sincronização concluída",
+        "error": "Sincronização com erro",
+        "unknown": "Sem sincronização anterior",
+        "lastSyncAt": "{{state}} · Último sync: {{timestamp}}"
       }
     },
     "loading": "Carregando...",

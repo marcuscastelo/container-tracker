@@ -1,6 +1,8 @@
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
+export type ProcessSyncStatus = 'idle' | 'syncing' | 'success' | 'error' | 'unknown'
+
 export type ProcessSummaryVM = {
   readonly id: string
   readonly reference: string | null
@@ -24,4 +26,6 @@ export type ProcessSummaryVM = {
   readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
   readonly hasTransshipment: boolean
   readonly lastEventAt: string | null
+  readonly syncStatus: ProcessSyncStatus
+  readonly lastSyncAt: string | null
 }

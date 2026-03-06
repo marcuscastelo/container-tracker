@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
+
 export const ProcessResponseSchema = z.object({
   id: z.string(),
   reference: z.string().nullish(),
@@ -37,6 +39,10 @@ export const ProcessResponseSchema = z.object({
   has_transshipment: z.boolean().optional(),
   /** Latest event time across all container timelines */
   last_event_at: z.string().nullish(),
+  /** Last process sync status derived from sync_requests */
+  lastSyncStatus: ProcessLastSyncStatusSchema.optional(),
+  /** Timestamp of latest known process sync activity */
+  lastSyncAt: z.string().nullish(),
 })
 
 export const ProcessListResponseSchema = z.array(ProcessResponseSchema)
@@ -155,6 +161,12 @@ export const CreateProcessResponseSchema = z.object({
 export const SyncAllProcessesResponseSchema = z.object({
   ok: z.literal(true),
   syncedProcesses: z.number().int().nonnegative(),
+  syncedContainers: z.number().int().nonnegative(),
+})
+
+export const SyncProcessResponseSchema = z.object({
+  ok: z.literal(true),
+  processId: z.string(),
   syncedContainers: z.number().int().nonnegative(),
 })
 

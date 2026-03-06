@@ -19,6 +19,10 @@ import {
   createSyncAllProcessesUseCase,
   type SyncAllProcessesDeps,
 } from '~/modules/process/application/usecases/sync-all-processes.usecase'
+import {
+  createSyncProcessContainersUseCase,
+  type SyncProcessContainersDeps,
+} from '~/modules/process/application/usecases/sync-process-containers.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
 
 export type CreateProcessUseCasesDeps = {
@@ -26,6 +30,7 @@ export type CreateProcessUseCasesDeps = {
   containerUseCases: ContainerUseCasesForProcess
   trackingUseCases: ListProcessesWithOperationalSummaryDeps['trackingUseCases']
   syncAllProcessesDeps: SyncAllProcessesDeps
+  syncProcessContainersDeps: SyncProcessContainersDeps
 }
 
 /**
@@ -73,6 +78,7 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     trackingUseCases: deps.trackingUseCases,
   })
   const syncAllProcesses = createSyncAllProcessesUseCase(deps.syncAllProcessesDeps)
+  const syncProcessContainers = createSyncProcessContainersUseCase(deps.syncProcessContainersDeps)
 
   return {
     listProcesses,
@@ -86,6 +92,7 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     removeContainerFromProcess,
     searchByText,
     syncAllProcesses,
+    syncProcessContainers,
   }
 }
 

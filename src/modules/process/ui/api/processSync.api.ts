@@ -1,5 +1,8 @@
 import { typedFetch } from '~/shared/api/typedFetch'
-import { SyncAllProcessesResponseSchema } from '~/shared/api-schemas/processes.schemas'
+import {
+  SyncAllProcessesResponseSchema,
+  SyncProcessResponseSchema,
+} from '~/shared/api-schemas/processes.schemas'
 
 export async function syncAllProcessesRequest(): Promise<{
   readonly ok: true
@@ -12,5 +15,19 @@ export async function syncAllProcessesRequest(): Promise<{
       method: 'POST',
     },
     SyncAllProcessesResponseSchema,
+  )
+}
+
+export async function syncProcessRequest(processId: string): Promise<{
+  readonly ok: true
+  readonly processId: string
+  readonly syncedContainers: number
+}> {
+  return typedFetch(
+    `/api/processes/${encodeURIComponent(processId)}/sync`,
+    {
+      method: 'POST',
+    },
+    SyncProcessResponseSchema,
   )
 }
