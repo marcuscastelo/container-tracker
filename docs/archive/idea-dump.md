@@ -32,6 +32,11 @@ Tratar casos que o container é removido do processo, seja por erro ou porque o 
 
 Atualmente, o sistema nao lida bem com promocao de observations EXPECTED para ACTUAL, o que pode acontecer quando um evento esperado acontece de fato. Atualmente o sistema duplica o observation, criando um novo ACTUAL e mantendo o EXPECTED, o que pode gerar confusao e poluir a timeline. Melhorar isso para que quando um evento esperado acontece, ele seja promovido a ACTUAL sem criar um novo registro, ou seja, atualizando o registro existente de EXPECTED para ACTUAL. Isso vai manter a timeline mais limpa e evitar confusao entre eventos duplicados.
 
+Os alertas de transbordo devem especificar o container, navio original e navio novo para facilitar a identificacao do problema e a comunicacao com o cliente, terminal, etc. Se possivel, adicionar no alerta o numero de redestinacao do processo no momento que o transbordo é identificado, para facilitar o acompanhamento do processo e a comunicacao com o cliente.
+
+
+Os alertas devem usar i18n parametrizado em vez de hardcoded.
+
 
 # Pedidos do cliente (alguns precisam de mais detalhes)
 Adicionar campo mercadoria (description of goods) no processo.
