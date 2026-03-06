@@ -310,7 +310,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
             >
               {severityLabel()}
             </span>
-            <span class="text-micro font-medium tabular-nums text-slate-500">{ageLabel()}</span>
+            <span class="text-micro tabular-nums text-slate-400">{ageLabel()}</span>
           </div>
         </Show>
       </td>
