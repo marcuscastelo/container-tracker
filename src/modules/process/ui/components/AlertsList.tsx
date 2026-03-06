@@ -130,7 +130,7 @@ export function AlertsList(props: {
                 isCollapsing()
                   ? 'max-h-0 translate-y-[-4px] border-transparent py-0 opacity-0'
                   : 'max-h-40 opacity-100'
-              } flex gap-1.5`}
+              } flex items-start gap-1.5`}
             >
               <AlertIcon type={alert.type} />
               <div class="min-w-0 flex-1">
