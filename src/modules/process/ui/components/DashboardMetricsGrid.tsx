@@ -282,7 +282,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
   return (
     <section
-      class={`overflow-hidden rounded border border-slate-200 bg-white ${state() === 'empty' ? 'mb-2' : 'mb-4'}`}
+      class={`overflow-hidden rounded border border-slate-200 bg-white ${state() === 'empty' ? 'mb-2' : 'mb-3'}`}
     >
       <header class="border-b border-slate-200 px-4 py-3">
         <h2 class="text-body font-semibold text-slate-900">

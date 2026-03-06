@@ -321,7 +321,7 @@ export function DashboardProcessFiltersBar(props: Props): JSX.Element {
   })
 
   return (
-    <section class="mb-3 rounded border border-slate-200 bg-white px-3 py-2.5">
+    <section class="mb-2 rounded border border-slate-200 bg-white px-3 py-2.5">
       <div class="flex flex-col gap-2 md:flex-row md:items-start">
         <span class="text-caption font-semibold uppercase tracking-wide text-slate-500">
           {t(keys.dashboard.filters.title)}
