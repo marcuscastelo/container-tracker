@@ -130,46 +130,44 @@ export function AlertsList(props: {
                 isCollapsing()
                   ? 'max-h-0 translate-y-[-4px] border-transparent py-0 opacity-0'
                   : 'max-h-40 opacity-100'
-              }`}
+              } flex gap-1.5`}
             >
-              <div class="flex gap-1.5">
-                <AlertIcon type={alert.type} />
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1 flex-wrap">
-                    <span
-                      class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold leading-none ${toSeverityBadgeClasses(alert.severity, props.mode)}`}
-                    >
-                      {toSeverityLabel(alert.severity, t, keys)}
-                    </span>
-                    <AlertCategoryChip type={alert.type} mode={props.mode} t={t} keys={keys} />
-                    <span class="text-[10px] font-medium tabular-nums text-slate-500">
-                      {formatAlertAge(actionDateIso(), t, keys)}
-                    </span>
-                  </div>
-                  <p class="mt-0.5 text-[11px] leading-tight text-slate-600">{alert.message}</p>
+              <AlertIcon type={alert.type} />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1 flex-wrap">
+                  <span
+                    class={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold leading-none ${toSeverityBadgeClasses(alert.severity, props.mode)}`}
+                  >
+                    {toSeverityLabel(alert.severity, t, keys)}
+                  </span>
+                  <AlertCategoryChip type={alert.type} mode={props.mode} t={t} keys={keys} />
+                  <span class="text-[10px] font-medium tabular-nums text-slate-500">
+                    {formatAlertAge(actionDateIso(), t, keys)}
+                  </span>
                 </div>
-                {props.mode === 'active' ? (
-                  <button
-                    type="button"
-                    disabled={isBusy()}
-                    class="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label={t(keys.shipmentView.alerts.action.acknowledgeAria)}
-                    onClick={() => props.onAcknowledge(alert.id)}
-                  >
-                    <span aria-hidden="true">X</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={isBusy()}
-                    class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
-                    onClick={() => props.onUnacknowledge(alert.id)}
-                  >
-                    {t(keys.shipmentView.alerts.action.unacknowledge)}
-                  </button>
-                )}
+                <p class="mt-0.5 text-[11px] leading-tight text-slate-600">{alert.message}</p>
               </div>
+              {props.mode === 'active' ? (
+                <button
+                  type="button"
+                  disabled={isBusy()}
+                  class="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={t(keys.shipmentView.alerts.action.acknowledgeAria)}
+                  onClick={() => props.onAcknowledge(alert.id)}
+                >
+                  X
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isBusy()}
+                  class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
+                  onClick={() => props.onUnacknowledge(alert.id)}
+                >
+                  {t(keys.shipmentView.alerts.action.unacknowledge)}
+                </button>
+              )}
             </li>
           )
         }}
