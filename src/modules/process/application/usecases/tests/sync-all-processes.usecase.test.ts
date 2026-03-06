@@ -233,6 +233,137 @@ describe('sync-all-processes.usecase', () => {
     expect(getSyncRequestStatusesMock).toHaveBeenCalledTimes(3)
   })
 
+  it('resets timeout window when there is DONE progress and times out only after idle period', async () => {
+    const statusesByCall = [
+      {
+        allTerminal: false,
+        requests: [
+          {
+            syncRequestId: 'sync-MSCU1234567',
+            status: 'PENDING' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+          {
+            syncRequestId: 'sync-MRKU7654321',
+            status: 'PENDING' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MRKU7654321',
+          },
+        ],
+      },
+      {
+        allTerminal: false,
+        requests: [
+          {
+            syncRequestId: 'sync-MSCU1234567',
+            status: 'DONE' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:05.000Z',
+            refValue: 'MSCU1234567',
+          },
+          {
+            syncRequestId: 'sync-MRKU7654321',
+            status: 'PENDING' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:05.000Z',
+            refValue: 'MRKU7654321',
+          },
+        ],
+      },
+      {
+        allTerminal: false,
+        requests: [
+          {
+            syncRequestId: 'sync-MSCU1234567',
+            status: 'DONE' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:10.000Z',
+            refValue: 'MSCU1234567',
+          },
+          {
+            syncRequestId: 'sync-MRKU7654321',
+            status: 'PENDING' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:10.000Z',
+            refValue: 'MRKU7654321',
+          },
+        ],
+      },
+      {
+        allTerminal: false,
+        requests: [
+          {
+            syncRequestId: 'sync-MSCU1234567',
+            status: 'DONE' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:15.000Z',
+            refValue: 'MSCU1234567',
+          },
+          {
+            syncRequestId: 'sync-MRKU7654321',
+            status: 'PENDING' as const,
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:15.000Z',
+            refValue: 'MRKU7654321',
+          },
+        ],
+      },
+    ]
+
+    const getSyncRequestStatusesMock = vi.fn(
+      async () => statusesByCall.shift() ?? statusesByCall[statusesByCall.length - 1],
+    )
+
+    const { deps } = createDeps({
+      listActiveProcessIds: async () => ['process-a', 'process-b'],
+      listContainersByProcessIds: async () => ({
+        containersByProcessId: new Map([
+          [
+            'process-a',
+            [
+              {
+                id: 'container-1',
+                processId: 'process-a',
+                containerNumber: 'MSCU1234567',
+                carrierCode: 'msc',
+              },
+            ],
+          ],
+          [
+            'process-b',
+            [
+              {
+                id: 'container-2',
+                processId: 'process-b',
+                containerNumber: 'MRKU7654321',
+                carrierCode: 'maersk',
+              },
+            ],
+          ],
+        ]),
+      }),
+      getSyncRequestStatuses: getSyncRequestStatusesMock,
+      timeoutMs: 10_000,
+      pollIntervalMs: 5_000,
+    })
+
+    const execute = createSyncAllProcessesUseCase(deps)
+
+    let thrown: unknown = null
+    try {
+      await execute()
+    } catch (error) {
+      thrown = error
+    }
+
+    const httpError = toHttpErrorOrThrow(thrown)
+    expect(httpError.status).toBe(504)
+    expect(getSyncRequestStatusesMock).toHaveBeenCalledTimes(4)
+  })
+
   it('fails with 502 when any sync request reaches FAILED or NOT_FOUND', async () => {
     const { deps } = createDeps({
       listActiveProcessIds: async () => ['process-a'],

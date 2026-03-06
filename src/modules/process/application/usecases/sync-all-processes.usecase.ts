@@ -115,7 +115,8 @@ async function waitForTerminalStatuses(command: {
   readonly nowMs: () => number
   readonly sleep: (delayMs: number) => Promise<void>
 }): Promise<readonly SyncStatusItem[]> {
-  const deadlineMs = command.nowMs() + command.timeoutMs
+  let lastProgressAtMs = command.nowMs()
+  let highestDoneCount = 0
 
   while (true) {
     const response = await command.getSyncRequestStatuses({
@@ -123,15 +124,23 @@ async function waitForTerminalStatuses(command: {
     })
 
     const requests = toTerminalStatusItems(command.syncRequestIds, response.requests)
+    const doneCount = requests.filter((request) => request.status === 'DONE').length
+    if (doneCount > highestDoneCount) {
+      highestDoneCount = doneCount
+      lastProgressAtMs = command.nowMs()
+    }
+
     if (requests.every((request) => isTerminalStatus(request.status))) {
       return requests
     }
 
-    const remainingMs = deadlineMs - command.nowMs()
-    if (remainingMs <= 0) {
+    const nowMs = command.nowMs()
+    const idleMs = nowMs - lastProgressAtMs
+    if (idleMs >= command.timeoutMs) {
       break
     }
 
+    const remainingMs = command.timeoutMs - idleMs
     await command.sleep(Math.min(command.pollIntervalMs, remainingMs))
   }
 
