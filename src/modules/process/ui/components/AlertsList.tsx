@@ -145,7 +145,7 @@ export function AlertsList(props: {
                     {formatAlertAge(actionDateIso(), t, keys)}
                   </span>
                 </div>
-                <p class="mt-0.5 text-label leading-tight text-slate-600">{alert.message}</p>
+                <p class="mt-0.5 text-label font-medium leading-tight text-slate-700">{alert.message}</p>
               </div>
               <Show
                 when={props.mode === 'active'}
