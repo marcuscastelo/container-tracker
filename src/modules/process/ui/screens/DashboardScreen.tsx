@@ -68,6 +68,7 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
+// eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys } = useTranslation()
   const location = useLocation()

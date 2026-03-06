@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal } from 'solid-js'
+import { createMemo, createSignal, Match, Switch } from 'solid-js'
 import type { ProcessSyncStatus } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -55,50 +55,63 @@ function toButtonClasses(status: SyncStatus): string {
 }
 
 function SyncIcon(props: { readonly status: SyncStatus }): JSX.Element {
-  if (props.status === 'syncing') {
-    return (
-      <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-        <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 00-9-9v2a7 7 0 017 7h2z" />
-      </svg>
-    )
-  }
-
-  if (props.status === 'success') {
-    return (
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2.2"
-          d="M5 13l4 4L19 7"
-        />
-      </svg>
-    )
-  }
-
-  if (props.status === 'error') {
-    return (
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 9v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"
-        />
-      </svg>
-    )
-  }
-
   return (
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M4 4v6h6M20 20v-6h-6"
-      />
-    </svg>
+    <Switch>
+      <Match when={props.status === 'syncing'}>
+        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+          <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 00-9-9v2a7 7 0 017 7h2z" />
+        </svg>
+      </Match>
+      <Match when={props.status === 'success'}>
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2.2"
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </Match>
+      <Match when={props.status === 'error'}>
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"
+          />
+        </svg>
+      </Match>
+      <Match when={true}>
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v6h6M20 20v-6h-6"
+          />
+        </svg>
+      </Match>
+    </Switch>
   )
 }
 
