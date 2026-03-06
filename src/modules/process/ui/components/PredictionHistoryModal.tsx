@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import { PredictionHistoryTable } from '~/modules/process/ui/components/PredictionHistoryTable'
 import type { TrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
 import { classifyTrackingSeries } from '~/modules/tracking/application/projection/tracking.series.classification'
@@ -56,7 +56,9 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
   return (
     <Dialog open={props.isOpen} onClose={props.onClose} title={title()} maxWidth="2xl">
       <div class="space-y-4">
-        {classification().hasActualConflict ? <ConflictWarning /> : null}
+        <Show when={classification().hasActualConflict}>
+          <ConflictWarning />
+        </Show>
 
         <PredictionHistoryTable classified={classification().classified} locale={locale()} />
 

@@ -42,16 +42,18 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
     <Show
       when={props.actualDateIso}
       fallback={
-        props.expectedDateIso ? (
-          <div class="flex flex-col items-end" title={props.toTooltip(props.expectedDateIso)}>
-            <span class="tabular-nums text-sm font-medium text-slate-700">
-              {formatDateForLocale(props.expectedDateIso, props.locale)}
-            </span>
-            <span class="text-[10px] text-slate-500 leading-tight mt-0.5">
-              {props.expectedLabel}
-            </span>
-          </div>
-        ) : null
+        <Show when={props.expectedDateIso}>
+          {(expectedDateIso) => (
+            <div class="flex flex-col items-end" title={props.toTooltip(expectedDateIso())}>
+              <span class="tabular-nums text-sm font-medium text-slate-700">
+                {formatDateForLocale(expectedDateIso(), props.locale)}
+              </span>
+              <span class="text-[10px] text-slate-500 leading-tight mt-0.5">
+                {props.expectedLabel}
+              </span>
+            </div>
+          )}
+        </Show>
       }
     >
       {(actualDateIso) => (
@@ -246,14 +248,16 @@ export function TimelineNode(props: {
         }
       />
 
-      {props.event.series ? (
-        <PredictionHistoryModal
-          series={props.event.series}
-          activityLabel={labelPresentation().label}
-          isOpen={showPredictionHistory()}
-          onClose={() => setShowPredictionHistory(false)}
-        />
-      ) : null}
+      <Show when={props.event.series}>
+        {(series) => (
+          <PredictionHistoryModal
+            series={series()}
+            activityLabel={labelPresentation().label}
+            isOpen={showPredictionHistory()}
+            onClose={() => setShowPredictionHistory(false)}
+          />
+        )}
+      </Show>
     </>
   )
 }

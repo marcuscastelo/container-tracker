@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createSignal, For } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // Small mapping of language code to a representative country code for flags.
@@ -84,7 +84,7 @@ export function LanguageSwitch(): JSX.Element {
         <span class="sr-only">{t(keys.languageSwitch.label)}</span>
       </button>
 
-      {open() ? (
+      <Show when={open()}>
         <ul
           class="absolute right-0 mt-2 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
           onMouseLeave={() => setOpen(false)}
@@ -93,7 +93,7 @@ export function LanguageSwitch(): JSX.Element {
             {(lng) => <LanguageOption language={lng} onSelect={handleSelect} />}
           </For>
         </ul>
-      ) : null}
+      </Show>
     </div>
   )
 }

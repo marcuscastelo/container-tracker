@@ -184,7 +184,7 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
                 </Show>
               </div>
 
-              {props.containers.length > 1 ? (
+              <Show when={props.containers.length > 1}>
                 <button
                   type="button"
                   onClick={() => props.onRemoveContainer(container.id)}
@@ -206,7 +206,7 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
                     />
                   </svg>
                 </button>
-              ) : null}
+              </Show>
             </div>
           )}
         </For>

@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { MetricCard } from '~/shared/ui/MetricCard'
@@ -271,11 +271,11 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
           </div>
         </div>
 
-        {currentState === 'empty' ? (
+        <Show when={currentState === 'empty'}>
           <p class="mt-2 text-center text-[12px] text-slate-500">
             {t(keys.dashboard.alertIndicators.empty)}
           </p>
-        ) : null}
+        </Show>
       </div>
     )
   }

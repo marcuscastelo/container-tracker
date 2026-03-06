@@ -127,9 +127,47 @@ const noJsxShortCircuitRule = {
   },
 }
 
+const noJsxTernaryRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Disallow JSX ternary rendering with cond ? <A /> : <B />.',
+      recommended: false,
+    },
+    schema: [],
+    messages: {
+      avoidJsxTernary:
+        'Não use ternário JSX para render condicional. Use <Show when={cond}>...</Show>.',
+    },
+  },
+  create(context) {
+    return {
+      JSXExpressionContainer(node) {
+        const { expression } = node
+        if (!expression || expression.type !== 'ConditionalExpression') {
+          return
+        }
+
+        if (
+          !containsExplicitJsx(expression.consequent) &&
+          !containsExplicitJsx(expression.alternate)
+        ) {
+          return
+        }
+
+        context.report({
+          node: expression,
+          messageId: 'avoidJsxTernary',
+        })
+      },
+    }
+  },
+}
+
 export const rules = {
   'no-iife-in-jsx': noIifeInJsxRule,
   'no-jsx-short-circuit': noJsxShortCircuitRule,
+  'no-jsx-ternary': noJsxTernaryRule,
 }
 
 export const containerTrackerEslintPlugin = {

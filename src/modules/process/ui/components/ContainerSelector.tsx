@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
@@ -105,7 +105,7 @@ function ContainerSelectorItem(props: {
         </div>
         {/* Row 2: ETA / TS / Data chips */}
         <div class="flex items-center gap-1">
-          {showEtaChip() ? (
+          <Show when={showEtaChip()}>
             <span
               data-testid={`container-eta-chip-${props.container.id}`}
               class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${etaChipClass(
@@ -120,8 +120,8 @@ function ContainerSelectorItem(props: {
                 missing: props.labels.etaMissing,
               })}
             </span>
-          ) : null}
-          {props.container.tsChipVm.visible ? (
+          </Show>
+          <Show when={props.container.tsChipVm.visible}>
             <span
               data-testid={`container-int-chip-${props.container.id}`}
               class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${
@@ -131,8 +131,8 @@ function ContainerSelectorItem(props: {
             >
               {props.labels.ts(props.container.tsChipVm.count)}
             </span>
-          ) : null}
-          {props.container.dataIssueChipVm.visible ? (
+          </Show>
+          <Show when={props.container.dataIssueChipVm.visible}>
             <span
               data-testid={`container-data-chip-${props.container.id}`}
               class={`inline-flex rounded px-1 py-px text-[9px] font-medium leading-none ${
@@ -141,7 +141,7 @@ function ContainerSelectorItem(props: {
             >
               {props.labels.dataIssue}
             </span>
-          ) : null}
+          </Show>
         </div>
         <div
           data-testid={`container-sync-chip-${props.container.id}`}
