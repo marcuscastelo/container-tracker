@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
+import {
+  acknowledgeTrackingAlertRequest,
+  fetchDashboardProcessSummaries,
+  unacknowledgeTrackingAlertRequest,
+} from '~/modules/process/ui/validation/processApi.validation'
 
 function mockProcessListFetch() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(
@@ -100,5 +104,47 @@ describe('fetchDashboardProcessSummaries', () => {
     })
 
     expect(fetchSpy).toHaveBeenCalledWith('/api/processes', undefined)
+  })
+})
+
+describe('tracking alert action requests', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('sends acknowledge action with the expected payload', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ok: true, alert_id: 'alert-1', action: 'acknowledge' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    )
+
+    await acknowledgeTrackingAlertRequest('alert-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/alerts', {
+      method: 'PATCH',
+      body: JSON.stringify({ alert_id: 'alert-1', action: 'acknowledge' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+
+  it('sends unacknowledge action with the expected payload', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ ok: true, alert_id: 'alert-2', action: 'unacknowledge' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    )
+
+    await unacknowledgeTrackingAlertRequest('alert-2')
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/alerts', {
+      method: 'PATCH',
+      body: JSON.stringify({ alert_id: 'alert-2', action: 'unacknowledge' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
   })
 })

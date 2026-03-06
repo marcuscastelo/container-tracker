@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
@@ -18,6 +19,11 @@ import {
 } from '~/shared/api-schemas/processes.schemas'
 
 const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
+const AlertActionResponseSchema = z.object({
+  ok: z.literal(true),
+  alert_id: z.string(),
+  action: z.enum(['acknowledge', 'unacknowledge']),
+})
 
 type DashboardProcessFiltersQuery = {
   readonly provider?: readonly string[]
@@ -147,4 +153,27 @@ export async function updateProcessRequest(id: string, input: CreateProcessInput
     },
     ProcessResponseSchema,
   )
+}
+
+async function runTrackingAlertActionRequest(
+  alertId: string,
+  action: 'acknowledge' | 'unacknowledge',
+): Promise<void> {
+  await typedFetch(
+    '/api/alerts',
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ alert_id: alertId, action }),
+      headers: { 'Content-Type': 'application/json' },
+    },
+    AlertActionResponseSchema,
+  )
+}
+
+export async function acknowledgeTrackingAlertRequest(alertId: string): Promise<void> {
+  await runTrackingAlertActionRequest(alertId, 'acknowledge')
+}
+
+export async function unacknowledgeTrackingAlertRequest(alertId: string): Promise<void> {
+  await runTrackingAlertActionRequest(alertId, 'unacknowledge')
 }

@@ -220,9 +220,6 @@ export function toShipmentDetailVM(
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,
-    alerts: toAlertDisplayVMs(
-      (data.alerts ?? []).filter((alert) => alert.acked_at === null && alert.dismissed_at === null),
-      locale,
-    ),
+    alerts: toAlertDisplayVMs(data.alerts ?? [], locale),
   }
 }

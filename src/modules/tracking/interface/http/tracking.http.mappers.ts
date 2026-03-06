@@ -26,7 +26,6 @@ export function toAlertResponseDto(alert: TrackingAlert): AlertResponseDto {
     retroactive: alert.retroactive,
     provider: alert.provider,
     acked_at: alert.acked_at,
-    dismissed_at: alert.dismissed_at,
   }
 }
 

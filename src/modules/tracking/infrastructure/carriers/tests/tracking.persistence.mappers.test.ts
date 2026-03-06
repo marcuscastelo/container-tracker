@@ -177,7 +177,6 @@ describe('alertRowToDomain', () => {
     retroactive: false,
     provider: 'maersk',
     acked_at: null,
-    dismissed_at: null,
     created_at: '2026-01-15T12:00:00.000Z',
   }
 
@@ -248,7 +247,6 @@ describe('alertToInsertRow', () => {
       retroactive: false,
       provider: 'maersk' as const,
       acked_at: null,
-      dismissed_at: null,
     }
 
     const row = alertToInsertRow(alert)

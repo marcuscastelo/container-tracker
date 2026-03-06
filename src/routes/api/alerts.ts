@@ -2,7 +2,7 @@
  * Alerts API route — thin adapter to the tracking alerts controller.
  *
  * GET /api/alerts?container_id=<uuid> — List active alerts for a container
- * PATCH /api/alerts — Acknowledge or dismiss an alert
+ * PATCH /api/alerts — Acknowledge or unacknowledge an alert
  *
  * All logic lives in the controller; the route only delegates.
  */

@@ -4,6 +4,7 @@ export type TrackingAlertProjectionSource = {
   readonly severity: string
   readonly message: string
   readonly triggered_at: string
+  readonly acked_at: string | null
   readonly category: string
   readonly retroactive: boolean
 }
@@ -14,6 +15,7 @@ export type TrackingAlertProjection = {
   readonly severity: 'info' | 'warning' | 'danger'
   readonly message: string
   readonly triggeredAtIso: string
+  readonly ackedAtIso: string | null
   readonly category: 'fact' | 'monitoring'
   readonly retroactive: boolean
 }
@@ -50,6 +52,7 @@ export function toTrackingAlertProjection(
     severity: alertSeverityToProjection(alert.severity),
     message: alert.message,
     triggeredAtIso: alert.triggered_at,
+    ackedAtIso: alert.acked_at,
     category: alert.category === 'fact' ? 'fact' : 'monitoring',
     retroactive: alert.retroactive,
   }

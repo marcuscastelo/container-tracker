@@ -24,10 +24,11 @@ function createDeps(
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       listActiveAlertReadModel: listActiveAlertReadModelImpl,
       acknowledge: vi.fn(async () => undefined),
-      dismiss: vi.fn(async () => undefined),
+      unacknowledge: vi.fn(async () => undefined),
     },
     syncMetadataRepository: {
       listByContainerNumbers: vi.fn(async () => []),

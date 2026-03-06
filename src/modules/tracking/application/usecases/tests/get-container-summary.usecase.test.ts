@@ -116,9 +116,10 @@ function createDeps(
         async (): Promise<readonly TrackingActiveAlertReadModel[]> => [],
       ),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),
-      dismiss: vi.fn(async () => undefined),
+      unacknowledge: vi.fn(async () => undefined),
     },
     syncMetadataRepository: {
       listByContainerNumbers: vi.fn(async () => []),
@@ -194,5 +195,60 @@ describe('getContainerSummary', () => {
     expect(findSnapshotsByIds).toHaveBeenCalledWith('container-1', ['snapshot-1'])
     expect(findAllSnapshotsByContainerId).not.toHaveBeenCalled()
     expect(result.observations[0]?.carrier_label).toBe('Container returned empty')
+  })
+
+  it('loads active + acknowledged alerts when includeAcknowledgedAlerts is enabled', async () => {
+    const observation = makeObservation({
+      type: 'LOAD',
+      carrierLabel: null,
+      createdFromSnapshotId: 'snapshot-1',
+    })
+
+    const { deps } = createDeps([observation], [])
+    const findAllAlerts = vi.fn(
+      async (): Promise<readonly TrackingAlert[]> => [
+        {
+          id: 'alert-active',
+          container_id: 'container-1',
+          category: 'monitoring',
+          type: 'NO_MOVEMENT',
+          severity: 'warning',
+          message: 'No movement',
+          detected_at: '2026-03-05T10:00:00.000Z',
+          triggered_at: '2026-03-05T10:00:00.000Z',
+          source_observation_fingerprints: ['fp-1'],
+          alert_fingerprint: null,
+          retroactive: false,
+          provider: null,
+          acked_at: null,
+        },
+        {
+          id: 'alert-acked',
+          container_id: 'container-1',
+          category: 'fact',
+          type: 'TRANSSHIPMENT',
+          severity: 'warning',
+          message: 'Transshipment',
+          detected_at: '2026-03-04T10:00:00.000Z',
+          triggered_at: '2026-03-04T10:00:00.000Z',
+          source_observation_fingerprints: ['fp-1'],
+          alert_fingerprint: 'fp-alert',
+          retroactive: false,
+          provider: null,
+          acked_at: '2026-03-05T12:00:00.000Z',
+        },
+      ],
+    )
+
+    deps.trackingAlertRepository.findByContainerId = findAllAlerts
+
+    const result = await getContainerSummary(deps, {
+      ...makeCommand(),
+      includeAcknowledgedAlerts: true,
+    })
+
+    expect(findAllAlerts).toHaveBeenCalledTimes(1)
+    expect(result.alerts.length).toBe(2)
+    expect(result.alerts.some((alert) => alert.acked_at !== null)).toBe(true)
   })
 })

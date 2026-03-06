@@ -9,7 +9,7 @@ type ListActiveAlertsByContainerIdCommand = {
 }
 
 /**
- * Result — ordered list of active (non-acked, non-dismissed) alerts.
+ * Result — ordered list of active (non-acked) alerts.
  */
 export type ListActiveAlertsByContainerIdResult = {
   readonly alerts: readonly TrackingAlert[]

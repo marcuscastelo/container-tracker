@@ -293,7 +293,6 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     retroactive: row.retroactive,
     provider: optionalProvider(row.provider, 'alert.provider'),
     acked_at: normalizeAlertIso(row.acked_at),
-    dismissed_at: normalizeAlertIso(row.dismissed_at),
   }
 }
 
@@ -311,6 +310,5 @@ export function alertToInsertRow(alert: NewTrackingAlert): InsertTrackingAlertRo
     retroactive: alert.retroactive,
     provider: alert.provider,
     acked_at: alert.acked_at,
-    dismissed_at: alert.dismissed_at,
   }
 }

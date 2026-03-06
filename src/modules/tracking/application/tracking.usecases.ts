@@ -2,7 +2,6 @@ import type { PipelineResult } from '~/modules/tracking/application/orchestratio
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import { acknowledgeAlert } from '~/modules/tracking/application/usecases/acknowledge-alert.usecase'
-import { dismissAlert } from '~/modules/tracking/application/usecases/dismiss-alert.usecase'
 import {
   type FetchAndProcessResult,
   fetchAndProcess,
@@ -34,6 +33,7 @@ import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import { unacknowledgeAlert } from '~/modules/tracking/application/usecases/unacknowledge-alert.usecase'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 
@@ -117,8 +117,15 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerNumber: string,
       podLocationCode?: string | null,
       now: Date = new Date(),
+      options?: { readonly includeAcknowledgedAlerts?: boolean },
     ): Promise<GetContainerSummaryResult> {
-      return getContainerSummary(deps, { containerId, containerNumber, podLocationCode, now })
+      return getContainerSummary(deps, {
+        containerId,
+        containerNumber,
+        podLocationCode,
+        now,
+        includeAcknowledgedAlerts: options?.includeAcknowledgedAlerts ?? false,
+      })
     },
 
     /**
@@ -173,10 +180,10 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     },
 
     /**
-     * Dismiss a tracking alert.
+     * Mark an acknowledged alert as active again.
      */
-    async dismissAlert(alertId: string): Promise<void> {
-      await dismissAlert(deps, { alertId, dismissedAt: new Date().toISOString() })
+    async unacknowledgeAlert(alertId: string): Promise<void> {
+      await unacknowledgeAlert(deps, { alertId })
     },
 
     /**
@@ -194,7 +201,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     },
 
     /**
-     * List active (non-acked, non-dismissed) alerts for a container.
+     * List active (non-acked) alerts for a container.
      *
      * Use this instead of getContainerSummary when only alerts are needed.
      */

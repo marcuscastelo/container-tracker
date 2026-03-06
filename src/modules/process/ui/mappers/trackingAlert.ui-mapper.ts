@@ -17,6 +17,7 @@ function projectionToAlertDisplayVM(
     message: projection.message,
     timestamp: formatRelativeTime(projection.triggeredAtIso, new Date(), locale),
     triggeredAtIso: projection.triggeredAtIso,
+    ackedAtIso: projection.ackedAtIso,
     category: projection.category,
     retroactive: projection.retroactive,
   }

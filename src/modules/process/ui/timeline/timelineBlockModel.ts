@@ -571,7 +571,7 @@ export function buildTimelineRenderList(
  * - Alert is created when ARRIVAL event exists with no subsequent DISCHARGE/GATE_OUT/DELIVERY for >3 days
  * - Alert includes durationDays and port information
  * - Alert is retroactive: false (monitoring only)
- * - Alert is dismissed automatically when exit event arrives
+ * - Alert is resolved automatically when exit event arrives
  *
  * @see docs/ALERT_POLICY.md for alert classification rules
  * @see Phase 15-19 in the PRD for port risk window detection logic

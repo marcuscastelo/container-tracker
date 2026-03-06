@@ -118,13 +118,17 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   }
   async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
     const list = Array.from(this.alerts.values()).filter(
-      (a) => a.container_id === containerId && !a.dismissed_at && !a.acked_at,
+      (a) => a.container_id === containerId && !a.acked_at,
     )
+    return list
+  }
+  async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    const list = Array.from(this.alerts.values()).filter((a) => a.container_id === containerId)
     return list
   }
   async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
     const types = Array.from(this.alerts.values())
-      .filter((a) => a.container_id === containerId && !a.dismissed_at && !a.acked_at)
+      .filter((a) => a.container_id === containerId && !a.acked_at)
       .map((a) => a.type)
     return new Set(types)
   }
@@ -138,10 +142,10 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     }
     return
   }
-  async dismiss(alertId: string, dismissedAt: string): Promise<void> {
+  async unacknowledge(alertId: string): Promise<void> {
     const alert = this.alerts.get(alertId)
     if (alert) {
-      this.alerts.set(alertId, { ...alert, dismissed_at: dismissedAt })
+      this.alerts.set(alertId, { ...alert, acked_at: null })
     }
     return
   }
