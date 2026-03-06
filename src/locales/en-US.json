@@ -250,12 +250,25 @@
     "alerts": {
       "title": "Alerts",
       "empty": "No alerts for this shipment.",
+      "activeEmpty": "No active alerts for this shipment.",
       "category": {
         "eta": "eta",
         "movement": "movement",
         "customs": "customs",
         "status": "status",
         "data": "data"
+      },
+      "archived": {
+        "title": "Acknowledged ({{count}})"
+      },
+      "action": {
+        "acknowledge": "Acknowledge",
+        "acknowledgeAria": "Acknowledge alert",
+        "unacknowledge": "Un-ack",
+        "unacknowledgeAria": "Reactivate alert",
+        "dismissActionError": "Dismiss alert action error",
+        "errorAcknowledge": "Failed to acknowledge alert. Try again.",
+        "errorUnacknowledge": "Failed to reactivate alert. Try again."
       },
       "aging": {
         "now": "now",

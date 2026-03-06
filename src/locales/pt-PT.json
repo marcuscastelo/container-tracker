@@ -261,12 +261,25 @@
     "alerts": {
       "title": "Alertas",
       "empty": "Nenhum alerta para esta expedição.",
+      "activeEmpty": "Nenhum alerta ativo para esta expedição.",
       "category": {
         "eta": "eta",
         "movement": "movement",
         "customs": "customs",
         "status": "status",
         "data": "data"
+      },
+      "archived": {
+        "title": "Reconhecidos ({{count}})"
+      },
+      "action": {
+        "acknowledge": "Reconhecer",
+        "acknowledgeAria": "Reconhecer alerta",
+        "unacknowledge": "Reativar",
+        "unacknowledgeAria": "Reativar alerta",
+        "dismissActionError": "Fechar erro de ação de alerta",
+        "errorAcknowledge": "Falha ao reconhecer alerta. Tente novamente.",
+        "errorUnacknowledge": "Falha ao reativar alerta. Tente novamente."
       },
       "aging": {
         "now": "agora",

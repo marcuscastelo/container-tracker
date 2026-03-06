@@ -201,6 +201,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
               String(c.containerNumber),
               podLocationCode,
               now,
+              { includeAcknowledgedAlerts: true },
             )
             return {
               container: toContainerWithTrackingResponse(c, summary),

@@ -71,9 +71,6 @@ export type TrackingAlert = {
 
   /** When acknowledged by user (UTC ISO) */
   acked_at: string | null
-
-  /** When dismissed by user (UTC ISO) */
-  dismissed_at: string | null
 }
 
 /**

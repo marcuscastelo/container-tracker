@@ -15,14 +15,17 @@ import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-realtime-coordinator'
 import {
+  acknowledgeTrackingAlertRequest,
   createProcessRequest,
   toCreateProcessInput,
+  unacknowledgeTrackingAlertRequest,
   updateProcessRequest,
 } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type {
   ContainerEtaDetailVM,
   ShipmentDetailVM,
@@ -55,6 +58,69 @@ function buildRecentUpdateHint(command: {
 
   const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60))
   return command.toMinutesLabel(elapsedMinutes)
+}
+
+function compareAlertsByTriggeredAtDesc(left: AlertDisplayVM, right: AlertDisplayVM): number {
+  const triggeredAtCompare = right.triggeredAtIso.localeCompare(left.triggeredAtIso)
+  if (triggeredAtCompare !== 0) return triggeredAtCompare
+  return right.id.localeCompare(left.id)
+}
+
+function compareAlertsByAckedAtDesc(left: AlertDisplayVM, right: AlertDisplayVM): number {
+  const leftAckedAt = left.ackedAtIso ?? ''
+  const rightAckedAt = right.ackedAtIso ?? ''
+  const ackedAtCompare = rightAckedAt.localeCompare(leftAckedAt)
+  if (ackedAtCompare !== 0) return ackedAtCompare
+  return right.id.localeCompare(left.id)
+}
+
+function toSortedActiveAlerts(alerts: readonly AlertDisplayVM[]): readonly AlertDisplayVM[] {
+  return [...alerts]
+    .filter((alert) => alert.ackedAtIso === null)
+    .sort(compareAlertsByTriggeredAtDesc)
+}
+
+function toSortedArchivedAlerts(alerts: readonly AlertDisplayVM[]): readonly AlertDisplayVM[] {
+  return [...alerts].filter((alert) => alert.ackedAtIso !== null).sort(compareAlertsByAckedAtDesc)
+}
+
+function withAlertMarkedAsAcknowledged(
+  alerts: readonly AlertDisplayVM[],
+  alertId: string,
+  ackedAtIso: string,
+): readonly AlertDisplayVM[] {
+  return alerts.map((alert) => {
+    if (alert.id !== alertId) return alert
+    return {
+      ...alert,
+      ackedAtIso,
+    }
+  })
+}
+
+function withAlertMarkedAsActive(
+  alerts: readonly AlertDisplayVM[],
+  alertId: string,
+): readonly AlertDisplayVM[] {
+  return alerts.map((alert) => {
+    if (alert.id !== alertId) return alert
+    return {
+      ...alert,
+      ackedAtIso: null,
+    }
+  })
+}
+
+function withSetEntry(set: ReadonlySet<string>, value: string): ReadonlySet<string> {
+  const next = new Set(set)
+  next.add(value)
+  return next
+}
+
+function withoutSetEntry(set: ReadonlySet<string>, value: string): ReadonlySet<string> {
+  const next = new Set(set)
+  next.delete(value)
+  return next
 }
 
 const RefreshPostResponseSchema = z.object({
@@ -568,8 +634,10 @@ async function refreshShipmentContainers(params: RefreshContainersParams): Promi
 
 type ShipmentViewLayoutProps = {
   readonly refreshError: string | null
+  readonly alertActionError: string | null
   readonly refreshHint: string | null
   readonly onDismissRefreshError: () => void
+  readonly onDismissAlertActionError: () => void
   readonly isEditOpen: boolean
   readonly onCloseEdit: () => void
   readonly editInitialData: CreateProcessDialogFormData | null
@@ -585,10 +653,16 @@ type ShipmentViewLayoutProps = {
   readonly shipmentData: ShipmentDetailVM | null | undefined
   readonly shipmentLoading: boolean
   readonly shipmentError: unknown
+  readonly activeAlerts: readonly AlertDisplayVM[]
+  readonly archivedAlerts: readonly AlertDisplayVM[]
+  readonly busyAlertIds: ReadonlySet<string>
+  readonly collapsingAlertIds: ReadonlySet<string>
   readonly isRefreshing: boolean
   readonly refreshRetry: RefreshRetryState | null
   readonly syncNow: Date
   readonly onTriggerRefresh: () => void
+  readonly onAcknowledgeAlert: (alertId: string) => void
+  readonly onUnacknowledgeAlert: (alertId: string) => void
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
   readonly selectedContainer: ShipmentContainer | null
@@ -602,6 +676,12 @@ type ShipmentViewLayoutProps = {
 
 type ShipmentDataViewProps = {
   readonly data: ShipmentDetailVM
+  readonly activeAlerts: readonly AlertDisplayVM[]
+  readonly archivedAlerts: readonly AlertDisplayVM[]
+  readonly busyAlertIds: ReadonlySet<string>
+  readonly collapsingAlertIds: ReadonlySet<string>
+  readonly onAcknowledgeAlert: (alertId: string) => void
+  readonly onUnacknowledgeAlert: (alertId: string) => void
   readonly onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
   readonly isRefreshing: boolean
   readonly refreshRetry: RefreshRetryState | null
@@ -622,30 +702,42 @@ function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         isRefreshing={props.isRefreshing}
         refreshRetry={props.refreshRetry}
         refreshHint={props.refreshHint}
+        activeAlertCount={props.activeAlerts.length}
         onTriggerRefresh={props.onTriggerRefresh}
         onOpenEdit={props.onOpenEdit}
       />
 
       {/* Phase 1: Operational Summary Strip */}
-      <OperationalSummaryStrip data={props.data} />
+      <OperationalSummaryStrip data={props.data} alerts={props.activeAlerts} />
 
       <div class="grid gap-2 lg:grid-cols-3">
         <div class="space-y-2 lg:col-span-2">
-          {/* Phase 3+4: Alerts first, sticky */}
-          <div class="sticky top-16 z-10">
-            <AlertsPanel alerts={props.data.alerts} />
+          {/* Keep parent overflow visible. Sticky breaks when ancestors use overflow hidden/auto/scroll. */}
+          <div class="sticky top-0 z-50">
+            <AlertsPanel
+              activeAlerts={props.activeAlerts}
+              archivedAlerts={props.archivedAlerts}
+              busyAlertIds={props.busyAlertIds}
+              collapsingAlertIds={props.collapsingAlertIds}
+              onAcknowledge={props.onAcknowledgeAlert}
+              onUnacknowledge={props.onUnacknowledgeAlert}
+            />
           </div>
-          <ContainersPanel
-            containers={props.data.containers}
-            selectedId={props.selectedContainerId}
-            onSelect={props.onSelectContainer}
-            syncNow={props.syncNow}
-          />
-          <TimelinePanel
-            selectedContainer={props.selectedContainer}
-            carrier={props.data.carrier}
-            alerts={props.data.alerts}
-          />
+          <section id="shipment-containers" class="scroll-mt-[120px]">
+            <ContainersPanel
+              containers={props.data.containers}
+              selectedId={props.selectedContainerId}
+              onSelect={props.onSelectContainer}
+              syncNow={props.syncNow}
+            />
+          </section>
+          <section id="shipment-timeline" class="scroll-mt-[120px]">
+            <TimelinePanel
+              selectedContainer={props.selectedContainer}
+              carrier={props.data.carrier}
+              alerts={props.activeAlerts}
+            />
+          </section>
         </div>
         <div class="space-y-2">
           {/* Phase 9: Unified Shipment Info */}
@@ -665,7 +757,7 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
     <div class="min-h-screen bg-slate-50">
       <AppHeader
         onCreateProcess={props.onOpenCreateProcess}
-        alertCount={props.shipmentData?.alerts.length ?? 0}
+        alertCount={props.activeAlerts.length}
       />
 
       <Show when={props.refreshError}>
@@ -678,6 +770,24 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
                 class="ml-4 text-red-700 underline"
                 aria-label={t(keys.createProcess.action.dismissError)}
                 onClick={() => props.onDismissRefreshError()}
+              >
+                {t(keys.createProcess.action.dismiss)}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Show>
+
+      <Show when={props.alertActionError}>
+        <div class="mx-auto mt-2 max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <div class="flex items-start justify-between gap-4">
+              <div>{props.alertActionError}</div>
+              <button
+                type="button"
+                class="ml-4 text-amber-700 underline"
+                aria-label={t(keys.shipmentView.alerts.action.dismissActionError)}
+                onClick={() => props.onDismissAlertActionError()}
               >
                 {t(keys.createProcess.action.dismiss)}
               </button>
@@ -738,6 +848,12 @@ function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
           {(data) => (
             <ShipmentDataView
               data={data()}
+              activeAlerts={props.activeAlerts}
+              archivedAlerts={props.archivedAlerts}
+              busyAlertIds={props.busyAlertIds}
+              collapsingAlertIds={props.collapsingAlertIds}
+              onAcknowledgeAlert={props.onAcknowledgeAlert}
+              onUnacknowledgeAlert={props.onUnacknowledgeAlert}
               isRefreshing={props.isRefreshing}
               refreshRetry={props.refreshRetry}
               refreshHint={props.refreshHint}
@@ -787,6 +903,207 @@ function toCreateErrorExisting(
 ): ExistingProcessConflict | undefined {
   if (typeof value === 'string') return undefined
   return value ?? undefined
+}
+
+type ProcessDialogsControllerCommand = {
+  readonly processId: () => string
+  readonly navigate: (to: string) => void
+  readonly refetchShipment: () => unknown
+}
+
+type ProcessDialogsController = {
+  readonly isEditOpen: () => boolean
+  readonly closeEditDialog: () => void
+  readonly editInitialData: () => CreateProcessDialogFormData | null
+  readonly focusFieldOnOpen: () => 'reference' | 'carrier' | null
+  readonly handleEditSubmit: (formData: CreateProcessDialogFormData) => Promise<void> // i18n-enforce-ignore
+  readonly isCreateDialogOpen: () => boolean
+  readonly closeCreateDialog: () => void
+  readonly openCreateDialog: () => void
+  readonly handleCreateSubmit: (formData: CreateProcessDialogFormData) => Promise<void> // i18n-enforce-ignore
+  readonly hasCreateError: () => boolean
+  readonly createErrorMessage: () => string
+  readonly createErrorExisting: () => ExistingProcessConflict | undefined
+  readonly clearCreateError: () => void
+  readonly openEditForShipment: (
+    shipmentData: ShipmentDetailVM,
+    focus?: 'reference' | 'carrier' | null | undefined,
+  ) => void
+}
+
+function useProcessDialogsController(
+  command: ProcessDialogsControllerCommand,
+): ProcessDialogsController {
+  const [isEditOpen, setIsEditOpen] = createSignal(false)
+  const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
+    null,
+  )
+  const [focusFieldOnOpen, setFocusFieldOnOpen] = createSignal<'reference' | 'carrier' | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
+  const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+
+  const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
+    try {
+      try {
+        const resultId = await createProcessRequest(toCreateProcessInput(formData))
+        setIsCreateDialogOpen(false)
+        command.navigate(`/shipments/${resultId}`)
+      } catch (err) {
+        const conflict = parseExistingProcessConflictError(err)
+        if (conflict) {
+          setIsCreateDialogOpen(false)
+          setCreateError(conflict)
+          return
+        }
+        throw err
+      }
+    } catch (err) {
+      console.error('Failed to create process:', err)
+      setIsCreateDialogOpen(false)
+    }
+  }
+
+  const handleEditSubmit = async (formData: CreateProcessDialogFormData) => {
+    try {
+      const input = toCreateProcessInput(formData)
+
+      try {
+        await updateProcessRequest(command.processId(), input)
+
+        await command.refetchShipment()
+        setIsEditOpen(false)
+      } catch (err) {
+        const conflict = parseExistingProcessConflictError(err)
+        if (conflict) {
+          setIsEditOpen(false)
+          setCreateError(conflict)
+          return
+        }
+        throw err
+      }
+    } catch (err) {
+      console.error('Failed to update process:', err)
+      const conflict = parseExistingProcessConflictError(err)
+      if (conflict) {
+        setCreateError(conflict)
+      }
+      setIsEditOpen(false)
+    }
+  }
+
+  const openEditForShipment = (
+    shipmentData: ShipmentDetailVM,
+    focus?: 'reference' | 'carrier' | null | undefined,
+  ) => {
+    const initialData = toEditInitialData(shipmentData)
+    setEditInitialData(initialData)
+
+    if (focus === 'carrier') {
+      setFocusFieldOnOpen('carrier')
+    } else if (focus === 'reference') {
+      setFocusFieldOnOpen('reference')
+    } else {
+      setFocusFieldOnOpen(null)
+    }
+
+    setIsEditOpen(true)
+  }
+
+  return {
+    isEditOpen,
+    closeEditDialog: () => {
+      setIsEditOpen(false)
+      setFocusFieldOnOpen(null)
+    },
+    editInitialData,
+    focusFieldOnOpen,
+    handleEditSubmit,
+    isCreateDialogOpen,
+    closeCreateDialog: () => setIsCreateDialogOpen(false),
+    openCreateDialog: () => setIsCreateDialogOpen(true),
+    handleCreateSubmit,
+    hasCreateError: () => Boolean(createError()),
+    createErrorMessage: () => toCreateErrorMessage(createError()),
+    createErrorExisting: () => toCreateErrorExisting(createError()),
+    clearCreateError: () => setCreateError(null),
+    openEditForShipment,
+  }
+}
+
+type AlertActionsCommand = {
+  readonly acknowledgeErrorMessage: string
+  readonly unacknowledgeErrorMessage: string
+  readonly refetchShipment: () => unknown
+  readonly updateAlerts: (
+    updater: (current: readonly AlertDisplayVM[]) => readonly AlertDisplayVM[],
+  ) => void
+}
+
+type AlertActionsController = {
+  readonly busyAlertIds: () => ReadonlySet<string>
+  readonly collapsingAlertIds: () => ReadonlySet<string>
+  readonly alertActionError: () => string | null
+  readonly clearAlertActionError: () => void
+  readonly acknowledgeAlert: (alertId: string) => Promise<void> // i18n-enforce-ignore
+  readonly unacknowledgeAlert: (alertId: string) => Promise<void> // i18n-enforce-ignore
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+function useAlertActionsController(command: AlertActionsCommand): AlertActionsController {
+  const [busyAlertIds, setBusyAlertIds] = createSignal<ReadonlySet<string>>(new Set())
+  const [collapsingAlertIds, setCollapsingAlertIds] = createSignal<ReadonlySet<string>>(new Set())
+  const [alertActionError, setAlertActionError] = createSignal<string | null>(null)
+
+  const acknowledgeAlert = async (alertId: string) => {
+    if (busyAlertIds().has(alertId)) return
+    setAlertActionError(null)
+    setBusyAlertIds((prev) => withSetEntry(prev, alertId))
+
+    try {
+      await acknowledgeTrackingAlertRequest(alertId)
+      setCollapsingAlertIds((prev) => withSetEntry(prev, alertId))
+      await wait(180)
+      command.updateAlerts((alerts) => {
+        return withAlertMarkedAsAcknowledged(alerts, alertId, new Date().toISOString())
+      })
+      await command.refetchShipment()
+    } catch (err) {
+      console.error('Failed to acknowledge alert:', err)
+      setAlertActionError(command.acknowledgeErrorMessage)
+    } finally {
+      setBusyAlertIds((prev) => withoutSetEntry(prev, alertId))
+      setCollapsingAlertIds((prev) => withoutSetEntry(prev, alertId))
+    }
+  }
+
+  const unacknowledgeAlert = async (alertId: string) => {
+    if (busyAlertIds().has(alertId)) return
+    setAlertActionError(null)
+    setBusyAlertIds((prev) => withSetEntry(prev, alertId))
+
+    try {
+      await unacknowledgeTrackingAlertRequest(alertId)
+      command.updateAlerts((alerts) => withAlertMarkedAsActive(alerts, alertId))
+      await command.refetchShipment()
+    } catch (err) {
+      console.error('Failed to unacknowledge alert:', err)
+      setAlertActionError(command.unacknowledgeErrorMessage)
+    } finally {
+      setBusyAlertIds((prev) => withoutSetEntry(prev, alertId))
+    }
+  }
+
+  return {
+    busyAlertIds,
+    collapsingAlertIds,
+    alertActionError,
+    clearAlertActionError: () => setAlertActionError(null),
+    acknowledgeAlert,
+    unacknowledgeAlert,
+  }
 }
 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
@@ -866,64 +1183,27 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     })
   }
 
-  const [isEditOpen, setIsEditOpen] = createSignal(false)
-  const [editInitialData, setEditInitialData] = createSignal<CreateProcessDialogFormData | null>(
-    null,
-  )
-  const [focusFieldOnOpen, setFocusFieldOnOpen] = createSignal<'reference' | 'carrier' | null>(null)
-
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const navigate = useNavigate()
-  const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+  const dialogs = useProcessDialogsController({
+    processId: () => props.params.id,
+    navigate,
+    refetchShipment: () => refetch(),
+  })
 
-  const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
-    try {
-      try {
-        const resultId = await createProcessRequest(toCreateProcessInput(formData))
-        setIsCreateDialogOpen(false)
-        navigate(`/shipments/${resultId}`)
-      } catch (err) {
-        const conflict = parseExistingProcessConflictError(err)
-        if (conflict) {
-          setIsCreateDialogOpen(false)
-          setCreateError(conflict)
-          return
+  const alertActions = useAlertActionsController({
+    acknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorAcknowledge),
+    unacknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorUnacknowledge),
+    refetchShipment: () => refetch(),
+    updateAlerts: (updater) => {
+      mutate((current) => {
+        if (!current) return current
+        return {
+          ...current,
+          alerts: updater(current.alerts),
         }
-        throw err
-      }
-    } catch (err) {
-      console.error('Failed to create process:', err)
-      setIsCreateDialogOpen(false)
-    }
-  }
-
-  const handleEditSubmit = async (formData: CreateProcessDialogFormData) => {
-    try {
-      const input = toCreateProcessInput(formData)
-
-      try {
-        await updateProcessRequest(props.params.id, input)
-
-        await refetch()
-        setIsEditOpen(false)
-      } catch (err) {
-        const conflict = parseExistingProcessConflictError(err)
-        if (conflict) {
-          setIsEditOpen(false)
-          setCreateError(conflict)
-          return
-        }
-        throw err
-      }
-    } catch (err) {
-      console.error('Failed to update process:', err)
-      const conflict = parseExistingProcessConflictError(err)
-      if (conflict) {
-        setCreateError(conflict)
-      }
-      setIsEditOpen(false)
-    }
-  }
+      })
+    },
+  })
 
   const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
 
@@ -946,6 +1226,18 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     return selected.selectedEtaVm
   })
 
+  const activeAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
+    const data = shipment()
+    if (!data) return []
+    return toSortedActiveAlerts(data.alerts)
+  })
+
+  const archivedAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
+    const data = shipment()
+    if (!data) return []
+    return toSortedArchivedAlerts(data.alerts)
+  })
+
   // Update selected container when data loads
   createEffect(() => {
     const data = shipment()
@@ -954,57 +1246,44 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     }
   })
 
-  const openEditForShipment = (
-    shipmentData: ShipmentDetailVM,
-    focus?: 'reference' | 'carrier' | null | undefined,
-  ) => {
-    const initialData = toEditInitialData(shipmentData)
-    setEditInitialData(initialData)
-
-    if (focus === 'carrier') {
-      setFocusFieldOnOpen('carrier')
-    } else if (focus === 'reference') {
-      setFocusFieldOnOpen('reference')
-    } else {
-      setFocusFieldOnOpen(null)
-    }
-
-    setIsEditOpen(true)
-  }
-
   return (
     <ShipmentViewLayout
       refreshError={refreshError()}
+      alertActionError={alertActions.alertActionError()}
       refreshHint={refreshHint()}
       onDismissRefreshError={() => setRefreshError(null)}
-      isEditOpen={isEditOpen()}
-      onCloseEdit={() => {
-        setIsEditOpen(false)
-        setFocusFieldOnOpen(null)
-      }}
-      editInitialData={editInitialData()}
-      focusFieldOnOpen={focusFieldOnOpen()}
-      onEditSubmit={handleEditSubmit}
-      isCreateDialogOpen={isCreateDialogOpen()}
-      onCloseCreate={() => setIsCreateDialogOpen(false)}
-      onCreateSubmit={handleCreateSubmit}
-      hasCreateError={Boolean(createError())}
-      createErrorMessage={toCreateErrorMessage(createError())}
-      createErrorExisting={toCreateErrorExisting(createError())}
-      onAcknowledgeCreateError={() => setCreateError(null)}
+      onDismissAlertActionError={alertActions.clearAlertActionError}
+      isEditOpen={dialogs.isEditOpen()}
+      onCloseEdit={dialogs.closeEditDialog}
+      editInitialData={dialogs.editInitialData()}
+      focusFieldOnOpen={dialogs.focusFieldOnOpen()}
+      onEditSubmit={dialogs.handleEditSubmit}
+      isCreateDialogOpen={dialogs.isCreateDialogOpen()}
+      onCloseCreate={dialogs.closeCreateDialog}
+      onCreateSubmit={dialogs.handleCreateSubmit}
+      hasCreateError={dialogs.hasCreateError()}
+      createErrorMessage={dialogs.createErrorMessage()}
+      createErrorExisting={dialogs.createErrorExisting()}
+      onAcknowledgeCreateError={dialogs.clearCreateError}
       shipmentData={shipment()}
       shipmentLoading={shipment.loading}
       shipmentError={shipment.error}
+      activeAlerts={activeAlerts()}
+      archivedAlerts={archivedAlerts()}
+      busyAlertIds={alertActions.busyAlertIds()}
+      collapsingAlertIds={alertActions.collapsingAlertIds()}
       isRefreshing={isRefreshing()}
       refreshRetry={refreshRetry()}
       syncNow={syncNow()}
       onTriggerRefresh={triggerRefresh}
+      onAcknowledgeAlert={alertActions.acknowledgeAlert}
+      onUnacknowledgeAlert={alertActions.unacknowledgeAlert}
       selectedContainerId={selectedContainerId()}
       onSelectContainer={(id) => setSelectedContainerId(String(id))}
       selectedContainer={selectedContainer()}
       selectedContainerEtaVm={selectedContainerEtaVm()}
-      onOpenEditForShipment={openEditForShipment}
-      onOpenCreateProcess={() => setIsCreateDialogOpen(true)}
+      onOpenEditForShipment={dialogs.openEditForShipment}
+      onOpenCreateProcess={dialogs.openCreateDialog}
     />
   )
 }

@@ -7,6 +7,7 @@ import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   readonly data: ShipmentDetailVM
+  readonly alerts: ShipmentDetailVM['alerts']
 }
 
 function formatAge(
@@ -42,8 +43,8 @@ function findLatestAlertTimestamp(alerts: ShipmentDetailVM['alerts']): string | 
 export function OperationalSummaryStrip(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
-  const alertCount = () => props.data.alerts.length
-  const latestAlertTs = () => findLatestAlertTimestamp(props.data.alerts)
+  const alertCount = () => props.alerts.length
+  const latestAlertTs = () => findLatestAlertTimestamp(props.alerts)
 
   return (
     <section class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-1.5">

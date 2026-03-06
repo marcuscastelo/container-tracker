@@ -67,7 +67,7 @@ This section preserves two distinct but related concerns from both branches: ale
 5.1 Alert read-model pattern
 
 - `tracking_alerts` does not include `process_id`; when a tracking read model needs process ownership, enrich alert rows through infra repositories that resolve `container_id -> process_id`.
-- `is_active` is derived from `acked_at === null && dismissed_at === null`; expose it as derived read-model data, never as mutable source truth.
+- `is_active` is derived from `acked_at === null`; expose it as derived read-model data, never as mutable source truth.
 - If dashboard/capabilities need operational alert buckets (`eta | movement | customs | status | data`), keep the `TrackingAlert.type -> operational category` mapping inside tracking application projections (for example `tracking.operational-alert-category.readmodel.ts`) and let capabilities only aggregate rolls ups.
 
 5.2 Observation metadata propagation pattern

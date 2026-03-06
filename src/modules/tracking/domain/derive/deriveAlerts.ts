@@ -169,7 +169,6 @@ export function deriveAlerts(
         retroactive: isBackfill,
         provider: null,
         acked_at: null,
-        dismissed_at: null,
       })
     }
   }
@@ -205,7 +204,6 @@ export function deriveAlerts(
         retroactive: isBackfill,
         provider: null,
         acked_at: null,
-        dismissed_at: null,
       })
     }
   }
@@ -244,7 +242,6 @@ export function deriveAlerts(
           retroactive: false,
           provider: null,
           acked_at: null,
-          dismissed_at: null,
         })
       }
     }

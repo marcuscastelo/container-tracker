@@ -39,8 +39,8 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .select('*')
       .eq('container_id', containerId)
       .is('acked_at', null)
-      .is('dismissed_at', null)
       .order('triggered_at', { ascending: false })
+      .order('id', { ascending: false })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveByContainerId',
@@ -56,7 +56,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .select('type')
       .eq('container_id', containerId)
       .is('acked_at', null)
-      .is('dismissed_at', null)
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveTypesByContainerId',
@@ -70,13 +69,29 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     return types
   },
 
+  async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    const result = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('container_id', containerId)
+      .order('triggered_at', { ascending: false })
+      .order('id', { ascending: false })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findByContainerId',
+      table: TABLE,
+    })
+
+    return (data ?? []).map(alertRowToDomain)
+  },
+
   async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
     const alertsResult = await supabase
       .from(TABLE)
       .select('*')
       .is('acked_at', null)
-      .is('dismissed_at', null)
       .order('triggered_at', { ascending: false })
+      .order('id', { ascending: false })
 
     const alertRows =
       unwrapSupabaseResultOrThrow(alertsResult, {
@@ -143,7 +158,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         type: domainAlert.type,
         generated_at: domainAlert.triggered_at,
         fingerprint: domainAlert.alert_fingerprint,
-        is_active: domainAlert.acked_at === null && domainAlert.dismissed_at === null,
+        is_active: domainAlert.acked_at === null,
         retroactive: domainAlert.retroactive,
       })
     }
@@ -152,15 +167,20 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   },
 
   async acknowledge(alertId: string, ackedAt: string): Promise<void> {
-    const result = await supabase.from(TABLE).update({ acked_at: ackedAt }).eq('id', alertId)
+    const result = await supabase
+      .from(TABLE)
+      .update({ acked_at: ackedAt })
+      .eq('id', alertId)
+      .is('acked_at', null)
     unwrapSupabaseSingleOrNull(result, { operation: 'acknowledge', table: TABLE })
   },
 
-  async dismiss(alertId: string, dismissedAt: string): Promise<void> {
+  async unacknowledge(alertId: string): Promise<void> {
     const result = await supabase
       .from(TABLE)
-      .update({ dismissed_at: dismissedAt })
+      .update({ acked_at: null })
       .eq('id', alertId)
-    unwrapSupabaseSingleOrNull(result, { operation: 'dismiss', table: TABLE })
+      .not('acked_at', 'is', 'null')
+    unwrapSupabaseSingleOrNull(result, { operation: 'unacknowledge', table: TABLE })
   },
 }

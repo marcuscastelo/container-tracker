@@ -18,6 +18,7 @@ type GetContainerSummaryMock = (
   containerNumber: string,
   podLocationCode?: string | null,
   now?: Date,
+  options?: { readonly includeAcknowledgedAlerts?: boolean },
 ) => Promise<GetContainerSummaryResult>
 
 type GetContainersSyncMetadataMock = (command: {
@@ -251,6 +252,7 @@ describe('process controllers', () => {
       'MSCU1234567',
       'BRSSZBT',
       expect.any(Date),
+      { includeAcknowledgedAlerts: true },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       2,
@@ -258,6 +260,7 @@ describe('process controllers', () => {
       'MSCU7654321',
       'BRSSZBT',
       expect.any(Date),
+      { includeAcknowledgedAlerts: true },
     )
   })
 
@@ -321,6 +324,7 @@ describe('process controllers', () => {
       'MSCU1234567',
       null,
       expect.any(Date),
+      { includeAcknowledgedAlerts: true },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       2,
@@ -328,6 +332,7 @@ describe('process controllers', () => {
       'MSCU7654321',
       null,
       expect.any(Date),
+      { includeAcknowledgedAlerts: true },
     )
   })
 
@@ -348,6 +353,7 @@ describe('process controllers', () => {
       'MSCU1234567',
       'ESBCN07',
       expect.any(Date),
+      { includeAcknowledgedAlerts: true },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       2,
@@ -355,6 +361,7 @@ describe('process controllers', () => {
       'MSCU7654321',
       'ESBCN07',
       expect.any(Date),
+      { includeAcknowledgedAlerts: true },
     )
   })
 })

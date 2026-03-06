@@ -5,6 +5,7 @@ export type AlertDisplayVM = {
   readonly message: string
   readonly timestamp: string
   readonly triggeredAtIso: string
+  readonly ackedAtIso: string | null
   readonly category: 'fact' | 'monitoring'
   readonly retroactive: boolean
 }

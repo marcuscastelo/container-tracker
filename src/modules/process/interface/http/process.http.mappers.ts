@@ -102,7 +102,6 @@ type TrackingAlertRecord = {
   readonly retroactive: boolean
   readonly provider: string | null
   readonly acked_at: string | null
-  readonly dismissed_at: string | null
 }
 
 type ContainerWithTrackingResponse = {
@@ -200,8 +199,16 @@ function toTrackingAlertResponse(a: TrackingAlertRecord) {
     retroactive: a.retroactive,
     provider: a.provider,
     acked_at: a.acked_at,
-    dismissed_at: a.dismissed_at,
   }
+}
+
+function compareAlertsByTriggeredAtDesc(
+  left: TrackingAlertRecord,
+  right: TrackingAlertRecord,
+): number {
+  const triggeredAtCompare = right.triggered_at.localeCompare(left.triggered_at)
+  if (triggeredAtCompare !== 0) return triggeredAtCompare
+  return right.id.localeCompare(left.id)
 }
 
 function toContainerSyncResponse(sync: ContainerSyncDTO) {
@@ -338,7 +345,7 @@ export function toProcessDetailResponse(
     ...processToResponseFields(pwc.process),
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
-    alerts: alerts.map(toTrackingAlertResponse),
+    alerts: [...alerts].sort(compareAlertsByTriggeredAtDesc).map(toTrackingAlertResponse),
     process_operational: toProcessOperationalResponse(summariesForProcess),
   }
 }

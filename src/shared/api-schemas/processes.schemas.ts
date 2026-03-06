@@ -78,7 +78,6 @@ const TrackingAlertResponseSchema = z.object({
   retroactive: z.boolean(),
   provider: z.string().nullable(),
   acked_at: z.string().nullable(),
-  dismissed_at: z.string().nullable(),
 })
 
 const OperationalEtaResponseSchema = z.object({

@@ -24,6 +24,7 @@ export type GetContainerSummaryCommand = {
   readonly containerNumber: string
   readonly podLocationCode?: string | null
   readonly now?: Date
+  readonly includeAcknowledgedAlerts?: boolean
 }
 
 /**
@@ -149,7 +150,7 @@ async function loadSnapshotsForCarrierLabelEnrichment(
 /**
  * Get the full tracking summary for a container.
  *
- * Fetches observations and active alerts from persistence,
+ * Fetches observations and alerts from persistence,
  * then derives timeline, status, and transshipment info.
  */
 export async function getContainerSummary(
@@ -157,9 +158,12 @@ export async function getContainerSummary(
   cmd: GetContainerSummaryCommand,
 ): Promise<GetContainerSummaryResult> {
   const referenceNow = cmd.now ?? new Date()
+  const includeAcknowledgedAlerts = cmd.includeAcknowledgedAlerts ?? false
   const [observationsRaw, alerts] = await Promise.all([
     deps.observationRepository.findAllByContainerId(cmd.containerId),
-    deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId),
+    includeAcknowledgedAlerts
+      ? deps.trackingAlertRepository.findByContainerId(cmd.containerId)
+      : deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId),
   ])
 
   const snapshotIdsToEnrich = collectSnapshotIdsForCarrierLabelEnrichment(observationsRaw)

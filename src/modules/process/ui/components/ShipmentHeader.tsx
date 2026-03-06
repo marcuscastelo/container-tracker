@@ -21,6 +21,7 @@ type Props = {
     readonly total: number
   } | null
   refreshHint: string | null
+  activeAlertCount: number
   onTriggerRefresh: () => void
   // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
   onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
@@ -398,10 +399,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
             <span class="font-medium">{t(keys.shipmentView.containers.title)}:</span>{' '}
             <span class="text-slate-500">{props.data.containers.length}</span>
           </span>
-          <Show when={props.data.alerts.length > 0}>
+          <Show when={props.activeAlertCount > 0}>
             <span>
               <span class="font-medium">{t(keys.shipmentView.alerts.title)}:</span>{' '}
-              <span class="text-slate-500">{props.data.alerts.length}</span>
+              <span class="text-slate-500">{props.activeAlertCount}</span>
             </span>
           </Show>
         </div>

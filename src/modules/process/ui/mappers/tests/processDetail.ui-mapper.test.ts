@@ -98,7 +98,6 @@ describe('toShipmentDetailVM', () => {
           retroactive: false,
           provider: 'msc',
           acked_at: null,
-          dismissed_at: null,
         },
       ],
     }
@@ -111,6 +110,7 @@ describe('toShipmentDetailVM', () => {
     expect(result.alerts[0].severity).toBe('warning')
     expect(result.alerts[0].category).toBe('fact')
     expect(result.alerts[0].triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
+    expect(result.alerts[0].ackedAtIso).toBeNull()
   })
 
   it('maps container sync metadata by normalized container number', () => {
@@ -151,7 +151,7 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].sync.carrier).toBe('maersk')
   })
 
-  it('filters out dismissed alerts', () => {
+  it('keeps acknowledged alerts and exposes ackedAtIso', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-3',
       reference: null,
@@ -165,7 +165,7 @@ describe('toShipmentDetailVM', () => {
       containersSync: [],
       alerts: [
         {
-          id: 'alert-dismissed',
+          id: 'alert-acked',
           category: 'monitoring',
           type: 'NO_MOVEMENT',
           severity: 'warning',
@@ -174,14 +174,14 @@ describe('toShipmentDetailVM', () => {
           triggered_at: new Date().toISOString(),
           retroactive: false,
           provider: null,
-          acked_at: null,
-          dismissed_at: new Date().toISOString(),
+          acked_at: '2026-03-05T12:00:00.000Z',
         },
       ],
     }
 
     const result = toShipmentDetailVM(example)
-    expect(result.alerts.length).toBe(0)
+    expect(result.alerts.length).toBe(1)
+    expect(result.alerts[0].ackedAtIso).toBe('2026-03-05T12:00:00.000Z')
   })
 
   it('shows placeholder timeline when no observations', () => {

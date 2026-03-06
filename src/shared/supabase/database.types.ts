@@ -419,7 +419,6 @@ export type Database = {
           container_id: string
           created_at: string
           detected_at: string
-          dismissed_at: string | null
           id: string
           message: string
           provider: string | null
@@ -436,7 +435,6 @@ export type Database = {
           container_id?: string
           created_at?: string
           detected_at: string
-          dismissed_at?: string | null
           id?: string
           message: string
           provider?: string | null
@@ -453,7 +451,6 @@ export type Database = {
           container_id?: string
           created_at?: string
           detected_at?: string
-          dismissed_at?: string | null
           id?: string
           message?: string
           provider?: string | null

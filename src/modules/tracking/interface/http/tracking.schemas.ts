@@ -12,11 +12,11 @@ export const ListAlertsQuerySchema = z.object({
 })
 
 /**
- * Body for PATCH /api/alerts (acknowledge or dismiss).
+ * Body for PATCH /api/alerts (acknowledge or unacknowledge).
  */
 export const AlertActionBodySchema = z.object({
   alert_id: z.string().min(1),
-  action: z.enum(['acknowledge', 'dismiss']),
+  action: z.enum(['acknowledge', 'unacknowledge']),
 })
 
 // ---------------------------------------------------------------------------
@@ -40,7 +40,6 @@ export const AlertResponseDtoSchema = z.object({
   retroactive: z.boolean(),
   provider: z.string().nullable(),
   acked_at: z.string().nullable(),
-  dismissed_at: z.string().nullable(),
 })
 export type AlertResponseDto = z.infer<typeof AlertResponseDtoSchema>
 

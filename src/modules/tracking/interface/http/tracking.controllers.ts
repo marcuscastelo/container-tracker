@@ -54,7 +54,7 @@ function createAlertsController(trackingUseCases: TrackingUseCases) {
     }
   }
 
-  // PATCH /api/alerts — acknowledge or dismiss
+  // PATCH /api/alerts — acknowledge or unacknowledge
   async function handleAlertAction({ request }: { request: Request }): Promise<Response> {
     try {
       const raw: unknown = await request.json().catch(() => ({}))
@@ -68,7 +68,7 @@ function createAlertsController(trackingUseCases: TrackingUseCases) {
       if (action === 'acknowledge') {
         await trackingUseCases.acknowledgeAlert(alert_id)
       } else {
-        await trackingUseCases.dismissAlert(alert_id)
+        await trackingUseCases.unacknowledgeAlert(alert_id)
       }
 
       return jsonResponse({ ok: true, alert_id, action }, 200)
