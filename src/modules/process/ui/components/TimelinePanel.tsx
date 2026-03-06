@@ -247,7 +247,9 @@ function BlockChildren(props: {
               eventIdx++
               return (
                 <>
-                  {showSep ? <EventSeparator /> : null}
+                  <Show when={showSep}>
+                    <EventSeparator />
+                  </Show>
                   <TimelineNode
                     event={child.event}
                     isLast={child.isLast}

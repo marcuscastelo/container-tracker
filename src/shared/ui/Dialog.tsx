@@ -35,9 +35,9 @@ function DialogHeader(props: HeaderProps): JSX.Element {
           <h2 id="dialog-title" class="text-lg font-semibold text-slate-900">
             {props.title}
           </h2>
-          {props.description ? (
-            <p class="mt-1 text-sm text-slate-500">{props.description}</p>
-          ) : null}
+          <Show when={props.description}>
+            {(description) => <p class="mt-1 text-sm text-slate-500">{description()}</p>}
+          </Show>
         </div>
         <button
           type="button"
