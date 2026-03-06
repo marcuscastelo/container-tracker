@@ -9,14 +9,19 @@ Purpose
 : Produce a concise PR title and a well-structured PR draft body (description) derived from a git branch name, optional commit/changes summary, and optional issue references. Use when creating a draft PR from a feature/fix branch.
 
 Variables
-: - `${input:branch}` — the branch name (required). Example: `feat/user-profile-add-avatar`.
+: - `${input:branch}` — the branch name (optional). When omitted, the agent MUST auto-discover the current branch using the Codex helper script (see below).
   - `${input:changes}` — short change summary or git diff summary (optional). Example: a bullet list or single paragraph describing the changes.
   - `${input:issues}` — comma-separated issue references (optional). Example: `#123, owner/repo#456`.
   - `${workspaceFolder}` — repository root.
   - `${file}` — current file path (if relevant).
+  - Auto-discovery: The agent SHOULD attempt to run `tools/codex-skills-global/draft-pr-from-branch/scripts/generate_pr_draft.sh` in the `${workspaceFolder}` to infer branch, commits, and a draft description. The script writes title/description files to an output dir (default `/tmp`) and also prints the title and description to stdout.
 
 Usage / Instructions for the model
-: 1) Parse the branch name to determine type (feat, fix, chore, docs, refactor, test) and scope if present (e.g. `feat(scope):` or `feat/scope/...`).
+: 1) Auto-discover the current branch and change summary by executing the repository helper script:
+  - Run: `tools/codex-skills-global/draft-pr-from-branch/scripts/generate_pr_draft.sh --repo "${workspaceFolder}" --outdir /tmp`
+  - If the script succeeds, parse its stdout or the generated files under `/tmp/pr-<slug>-title.txt` and `/tmp/pr-<slug>-description.md` to obtain `branch`, `title`, and `changes/description`.
+  - If the script cannot be executed (missing permissions, not found, or non-git repo), DO NOT prompt the user for the branch. Instead, return an explicit error message instructing the user how to make the script available or provide the branch via `${input:branch}` in a follow-up attempt.
+2) Parse the branch name (from discovery or `${input:branch}` fallback) to determine type (feat, fix, chore, docs, refactor, test) and scope if present (e.g. `feat(scope):` or `feat/scope/...`).
 : 2) Generate a short, imperative PR title (<= 60 chars preferred) in English. Remove technical tokens and scope separators; if the branch includes a JIRA/ID, keep the ID at the end in parentheses only if it improves clarity.
 : 3) Produce a PR description with the following sections (use Markdown headings where indicated):
 :    - Summary — one short paragraph explaining the change.
@@ -29,6 +34,7 @@ Usage / Instructions for the model
 : 4) If `${input:changes}` is provided, incorporate important points into the "What changed" bullets; avoid repeating trivial noise (formatting-only lines).
 : 5) Keep language professional, concise, and clear. Do not include internal-only secrets or credentials.
 : 6) Output only the PR title on the first line (prefixed with `Title:`) followed by a blank line and then the PR body (prefixed with `Body:`). Example output format below.
+: IMPORTANT: The prompt must NEVER ask the user to paste the current branch; branch discovery is automatic via the Codex script. If the script fails, provide a short actionable error (do not ask for the branch interactively).
 
 Examples
 : Input: `{ "branch": "feat/user-profile-add-avatar", "changes": "Added avatar upload UI, backend endpoint, and storage integration; included validation and tests.", "issues": "#321" }`
