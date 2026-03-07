@@ -50,17 +50,17 @@ function Stop-AgentNodeProcesses {
 
   $candidateProcesses = @(
     Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
-      Where-Object {
-        if (-not $_.CommandLine) {
-          return $false
-        }
-
-        $normalizedCommandLine = $_.CommandLine.ToLowerInvariant()
-        return (
-          $normalizedCommandLine.Contains($normalizedInstallRoot) -and
-          $normalizedCommandLine.Contains($agentCommandFragment)
-        )
+    Where-Object {
+      if (-not $_.CommandLine) {
+        return $false
       }
+
+      $normalizedCommandLine = $_.CommandLine.ToLowerInvariant()
+      return (
+        $normalizedCommandLine.Contains($normalizedInstallRoot) -and
+        $normalizedCommandLine.Contains($agentCommandFragment)
+      )
+    }
   )
 
   foreach ($candidateProcess in $candidateProcesses) {
@@ -111,7 +111,8 @@ function Is-AgentRunning {
 
   try {
     $script:agentProcess.Refresh()
-  } catch {
+  }
+  catch {
     return $false
   }
 
@@ -133,7 +134,8 @@ function Ensure-AgentRunning {
 
   try {
     Start-AgentProcess
-  } catch {
+  }
+  catch {
     $script:lastAgentError = $_.Exception.Message
   }
 }
@@ -159,7 +161,8 @@ function Open-LogFile {
 function Get-AgentStatusText {
   $statusLabel = if (Is-AgentRunning) {
     "Ativo (PID $($script:agentProcess.Id))"
-  } else {
+  }
+  else {
     'Parado'
   }
 
@@ -210,18 +213,18 @@ function Update-StatusLabel {
 
   if (Is-AgentRunning) {
     $StatusMenuItem.Text = "Status: ativo (PID $($script:agentProcess.Id))"
-    Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - ativo'
+    Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - Ativo'
     return
   }
 
   if ($script:lastAgentError) {
     $StatusMenuItem.Text = 'Status: erro ao iniciar (veja log err)'
-    Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - erro'
+    Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - Erro'
     return
   }
 
   $StatusMenuItem.Text = 'Status: parado'
-  Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - parado'
+  Set-NotifyText -TrayIcon $TrayIcon -Text 'Container Tracker Agent - Parado'
 }
 
 $mutexCreated = $false
@@ -250,41 +253,41 @@ try {
   $showStatusMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $showStatusMenuItem.Text = 'Ver status'
   $null = $showStatusMenuItem.add_Click({
-    [System.Windows.Forms.MessageBox]::Show(
-      (Get-AgentStatusText),
-      'Container Tracker Agent',
-      [System.Windows.Forms.MessageBoxButtons]::OK,
-      [System.Windows.Forms.MessageBoxIcon]::Information
-    ) | Out-Null
-  })
+      [System.Windows.Forms.MessageBox]::Show(
+        (Get-AgentStatusText),
+        'Container Tracker Agent',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+      ) | Out-Null
+    })
 
   $openOutLogMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $openOutLogMenuItem.Text = 'Abrir log out'
   $null = $openOutLogMenuItem.add_Click({
-    Open-LogFile -Path $agentOutLogPath
-  })
+      Open-LogFile -Path $agentOutLogPath
+    })
 
   $openErrLogMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $openErrLogMenuItem.Text = 'Abrir log err'
   $null = $openErrLogMenuItem.add_Click({
-    Open-LogFile -Path $agentErrLogPath
-  })
+      Open-LogFile -Path $agentErrLogPath
+    })
 
   $restartMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $restartMenuItem.Text = 'Reiniciar agente'
   $null = $restartMenuItem.add_Click({
-    Stop-AgentProcess
-    Start-Sleep -Milliseconds 250
-    Ensure-AgentRunning
-    Update-StatusLabel -StatusMenuItem $statusMenuItem -TrayIcon $trayIcon
-  })
+      Stop-AgentProcess
+      Start-Sleep -Milliseconds 250
+      Ensure-AgentRunning
+      Update-StatusLabel -StatusMenuItem $statusMenuItem -TrayIcon $trayIcon
+    })
 
   $exitMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
   $exitMenuItem.Text = 'Sair'
   $null = $exitMenuItem.add_Click({
-    $script:isShuttingDown = $true
-    [System.Windows.Forms.Application]::Exit()
-  })
+      $script:isShuttingDown = $true
+      [System.Windows.Forms.Application]::Exit()
+    })
 
   $null = $contextMenu.Items.Add($statusMenuItem)
   $null = $contextMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
@@ -308,13 +311,13 @@ try {
   $trayIcon.Visible = $true
   $trayIcon.ContextMenuStrip = $contextMenu
   $null = $trayIcon.add_DoubleClick({
-    [System.Windows.Forms.MessageBox]::Show(
-      (Get-AgentStatusText),
-      'Container Tracker Agent',
-      [System.Windows.Forms.MessageBoxButtons]::OK,
-      [System.Windows.Forms.MessageBoxIcon]::Information
-    ) | Out-Null
-  })
+      [System.Windows.Forms.MessageBox]::Show(
+        (Get-AgentStatusText),
+        'Container Tracker Agent',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+      ) | Out-Null
+    })
 
   Update-StatusLabel -StatusMenuItem $statusMenuItem -TrayIcon $trayIcon
   $trayIcon.ShowBalloonTip(
@@ -327,13 +330,14 @@ try {
   $monitorTimer = New-Object System.Windows.Forms.Timer
   $monitorTimer.Interval = 5000
   $null = $monitorTimer.add_Tick({
-    Ensure-AgentRunning
-    Update-StatusLabel -StatusMenuItem $statusMenuItem -TrayIcon $trayIcon
-  })
+      Ensure-AgentRunning
+      Update-StatusLabel -StatusMenuItem $statusMenuItem -TrayIcon $trayIcon
+    })
   $monitorTimer.Start()
 
   [System.Windows.Forms.Application]::Run()
-} finally {
+}
+finally {
   $script:isShuttingDown = $true
 
   if ($null -ne $monitorTimer) {
