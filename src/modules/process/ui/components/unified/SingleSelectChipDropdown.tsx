@@ -1,4 +1,5 @@
 import type { JSX } from 'solid-js'
+import { onCleanup, onMount } from 'solid-js'
 import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
 import { ChevronDownIcon } from '~/modules/process/ui/components/unified/Icons'
 import { SingleSelectOptionsList } from '~/modules/process/ui/components/unified/SingleSelectOptionsList'
@@ -22,14 +23,52 @@ export function SingleSelectChipDropdown<T extends string>(props: {
 
   const handleSelect = (value: T | null) => {
     props.onSelect(value)
-    const detailsElement = document.querySelector('details[open]')
-    if (detailsElement instanceof HTMLDetailsElement) {
-      detailsElement.open = false
-    }
+    // close this dropdown after selection
+    if (detailsRef) detailsRef.open = false
   }
 
+  let detailsRef: HTMLDetailsElement | undefined
+
+  onMount(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!detailsRef) return
+      if (!detailsRef.open) return
+      if (detailsRef.contains(e.target as Node)) return
+      detailsRef.open = false
+    }
+
+    const onOtherOpened = (e: Event) => {
+      if (!detailsRef) return
+      if (!(e instanceof CustomEvent)) return
+      if (e.detail !== detailsRef) {
+        detailsRef.open = false
+      }
+    }
+
+    const onToggle = () => {
+      if (!detailsRef) return
+      if (detailsRef.open) {
+        window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: detailsRef }))
+      }
+    }
+
+    document.addEventListener('click', onDocClick)
+    window.addEventListener('unified-dropdown-opened', onOtherOpened as EventListener)
+    detailsRef?.addEventListener('toggle', onToggle)
+
+    onCleanup(() => {
+      document.removeEventListener('click', onDocClick)
+      window.removeEventListener('unified-dropdown-opened', onOtherOpened as EventListener)
+      detailsRef?.removeEventListener('toggle', onToggle)
+    })
+  })
+
   return (
-    <details class="group relative" data-testid={props.testId}>
+    <details
+      ref={(el) => (detailsRef = el as HTMLDetailsElement)}
+      class="group relative"
+      data-testid={props.testId}
+    >
       <summary
         class={`inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border px-2.5 text-[13px] transition-colors select-none ${
           hasSelection()
