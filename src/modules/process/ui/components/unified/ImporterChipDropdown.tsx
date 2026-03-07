@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, Match, Switch } from 'solid-js'
+import { createMemo, createSignal, Match, Switch } from 'solid-js'
 import { ChevronDownIcon } from '~/modules/process/ui/components/unified/Icons'
+import { ImporterOptionsList } from '~/modules/process/ui/components/unified/ImporterOptionsList'
 import type {
   DashboardImporterFilterOption,
   DashboardImporterFilterValue,
@@ -107,29 +108,26 @@ export function ImporterChipDropdown(props: {
             <p class="px-3 py-2 text-[13px] text-slate-500">{props.noMatchesLabel}</p>
           </Match>
           <Match when={true}>
-            <ul class="max-h-56 overflow-y-auto p-1">
-              <For each={filteredOptions()}>
-                {(option) => (
-                  <li>
-                    <button
-                      type="button"
-                      class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
-                        isOptionSelected(option)
-                          ? 'bg-slate-100 text-slate-800'
-                          : 'text-slate-700 hover:bg-slate-50'
-                      }`}
-                      onClick={() => handleOptionSelect(option)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') handleOptionSelect(option)
-                      }}
-                    >
-                      <span class="min-w-0 flex-1 truncate">{option.label}</span>
-                      <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{option.count}</span>
-                    </button>
-                  </li>
-                )}
-              </For>
-            </ul>
+            <ImporterOptionsList
+              options={filteredOptions()}
+              isSelected={isOptionSelected}
+              onSelect={handleOptionSelect}
+            />
           </Match>
         </Switch>
-                                    type="button"
+      </div>
+    </details>
+  )
+}
+
+function toOptionalNonBlankString(value: string | null | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function toNormalizedNonBlankString(value: string | null | undefined): string | null {
+  const nonBlankValue = toOptionalNonBlankString(value)
+  if (nonBlankValue === null) return null
+  return nonBlankValue.toLocaleLowerCase('pt-BR')
+}

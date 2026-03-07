@@ -1,7 +1,11 @@
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import { ActiveFilterChip } from '~/modules/process/ui/components/unified/ActiveFilterChip'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import type {
+  DashboardImporterFilterValue,
+  DashboardSeverityFilterValue,
+} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 
@@ -10,10 +14,10 @@ type Props = {
   readonly selectedProviders: readonly string[]
   readonly selectedStatuses: readonly TrackingStatusCode[]
   readonly selectedImporterChipLabel: string | null
-  readonly onSeveritySelect: (severity: unknown) => void
+  readonly onSeveritySelect: (severity: DashboardSeverityFilterValue | null) => void
   readonly onProviderToggle: (provider: string) => void
   readonly onStatusToggle: (status: TrackingStatusCode) => void
-  readonly onImporterSelect: (importer: unknown) => void
+  readonly onImporterSelect: (importer: DashboardImporterFilterValue | null) => void
 }
 
 export function ActiveFiltersPanel(props: Props): JSX.Element {
@@ -33,8 +37,7 @@ export function ActiveFiltersPanel(props: Props): JSX.Element {
       <span class="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
         {t(keys.dashboard.filters.active)}
       </span>
-
-      {props.selectedSeverity ? (
+      <Show when={props.selectedSeverity !== null}>
         <ActiveFilterChip
           label={`${t(keys.dashboard.filters.severity.label)}: ${severityLabel(props.selectedSeverity)}`}
           ariaLabel={t(keys.dashboard.filters.removeChip, {
@@ -42,7 +45,7 @@ export function ActiveFiltersPanel(props: Props): JSX.Element {
           })}
           onRemove={() => props.onSeveritySelect(null)}
         />
-      ) : null}
+      </Show>
 
       <For each={props.selectedProviders}>
         {(provider) => (
@@ -67,8 +70,7 @@ export function ActiveFiltersPanel(props: Props): JSX.Element {
           />
         )}
       </For>
-
-      {props.selectedImporterChipLabel ? (
+      <Show when={props.selectedImporterChipLabel !== null}>
         <ActiveFilterChip
           label={`${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`}
           ariaLabel={t(keys.dashboard.filters.removeChip, {
@@ -76,7 +78,7 @@ export function ActiveFiltersPanel(props: Props): JSX.Element {
           })}
           onRemove={() => props.onImporterSelect(null)}
         />
-      ) : null}
+      </Show>
     </div>
   )
 }

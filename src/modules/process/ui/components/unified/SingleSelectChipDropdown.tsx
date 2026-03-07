@@ -2,6 +2,7 @@ import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
 import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
 import { ChevronDownIcon } from '~/modules/process/ui/components/unified/Icons'
+import { SingleSelectOptionsList } from '~/modules/process/ui/components/unified/SingleSelectOptionsList'
 
 export function SingleSelectChipDropdown<T extends string>(props: {
   readonly label: string
@@ -42,45 +43,40 @@ export function SingleSelectChipDropdown<T extends string>(props: {
       </summary>
 
       <div class="absolute left-0 top-full z-20 mt-1 min-w-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg">
-        <ul class="max-h-56 overflow-y-auto p-1">
-          <li>
-            <button
-              type="button"
-              class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
-                hasSelection() ? 'text-slate-700 hover:bg-slate-50' : 'bg-slate-100 text-slate-800'
-              }`}
-              onClick={() => handleSelect(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') handleSelect(null)
-              }}
-            >
-              <span class="min-w-0 flex-1 truncate">{props.allLabel}</span>
-            </button>
-          </li>
-          <For each={props.options}>
-            {(option) => (
-              <li>
-                <button
-                  type="button"
-                  class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
-                    props.selectedValue === option.value
-                      ? 'bg-slate-100 text-slate-800'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                  onClick={() => handleSelect(option.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') handleSelect(option.value)
-                  }}
-                >
-                  <span class="min-w-0 flex-1 truncate">{option.label}</span>
-                  <span class="shrink-0 tabular-nums text-[11px] text-slate-400">
-                    {option.count}
-                  </span>
-                </button>
-              </li>
-            )}
-          </For>
-        </ul>
+        <SingleSelectOptionsList
+          allLabel={props.allLabel}
+          selectedValue={props.selectedValue}
+          options={props.options}
+          onSelect={handleSelect}
+        />
+      </div>
+    </details>
+  )
+}
+      </div>
+    </details>
+  )
+}
+      </div>
+    </details>
+  )
+}
+      </div>
+    </details>
+  )
+}
+      </div>
+    </details>
+  )
+}
+      </div>
+    </details>
+  )
+}
+      </div>
+    </details>
+  )
+}
       </div>
     </details>
   )
