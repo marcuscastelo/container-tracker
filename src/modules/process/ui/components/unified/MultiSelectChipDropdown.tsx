@@ -32,22 +32,23 @@ export function MultiSelectChipDropdown<T extends string>(props: {
   let detailsRef: HTMLDetailsElement | undefined
 
   onMount(() => {
-    const onDocClick = (e: MouseEvent) => {
+    const onDocClick: EventListener = (ev) => {
       if (!detailsRef) return
       if (!detailsRef.open) return
-      if (detailsRef.contains(e.target as Node)) return
+      const target = ev.target
+      if (target instanceof Node && detailsRef.contains(target)) return
       detailsRef.open = false
     }
 
-    const onOtherOpened = (e: Event) => {
+    const onOtherOpened: EventListener = (ev) => {
       if (!detailsRef) return
-      if (!(e instanceof CustomEvent)) return
-      if (e.detail !== detailsRef) {
+      if (!(ev instanceof CustomEvent)) return
+      if (ev.detail !== detailsRef) {
         detailsRef.open = false
       }
     }
 
-    const onToggle = () => {
+    const onToggle: EventListener = () => {
       if (!detailsRef) return
       if (detailsRef.open) {
         window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: detailsRef }))
@@ -55,19 +56,22 @@ export function MultiSelectChipDropdown<T extends string>(props: {
     }
 
     document.addEventListener('click', onDocClick)
-    window.addEventListener('unified-dropdown-opened', onOtherOpened as EventListener)
+    window.addEventListener('unified-dropdown-opened', onOtherOpened)
     detailsRef?.addEventListener('toggle', onToggle)
 
     onCleanup(() => {
       document.removeEventListener('click', onDocClick)
-      window.removeEventListener('unified-dropdown-opened', onOtherOpened as EventListener)
+      window.removeEventListener('unified-dropdown-opened', onOtherOpened)
       detailsRef?.removeEventListener('toggle', onToggle)
     })
   })
 
   return (
     <details
-      ref={(el) => (detailsRef = el as HTMLDetailsElement)}
+      ref={(el) => {
+        if (el instanceof HTMLDetailsElement) detailsRef = el
+        else detailsRef = undefined
+      }}
       class="group relative"
       data-testid={props.testId}
     >
