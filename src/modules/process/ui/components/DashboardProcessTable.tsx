@@ -194,11 +194,19 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   const dominantSeverity = () => toDominantSeverity(props.process)
   const dominantAlertLabel = () => toDominantAlertLabel(props.process, t, keys)
 
+  const severityLabel = () => {
+    if (dominantSeverity() === 'danger') return t(keys.dashboard.alertIndicators.severity.danger)
+    if (dominantSeverity() === 'warning') return t(keys.dashboard.alertIndicators.severity.warning)
+    if (dominantSeverity() === 'info') return t(keys.dashboard.alertIndicators.severity.info)
+    if (dominantSeverity() === 'success') return t(keys.dashboard.alertIndicators.severity.success)
+    return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
+  }
+
   /** Format alert age from lastEventAt (best available timestamp proxy). */
-  function formatAge(ts: string | null): { label: string; agingClass: string } {
-    if (!ts) return { label: '', agingClass: '' }
+  function formatAge(ts: string | null): { label: string; agingClass: string } | null {
+    if (!ts) return null
     const date = new Date(ts)
-    if (Number.isNaN(date.getTime())) return { label: '', agingClass: '' }
+    if (Number.isNaN(date.getTime())) return null
     const diffMs = Date.now() - date.getTime()
     const hours = Math.floor(diffMs / 3_600_000)
     const days = Math.floor(hours / 24)
@@ -287,7 +295,9 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
             <span
               class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-bold leading-none ${toSeverityBadgeClasses(dominantSeverity())}`}
             >
-              {toUnifiedAlertIcon(dominantSeverity())} {props.process.alertsCount}
+              <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>{' '}
+              {props.process.alertsCount}
+              <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
             </span>
             <span class="text-sm-ui font-medium text-slate-800 truncate">
               {dominantAlertLabel()}
