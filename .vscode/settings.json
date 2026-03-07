@@ -37,5 +37,11 @@
         "copilot/oswe-vscode-prime"
       ]
     }
+  },
+  "chat.tools.terminal.autoApprove": {
+    "/^tools/codex-skills-global/draft-pr-from-branch/scripts/generate_pr_draft\\.sh --repo \"/home/marucs/Development/Castro/container-tracker\" --outdir /tmp$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
   }
 }

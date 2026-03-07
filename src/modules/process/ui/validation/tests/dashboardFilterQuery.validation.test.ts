@@ -28,7 +28,43 @@ describe('dashboard filter query parsing contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     })
+  })
+
+  it('parses each valid severity query param value', () => {
+    const validValues = ['danger', 'warning', 'none'] as const
+
+    for (const severity of validValues) {
+      const searchParams = new URLSearchParams({ severity })
+      const result = parseDashboardFiltersFromSearchParams(searchParams)
+
+      expect(result).toEqual({
+        providers: [],
+        statuses: [],
+        importerId: null,
+        importerName: null,
+        severity,
+      })
+    }
+  })
+
+  it('trims severity values and ignores invalid severity params', () => {
+    const withTrimmedSeverity = parseDashboardFiltersFromSearchParams(
+      new URLSearchParams({ severity: ' warning ' }),
+    )
+    const withInvalidSeverity = parseDashboardFiltersFromSearchParams(
+      new URLSearchParams({ severity: 'critical' }),
+    )
+
+    expect(withTrimmedSeverity).toEqual({
+      providers: [],
+      statuses: [],
+      importerId: null,
+      importerName: null,
+      severity: 'warning',
+    })
+    expect(withInvalidSeverity).toBe(DASHBOARD_DEFAULT_FILTER_SELECTION)
   })
 
   it('parses repeated provider and status params as multi-value filters', () => {
@@ -64,6 +100,7 @@ describe('dashboard filter query parsing contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-7',
       importerName: null,
+      severity: null,
     })
   })
 
@@ -77,6 +114,7 @@ describe('dashboard filter query parsing contract', () => {
     expect(
       hasDashboardFilterQueryParams(new URLSearchParams({ importerName: 'Empresa ABC' })),
     ).toBe(true)
+    expect(hasDashboardFilterQueryParams(new URLSearchParams({ severity: 'danger' }))).toBe(true)
   })
 })
 
@@ -91,6 +129,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -99,6 +138,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: [],
       importerId: null,
       importerName: null,
+      severity: null,
     })
   })
 
@@ -108,6 +148,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     }
 
     const result = resolveDashboardFilterSelectionWithStorageFallback(
@@ -141,6 +182,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -158,6 +200,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -166,6 +209,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     })
     expect(result.searchParams.get('sortField')).toBe('createdAt')
     expect(result.searchParams.get('sortDir')).toBe('desc')
@@ -188,6 +232,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -196,6 +241,7 @@ describe('dashboard filter query hydration contract', () => {
       statuses: ['DELIVERED'],
       importerId: null,
       importerName: 'Importadora Sul',
+      severity: null,
     })
     expect(result.searchParams.getAll('provider')).toEqual(['HAPAG'])
     expect(result.searchParams.getAll('status')).toEqual(['DELIVERED'])
@@ -218,6 +264,7 @@ describe('dashboard filter query hydration contract', () => {
         statuses: ['IN_TRANSIT'],
         importerId: 'importer-42',
         importerName: 'Empresa ABC',
+        severity: null,
       },
     )
 
@@ -237,11 +284,28 @@ describe('dashboard filter query serialization contract', () => {
       statuses: ['IN_TRANSIT', 'UNKNOWN', 'IN_TRANSIT'],
       importerId: '  importer-42  ',
       importerName: '   ',
+      severity: null,
     })
 
     expect(result.toString()).toBe(
       'provider=MAERSK&provider=MSC&status=IN_TRANSIT&status=UNKNOWN&importerId=importer-42',
     )
+  })
+
+  it('serializes non-null severity values into query params', () => {
+    const severities = ['danger', 'warning', 'none'] as const
+
+    for (const severity of severities) {
+      const result = serializeDashboardFiltersToSearchParams({
+        providers: [],
+        statuses: [],
+        importerId: null,
+        importerName: null,
+        severity,
+      })
+
+      expect(result.get('severity')).toBe(severity)
+    }
   })
 
   it('serializes the default filter state to an empty query', () => {
@@ -260,6 +324,7 @@ describe('dashboard filter query serialization contract', () => {
         statuses: ['LOADED'],
         importerId: 'importer-42',
         importerName: 'Empresa',
+        severity: 'danger',
       },
     )
 
@@ -269,6 +334,7 @@ describe('dashboard filter query serialization contract', () => {
     expect(result.getAll('status')).toEqual(['LOADED'])
     expect(result.get('importerId')).toBe('importer-42')
     expect(result.get('importerName')).toBe('Empresa')
+    expect(result.get('severity')).toBe('danger')
   })
 
   it('removes stale filter params when next state is empty', () => {
@@ -278,6 +344,7 @@ describe('dashboard filter query serialization contract', () => {
         status: 'IN_TRANSIT',
         importerId: 'importer-42',
         importerName: 'Empresa',
+        severity: 'warning',
         sortDir: 'desc',
       }),
       DASHBOARD_DEFAULT_FILTER_SELECTION,
@@ -287,6 +354,7 @@ describe('dashboard filter query serialization contract', () => {
     expect(result.getAll('status')).toEqual([])
     expect(result.get('importerId')).toBeNull()
     expect(result.get('importerName')).toBeNull()
+    expect(result.get('severity')).toBeNull()
     expect(result.get('sortDir')).toBe('desc')
   })
 })
