@@ -73,41 +73,93 @@ describe('deriveStatus', () => {
     expect(deriveStatus(timeline)).toBe('IN_TRANSIT')
   })
 
-  it('should return DISCHARGED for DISCHARGE events (skips ARRIVED_AT_POD when no explicit ARRIVAL)', () => {
+  it('should return IN_TRANSIT for DISCHARGE -> LOAD -> DEPARTURE (regression)', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-      makeObs({ type: 'LOAD', id: '00000000-0000-0000-0000-000000000012', fingerprint: 'fp2' }),
       makeObs({
         type: 'DISCHARGE',
-        id: '00000000-0000-0000-0000-000000000014',
-        fingerprint: 'fp4',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2026-02-13T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'LOAD',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2026-02-22T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DEPARTURE',
+        id: '00000000-0000-0000-0000-000000000013',
+        fingerprint: 'fp3',
+        event_time: '2026-02-23T00:00:00.000Z',
+      }),
+    ])
+    expect(deriveStatus(timeline)).toBe('IN_TRANSIT')
+  })
+
+  it('should return ARRIVED_AT_POD for ARRIVAL events', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'ARRIVAL',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2026-01-20T00:00:00.000Z',
+      }),
+    ])
+    expect(deriveStatus(timeline)).toBe('ARRIVED_AT_POD')
+  })
+
+  it('should return DISCHARGED for ARRIVAL -> DISCHARGE', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'ARRIVAL',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2026-02-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
         event_time: '2026-02-02T00:00:00.000Z',
       }),
     ])
     expect(deriveStatus(timeline)).toBe('DISCHARGED')
   })
 
-  it('should return DELIVERED for DELIVERY events', () => {
+  it('should return LOADED for DISCHARGE -> LOAD', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-      makeObs({ type: 'LOAD', id: '00000000-0000-0000-0000-000000000012', fingerprint: 'fp2' }),
       makeObs({
         type: 'DISCHARGE',
-        id: '00000000-0000-0000-0000-000000000014',
-        fingerprint: 'fp4',
-        event_time: '2026-02-02T00:00:00.000Z',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
+        event_time: '2026-02-13T00:00:00.000Z',
       }),
       makeObs({
+        type: 'LOAD',
+        id: '00000000-0000-0000-0000-000000000012',
+        fingerprint: 'fp2',
+        event_time: '2026-02-22T00:00:00.000Z',
+      }),
+    ])
+    expect(deriveStatus(timeline)).toBe('LOADED')
+  })
+
+  it('should return DELIVERED for DELIVERY events', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
         type: 'DELIVERY',
-        id: '00000000-0000-0000-0000-000000000015',
-        fingerprint: 'fp5',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
         event_time: '2026-02-09T00:00:00.000Z',
       }),
     ])
     expect(deriveStatus(timeline)).toBe('DELIVERED')
   })
 
-  it('should be monotonic: status never regresses even if timeline has earlier events after later ones', () => {
-    // Simulate: DELIVERY event exists, but there are also earlier GATE_IN events
-    // Status should still be DELIVERED (highest dominance wins)
+  it('should derive status from latest ACTUAL when earlier events are also present', () => {
+    // Simulate: DELIVERY event exists, but there are also earlier GATE_IN events.
+    // Latest ACTUAL remains DELIVERY.
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({
         type: 'GATE_IN',
@@ -125,13 +177,12 @@ describe('deriveStatus', () => {
     expect(deriveStatus(timeline)).toBe('DELIVERED')
   })
 
-  it('should handle EMPTY_RETURN (highest possible status)', () => {
+  it('should handle EMPTY_RETURN events', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-      makeObs({ type: 'DELIVERY', id: '00000000-0000-0000-0000-000000000015', fingerprint: 'fp5' }),
       makeObs({
         type: 'EMPTY_RETURN',
-        id: '00000000-0000-0000-0000-000000000016',
-        fingerprint: 'fp6',
+        id: '00000000-0000-0000-0000-000000000011',
+        fingerprint: 'fp1',
         event_time: '2026-02-15T00:00:00.000Z',
       }),
     ])
@@ -165,7 +216,7 @@ describe('deriveStatus', () => {
         event_time: '2026-01-07T00:00:00.000Z',
       }),
     ])
-    // DISCHARGED has higher dominance than LOADED
+    // Latest ACTUAL is DISCHARGE
     expect(deriveStatus(timeline)).toBe('DISCHARGED')
   })
 })
