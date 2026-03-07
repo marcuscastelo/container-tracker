@@ -107,6 +107,7 @@ type DashboardOperationalProcessReadModel = {
   readonly status: ProcessAggregatedStatus
   readonly eta: string | null
   readonly dominantSeverity: DashboardDominantSeverity
+  readonly dominantAlertCreatedAt: string | null
   readonly activeAlertsCount: number
   readonly activeAlerts: readonly TrackingActiveAlertReadModel[]
 }
@@ -144,19 +145,67 @@ function normalizeDashboardSeverity(severity: string): DashboardDominantSeverity
   return 'none'
 }
 
-function resolveDashboardDominantSeverity(
-  alerts: readonly { readonly severity: string }[],
-): DashboardDominantSeverity {
+function isAlertGeneratedAfter(
+  candidate: TrackingActiveAlertReadModel,
+  current: TrackingActiveAlertReadModel,
+): boolean {
+  const candidateTimestamp = Date.parse(candidate.generated_at)
+  const currentTimestamp = Date.parse(current.generated_at)
+
+  if (!Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+    if (candidateTimestamp !== currentTimestamp) {
+      return candidateTimestamp > currentTimestamp
+    }
+  } else if (!Number.isNaN(candidateTimestamp) && Number.isNaN(currentTimestamp)) {
+    return true
+  } else if (Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+    return false
+  }
+
+  if (candidate.generated_at !== current.generated_at) {
+    return candidate.generated_at > current.generated_at
+  }
+
+  return candidate.alert_id < current.alert_id
+}
+
+function resolveDashboardDominantAlertInfo(
+  alerts: readonly TrackingActiveAlertReadModel[],
+): Readonly<{
+  severity: DashboardDominantSeverity
+  createdAt: string | null
+}> {
+  let dominantAlert: TrackingActiveAlertReadModel | null = null
   let dominantSeverity: DashboardDominantSeverity = 'none'
 
   for (const alert of alerts) {
-    const normalizedSeverity = normalizeDashboardSeverity(alert.severity)
-    if (DASHBOARD_SEVERITY_ORDER[normalizedSeverity] > DASHBOARD_SEVERITY_ORDER[dominantSeverity]) {
-      dominantSeverity = normalizedSeverity
+    const severity = normalizeDashboardSeverity(alert.severity)
+    if (severity === 'none') continue
+
+    if (dominantAlert === null) {
+      dominantAlert = alert
+      dominantSeverity = severity
+      continue
+    }
+
+    const severityScore = DASHBOARD_SEVERITY_ORDER[severity]
+    const dominantSeverityScore = DASHBOARD_SEVERITY_ORDER[dominantSeverity]
+
+    if (severityScore > dominantSeverityScore) {
+      dominantAlert = alert
+      dominantSeverity = severity
+      continue
+    }
+
+    if (severityScore === dominantSeverityScore && isAlertGeneratedAfter(alert, dominantAlert)) {
+      dominantAlert = alert
     }
   }
 
-  return dominantSeverity
+  return {
+    severity: dominantSeverity,
+    createdAt: dominantAlert?.generated_at ?? null,
+  }
 }
 
 function countBySeverity(
@@ -469,6 +518,7 @@ export function createDashboardOperationalSummaryReadModelUseCase(
         processes.map((entry) => {
           const processId = String(entry.process.id)
           const activeAlerts = alertsByProcessId.get(processId) ?? []
+          const dominantAlert = resolveDashboardDominantAlertInfo(activeAlerts)
           const containerSummaries = entry.containers.map((container) =>
             toTrackingSummaryOrFallback(summariesByContainerId, String(container.id)),
           )
@@ -480,7 +530,8 @@ export function createDashboardOperationalSummaryReadModelUseCase(
             destination: entry.process.destination,
             status: deriveDashboardStatus(containerSummaries),
             eta: deriveDashboardEta(containerSummaries),
-            dominantSeverity: resolveDashboardDominantSeverity(activeAlerts),
+            dominantSeverity: dominantAlert.severity,
+            dominantAlertCreatedAt: dominantAlert.createdAt,
             activeAlertsCount: activeAlerts.length,
             activeAlerts,
           }

@@ -38,6 +38,7 @@ const DashboardProcessExceptionResponseSchema = z.object({
   derived_status: z.string(),
   eta_current: z.string().nullable(),
   dominant_severity: DashboardProcessExceptionSeverityResponseSchema,
+  dominant_alert_created_at: z.string().nullable(),
   active_alert_count: z.number(),
 })
 

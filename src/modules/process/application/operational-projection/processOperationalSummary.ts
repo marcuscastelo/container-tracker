@@ -24,6 +24,7 @@ export type ProcessOperationalSummary = {
 
   readonly alerts_count: number
   readonly highest_alert_severity: OperationalAlertSeverity | null
+  readonly dominant_alert_created_at: string | null
 
   readonly has_transshipment: boolean
   readonly last_event_at: string | null

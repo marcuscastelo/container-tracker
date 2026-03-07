@@ -162,6 +162,7 @@ export function toProcessResponseWithSummary(
     eta: summary.eta,
     alerts_count: summary.alerts_count,
     highest_alert_severity: summary.highest_alert_severity,
+    dominant_alert_created_at: summary.dominant_alert_created_at,
     has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
     last_sync_status: sync.lastSyncStatus,

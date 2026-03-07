@@ -18,6 +18,7 @@ type ContainerTrackingSummary = {
   readonly alerts: readonly {
     readonly severity: string
     readonly type: string
+    readonly triggered_at: string
   }[]
   readonly timeline: {
     readonly observations: readonly { readonly event_time: string | null }[]
@@ -111,6 +112,26 @@ function createFallbackContainerSyncMetadata(containerNumber: string): Container
     isSyncing: false,
     lastErrorAt: null,
   }
+}
+
+function shouldPreferAlertByTriggeredAt(
+  candidate: { readonly triggered_at: string },
+  current: { readonly triggered_at: string },
+): boolean {
+  const candidateTimestamp = Date.parse(candidate.triggered_at)
+  const currentTimestamp = Date.parse(current.triggered_at)
+
+  if (!Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+    if (candidateTimestamp !== currentTimestamp) {
+      return candidateTimestamp > currentTimestamp
+    }
+  } else if (!Number.isNaN(candidateTimestamp) && Number.isNaN(currentTimestamp)) {
+    return true
+  } else if (Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+    return false
+  }
+
+  return candidate.triggered_at > current.triggered_at
 }
 
 function deriveProcessSyncSummary(command: {
@@ -226,7 +247,11 @@ export function aggregateOperationalSummary(
   }
 
   // --- Alerts ---
-  const allActiveAlerts: Array<{ readonly severity: string; readonly type: string }> = []
+  const allActiveAlerts: Array<{
+    readonly severity: string
+    readonly type: string
+    readonly triggered_at: string
+  }> = []
   for (const s of summaries) {
     for (const a of s.alerts) {
       allActiveAlerts.push(a)
@@ -242,6 +267,8 @@ export function aggregateOperationalSummary(
   }
   let highestAlertSeverity: 'info' | 'warning' | 'danger' | null = null
   let highestSeverityIdx = 0
+  let dominantAlertCreatedAt: string | null = null
+  let dominantAlert: (typeof allActiveAlerts)[number] | null = null
   for (const a of allActiveAlerts) {
     const severity = toOperationalAlertSeverity(a.severity)
     if (!severity) continue
@@ -249,6 +276,16 @@ export function aggregateOperationalSummary(
     if (idx > highestSeverityIdx) {
       highestSeverityIdx = idx
       highestAlertSeverity = severity
+      dominantAlert = a
+      dominantAlertCreatedAt = a.triggered_at
+      continue
+    }
+
+    if (idx === highestSeverityIdx && dominantAlert !== null) {
+      if (shouldPreferAlertByTriggeredAt(a, dominantAlert)) {
+        dominantAlert = a
+        dominantAlertCreatedAt = a.triggered_at
+      }
     }
   }
 
@@ -274,6 +311,7 @@ export function aggregateOperationalSummary(
     eta,
     alerts_count: alertsCount,
     highest_alert_severity: highestAlertSeverity,
+    dominant_alert_created_at: dominantAlertCreatedAt,
     has_transshipment: hasTransshipment,
     last_event_at: lastEventAt,
   }

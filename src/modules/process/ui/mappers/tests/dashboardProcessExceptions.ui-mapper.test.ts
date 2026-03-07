@@ -28,6 +28,7 @@ describe('toDashboardProcessExceptionVMs', () => {
           derived_status: 'IN_TRANSIT',
           eta_current: '2026-03-10T10:00:00.000Z',
           dominant_severity: 'danger',
+          dominant_alert_created_at: '2026-03-10T09:30:00.000Z',
           active_alert_count: 2,
         },
         {
@@ -38,6 +39,7 @@ describe('toDashboardProcessExceptionVMs', () => {
           derived_status: 'UNKNOWN_STATUS',
           eta_current: null,
           dominant_severity: 'none',
+          dominant_alert_created_at: null,
           active_alert_count: 0,
         },
       ],
@@ -54,6 +56,7 @@ describe('toDashboardProcessExceptionVMs', () => {
         etaCurrent: '2026-03-10T10:00:00.000Z',
         dominantSeverity: 'danger',
         activeAlertCount: 2,
+        dominantAlertCreatedAt: '2026-03-10T09:30:00.000Z',
       },
       {
         processId: 'process-none',
@@ -65,6 +68,7 @@ describe('toDashboardProcessExceptionVMs', () => {
         etaCurrent: null,
         dominantSeverity: 'none',
         activeAlertCount: 0,
+        dominantAlertCreatedAt: null,
       },
     ])
   })

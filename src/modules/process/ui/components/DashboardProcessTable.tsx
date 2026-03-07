@@ -196,7 +196,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
   }
 
-  /** Format alert age from lastEventAt (best available timestamp proxy). */
+  /** Format alert age from the dominant alert creation timestamp. */
   function formatAge(ts: string | null): { label: string; agingClass: string } | null {
     if (!ts) return null
     const date = new Date(ts)
@@ -219,8 +219,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     return { label, agingClass }
   }
 
-  const alertAge = () =>
-    dominantSeverity() !== 'none' ? formatAge(props.process.lastEventAt) : null
+  const alertAge = () => formatAge(props.process.dominantAlertCreatedAt)
 
   const alertTooltip = (): string | undefined => {
     if (dominantSeverity() === 'none') return undefined

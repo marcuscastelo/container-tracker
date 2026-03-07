@@ -131,6 +131,7 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         status: 'IN_PROGRESS',
         eta: '2026-03-10T10:00:00.000Z',
         dominantSeverity: 'danger',
+        dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
         activeAlertsCount: 3,
         activeAlerts: alerts,
       },
@@ -142,6 +143,7 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         status: 'LOADED',
         eta: null,
         dominantSeverity: 'none',
+        dominantAlertCreatedAt: null,
         activeAlertsCount: 0,
         activeAlerts: [],
       },
@@ -220,5 +222,51 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         retroactive: false,
       },
     ])
+  })
+
+  it('selects dominantAlertCreatedAt from dominant severity alert', async () => {
+    const fixedNow = new Date('2026-03-03T00:00:00.000Z')
+    const processes: ProcessesProjection = [
+      {
+        process: {
+          id: 'process-1',
+          reference: 'REF-001',
+          origin: 'Santos',
+          destination: 'Rotterdam',
+        },
+        containers: [{ id: 'container-1', containerNumber: 'MSCU1111111' }],
+      },
+    ]
+
+    const listProcessesWithContainers = vi.fn(async () => ({ processes }))
+    const getContainersSummary = vi.fn(
+      async (): Promise<ReadonlyMap<string, TrackingOperationalSummary>> =>
+        new Map([['container-1', makeTrackingOperationalSummary('IN_PROGRESS', null)]]),
+    )
+    const alerts: readonly TrackingActiveAlertReadModel[] = [
+      {
+        ...makeAlert('alert-warning', 'process-1', 'container-1', 'warning'),
+        generated_at: '2026-03-03T10:00:00.000Z',
+      },
+      {
+        ...makeAlert('alert-critical', 'process-1', 'container-1', 'danger'),
+        generated_at: '2026-03-03T11:00:00.000Z',
+      },
+    ]
+    const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
+
+    const useCase = createDashboardOperationalSummaryReadModelUseCase({
+      processUseCases: { listProcessesWithContainers },
+      trackingUseCases: { getContainersSummary, listActiveAlertReadModel },
+      nowFactory: () => fixedNow,
+    })
+
+    const result = await useCase()
+
+    expect(result.processes[0]).toMatchObject({
+      processId: 'process-1',
+      dominantSeverity: 'danger',
+      dominantAlertCreatedAt: '2026-03-03T11:00:00.000Z',
+    })
   })
 })

@@ -28,6 +28,7 @@ export type ProcessListItemSource = {
   eta?: string | null
   alerts_count?: number
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
+  dominant_alert_created_at?: string | null
   has_transshipment?: boolean
   last_event_at?: string | null
   redestination_number?: string | null
@@ -100,6 +101,7 @@ export function toProcessSummaryVMs(
       carrier: toOptionalNonBlankString(process.carrier),
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,
+      dominantAlertCreatedAt: process.dominant_alert_created_at ?? null,
       redestinationNumber: process.redestination_number ?? null,
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
