@@ -145,121 +145,130 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
     Boolean(props.shipmentError) || (props.shipmentData === null && !props.shipmentLoading)
 
   return (
-    <div class="min-h-screen bg-slate-50">
-      <AppHeader
-        onCreateProcess={props.onOpenCreateProcess}
-        alertCount={props.activeAlerts.length}
+    <div class="relative min-h-screen bg-slate-50">
+      {/* Wallpaper watermark — decorative only, does not affect layout */}
+      <img
+        src="/branding/wallpaper.jpeg"
+        alt=""
+        aria-hidden="true"
+        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
       />
+      <div class="relative z-1">
+        <AppHeader
+          onCreateProcess={props.onOpenCreateProcess}
+          alertCount={props.activeAlerts.length}
+        />
 
-      <Show when={props.refreshError}>
-        <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-            <div class="flex items-start justify-between gap-4">
-              <div>{props.refreshError}</div>
-              <button
-                type="button"
-                class="ml-4 text-red-700 underline"
-                aria-label={t(keys.createProcess.action.dismissError)}
-                onClick={() => props.onDismissRefreshError()}
-              >
-                {t(keys.createProcess.action.dismiss)}
-              </button>
+        <Show when={props.refreshError}>
+          <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <div class="flex items-start justify-between gap-4">
+                <div>{props.refreshError}</div>
+                <button
+                  type="button"
+                  class="ml-4 text-red-700 underline"
+                  aria-label={t(keys.createProcess.action.dismissError)}
+                  onClick={() => props.onDismissRefreshError()}
+                >
+                  {t(keys.createProcess.action.dismiss)}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </Show>
+        </Show>
 
-      <Show when={props.alertActionError}>
-        <div class="mx-auto mt-2 max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            <div class="flex items-start justify-between gap-4">
-              <div>{props.alertActionError}</div>
-              <button
-                type="button"
-                class="ml-4 text-amber-700 underline"
-                aria-label={t(keys.shipmentView.alerts.action.dismissActionError)}
-                onClick={() => props.onDismissAlertActionError()}
-              >
-                {t(keys.createProcess.action.dismiss)}
-              </button>
+        <Show when={props.alertActionError}>
+          <div class="mx-auto mt-2 max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div class="flex items-start justify-between gap-4">
+                <div>{props.alertActionError}</div>
+                <button
+                  type="button"
+                  class="ml-4 text-amber-700 underline"
+                  aria-label={t(keys.shipmentView.alerts.action.dismissActionError)}
+                  onClick={() => props.onDismissAlertActionError()}
+                >
+                  {t(keys.createProcess.action.dismiss)}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </Show>
-
-      <CreateProcessDialog
-        open={props.isEditOpen}
-        onClose={props.onCloseEdit}
-        initialData={props.editInitialData}
-        mode="edit"
-        focus={props.focusFieldOnOpen ?? undefined}
-        onSubmit={props.onEditSubmit}
-      />
-
-      <CreateProcessDialog
-        open={props.isCreateDialogOpen}
-        onClose={props.onCloseCreate}
-        onSubmit={props.onCreateSubmit}
-        mode="create"
-      />
-
-      <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">
-        <A
-          href="/"
-          class="mb-1.5 inline-flex items-center gap-1 text-micro text-slate-400 hover:text-slate-700"
-        >
-          <ChevronLeftIcon />
-          {t(keys.shipmentView.backToList)}
-        </A>
-
-        <Show when={props.hasCreateError}>
-          <ExistingProcessError
-            message={props.createErrorMessage}
-            existing={props.createErrorExisting}
-            onAcknowledge={props.onAcknowledgeCreateError}
-          />
         </Show>
 
-        <Show when={props.shipmentLoading}>
-          <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-slate-500">{t(keys.shipmentView.loading)}</p>
-          </div>
-        </Show>
+        <CreateProcessDialog
+          open={props.isEditOpen}
+          onClose={props.onCloseEdit}
+          initialData={props.editInitialData}
+          mode="edit"
+          focus={props.focusFieldOnOpen ?? undefined}
+          onSubmit={props.onEditSubmit}
+        />
 
-        <Show when={shouldShowNotFound()}>
-          <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-            <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
-            <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
-              {t(keys.shipmentView.backToDashboard)}
-            </A>
-          </div>
-        </Show>
+        <CreateProcessDialog
+          open={props.isCreateDialogOpen}
+          onClose={props.onCloseCreate}
+          onSubmit={props.onCreateSubmit}
+          mode="create"
+        />
 
-        <Show when={props.shipmentData}>
-          {(data) => (
-            <ShipmentDataView
-              data={data()}
-              activeAlerts={props.activeAlerts}
-              archivedAlerts={props.archivedAlerts}
-              busyAlertIds={props.busyAlertIds}
-              collapsingAlertIds={props.collapsingAlertIds}
-              onAcknowledgeAlert={props.onAcknowledgeAlert}
-              onUnacknowledgeAlert={props.onUnacknowledgeAlert}
-              isRefreshing={props.isRefreshing}
-              refreshRetry={props.refreshRetry}
-              refreshHint={props.refreshHint}
-              syncNow={props.syncNow}
-              onTriggerRefresh={props.onTriggerRefresh}
-              onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
-                props.onOpenEditForShipment(data(), focus)
-              }
-              selectedContainerId={props.selectedContainerId}
-              onSelectContainer={props.onSelectContainer}
-              selectedContainer={props.selectedContainer}
+        <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">
+          <A
+            href="/"
+            class="mb-1.5 inline-flex items-center gap-1 text-micro text-slate-400 hover:text-slate-700"
+          >
+            <ChevronLeftIcon />
+            {t(keys.shipmentView.backToList)}
+          </A>
+
+          <Show when={props.hasCreateError}>
+            <ExistingProcessError
+              message={props.createErrorMessage}
+              existing={props.createErrorExisting}
+              onAcknowledge={props.onAcknowledgeCreateError}
             />
-          )}
-        </Show>
-      </main>
+          </Show>
+
+          <Show when={props.shipmentLoading}>
+            <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
+              <p class="text-slate-500">{t(keys.shipmentView.loading)}</p>
+            </div>
+          </Show>
+
+          <Show when={shouldShowNotFound()}>
+            <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
+              <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
+              <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
+                {t(keys.shipmentView.backToDashboard)}
+              </A>
+            </div>
+          </Show>
+
+          <Show when={props.shipmentData}>
+            {(data) => (
+              <ShipmentDataView
+                data={data()}
+                activeAlerts={props.activeAlerts}
+                archivedAlerts={props.archivedAlerts}
+                busyAlertIds={props.busyAlertIds}
+                collapsingAlertIds={props.collapsingAlertIds}
+                onAcknowledgeAlert={props.onAcknowledgeAlert}
+                onUnacknowledgeAlert={props.onUnacknowledgeAlert}
+                isRefreshing={props.isRefreshing}
+                refreshRetry={props.refreshRetry}
+                refreshHint={props.refreshHint}
+                syncNow={props.syncNow}
+                onTriggerRefresh={props.onTriggerRefresh}
+                onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
+                  props.onOpenEditForShipment(data(), focus)
+                }
+                selectedContainerId={props.selectedContainerId}
+                onSelectContainer={props.onSelectContainer}
+                selectedContainer={props.selectedContainer}
+              />
+            )}
+          </Show>
+        </main>
+      </div>
     </div>
   )
 }
