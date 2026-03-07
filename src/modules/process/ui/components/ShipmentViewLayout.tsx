@@ -72,15 +72,14 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
     Boolean(props.shipmentError) || (props.shipmentData === null && !props.shipmentLoading)
 
   return (
-    <div
-      class="relative min-h-screen bg-slate-50"
-      style={{
-        'background-image': `url(${BRANDING.wallpaper})`,
-        'background-repeat': 'no-repeat',
-        'background-size': 'cover',
-        'background-position': 'center',
-      }}
-    >
+    <div class="relative min-h-screen bg-slate-50">
+      {/* Wallpaper watermark — decorative only, does not affect layout */}
+      <img
+        src={BRANDING.wallpaper}
+        alt=""
+        aria-hidden="true"
+        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
+      />
       <div class="relative z-10">
         <AppHeader
           onCreateProcess={props.onOpenCreateProcess}
