@@ -111,17 +111,18 @@
         "createdAt": "Criado em",
         "route": "Rota",
         "containers": "Contentores",
-        "status": "Estado Derivado",
+        "status": "Estado",
         "eta": "ETA Atual",
         "dominantSeverity": "Severidade Dominante",
         "dominantAlert": "Alerta Dominante",
         "activeAlerts": "Alertas Ativos",
+        "alerts": "Alertas",
         "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transbordo detectado",
         "alertsPresent": "{{count}} alerta(s)",
-        "noAlerts": "—"
+        "noAlerts": "Sem alerta"
       },
       "chipOverflow": "+{{count}}",
       "age": {

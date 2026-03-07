@@ -100,17 +100,18 @@
         "createdAt": "Created",
         "route": "Route",
         "containers": "Containers",
-        "status": "Derived Status",
+        "status": "Status",
         "eta": "Current ETA",
         "dominantSeverity": "Dominant Severity",
         "dominantAlert": "Dominant Alert",
         "activeAlerts": "Active Alerts",
+        "alerts": "Alerts",
         "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transshipment detected",
         "alertsPresent": "{{count}} alert(s)",
-        "noAlerts": "—"
+        "noAlerts": "No alert"
       },
       "chipOverflow": "+{{count}}",
       "age": {

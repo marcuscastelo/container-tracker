@@ -47,7 +47,7 @@ type SortHeaderProps = {
   readonly label: string
   readonly direction: DashboardSortDirection | null
   readonly onToggle: (field: DashboardSortField) => void
-  readonly align?: 'left' | 'right'
+  readonly align?: 'left' | 'center' | 'right'
 }
 
 function ArrowIcon(): JSX.Element {
@@ -94,7 +94,11 @@ function SortDirectionIcon(props: {
 
 function SortHeaderButton(props: SortHeaderProps): JSX.Element {
   const isActive = () => props.direction !== null
-  const justifyClass = () => (props.align === 'right' ? 'justify-end' : 'justify-start')
+  const justifyClass = () => {
+    if (props.align === 'right') return 'justify-end'
+    if (props.align === 'center') return 'justify-center'
+    return 'justify-start'
+  }
 
   return (
     <button
@@ -149,31 +153,6 @@ function toDominantAlertLabel(
   return t(keys.dashboard.table.dominantAlertLabel.alertsPresent, { count: process.alertsCount })
 }
 
-type AlertCategoryChip = 'eta' | 'movement' | 'data' | 'customs'
-
-function toDerivedCategories(process: ProcessSummaryVM): readonly AlertCategoryChip[] {
-  const cats: AlertCategoryChip[] = []
-  if (process.highestAlertSeverity === 'danger' || process.highestAlertSeverity === 'warning') {
-    cats.push('eta')
-  }
-  if (process.hasTransshipment) {
-    cats.push('movement')
-  }
-  if (process.alertsCount > 0 && cats.length === 0) {
-    cats.push('data')
-  }
-  return cats
-}
-
-const MAX_VISIBLE_CHIPS = 2
-
-const CATEGORY_ICON: Record<AlertCategoryChip, string> = {
-  eta: '⏱',
-  movement: '⇄',
-  data: '🗄',
-  customs: '🛃',
-}
-
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
   if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
   if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
@@ -203,28 +182,15 @@ function CheckIcon(): JSX.Element {
   )
 }
 
-function AlertChipList(props: {
-  readonly chips: readonly AlertCategoryChip[]
-  readonly overflowCount: number
-  readonly overflowLabel: string
-}): JSX.Element {
-  return (
-    <div class="flex items-center gap-1">
-      <For each={props.chips}>
-        {(chip) => (
-          <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium leading-none text-slate-500">
-            <span aria-hidden="true">{CATEGORY_ICON[chip]}</span>
-            {chip}
-          </span>
-        )}
-      </For>
-      <Show when={props.overflowCount > 0}>
-        <span class="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium leading-none text-slate-400">
-          {props.overflowLabel}
-        </span>
-      </Show>
-    </div>
-  )
+/** Shared grid definition — single source of truth for header + rows */
+const GRID_COLS =
+  'grid grid-cols-[130px_1fr_150px_110px_70px_minmax(180px,auto)] divide-x divide-slate-200/50'
+
+function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
+  if (severity === 'danger') return '⛔'
+  if (severity === 'warning') return '⚠'
+  if (severity === 'info') return 'ℹ'
+  return '✓'
 }
 
 function DashboardProcessRow(props: RowProps): JSX.Element {
@@ -232,46 +198,36 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   const navigate = useNavigate()
   const route = () => displayRoute(props.process)
 
-  function formatAge(ts: string | Date | null | undefined): string {
-    if (!ts) return t(keys.dashboard.table.age.missing)
-    const date = typeof ts === 'string' ? new Date(ts) : ts
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '—'
-    const diff = Date.now() - date.getTime()
-    const s = Math.floor(diff / 1000)
-    if (s < 60) return t(keys.dashboard.table.age.now)
-    const m = Math.floor(s / 60)
-    if (m < 60) return t(keys.dashboard.table.age.minutes, { count: m })
-    const h = Math.floor(m / 60)
-    if (h < 24) return t(keys.dashboard.table.age.hours, { count: h })
-    const d = Math.floor(h / 24)
-    return t(keys.dashboard.table.age.days, { count: d })
-  }
-
   const dominantSeverity = () => toDominantSeverity(props.process)
   const dominantAlertLabel = () => toDominantAlertLabel(props.process, t, keys)
-  const categories = () => toDerivedCategories(props.process)
-  const visibleChips = () => categories().slice(0, MAX_VISIBLE_CHIPS)
-  const overflowCount = () => Math.max(0, categories().length - MAX_VISIBLE_CHIPS)
 
-  const severityLabel = () => {
-    if (dominantSeverity() === 'danger') {
-      return t(keys.dashboard.alertIndicators.severity.danger).toUpperCase()
-    }
-    if (dominantSeverity() === 'warning') {
-      return t(keys.dashboard.alertIndicators.severity.warning).toUpperCase()
-    }
-    if (dominantSeverity() === 'info') {
-      return t(keys.dashboard.alertIndicators.severity.info).toUpperCase()
-    }
-    if (dominantSeverity() === 'success') {
-      return t(keys.dashboard.alertIndicators.severity.success).toUpperCase()
-    }
-    return t(keys.dashboard.table.severity.none)
+  /** Format alert age from lastEventAt (best available timestamp proxy). */
+  function formatAge(ts: string | null): { label: string; agingClass: string } {
+    if (!ts) return { label: '', agingClass: '' }
+    const date = new Date(ts)
+    if (Number.isNaN(date.getTime())) return { label: '', agingClass: '' }
+    const diffMs = Date.now() - date.getTime()
+    const hours = Math.floor(diffMs / 3_600_000)
+    const days = Math.floor(hours / 24)
+
+    let label: string
+    if (hours < 1) label = t(keys.dashboard.table.age.now)
+    else if (hours < 24) label = t(keys.dashboard.table.age.hours, { count: hours })
+    else label = t(keys.dashboard.table.age.days, { count: days })
+
+    // Aging color: 0-24h neutral, 1-3d warning, 4+d danger
+    let agingClass: string
+    if (days >= 4) agingClass = 'text-red-500'
+    else if (days >= 1) agingClass = 'text-amber-500'
+    else agingClass = 'text-slate-400'
+
+    return { label, agingClass }
   }
 
-  const ageLabel = () => formatAge(props.process.lastEventAt)
+  const alertAge = () =>
+    dominantSeverity() !== 'none' ? formatAge(props.process.lastEventAt) : null
 
-  const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50' : 'bg-white')
+  const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
 
   const handleRowClick = (e: MouseEvent) => {
     // Avoid double navigation when clicking inner links/buttons
@@ -282,97 +238,92 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   }
 
   return (
-    <tr
-      class={`group border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-gray-50 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())} [&>td]:align-middle`}
+    <div
+      role="row"
+      class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-slate-100/80 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
       onClick={handleRowClick}
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter') navigate(`/shipments/${props.process.id}`)
       }}
     >
-      {/* Severity + Age */}
-      <td class="px-3 py-3">
-        <Show
-          when={dominantSeverity() !== 'none'}
-          fallback={
-            <div class="flex items-center gap-1">
-              <CheckIcon />
-              <span class="text-xs-ui text-slate-400">{severityLabel()}</span>
-            </div>
-          }
-        >
-          <div class="flex flex-col items-start gap-0.5">
-            <span
-              class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-bold uppercase tracking-wide leading-none ${toSeverityBadgeClasses(
-                dominantSeverity(),
-              )}`}
-            >
-              {severityLabel()}
-            </span>
-            <span class="text-micro tabular-nums text-slate-400">{ageLabel()}</span>
-          </div>
-        </Show>
-      </td>
-      <td class="px-3 py-3">
+      {/* Process — visual anchor */}
+      <div role="cell" class="overflow-hidden px-3 py-2">
         <A
           href={`/shipments/${props.process.id}`}
-          class="text-md-ui font-bold text-blue-700 hover:text-blue-800 hover:underline"
+          class="text-md-ui font-semibold text-slate-900 hover:text-blue-700 hover:underline whitespace-nowrap truncate block"
         >
           {displayProcessRef(props.process)}
         </A>
-      </td>
-      <td class="px-3 py-3">
-        <div class="flex items-center gap-1.5 text-md-ui text-slate-700 leading-tight">
-          <span class="max-w-[120px] truncate">{route().origin}</span>
+      </div>
+      {/* Route — secondary */}
+      <div role="cell" class="overflow-hidden px-3 py-2">
+        <div class="flex items-center gap-1 text-xs-ui text-slate-500 leading-tight">
+          <span class="truncate">{route().origin}</span>
           <ArrowIcon />
-          <span class="max-w-[120px] truncate font-medium">{route().destination}</span>
+          <span class="truncate font-medium text-slate-600">{route().destination}</span>
           <Show when={props.process.redestinationNumber}>
-            <span class="text-xs-ui text-slate-400">({props.process.redestinationNumber})</span>
+            <span class="text-micro text-slate-400">({props.process.redestinationNumber})</span>
           </Show>
         </div>
-      </td>
-      <td class="px-3 py-3">
+      </div>
+      {/* Status */}
+      <div role="cell" class="px-3 py-2 text-center">
         <StatusBadge
           variant={props.process.status}
           label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
         />
-      </td>
-      <td class="px-3 py-3 text-right">
-        <Show when={props.process.eta} fallback={<span class="text-md-ui text-slate-300">—</span>}>
-          <span class="text-md-ui font-bold tabular-nums text-slate-900">
+      </div>
+      {/* ETA — emphasis by exception */}
+      <div role="cell" class="px-3 py-2 text-center">
+        <Show when={props.process.eta} fallback={<span class="text-xs-ui text-slate-300">—</span>}>
+          <span
+            class={`text-md-ui font-bold tabular-nums ${props.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
+          >
             {displayEta(props.process.eta)}
           </span>
         </Show>
-      </td>
-      <td class="px-3 py-3 text-center">
+      </div>
+      {/* Sync */}
+      <div role="cell" class="px-3 py-2 text-center">
         <ProcessSyncButton
           processId={props.process.id}
           status={props.process.syncStatus}
           lastSyncAt={props.process.lastSyncAt}
           onSync={props.onProcessSync}
         />
-      </td>
-      {/* Dominant Alert — emphasized */}
-      <td class="px-3 py-3">
-        <div class="flex items-center gap-1.5">
-          <span class="text-md-ui font-medium text-slate-900 truncate max-w-[180px]">
-            {dominantAlertLabel()}
-          </span>
-          <Show when={visibleChips().length > 0}>
-            <AlertChipList
-              chips={visibleChips()}
-              overflowCount={overflowCount()}
-              overflowLabel={t(keys.dashboard.table.chipOverflow, { count: overflowCount() })}
-            />
-          </Show>
-        </div>
-      </td>
-      <td class="px-3 py-3 text-center">
-        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-xs-ui font-bold tabular-nums text-slate-700">
-          {props.process.alertsCount}
-        </span>
-      </td>
-    </tr>
+      </div>
+      {/* Unified Alerts */}
+      <div role="cell" class="overflow-hidden px-3 py-2">
+        <Show
+          when={dominantSeverity() !== 'none'}
+          fallback={
+            <div class="flex items-center gap-1">
+              <CheckIcon />
+              <span class="text-xs-ui text-slate-400">{dominantAlertLabel()}</span>
+            </div>
+          }
+        >
+          <div class="flex items-center gap-1.5">
+            <span
+              class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-bold leading-none ${toSeverityBadgeClasses(dominantSeverity())}`}
+            >
+              {toUnifiedAlertIcon(dominantSeverity())} {props.process.alertsCount}
+            </span>
+            <span class="text-sm-ui font-medium text-slate-800 truncate">
+              {dominantAlertLabel()}
+            </span>
+            <Show when={alertAge()}>
+              {(age) => (
+                <span class={`text-micro tabular-nums whitespace-nowrap ${age().agingClass}`}>
+                  · {age().label}
+                </span>
+              )}
+            </Show>
+          </div>
+        </Show>
+      </div>
+    </div>
   )
 }
 
@@ -382,13 +333,13 @@ function GroupHeaderRow(props: {
   labelClass: string
 }): JSX.Element {
   return (
-    <tr class={`border-b border-slate-100 ${props.rowClass}`}>
-      <td colspan="8" class="px-3 py-1.5">
+    <div role="row" class={`border-b border-slate-100 ${props.rowClass}`}>
+      <div class="px-3 py-1.5">
         <span class={`text-micro font-bold uppercase tracking-wider ${props.labelClass}`}>
           {props.label}
         </span>
-      </td>
-    </tr>
+      </div>
+    </div>
   )
 }
 
@@ -404,81 +355,93 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const normalGroup = () => props.processes.filter((p) => toDominantSeverity(p) === 'none')
 
   const tableHeader = (
-    <thead>
-      <tr class="border-b border-slate-200 text-left text-sm-ui font-medium uppercase tracking-wider text-slate-400/80">
-        <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantSeverity)}</th>
-        <th class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
-          <SortHeaderButton
-            field="processNumber"
-            label={t(keys.dashboard.table.col.process)}
-            direction={processSortDirection()}
-            onToggle={props.onSortToggle}
-          />
-        </th>
-        <th class="px-3 py-2.5">{t(keys.dashboard.table.col.route)}</th>
-        <th class="px-3 py-2.5" aria-sort={toAriaSort(statusSortDirection())}>
-          <SortHeaderButton
-            field="status"
-            label={t(keys.dashboard.table.col.status)}
-            direction={statusSortDirection()}
-            onToggle={props.onSortToggle}
-          />
-        </th>
-        <th class="px-3 py-2.5 text-right" aria-sort={toAriaSort(etaSortDirection())}>
-          <SortHeaderButton
-            field="eta"
-            label={t(keys.dashboard.table.col.eta)}
-            direction={etaSortDirection()}
-            onToggle={props.onSortToggle}
-            align="right"
-          />
-        </th>
-        <th class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.sync)}</th>
-        <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantAlert)}</th>
-        <th class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.activeAlerts)}</th>
-      </tr>
-    </thead>
+    <div
+      role="row"
+      class={`${GRID_COLS} bg-white/80 border-b border-slate-200 text-left text-xs-ui font-semibold uppercase tracking-wide text-slate-500`}
+    >
+      <div role="columnheader" class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
+        <SortHeaderButton
+          field="processNumber"
+          label={t(keys.dashboard.table.col.process)}
+          direction={processSortDirection()}
+          onToggle={props.onSortToggle}
+        />
+      </div>
+      <div role="columnheader" class="px-3 py-2.5">
+        {t(keys.dashboard.table.col.route)}
+      </div>
+      <div
+        role="columnheader"
+        class="px-3 py-2.5 text-center"
+        aria-sort={toAriaSort(statusSortDirection())}
+      >
+        <SortHeaderButton
+          field="status"
+          label={t(keys.dashboard.table.col.status)}
+          direction={statusSortDirection()}
+          onToggle={props.onSortToggle}
+          align="center"
+        />
+      </div>
+      <div
+        role="columnheader"
+        class="px-3 py-2.5 text-center"
+        aria-sort={toAriaSort(etaSortDirection())}
+      >
+        <SortHeaderButton
+          field="eta"
+          label={t(keys.dashboard.table.col.eta)}
+          direction={etaSortDirection()}
+          onToggle={props.onSortToggle}
+          align="center"
+        />
+      </div>
+      <div role="columnheader" class="px-3 py-2.5 text-center">
+        {t(keys.dashboard.table.col.sync)}
+      </div>
+      <div role="columnheader" class="px-3 py-2.5">
+        {t(keys.dashboard.table.col.alerts)}
+      </div>
+    </div>
   )
 
   return (
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        {tableHeader}
-        <tbody>
-          <Show when={exceptionsGroup().length > 0}>
-            <GroupHeaderRow
-              rowClass="bg-red-50/50"
-              labelClass="text-red-500"
-              label={t(keys.dashboard.table.groupHeader.exceptions)}
-            />
-            <For each={exceptionsGroup()}>
-              {(process, i) => (
-                <DashboardProcessRow
-                  process={process}
-                  index={i()}
-                  onProcessSync={props.onProcessSync}
-                />
-              )}
-            </For>
-          </Show>
-          <Show when={normalGroup().length > 0}>
-            <GroupHeaderRow
-              rowClass="bg-slate-50/50"
-              labelClass="text-slate-300"
-              label={t(keys.dashboard.table.groupHeader.normal)}
-            />
-            <For each={normalGroup()}>
-              {(process, i) => (
-                <DashboardProcessRow
-                  process={process}
-                  index={i()}
-                  onProcessSync={props.onProcessSync}
-                />
-              )}
-            </For>
-          </Show>
-        </tbody>
-      </table>
+    <div class="overflow-x-auto" role="table">
+      {tableHeader}
+      <div role="rowgroup">
+        <Show when={exceptionsGroup().length > 0}>
+          <GroupHeaderRow
+            rowClass="bg-red-50/50"
+            labelClass="text-red-500"
+            label={t(keys.dashboard.table.groupHeader.exceptions)}
+          />
+          <For each={exceptionsGroup()}>
+            {(process, i) => (
+              <DashboardProcessRow
+                process={process}
+                index={i()}
+                onProcessSync={props.onProcessSync}
+              />
+            )}
+          </For>
+        </Show>
+        <Show when={normalGroup().length > 0}>
+          <GroupHeaderRow
+            rowClass="bg-slate-50/50"
+            labelClass="text-slate-300"
+            label={t(keys.dashboard.table.groupHeader.normal)}
+          />
+          <For each={normalGroup()}>
+            {(process, i) => (
+              <DashboardProcessRow
+                process={process}
+                index={i()}
+                onProcessSync={props.onProcessSync}
+              />
+            )}
+          </For>
+        </Show>
+      </div>
     </div>
   )
 }
@@ -526,18 +489,20 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     }
 
     return (
-      <DashboardProcessRows
-        processes={props.processes}
-        sortSelection={props.sortSelection}
-        onSortToggle={props.onSortToggle}
-        onProcessSync={props.onProcessSync}
-      />
+      <>
+        <DashboardProcessRows
+          processes={props.processes}
+          sortSelection={props.sortSelection}
+          onSortToggle={props.onSortToggle}
+          onProcessSync={props.onProcessSync}
+        />
+      </>
     )
   }
 
   return (
-    <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <header class="border-b border-slate-200 bg-slate-50/60 px-4 py-3">
+    <section class="overflow-hidden rounded-lg border border-slate-200 bg-white/80 shadow-sm">
+      <header class="border-b border-slate-200 bg-slate-50/80 px-4 py-3">
         <h2 class="text-sm-ui font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
