@@ -1,6 +1,6 @@
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
+import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
 import type { ContainerSummaryRowVM } from '~/modules/process/ui/viewmodels/containerSummary.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
