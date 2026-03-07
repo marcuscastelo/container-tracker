@@ -65,7 +65,7 @@ function IdentificationSection(
 
   return (
     <section>
-      <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h3 class="mb-4 text-md-ui font-semibold uppercase tracking-wide text-slate-500">
         {t(keys.createProcess.section.identification)}
       </h3>
       <div class="grid gap-4 sm:grid-cols-2">
@@ -123,10 +123,10 @@ function RouteSection(
 
   return (
     <section>
-      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h3 class="mb-1 text-md-ui font-semibold uppercase tracking-wide text-slate-500">
         {t(keys.createProcess.section.route)}
       </h3>
-      <p class="mb-4 text-xs text-slate-400">{t(keys.createProcess.section.routeHelper)}</p>
+      <p class="mb-4 text-xs-ui text-slate-400">{t(keys.createProcess.section.routeHelper)}</p>
       <div class="grid gap-4 sm:grid-cols-2">
         <FormInput
           label={t(keys.createProcess.field.origin)}
@@ -152,7 +152,7 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
 
   return (
     <section>
-      <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h3 class="mb-4 text-md-ui font-semibold uppercase tracking-wide text-slate-500">
         {t(keys.createProcess.section.containers)}
       </h3>
       <div class="space-y-3">
@@ -172,7 +172,7 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
                 />
 
                 <Show when={props.getContainerLink(container)}>
-                  <p class="mt-1 text-xs text-slate-600 underline">
+                  <p class="mt-1 text-xs-ui text-slate-600 underline">
                     <button
                       type="button"
                       class="underline hover:cursor-pointer"
@@ -215,7 +215,7 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
       <button
         type="button"
         onClick={() => props.onAddContainer()}
-        class="mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+        class="mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-md-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
       >
         <svg
           class="h-4 w-4"
@@ -242,7 +242,7 @@ function SourceSection(props: SourceSectionProps): JSX.Element {
 
   return (
     <section>
-      <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h3 class="mb-4 text-md-ui font-semibold uppercase tracking-wide text-slate-500">
         {t(keys.createProcess.section.source)}
       </h3>
       <div class="grid gap-4 sm:grid-cols-2">
@@ -257,7 +257,7 @@ function SourceSection(props: SourceSectionProps): JSX.Element {
             required
           />
           <Show when={props.carrier === 'unknown'}>
-            <p class="mt-2 text-xs text-slate-500">{t(keys.createProcess.unknownCarrierWarning)}</p>
+            <p class="mt-2 text-xs-ui text-slate-500">{t(keys.createProcess.unknownCarrierWarning)}</p>
           </Show>
         </div>
         <FormInput
@@ -292,7 +292,7 @@ function ActionsSection(props: {
       <button
         type="button"
         onClick={() => props.onClose()}
-        class="rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+        class="rounded-md px-4 py-2 text-md-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
       >
         {t(keys.createProcess.action.cancel)}
       </button>
@@ -301,7 +301,7 @@ function ActionsSection(props: {
         disabled={props.submitDisabled}
         aria-disabled={props.submitDisabled}
         title={props.submitDisabled ? props.submitTooltip : undefined}
-        class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${
+        class={`inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-md-ui font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 ${
           props.submitDisabled
             ? 'cursor-not-allowed opacity-50 hover:bg-slate-900'
             : 'hover:bg-slate-800'

@@ -63,7 +63,7 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
       <button
         type="button"
         aria-label={props.message}
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-blue-600 transition-transform hover:cursor-pointer hover:scale-110 hover:bg-slate-200"
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-xs-ui font-medium text-blue-600 transition-transform hover:cursor-pointer hover:scale-110 hover:bg-slate-200"
         onClick={() => setOpen((current) => !current)}
       >
         i
@@ -85,15 +85,15 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
 function InternalIdPopover(props: InternalIdHintProps): JSX.Element {
   return (
     <div
-      class="absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-lg"
+      class="absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-md-ui text-slate-700 shadow-lg"
       role="dialog"
       aria-hidden="false"
     >
-      <p class="text-xs text-slate-700">{props.message}</p>
+      <p class="text-xs-ui text-slate-700">{props.message}</p>
       <div class="mt-2 text-right">
         <button
           type="button"
-          class="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 outline hover:bg-blue-100"
+          class="rounded bg-blue-50 px-2 py-1 text-xs-ui font-medium text-blue-700 outline hover:bg-blue-100"
           onClick={() => props.onOpenReference()}
         >
           {props.ctaLabel}
@@ -141,7 +141,7 @@ function RefreshButton(props: RefreshButtonProps): JSX.Element {
     <button
       type="button"
       onClick={handleClick}
-      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 h-8 justify-center ${
+      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-md-ui font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 h-8 justify-center ${
         props.isRefreshing ? 'opacity-80 pointer-events-none' : ''
       }`}
       title={props.title}
@@ -164,14 +164,14 @@ function UnknownCarrierActions(props: {
     <div class="flex justify-end gap-3">
       <button
         type="button"
-        class="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        class="rounded-md px-3 py-2 text-md-ui font-medium text-slate-600 hover:bg-slate-100"
         onClick={() => props.onCancel()}
       >
         {props.cancelLabel}
       </button>
       <button
         type="button"
-        class="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        class="rounded-md bg-slate-900 px-3 py-2 text-md-ui font-medium text-white hover:bg-slate-800"
         onClick={() => props.onEdit()}
       >
         {props.editLabel}
@@ -241,7 +241,7 @@ function ProcessEtaSummary(props: {
         <Show when={props.processEtaSecondaryVm.incomplete}>
           <span
             data-testid="process-eta-incomplete"
-            class="rounded bg-slate-100/80 px-1 py-px text-[9px] font-medium text-slate-400"
+            class="rounded bg-slate-100/80 px-1 py-px text-micro font-medium text-slate-400"
           >
             {props.incomplete}
           </span>
@@ -264,7 +264,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
     return (
       <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
         <div class="flex items-center gap-2 min-w-0">
-          <h1 class="truncate text-sm font-bold text-slate-900 sm:text-base leading-tight">
+          <h1 class="truncate text-md-ui font-bold text-slate-900 sm:text-lg-ui leading-tight">
             {t(keys.shipmentView.header)} {p.props.data.processRef}
             <Show when={!p.props.data.reference}>
               <InternalIdHint

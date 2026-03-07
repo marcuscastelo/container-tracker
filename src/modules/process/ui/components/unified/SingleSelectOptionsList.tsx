@@ -13,7 +13,7 @@ export function SingleSelectOptionsList<T extends string>(props: {
       <li>
         <button
           type="button"
-          class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
+          class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm-ui transition-colors ${
             props.selectedValue === null
               ? 'bg-slate-100 text-slate-800'
               : 'text-slate-700 hover:bg-slate-50'
@@ -31,7 +31,7 @@ export function SingleSelectOptionsList<T extends string>(props: {
           <li>
             <button
               type="button"
-              class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
+              class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm-ui transition-colors ${
                 props.selectedValue === option.value
                   ? 'bg-slate-100 text-slate-800'
                   : 'text-slate-700 hover:bg-slate-50'
@@ -42,7 +42,7 @@ export function SingleSelectOptionsList<T extends string>(props: {
               }}
             >
               <span class="min-w-0 flex-1 truncate">{option.label}</span>
-              <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{option.count}</span>
+              <span class="shrink-0 tabular-nums text-xs-ui text-slate-400">{option.count}</span>
             </button>
           </li>
         )}

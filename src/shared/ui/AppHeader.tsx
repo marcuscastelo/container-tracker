@@ -19,7 +19,7 @@ function NavLink(props: {
     <A
       href={props.href}
       end={props.end}
-      class="relative px-3 py-2.5 text-[13px] font-medium text-slate-400 transition-colors hover:text-white"
+      class="relative px-3 py-2.5 text-sm-ui font-medium text-slate-400 transition-colors hover:text-white"
       activeClass="!text-white after:content-[''] after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-sky-300"
     >
       {props.children}
@@ -29,7 +29,7 @@ function NavLink(props: {
 
 function AlertCountBadge(props: { count: number; label: string }): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white">
+    <span class="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-xs-ui font-bold tabular-nums text-white">
       <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path
           stroke-linecap="round"
@@ -58,7 +58,7 @@ export function AppHeader(props: Props): JSX.Element {
               aria-hidden="true"
               class="h-7 w-auto object-contain"
             />
-            <span class="text-sm font-bold tracking-tight">{t(keys.header.brand)}</span>
+            <span class="text-md-ui font-bold tracking-tight">{t(keys.header.brand)}</span>
           </A>
 
           {/* Navigation — border-bottom active indicator */}
@@ -84,7 +84,7 @@ export function AppHeader(props: Props): JSX.Element {
             type="button"
             onClick={() => props.onCreateProcess?.()}
             aria-label={t(keys.header.createProcess)}
-            class="inline-flex items-center gap-1.5 rounded bg-sky-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-1 focus:ring-offset-[#2c2f59]"
+            class="inline-flex items-center gap-1.5 rounded bg-sky-500 px-2.5 py-1 text-xs-ui font-semibold text-white transition-colors hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-1 focus:ring-offset-[#2c2f59]"
           >
             <svg
               class="h-3.5 w-3.5"

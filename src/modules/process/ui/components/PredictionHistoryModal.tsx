@@ -34,10 +34,10 @@ function ConflictWarning(): JSX.Element {
           />
         </svg>
         <div>
-          <p class="text-sm font-medium text-red-800">
+          <p class="text-md-ui font-medium text-red-800">
             {t(keys.shipmentView.timeline.predictionHistory.conflictWarning)}
           </p>
-          <p class="mt-1 text-sm text-red-700">
+          <p class="mt-1 text-md-ui text-red-700">
             {t(keys.shipmentView.timeline.predictionHistory.conflictHelper)}
           </p>
         </div>
@@ -66,7 +66,7 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
           <button
             type="button"
             onClick={() => props.onClose()}
-            class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            class="rounded-md border border-slate-300 bg-white px-4 py-2 text-md-ui font-medium text-slate-700 transition-colors hover:bg-slate-50"
           >
             {t(keys.shipmentView.timeline.predictionHistory.close)}
           </button>

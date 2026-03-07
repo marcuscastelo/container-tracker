@@ -32,11 +32,11 @@ function DialogHeader(props: HeaderProps): JSX.Element {
     <div class="border-b border-slate-200 px-6 py-4">
       <div class="flex items-start justify-between">
         <div>
-          <h2 id="dialog-title" class="text-lg font-semibold text-slate-900">
+          <h2 id="dialog-title" class="text-lg-ui font-semibold text-slate-900">
             {props.title}
           </h2>
           <Show when={props.description}>
-            {(description) => <p class="mt-1 text-sm text-slate-500">{description()}</p>}
+            {(description) => <p class="mt-1 text-md-ui text-slate-500">{description()}</p>}
           </Show>
         </div>
         <button
