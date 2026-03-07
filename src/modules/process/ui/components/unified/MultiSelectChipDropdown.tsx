@@ -59,38 +59,3 @@ export function MultiSelectChipDropdown<T extends string>(props: {
     </details>
   )
 }
-        </Show>
-      </div>
-    </details>
-  )
-}
-        </Show>
-      </div>
-    </details>
-  )
-}
-        </Show>
-      </div>
-    </details>
-  )
-}
-        </Show>
-      </div>
-    </details>
-  )
-}
-        </Show>
-      </div>
-    </details>
-  )
-}
-        </Show>
-      </div>
-    </details>
-  )
-}
-        </Show>
-      </div>
-    </details>
-  )
-}

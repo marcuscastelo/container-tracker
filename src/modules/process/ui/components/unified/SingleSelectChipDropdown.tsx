@@ -1,5 +1,4 @@
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
 import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
 import { ChevronDownIcon } from '~/modules/process/ui/components/unified/Icons'
 import { SingleSelectOptionsList } from '~/modules/process/ui/components/unified/SingleSelectOptionsList'
@@ -49,34 +48,6 @@ export function SingleSelectChipDropdown<T extends string>(props: {
           options={props.options}
           onSelect={handleSelect}
         />
-      </div>
-    </details>
-  )
-}
-      </div>
-    </details>
-  )
-}
-      </div>
-    </details>
-  )
-}
-      </div>
-    </details>
-  )
-}
-      </div>
-    </details>
-  )
-}
-      </div>
-    </details>
-  )
-}
-      </div>
-    </details>
-  )
-}
       </div>
     </details>
   )
