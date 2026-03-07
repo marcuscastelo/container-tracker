@@ -92,7 +92,7 @@
       "lastUpdate": "Last update"
     },
     "table": {
-      "title": "Process Exceptions",
+      "title": "Processes",
       "col": {
         "process": "Process",
         "carrier": "Carrier",
