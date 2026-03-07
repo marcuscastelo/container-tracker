@@ -3,10 +3,13 @@ import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
+import { AlertActionBanner } from '~/modules/process/ui/components/AlertActionBanner'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
+import { CreateProcessDialogs } from '~/modules/process/ui/components/CreateProcessDialogs'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { OperationalSummaryStrip } from '~/modules/process/ui/components/OperationalSummaryStrip'
+import { RefreshErrorBanner } from '~/modules/process/ui/components/RefreshErrorBanner'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCard'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
@@ -15,6 +18,7 @@ import type {
   ContainerEtaDetailVM,
   ShipmentDetailVM,
 } from '~/modules/process/ui/viewmodels/shipment.vm'
+import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
@@ -87,57 +91,7 @@ type ShipmentDataViewProps = {
   readonly selectedContainer: ShipmentDetailVM['containers'][number] | null
 }
 
-function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
-  return (
-    <>
-      <ShipmentHeader
-        data={props.data}
-        syncNow={props.syncNow}
-        isRefreshing={props.isRefreshing}
-        refreshRetry={props.refreshRetry}
-        refreshHint={props.refreshHint}
-        activeAlertCount={props.activeAlerts.length}
-        onTriggerRefresh={props.onTriggerRefresh}
-        onOpenEdit={props.onOpenEdit}
-      />
-
-      <OperationalSummaryStrip data={props.data} alerts={props.activeAlerts} />
-
-      <div class="grid gap-2 lg:grid-cols-3">
-        <div class="space-y-3 lg:col-span-2">
-          <div class="sticky top-0 z-50">
-            <AlertsPanel
-              activeAlerts={props.activeAlerts}
-              archivedAlerts={props.archivedAlerts}
-              busyAlertIds={props.busyAlertIds}
-              collapsingAlertIds={props.collapsingAlertIds}
-              onAcknowledge={props.onAcknowledgeAlert}
-              onUnacknowledge={props.onUnacknowledgeAlert}
-            />
-          </div>
-          <section id="shipment-containers" class="scroll-mt-[120px]">
-            <ContainersPanel
-              containers={props.data.containers}
-              selectedId={props.selectedContainerId}
-              onSelect={props.onSelectContainer}
-              syncNow={props.syncNow}
-            />
-          </section>
-          <section id="shipment-timeline" class="scroll-mt-[120px]">
-            <TimelinePanel
-              selectedContainer={props.selectedContainer}
-              carrier={props.data.carrier}
-              alerts={props.activeAlerts}
-            />
-          </section>
-        </div>
-        <div class="space-y-2">
-          <ShipmentInfoCard data={props.data} />
-        </div>
-      </div>
-    </>
-  )
-}
+import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 
 export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
   const { t, keys } = useTranslation()
@@ -145,70 +99,43 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
     Boolean(props.shipmentError) || (props.shipmentData === null && !props.shipmentLoading)
 
   return (
-    <div class="relative min-h-screen bg-slate-50">
-      {/* Wallpaper watermark — decorative only, does not affect layout */}
-      <img
-        src="/branding/wallpaper.jpeg"
-        alt=""
-        aria-hidden="true"
-        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
-      />
-      <div class="relative z-1">
+    <div
+      class="relative min-h-screen bg-slate-50"
+      style={{
+        backgroundImage: `url(${BRANDING.wallpaper})`,
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div class="relative z-10">
         <AppHeader
           onCreateProcess={props.onOpenCreateProcess}
           alertCount={props.activeAlerts.length}
         />
 
         <Show when={props.refreshError}>
-          <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-              <div class="flex items-start justify-between gap-4">
-                <div>{props.refreshError}</div>
-                <button
-                  type="button"
-                  class="ml-4 text-red-700 underline"
-                  aria-label={t(keys.createProcess.action.dismissError)}
-                  onClick={() => props.onDismissRefreshError()}
-                >
-                  {t(keys.createProcess.action.dismiss)}
-                </button>
-              </div>
-            </div>
-          </div>
+          <RefreshErrorBanner
+            message={props.refreshError ?? ''}
+            onDismiss={props.onDismissRefreshError}
+          />
         </Show>
 
         <Show when={props.alertActionError}>
-          <div class="mx-auto mt-2 max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <div class="flex items-start justify-between gap-4">
-                <div>{props.alertActionError}</div>
-                <button
-                  type="button"
-                  class="ml-4 text-amber-700 underline"
-                  aria-label={t(keys.shipmentView.alerts.action.dismissActionError)}
-                  onClick={() => props.onDismissAlertActionError()}
-                >
-                  {t(keys.createProcess.action.dismiss)}
-                </button>
-              </div>
-            </div>
-          </div>
+          <AlertActionBanner
+            message={props.alertActionError ?? ''}
+            onDismiss={props.onDismissAlertActionError}
+          />
         </Show>
 
-        <CreateProcessDialog
-          open={props.isEditOpen}
-          onClose={props.onCloseEdit}
+        <CreateProcessDialogs
+          openEdit={props.isEditOpen}
+          onCloseEdit={props.onCloseEdit}
           initialData={props.editInitialData}
-          mode="edit"
-          focus={props.focusFieldOnOpen ?? undefined}
-          onSubmit={props.onEditSubmit}
-        />
-
-        <CreateProcessDialog
-          open={props.isCreateDialogOpen}
-          onClose={props.onCloseCreate}
-          onSubmit={props.onCreateSubmit}
-          mode="create"
+          onEditSubmit={props.onEditSubmit}
+          openCreate={props.isCreateDialogOpen}
+          onCloseCreate={props.onCloseCreate}
+          onCreateSubmit={props.onCreateSubmit}
         />
 
         <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">

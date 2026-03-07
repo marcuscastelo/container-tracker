@@ -67,6 +67,7 @@ import {
   sortDashboardProcesses,
 } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
@@ -122,6 +123,7 @@ function hydrateDashboardQueryState(params: {
   void params.navigate(nextPath, { replace: true })
 }
 
+// eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys } = useTranslation()
   const location = useLocation()
@@ -184,6 +186,34 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       setFilterSelection,
     })
   })
+
+  function DashboardTop(props: {
+    readonly onCreateProcess: () => void
+    readonly isCreateDialogOpen: () => boolean
+    readonly setIsCreateDialogOpen: (v: boolean) => void
+    readonly onSubmit: (data: CreateProcessDialogFormData) => Promise<void>
+    readonly alertCount: number | null
+  }): JSX.Element {
+    return (
+      <>
+        {/* Wallpaper watermark — decorative only */}
+        <img
+          src={BRANDING.wallpaper}
+          alt=""
+          aria-hidden="true"
+          class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
+        />
+        <div class="relative z-10">
+          <AppHeader onCreateProcess={props.onCreateProcess} alertCount={props.alertCount ?? 0} />
+          <CreateProcessDialog
+            open={props.isCreateDialogOpen()}
+            onClose={() => props.setIsCreateDialogOpen(false)}
+            onSubmit={props.onSubmit}
+          />
+        </div>
+      </>
+    )
+  }
 
   const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
     setFilterSelection(nextFilterSelection)
@@ -274,77 +304,73 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   return (
-    <div class="relative min-h-screen bg-slate-50/80">
-      {/* Wallpaper watermark — decorative only, does not affect layout */}
-      <img
-        src="/branding/wallpaper.jpeg"
-        alt=""
-        aria-hidden="true"
-        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
+    <div
+      class="relative min-h-screen bg-slate-50/80"
+      style={{
+        backgroundImage: `url(${BRANDING.wallpaper})`,
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <DashboardTop
+        onCreateProcess={handleCreateProcess}
+        isCreateDialogOpen={isCreateDialogOpen}
+        setIsCreateDialogOpen={setIsCreateDialogOpen}
+        onSubmit={handleProcessSubmit}
+        alertCount={globalAlerts()?.totalActiveAlerts ?? 0}
       />
-      <div class="relative z-1">
-        <AppHeader
+      <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
+        <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h1 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.header.title)}</h1>
+          <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
+        </section>
+
+        <Show when={props.searchSlot}>
+          <div class="mb-4 flex justify-center">{props.searchSlot}</div>
+        </Show>
+
+        <Show when={createError()}>
+          <ExistingProcessError
+            message={getCreateErrorMessage(createError())}
+            existing={getCreateErrorExisting(createError())}
+            onAcknowledge={() => setCreateError(null)}
+          />
+        </Show>
+
+        <DashboardMetricsGrid
+          summary={globalAlerts() ?? null}
+          loading={globalAlerts.loading}
+          hasError={Boolean(globalAlerts.error)}
+        />
+        <UnifiedDashboardFilters
+          providers={providerFilterOptions()}
+          statuses={statusFilterOptions()}
+          importers={importerFilterOptions()}
+          severities={severityFilterOptions()}
+          selectedProviders={filterSelection().providers}
+          selectedStatuses={filterSelection().statuses}
+          selectedImporterId={filterSelection().importerId}
+          selectedImporterName={filterSelection().importerName}
+          selectedSeverity={filterSelection().severity}
+          onProviderToggle={handleProviderFilterToggle}
+          onStatusToggle={handleStatusFilterToggle}
+          onImporterSelect={handleImporterFilterSelect}
+          onSeveritySelect={handleSeverityFilterSelect}
+          onClearAllFilters={handleClearAllFilters}
+        />
+        <DashboardProcessTable
+          processes={sortedProcessesWithRealtimeSync()}
+          loading={processes.loading}
+          hasError={Boolean(processes.error)}
+          hasActiveFilters={hasActiveFilters()}
           onCreateProcess={handleCreateProcess}
-          alertCount={globalAlerts()?.totalActiveAlerts ?? 0}
+          onClearFilters={handleClearAllFilters}
+          sortSelection={sortSelection()}
+          onSortToggle={handleSortToggle}
+          onProcessSync={handleProcessSync}
         />
-        <CreateProcessDialog
-          open={isCreateDialogOpen()}
-          onClose={() => setIsCreateDialogOpen(false)}
-          onSubmit={handleProcessSubmit}
-        />
-
-        <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
-          <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.header.title)}</h1>
-            <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
-          </section>
-
-          <Show when={props.searchSlot}>
-            <div class="mb-4 flex justify-center">{props.searchSlot}</div>
-          </Show>
-
-          <Show when={createError()}>
-            <ExistingProcessError
-              message={getCreateErrorMessage(createError())}
-              existing={getCreateErrorExisting(createError())}
-              onAcknowledge={() => setCreateError(null)}
-            />
-          </Show>
-
-          <DashboardMetricsGrid
-            summary={globalAlerts() ?? null}
-            loading={globalAlerts.loading}
-            hasError={Boolean(globalAlerts.error)}
-          />
-          <UnifiedDashboardFilters
-            providers={providerFilterOptions()}
-            statuses={statusFilterOptions()}
-            importers={importerFilterOptions()}
-            severities={severityFilterOptions()}
-            selectedProviders={filterSelection().providers}
-            selectedStatuses={filterSelection().statuses}
-            selectedImporterId={filterSelection().importerId}
-            selectedImporterName={filterSelection().importerName}
-            selectedSeverity={filterSelection().severity}
-            onProviderToggle={handleProviderFilterToggle}
-            onStatusToggle={handleStatusFilterToggle}
-            onImporterSelect={handleImporterFilterSelect}
-            onSeveritySelect={handleSeverityFilterSelect}
-            onClearAllFilters={handleClearAllFilters}
-          />
-          <DashboardProcessTable
-            processes={sortedProcessesWithRealtimeSync()}
-            loading={processes.loading}
-            hasError={Boolean(processes.error)}
-            hasActiveFilters={hasActiveFilters()}
-            onCreateProcess={handleCreateProcess}
-            onClearFilters={handleClearAllFilters}
-            sortSelection={sortSelection()}
-            onSortToggle={handleSortToggle}
-            onProcessSync={handleProcessSync}
-          />
-        </main>
-      </div>
+      </main>
     </div>
   )
 }
