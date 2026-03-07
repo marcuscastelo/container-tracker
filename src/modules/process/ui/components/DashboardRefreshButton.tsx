@@ -145,7 +145,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       disabled={isBlocked()}
       aria-busy={isLoading()}
       title={buttonTitle()}
-      class="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-md-ui font-medium text-white transition-colors hover:bg-blue-700 hover:border-blue-700 disabled:bg-blue-400 disabled:border-blue-400 disabled:cursor-not-allowed"
+      class="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 hover:border-blue-700 disabled:bg-blue-400 disabled:border-blue-400 disabled:cursor-not-allowed"
     >
       <RefreshIcon
         spinning={visualState() === 'loading'}

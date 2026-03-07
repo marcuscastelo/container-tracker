@@ -50,10 +50,10 @@ function LanguageOption(props: LanguageOptionProps): JSX.Element {
     <li>
       <button
         type="button"
-        class="flex w-full items-center gap-2 px-3 py-2 text-md-ui text-slate-700 hover:bg-slate-50"
+        class="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
         onClick={() => props.onSelect(props.language)}
       >
-        <span class="text-lg-ui">{localeToFlag(props.language)}</span>
+        <span class="text-lg">{localeToFlag(props.language)}</span>
         <span class="truncate">{props.language}</span>
       </button>
     </li>
@@ -75,7 +75,7 @@ export function LanguageSwitch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="inline-flex items-center gap-1 rounded bg-[color:var(--brand-color-primary)] px-2 py-1 text-xs-ui font-medium text-slate-300 hover:bg-[color:var(--brand-color-primary-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--brand-color-primary-offset)]"
+        class="inline-flex items-center gap-1 rounded bg-[color:var(--brand-color-primary)] px-2 py-1 text-xs font-medium text-slate-300 hover:bg-[color:var(--brand-color-primary-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--brand-color-primary-offset)]"
         style={{
           '--brand-color-primary': BRANDING.colorPrimary,
           '--brand-color-primary-hover': '#383b6e',
@@ -84,7 +84,7 @@ export function LanguageSwitch(): JSX.Element {
         aria-haspopup="listbox"
         aria-expanded={open()}
       >
-        <span class="text-md-ui" aria-hidden>
+        <span class="text-sm" aria-hidden>
           {localeToFlag(locale())}
         </span>
         <span class="sr-only">{t(keys.languageSwitch.label)}</span>

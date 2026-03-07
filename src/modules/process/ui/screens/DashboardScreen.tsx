@@ -297,7 +297,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
         <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
           <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-lg-ui font-semibold text-slate-900">{t(keys.dashboard.header.title)}</h1>
+            <h1 class="text-lg font-semibold text-slate-900">{t(keys.dashboard.header.title)}</h1>
             <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
           </section>
 

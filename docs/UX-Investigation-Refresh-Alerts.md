@@ -361,7 +361,7 @@ Snippet:
 ```tsx
 // src/modules/process/ui/components/DashboardProcessTable.tsx
 <Show when={props.process.redestinationNumber}>
-  <span class="text-xs-ui text-slate-400">
+  <span class="text-[12px] text-slate-400">
     {t(keys.dashboard.table.routeRedestination)}: {props.process.redestinationNumber}
   </span>
 </Show>
@@ -395,7 +395,7 @@ Snippet:
 ```
 
 Is ETA styled differently from other fields?
-- Yes. ETA is emphasized with `text-[14px] font-bold tabular-nums text-slate-600`, larger and bold compared to many other small meta fields (`text-micro` or `text-xs-ui`).
+- Yes. ETA is emphasized with `text-[14px] font-bold tabular-nums text-slate-600`, larger and bold compared to many other small meta fields (`text-[10px]` or `text-[11px]`).
 
 What CSS classes are applied?
 - `text-[14px] font-bold tabular-nums text-slate-600` for present ETA; fallback uses `text-[14px] text-slate-300`.
@@ -416,7 +416,7 @@ Inspect: `src/app.css` and class usage (Tailwind)
 
 Evidence:
 - Tailwind is used: `src/app.css` contains `@import "tailwindcss";` and `package.json` includes `tailwindcss` in devDependencies.
-- No global font-size override found in `src/app.css` — project uses default browser/Tailwind base (16px) and explicit utility classes like `text-micro` and `text-[14px]` for granular control.
+- No global font-size override found in `src/app.css` — project uses default browser/Tailwind base (16px) and explicit utility classes like `text-[10px]` and `text-[14px]` for granular control.
 
 What is the base font-size?
 - No explicit override present; default browser/Tailwind base (typically 16px) applies.
@@ -425,7 +425,7 @@ Is Tailwind used?
 - Yes (`@import "tailwindcss";` in `src/app.css` and dependency in `package.json`).
 
 Are table rows using smaller typography?
-- Yes. Table rows and meta fields use `text-xs-ui`, `text-xs-ui`, `text-micro` widely; ETA uses larger `text-[14px]`.
+- Yes. Table rows and meta fields use `text-[12px]`, `text-[11px]`, `text-[10px]` widely; ETA uses larger `text-[14px]`.
 
 Are dashboards using custom CSS classes?
 - Mostly Tailwind utility classes inline in components. `src/app.css` contains a few project-specific rules (animations) but typography is controlled via Tailwind utilities.

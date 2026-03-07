@@ -61,7 +61,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
   })
 
   return (
-    <div class="relative mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-md-ui text-red-700">
+    <div class="relative mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
       <div class="flex items-start justify-between">
         <div class="pr-8">{message()}</div>
 

@@ -57,14 +57,14 @@ export function MetricCard(props: Props): JSX.Element {
         {props.icon}
       </div>
       <div class="flex flex-col gap-0">
-        <span class={`text-xl-ui font-bold leading-tight tabular-nums ${styles().valueClass}`}>
+        <span class={`text-[22px] font-bold leading-tight tabular-nums ${styles().valueClass}`}>
           {props.value}
         </span>
-        <span class={`text-xs-ui font-medium leading-tight ${styles().labelClass}`}>
+        <span class={`text-[11px] font-medium leading-tight ${styles().labelClass}`}>
           {props.label}
         </span>
         <Show when={props.subtitle}>
-          {(subtitle) => <span class="text-xs-ui mt-0.5 text-slate-400">{subtitle()}</span>}
+          {(subtitle) => <span class="text-[11px] mt-0.5 text-slate-400">{subtitle()}</span>}
         </Show>
       </div>
     </div>

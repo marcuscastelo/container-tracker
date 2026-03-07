@@ -243,7 +243,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
         {/* Phase 10: Compact Triage Summary Bar */}
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1.5">
-            <span class="text-xl-ui font-bold tabular-nums text-slate-900">
+            <span class="text-[22px] font-bold tabular-nums text-slate-900">
               {summary.totalActiveAlerts}
             </span>
             <span class="text-caption font-medium text-slate-500">

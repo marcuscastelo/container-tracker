@@ -136,7 +136,7 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
           <Show when={shouldShowNotFound()}>
             <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
               <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
-              <A href="/" class="mt-4 inline-block text-md-ui text-slate-600 hover:text-slate-900">
+              <A href="/" class="mt-4 inline-block text-sm text-slate-600 hover:text-slate-900">
                 {t(keys.shipmentView.backToDashboard)}
               </A>
             </div>

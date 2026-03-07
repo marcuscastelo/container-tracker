@@ -34,7 +34,7 @@ export function FormInput(props: InputProps): JSX.Element {
 
   return (
     <div class="space-y-1.5">
-      <label for={local.name} class="block text-md-ui font-medium text-slate-700">
+      <label for={local.name} class="block text-sm font-medium text-slate-700">
         {local.label}
         <Show when={local.required}>
           <span class="ml-1 text-red-500" aria-hidden="true">
@@ -52,7 +52,7 @@ export function FormInput(props: InputProps): JSX.Element {
         placeholder={local.placeholder}
         disabled={local.disabled}
         required={local.required}
-        class={`block w-full rounded-md border px-3 py-2 text-md-ui shadow-sm transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ${
+        class={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ${
           hasError()
             ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
             : 'border-slate-300 focus:border-slate-500 focus:ring-slate-500'
@@ -61,12 +61,12 @@ export function FormInput(props: InputProps): JSX.Element {
         aria-describedby={local.helperText || local.error ? `${local.name}-description` : undefined}
       />
       <Show when={local.helperText && !hasError()}>
-        <p id={`${local.name}-description`} class="text-xs-ui text-slate-500">
+        <p id={`${local.name}-description`} class="text-xs text-slate-500">
           {local.helperText}
         </p>
       </Show>
       <Show when={hasError()}>
-        <p id={`${local.name}-description`} class="text-xs-ui text-red-600" role="alert">
+        <p id={`${local.name}-description`} class="text-xs text-red-600" role="alert">
           {local.error}
         </p>
       </Show>
@@ -94,7 +94,7 @@ type SelectProps = {
 export function FormSelect(props: SelectProps): JSX.Element {
   return (
     <div class="space-y-1.5">
-      <label for={props.name} class="block text-md-ui font-medium text-slate-700">
+      <label for={props.name} class="block text-sm font-medium text-slate-700">
         {props.label}
         <Show when={props.required}>
           <span class="ml-1 text-red-500" aria-hidden="true">
@@ -109,7 +109,7 @@ export function FormSelect(props: SelectProps): JSX.Element {
         onInput={(e) => props.onInput(e.currentTarget.value)}
         disabled={props.disabled}
         required={props.required}
-        class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-md-ui shadow-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-0 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+        class="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-0 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
       >
         <Show when={props.placeholder}>
           {/* Placeholder option is hidden from the dropdown list so it can act as an
@@ -124,7 +124,7 @@ export function FormSelect(props: SelectProps): JSX.Element {
         </For>
       </select>
       <Show when={props.helperText}>
-        <p class="text-xs-ui text-slate-500">{props.helperText}</p>
+        <p class="text-xs text-slate-500">{props.helperText}</p>
       </Show>
     </div>
   )

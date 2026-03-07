@@ -95,7 +95,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 {(etaChipLabel) => <EtaChip label={etaChipLabel()} />}
               </Show>
 
-              <p class={`text-xs-ui leading-tight ${props.textClass}`}>{props.label}</p>
+              <p class={`text-[12px] leading-tight ${props.textClass}`}>{props.label}</p>
 
               <Show when={props.showPredictionHistoryButton}>
                 <button
@@ -120,7 +120,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
               <Show when={props.nonMappedBadgeLabel}>
                 {(nonMappedBadgeLabel) => (
                   <span
-                    class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-micro font-medium leading-none text-slate-500"
+                    class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-[9px] font-medium leading-none text-slate-500"
                     title={nonMappedBadgeLabel()}
                   >
                     {nonMappedBadgeLabel()}
@@ -130,7 +130,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
               <Show when={props.isExpiredExpected}>
                 <span
-                  class="inline-flex items-center rounded bg-amber-50 px-1 py-px text-micro font-medium text-amber-600"
+                  class="inline-flex items-center rounded bg-amber-50 px-1 py-px text-[9px] font-medium text-amber-600"
                   title={props.expiredExpectedTooltip}
                 >
                   {props.expiredExpectedLabel}
@@ -148,7 +148,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
             <Show when={showLocation()}>
               {(location) => (
-                <p class="mt-px text-micro leading-tight text-gray-500 truncate">{location()}</p>
+                <p class="mt-px text-[10px] leading-tight text-gray-500 truncate">{location()}</p>
               )}
             </Show>
           </div>
@@ -167,7 +167,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
 function EtaChip(props: { label: string }) {
   return (
-    <span class="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1 py-px text-micro font-semibold text-blue-700 border border-blue-200">
+    <span class="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1 py-px text-[9px] font-semibold text-blue-700 border border-blue-200">
       <span aria-hidden="true">🟦</span>
       {props.label}
     </span>

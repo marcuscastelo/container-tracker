@@ -170,7 +170,7 @@ export function UnifiedDashboardFilters(props: Props): JSX.Element {
           {
             <button
               type="button"
-              class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm-ui text-slate-500 transition-colors hover:text-slate-700"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-slate-500 transition-colors hover:text-slate-700"
               onClick={() => props.onClearAllFilters()}
               data-testid="dashboard-clear-filters"
             >

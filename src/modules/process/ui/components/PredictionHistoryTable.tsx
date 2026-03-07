@@ -47,10 +47,10 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
 
   return (
     <tr class="hover:bg-slate-50">
-      <td class="whitespace-nowrap px-4 py-3 text-md-ui text-slate-900">
+      <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-900">
         <span
           class={clsx(
-            'inline-flex items-center rounded px-2 py-0.5 text-xs-ui font-medium',
+            'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
             isActual() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600',
           )}
         >
@@ -59,15 +59,15 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
             : t(keys.shipmentView.timeline.expected)}
         </span>
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-md-ui text-slate-600">
+      <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
         {props.observation.event_time
           ? formatDateForLocale(props.observation.event_time, props.locale)
           : '—'}
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-md-ui text-slate-600">
+      <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
         {formatDateForLocale(props.observation.created_at, props.locale)}
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-md-ui text-slate-600">
+      <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
         <Show when={hasDelta()} fallback="—">
           <span
             class={clsx(
@@ -80,10 +80,10 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
           </span>
         </Show>
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-right text-md-ui">
+      <td class="whitespace-nowrap px-4 py-3 text-right text-sm">
         <span
           class={clsx(
-            'inline-flex items-center rounded px-2 py-0.5 text-xs-ui font-medium',
+            'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
             seriesLabelToClass(props.observation.seriesLabel),
           )}
         >
@@ -117,31 +117,31 @@ export function PredictionHistoryTable(props: Props): JSX.Element {
           <tr>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
             >
               {t(keys.shipmentView.timeline.predictionHistory.eventType)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
             >
               {t(keys.shipmentView.timeline.predictionHistory.eventTime)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
             >
               {t(keys.shipmentView.timeline.predictionHistory.observedAt)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
             >
               {t(keys.shipmentView.timeline.predictionHistory.delta)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
             >
               {t(keys.shipmentView.timeline.predictionHistory.status)}
             </th>

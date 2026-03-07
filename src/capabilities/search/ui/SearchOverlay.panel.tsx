@@ -210,21 +210,21 @@ function SearchResultRow(props: SearchResultRowProps): JSX.Element {
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <MatchSourceIcon source={props.item.matchSource} />
-            <span class="truncate text-md-ui font-semibold">
+            <span class="truncate text-sm font-semibold">
               {formatNullableText(props.item.processReference, props.item.processId)}
             </span>
           </div>
-          <div class="mt-1 text-xs-ui text-slate-500">
+          <div class="mt-1 text-xs text-slate-500">
             {props.labels.processId}: {props.item.processId}
           </div>
         </div>
 
-        <span class="rounded bg-slate-100 px-2 py-0.5 text-xs-ui font-medium text-slate-600">
+        <span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
           {props.matchSourceLabel}
         </span>
       </div>
 
-      <div class="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs-ui text-slate-600 sm:grid-cols-2">
+      <div class="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-slate-600 sm:grid-cols-2">
         <div class="truncate">
           <span class="font-medium text-slate-500">{props.labels.importerName}:</span>{' '}
           {formatNullableText(props.item.importerName, props.fallbackText)}
@@ -302,9 +302,9 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
         class="group flex w-full max-w-4xl items-center gap-2.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
       >
         <SearchIcon />
-        <span class="flex-1 text-sm-ui text-slate-400">{t(keys.search.placeholder)}</span>
-        <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-micro font-semibold text-slate-400 sm:inline-flex">
-          <span class="text-micro">{t(keys.search.footer.modifier)}</span>
+        <span class="flex-1 text-[13px] text-slate-400">{t(keys.search.placeholder)}</span>
+        <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:inline-flex">
+          <span class="text-[9px]">{t(keys.search.footer.modifier)}</span>
           <span>K</span>
         </kbd>
       </button>
@@ -342,7 +342,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                 onInput={(event) => props.onQueryInput(event.currentTarget.value)}
                 onKeyDown={(event) => props.onInputKeyDown(event)}
                 placeholder={t(keys.search.placeholder)}
-                class="flex-1 bg-transparent text-md-ui text-slate-900 placeholder-slate-400 outline-none"
+                class="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 outline-none"
                 autocomplete="off"
                 spellcheck={false}
               />
@@ -372,30 +372,30 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                   </svg>
                 </button>
               </Show>
-              <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs-ui text-slate-400">
+              <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-400">
                 Esc
               </kbd>
             </div>
 
             <div class="max-h-[65vh] overflow-y-auto">
               <Show when={props.state === 'loading' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-md-ui text-slate-400">
+                <div class="px-4 py-6 text-center text-sm text-slate-400">
                   {t(keys.search.loading)}
                 </div>
               </Show>
 
               <Show when={props.state === 'error' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-md-ui text-red-500">{t(keys.search.error)}</div>
+                <div class="px-4 py-6 text-center text-sm text-red-500">{t(keys.search.error)}</div>
               </Show>
 
               <Show when={props.state === 'empty' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-md-ui text-slate-400">
+                <div class="px-4 py-6 text-center text-sm text-slate-400">
                   {t(keys.search.noResults)}
                 </div>
               </Show>
 
               <Show when={showShortQueryHint() && props.state !== 'loading'}>
-                <div class="px-4 py-6 text-center text-md-ui text-slate-400">
+                <div class="px-4 py-6 text-center text-sm text-slate-400">
                   {t(keys.search.hint, { count: props.minimumQueryLength })}
                 </div>
               </Show>
@@ -420,17 +420,17 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
               </Show>
             </div>
 
-            <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs-ui text-slate-400">
+            <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-400">
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">↑↓</kbd>
+                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs">↑↓</kbd>
                 <span>{t(keys.search.footer.navigate)}</span>
               </div>
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">↵</kbd>
+                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs">↵</kbd>
                 <span>{t(keys.search.footer.select)}</span>
               </div>
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">esc</kbd>
+                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs">esc</kbd>
                 <span>{t(keys.search.footer.close)}</span>
               </div>
             </div>

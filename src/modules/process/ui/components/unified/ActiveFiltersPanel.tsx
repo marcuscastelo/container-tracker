@@ -34,7 +34,7 @@ export function ActiveFiltersPanel(props: Props): JSX.Element {
       class="mt-2 flex flex-wrap items-center gap-1.5"
       data-testid="dashboard-active-filter-chips"
     >
-      <span class="text-xs-ui font-semibold uppercase tracking-wide text-slate-500">
+      <span class="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
         {t(keys.dashboard.filters.active)}
       </span>
       <Show when={props.selectedSeverity !== null}>

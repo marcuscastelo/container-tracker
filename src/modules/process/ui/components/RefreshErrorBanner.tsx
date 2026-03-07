@@ -4,7 +4,7 @@ export function RefreshErrorBanner(props: { message: string; onDismiss: () => vo
   const { t, keys } = useTranslation()
   return (
     <div class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="rounded-md border border-red-200 bg-red-50 p-3 text-md-ui text-red-800">
+      <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
         <div class="flex items-start justify-between gap-4">
           <div>{props.message}</div>
           <button

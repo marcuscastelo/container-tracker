@@ -29,22 +29,22 @@ export function VoyageBlockHeader(props: { readonly block: VoyageBlock }): JSX.E
     <div class="mb-1 rounded-t border-b border-slate-100/70 bg-slate-50/60 px-2 py-1.5">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
-        <span class="text-md-ui shrink-0" aria-hidden="true">
+        <span class="text-sm shrink-0" aria-hidden="true">
           🚢
         </span>
-        <span class="text-sm-ui font-semibold text-slate-900">
+        <span class="text-[13px] font-semibold text-slate-900">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
       </div>
       <Show when={props.block.voyage}>
         {(voyage) => (
-          <p class="mt-0.5 text-micro font-medium text-slate-500">
+          <p class="mt-0.5 text-[10px] font-medium text-slate-500">
             {t(keys.shipmentView.timeline.blocks.voyage)} {voyage()}
           </p>
         )}
       </Show>
       <Show when={route()}>
-        {(routeStr) => <p class="mt-0.5 text-micro text-slate-500">{routeStr()}</p>}
+        {(routeStr) => <p class="mt-0.5 text-[10px] text-slate-500">{routeStr()}</p>}
       </Show>
     </div>
   )
@@ -84,13 +84,13 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   return (
     <div class="mb-1 rounded-t border-b border-slate-100/60 bg-white/80 px-2 py-1.5">
       <div class="flex items-center gap-1.5">
-        <span class="text-md-ui shrink-0" aria-hidden="true">
+        <span class="text-sm shrink-0" aria-hidden="true">
           {icon()}
         </span>
-        <span class="text-xs-ui font-medium text-slate-600">{title()}</span>
+        <span class="text-[12px] font-medium text-slate-600">{title()}</span>
       </div>
       <Show when={props.block.location}>
-        {(loc) => <p class="mt-0.5 text-micro text-slate-400">{loc()}</p>}
+        {(loc) => <p class="mt-0.5 text-[10px] text-slate-400">{loc()}</p>}
       </Show>
     </div>
   )
@@ -106,18 +106,18 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   return (
     <div class="my-1 rounded border-l-4 border-amber-400 bg-amber-50 px-2.5 py-1.5">
       <div class="flex items-center gap-1.5">
-        <span class="text-md-ui" aria-hidden="true">
+        <span class="text-sm" aria-hidden="true">
           🔁
         </span>
-        <span class="text-xs-ui font-semibold text-amber-900">
+        <span class="text-[12px] font-semibold text-amber-900">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>
       </div>
       <Show when={props.block.port}>
-        {(port) => <p class="mt-0.5 text-micro font-medium text-amber-800">{port()}</p>}
+        {(port) => <p class="mt-0.5 text-[10px] font-medium text-amber-800">{port()}</p>}
       </Show>
       <Show when={props.block.reason}>
-        {(reason) => <p class="mt-0.5 text-micro text-amber-700">{reason()}</p>}
+        {(reason) => <p class="mt-0.5 text-[10px] text-amber-700">{reason()}</p>}
       </Show>
     </div>
   )
@@ -147,7 +147,7 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
       </div>
-      <p class="text-micro italic text-slate-600">⏳ {label()}</p>
+      <p class="text-[10px] italic text-slate-600">⏳ {label()}</p>
     </div>
   )
 }
@@ -197,10 +197,10 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
       <div
         class={`flex items-center gap-1 rounded border-l-[3px] px-1.5 py-0.5 ${severityClasses()}`}
       >
-        <span class="text-micro" aria-hidden="true">
+        <span class="text-[10px]" aria-hidden="true">
           {icon()}
         </span>
-        <p class="text-micro font-medium">{label()}</p>
+        <p class="text-[10px] font-medium">{label()}</p>
       </div>
     </div>
   )

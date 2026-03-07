@@ -1,23 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  --text-micro: 0.625rem;
-  --text-micro--line-height: 1rem;
-
-  --text-xs-ui: 0.75rem;
-  --text-xs-ui--line-height: 1rem;
-
-  --text-sm-ui: 0.8125rem;
-  --text-sm-ui--line-height: 1.25rem;
-
-  --text-md-ui: 0.875rem;
-  --text-md-ui--line-height: 1.25rem;
-
-  --text-lg-ui: 1rem;
-  --text-lg-ui--line-height: 1.5rem;
-
-  --text-xl-ui: 1.375rem;
-  --text-xl-ui--line-height: 1.75rem;
+  --font-size-micro: 10px;
+  --font-size-label: 11px;
+  --font-size-caption: 12px;
+  --font-size-body-sm: 13px;
+  --font-size-body: 14px;
 }
 
 /* https://base-ui-docs-solid.vercel.app/solid/overview/quick-start */

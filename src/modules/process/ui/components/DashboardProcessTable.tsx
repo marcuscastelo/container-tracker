@@ -339,7 +339,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </td>
       <td class="px-3 py-3 text-right">
         <Show when={props.process.eta} fallback={<span class="text-body text-slate-300">—</span>}>
-          <span class="text-md-ui font-bold tabular-nums text-slate-900">
+          <span class="text-sm font-bold tabular-nums text-slate-900">
             {displayEta(props.process.eta)}
           </span>
         </Show>
@@ -538,7 +538,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   return (
     <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <header class="border-b border-slate-200 bg-slate-50/60 px-4 py-3">
-        <h2 class="text-md-ui font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
+        <h2 class="text-sm font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
     </section>

@@ -18,7 +18,7 @@ function ContainerSummaryRow(props: { readonly row: ContainerSummaryRowVM }): JS
 
   return (
     <div
-      class="flex items-center gap-3 text-md-ui"
+      class="flex items-center gap-3 text-sm"
       data-testid={`container-summary-row-${props.row.containerNumber}`}
     >
       <span class="font-medium text-slate-800">{props.row.containerNumber}</span>
@@ -66,7 +66,7 @@ export function ShipmentHeaderContainerSummary(props: Props): JSX.Element {
         <div class="space-y-0.5">
           <For each={visibleRows()}>{(row) => <ContainerSummaryRow row={row} />}</For>
           <Show when={overflowCount() > 0}>
-            <span class="text-md-ui text-slate-400" data-testid="container-summary-overflow">
+            <span class="text-sm text-slate-400" data-testid="container-summary-overflow">
               {t(keys.shipmentView.containerSummary.moreContainers, {
                 count: overflowCount(),
               })}

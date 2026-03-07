@@ -13,7 +13,7 @@ type PanelProps = {
 function PanelTitle(props: { readonly title?: string }): JSX.Element | null {
   return (
     <Show when={props.title}>
-      <h2 class="text-micro font-semibold uppercase tracking-wider text-slate-400">
+      <h2 class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
         {props.title}
       </h2>
     </Show>
@@ -23,7 +23,7 @@ function PanelTitle(props: { readonly title?: string }): JSX.Element | null {
 function PanelSubtitle(props: { readonly subtitle?: string }): JSX.Element | null {
   return (
     <Show when={props.subtitle}>
-      <p class="mt-px text-micro text-slate-400">{props.subtitle}</p>
+      <p class="mt-px text-[10px] text-slate-400">{props.subtitle}</p>
     </Show>
   )
 }
