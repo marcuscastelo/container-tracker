@@ -17,6 +17,7 @@ $script:lastAgentStartUtc = $null
 $script:lastAgentExitCode = $null
 $script:lastAgentError = $null
 $script:isShuttingDown = $false
+$script:trayIconImage = $null
 
 function Ensure-FileExists {
   param(
@@ -295,7 +296,15 @@ try {
   $null = $contextMenu.Items.Add($exitMenuItem)
 
   $trayIcon = New-Object System.Windows.Forms.NotifyIcon
-  $trayIcon.Icon = [System.Drawing.SystemIcons]::Application
+
+  $iconPath = Join-Path $installRoot 'app\assets\tray.ico'
+
+  if (-not (Test-Path -LiteralPath $iconPath)) {
+    throw "Tray icon not found at $iconPath"
+  }
+
+  $script:trayIconImage = New-Object System.Drawing.Icon($iconPath)
+  $trayIcon.Icon = $script:trayIconImage
   $trayIcon.Visible = $true
   $trayIcon.ContextMenuStrip = $contextMenu
   $null = $trayIcon.add_DoubleClick({
@@ -337,6 +346,10 @@ try {
   if ($null -ne $trayIcon) {
     $trayIcon.Visible = $false
     $trayIcon.Dispose()
+  }
+
+  if ($null -ne $script:trayIconImage) {
+    $script:trayIconImage.Dispose()
   }
 
   if ($null -ne $contextMenu) {
