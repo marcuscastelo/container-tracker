@@ -103,7 +103,7 @@ export function TimelinePanel(props: Props): JSX.Element {
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-3 text-center text-label text-slate-400">
+            <p class="py-3 text-center text-xs-ui text-slate-400">
               {t(keys.shipmentView.noEvents)}
             </p>
           }
@@ -133,7 +133,7 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
     <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
       {/* Container identity + status */}
       <div class="flex items-center gap-1.5">
-        <span class="text-label font-semibold tracking-wide text-slate-700">
+        <span class="text-xs-ui font-semibold tracking-wide text-slate-700">
           {props.container.number}
         </span>
         <StatusBadge

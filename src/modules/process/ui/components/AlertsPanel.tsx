@@ -36,7 +36,7 @@ export function AlertsPanel(props: Props): JSX.Element {
                 d="M12 9v3m0 3h.01m-7.732 4h15.464c1.308 0 2.126-1.417 1.472-2.55L13.732 4.45c-.654-1.133-2.29-1.133-2.944 0L2.806 16.45c-.654 1.133.164 2.55 1.472 2.55z"
               />
             </svg>
-            <span class="text-sm font-bold text-slate-800">
+            <span class="text-sm-ui font-bold text-slate-800">
               {t(keys.shipmentView.alerts.sectionTitle)}
             </span>
           </div>
@@ -70,7 +70,7 @@ export function AlertsPanel(props: Props): JSX.Element {
       </Show>
 
       <Show when={!hasAnyAlert()}>
-        <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-label text-slate-500">
+        <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs-ui text-slate-500">
           {t(keys.shipmentView.alerts.activeEmpty)}
         </div>
       </Show>

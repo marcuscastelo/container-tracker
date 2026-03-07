@@ -222,7 +222,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   const renderBody = (currentState: GridState): JSX.Element => {
     if (currentState === 'loading') {
       return (
-        <div class="px-4 py-8 text-center text-body text-slate-400">
+        <div class="px-4 py-8 text-center text-md-ui text-slate-400">
           {t(keys.dashboard.alertIndicators.loading)}
         </div>
       )
@@ -230,7 +230,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
     if (currentState === 'error') {
       return (
-        <div class="px-4 py-8 text-center text-body text-red-500">
+        <div class="px-4 py-8 text-center text-md-ui text-red-500">
           {t(keys.dashboard.alertIndicators.error)}
         </div>
       )
@@ -243,10 +243,10 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
         {/* Phase 10: Compact Triage Summary Bar */}
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1.5">
-            <span class="text-[22px] font-bold tabular-nums text-slate-900">
+            <span class="text-xl-ui font-bold tabular-nums text-slate-900">
               {summary.totalActiveAlerts}
             </span>
-            <span class="text-caption font-medium text-slate-500">
+            <span class="text-sm-ui font-medium text-slate-500">
               {t(keys.dashboard.alertIndicators.total)}
             </span>
           </div>
@@ -255,10 +255,10 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
             {(item) => (
               <div class="flex items-center gap-1">
                 <span class={`h-2 w-2 rounded-full ${item.dotClass}`} />
-                <span class={`text-body font-bold tabular-nums ${item.valueClass}`}>
+                <span class={`text-md-ui font-bold tabular-nums ${item.valueClass}`}>
                   {item.value}
                 </span>
-                <span class={`text-caption font-medium ${item.labelClass}`}>{item.label}</span>
+                <span class={`text-sm-ui font-medium ${item.labelClass}`}>{item.label}</span>
               </div>
             )}
           </For>
@@ -272,7 +272,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
         </div>
 
         <Show when={currentState === 'empty'}>
-          <p class="mt-2 text-center text-body-sm text-slate-500">
+          <p class="mt-2 text-center text-md-ui text-slate-500">
             {t(keys.dashboard.alertIndicators.empty)}
           </p>
         </Show>
@@ -285,7 +285,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       class={`overflow-hidden rounded border border-slate-200 bg-white ${state() === 'empty' ? 'mb-2' : 'mb-3'}`}
     >
       <header class="border-b border-slate-200 px-4 py-3">
-        <h2 class="text-body font-semibold text-slate-900">
+        <h2 class="text-md-ui font-semibold text-slate-900">
           {t(keys.dashboard.alertIndicators.title)}
         </h2>
       </header>

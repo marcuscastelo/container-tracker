@@ -64,7 +64,7 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
         <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.carrier)}
         </span>
-        <span class="text-label font-semibold uppercase text-slate-700">
+        <span class="text-xs-ui font-semibold uppercase text-slate-700">
           {props.data.carrier ?? t(keys.shipmentView.summaryStrip.unknown)}
         </span>
       </div>
@@ -74,7 +74,7 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
         <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.eta)}
         </span>
-        <span class="text-label font-bold tabular-nums text-slate-900">
+        <span class="text-xs-ui font-bold tabular-nums text-slate-900">
           {props.data.eta ?? t(keys.shipmentView.summaryStrip.unknown)}
         </span>
       </div>
@@ -84,7 +84,7 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
         <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.containers)}
         </span>
-        <span class="text-label font-bold tabular-nums text-slate-700">
+        <span class="text-xs-ui font-bold tabular-nums text-slate-700">
           {props.data.containers.length}
         </span>
       </div>
@@ -97,12 +97,12 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
         <Show
           when={alertCount() > 0}
           fallback={
-            <span class="text-label text-slate-400">
+            <span class="text-xs-ui text-slate-400">
               {t(keys.shipmentView.summaryStrip.noAlerts)}
             </span>
           }
         >
-          <span class="inline-flex items-center rounded bg-red-50 px-1.5 py-px text-label font-bold tabular-nums text-red-700">
+          <span class="inline-flex items-center rounded bg-red-50 px-1.5 py-px text-xs-ui font-bold tabular-nums text-red-700">
             {alertCount()}
           </span>
         </Show>
@@ -113,7 +113,7 @@ export function OperationalSummaryStrip(props: Props): JSX.Element {
         <span class="text-micro font-normal uppercase tracking-wider text-slate-400/70">
           {t(keys.shipmentView.summaryStrip.lastUpdate)}
         </span>
-        <span class="text-label font-medium tabular-nums text-slate-500">
+        <span class="text-xs-ui font-medium tabular-nums text-slate-500">
           {formatAge(latestAlertTs(), t, keys)}
         </span>
       </div>

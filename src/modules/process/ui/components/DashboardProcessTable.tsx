@@ -83,7 +83,7 @@ function SortDirectionIcon(props: {
   return (
     <Show when={props.direction !== null}>
       <span
-        class="inline-flex h-4 w-4 items-center justify-center text-label leading-none text-slate-600"
+        class="inline-flex h-4 w-4 items-center justify-center text-xs-ui leading-none text-slate-600"
         aria-hidden="true"
       >
         {arrow()}
@@ -297,7 +297,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           fallback={
             <div class="flex items-center gap-1">
               <CheckIcon />
-              <span class="text-label text-slate-400">{severityLabel()}</span>
+              <span class="text-xs-ui text-slate-400">{severityLabel()}</span>
             </div>
           }
         >
@@ -316,18 +316,18 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <td class="px-3 py-3">
         <A
           href={`/shipments/${props.process.id}`}
-          class="text-body font-bold text-blue-700 hover:text-blue-800 hover:underline"
+          class="text-md-ui font-bold text-blue-700 hover:text-blue-800 hover:underline"
         >
           {displayProcessRef(props.process)}
         </A>
       </td>
       <td class="px-3 py-3">
-        <div class="flex items-center gap-1.5 text-body text-slate-700 leading-tight">
+        <div class="flex items-center gap-1.5 text-md-ui text-slate-700 leading-tight">
           <span class="max-w-[120px] truncate">{route().origin}</span>
           <ArrowIcon />
           <span class="max-w-[120px] truncate font-medium">{route().destination}</span>
           <Show when={props.process.redestinationNumber}>
-            <span class="text-label text-slate-400">({props.process.redestinationNumber})</span>
+            <span class="text-xs-ui text-slate-400">({props.process.redestinationNumber})</span>
           </Show>
         </div>
       </td>
@@ -338,8 +338,8 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         />
       </td>
       <td class="px-3 py-3 text-right">
-        <Show when={props.process.eta} fallback={<span class="text-body text-slate-300">—</span>}>
-          <span class="text-sm font-bold tabular-nums text-slate-900">
+        <Show when={props.process.eta} fallback={<span class="text-md-ui text-slate-300">—</span>}>
+          <span class="text-md-ui font-bold tabular-nums text-slate-900">
             {displayEta(props.process.eta)}
           </span>
         </Show>
@@ -355,7 +355,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       {/* Dominant Alert — emphasized */}
       <td class="px-3 py-3">
         <div class="flex items-center gap-1.5">
-          <span class="text-body font-medium text-slate-900 truncate max-w-[180px]">
+          <span class="text-md-ui font-medium text-slate-900 truncate max-w-[180px]">
             {dominantAlertLabel()}
           </span>
           <Show when={visibleChips().length > 0}>
@@ -368,7 +368,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </div>
       </td>
       <td class="px-3 py-3 text-center">
-        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-label font-bold tabular-nums text-slate-700">
+        <span class="inline-flex h-5 min-w-5 items-center justify-center rounded bg-slate-100 px-1.5 text-xs-ui font-bold tabular-nums text-slate-700">
           {props.process.alertsCount}
         </span>
       </td>
@@ -405,7 +405,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 
   const tableHeader = (
     <thead>
-      <tr class="border-b border-slate-200 text-left text-caption font-medium uppercase tracking-wider text-slate-400/80">
+      <tr class="border-b border-slate-200 text-left text-sm-ui font-medium uppercase tracking-wider text-slate-400/80">
         <th class="px-3 py-2.5">{t(keys.dashboard.table.col.dominantSeverity)}</th>
         <th class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
           <SortHeaderButton
@@ -489,7 +489,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const content = () => {
     if (props.loading) {
       return (
-        <div class="px-4 py-8 text-center text-body text-slate-400">
+        <div class="px-4 py-8 text-center text-md-ui text-slate-400">
           {t(keys.dashboard.loading)}
         </div>
       )
@@ -497,7 +497,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
     if (props.hasError) {
       return (
-        <div class="px-4 py-8 text-center text-body text-red-500">
+        <div class="px-4 py-8 text-center text-md-ui text-red-500">
           {t(keys.dashboard.error.loadProcesses)}
         </div>
       )
@@ -538,7 +538,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   return (
     <section class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <header class="border-b border-slate-200 bg-slate-50/60 px-4 py-3">
-        <h2 class="text-sm font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
+        <h2 class="text-sm-ui font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
     </section>

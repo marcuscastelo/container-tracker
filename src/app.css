@@ -1,11 +1,20 @@
 @import "tailwindcss";
 
 @theme {
+  /* ── Semantic Typography Scale ──────────────────────────────────
+   *  text-micro  → metadata mínimo, micro badge, timestamps auxiliares
+   *  text-xs-ui  → secundário denso, labels secundários, table header
+   *  text-sm-ui  → controle compacto, filtros, botões, inputs, tabs
+   *  text-md-ui  → body padrão, célula principal, labels principais
+   *  text-lg-ui  → heading compacto, título de card/seção
+   *  text-xl-ui  → métrica, KPI, contagem dominante
+   * ────────────────────────────────────────────────────────────── */
   --font-size-micro: 10px;
-  --font-size-label: 11px;
-  --font-size-caption: 12px;
-  --font-size-body-sm: 13px;
-  --font-size-body: 14px;
+  --font-size-xs-ui: 11px;
+  --font-size-sm-ui: 12px;
+  --font-size-md-ui: 13px;
+  --font-size-lg-ui: 15px;
+  --font-size-xl-ui: 22px;
 }
 
 /* https://base-ui-docs-solid.vercel.app/solid/overview/quick-start */

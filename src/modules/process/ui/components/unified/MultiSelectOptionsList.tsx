@@ -14,7 +14,7 @@ export function MultiSelectOptionsList<T extends string>(props: {
           <li>
             <button
               type="button"
-              class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
+              class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-md-ui transition-colors ${
                 props.isSelected(option.value)
                   ? 'bg-slate-100 text-slate-800'
                   : 'text-slate-700 hover:bg-slate-50'
@@ -25,7 +25,7 @@ export function MultiSelectOptionsList<T extends string>(props: {
               }}
             >
               <span
-                class={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border border-slate-300 text-[11px] ${
+                class={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border border-slate-300 text-xs-ui ${
                   props.isSelected(option.value) ? 'bg-blue-600 text-white' : 'bg-white'
                 }`}
                 aria-hidden="true"
@@ -33,7 +33,7 @@ export function MultiSelectOptionsList<T extends string>(props: {
                 {props.isSelected(option.value) ? '✓' : ''}
               </span>
               <span class="min-w-0 flex-1 truncate">{option.label}</span>
-              <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{option.count}</span>
+              <span class="shrink-0 tabular-nums text-xs-ui text-slate-400">{option.count}</span>
             </button>
           </li>
         )}
