@@ -15,6 +15,7 @@ Permitir reordenar as colunas entre si (localstorage)
 Permitir sort em todas as colunas.
 Sync em penultimo ou ultimo
 Fotinha no tray icon do agent no windows
+Fazer alertas nao ser mais sticky no process
 
 # Bugs
 Criando novo processo: adiciona um container ja existente, edita para um nao existente. Adiciona outro container ja existente, REMOVE com a lixeira, readiciona so que nao existente. Resultado: soft-lock mensagem "container ja existente" e nao da para resolver pq o campo foi deletado.
