@@ -27,7 +27,7 @@ function ContainerSummaryRow(props: { readonly row: ContainerSummaryRowVM }): JS
       <span class="text-slate-500">
         <Show when={props.row.alertCount > 0}>
           <span data-testid={`container-summary-alert-count-${props.row.containerNumber}`}>
-            {t(keys.shipmentView.alerts.archived.title, { count: props.row.alertCount })}
+            {t(keys.shipmentView.containerSummary.alertCount, { count: props.row.alertCount })}
           </span>
           <Show when={props.row.updatedAgoLabel}>
             <span class="mx-0.5">·</span>

@@ -219,7 +219,8 @@
       "selectionHint": "Select a container to view its timeline."
     },
     "containerSummary": {
-      "moreContainers": "+{{count}} containers in this process"
+      "moreContainers": "+{{count}} containers in this process",
+      "alertCount": "{{count}} alert(s)"
     },
     "timeline": {
       "title": "Container Timeline",

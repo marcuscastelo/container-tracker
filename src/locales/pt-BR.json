@@ -230,7 +230,8 @@
       "selectionHint": "Selecione um container para ver sua timeline."
     },
     "containerSummary": {
-      "moreContainers": "+{{count}} containers neste processo"
+      "moreContainers": "+{{count}} containers neste processo",
+      "alertCount": "{{count}} alerta(s)"
     },
     "timeline": {
       "title": "Timeline do Container",

@@ -230,7 +230,8 @@
       "selectionHint": "Selecione um contentor para ver a sua linha temporal."
     },
     "containerSummary": {
-      "moreContainers": "+{{count}} contentores neste processo"
+      "moreContainers": "+{{count}} contentores neste processo",
+      "alertCount": "{{count}} alerta(s)"
     },
     "timeline": {
       "title": "Linha Temporal do Contentor",
