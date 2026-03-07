@@ -67,6 +67,7 @@ import {
   sortDashboardProcesses,
 } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
@@ -122,6 +123,7 @@ function hydrateDashboardQueryState(params: {
   void params.navigate(nextPath, { replace: true })
 }
 
+// eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys } = useTranslation()
   const location = useLocation()
@@ -277,12 +279,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     <div class="relative min-h-screen bg-slate-50/80">
       {/* Wallpaper watermark — decorative only, does not affect layout */}
       <img
-        src="/branding/wallpaper.jpeg"
+        src={BRANDING.wallpaper}
         alt=""
         aria-hidden="true"
         class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
       />
-      <div class="relative z-1">
+      <div class="relative z-10">
         <AppHeader
           onCreateProcess={handleCreateProcess}
           alertCount={globalAlerts()?.totalActiveAlerts ?? 0}

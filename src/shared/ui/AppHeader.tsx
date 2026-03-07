@@ -53,8 +53,9 @@ export function AppHeader(props: Props): JSX.Element {
         <div class="flex items-center gap-6">
           <A href="/" class="flex items-center gap-2 text-white">
             <img
-              src={BRANDING.logoOriginal}
-              alt={BRANDING.displayTitle}
+              src={BRANDING.logoPrimary}
+              alt=""
+              aria-hidden="true"
               class="h-7 w-auto object-contain"
             />
             <span class="text-sm font-bold tracking-tight">{t(keys.header.brand)}</span>

@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
+import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // Small mapping of language code to a representative country code for flags.
@@ -74,7 +75,12 @@ export function LanguageSwitch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="inline-flex items-center gap-1 rounded bg-[#23264d] px-2 py-1 text-xs font-medium text-slate-300 hover:bg-[#383b6e] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#2c2f59]"
+        class="inline-flex items-center gap-1 rounded bg-[color:var(--brand-color-primary)] px-2 py-1 text-xs font-medium text-slate-300 hover:bg-[color:var(--brand-color-primary-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--brand-color-primary-offset)]"
+        style={{
+          '--brand-color-primary': BRANDING.colorPrimary,
+          '--brand-color-primary-hover': '#383b6e',
+          '--brand-color-primary-offset': BRANDING.colorPrimary,
+        }}
         aria-haspopup="listbox"
         aria-expanded={open()}
       >

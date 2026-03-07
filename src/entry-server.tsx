@@ -1,5 +1,6 @@
 // @refresh reload
 import { createHandler, StartServer } from '@solidjs/start/server'
+import { BRANDING } from '~/shared/config/branding'
 import { env } from '~/shared/config/env'
 
 // TODO (SSR disabled): Quando habilitar SSR, implementar a inicialização server-side do i18n
@@ -23,8 +24,8 @@ export default createHandler(() => (
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Castro Aduaneira — Container Tracker</title>
-          <link rel="icon" href="/branding/logo-mark.png" type="image/png" />
+          <title>{BRANDING.displayTitle}</title>
+          <link rel="icon" href={BRANDING.logoMark} type="image/png" />
           {assets}
         </head>
         <body>
