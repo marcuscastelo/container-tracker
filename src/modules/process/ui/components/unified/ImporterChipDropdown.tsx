@@ -1,11 +1,10 @@
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For } from 'solid-js'
+import { createMemo, createSignal, For, Match, Switch } from 'solid-js'
+import { ChevronDownIcon } from '~/modules/process/ui/components/unified/Icons'
 import type {
   DashboardImporterFilterOption,
   DashboardImporterFilterValue,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
-
-import { ChevronDownIcon } from './Icons'
 
 export function ImporterChipDropdown(props: {
   readonly label: string
@@ -65,16 +64,13 @@ export function ImporterChipDropdown(props: {
     )
   }
 
-  const handleOptionSelect = (
-    event: MouseEvent & { readonly currentTarget: HTMLElement },
-    option: DashboardImporterFilterOption,
-  ): void => {
+  const handleOptionSelect = (option: DashboardImporterFilterOption): void => {
     props.onSelect({
       importerId: option.importerId,
       importerName: option.importerName,
     })
     setSearchValue('')
-    const detailsElement = event.currentTarget.closest('details')
+    const detailsElement = document.querySelector('details[open]')
     if (detailsElement instanceof HTMLDetailsElement) {
       detailsElement.open = false
     }
@@ -103,44 +99,37 @@ export function ImporterChipDropdown(props: {
             onInput={(event) => setSearchValue(event.currentTarget.value)}
           />
         </div>
-        {props.options.length === 0 ? (
-          <p class="px-3 py-2 text-[13px] text-slate-500">{props.emptyLabel}</p>
-        ) : filteredOptions().length === 0 ? (
-          <p class="px-3 py-2 text-[13px] text-slate-500">{props.noMatchesLabel}</p>
-        ) : (
-          <ul class="max-h-56 overflow-y-auto p-1">
-            <For each={filteredOptions()}>
-              {(option) => (
-                <li
-                  role="button"
-                  tabIndex={0}
-                  class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
-                    isOptionSelected(option)
-                      ? 'bg-slate-100 text-slate-800'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                  onClick={(event) => handleOptionSelect(event as any, option)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') handleOptionSelect(e as any, option)
-                  }}
-                >
-                  <span class="min-w-0 flex-1 truncate">{option.label}</span>
-                  <span class="shrink-0 tabular-nums text-[11px] text-slate-400">
-                    {option.count}
-                  </span>
-                </li>
-              )}
-            </For>
-          </ul>
-        )}
-      </div>
-    </details>
-  )
-}
-
-function toNormalizedNonBlankString(value: string | null): string | null {
-  if (value === null) return null
-  const trimmed = value.trim()
-  if (trimmed.length === 0) return null
-  return trimmed.toLocaleLowerCase('pt-BR')
-}
+        <Switch>
+          <Match when={props.options.length === 0}>
+            <p class="px-3 py-2 text-[13px] text-slate-500">{props.emptyLabel}</p>
+          </Match>
+          <Match when={filteredOptions().length === 0}>
+            <p class="px-3 py-2 text-[13px] text-slate-500">{props.noMatchesLabel}</p>
+          </Match>
+          <Match when={true}>
+            <ul class="max-h-56 overflow-y-auto p-1">
+              <For each={filteredOptions()}>
+                {(option) => (
+                  <li>
+                    <button
+                      type="button"
+                      class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
+                        isOptionSelected(option)
+                          ? 'bg-slate-100 text-slate-800'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                      onClick={() => handleOptionSelect(option)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') handleOptionSelect(option)
+                      }}
+                    >
+                      <span class="min-w-0 flex-1 truncate">{option.label}</span>
+                      <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{option.count}</span>
+                    </button>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Match>
+        </Switch>
+                                    type="button"

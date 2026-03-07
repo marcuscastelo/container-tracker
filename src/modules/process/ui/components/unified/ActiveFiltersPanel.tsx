@@ -1,23 +1,29 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
+import { ActiveFilterChip } from '~/modules/process/ui/components/unified/ActiveFilterChip'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
-import { ActiveFilterChip } from './ActiveFilterChip'
 
 type Props = {
   readonly selectedSeverity: string | null
   readonly selectedProviders: readonly string[]
   readonly selectedStatuses: readonly TrackingStatusCode[]
   readonly selectedImporterChipLabel: string | null
-  readonly onSeveritySelect: (severity: any) => void
+  readonly onSeveritySelect: (severity: unknown) => void
   readonly onProviderToggle: (provider: string) => void
   readonly onStatusToggle: (status: TrackingStatusCode) => void
-  readonly onImporterSelect: (importer: any) => void
+  readonly onImporterSelect: (importer: unknown) => void
 }
 
-export default function ActiveFiltersPanel(props: Props): JSX.Element {
+export function ActiveFiltersPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+
+  function severityLabel(value: string | null): string {
+    if (value === 'danger') return t(keys.dashboard.filters.severity.danger)
+    if (value === 'warning') return t(keys.dashboard.filters.severity.warning)
+    return t(keys.dashboard.filters.severity.none)
+  }
 
   return (
     <div
@@ -30,21 +36,9 @@ export default function ActiveFiltersPanel(props: Props): JSX.Element {
 
       {props.selectedSeverity ? (
         <ActiveFilterChip
-          label={`${t(keys.dashboard.filters.severity.label)}: ${
-            props.selectedSeverity === 'danger'
-              ? t(keys.dashboard.filters.severity.danger)
-              : props.selectedSeverity === 'warning'
-                ? t(keys.dashboard.filters.severity.warning)
-                : t(keys.dashboard.filters.severity.none)
-          }`}
+          label={`${t(keys.dashboard.filters.severity.label)}: ${severityLabel(props.selectedSeverity)}`}
           ariaLabel={t(keys.dashboard.filters.removeChip, {
-            filter: `${t(keys.dashboard.filters.severity.label)}: ${
-              props.selectedSeverity === 'danger'
-                ? t(keys.dashboard.filters.severity.danger)
-                : props.selectedSeverity === 'warning'
-                  ? t(keys.dashboard.filters.severity.warning)
-                  : t(keys.dashboard.filters.severity.none)
-            }`,
+            filter: `${t(keys.dashboard.filters.severity.label)}: ${severityLabel(props.selectedSeverity)}`,
           })}
           onRemove={() => props.onSeveritySelect(null)}
         />
@@ -78,62 +72,6 @@ export default function ActiveFiltersPanel(props: Props): JSX.Element {
         <ActiveFilterChip
           label={`${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`}
           ariaLabel={t(keys.dashboard.filters.removeChip, {
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
-            filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
-          })}
-          onRemove={() => props.onImporterSelect(null)}
-        />
-      ) : null}
-    </div>
-  )
-}
             filter: `${t(keys.dashboard.filters.importer.label)}: ${props.selectedImporterChipLabel}`,
           })}
           onRemove={() => props.onImporterSelect(null)}

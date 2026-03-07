@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
-import type { FilterControlOption } from './FilterControlOption'
-import { ChevronDownIcon } from './Icons'
+import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
+import { ChevronDownIcon } from '~/modules/process/ui/components/unified/Icons'
 
 export function SingleSelectChipDropdown<T extends string>(props: {
   readonly label: string
@@ -20,12 +20,9 @@ export function SingleSelectChipDropdown<T extends string>(props: {
     return selected ? `${props.label}: ${selected.label}` : props.label
   }
 
-  const handleSelect = (
-    event: MouseEvent & { readonly currentTarget: HTMLElement },
-    value: T | null,
-  ) => {
+  const handleSelect = (value: T | null) => {
     props.onSelect(value)
-    const detailsElement = event.currentTarget.closest('details')
+    const detailsElement = document.querySelector('details[open]')
     if (detailsElement instanceof HTMLDetailsElement) {
       detailsElement.open = false
     }
@@ -46,36 +43,40 @@ export function SingleSelectChipDropdown<T extends string>(props: {
 
       <div class="absolute left-0 top-full z-20 mt-1 min-w-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg">
         <ul class="max-h-56 overflow-y-auto p-1">
-          <li
-            role="button"
-            tabIndex={0}
-            class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
-              hasSelection() ? 'text-slate-700 hover:bg-slate-50' : 'bg-slate-100 text-slate-800'
-            }`}
-            onClick={(event) => handleSelect(event as any, null)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') handleSelect(e as any, null)
-            }}
-          >
-            <span class="min-w-0 flex-1 truncate">{props.allLabel}</span>
+          <li>
+            <button
+              type="button"
+              class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
+                hasSelection() ? 'text-slate-700 hover:bg-slate-50' : 'bg-slate-100 text-slate-800'
+              }`}
+              onClick={() => handleSelect(null)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleSelect(null)
+              }}
+            >
+              <span class="min-w-0 flex-1 truncate">{props.allLabel}</span>
+            </button>
           </li>
           <For each={props.options}>
             {(option) => (
-              <li
-                role="button"
-                tabIndex={0}
-                class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
-                  props.selectedValue === option.value
-                    ? 'bg-slate-100 text-slate-800'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                onClick={(event) => handleSelect(event as any, option.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') handleSelect(e as any, option.value)
-                }}
-              >
-                <span class="min-w-0 flex-1 truncate">{option.label}</span>
-                <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{option.count}</span>
+              <li>
+                <button
+                  type="button"
+                  class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors ${
+                    props.selectedValue === option.value
+                      ? 'bg-slate-100 text-slate-800'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                  onClick={() => handleSelect(option.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') handleSelect(option.value)
+                  }}
+                >
+                  <span class="min-w-0 flex-1 truncate">{option.label}</span>
+                  <span class="shrink-0 tabular-nums text-[11px] text-slate-400">
+                    {option.count}
+                  </span>
+                </button>
               </li>
             )}
           </For>

@@ -1,5 +1,10 @@
 import type { JSX } from 'solid-js'
-import { createMemo, For } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
+import { ActiveFiltersPanel } from '~/modules/process/ui/components/unified/ActiveFiltersPanel'
+import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
+import { ImporterChipDropdown } from '~/modules/process/ui/components/unified/ImporterChipDropdown'
+import { MultiSelectChipDropdown } from '~/modules/process/ui/components/unified/MultiSelectChipDropdown'
+import { SingleSelectChipDropdown } from '~/modules/process/ui/components/unified/SingleSelectChipDropdown'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
   DashboardImporterFilterOption,
@@ -12,12 +17,6 @@ import type {
 import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
-import { ActiveFilterChip } from './unified/ActiveFilterChip'
-import ActiveFiltersPanel from './unified/ActiveFiltersPanel'
-import type { FilterControlOption } from './unified/FilterControlOption'
-import { ImporterChipDropdown } from './unified/ImporterChipDropdown'
-import MultiSelectChipDropdown from './unified/MultiSelectChipDropdown'
-import { SingleSelectChipDropdown } from './unified/SingleSelectChipDropdown'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Props = {
@@ -167,31 +166,35 @@ export function UnifiedDashboardFilters(props: Props): JSX.Element {
           onSelect={props.onImporterSelect}
         />
 
-        {hasActiveFilters() && (
-          <button
-            type="button"
-            class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-slate-500 transition-colors hover:text-slate-700"
-            onClick={() => props.onClearAllFilters()}
-            data-testid="dashboard-clear-filters"
-          >
-            <ClearIcon />
-            <span>{t(keys.dashboard.filters.clearAll)}</span>
-          </button>
-        )}
+        <Show when={hasActiveFilters()}>
+          {
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-slate-500 transition-colors hover:text-slate-700"
+              onClick={() => props.onClearAllFilters()}
+              data-testid="dashboard-clear-filters"
+            >
+              <ClearIcon />
+              <span>{t(keys.dashboard.filters.clearAll)}</span>
+            </button>
+          }
+        </Show>
       </div>
 
-      {hasActiveFilters() && (
-        <ActiveFiltersPanel
-          selectedSeverity={props.selectedSeverity}
-          selectedProviders={props.selectedProviders}
-          selectedStatuses={props.selectedStatuses}
-          selectedImporterChipLabel={selectedImporterChipLabel() ?? null}
-          onSeveritySelect={props.onSeveritySelect}
-          onProviderToggle={props.onProviderToggle}
-          onStatusToggle={props.onStatusToggle}
-          onImporterSelect={props.onImporterSelect}
-        />
-      )}
+      <Show when={hasActiveFilters()}>
+        {
+          <ActiveFiltersPanel
+            selectedSeverity={props.selectedSeverity}
+            selectedProviders={props.selectedProviders}
+            selectedStatuses={props.selectedStatuses}
+            selectedImporterChipLabel={selectedImporterChipLabel() ?? null}
+            onSeveritySelect={props.onSeveritySelect}
+            onProviderToggle={props.onProviderToggle}
+            onStatusToggle={props.onStatusToggle}
+            onImporterSelect={props.onImporterSelect}
+          />
+        }
+      </Show>
     </section>
   )
 }
