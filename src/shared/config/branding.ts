@@ -18,7 +18,7 @@ export const BRANDING = {
   logoMark: '/branding/logo-mark.png',
 
   /** Original uploaded logo (jpg) */
-  logoOriginal: '/branding/logo.jpg',
+  logoOriginal: '/branding/logo.png',
 
   /** Brand primary color extracted from logo */
   colorPrimary: '#2c2f59',
