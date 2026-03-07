@@ -20,9 +20,6 @@ export const BRANDING = {
   /** Original uploaded logo (jpg) */
   logoOriginal: '/branding/logo.png',
 
-  /** Wallpaper / decorative background image used as watermark */
-  wallpaper: '/branding/wallpaper.jpeg',
-
   /** Brand primary color extracted from logo */
   colorPrimary: '#2c2f59',
 } as const

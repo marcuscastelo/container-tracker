@@ -53,7 +53,7 @@ export function AppHeader(props: Props): JSX.Element {
         <div class="flex items-center gap-6">
           <A href="/" class="flex items-center gap-2 text-white">
             <img
-              src={BRANDING.logoPrimary}
+              src={BRANDING.logoOriginal}
               alt={BRANDING.displayTitle}
               class="h-7 w-auto object-contain"
             />
