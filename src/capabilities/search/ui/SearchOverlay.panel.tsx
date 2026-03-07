@@ -379,7 +379,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
 
             <div class="max-h-[65vh] overflow-y-auto">
               <Show when={props.state === 'loading' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-sm-ui text-slate-400"></div>
+                <div class="px-4 py-6 text-center text-sm-ui text-slate-400" />
               </Show>
 
               <Show when={props.state === 'error' && shouldShowResultsState()}>
