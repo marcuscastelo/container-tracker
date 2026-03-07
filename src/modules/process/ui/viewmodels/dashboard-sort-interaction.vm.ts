@@ -96,8 +96,9 @@ function compareNullableDateValues(
 }
 
 function toCreatedAtSortValue(process: ProcessSummaryVM): number | null {
-  if (!process.lastEventAt) return null
-  const parsed = Date.parse(process.lastEventAt)
+  const ts = process.dominantAlertCreatedAt
+  if (!ts) return null
+  const parsed = Date.parse(ts)
   return Number.isNaN(parsed) ? null : parsed
 }
 
