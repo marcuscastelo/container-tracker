@@ -1,6 +1,10 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+  TrackingAlertAckSource,
+} from '~/modules/tracking/domain/model/trackingAlert'
 import {
   alertRowToDomain,
   alertToInsertRow,
@@ -171,7 +175,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     ackedAt: string,
     metadata: {
       readonly ackedBy: string | null
-      readonly ackedSource: 'dashboard' | 'process_view' | 'api' | null
+      readonly ackedSource: TrackingAlertAckSource | null
     },
   ): Promise<void> {
     const result = await supabase

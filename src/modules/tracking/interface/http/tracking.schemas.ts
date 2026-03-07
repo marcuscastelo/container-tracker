@@ -17,7 +17,8 @@ export const ListAlertsQuerySchema = z.object({
 export const AlertActionBodySchema = z.object({
   alert_id: z.string().min(1),
   action: z.enum(['acknowledge', 'unacknowledge']),
-  acked_by: z.string().nullable().optional(),
+  // when provided, acked_by must be a non-empty string; allow null/omitted
+  acked_by: z.string().min(1).nullable().optional(),
   acked_source: z.enum(['dashboard', 'process_view', 'api']).nullable().optional(),
 })
 
