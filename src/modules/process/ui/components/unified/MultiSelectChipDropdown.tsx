@@ -76,7 +76,7 @@ export function MultiSelectChipDropdown<T extends string>(props: {
       data-testid={props.testId}
     >
       <summary
-        class={`inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border px-2.5 text-[13px] transition-colors select-none ${
+        class={`inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border px-2.5 text-md-ui transition-colors select-none ${
           hasSelection()
             ? 'border-slate-400 bg-slate-50 text-slate-800'
             : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
@@ -97,7 +97,7 @@ export function MultiSelectChipDropdown<T extends string>(props: {
             />
           }
         >
-          <p class="px-3 py-2 text-[13px] text-slate-500">{props.emptyLabel}</p>
+          <p class="px-3 py-2 text-md-ui text-slate-500">{props.emptyLabel}</p>
         </Show>
       </div>
     </details>

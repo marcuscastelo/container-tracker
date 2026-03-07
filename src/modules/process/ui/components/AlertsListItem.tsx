@@ -94,7 +94,7 @@ function AlertCategoryChip(props: {
 }): JSX.Element {
   return (
     <span
-      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs font-normal leading-none ${
+      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs-ui font-normal leading-none ${
         props.mode === 'archived' ? 'bg-slate-200 text-slate-400' : 'bg-slate-100 text-slate-400'
       }`}
     >
@@ -144,7 +144,7 @@ export function AlertItem(props: {
             {formatAlertAge(actionDateIso(), t, keys)}
           </span>
         </div>
-        <p class="mt-0.5 text-label font-medium leading-tight text-slate-700">
+        <p class="mt-0.5 text-sm-ui font-medium leading-tight text-slate-700">
           {props.alert.message}
         </p>
       </div>
