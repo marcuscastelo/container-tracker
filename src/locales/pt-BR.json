@@ -236,6 +236,10 @@
       "title": "Containers",
       "selectionHint": "Selecione um container para ver sua timeline."
     },
+    "containerSummary": {
+      "moreContainers": "+{{count}} containers neste processo",
+      "alertCount": "{{count}} alerta(s)"
+    },
     "timeline": {
       "title": "Timeline do Container",
       "vessel": "Navio",
