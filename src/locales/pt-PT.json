@@ -111,17 +111,18 @@
         "createdAt": "Criado em",
         "route": "Rota",
         "containers": "Contentores",
-        "status": "Estado Derivado",
+        "status": "Estado",
         "eta": "ETA Atual",
         "dominantSeverity": "Severidade Dominante",
         "dominantAlert": "Alerta Dominante",
         "activeAlerts": "Alertas Ativos",
+        "alerts": "Alertas",
         "sync": "Sync"
       },
       "dominantAlertLabel": {
         "transshipment": "Transbordo detectado",
         "alertsPresent": "{{count}} alerta(s)",
-        "noAlerts": "—"
+        "noAlerts": "Sem alerta"
       },
       "chipOverflow": "+{{count}}",
       "age": {
@@ -131,6 +132,9 @@
         "days": "há {{count}}d",
         "missing": "—"
       },
+      "alertTooltip": {
+        "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
+      },
       "filters": {
         "title": "Filtros",
         "all": "Todos",
@@ -139,10 +143,6 @@
       },
       "severity": {
         "none": "Sem alerta"
-      },
-      "groupHeader": {
-        "exceptions": "Exceções Operacionais",
-        "normal": "Outros Processos"
       },
       "sync": {
         "idle": "Sincronizar processo",
