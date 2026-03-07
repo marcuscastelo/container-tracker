@@ -111,7 +111,7 @@
         "createdAt": "Criado em",
         "route": "Rota",
         "containers": "Containers",
-        "status": "Status ",
+        "status": "Status",
         "eta": "ETA Atual",
         "dominantSeverity": "Severidade Dominante",
         "dominantAlert": "Alerta Dominante",
