@@ -32,6 +32,7 @@ Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs cr
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
 Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
+Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
 

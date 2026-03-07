@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
+import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { LanguageSwitch } from '~/shared/ui/LanguageSwitch'
 
@@ -19,7 +20,7 @@ function NavLink(props: {
       href={props.href}
       end={props.end}
       class="relative px-3 py-2.5 text-[13px] font-medium text-slate-400 transition-colors hover:text-white"
-      activeClass="!text-white after:content-[''] after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-blue-400"
+      activeClass="!text-white after:content-[''] after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-sky-300"
     >
       {props.children}
     </A>
@@ -46,25 +47,17 @@ export function AppHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <header class="border-b border-slate-800 bg-slate-900">
+    <header class="border-b border-[#1e2145] bg-[#2c2f59]">
       <div class="mx-auto flex h-11 max-w-7xl items-center justify-between px-4 lg:px-6">
         {/* Brand */}
         <div class="flex items-center gap-6">
           <A href="/" class="flex items-center gap-2 text-white">
-            <svg
-              class="h-5 w-5 text-blue-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            <img
+              src={BRANDING.logoPrimary}
+              alt=""
               aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
+              class="h-7 w-auto object-contain"
+            />
             <span class="text-sm font-bold tracking-tight">{t(keys.header.brand)}</span>
           </A>
 
@@ -91,7 +84,7 @@ export function AppHeader(props: Props): JSX.Element {
             type="button"
             onClick={() => props.onCreateProcess?.()}
             aria-label={t(keys.header.createProcess)}
-            class="inline-flex items-center gap-1.5 rounded bg-blue-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 focus:ring-offset-slate-900"
+            class="inline-flex items-center gap-1.5 rounded bg-sky-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-1 focus:ring-offset-[#2c2f59]"
           >
             <svg
               class="h-3.5 w-3.5"
