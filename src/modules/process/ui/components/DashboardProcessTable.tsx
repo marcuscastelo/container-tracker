@@ -1,4 +1,4 @@
-import { A, useNavigate } from '@solidjs/router'
+import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
 import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
@@ -67,12 +67,6 @@ function ArrowIcon(): JSX.Element {
       />
     </svg>
   )
-}
-
-function toAriaSort(direction: DashboardSortDirection | null): 'none' | 'ascending' | 'descending' {
-  if (direction === 'asc') return 'ascending'
-  if (direction === 'desc') return 'descending'
-  return 'none'
 }
 
 function SortDirectionIcon(props: {
@@ -195,7 +189,6 @@ function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
 
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
-  const navigate = useNavigate()
   const route = () => displayRoute(props.process)
 
   const dominantSeverity = () => toDominantSeverity(props.process)
@@ -229,26 +222,12 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
 
   const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
 
-  const handleRowClick = (e: MouseEvent) => {
-    // Avoid double navigation when clicking inner links/buttons
-    const target = e.target
-    if (!(target instanceof HTMLElement)) return
-    if (target.closest('a') || target.closest('button')) return
-    navigate(`/shipments/${props.process.id}`)
-  }
-
   return (
     <div
-      role="row"
-      class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 cursor-pointer hover:bg-slate-100/80 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
-      onClick={handleRowClick}
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') navigate(`/shipments/${props.process.id}`)
-      }}
+      class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
     >
       {/* Process — visual anchor */}
-      <div role="cell" class="overflow-hidden px-3 py-2">
+      <div class="overflow-hidden px-3 py-2">
         <A
           href={`/shipments/${props.process.id}`}
           class="text-md-ui font-semibold text-slate-900 hover:text-blue-700 hover:underline whitespace-nowrap truncate block"
@@ -257,7 +236,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </A>
       </div>
       {/* Route — secondary */}
-      <div role="cell" class="overflow-hidden px-3 py-2">
+      <div class="overflow-hidden px-3 py-2">
         <div class="flex items-center gap-1 text-xs-ui text-slate-500 leading-tight">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
@@ -268,14 +247,14 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </div>
       </div>
       {/* Status */}
-      <div role="cell" class="px-3 py-2 text-center">
+      <div class="px-3 py-2 text-center">
         <StatusBadge
           variant={props.process.status}
           label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
         />
       </div>
       {/* ETA — emphasis by exception */}
-      <div role="cell" class="px-3 py-2 text-center">
+      <div class="px-3 py-2 text-center">
         <Show when={props.process.eta} fallback={<span class="text-xs-ui text-slate-300">—</span>}>
           <span
             class={`text-md-ui font-bold tabular-nums ${props.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
@@ -285,7 +264,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </Show>
       </div>
       {/* Sync */}
-      <div role="cell" class="px-3 py-2 text-center">
+      <div class="px-3 py-2 text-center">
         <ProcessSyncButton
           processId={props.process.id}
           status={props.process.syncStatus}
@@ -294,7 +273,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         />
       </div>
       {/* Unified Alerts */}
-      <div role="cell" class="overflow-hidden px-3 py-2">
+      <div class="overflow-hidden px-3 py-2">
         <Show
           when={dominantSeverity() !== 'none'}
           fallback={
@@ -333,7 +312,7 @@ function GroupHeaderRow(props: {
   labelClass: string
 }): JSX.Element {
   return (
-    <div role="row" class={`border-b border-slate-100 ${props.rowClass}`}>
+    <div class={`border-b border-slate-100 ${props.rowClass}`}>
       <div class="px-3 py-1.5">
         <span class={`text-micro font-bold uppercase tracking-wider ${props.labelClass}`}>
           {props.label}
@@ -356,10 +335,9 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 
   const tableHeader = (
     <div
-      role="row"
       class={`${GRID_COLS} bg-white/80 border-b border-slate-200 text-left text-xs-ui font-semibold uppercase tracking-wide text-slate-500`}
     >
-      <div role="columnheader" class="px-3 py-2.5" aria-sort={toAriaSort(processSortDirection())}>
+      <div class="px-3 py-2.5">
         <SortHeaderButton
           field="processNumber"
           label={t(keys.dashboard.table.col.process)}
@@ -367,14 +345,8 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           onToggle={props.onSortToggle}
         />
       </div>
-      <div role="columnheader" class="px-3 py-2.5">
-        {t(keys.dashboard.table.col.route)}
-      </div>
-      <div
-        role="columnheader"
-        class="px-3 py-2.5 text-center"
-        aria-sort={toAriaSort(statusSortDirection())}
-      >
+      <div class="px-3 py-2.5">{t(keys.dashboard.table.col.route)}</div>
+      <div class="px-3 py-2.5 text-center">
         <SortHeaderButton
           field="status"
           label={t(keys.dashboard.table.col.status)}
@@ -383,11 +355,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           align="center"
         />
       </div>
-      <div
-        role="columnheader"
-        class="px-3 py-2.5 text-center"
-        aria-sort={toAriaSort(etaSortDirection())}
-      >
+      <div class="px-3 py-2.5 text-center">
         <SortHeaderButton
           field="eta"
           label={t(keys.dashboard.table.col.eta)}
@@ -396,19 +364,15 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           align="center"
         />
       </div>
-      <div role="columnheader" class="px-3 py-2.5 text-center">
-        {t(keys.dashboard.table.col.sync)}
-      </div>
-      <div role="columnheader" class="px-3 py-2.5">
-        {t(keys.dashboard.table.col.alerts)}
-      </div>
+      <div class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.sync)}</div>
+      <div class="px-3 py-2.5">{t(keys.dashboard.table.col.alerts)}</div>
     </div>
   )
 
   return (
-    <div class="overflow-x-auto" role="table">
+    <div class="overflow-x-auto">
       {tableHeader}
-      <div role="rowgroup">
+      <div>
         <Show when={exceptionsGroup().length > 0}>
           <GroupHeaderRow
             rowClass="bg-red-50/50"
@@ -489,14 +453,12 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     }
 
     return (
-      <>
-        <DashboardProcessRows
-          processes={props.processes}
-          sortSelection={props.sortSelection}
-          onSortToggle={props.onSortToggle}
-          onProcessSync={props.onProcessSync}
-        />
-      </>
+      <DashboardProcessRows
+        processes={props.processes}
+        sortSelection={props.sortSelection}
+        onSortToggle={props.onSortToggle}
+        onProcessSync={props.onProcessSync}
+      />
     )
   }
 
