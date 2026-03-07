@@ -1,5 +1,6 @@
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
+import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerSummaryRowVM } from '~/modules/process/ui/viewmodels/containerSummary.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
@@ -24,7 +25,12 @@ function toContainerSummaryRowVM(
   container: ContainerDetailVM,
   command: ContainerSummaryMapperCommand,
 ): ContainerSummaryRowVM {
-  const etaLabel = container.etaChipVm.date ? `ETA ${container.etaChipVm.date}` : command.noEtaLabel
+  const etaLabel = toContainerEtaChipLabel(container.etaChipVm, {
+    arrived: command.t(command.keys.shipmentView.operational.chips.etaArrived),
+    expectedPrefix: command.t(command.keys.shipmentView.operational.chips.etaExpected),
+    delayed: command.t(command.keys.shipmentView.operational.chips.etaDelayedSuffix),
+    missing: command.noEtaLabel,
+  })
 
   const relativeTimeAt = container.sync.relativeTimeAt
   const updatedAgoLabel =

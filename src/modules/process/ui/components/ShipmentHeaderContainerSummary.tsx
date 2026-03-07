@@ -14,6 +14,8 @@ type Props = {
 }
 
 function ContainerSummaryRow(props: { readonly row: ContainerSummaryRowVM }): JSX.Element {
+  const { t, keys } = useTranslation()
+
   return (
     <div
       class="flex items-center gap-3 text-sm"
@@ -24,10 +26,8 @@ function ContainerSummaryRow(props: { readonly row: ContainerSummaryRowVM }): JS
       <span class="text-slate-600">{props.row.etaLabel}</span>
       <span class="text-slate-500">
         <Show when={props.row.alertCount > 0}>
-          <span data-testid="container-summary-alert-count">
-            {props.row.alertCount === 1
-              ? `${props.row.alertCount} alerta`
-              : `${props.row.alertCount} alertas`}
+          <span data-testid={`container-summary-alert-count-${props.row.containerNumber}`}>
+            {t(keys.shipmentView.alerts.archived.title, { count: props.row.alertCount })}
           </span>
           <Show when={props.row.updatedAgoLabel}>
             <span class="mx-0.5">·</span>
