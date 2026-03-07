@@ -1,9 +1,10 @@
-import { A, useNavigate } from '@solidjs/router'
+import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createResource, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, onCleanup } from 'solid-js'
 import { z } from 'zod/v4'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 
+import { ShipmentViewLayout } from '~/modules/process/ui/components/ShipmentViewLayout'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-realtime-coordinator'
@@ -28,11 +29,8 @@ import {
   subscribeToSyncRequestsRealtimeByIds,
 } from '~/shared/api/sync-requests.realtime.client'
 import { useTranslation } from '~/shared/localization/i18n'
-import { AppHeader } from '~/shared/ui/AppHeader'
-import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 
 type DialogCarrier = CreateProcessDialogFormData['carrier']
-type ShipmentContainer = ShipmentDetailVM['containers'][number]
 type RefreshRetryState = { readonly current: number; readonly total: number }
 
 const REFRESH_SYNC_MAX_RETRIES = 5

@@ -32,18 +32,39 @@ describe('dashboard filter query parsing contract', () => {
     })
   })
 
-  it('parses severity query param values', () => {
-    const searchParams = new URLSearchParams({ severity: 'danger' })
+  it('parses each valid severity query param value', () => {
+    const validValues = ['danger', 'warning', 'none'] as const
 
-    const result = parseDashboardFiltersFromSearchParams(searchParams)
+    for (const severity of validValues) {
+      const searchParams = new URLSearchParams({ severity })
+      const result = parseDashboardFiltersFromSearchParams(searchParams)
 
-    expect(result).toEqual({
+      expect(result).toEqual({
+        providers: [],
+        statuses: [],
+        importerId: null,
+        importerName: null,
+        severity,
+      })
+    }
+  })
+
+  it('trims severity values and ignores invalid severity params', () => {
+    const withTrimmedSeverity = parseDashboardFiltersFromSearchParams(
+      new URLSearchParams({ severity: ' warning ' }),
+    )
+    const withInvalidSeverity = parseDashboardFiltersFromSearchParams(
+      new URLSearchParams({ severity: 'critical' }),
+    )
+
+    expect(withTrimmedSeverity).toEqual({
       providers: [],
       statuses: [],
       importerId: null,
       importerName: null,
-      severity: 'danger',
+      severity: 'warning',
     })
+    expect(withInvalidSeverity).toBe(DASHBOARD_DEFAULT_FILTER_SELECTION)
   })
 
   it('parses repeated provider and status params as multi-value filters', () => {
@@ -93,6 +114,7 @@ describe('dashboard filter query parsing contract', () => {
     expect(
       hasDashboardFilterQueryParams(new URLSearchParams({ importerName: 'Empresa ABC' })),
     ).toBe(true)
+    expect(hasDashboardFilterQueryParams(new URLSearchParams({ severity: 'danger' }))).toBe(true)
   })
 })
 
@@ -270,16 +292,20 @@ describe('dashboard filter query serialization contract', () => {
     )
   })
 
-  it('serializes non-null severity into query params', () => {
-    const result = serializeDashboardFiltersToSearchParams({
-      providers: [],
-      statuses: [],
-      importerId: null,
-      importerName: null,
-      severity: 'warning',
-    })
+  it('serializes non-null severity values into query params', () => {
+    const severities = ['danger', 'warning', 'none'] as const
 
-    expect(result.get('severity')).toBe('warning')
+    for (const severity of severities) {
+      const result = serializeDashboardFiltersToSearchParams({
+        providers: [],
+        statuses: [],
+        importerId: null,
+        importerName: null,
+        severity,
+      })
+
+      expect(result.get('severity')).toBe(severity)
+    }
   })
 
   it('serializes the default filter state to an empty query', () => {
@@ -298,7 +324,7 @@ describe('dashboard filter query serialization contract', () => {
         statuses: ['LOADED'],
         importerId: 'importer-42',
         importerName: 'Empresa',
-        severity: null,
+        severity: 'danger',
       },
     )
 
@@ -308,6 +334,7 @@ describe('dashboard filter query serialization contract', () => {
     expect(result.getAll('status')).toEqual(['LOADED'])
     expect(result.get('importerId')).toBe('importer-42')
     expect(result.get('importerName')).toBe('Empresa')
+    expect(result.get('severity')).toBe('danger')
   })
 
   it('removes stale filter params when next state is empty', () => {
@@ -317,6 +344,7 @@ describe('dashboard filter query serialization contract', () => {
         status: 'IN_TRANSIT',
         importerId: 'importer-42',
         importerName: 'Empresa',
+        severity: 'warning',
         sortDir: 'desc',
       }),
       DASHBOARD_DEFAULT_FILTER_SELECTION,
@@ -326,6 +354,7 @@ describe('dashboard filter query serialization contract', () => {
     expect(result.getAll('status')).toEqual([])
     expect(result.get('importerId')).toBeNull()
     expect(result.get('importerName')).toBeNull()
+    expect(result.get('severity')).toBeNull()
     expect(result.get('sortDir')).toBe('desc')
   })
 })

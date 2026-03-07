@@ -10,7 +10,6 @@ import { OperationalSummaryStrip } from '~/modules/process/ui/components/Operati
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCard'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
-import type { ExistingProcessConflict } from '~/modules/process/ui/validation/processConflict.validation'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type {
   ContainerEtaDetailVM,
@@ -19,6 +18,13 @@ import type {
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
+
+type ExistingProcessErrorInfo = {
+  readonly processId?: string
+  readonly containerId?: string
+  readonly containerNumber?: string
+  readonly link?: string
+}
 
 export type ShipmentViewLayoutProps = {
   readonly refreshError: string | null
@@ -36,7 +42,7 @@ export type ShipmentViewLayoutProps = {
   readonly onCreateSubmit: (formData: CreateProcessDialogFormData) => Promise<void>
   readonly hasCreateError: boolean
   readonly createErrorMessage: string
-  readonly createErrorExisting: ExistingProcessConflict | undefined
+  readonly createErrorExisting: ExistingProcessErrorInfo | undefined
   readonly onAcknowledgeCreateError: () => void
   readonly shipmentData: ShipmentDetailVM | null | undefined
   readonly shipmentLoading: boolean

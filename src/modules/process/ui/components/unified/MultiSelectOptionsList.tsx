@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { For } from 'solid-js'
 import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
 
 export function MultiSelectOptionsList<T extends string>(props: {
@@ -30,19 +30,7 @@ export function MultiSelectOptionsList<T extends string>(props: {
                 }`}
                 aria-hidden="true"
               >
-                <Show when={props.isSelected(option.value)}>
-                  <svg
-                    aria-hidden="true"
-                    class="h-3 w-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <title>Selected</title>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </Show>
+                {props.isSelected(option.value) ? '✓' : ''}
               </span>
               <span class="min-w-0 flex-1 truncate">{option.label}</span>
               <span class="shrink-0 tabular-nums text-[11px] text-slate-400">{option.count}</span>

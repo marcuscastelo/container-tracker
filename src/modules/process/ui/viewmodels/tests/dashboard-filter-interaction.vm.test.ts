@@ -9,6 +9,7 @@ import {
   filterDashboardProcesses,
   hasActiveDashboardFilters,
   setDashboardImporterFilter,
+  setDashboardSeverityFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
@@ -206,10 +207,54 @@ describe('dashboard filter interactions', () => {
       severity: null,
     })
   })
+
+  it('derives severity options in canonical order from mixed process severities', () => {
+    const processes = [
+      createProcess({ id: 'A', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
+      createProcess({ id: 'B', statusCode: 'UNKNOWN', highestAlertSeverity: null }),
+      createProcess({ id: 'C', statusCode: 'UNKNOWN', highestAlertSeverity: 'danger' }),
+      createProcess({ id: 'D', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
+    ] as const
+
+    const options = deriveDashboardSeverityFilterOptions(processes)
+
+    expect(options).toEqual([
+      { value: 'danger', count: 1 },
+      { value: 'warning', count: 2 },
+      { value: 'none', count: 1 },
+    ])
+  })
+
+  it('sets and clears severity while preserving other dashboard filters', () => {
+    const currentSelection = createFilters({
+      providers: ['MAERSK'],
+      statuses: ['IN_TRANSIT'],
+      importerId: 'importer-9',
+      importerName: 'Empresa Delta',
+    })
+
+    const withSeverity = setDashboardSeverityFilter(currentSelection, 'danger')
+    const withoutSeverity = setDashboardSeverityFilter(withSeverity, null)
+
+    expect(withSeverity).toEqual({
+      providers: ['MAERSK'],
+      statuses: ['IN_TRANSIT'],
+      importerId: 'importer-9',
+      importerName: 'Empresa Delta',
+      severity: 'danger',
+    })
+    expect(withoutSeverity).toEqual({
+      providers: ['MAERSK'],
+      statuses: ['IN_TRANSIT'],
+      importerId: 'importer-9',
+      importerName: 'Empresa Delta',
+      severity: null,
+    })
+  })
 })
 
 describe('dashboard process filtering', () => {
-  it('detects active filters only for non-empty provider/status/importer values', () => {
+  it('detects active filters for provider/status/importer/severity values only', () => {
     expect(hasActiveDashboardFilters(DASHBOARD_DEFAULT_FILTER_SELECTION)).toBe(false)
     expect(
       hasActiveDashboardFilters(
@@ -236,6 +281,13 @@ describe('dashboard process filtering', () => {
       hasActiveDashboardFilters(
         createFilters({
           importerId: 'importer-42',
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      hasActiveDashboardFilters(
+        createFilters({
+          severity: 'warning',
         }),
       ),
     ).toBe(true)
@@ -327,25 +379,20 @@ describe('dashboard process filtering', () => {
     expect(byImporterId.map((process) => process.id)).toEqual(['A'])
     expect(byImporterName.map((process) => process.id)).toEqual(['A', 'B'])
   })
-})
 
-it('derives severity options and filters by severity', () => {
-  const processes = [
-    createProcess({ id: 'A', statusCode: 'UNKNOWN', highestAlertSeverity: 'danger' }),
-    createProcess({ id: 'B', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
-    createProcess({ id: 'C', statusCode: 'UNKNOWN', highestAlertSeverity: null }),
-  ] as const
+  it('filters processes by selected severity and maps null to none', () => {
+    const processes = [
+      createProcess({ id: 'A', statusCode: 'UNKNOWN', highestAlertSeverity: 'danger' }),
+      createProcess({ id: 'B', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
+      createProcess({ id: 'C', statusCode: 'UNKNOWN', highestAlertSeverity: null }),
+    ] as const
 
-  const options = deriveDashboardSeverityFilterOptions(processes)
-  expect(options).toEqual([
-    { value: 'danger', count: 1 },
-    { value: 'warning', count: 1 },
-    { value: 'none', count: 1 },
-  ])
+    const byDanger = filterDashboardProcesses(processes, createFilters({ severity: 'danger' }))
+    const byWarning = filterDashboardProcesses(processes, createFilters({ severity: 'warning' }))
+    const byNone = filterDashboardProcesses(processes, createFilters({ severity: 'none' }))
 
-  const filtered = filterDashboardProcesses(processes, createFilters({ severity: 'danger' }))
-  expect(filtered.map((p) => p.id)).toEqual(['A'])
-
-  // hasActiveDashboardFilters should consider severity selection as active
-  expect(hasActiveDashboardFilters(createFilters({ severity: 'warning' }))).toBe(true)
+    expect(byDanger.map((process) => process.id)).toEqual(['A'])
+    expect(byWarning.map((process) => process.id)).toEqual(['B'])
+    expect(byNone.map((process) => process.id)).toEqual(['C'])
+  })
 })
