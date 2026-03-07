@@ -1,12 +1,8 @@
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentHeaderContainerSummary } from '~/modules/process/ui/components/ShipmentHeaderContainerSummary'
-import {
-  resolveProcessSyncHeaderMode,
-  toContainerSyncLabel,
-  toProcessSyncHeaderEntries,
-} from '~/modules/process/ui/mappers/containerSync.ui-mapper'
+// sync header helpers removed — not used in the simplified header
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -145,7 +141,7 @@ function RefreshButton(props: RefreshButtonProps): JSX.Element {
     <button
       type="button"
       onClick={handleClick}
-      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 min-w-[120px] md:min-w-[130px] h-8 justify-center ${
+      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 h-8 justify-center ${
         props.isRefreshing ? 'opacity-80 pointer-events-none' : ''
       }`}
       title={props.title}
@@ -223,14 +219,6 @@ function EditButton(props: EditButtonProps): JSX.Element {
   )
 }
 
-function SyncSeparator(props: { readonly visible: boolean }): JSX.Element | null {
-  return (
-    <Show when={props.visible}>
-      <span class="text-slate-300">•</span>
-    </Show>
-  )
-}
-
 function ProcessEtaSummary(props: {
   readonly processEtaSecondaryVm: ShipmentDetailVM['processEtaSecondaryVm']
   readonly processEtaTitle: string
@@ -263,51 +251,8 @@ function ProcessEtaSummary(props: {
   )
 }
 
-function toCarrierDisplay(carrier: string | null): string | null {
-  if (carrier === null) return null
-  const normalized = carrier.trim()
-  if (normalized.length === 0) return null
-  return normalized.toUpperCase()
-}
-
 export function ShipmentHeader(props: Props): JSX.Element {
-  const { t, keys, locale } = useTranslation()
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
-  const syncEntries = createMemo(() =>
-    toProcessSyncHeaderEntries({
-      containers: props.data.containers,
-      processCarrier: props.data.carrier,
-    }),
-  )
-  const syncHeaderPrefix = createMemo(() =>
-    resolveProcessSyncHeaderMode(syncEntries()) === 'syncing'
-      ? t(keys.shipmentView.sync.headerSyncingPrefix)
-      : t(keys.shipmentView.sync.headerUpdatedPrefix),
-  )
-
-  const toSyncEntryLabel = (entry: ReturnType<typeof syncEntries>[number]): string => {
-    const carrierDisplay = toCarrierDisplay(entry.carrier)
-    const containerLabel = carrierDisplay
-      ? `${entry.containerNumber} (${carrierDisplay})`
-      : entry.containerNumber
-    const syncLabel = toContainerSyncLabel(
-      entry.sync,
-      {
-        syncing: t(keys.shipmentView.sync.syncing),
-        never: t(keys.shipmentView.sync.never),
-        updatedUnknownTime: t(keys.shipmentView.sync.updatedUnknownTime),
-        failedUnknownTime: t(keys.shipmentView.sync.failedUnknownTime),
-        updated: (relative: string) => t(keys.shipmentView.sync.updated, { relative }),
-        failed: (relative: string) => t(keys.shipmentView.sync.failed, { relative }),
-      },
-      {
-        now: props.syncNow,
-        locale: locale(),
-      },
-    )
-
-    return `${containerLabel} ${syncLabel}`
-  }
 
   function ShipmentHeaderRow1(p: {
     props: Props
@@ -315,14 +260,13 @@ export function ShipmentHeader(props: Props): JSX.Element {
     setShowUnknown: (v: boolean) => void
   }) {
     const { t, keys } = useTranslation()
-    const data = p.props.data
 
     return (
       <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
         <div class="flex items-center gap-2 min-w-0">
           <h1 class="truncate text-sm font-bold text-slate-900 sm:text-base leading-tight">
-            {t(keys.shipmentView.header)} {data.processRef}
-            <Show when={!data.reference}>
+            {t(keys.shipmentView.header)} {p.props.data.processRef}
+            <Show when={!p.props.data.reference}>
               <InternalIdHint
                 message={t(keys.shipmentView.internalIdMessage)}
                 ctaLabel={t(keys.shipmentView.internalIdCTA)}
@@ -331,25 +275,25 @@ export function ShipmentHeader(props: Props): JSX.Element {
             </Show>
           </h1>
           <span class="hidden text-label text-slate-400/80 sm:inline-flex sm:items-center sm:gap-0.5">
-            {data.origin}
+            {p.props.data.origin}
             <ArrowIcon />
-            {data.destination}
+            {p.props.data.destination}
           </span>
         </div>
 
         <div class="flex items-center gap-1.5 shrink-0">
           <StatusBadge
-            variant={data.status}
-            label={t(trackingStatusToLabelKey(keys, data.statusCode))}
+            variant={p.props.data.status}
+            label={t(trackingStatusToLabelKey(keys, p.props.data.statusCode))}
           />
           <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
-            {data.carrier ?? '—'}
+            {p.props.data.carrier ?? '—'}
           </span>
 
           <div class="flex items-center gap-0.5 border-l border-slate-200 pl-1.5 ml-0.5">
             <RefreshButton
               isRefreshing={p.props.isRefreshing}
-              carrier={data.carrier}
+              carrier={p.props.data.carrier}
               title={t(keys.shipmentView.actions.refresh)}
               label={t(keys.shipmentView.actions.refresh)}
               refreshingLabel={t(keys.shipmentView.actions.refreshing)}
@@ -395,12 +339,11 @@ export function ShipmentHeader(props: Props): JSX.Element {
 
   function ShipmentHeaderRow2(p: { props: Props }) {
     const { t, keys } = useTranslation()
-    const data = p.props.data
 
     return (
       <div class="mt-1.5 flex items-center gap-2 flex-wrap">
         <ProcessEtaSummary
-          processEtaSecondaryVm={data.processEtaSecondaryVm}
+          processEtaSecondaryVm={p.props.data.processEtaSecondaryVm}
           processEtaTitle={t(keys.shipmentView.operational.header.processEtaTitle)}
           noEta={t(keys.shipmentView.operational.header.noEta)}
           incomplete={t(keys.shipmentView.operational.header.incomplete)}
@@ -408,7 +351,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
         <div class="inline-flex items-center gap-2 text-micro text-slate-400">
           <span>
             <span class="font-medium">{t(keys.shipmentView.containers.title)}:</span>{' '}
-            <span class="text-slate-500">{data.containers.length}</span>
+            <span class="text-slate-500">{p.props.data.containers.length}</span>
           </span>
           <Show when={p.props.activeAlertCount > 0}>
             <span>
