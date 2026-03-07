@@ -121,6 +121,9 @@
         "days": "{{count}}d ago",
         "missing": "—"
       },
+      "alertTooltip": {
+        "additionalAlerts": "+{{count}} additional alert(s)"
+      },
       "filters": {
         "title": "Filters",
         "all": "All",
@@ -129,10 +132,6 @@
       },
       "severity": {
         "none": "No alert"
-      },
-      "groupHeader": {
-        "exceptions": "Operational Exceptions",
-        "normal": "Other Processes"
       },
       "sync": {
         "idle": "Sync process",

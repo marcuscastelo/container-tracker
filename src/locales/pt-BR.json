@@ -132,6 +132,9 @@
         "days": "há {{count}}d",
         "missing": "—"
       },
+      "alertTooltip": {
+        "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
+      },
       "filters": {
         "title": "Filtros",
         "all": "Todos",
@@ -140,10 +143,6 @@
       },
       "severity": {
         "none": "Sem alerta"
-      },
-      "groupHeader": {
-        "exceptions": "Exceções Operacionais",
-        "normal": "Outros Processos"
       },
       "sync": {
         "idle": "Sincronizar processo",

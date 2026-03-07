@@ -162,23 +162,17 @@ function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
   return ''
 }
 
-function CheckIcon(): JSX.Element {
-  return (
-    <svg
-      class="h-3 w-3 text-emerald-400"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-    </svg>
-  )
-}
-
 /** Shared grid definition — single source of truth for header + rows */
-const GRID_COLS =
-  'grid grid-cols-[130px_1fr_150px_110px_70px_minmax(180px,auto)] divide-x divide-slate-200/50'
+const GRID_COLS = 'grid grid-cols-[130px_1fr_150px_110px_70px_80px] divide-x divide-slate-200/50'
+
+/** Severity weight for default priority ordering (lower = higher priority). */
+const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
+  danger: 0,
+  warning: 1,
+  info: 2,
+  success: 3,
+  none: 4,
+}
 
 function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
   if (severity === 'danger') return '⛔'
@@ -227,6 +221,18 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
 
   const alertAge = () =>
     dominantSeverity() !== 'none' ? formatAge(props.process.lastEventAt) : null
+
+  const alertTooltip = (): string | undefined => {
+    if (dominantSeverity() === 'none') return undefined
+    const parts: string[] = [dominantAlertLabel()]
+    const age = alertAge()
+    if (age) parts.push(`· ${age.label}`)
+    const extra = props.process.alertsCount - 1
+    if (extra > 0) {
+      parts.push(t(keys.dashboard.table.alertTooltip.additionalAlerts, { count: extra }))
+    }
+    return parts.join('\n')
+  }
 
   const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
 
@@ -280,53 +286,25 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           onSync={props.onProcessSync}
         />
       </div>
-      {/* Unified Alerts */}
-      <div class="overflow-hidden px-3 py-2">
+      {/* Alerts — compact icon + count with tooltip */}
+      <div class="px-3 py-2 text-center">
         <Show
           when={dominantSeverity() !== 'none'}
           fallback={
-            <div class="flex items-center gap-1">
-              <CheckIcon />
-              <span class="text-xs-ui text-slate-400">{dominantAlertLabel()}</span>
-            </div>
+            <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
+              ✓
+            </span>
           }
         >
-          <div class="flex items-center gap-1.5">
-            <span
-              class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-bold leading-none ${toSeverityBadgeClasses(dominantSeverity())}`}
-            >
-              <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>{' '}
-              {props.process.alertsCount}
-              <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-            </span>
-            <span class="text-sm-ui font-medium text-slate-800 truncate">
-              {dominantAlertLabel()}
-            </span>
-            <Show when={alertAge()}>
-              {(age) => (
-                <span class={`text-micro tabular-nums whitespace-nowrap ${age().agingClass}`}>
-                  · {age().label}
-                </span>
-              )}
-            </Show>
-          </div>
+          <span
+            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
+            title={alertTooltip()}
+          >
+            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
+            {props.process.alertsCount}
+            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
+          </span>
         </Show>
-      </div>
-    </div>
-  )
-}
-
-function GroupHeaderRow(props: {
-  label: string
-  rowClass: string
-  labelClass: string
-}): JSX.Element {
-  return (
-    <div class={`border-b border-slate-100 ${props.rowClass}`}>
-      <div class="px-3 py-1.5">
-        <span class={`text-micro font-bold uppercase tracking-wider ${props.labelClass}`}>
-          {props.label}
-        </span>
       </div>
     </div>
   )
@@ -340,8 +318,15 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   const statusSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'status')
   const etaSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'eta')
 
-  const exceptionsGroup = () => props.processes.filter((p) => toDominantSeverity(p) !== 'none')
-  const normalGroup = () => props.processes.filter((p) => toDominantSeverity(p) === 'none')
+  /** Default priority ordering: severity desc → alert count desc → preserve API order. */
+  const prioritySorted = (): readonly ProcessSummaryVM[] => {
+    if (props.sortSelection !== null) return props.processes
+    return [...props.processes].sort((a, b) => {
+      const sevDiff = SEVERITY_ORDER[toDominantSeverity(a)] - SEVERITY_ORDER[toDominantSeverity(b)]
+      if (sevDiff !== 0) return sevDiff
+      return b.alertsCount - a.alertsCount
+    })
+  }
 
   const tableHeader = (
     <div
@@ -375,7 +360,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
         />
       </div>
       <div class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.sync)}</div>
-      <div class="px-3 py-2.5">{t(keys.dashboard.table.col.alerts)}</div>
+      <div class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.alerts)}</div>
     </div>
   )
 
@@ -383,38 +368,15 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
     <div class="overflow-x-auto">
       {tableHeader}
       <div>
-        <Show when={exceptionsGroup().length > 0}>
-          <GroupHeaderRow
-            rowClass="bg-red-50/50"
-            labelClass="text-red-500"
-            label={t(keys.dashboard.table.groupHeader.exceptions)}
-          />
-          <For each={exceptionsGroup()}>
-            {(process, i) => (
-              <DashboardProcessRow
-                process={process}
-                index={i()}
-                onProcessSync={props.onProcessSync}
-              />
-            )}
-          </For>
-        </Show>
-        <Show when={normalGroup().length > 0}>
-          <GroupHeaderRow
-            rowClass="bg-slate-50/50"
-            labelClass="text-slate-300"
-            label={t(keys.dashboard.table.groupHeader.normal)}
-          />
-          <For each={normalGroup()}>
-            {(process, i) => (
-              <DashboardProcessRow
-                process={process}
-                index={i()}
-                onProcessSync={props.onProcessSync}
-              />
-            )}
-          </For>
-        </Show>
+        <For each={prioritySorted()}>
+          {(process, i) => (
+            <DashboardProcessRow
+              process={process}
+              index={i()}
+              onProcessSync={props.onProcessSync}
+            />
+          )}
+        </For>
       </div>
     </div>
   )
