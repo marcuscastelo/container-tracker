@@ -21,7 +21,7 @@ Agents fazem heartbeat periodico e UI exibe erro "Nenhum agente capaz de sincron
 Em todos os lugares que tiver "N Alertas", adicionar uma interacao de clique que abre um overlay com os processos/containers que tem esses alertas, para facilitar o acesso a eles.
 Permitir que o usuario escolha quais colunas quer ver no dashboard, e salvar isso para a proxima vez. (ex: nao quero ver a coluna de ETA, ou quero ver a coluna de booking number, etc.)
 Permitir que o usuario copie valores da tabela no dashboard, como process number, redestinacao, booking number, etc. com um clique, e dar um feedback visual de que o valor foi copiado (ex: tooltip "Copiado!" ou algo do tipo).
-No botao "Sincronizar todos os processos" (dashboard), só sincronizar processos que nao foram sincronizados com sucesso nos ultmimos X minutos e nao sao processos archived.
+No botao "Sincronizar todos os processos" (dashboard), só sincronizar processos que nao foram sincronizados com sucesso nos últimos X minutos e nao sao processos archived.
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
