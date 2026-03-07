@@ -32,6 +32,20 @@ describe('dashboard filter query parsing contract', () => {
     })
   })
 
+  it('parses severity query param values', () => {
+    const searchParams = new URLSearchParams({ severity: 'danger' })
+
+    const result = parseDashboardFiltersFromSearchParams(searchParams)
+
+    expect(result).toEqual({
+      providers: [],
+      statuses: [],
+      importerId: null,
+      importerName: null,
+      severity: 'danger',
+    })
+  })
+
   it('parses repeated provider and status params as multi-value filters', () => {
     const searchParams = new URLSearchParams(
       'provider=MAERSK&provider=MSC&status=IN_PROGRESS&status=DELIVERED',
@@ -254,6 +268,18 @@ describe('dashboard filter query serialization contract', () => {
     expect(result.toString()).toBe(
       'provider=MAERSK&provider=MSC&status=IN_TRANSIT&status=UNKNOWN&importerId=importer-42',
     )
+  })
+
+  it('serializes non-null severity into query params', () => {
+    const result = serializeDashboardFiltersToSearchParams({
+      providers: [],
+      statuses: [],
+      importerId: null,
+      importerName: null,
+      severity: 'warning',
+    })
+
+    expect(result.get('severity')).toBe('warning')
   })
 
   it('serializes the default filter state to an empty query', () => {

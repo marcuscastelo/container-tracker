@@ -4,6 +4,7 @@ import {
   type DashboardFilterSelection,
   deriveDashboardImporterFilterOptions,
   deriveDashboardProviderFilterOptions,
+  deriveDashboardSeverityFilterOptions,
   deriveDashboardStatusFilterOptions,
   filterDashboardProcesses,
   hasActiveDashboardFilters,
@@ -18,6 +19,7 @@ function createProcess(
     readonly carrier?: string | null
     readonly importerId?: string | null
     readonly importerName?: string | null
+    readonly highestAlertSeverity?: ProcessSummaryVM['highestAlertSeverity']
   },
 ): ProcessSummaryVM {
   return {
@@ -36,7 +38,7 @@ function createProcess(
     etaMsOrNull: null,
     carrier: input.carrier ?? null,
     alertsCount: 0,
-    highestAlertSeverity: null,
+    highestAlertSeverity: input.highestAlertSeverity ?? null,
     hasTransshipment: false,
     lastEventAt: null,
     syncStatus: 'idle',
@@ -325,4 +327,25 @@ describe('dashboard process filtering', () => {
     expect(byImporterId.map((process) => process.id)).toEqual(['A'])
     expect(byImporterName.map((process) => process.id)).toEqual(['A', 'B'])
   })
+})
+
+it('derives severity options and filters by severity', () => {
+  const processes = [
+    createProcess({ id: 'A', statusCode: 'UNKNOWN', highestAlertSeverity: 'danger' }),
+    createProcess({ id: 'B', statusCode: 'UNKNOWN', highestAlertSeverity: 'warning' }),
+    createProcess({ id: 'C', statusCode: 'UNKNOWN', highestAlertSeverity: null }),
+  ] as const
+
+  const options = deriveDashboardSeverityFilterOptions(processes)
+  expect(options).toEqual([
+    { value: 'danger', count: 1 },
+    { value: 'warning', count: 1 },
+    { value: 'none', count: 1 },
+  ])
+
+  const filtered = filterDashboardProcesses(processes, createFilters({ severity: 'danger' }))
+  expect(filtered.map((p) => p.id)).toEqual(['A'])
+
+  // hasActiveDashboardFilters should consider severity selection as active
+  expect(hasActiveDashboardFilters(createFilters({ severity: 'warning' }))).toBe(true)
 })
