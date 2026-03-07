@@ -1,6 +1,6 @@
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createSignal, For, Show } from 'solid-js'
+import { For, Show } from 'solid-js'
 import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
@@ -16,7 +16,6 @@ import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
-type SeverityFilter = 'all' | 'danger' | 'warning'
 
 type Props = {
   readonly processes: readonly ProcessSummaryVM[]
@@ -487,20 +486,6 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
 export function DashboardProcessTable(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
-  const [selectedSeverity, setSelectedSeverity] = createSignal<SeverityFilter>('all')
-
-  const filteredBySeverity = () => {
-    if (selectedSeverity() === 'all') return props.processes
-    return props.processes.filter((process) => toDominantSeverity(process) === selectedSeverity())
-  }
-
-  const hasAnyActiveFilters = () => props.hasActiveFilters || selectedSeverity() !== 'all'
-
-  const clearAllFilters = () => {
-    setSelectedSeverity('all')
-    props.onClearFilters()
-  }
-
   const content = () => {
     if (props.loading) {
       return (
@@ -518,45 +503,15 @@ export function DashboardProcessTable(props: Props): JSX.Element {
       )
     }
 
-    if (filteredBySeverity().length === 0) {
-      if (hasAnyActiveFilters()) {
+    if (props.processes.length === 0) {
+      if (props.hasActiveFilters) {
         return (
           <EmptyState
             title={t(keys.dashboard.empty.filtered.title)}
             description={t(keys.dashboard.empty.filtered.description)}
             actionLabel={t(keys.dashboard.empty.filtered.action)}
-            onAction={clearAllFilters}
+            onAction={props.onClearFilters}
           />
-        )
-      }
-
-      // Phase 14: If we have processes but none with exceptions
-      if (props.processes.length > 0) {
-        return (
-          <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-              <svg
-                class="h-6 w-6 text-emerald-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <h3 class="mb-1 text-sm font-semibold text-slate-700">
-              {t(keys.dashboard.empty.noExceptions.title)}
-            </h3>
-            <p class="text-caption text-slate-400">
-              {t(keys.dashboard.empty.noExceptions.description)}
-            </p>
-          </div>
         )
       }
 
@@ -571,49 +526,12 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     }
 
     return (
-      <div>
-        <div class="flex items-center gap-2 px-4 py-3">
-          <div class="text-body font-semibold text-slate-700">
-            {t(keys.dashboard.table.filters.title)}
-          </div>
-          <div class="flex gap-2">
-            <button
-              class={`px-3 py-1.5 text-body rounded-full ${selectedSeverity() === 'all' ? 'bg-slate-100' : 'bg-white'}`}
-              type="button"
-              onClick={() => setSelectedSeverity('all')}
-              aria-pressed={selectedSeverity() === 'all'}
-            >
-              {t(keys.dashboard.table.filters.all)}
-            </button>
-            <button
-              class={`px-3 py-1.5 text-body rounded-full ${selectedSeverity() === 'danger' ? 'bg-red-100' : 'bg-white'}`}
-              type="button"
-              onClick={() => setSelectedSeverity('danger')}
-              aria-pressed={selectedSeverity() === 'danger'}
-            >
-              {t(keys.dashboard.table.filters.danger)}
-            </button>
-            <button
-              class={`px-3 py-1.5 text-body rounded-full ${selectedSeverity() === 'warning' ? 'bg-yellow-100' : 'bg-white'}`}
-              type="button"
-              onClick={() => setSelectedSeverity('warning')}
-              aria-pressed={selectedSeverity() === 'warning'}
-            >
-              {t(keys.dashboard.table.filters.warning)}
-            </button>
-          </div>
-          <div class="ml-auto text-body text-slate-500">
-            {filteredBySeverity().length} / {props.processes.length}
-          </div>
-        </div>
-
-        <DashboardProcessRows
-          processes={filteredBySeverity()}
-          sortSelection={props.sortSelection}
-          onSortToggle={props.onSortToggle}
-          onProcessSync={props.onProcessSync}
-        />
-      </div>
+      <DashboardProcessRows
+        processes={props.processes}
+        sortSelection={props.sortSelection}
+        onSortToggle={props.onSortToggle}
+        onProcessSync={props.onProcessSync}
+      />
     )
   }
 

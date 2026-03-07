@@ -38,6 +38,7 @@ describe('dashboard filter local storage contract', () => {
       statuses: ['IN_TRANSIT'],
       importerId: 'importer-42',
       importerName: 'Empresa ABC',
+      severity: null,
     })
   })
 
@@ -58,6 +59,7 @@ describe('dashboard filter local storage contract', () => {
         statuses: ['DELIVERED'],
         importerId: 'importer-7',
         importerName: 'Importadora Sul',
+        severity: null,
       },
       storage,
     )

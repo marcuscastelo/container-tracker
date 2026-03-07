@@ -1,6 +1,7 @@
 import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
+  type DashboardSeverityFilterValue,
   hasActiveDashboardFilters,
 } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
 import {
@@ -12,6 +13,7 @@ const FILTER_PROVIDER_QUERY_KEY = 'provider'
 const FILTER_STATUS_QUERY_KEY = 'status'
 const FILTER_IMPORTER_ID_QUERY_KEY = 'importerId'
 const FILTER_IMPORTER_NAME_QUERY_KEY = 'importerName'
+const FILTER_SEVERITY_QUERY_KEY = 'severity'
 
 function toOptionalNonBlankString(value: string | null): string | null {
   if (value === null) return null
@@ -52,6 +54,15 @@ function parseDashboardFilterStatuses(values: readonly string[]): readonly Track
   return [...uniqueStatuses]
 }
 
+function parseDashboardSeverityFilter(value: string | null): DashboardSeverityFilterValue | null {
+  if (value === null) return null
+  const trimmed = value.trim()
+  if (trimmed === 'danger' || trimmed === 'warning' || trimmed === 'none') {
+    return trimmed
+  }
+  return null
+}
+
 export function parseDashboardFiltersFromSearchParams(
   searchParams: URLSearchParams,
 ): DashboardFilterSelection {
@@ -59,12 +70,14 @@ export function parseDashboardFiltersFromSearchParams(
   const statuses = parseDashboardFilterStatuses(searchParams.getAll(FILTER_STATUS_QUERY_KEY))
   const importerId = toOptionalNonBlankString(searchParams.get(FILTER_IMPORTER_ID_QUERY_KEY))
   const importerName = toOptionalNonBlankString(searchParams.get(FILTER_IMPORTER_NAME_QUERY_KEY))
+  const severity = parseDashboardSeverityFilter(searchParams.get(FILTER_SEVERITY_QUERY_KEY))
 
   if (
     providers.length === 0 &&
     statuses.length === 0 &&
     importerId === null &&
-    importerName === null
+    importerName === null &&
+    severity === null
   ) {
     return DASHBOARD_DEFAULT_FILTER_SELECTION
   }
@@ -74,6 +87,7 @@ export function parseDashboardFiltersFromSearchParams(
     statuses,
     importerId,
     importerName,
+    severity,
   }
 }
 
@@ -82,7 +96,8 @@ export function hasDashboardFilterQueryParams(searchParams: URLSearchParams): bo
     searchParams.has(FILTER_PROVIDER_QUERY_KEY) ||
     searchParams.has(FILTER_STATUS_QUERY_KEY) ||
     searchParams.has(FILTER_IMPORTER_ID_QUERY_KEY) ||
-    searchParams.has(FILTER_IMPORTER_NAME_QUERY_KEY)
+    searchParams.has(FILTER_IMPORTER_NAME_QUERY_KEY) ||
+    searchParams.has(FILTER_SEVERITY_QUERY_KEY)
   )
 }
 
@@ -148,11 +163,13 @@ export function serializeDashboardFiltersToSearchParams(
   const statuses = parseDashboardFilterStatuses(filterSelection.statuses)
   const importerId = toOptionalNonBlankString(filterSelection.importerId)
   const importerName = toOptionalNonBlankString(filterSelection.importerName)
+  const severity = filterSelection.severity
 
   appendQueryValues(searchParams, FILTER_PROVIDER_QUERY_KEY, providers)
   appendQueryValues(searchParams, FILTER_STATUS_QUERY_KEY, statuses)
   appendOptionalQueryValue(searchParams, FILTER_IMPORTER_ID_QUERY_KEY, importerId)
   appendOptionalQueryValue(searchParams, FILTER_IMPORTER_NAME_QUERY_KEY, importerName)
+  appendOptionalQueryValue(searchParams, FILTER_SEVERITY_QUERY_KEY, severity)
 
   return searchParams
 }
@@ -167,6 +184,7 @@ export function applyDashboardFiltersToSearchParams(
   nextSearchParams.delete(FILTER_STATUS_QUERY_KEY)
   nextSearchParams.delete(FILTER_IMPORTER_ID_QUERY_KEY)
   nextSearchParams.delete(FILTER_IMPORTER_NAME_QUERY_KEY)
+  nextSearchParams.delete(FILTER_SEVERITY_QUERY_KEY)
 
   const serializedFilters = serializeDashboardFiltersToSearchParams(filterSelection)
 
@@ -189,6 +207,11 @@ export function applyDashboardFiltersToSearchParams(
     nextSearchParams,
     FILTER_IMPORTER_NAME_QUERY_KEY,
     serializedFilters.get(FILTER_IMPORTER_NAME_QUERY_KEY),
+  )
+  appendOptionalQueryValue(
+    nextSearchParams,
+    FILTER_SEVERITY_QUERY_KEY,
+    serializedFilters.get(FILTER_SEVERITY_QUERY_KEY),
   )
 
   return nextSearchParams

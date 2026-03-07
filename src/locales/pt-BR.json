@@ -85,6 +85,13 @@
         "searchPlaceholder": "Buscar importador",
         "noMatches": "Nenhum importador encontrado"
       },
+      "severity": {
+        "label": "Severidade",
+        "all": "Todas as severidades",
+        "danger": "Crítico",
+        "warning": "Atenção",
+        "none": "Sem alerta"
+      },
       "clearAll": "Limpar filtros",
       "active": "Filtros ativos",
       "removeChip": "Remover {{filter}}"
@@ -96,7 +103,7 @@
       "lastUpdate": "Última atualização"
     },
     "table": {
-      "title": "Exceções de Processos",
+      "title": "Processos",
       "col": {
         "process": "Processo",
         "carrier": "Armador",

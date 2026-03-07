@@ -74,6 +74,13 @@
         "searchPlaceholder": "Search importer",
         "noMatches": "No importers found"
       },
+      "severity": {
+        "label": "Severity",
+        "all": "All severities",
+        "danger": "Critical",
+        "warning": "Attention",
+        "none": "No alert"
+      },
       "clearAll": "Clear all",
       "active": "Active filters",
       "removeChip": "Remove {{filter}}"
@@ -85,7 +92,7 @@
       "lastUpdate": "Last update"
     },
     "table": {
-      "title": "Process Exceptions",
+      "title": "Processes",
       "col": {
         "process": "Process",
         "carrier": "Carrier",

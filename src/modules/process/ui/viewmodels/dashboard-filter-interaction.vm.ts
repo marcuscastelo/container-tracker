@@ -9,11 +9,14 @@ const PT_BR_COLLATOR =
     ? new Intl.Collator('pt-BR', { sensitivity: 'base' })
     : null
 
+export type DashboardSeverityFilterValue = 'danger' | 'warning' | 'none'
+
 export type DashboardFilterSelection = {
   readonly providers: readonly string[]
   readonly statuses: readonly TrackingStatusCode[]
   readonly importerId: string | null
   readonly importerName: string | null
+  readonly severity: DashboardSeverityFilterValue | null
 }
 
 export type DashboardProviderFilterOption = {
@@ -38,11 +41,17 @@ export type DashboardImporterFilterValue = {
   readonly importerName: string
 }
 
+export type DashboardSeverityFilterOption = {
+  readonly value: DashboardSeverityFilterValue
+  readonly count: number
+}
+
 export const DASHBOARD_DEFAULT_FILTER_SELECTION: DashboardFilterSelection = {
   providers: [],
   statuses: [],
   importerId: null,
   importerName: null,
+  severity: null,
 }
 
 export function hasActiveDashboardFilters(filterSelection: DashboardFilterSelection): boolean {
@@ -50,8 +59,9 @@ export function hasActiveDashboardFilters(filterSelection: DashboardFilterSelect
   const hasStatuses = filterSelection.statuses.length > 0
   const hasImporterId = toOptionalNonBlankString(filterSelection.importerId) !== null
   const hasImporterName = toOptionalNonBlankString(filterSelection.importerName) !== null
+  const hasSeverity = filterSelection.severity !== null
 
-  return hasProviders || hasStatuses || hasImporterId || hasImporterName
+  return hasProviders || hasStatuses || hasImporterId || hasImporterName || hasSeverity
 }
 
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
@@ -94,6 +104,7 @@ export function toggleDashboardProviderFilter(
     statuses: currentSelection.statuses,
     importerId: currentSelection.importerId,
     importerName: currentSelection.importerName,
+    severity: currentSelection.severity,
   }
 }
 
@@ -106,6 +117,7 @@ export function toggleDashboardStatusFilter(
     statuses: toggleSelectionValue(currentSelection.statuses, status),
     importerId: currentSelection.importerId,
     importerName: currentSelection.importerName,
+    severity: currentSelection.severity,
   }
 }
 
@@ -202,7 +214,49 @@ export function setDashboardImporterFilter(
     statuses: currentSelection.statuses,
     importerId: importerFilter?.importerId ?? null,
     importerName: importerFilter?.importerName ?? null,
+    severity: currentSelection.severity,
   }
+}
+
+export function setDashboardSeverityFilter(
+  currentSelection: DashboardFilterSelection,
+  severity: DashboardSeverityFilterValue | null,
+): DashboardFilterSelection {
+  return {
+    providers: currentSelection.providers,
+    statuses: currentSelection.statuses,
+    importerId: currentSelection.importerId,
+    importerName: currentSelection.importerName,
+    severity,
+  }
+}
+
+function toDashboardProcessDominantSeverity(
+  process: ProcessSummaryVM,
+): DashboardSeverityFilterValue {
+  if (process.highestAlertSeverity === 'danger') return 'danger'
+  if (process.highestAlertSeverity === 'warning') return 'warning'
+  return 'none'
+}
+
+export function deriveDashboardSeverityFilterOptions(
+  processes: readonly ProcessSummaryVM[],
+): readonly DashboardSeverityFilterOption[] {
+  const countsBySeverity = new Map<DashboardSeverityFilterValue, number>()
+
+  for (const process of processes) {
+    const severity = toDashboardProcessDominantSeverity(process)
+    const currentCount = countsBySeverity.get(severity) ?? 0
+    countsBySeverity.set(severity, currentCount + 1)
+  }
+
+  const ORDER: readonly DashboardSeverityFilterValue[] = ['danger', 'warning', 'none']
+
+  return ORDER.flatMap((severity) => {
+    const count = countsBySeverity.get(severity)
+    if (!count) return []
+    return [{ value: severity, count }]
+  })
 }
 
 export function filterDashboardProcesses(
@@ -215,8 +269,9 @@ export function filterDashboardProcesses(
   const selectedImporterName =
     selectedImporterId === null ? toNormalizedNonBlankString(filterSelection.importerName) : null
   const hasImporterFilter = selectedImporterId !== null || selectedImporterName !== null
+  const hasSeverityFilter = filterSelection.severity !== null
 
-  if (!hasProviderFilters && !hasStatusFilters && !hasImporterFilter) {
+  if (!hasProviderFilters && !hasStatusFilters && !hasImporterFilter && !hasSeverityFilter) {
     return processes
   }
 
@@ -236,6 +291,9 @@ export function filterDashboardProcesses(
         ? toOptionalNonBlankString(process.importerId) === selectedImporterId
         : toNormalizedNonBlankString(process.importerName) === selectedImporterName)
 
-    return matchesProvider && matchesStatus && matchesImporter
+    const matchesSeverity =
+      !hasSeverityFilter || toDashboardProcessDominantSeverity(process) === filterSelection.severity
+
+    return matchesProvider && matchesStatus && matchesImporter && matchesSeverity
   })
 }

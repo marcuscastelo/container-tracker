@@ -21,6 +21,7 @@ Agents fazem heartbeat periodico e UI exibe erro "Nenhum agente capaz de sincron
 Em todos os lugares que tiver "N Alertas", adicionar uma interacao de clique que abre um overlay com os processos/containers que tem esses alertas, para facilitar o acesso a eles.
 Permitir que o usuario escolha quais colunas quer ver no dashboard, e salvar isso para a proxima vez. (ex: nao quero ver a coluna de ETA, ou quero ver a coluna de booking number, etc.)
 Permitir que o usuario copie valores da tabela no dashboard, como process number, redestinacao, booking number, etc. com um clique, e dar um feedback visual de que o valor foi copiado (ex: tooltip "Copiado!" ou algo do tipo).
+No botao "Sincronizar todos os processos" (dashboard), só sincronizar processos que nao foram sincronizados com sucesso nos últimos X minutos e nao sao processos archived.
 
 # Refine
 src/modules/process/application/errors.ts -> Em vez de mensagens hardcoded, adotar códigos de erro padronizados, parametros para poder usar i18n nos erros.
@@ -31,6 +32,7 @@ Quando o usuario colocar armador errado e o fetch der erro, deve exibir na tela 
 Remover coluna operation_type do banco depois de confirmar que sempre é importacao e transbordo nao é um tipo de operacao, mas um estado do container.
 Adicionar booking_number no processo (domain).
 Pensar se mantemos unknown ou null para os campos (carrier e operationType) que nao sao obrigatorios, e se sim, padronizar isso em todo o codigo (domain, application, ui). Null gasta menos espaço no banco...
+Unificar e separar termos "Sync" "Refresh" "Edited" "Updated" "Modified", etc. para ter um vocabulário padronizado e evitar confusao. Ex: Sync = acao de tentar atualizar os dados do processo puxando da API, Refresh = acao de atualizar a tela para refletir o estado atual do processo, Edited/Updated/Modified = o processo foi editado manualmente pelo usuario. Padronizar isso em todo o codigo e UI.
 
 Gerar eventos de transbordo quando o NAVIO A CHEGA, E NAVIO B SAI COM O MESMO CONTAINER (MAERSK, falta checar como outras api reportam isso). Isso vai gerar um alerta para o sistema, para que o operador possa tomar as medidas necessarias, tambem vai atualizar o processo para os importadores terem visibilidade do que esta acontecendo. 
 Tratar casos que o container é removido do processo, seja por erro ou porque o cliente mudou de ideia. Hoje é impossível adicionar um container que foi removido do processo porque a checagem de container já existente é feita nos containers e nao nos processos, entao o sistema assume que o container ja existe e nao deixa adicionar. Melhorar isso para permitir re-adicionar um container que foi removido, e para ter uma checagem mais robusta de containers realmente existentes vs erros de conexao, etc.
