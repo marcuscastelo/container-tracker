@@ -24,7 +24,7 @@ type ExistingProcessErrorInfo = {
   readonly link?: string
 }
 
-export type ShipmentViewLayoutProps = {
+type ShipmentViewLayoutProps = {
   readonly refreshError: string | null
   readonly alertActionError: string | null
   readonly refreshHint: string | null

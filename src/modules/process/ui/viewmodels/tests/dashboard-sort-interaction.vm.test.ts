@@ -25,6 +25,7 @@ function createProcess(
     readonly eta?: string | null
     readonly etaMsOrNull?: number | null
     readonly lastEventAt?: string | null
+    readonly dominantAlertCreatedAt?: string | null
   },
 ): ProcessSummaryVM {
   const eta = input.eta ?? null
@@ -47,6 +48,7 @@ function createProcess(
     carrier: input.carrier ?? null,
     alertsCount: 0,
     highestAlertSeverity: null,
+    dominantAlertCreatedAt: input.dominantAlertCreatedAt ?? null,
     hasTransshipment: false,
     lastEventAt: input.lastEventAt ?? null,
     syncStatus: 'idle',
@@ -186,6 +188,34 @@ describe('dashboard sort interactions', () => {
 
     expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
     expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
+  })
+
+  it('sorts created date using dominantAlertCreatedAt when present', () => {
+    const baseline = [
+      // lastEventAt intentionally differs to ensure dominantAlertCreatedAt takes precedence
+      createProcess({
+        id: 'A',
+        lastEventAt: '2025-03-01T00:00:00.000Z',
+        dominantAlertCreatedAt: '2025-01-01T00:00:00.000Z',
+      }),
+      createProcess({
+        id: 'B',
+        lastEventAt: '2025-01-01T00:00:00.000Z',
+        dominantAlertCreatedAt: '2025-03-01T00:00:00.000Z',
+      }),
+      createProcess({
+        id: 'C',
+        lastEventAt: '2025-02-01T00:00:00.000Z',
+        dominantAlertCreatedAt: '2025-02-01T00:00:00.000Z',
+      }),
+    ] as const
+
+    const descResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'desc' })
+    const ascResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'asc' })
+
+    // Expect ordering driven by dominantAlertCreatedAt, not lastEventAt
+    expect(descResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
+    expect(ascResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
   })
 
   it('sorts status by statusRank instead of label text', () => {

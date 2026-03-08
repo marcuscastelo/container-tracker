@@ -232,5 +232,3 @@ export function createSyncAllProcessesUseCase(deps: SyncAllProcessesDeps) {
     }
   }
 }
-
-export type SyncAllProcessesUseCase = ReturnType<typeof createSyncAllProcessesUseCase>

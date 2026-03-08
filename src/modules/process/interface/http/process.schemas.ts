@@ -55,5 +55,3 @@ export const ProcessRefreshRequestSchema = z
       })
     }
   })
-
-export type ProcessRefreshRequest = z.infer<typeof ProcessRefreshRequestSchema>

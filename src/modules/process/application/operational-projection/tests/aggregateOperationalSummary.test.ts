@@ -6,6 +6,7 @@ type TrackingAlertLike = {
   readonly id: string
   readonly type: string
   readonly severity: string
+  readonly triggered_at: string
 }
 
 function makeAlert(overrides: Partial<TrackingAlertLike> = {}): TrackingAlertLike {
@@ -13,6 +14,7 @@ function makeAlert(overrides: Partial<TrackingAlertLike> = {}): TrackingAlertLik
     id: 'alert-1',
     type: 'TRANSSHIPMENT',
     severity: 'warning',
+    triggered_at: '2026-03-03T00:00:00.000Z',
     ...overrides,
   }
 }
@@ -41,6 +43,7 @@ describe('aggregateOperationalSummary', () => {
     expect(result.eta).toBeNull()
     expect(result.alerts_count).toBe(0)
     expect(result.highest_alert_severity).toBeNull()
+    expect(result.dominant_alert_created_at).toBeNull()
     expect(result.has_transshipment).toBe(false)
     expect(result.last_event_at).toBeNull()
   })
@@ -107,25 +110,50 @@ describe('aggregateOperationalSummary', () => {
   it('selects highest alert severity across containers', () => {
     const summaries = [
       makeSummary({
-        alerts: [makeAlert({ severity: 'info', type: 'NO_MOVEMENT' })],
+        alerts: [
+          makeAlert({
+            severity: 'info',
+            type: 'NO_MOVEMENT',
+            triggered_at: '2026-03-03T10:00:00.000Z',
+          }),
+        ],
       }),
       makeSummary({
-        alerts: [makeAlert({ severity: 'warning', type: 'TRANSSHIPMENT' })],
+        alerts: [
+          makeAlert({
+            severity: 'warning',
+            type: 'TRANSSHIPMENT',
+            triggered_at: '2026-03-03T11:00:00.000Z',
+          }),
+        ],
       }),
     ]
 
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
     expect(result.highest_alert_severity).toBe('warning')
+    expect(result.dominant_alert_created_at).toBe('2026-03-03T11:00:00.000Z')
   })
 
   it('danger severity takes precedence over all', () => {
     const summaries = [
       makeSummary({
         alerts: [
-          makeAlert({ severity: 'info', type: 'NO_MOVEMENT' }),
-          makeAlert({ severity: 'danger', type: 'PORT_CHANGE' }),
-          makeAlert({ severity: 'warning', type: 'TRANSSHIPMENT' }),
+          makeAlert({
+            severity: 'info',
+            type: 'NO_MOVEMENT',
+            triggered_at: '2026-03-03T09:00:00.000Z',
+          }),
+          makeAlert({
+            severity: 'danger',
+            type: 'PORT_CHANGE',
+            triggered_at: '2026-03-03T08:00:00.000Z',
+          }),
+          makeAlert({
+            severity: 'warning',
+            type: 'TRANSSHIPMENT',
+            triggered_at: '2026-03-03T11:00:00.000Z',
+          }),
         ],
       }),
     ]
@@ -133,6 +161,37 @@ describe('aggregateOperationalSummary', () => {
     const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
 
     expect(result.highest_alert_severity).toBe('danger')
+    expect(result.dominant_alert_created_at).toBe('2026-03-03T08:00:00.000Z')
+  })
+
+  it('uses latest triggered_at when dominant severity ties', () => {
+    const summaries = [
+      makeSummary({
+        alerts: [
+          makeAlert({
+            id: 'a1',
+            severity: 'warning',
+            type: 'NO_MOVEMENT',
+            triggered_at: '2026-03-03T10:00:00.000Z',
+          }),
+        ],
+      }),
+      makeSummary({
+        alerts: [
+          makeAlert({
+            id: 'a2',
+            severity: 'warning',
+            type: 'ETA_PASSED',
+            triggered_at: '2026-03-03T11:00:00.000Z',
+          }),
+        ],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.highest_alert_severity).toBe('warning')
+    expect(result.dominant_alert_created_at).toBe('2026-03-03T11:00:00.000Z')
   })
 
   it('detects transshipment alert at process level', () => {

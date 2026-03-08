@@ -269,5 +269,3 @@ export function createListProcessSyncStatesUseCase(deps: ListProcessSyncStatesDe
     }
   }
 }
-
-export type ListProcessSyncStatesUseCase = ReturnType<typeof createListProcessSyncStatesUseCase>

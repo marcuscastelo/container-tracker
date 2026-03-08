@@ -478,6 +478,7 @@ describe('dashboard operational summary read model integration', () => {
         status: process.status,
         eta: process.eta,
         dominantSeverity: process.dominantSeverity,
+        dominantAlertCreatedAt: process.dominantAlertCreatedAt,
         activeAlertsCount: process.activeAlertsCount,
       })),
     ).toEqual([
@@ -489,6 +490,7 @@ describe('dashboard operational summary read model integration', () => {
         status: 'ARRIVED_AT_POD',
         eta: '2026-03-10T10:00:00.000Z',
         dominantSeverity: 'danger',
+        dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
         activeAlertsCount: 1,
       },
       {
@@ -499,6 +501,7 @@ describe('dashboard operational summary read model integration', () => {
         status: 'IN_TRANSIT',
         eta: '2026-03-12T10:00:00.000Z',
         dominantSeverity: 'warning',
+        dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
         activeAlertsCount: 1,
       },
       {
@@ -509,6 +512,7 @@ describe('dashboard operational summary read model integration', () => {
         status: 'IN_TRANSIT',
         eta: '2026-03-13T10:00:00.000Z',
         dominantSeverity: 'warning',
+        dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
         activeAlertsCount: 1,
       },
       {
@@ -519,6 +523,7 @@ describe('dashboard operational summary read model integration', () => {
         status: 'IN_PROGRESS',
         eta: '2026-03-14T10:00:00.000Z',
         dominantSeverity: 'info',
+        dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
         activeAlertsCount: 1,
       },
       {
@@ -529,6 +534,7 @@ describe('dashboard operational summary read model integration', () => {
         status: 'LOADED',
         eta: null,
         dominantSeverity: 'none',
+        dominantAlertCreatedAt: null,
         activeAlertsCount: 0,
       },
     ])

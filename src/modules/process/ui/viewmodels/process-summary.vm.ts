@@ -25,6 +25,7 @@ export type ProcessSummaryVM = {
   readonly carrier: string | null
   readonly alertsCount: number
   readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly dominantAlertCreatedAt: string | null
   readonly redestinationNumber?: string | null
   readonly hasTransshipment: boolean
   readonly lastEventAt: string | null

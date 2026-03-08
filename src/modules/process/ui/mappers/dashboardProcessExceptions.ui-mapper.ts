@@ -32,6 +32,7 @@ export function toDashboardProcessExceptionVMs(
       etaCurrent: process.eta_current,
       dominantSeverity: toDashboardProcessExceptionSeverity(process.dominant_severity),
       activeAlertCount: process.active_alert_count,
+      dominantAlertCreatedAt: process.dominant_alert_created_at,
     }
   })
 }

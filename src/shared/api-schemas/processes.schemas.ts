@@ -35,6 +35,8 @@ export const ProcessResponseSchema = z.object({
   alerts_count: z.number().optional(),
   /** Highest alert severity across containers */
   highest_alert_severity: z.enum(['info', 'warning', 'danger']).nullish(),
+  /** Timestamp for dominant alert age rendering in dashboard */
+  dominant_alert_created_at: z.string().nullish(),
   /** Whether any container has a transshipment alert */
   has_transshipment: z.boolean().optional(),
   /** Latest event time across all container timelines */
@@ -217,7 +219,7 @@ export const SyncProcessResponseSchema = z.object({
 const ProcessSyncVisibilitySchema = z.enum(['active', 'archived_in_flight'])
 const ProcessSyncStateSchema = z.enum(['idle', 'syncing', 'completed', 'failed'])
 
-export const ProcessSyncStateResponseSchema = z.object({
+const ProcessSyncStateResponseSchema = z.object({
   process_id: z.string(),
   sync_status: ProcessSyncStateSchema,
   started_at: z.string().nullable(),
@@ -233,13 +235,13 @@ export const ProcessesSyncStatusResponseSchema = z.object({
   processes: z.array(ProcessSyncStateResponseSchema),
 })
 
-export const ProcessRefreshRequestItemSchema = z.object({
+const ProcessRefreshRequestItemSchema = z.object({
   container_number: z.string(),
   sync_request_id: z.string().uuid(),
   deduped: z.boolean(),
 })
 
-export const ProcessRefreshFailureItemSchema = z.object({
+const ProcessRefreshFailureItemSchema = z.object({
   container_number: z.string(),
   error: z.string(),
 })

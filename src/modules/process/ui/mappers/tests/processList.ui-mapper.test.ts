@@ -45,6 +45,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].importerName).toBe('Empresa ABC')
     expect(result[0].syncStatus).toBe('idle')
     expect(result[0].lastSyncAt).toBeNull()
+    expect(result[0].dominantAlertCreatedAt).toBeNull()
   })
 
   it('maps process_status from API to status code + StatusVariant', () => {
@@ -61,6 +62,7 @@ describe('toProcessSummaryVMs', () => {
         eta: '2025-06-01T00:00:00Z',
         alerts_count: 2,
         highest_alert_severity: 'warning',
+        dominant_alert_created_at: '2025-04-29T08:00:00Z',
         has_transshipment: true,
         last_event_at: '2025-05-01T00:00:00Z',
         last_sync_status: 'DONE',
@@ -76,6 +78,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
     expect(result[0].alertsCount).toBe(2)
     expect(result[0].highestAlertSeverity).toBe('warning')
+    expect(result[0].dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
     expect(result[0].hasTransshipment).toBe(true)
     expect(result[0].lastEventAt).toBe('2025-05-01T00:00:00Z')
     expect(result[0].syncStatus).toBe('idle')
@@ -91,6 +94,7 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].etaMsOrNull).toBeNull()
     expect(result[0].alertsCount).toBe(0)
     expect(result[0].highestAlertSeverity).toBeNull()
+    expect(result[0].dominantAlertCreatedAt).toBeNull()
     expect(result[0].hasTransshipment).toBe(false)
     expect(result[0].lastEventAt).toBeNull()
     expect(result[0].syncStatus).toBe('idle')

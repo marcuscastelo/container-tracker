@@ -40,6 +40,7 @@ function createProcess(
     carrier: input.carrier ?? null,
     alertsCount: 0,
     highestAlertSeverity: input.highestAlertSeverity ?? null,
+    dominantAlertCreatedAt: null,
     hasTransshipment: false,
     lastEventAt: null,
     syncStatus: 'idle',

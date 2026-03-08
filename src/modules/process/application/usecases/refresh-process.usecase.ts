@@ -20,7 +20,7 @@ type RefreshFailure = {
   readonly error: string
 }
 
-export type RefreshProcessCommand = {
+type RefreshProcessCommand = {
   readonly processId: string
   readonly mode: RefreshMode
   readonly containerNumber?: string
@@ -165,5 +165,3 @@ export function createRefreshProcessUseCase(deps: RefreshProcessDeps) {
     }
   }
 }
-
-export type RefreshProcessUseCase = ReturnType<typeof createRefreshProcessUseCase>

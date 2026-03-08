@@ -39,6 +39,7 @@ function toDashboardProcessExceptionsResponse(
     derived_status: process.status,
     eta_current: process.eta,
     dominant_severity: process.dominantSeverity,
+    dominant_alert_created_at: process.dominantAlertCreatedAt,
     active_alert_count: process.activeAlertsCount,
   }))
 }
