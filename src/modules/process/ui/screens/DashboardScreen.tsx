@@ -57,15 +57,15 @@ import {
   setDashboardSeverityFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
+import {
+  nextDashboardSortSelection,
+  sortDashboardProcesses,
+} from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import {
-  nextDashboardSortSelection,
-  sortDashboardProcesses,
-} from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'

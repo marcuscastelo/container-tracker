@@ -1,6 +1,6 @@
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
 
-export type ContainerSyncDTO = {
+export type ContainerSyncRecord = {
   readonly containerNumber: string
   readonly carrier: string | null
   readonly lastSuccessAt: string | null
@@ -18,7 +18,7 @@ type GetContainersSyncMetadataDeps = {
   readonly syncMetadataRepository: SyncMetadataRepository
 }
 
-type MutableContainerSyncDTO = {
+type MutableContainerSyncRecord = {
   containerNumber: string
   carrier: string | null
   lastSuccessAt: string | null
@@ -46,7 +46,7 @@ export function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.trim().toUpperCase()
 }
 
-export function createContainerSyncMetadataFallback(containerNumber: string): ContainerSyncDTO {
+export function createContainerSyncMetadataFallback(containerNumber: string): ContainerSyncRecord {
   return {
     containerNumber,
     carrier: null,
@@ -61,7 +61,7 @@ export function createContainerSyncMetadataFallback(containerNumber: string): Co
 export function createGetContainersSyncMetadataUseCase(deps: GetContainersSyncMetadataDeps) {
   return async function execute(
     command: GetContainersSyncMetadataCommand,
-  ): Promise<readonly ContainerSyncDTO[]> {
+  ): Promise<readonly ContainerSyncRecord[]> {
     const normalizedInput = command.containerNumbers.map(normalizeContainerNumber)
     const requestedContainerNumbers = Array.from(
       new Set(normalizedInput.filter((containerNumber) => containerNumber.length > 0)),
@@ -73,7 +73,7 @@ export function createGetContainersSyncMetadataUseCase(deps: GetContainersSyncMe
       )
     }
 
-    const metadataByContainerNumber = new Map<string, MutableContainerSyncDTO>(
+    const metadataByContainerNumber = new Map<string, MutableContainerSyncRecord>(
       requestedContainerNumbers.map((containerNumber) => {
         const fallback = createContainerSyncMetadataFallback(containerNumber)
         return [containerNumber, { ...fallback }]

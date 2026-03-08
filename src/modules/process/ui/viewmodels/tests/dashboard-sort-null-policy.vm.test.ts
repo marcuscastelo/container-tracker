@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { sortDashboardProcesses } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type {
   DashboardSortDirection,
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import { sortDashboardProcesses } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
 function createProcess(

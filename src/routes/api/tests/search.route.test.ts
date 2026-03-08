@@ -4,7 +4,7 @@ const searchHandlers = vi.hoisted(() => ({
   search: vi.fn(),
 }))
 
-vi.mock('~/capabilities/search/interface/http/search.controllers.bootstrap', () => ({
+vi.mock('~/shared/api/search.controllers.bootstrap', () => ({
   searchControllers: {
     search: searchHandlers.search,
   },

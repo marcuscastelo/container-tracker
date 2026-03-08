@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
-import type { DashboardImporterFilterOption } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+import type { DashboardImporterFilterOption } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 
 export function ImporterOptionsList(props: {
   readonly options: readonly DashboardImporterFilterOption[]

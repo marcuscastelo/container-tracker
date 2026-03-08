@@ -10,7 +10,7 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
-import type { ContainerSyncDTO } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import {
   ProcessDetailResponseSchema,
   ProcessesSyncStatusResponseSchema,
@@ -30,7 +30,7 @@ type GetContainerSummaryMock = (
 
 type GetContainersSyncMetadataMock = (command: {
   readonly containerNumbers: readonly string[]
-}) => Promise<readonly ContainerSyncDTO[]>
+}) => Promise<readonly ContainerSyncRecord[]>
 
 type SyncAllProcessesMock = () => Promise<{
   readonly syncedProcesses: number
@@ -320,7 +320,11 @@ describe('process controllers', () => {
       'status',
       'transshipment',
     ])
-    expect(Object.keys(body.process_operational ?? {}).sort()).toEqual(['coverage', 'eta_max'])
+    expect(Object.keys(body.process_operational ?? {}).sort()).toEqual([
+      'coverage',
+      'derived_status',
+      'eta_max',
+    ])
     expect(Object.keys(body.process_operational?.coverage ?? {}).sort()).toEqual([
       'total',
       'with_eta',

@@ -1,3 +1,5 @@
+import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
 import type {
   ProcessContainerRecord,
@@ -16,7 +18,11 @@ import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
-import type { ContainerSyncDTO } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import type {
+  TrackingSeriesHistory,
+  TrackingTimelineItem,
+} from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record
@@ -113,6 +119,7 @@ type ContainerWithTrackingResponse = {
   carrier_code: string | null
   status: string
   observations: ReturnType<typeof toObservationResponse>[]
+  timeline: ReturnType<typeof toTimelineItemResponse>[]
 }
 
 function toContainerResponse(c: ProcessContainerRecord) {
@@ -242,6 +249,35 @@ function toTrackingAlertResponse(a: TrackingAlertRecord) {
   }
 }
 
+function toSeriesHistoryResponse(seriesHistory: TrackingSeriesHistory) {
+  return {
+    has_actual_conflict: seriesHistory.hasActualConflict,
+    classified: seriesHistory.classified.map((item) => ({
+      id: item.id,
+      type: item.type,
+      event_time: item.event_time,
+      event_time_type: item.event_time_type,
+      created_at: item.created_at,
+      series_label: item.seriesLabel,
+    })),
+  }
+}
+
+function toTimelineItemResponse(item: TrackingTimelineItem) {
+  return {
+    id: item.id,
+    type: item.type,
+    carrier_label: item.carrierLabel ?? null,
+    location: item.location ?? null,
+    event_time_iso: item.eventTimeIso,
+    event_time_type: item.eventTimeType,
+    derived_state: item.derivedState,
+    vessel_name: item.vesselName ?? null,
+    voyage: item.voyage ?? null,
+    series_history: item.seriesHistory ? toSeriesHistoryResponse(item.seriesHistory) : null,
+  }
+}
+
 function compareAlertsByTriggeredAtDesc(
   left: TrackingAlertRecord,
   right: TrackingAlertRecord,
@@ -251,7 +287,7 @@ function compareAlertsByTriggeredAtDesc(
   return right.id.localeCompare(left.id)
 }
 
-function toContainerSyncResponse(sync: ContainerSyncDTO) {
+function toContainerSyncResponse(sync: ContainerSyncRecord) {
   return {
     containerNumber: sync.containerNumber,
     carrier: sync.carrier,
@@ -272,12 +308,14 @@ export function toContainerWithTrackingResponse(
   summary: {
     status: string
     observations: readonly TrackingObservationRecord[]
+    timeline: readonly TrackingTimelineItem[]
   },
 ) {
   return {
     ...toContainerResponse(c),
     status: summary.status,
     observations: summary.observations.map(toObservationResponse),
+    timeline: summary.timeline.map(toTimelineItemResponse),
   }
 }
 
@@ -286,6 +324,7 @@ export function toContainerWithTrackingFallback(c: ProcessContainerRecord) {
     ...toContainerResponse(c),
     status: 'UNKNOWN',
     observations: [],
+    timeline: [],
   }
 }
 
@@ -325,6 +364,9 @@ function toContainerOperationalResponse(summary: TrackingOperationalSummary) {
 
 function toProcessOperationalResponse(summaries: readonly TrackingOperationalSummary[]) {
   const total = summaries.length
+  const processStatus = deriveProcessStatusFromContainers(
+    summaries.map((summary) => toOperationalStatus(summary.status)),
+  )
   const etaCandidates = summaries
     .map((summary) => summary.eta)
     .filter((eta): eta is NonNullable<TrackingOperationalSummary['eta']> => eta !== null)
@@ -338,6 +380,7 @@ function toProcessOperationalResponse(summaries: readonly TrackingOperationalSum
   }
 
   return {
+    derived_status: processStatus,
     eta_max: toOperationalEtaResponse(etaMax),
     coverage: {
       total,
@@ -351,7 +394,7 @@ export function toProcessDetailResponse(
   containersWithTracking: readonly ContainerWithTrackingResponse[],
   alerts: readonly TrackingAlertRecord[],
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
-  containersSync: readonly ContainerSyncDTO[],
+  containersSync: readonly ContainerSyncRecord[],
 ) {
   const fallbackByContainerId = new Map<string, TrackingOperationalSummary>()
 

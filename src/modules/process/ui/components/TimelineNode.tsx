@@ -131,7 +131,8 @@ export function TimelineNode(props: {
 
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
-  const hasPredictionHistory = () => Boolean(props.event.series && props.event.series.length > 1)
+  const hasPredictionHistory = () =>
+    Boolean(props.event.seriesHistory && props.event.seriesHistory.classified.length > 1)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -248,10 +249,10 @@ export function TimelineNode(props: {
         }
       />
 
-      <Show when={props.event.series}>
-        {(series) => (
+      <Show when={props.event.seriesHistory}>
+        {(seriesHistory) => (
           <PredictionHistoryModal
-            series={series()}
+            seriesHistory={seriesHistory()}
             activityLabel={labelPresentation().label}
             isOpen={showPredictionHistory()}
             onClose={() => setShowPredictionHistory(false)}

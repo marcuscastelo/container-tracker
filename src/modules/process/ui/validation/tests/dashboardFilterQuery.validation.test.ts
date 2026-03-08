@@ -10,7 +10,7 @@ import {
 import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 
 describe('dashboard filter query parsing contract', () => {
   it('parses valid provider, status, and importer params into filter state', () => {

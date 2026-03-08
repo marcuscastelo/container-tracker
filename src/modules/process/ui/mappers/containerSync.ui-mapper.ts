@@ -9,7 +9,7 @@ import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schem
 const SYNC_STALE_THRESHOLD_HOURS = 24
 const SYNC_STALE_THRESHOLD_MS = SYNC_STALE_THRESHOLD_HOURS * 60 * 60 * 1000
 
-type ContainerSyncDTO = ProcessDetailResponse['containersSync'][number]
+type ContainerSyncRecord = ProcessDetailResponse['containersSync'][number]
 
 type ProcessSyncHeaderEntry = {
   readonly containerNumber: string
@@ -35,7 +35,7 @@ function isMoreRecent(candidate: string, base: string): boolean {
   return toTimestampOrNegativeInfinity(candidate) > toTimestampOrNegativeInfinity(base)
 }
 
-function toState(dto: ContainerSyncDTO): ContainerSyncState {
+function toState(dto: ContainerSyncRecord): ContainerSyncState {
   if (dto.isSyncing) return 'syncing'
 
   if (
@@ -49,7 +49,7 @@ function toState(dto: ContainerSyncDTO): ContainerSyncState {
   return 'never'
 }
 
-function toRelativeTimeAt(state: ContainerSyncState, dto: ContainerSyncDTO): string | null {
+function toRelativeTimeAt(state: ContainerSyncState, dto: ContainerSyncRecord): string | null {
   let timestamp: string | null = null
   if (state === 'ok') {
     timestamp = dto.lastSuccessAt
@@ -71,7 +71,7 @@ export function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.trim().toUpperCase()
 }
 
-export function toContainerSyncVM(dto: ContainerSyncDTO, now: Date): ContainerSyncVM {
+export function toContainerSyncVM(dto: ContainerSyncRecord, now: Date): ContainerSyncVM {
   const state = toState(dto)
 
   const lastSuccessAtTimestamp =

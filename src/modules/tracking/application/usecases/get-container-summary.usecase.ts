@@ -1,5 +1,5 @@
 import { normalizeSnapshot } from '~/modules/tracking/application/orchestration/normalizeSnapshot'
-import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
+import { toTrackingObservationProjections } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import {
   deriveTrackingOperationalSummary,
   type TrackingOperationalSummary,
@@ -179,7 +179,7 @@ export async function getContainerSummary(
   const status = deriveStatus(timeline)
   const transshipment = deriveTransshipment(timeline)
   const operational = deriveTrackingOperationalSummary({
-    observations: toTrackingObservationDTOs(observations),
+    observations: toTrackingObservationProjections(observations),
     status,
     transshipment,
     podLocationCode: cmd.podLocationCode ?? null,

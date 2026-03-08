@@ -3,11 +3,11 @@ import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { fetchSearchResults } from '~/capabilities/search/ui/fetchSearch'
 import { SearchOverlayPanel } from '~/capabilities/search/ui/SearchOverlay.panel'
+import { toSearchResultItemsVm } from '~/capabilities/search/ui/search.ui-mapper'
 import {
   MIN_SEARCH_QUERY_LENGTH,
   type SearchResultItemVm,
   type SearchUiState,
-  toSearchResultItemsVm,
 } from '~/capabilities/search/ui/search.vm'
 
 const SEARCH_DEBOUNCE_MS = 180

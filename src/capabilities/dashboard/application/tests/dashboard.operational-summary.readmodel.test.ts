@@ -4,39 +4,12 @@ import {
   type DashboardOperationalSummaryReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
-import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 
 type ProcessesProjection = Awaited<
   ReturnType<
-    DashboardOperationalSummaryReadModelDeps['processUseCases']['listProcessesWithContainers']
+    DashboardOperationalSummaryReadModelDeps['processUseCases']['listProcessesWithOperationalSummary']
   >
 >['processes']
-
-function makeTrackingOperationalSummary(
-  status: string,
-  etaEventTimeIso: string | null,
-): TrackingOperationalSummary {
-  return {
-    status,
-    eta:
-      etaEventTimeIso === null
-        ? null
-        : {
-            eventTimeIso: etaEventTimeIso,
-            eventTimeType: 'EXPECTED',
-            state: 'ACTIVE_EXPECTED',
-            type: 'ARRIVAL',
-            locationCode: null,
-            locationDisplay: null,
-          },
-    transshipment: {
-      hasTransshipment: false,
-      count: 0,
-      ports: [],
-    },
-    dataIssue: false,
-  }
-}
 
 function makeAlert(
   alertId: string,
@@ -60,44 +33,43 @@ function makeAlert(
 
 describe('createDashboardOperationalSummaryReadModelUseCase', () => {
   it('composes process status/eta/alerts and keeps processes without alerts visible', async () => {
-    const fixedNow = new Date('2026-03-03T00:00:00.000Z')
     const processes: ProcessesProjection = [
       {
-        process: {
-          id: 'process-1',
-          reference: 'REF-001',
-          origin: 'Santos',
-          destination: 'Rotterdam',
+        pwc: {
+          process: {
+            id: 'process-1',
+            reference: 'REF-001',
+            origin: 'Santos',
+            destination: 'Rotterdam',
+          },
+          containers: [
+            { id: 'container-1', containerNumber: 'MSCU1111111' },
+            { id: 'container-2', containerNumber: 'MSCU2222222' },
+          ],
         },
-        containers: [
-          { id: 'container-1', containerNumber: 'MSCU1111111' },
-          { id: 'container-2', containerNumber: 'MSCU2222222' },
-        ],
+        summary: {
+          process_status: 'IN_PROGRESS',
+          eta: '2026-03-10T10:00:00.000Z',
+        },
       },
       {
-        process: {
-          id: 'process-2',
-          reference: 'REF-002',
-          origin: 'Shanghai',
-          destination: 'Hamburg',
+        pwc: {
+          process: {
+            id: 'process-2',
+            reference: 'REF-002',
+            origin: 'Shanghai',
+            destination: 'Hamburg',
+          },
+          containers: [{ id: 'container-3', containerNumber: 'MSCU3333333' }],
         },
-        containers: [{ id: 'container-3', containerNumber: 'MSCU3333333' }],
+        summary: {
+          process_status: 'LOADED',
+          eta: null,
+        },
       },
     ]
 
-    const listProcessesWithContainers = vi.fn(async () => ({ processes }))
-    const getContainersSummary = vi.fn(
-      async (): Promise<ReadonlyMap<string, TrackingOperationalSummary>> =>
-        new Map([
-          [
-            'container-1',
-            makeTrackingOperationalSummary('IN_PROGRESS', '2026-03-12T10:00:00.000Z'),
-          ],
-          ['container-2', makeTrackingOperationalSummary('IN_TRANSIT', '2026-03-10T10:00:00.000Z')],
-          ['container-3', makeTrackingOperationalSummary('LOADED', null)],
-        ]),
-    )
-
+    const listProcessesWithOperationalSummary = vi.fn(async () => ({ processes }))
     const alerts: readonly TrackingActiveAlertReadModel[] = [
       makeAlert('alert-1', 'process-1', 'container-1', 'info'),
       makeAlert('alert-2', 'process-1', 'container-1', 'warning'),
@@ -106,21 +78,11 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
     const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
 
     const useCase = createDashboardOperationalSummaryReadModelUseCase({
-      processUseCases: { listProcessesWithContainers },
-      trackingUseCases: { getContainersSummary, listActiveAlertReadModel },
-      nowFactory: () => fixedNow,
+      processUseCases: { listProcessesWithOperationalSummary },
+      trackingUseCases: { listActiveAlertReadModel },
     })
 
     const result = await useCase()
-
-    expect(getContainersSummary).toHaveBeenCalledWith(
-      [
-        { containerId: 'container-1', containerNumber: 'MSCU1111111' },
-        { containerId: 'container-2', containerNumber: 'MSCU2222222' },
-        { containerId: 'container-3', containerNumber: 'MSCU3333333' },
-      ],
-      fixedNow,
-    )
 
     expect(result.processes).toEqual([
       {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { DashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import {
   getActiveDashboardSortDirection,
   nextDashboardSortSelection,
   sortDashboardProcesses,
-} from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-sort.service'
+import type { DashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
 function toTimestampOrNull(value: string | null): number | null {
