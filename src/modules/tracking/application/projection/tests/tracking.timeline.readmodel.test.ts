@@ -3,8 +3,8 @@ import { toTrackingObservationProjection } from '~/modules/tracking/application/
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 
 describe('tracking observation carrier label metadata', () => {
-  it('maps carrier_label to carrierLabel in tracking observation DTO', () => {
-    const dto = toTrackingObservationProjection({
+  it('maps carrier_label to carrierLabel in tracking observation projection', () => {
+    const projection = toTrackingObservationProjection({
       id: 'obs-1',
       type: 'OTHER',
       carrier_label: 'Custom Carrier Event',
@@ -17,11 +17,11 @@ describe('tracking observation carrier label metadata', () => {
       created_at: '2026-02-10T10:00:00.000Z',
     })
 
-    expect(dto.carrier_label).toBe('Custom Carrier Event')
+    expect(projection.carrier_label).toBe('Custom Carrier Event')
   })
 
   it('keeps carrierLabel undefined when source carrier_label is null', () => {
-    const dto = toTrackingObservationProjection({
+    const projection = toTrackingObservationProjection({
       id: 'obs-1',
       type: 'OTHER',
       carrier_label: null,
@@ -34,7 +34,7 @@ describe('tracking observation carrier label metadata', () => {
       created_at: '2026-02-10T10:00:00.000Z',
     })
 
-    expect(dto.carrier_label).toBeNull()
+    expect(projection.carrier_label).toBeNull()
   })
 
   it('propagates carrierLabel into the timeline read model', () => {
