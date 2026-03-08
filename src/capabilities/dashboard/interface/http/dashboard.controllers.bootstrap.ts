@@ -1,31 +1,33 @@
+import type { DashboardOperationalSummaryReadModelDeps } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import { createDashboardUseCases } from '~/capabilities/dashboard/application/dashboard.usecases'
 import {
   createDashboardControllers,
   type DashboardControllers,
 } from '~/capabilities/dashboard/interface/http/dashboard.controllers'
-import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
-import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 
 type DashboardControllersBootstrapOverrides = {
   readonly dashboardControllers?: DashboardControllers
 }
 
-function bootstrapDashboardControllers(
+export type DashboardControllersBootstrapDeps = Pick<
+  DashboardOperationalSummaryReadModelDeps,
+  'processUseCases' | 'trackingUseCases'
+>
+
+export function bootstrapDashboardControllers(
+  deps: DashboardControllersBootstrapDeps,
   overrides: DashboardControllersBootstrapOverrides = {},
 ): DashboardControllers {
   if (overrides.dashboardControllers) {
     return overrides.dashboardControllers
   }
 
-  const { trackingUseCases } = bootstrapTrackingModule()
   const dashboardUseCases = createDashboardUseCases({
-    processUseCases,
-    trackingUseCases,
+    processUseCases: deps.processUseCases,
+    trackingUseCases: deps.trackingUseCases,
   })
 
   return createDashboardControllers({
     dashboardUseCases,
   })
 }
-
-export const dashboardControllers = bootstrapDashboardControllers()

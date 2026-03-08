@@ -1,13 +1,12 @@
 import type { JSX } from 'solid-js'
 import { createMemo, Show } from 'solid-js'
 import { PredictionHistoryTable } from '~/modules/process/ui/components/PredictionHistoryTable'
-import type { TrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
-import { classifyTrackingSeries } from '~/modules/tracking/application/projection/tracking.series.classification'
+import type { TrackingSeriesHistory } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
-  readonly series: readonly TrackingObservationDTO[]
+  readonly seriesHistory: TrackingSeriesHistory
   readonly activityLabel: string
   readonly isOpen: boolean
   readonly onClose: () => void
@@ -48,7 +47,6 @@ function ConflictWarning(): JSX.Element {
 
 export function PredictionHistoryModal(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
-  const classification = createMemo(() => classifyTrackingSeries(props.series))
   const title = createMemo(
     () => `${t(keys.shipmentView.timeline.predictionHistory.title)} — ${props.activityLabel}`,
   )
@@ -56,11 +54,11 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
   return (
     <Dialog open={props.isOpen} onClose={props.onClose} title={title()} maxWidth="2xl">
       <div class="space-y-4">
-        <Show when={classification().hasActualConflict}>
+        <Show when={props.seriesHistory.hasActualConflict}>
           <ConflictWarning />
         </Show>
 
-        <PredictionHistoryTable classified={classification().classified} locale={locale()} />
+        <PredictionHistoryTable classified={props.seriesHistory.classified} locale={locale()} />
 
         <div class="flex justify-end border-t border-slate-200 pt-3">
           <button

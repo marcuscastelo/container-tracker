@@ -39,6 +39,20 @@ describe('toShipmentDetailVM', () => {
               created_at: new Date().toISOString(),
             },
           ],
+          timeline: [
+            {
+              id: 'timeline-1',
+              type: 'LOAD',
+              carrier_label: 'Loaded',
+              location: 'Shanghai',
+              event_time_iso: '2026-02-01T10:00:00.000Z',
+              event_time_type: 'ACTUAL',
+              derived_state: 'ACTUAL',
+              vessel_name: 'MAERSK SEVILLE',
+              voyage: '123W',
+              series_history: null,
+            },
+          ],
         },
       ],
       containersSync: [],
@@ -85,6 +99,14 @@ describe('toShipmentDetailVM', () => {
           observations: [],
         },
       ],
+      process_operational: {
+        derived_status: 'IN_TRANSIT',
+        eta_max: null,
+        coverage: {
+          total: 1,
+          with_eta: 0,
+        },
+      },
       containersSync: [],
       alerts: [
         {
@@ -150,7 +172,9 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].sync.state).toBe('error')
     expect(result.containers[0].sync.carrier).toBe('maersk')
   })
+})
 
+describe('toShipmentDetailVM fallback mapping', () => {
   it('keeps acknowledged alerts and exposes ackedAtIso', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-3',
@@ -278,6 +302,7 @@ describe('toShipmentDetailVM operational mapping', () => {
       containersSync: [],
       alerts: [],
       process_operational: {
+        derived_status: 'IN_TRANSIT',
         eta_max: {
           event_time: '2026-02-25T10:00:00.000Z',
           event_time_type: 'EXPECTED',
@@ -407,6 +432,7 @@ describe('toShipmentDetailVM operational mapping', () => {
       containersSync: [],
       alerts: [],
       process_operational: {
+        derived_status: 'IN_TRANSIT',
         eta_max: {
           event_time: '2026-03-10T10:00:00.000Z',
           event_time_type: 'EXPECTED',

@@ -4,7 +4,7 @@ import {
   readDashboardFiltersFromLocalStorage,
   writeDashboardFiltersToLocalStorage,
 } from '~/modules/process/ui/validation/dashboardFilterStorage.validation'
-import { DASHBOARD_DEFAULT_FILTER_SELECTION } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+import { DASHBOARD_DEFAULT_FILTER_SELECTION } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 
 type FilterStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 

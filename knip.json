@@ -9,7 +9,13 @@
     "scripts/**/*.{js,ts,tsx}"
   ],
   "project": ["src/**/*.{js,ts,tsx}", "scripts/**/*.{js,ts,tsx}"],
-  "ignore": ["src/shared/supabase/database.types.ts", "src/routes/**/*", "src/i18n/**/*"],
+  "ignore": [
+    "src/shared/supabase/database.types.ts",
+    "src/routes/**/*",
+    "src/i18n/**/*",
+    "src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts",
+    "src/shared/ui/layout/Stack.tsx"
+  ],
   "ignoreDependencies": [
     "@msviderok/base-ui-solid",
     "@opentelemetry/api",

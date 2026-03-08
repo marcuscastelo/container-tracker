@@ -3,12 +3,12 @@ import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
 import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { getActiveDashboardSortDirection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type {
   DashboardSortDirection,
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import { getActiveDashboardSortDirection } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'

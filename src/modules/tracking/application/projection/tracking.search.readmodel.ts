@@ -1,4 +1,4 @@
-import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
+import { toTrackingObservationProjections } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import { deriveTrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
@@ -94,7 +94,7 @@ export function deriveTrackingSearchProjections(
     const latestDerivedStatus = deriveStatus(timeline)
     const transshipment = deriveTransshipment(timeline)
     const operational = deriveTrackingOperationalSummary({
-      observations: toTrackingObservationDTOs(group.observations),
+      observations: toTrackingObservationProjections(group.observations),
       status: latestDerivedStatus,
       transshipment,
       now: args.now,

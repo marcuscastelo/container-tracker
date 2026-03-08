@@ -143,3 +143,46 @@ Architecture principle:
 
 > The domain drives the UI.  
 > The UI never defines domain truth.
+
+---
+
+## 8. ViewModel vs UI State vs UI Service
+
+Use strict separation in UI files:
+
+- **ViewModel (`*.vm.ts`)**: renderable data shape only. No behavior.
+- **UI State**: interaction state (sort, filter, selection, expanded rows, pagination).
+- **UI Service / Utility (`*.service.ts` / `*.utils.ts`)**: pure behavior over ViewModels (sorting, grouping, filtering, comparison).
+- **UI Mapper (`*.ui-mapper.ts`)**: transforms HTTP Response DTO -> ViewModel.
+
+Rules:
+
+- ViewModel files must not contain domain derivation.
+- UI services must not import domain derivation logic.
+- DTO-to-VM mapping stays in mapper files only.
+
+---
+
+## 9. Naming Rules
+
+File names must match responsibility:
+
+- `*.vm.ts` -> ViewModel shape/type only
+- `*.ui-mapper.ts` -> HTTP DTO -> ViewModel mapping only
+- `*.service.ts` -> UI behavior (sort/filter/group/selection logic)
+- `*.utils.ts` -> small pure helpers
+- `*.readmodel.ts` -> backend projection/read model
+
+---
+
+## 10. LLM Anti-Patterns
+
+LLMs must NOT:
+
+- put behavior/logic inside ViewModel files
+- derive domain truth in UI (status, timeline, alerts)
+- convert DTOs into internal application contracts
+- simplify timeline/event-series logic
+- hide ACTUAL conflicts or uncertainty
+- move domain rules into capabilities
+- create shared kernel implicitly without explicit ownership/policy

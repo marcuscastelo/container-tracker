@@ -77,3 +77,40 @@ UI must not:
 
 - Reimplement domain derivation
 - Override safe-first rules
+
+---
+
+## 5. Composition Root Rule
+
+Bootstrap ownership is explicit:
+
+- Module infrastructure bootstraps (`modules/*/infrastructure/bootstrap/*`) are composed at application composition roots (for example `src/shared/api/*controllers.bootstrap.ts`).
+- Capability interface factories receive module application dependencies via injection.
+
+Forbidden:
+
+- `capabilities/*` importing `modules/*/infrastructure/*` directly
+- modules importing capabilities
+- domain/application importing HTTP route adapters
+
+---
+
+## 6. Naming Rules
+
+- `*.vm.ts` -> shape/type only
+- `*.ui-mapper.ts` -> DTO -> ViewModel mapping only
+- `*.service.ts` -> behavior/orchestration in the same layer
+- `*.utils.ts` -> small pure helper
+- `*.readmodel.ts` -> backend projection owned by the semantic BC
+
+---
+
+## 7. LLM Anti-Patterns
+
+LLMs must NOT:
+
+- add domain logic to UI files
+- derive tracking truth in capability/UI layers
+- move canonical rules out of owning BC
+- hide conflicts/uncertainty for cleaner presentation
+- create implicit shared kernel through convenience reuse

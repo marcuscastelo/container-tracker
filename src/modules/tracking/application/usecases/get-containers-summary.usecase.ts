@@ -1,4 +1,4 @@
-import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
+import { toTrackingObservationProjections } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import {
   createTrackingOperationalSummaryFallback,
   deriveTrackingOperationalSummary,
@@ -40,7 +40,7 @@ export async function getContainersSummary(
         const transshipment = deriveTransshipment(timeline)
 
         const summary = deriveTrackingOperationalSummary({
-          observations: toTrackingObservationDTOs(observations),
+          observations: toTrackingObservationProjections(observations),
           status,
           transshipment,
           podLocationCode: container.podLocationCode ?? null,

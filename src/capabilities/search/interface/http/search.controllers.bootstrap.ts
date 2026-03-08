@@ -1,27 +1,29 @@
 import { createSearchFacade } from '~/capabilities/search/application/search.facade'
-import { createSearchUseCase } from '~/capabilities/search/application/search.usecase'
+import {
+  type CreateSearchUseCaseDeps,
+  createSearchUseCase,
+} from '~/capabilities/search/application/search.usecase'
 import { createSearchController } from '~/capabilities/search/interface/http/search.controller'
 import { createSearchControllers } from '~/capabilities/search/interface/http/search.controllers'
-import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
-import { processUseCases } from '~/modules/process/infrastructure/bootstrap/process.bootstrap'
-import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 
-const { trackingUseCases } = bootstrapTrackingModule()
+export type SearchControllersBootstrapDeps = CreateSearchUseCaseDeps
 
-const searchUseCase = createSearchUseCase({
-  processUseCases,
-  containerUseCases,
-  trackingUseCases,
-})
+export function bootstrapSearchControllers(deps: SearchControllersBootstrapDeps) {
+  const searchUseCase = createSearchUseCase({
+    processUseCases: deps.processUseCases,
+    containerUseCases: deps.containerUseCases,
+    trackingUseCases: deps.trackingUseCases,
+  })
 
-const searchFacade = createSearchFacade({
-  searchUseCase,
-})
+  const searchFacade = createSearchFacade({
+    searchUseCase,
+  })
 
-const searchController = createSearchController({
-  searchFacade,
-})
+  const searchController = createSearchController({
+    searchFacade,
+  })
 
-export const searchControllers = createSearchControllers({
-  searchController,
-})
+  return createSearchControllers({
+    searchController,
+  })
+}

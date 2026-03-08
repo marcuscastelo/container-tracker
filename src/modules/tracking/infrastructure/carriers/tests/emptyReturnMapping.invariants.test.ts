@@ -78,7 +78,7 @@ describe('empty-return mapping invariants', () => {
     expect(emptyReturnSeries).toBeDefined()
     expect(emptyReturnSeries?.eventTimeType).toBe('ACTUAL')
     expect(emptyReturnSeries?.carrierLabel).toBe('Container returned empty')
-    expect(emptyReturnSeries?.series).toHaveLength(2)
+    expect(emptyReturnSeries?.seriesHistory?.classified).toHaveLength(2)
 
     const unknownSeries = timeline.find((item) => item.type === 'OTHER')
     expect(unknownSeries).toBeDefined()
