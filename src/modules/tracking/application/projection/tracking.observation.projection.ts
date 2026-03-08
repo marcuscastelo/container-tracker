@@ -1,7 +1,7 @@
-export type TrackingObservationDTO = {
+export type TrackingObservationProjection = {
   readonly id: string
   readonly type: string
-  // Use snake_case to keep DTO shape consistent with other observation fields
+  // Projection mirrors canonical observation fields used by tracking read models.
   readonly carrier_label?: string | null
   readonly event_time: string | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
@@ -25,9 +25,9 @@ type TrackingObservationSource = {
   readonly created_at: string
 }
 
-export function toTrackingObservationDTO(
+export function toTrackingObservationProjection(
   source: TrackingObservationSource,
-): TrackingObservationDTO {
+): TrackingObservationProjection {
   const carrier_label = source.carrier_label ?? null
 
   return {
@@ -44,8 +44,8 @@ export function toTrackingObservationDTO(
   }
 }
 
-export function toTrackingObservationDTOs(
+export function toTrackingObservationProjections(
   sources: readonly TrackingObservationSource[],
-): TrackingObservationDTO[] {
-  return sources.map(toTrackingObservationDTO)
+): TrackingObservationProjection[] {
+  return sources.map(toTrackingObservationProjection)
 }

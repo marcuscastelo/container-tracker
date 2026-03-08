@@ -15,7 +15,7 @@ import {
   getContainersSummary as getContainersSummaryUseCase,
 } from '~/modules/tracking/application/usecases/get-containers-summary.usecase'
 import {
-  type ContainerSyncDTO,
+  type ContainerSyncRecord,
   createGetContainersSyncMetadataUseCase,
   type GetContainersSyncMetadataCommand,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
@@ -149,7 +149,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getContainersSyncMetadata(
       command: GetContainersSyncMetadataCommand,
-    ): Promise<readonly ContainerSyncDTO[]> {
+    ): Promise<readonly ContainerSyncRecord[]> {
       return getContainersSyncMetadata(command)
     },
 

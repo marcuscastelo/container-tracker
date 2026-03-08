@@ -15,10 +15,12 @@ import {
   CreateProcessInputSchema,
   ProcessRefreshRequestSchema,
 } from '~/modules/process/interface/http/process.schemas'
+import { toTrackingObservationProjections } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import { createTrackingOperationalSummaryFallback } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
-  type ContainerSyncDTO,
+  type ContainerSyncRecord,
   createContainerSyncMetadataFallback,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
@@ -244,7 +246,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       const containerNumbers = pwc.containers.map((container) =>
         String(container.containerNumber).trim().toUpperCase(),
       )
-      let containersSync: readonly ContainerSyncDTO[] = containerNumbers.map((containerNumber) =>
+      let containersSync: readonly ContainerSyncRecord[] = containerNumbers.map((containerNumber) =>
         createContainerSyncMetadataFallback(containerNumber),
       )
 
@@ -267,8 +269,16 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
               now,
               { includeAcknowledgedAlerts: true },
             )
+            const timeline = deriveTimelineWithSeriesReadModel(
+              toTrackingObservationProjections(summary.observations),
+              now,
+            )
             return {
-              container: toContainerWithTrackingResponse(c, summary),
+              container: toContainerWithTrackingResponse(c, {
+                status: summary.status,
+                observations: summary.observations,
+                timeline,
+              }),
               alerts: summary.alerts,
               operational: summary.operational,
             }

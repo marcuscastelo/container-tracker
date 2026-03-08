@@ -1,4 +1,3 @@
-import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
 import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
@@ -16,6 +15,16 @@ type TransshipmentPair = {
   readonly port: string
   readonly vesselFrom: string
   readonly vesselTo: string
+}
+
+function resolveObservationLocationDisplay(observation: Observation | null | undefined): string {
+  const locationDisplay = observation?.location_display?.trim() ?? ''
+  if (locationDisplay.length > 0) return locationDisplay
+
+  const locationCode = observation?.location_code?.trim() ?? ''
+  if (locationCode.length > 0) return locationCode
+
+  return 'unknown location'
 }
 
 /**
@@ -186,12 +195,7 @@ export function deriveAlerts(
     // Deduplicate by fingerprint (not just TYPE)
     if (!existingFactFingerprints.has(alertFingerprint)) {
       const firstHold = customsHoldObs[0]
-      const locationText = firstHold
-        ? resolveLocationDisplay({
-            location_code: firstHold.location_code,
-            location_display: firstHold.location_display,
-          })
-        : 'unknown location'
+      const locationText = resolveObservationLocationDisplay(firstHold)
 
       alerts.push({
         container_id: timeline.container_id,

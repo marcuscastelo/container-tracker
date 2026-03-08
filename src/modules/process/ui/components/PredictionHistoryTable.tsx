@@ -5,19 +5,17 @@ import {
   seriesLabelToClass,
   seriesLabelToKey,
 } from '~/modules/process/ui/mappers/seriesLabel.ui-mapper'
-import type { classifyTrackingSeries } from '~/modules/tracking/application/projection/tracking.series.classification'
+import type { TrackingSeriesHistoryItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
-type ClassifiedObservation = ReturnType<typeof classifyTrackingSeries>['classified'][number]
-
 type Props = {
-  readonly classified: readonly ClassifiedObservation[]
+  readonly classified: readonly TrackingSeriesHistoryItem[]
   readonly locale: string
 }
 
 type RowProps = {
-  readonly observation: ClassifiedObservation
+  readonly observation: TrackingSeriesHistoryItem
   readonly locale: string
   readonly deltaDays: number | null
 }

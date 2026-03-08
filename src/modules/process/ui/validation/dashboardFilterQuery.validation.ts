@@ -3,7 +3,7 @@ import {
   type DashboardFilterSelection,
   type DashboardSeverityFilterValue,
   hasActiveDashboardFilters,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import {
   TRACKING_STATUS_CODES,
   type TrackingStatusCode,

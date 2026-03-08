@@ -1,14 +1,9 @@
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
-import {
-  type ProcessAggregatedStatus,
-  toOperationalStatus,
-} from '~/modules/process/application/operational-projection/operationalSemantics'
+import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import {
   type TrackingOperationalAlertCategory,
   toTrackingOperationalAlertCategory,
 } from '~/modules/tracking/application/projection/tracking.operational-alert-category.readmodel'
-import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 
 type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
@@ -73,21 +68,23 @@ type ProcessWithContainersProjection = {
   readonly containers: readonly DashboardContainerRecord[]
 }
 
+type ProcessOperationalSummaryProjection = {
+  readonly process_status: ProcessAggregatedStatus
+  readonly eta: string | null
+}
+
+type ProcessWithOperationalSummaryProjection = {
+  readonly pwc: ProcessWithContainersProjection
+  readonly summary: ProcessOperationalSummaryProjection
+}
+
 type DashboardProcessUseCases = {
-  listProcessesWithContainers(): Promise<{
-    readonly processes: readonly ProcessWithContainersProjection[]
+  listProcessesWithOperationalSummary(): Promise<{
+    readonly processes: readonly ProcessWithOperationalSummaryProjection[]
   }>
 }
 
 type DashboardTrackingUseCases = {
-  getContainersSummary(
-    containers: readonly {
-      readonly containerId: string
-      readonly containerNumber: string
-      readonly podLocationCode?: string | null
-    }[],
-    now?: Date,
-  ): Promise<ReadonlyMap<string, TrackingOperationalSummary>>
   listActiveAlertReadModel(): Promise<{
     readonly alerts: readonly TrackingActiveAlertReadModel[]
   }>
@@ -96,7 +93,6 @@ type DashboardTrackingUseCases = {
 export type DashboardOperationalSummaryReadModelDeps = {
   readonly processUseCases: DashboardProcessUseCases
   readonly trackingUseCases: DashboardTrackingUseCases
-  readonly nowFactory?: () => Date
 }
 
 type DashboardOperationalProcessReadModel = {
@@ -123,17 +119,6 @@ const DASHBOARD_SEVERITY_ORDER: Readonly<Record<DashboardDominantSeverity, numbe
   info: 2,
   warning: 3,
   danger: 4,
-}
-
-const FALLBACK_TRACKING_SUMMARY: TrackingOperationalSummary = {
-  status: 'UNKNOWN',
-  eta: null,
-  transshipment: {
-    hasTransshipment: false,
-    count: 0,
-    ports: [],
-  },
-  dataIssue: true,
 }
 
 function normalizeDashboardSeverity(severity: string): DashboardDominantSeverity {
@@ -234,35 +219,6 @@ function summarizeGlobalActiveAlerts(
   }
 }
 
-function deriveDashboardStatus(
-  containerSummaries: readonly TrackingOperationalSummary[],
-): ProcessAggregatedStatus {
-  const statuses = containerSummaries.map((summary) => toOperationalStatus(summary.status))
-  return deriveProcessStatusFromContainers(statuses)
-}
-
-function deriveDashboardEta(
-  containerSummaries: readonly TrackingOperationalSummary[],
-): string | null {
-  // Prefer only ACTIVE_EXPECTED ETAs when computing a process-level ETA.
-  // Ignoring ACTUAL and EXPIRED_EXPECTED avoids showing stale past dates
-  // when some containers already reported past ACTUALs while others have
-  // future expected ETAs (mixed-state processes).
-  let eta: string | null = null
-
-  for (const summary of containerSummaries) {
-    const state = summary.eta?.state ?? null
-    if (state !== 'ACTIVE_EXPECTED') continue
-
-    const nextEta = summary.eta?.eventTimeIso ?? null
-    if (nextEta !== null && (eta === null || nextEta < eta)) {
-      eta = nextEta
-    }
-  }
-
-  return eta
-}
-
 function groupAlertsByProcessId(
   alerts: readonly TrackingActiveAlertReadModel[],
 ): ReadonlyMap<string, readonly TrackingActiveAlertReadModel[]> {
@@ -287,20 +243,20 @@ type DashboardProcessContext = {
 }
 
 function indexDashboardProcessContextById(
-  processes: readonly ProcessWithContainersProjection[],
+  processes: readonly ProcessWithOperationalSummaryProjection[],
 ): ReadonlyMap<string, DashboardProcessContext> {
   const contextByProcessId = new Map<string, DashboardProcessContext>()
 
-  for (const processWithContainers of processes) {
-    const processId = String(processWithContainers.process.id)
+  for (const processWithSummary of processes) {
+    const processId = String(processWithSummary.pwc.process.id)
     const containersById = new Map<string, DashboardContainerRecord>()
 
-    for (const container of processWithContainers.containers) {
+    for (const container of processWithSummary.pwc.containers) {
       containersById.set(String(container.id), container)
     }
 
     contextByProcessId.set(processId, {
-      process: processWithContainers.process,
+      process: processWithSummary.pwc.process,
       containersById,
     })
   }
@@ -395,13 +351,6 @@ function buildDashboardActiveAlertsPanel(
     })
 }
 
-function toTrackingSummaryOrFallback(
-  summariesByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
-  containerId: string,
-): TrackingOperationalSummary {
-  return summariesByContainerId.get(containerId) ?? FALLBACK_TRACKING_SUMMARY
-}
-
 function sortDashboardProcessesByDominantSeverity(
   processes: readonly DashboardOperationalProcessReadModel[],
 ): readonly DashboardOperationalProcessReadModel[] {
@@ -442,20 +391,8 @@ export function createDashboardOperationalSummaryReadModelUseCase(
   deps: DashboardOperationalSummaryReadModelDeps,
 ) {
   return async function execute(): Promise<DashboardOperationalSummaryReadModel> {
-    const now = deps.nowFactory ? deps.nowFactory() : new Date()
-
-    const { processes } = await deps.processUseCases.listProcessesWithContainers()
-    const trackingContainers = processes.flatMap((entry) =>
-      entry.containers.map((container) => ({
-        containerId: String(container.id),
-        containerNumber: String(container.containerNumber),
-      })),
-    )
-
-    const [summariesByContainerId, activeAlertsResult] = await Promise.all([
-      deps.trackingUseCases.getContainersSummary(trackingContainers, now),
-      deps.trackingUseCases.listActiveAlertReadModel(),
-    ])
+    const { processes } = await deps.processUseCases.listProcessesWithOperationalSummary()
+    const activeAlertsResult = await deps.trackingUseCases.listActiveAlertReadModel()
 
     const activeAlerts = activeAlertsResult.alerts
     // ensure we only consider alerts that are currently active
@@ -467,19 +404,16 @@ export function createDashboardOperationalSummaryReadModelUseCase(
     const dashboardProcesses: readonly DashboardOperationalProcessReadModel[] =
       sortDashboardProcessesByDominantSeverity(
         processes.map((entry) => {
-          const processId = String(entry.process.id)
+          const processId = String(entry.pwc.process.id)
           const activeAlerts = alertsByProcessId.get(processId) ?? []
-          const containerSummaries = entry.containers.map((container) =>
-            toTrackingSummaryOrFallback(summariesByContainerId, String(container.id)),
-          )
 
           return {
             processId,
-            reference: entry.process.reference,
-            origin: entry.process.origin,
-            destination: entry.process.destination,
-            status: deriveDashboardStatus(containerSummaries),
-            eta: deriveDashboardEta(containerSummaries),
+            reference: entry.pwc.process.reference,
+            origin: entry.pwc.process.origin,
+            destination: entry.pwc.process.destination,
+            status: entry.summary.process_status,
+            eta: entry.summary.eta,
             dominantSeverity: resolveDashboardDominantSeverity(activeAlerts),
             activeAlertsCount: activeAlerts.length,
             activeAlerts,

@@ -5,8 +5,8 @@ import {
   type DashboardSortTelemetryEmitter,
   emitDashboardSortChangedTelemetry,
 } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
+import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort-interaction.vm'
 
 type TelemetryCall = {
   readonly eventName: string

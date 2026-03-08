@@ -387,3 +387,60 @@ Exemplos:
 * **Request/Response DTO**: shapes HTTP.
 * **ViewModel**: shape de UI.
 * **Projection/Read Model**: modelo de leitura otimizado (não domínio).
+
+---
+
+## 17) DTO Scope and Naming Rule
+
+DTO é contrato de fronteira HTTP, não contrato interno.
+
+Regras:
+
+* Sufixo `DTO` deve ficar em `interface/http` e `shared/api-schemas`.
+* Application/Domain/UI devem usar `Result`, `Projection`, `ReadModel`, `VM` conforme a camada.
+* `snake_case` em tipos internos só é permitido em mappers de persistência e mappers de fronteira HTTP.
+
+Pipeline obrigatório:
+
+`Row -> Entity/Aggregate -> Result -> Response DTO -> ViewModel`
+
+Violação comum:
+
+* usar Response DTO como contrato interno entre application e UI.
+
+Correção:
+
+* criar tipo interno dedicado (por exemplo `TrackingObservationProjection`) e mapear explicitamente na fronteira.
+
+---
+
+## 18) ViewModel vs UI State vs UI Service
+
+* **ViewModel**: dados renderizáveis, sem comportamento.
+* **UI State**: estado de interação (ordenação, filtros, seleção, paginação).
+* **UI Service/Utility**: comportamento puro sobre VM (`sort`, `filter`, `group`, `compare`).
+* **UI Mapper**: transformação de Response DTO para VM.
+
+---
+
+## 19) Naming Rules
+
+* `*.vm.ts` -> shape/type only
+* `*.ui-mapper.ts` -> DTO -> VM mapper only
+* `*.service.ts` -> behavior
+* `*.utils.ts` -> helper puro pequeno
+* `*.readmodel.ts` -> projeção backend
+
+---
+
+## 20) LLM Anti-Patterns
+
+LLMs must NOT:
+
+* colocar lógica em arquivos `*.vm.ts`
+* derivar status/timeline/alerts na UI
+* transformar DTO HTTP em contrato interno de aplicação
+* simplificar semântica de séries ACTUAL/EXPECTED
+* esconder conflitos de ACTUAL ou incerteza operacional
+* mover regra de domínio para capability
+* criar shared kernel implícito

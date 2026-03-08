@@ -12,7 +12,7 @@ import {
   setDashboardSeverityFilter,
   toggleDashboardProviderFilter,
   toggleDashboardStatusFilter,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
 function createProcess(

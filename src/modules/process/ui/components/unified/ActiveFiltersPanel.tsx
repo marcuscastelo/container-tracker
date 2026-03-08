@@ -5,7 +5,7 @@ import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingS
 import type {
   DashboardImporterFilterValue,
   DashboardSeverityFilterValue,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 

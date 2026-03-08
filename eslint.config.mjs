@@ -273,6 +273,11 @@ export default [
               message:
                 'Capabilities can orchestrate modules, but must not import modules domain directly.',
             },
+            {
+              group: ['~/modules/*/infrastructure/**'],
+              message:
+                'Capabilities must not import module infrastructure directly; compose through application contracts.',
+            },
           ],
         },
       ],
@@ -289,8 +294,87 @@ export default [
               group: ['~/modules/*/interface/**', '~/shared/ui/**', '~/routes/**'],
               message: 'Domain layer must not depend on interface/http, shared UI, or routes.',
             },
+            {
+              group: ['~/modules/*/application/**'],
+              message: 'Domain layer must not depend on application layer.',
+            },
+            {
+              group: ['~/capabilities/**'],
+              message: 'Domain layer must not depend on capabilities.',
+            },
           ],
           paths: schemaLibraryPaths,
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/modules/*/ui/**/*.{ts,tsx}',
+      'src/capabilities/*/ui/**/*.{ts,tsx}',
+      'src/shared/ui/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: uiCoreRestrictedPatterns,
+          paths: [
+            {
+              name: '~/modules/tracking/application/projection/tracking.timeline.readmodel',
+              importNames: ['deriveTimelineWithSeriesReadModel'],
+              message:
+                'UI must not derive timeline semantics; consume timeline read-model output from backend responses.',
+            },
+            {
+              name: '~/modules/tracking/application/projection/tracking.series.classification',
+              importNames: ['classifyTrackingSeries'],
+              message:
+                'UI must not classify tracking series; consume classified series from tracking read models.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.vm.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportNamedDeclaration > FunctionDeclaration',
+          message: '*.vm.ts files must export shape/type/constants only, not behavioral functions.',
+        },
+        {
+          selector:
+            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='ArrowFunctionExpression']",
+          message: '*.vm.ts files must not export behavioral arrow functions.',
+        },
+        {
+          selector:
+            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='FunctionExpression']",
+          message: '*.vm.ts files must not export behavioral function expressions.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/interface/http/**', 'src/shared/api-schemas/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'TSTypeAliasDeclaration[id.name=/.*DTO$/], TSInterfaceDeclaration[id.name=/.*DTO$/], ClassDeclaration[id.name=/.*DTO$/]',
+          message: 'DTO suffix is reserved for HTTP boundary types.',
+        },
+        {
+          selector:
+            'TSTypeReference[typeName.name=/^(Partial|Pick|Omit)$/] > TSTypeParameterInstantiation > TSTypeReference[typeName.name=/.*Entity$/]',
+          message:
+            'Partial/Pick/Omit<Entity> is forbidden for contracts; define explicit contract types.',
         },
       ],
     },

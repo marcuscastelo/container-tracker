@@ -119,11 +119,48 @@ const ContainerOperationalResponseSchema = z.object({
 })
 
 const ProcessOperationalResponseSchema = z.object({
+  derived_status: z.string(),
   eta_max: OperationalEtaResponseSchema.nullable(),
   coverage: z.object({
     total: z.number(),
     with_eta: z.number(),
   }),
+})
+
+const TrackingSeriesLabelSchema = z.enum([
+  'ACTIVE',
+  'EXPIRED',
+  'REDUNDANT_AFTER_ACTUAL',
+  'SUPERSEDED_EXPECTED',
+  'CONFIRMED',
+  'CONFLICTING_ACTUAL',
+])
+
+const TrackingTimelineSeriesItemResponseSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  event_time: z.string().nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  created_at: z.string(),
+  series_label: TrackingSeriesLabelSchema,
+})
+
+const TrackingTimelineSeriesHistoryResponseSchema = z.object({
+  has_actual_conflict: z.boolean(),
+  classified: z.array(TrackingTimelineSeriesItemResponseSchema),
+})
+
+const TrackingTimelineItemResponseSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  carrier_label: z.string().nullable(),
+  location: z.string().nullable(),
+  event_time_iso: z.string().nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  series_history: TrackingTimelineSeriesHistoryResponseSchema.nullable(),
 })
 
 const ContainerSyncResponseSchema = z.object({
@@ -146,6 +183,8 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       status: z.string().optional(),
       /** Observations for this container (ordered by event_time) */
       observations: z.array(ObservationResponseSchema).optional(),
+      /** Timeline read-model derived in backend (safe-first series-aware) */
+      timeline: z.array(TrackingTimelineItemResponseSchema).optional(),
       /** Container-level operational projection */
       operational: ContainerOperationalResponseSchema.optional(),
     }),

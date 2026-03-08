@@ -1,6 +1,4 @@
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
 import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
-import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
 import {
   createNeverContainerSyncVM,
   normalizeContainerNumber,
@@ -12,11 +10,7 @@ import {
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import { toTrackingObservationDTOs } from '~/modules/tracking/application/projection/tracking.observation.dto'
-import {
-  deriveTimelineWithSeriesReadModel,
-  type TrackingTimelineItem,
-} from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -26,16 +20,51 @@ function processAggregatedStatusToVariant(status: ProcessAggregatedStatus): Stat
   return trackingStatusToVariant(toTrackingStatusCode(status))
 }
 
-function deriveProcessStatus(
-  containers: readonly { readonly status?: string }[],
-): ProcessAggregatedStatus {
-  const statuses = containers.map((container) => toOperationalStatus(container.status))
-  return deriveProcessStatusFromContainers(statuses)
-}
-
 type ContainerOperational = NonNullable<ProcessDetailResponse['containers'][number]['operational']>
 type OperationalEta = NonNullable<ContainerOperational['eta']>
 type OperationalTransshipment = ContainerOperational['transshipment']
+
+type TimelineResponseItem = NonNullable<
+  ProcessDetailResponse['containers'][number]['timeline']
+>[number]
+
+function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
+  if (status === 'PARTIALLY_DELIVERED') return status
+  return toTrackingStatusCode(status)
+}
+
+function toTimelineSeriesHistory(
+  seriesHistory: TimelineResponseItem['series_history'],
+): TrackingTimelineItem['seriesHistory'] {
+  if (seriesHistory === null || seriesHistory === undefined) return undefined
+
+  return {
+    hasActualConflict: seriesHistory.has_actual_conflict,
+    classified: seriesHistory.classified.map((entry) => ({
+      id: entry.id,
+      type: entry.type,
+      event_time: entry.event_time,
+      event_time_type: entry.event_time_type,
+      created_at: entry.created_at,
+      seriesLabel: entry.series_label,
+    })),
+  }
+}
+
+function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
+  return {
+    id: item.id,
+    type: item.type,
+    carrierLabel: item.carrier_label ?? undefined,
+    location: item.location ?? undefined,
+    eventTimeIso: item.event_time_iso,
+    eventTimeType: item.event_time_type,
+    derivedState: item.derived_state,
+    vesselName: item.vessel_name,
+    voyage: item.voyage,
+    seriesHistory: toTimelineSeriesHistory(item.series_history),
+  }
+}
 
 function toEtaTone(
   state: OperationalEta['state'],
@@ -153,8 +182,7 @@ export function toShipmentDetailVM(
   )
 
   const containers = data.containers.map((container) => {
-    const observations = toTrackingObservationDTOs(container.observations ?? [])
-    const timeline: TrackingTimelineItem[] = deriveTimelineWithSeriesReadModel(observations)
+    const timeline = (container.timeline ?? []).map(toTimelineItem)
 
     if (timeline.length === 0) {
       timeline.push({
@@ -194,7 +222,9 @@ export function toShipmentDetailVM(
     }
   })
 
-  const processAggregatedStatus = deriveProcessStatus(data.containers)
+  const processAggregatedStatus = toProcessAggregatedStatus(
+    data.process_operational?.derived_status,
+  )
   const processEtaSecondaryVm = toProcessEtaSecondaryVm(data, containers, locale)
 
   return {

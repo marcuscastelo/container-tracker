@@ -5,7 +5,7 @@ import { ImporterOptionsList } from '~/modules/process/ui/components/unified/Imp
 import type {
   DashboardImporterFilterOption,
   DashboardImporterFilterValue,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 
 export function ImporterChipDropdown(props: {
   readonly label: string

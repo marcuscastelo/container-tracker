@@ -5,7 +5,7 @@ import {
 import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 
 export const DASHBOARD_FILTER_STORAGE_KEY = 'dashboardFilters'
 

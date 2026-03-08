@@ -5,7 +5,7 @@ import {
 } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 
-type ContainerSyncDTO = ProcessDetailResponse['containersSync'][number]
+type ContainerSyncRecord = ProcessDetailResponse['containersSync'][number]
 
 const labelMessages = {
   syncing: 'syncing…',
@@ -16,7 +16,7 @@ const labelMessages = {
   failed: (relative: string) => `failed ${relative}`,
 }
 
-function makeSyncDTO(overrides: Partial<ContainerSyncDTO> = {}): ContainerSyncDTO {
+function makeSyncRecord(overrides: Partial<ContainerSyncRecord> = {}): ContainerSyncRecord {
   return {
     containerNumber: 'MSCU1234567',
     carrier: 'msc',
@@ -32,7 +32,7 @@ function makeSyncDTO(overrides: Partial<ContainerSyncDTO> = {}): ContainerSyncDT
 describe('container sync state mapping', () => {
   it('maps syncing when isSyncing=true', () => {
     const vm = toContainerSyncVM(
-      makeSyncDTO({
+      makeSyncRecord({
         isSyncing: true,
         lastSuccessAt: '2026-03-01T10:00:00.000Z',
         lastErrorAt: '2026-03-02T10:00:00.000Z',
@@ -46,7 +46,7 @@ describe('container sync state mapping', () => {
 
   it('maps error when lastErrorAt is newer than lastSuccessAt', () => {
     const vm = toContainerSyncVM(
-      makeSyncDTO({
+      makeSyncRecord({
         lastSuccessAt: '2026-03-01T10:00:00.000Z',
         lastErrorAt: '2026-03-02T10:00:00.000Z',
       }),
@@ -65,7 +65,7 @@ describe('container sync state mapping', () => {
 
   it('maps ok when success is present and no newer error exists', () => {
     const vm = toContainerSyncVM(
-      makeSyncDTO({
+      makeSyncRecord({
         lastSuccessAt: '2026-03-02T10:00:00.000Z',
         lastErrorAt: '2026-03-01T10:00:00.000Z',
       }),
@@ -83,7 +83,7 @@ describe('container sync state mapping', () => {
   })
 
   it('maps never when there is no success nor error history', () => {
-    const vm = toContainerSyncVM(makeSyncDTO(), new Date('2026-03-03T10:00:00.000Z'))
+    const vm = toContainerSyncVM(makeSyncRecord(), new Date('2026-03-03T10:00:00.000Z'))
 
     expect(vm.state).toBe('never')
     expect(vm.relativeTimeAt).toBeNull()
@@ -92,7 +92,7 @@ describe('container sync state mapping', () => {
 
   it('marks ok as stale after 24h threshold', () => {
     const vm = toContainerSyncVM(
-      makeSyncDTO({
+      makeSyncRecord({
         lastSuccessAt: '2026-03-01T09:59:59.000Z',
       }),
       new Date('2026-03-02T10:00:00.000Z'),
@@ -104,7 +104,7 @@ describe('container sync state mapping', () => {
 
   it('updates relative label when now changes without refetch', () => {
     const vm = toContainerSyncVM(
-      makeSyncDTO({
+      makeSyncRecord({
         lastSuccessAt: '2026-03-03T10:00:00.000Z',
       }),
       new Date('2026-03-03T10:00:00.000Z'),

@@ -35,6 +35,12 @@ jobs:
       - name: Run lint
         run: pnpm run lint
 
+      - name: Run architecture boundary scan
+        run: pnpm run architecture:boundary-scan
+
+      - name: Run knip files scan
+        run: pnpm run knip:files
+
       - name: Verify no-iife-in-jsx error gate behavior
         run: pnpm run lint:no-iife:error-smoke
 

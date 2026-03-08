@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { toTrackingObservationDTO } from '~/modules/tracking/application/projection/tracking.observation.dto'
+import { toTrackingObservationProjection } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 
 describe('tracking observation carrier label metadata', () => {
   it('maps carrier_label to carrierLabel in tracking observation DTO', () => {
-    const dto = toTrackingObservationDTO({
+    const dto = toTrackingObservationProjection({
       id: 'obs-1',
       type: 'OTHER',
       carrier_label: 'Custom Carrier Event',
@@ -21,7 +21,7 @@ describe('tracking observation carrier label metadata', () => {
   })
 
   it('keeps carrierLabel undefined when source carrier_label is null', () => {
-    const dto = toTrackingObservationDTO({
+    const dto = toTrackingObservationProjection({
       id: 'obs-1',
       type: 'OTHER',
       carrier_label: null,

@@ -13,8 +13,8 @@ import type {
   DashboardSeverityFilterOption,
   DashboardSeverityFilterValue,
   DashboardStatusFilterOption,
-} from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
-import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter-interaction.vm'
+} from '~/modules/process/ui/viewmodels/dashboard-filter.service'
+import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 
