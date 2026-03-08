@@ -187,24 +187,25 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
   })
 
   it('selects dominantAlertCreatedAt from dominant severity alert', async () => {
-    const fixedNow = new Date('2026-03-03T00:00:00.000Z')
     const processes: ProcessesProjection = [
       {
-        process: {
-          id: 'process-1',
-          reference: 'REF-001',
-          origin: 'Santos',
-          destination: 'Rotterdam',
+        pwc: {
+          process: {
+            id: 'process-1',
+            reference: 'REF-001',
+            origin: 'Santos',
+            destination: 'Rotterdam',
+          },
+          containers: [{ id: 'container-1', containerNumber: 'MSCU1111111' }],
         },
-        containers: [{ id: 'container-1', containerNumber: 'MSCU1111111' }],
+        summary: {
+          process_status: 'IN_PROGRESS',
+          eta: null,
+        },
       },
     ]
 
-    const listProcessesWithContainers = vi.fn(async () => ({ processes }))
-    const getContainersSummary = vi.fn(
-      async (): Promise<ReadonlyMap<string, TrackingOperationalSummary>> =>
-        new Map([['container-1', makeTrackingOperationalSummary('IN_PROGRESS', null)]]),
-    )
+    const listProcessesWithOperationalSummary = vi.fn(async () => ({ processes }))
     const alerts: readonly TrackingActiveAlertReadModel[] = [
       {
         ...makeAlert('alert-warning', 'process-1', 'container-1', 'warning'),
@@ -218,9 +219,8 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
     const listActiveAlertReadModel = vi.fn(async () => ({ alerts }))
 
     const useCase = createDashboardOperationalSummaryReadModelUseCase({
-      processUseCases: { listProcessesWithContainers },
-      trackingUseCases: { getContainersSummary, listActiveAlertReadModel },
-      nowFactory: () => fixedNow,
+      processUseCases: { listProcessesWithOperationalSummary },
+      trackingUseCases: { listActiveAlertReadModel },
     })
 
     const result = await useCase()
