@@ -2,9 +2,9 @@ import type { JSX } from 'solid-js'
 import { createMemo, createSignal, onCleanup } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 
-export type RefreshVisualState = 'idle' | 'loading' | 'error'
+type RefreshVisualState = 'idle' | 'loading' | 'error'
 
-export type RefreshButtonProps = {
+type RefreshButtonProps = {
   readonly onRefresh: () => Promise<void>
 }
 

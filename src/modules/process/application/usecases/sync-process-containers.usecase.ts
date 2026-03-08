@@ -28,7 +28,7 @@ type SyncProcessContainersResult = {
   readonly syncedContainers: number
 }
 
-export type SyncProcessContainersCommand = {
+type SyncProcessContainersCommand = {
   readonly processId: string
 }
 
@@ -238,5 +238,3 @@ export function createSyncProcessContainersUseCase(deps: SyncProcessContainersDe
     }
   }
 }
-
-export type SyncProcessContainersUseCase = ReturnType<typeof createSyncProcessContainersUseCase>

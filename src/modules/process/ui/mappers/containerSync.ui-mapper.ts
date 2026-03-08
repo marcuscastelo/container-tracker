@@ -143,16 +143,3 @@ export function toContainerSyncLabel(
 
   return hasRelativeTimeLabel ? messages.updated(relativeTimeLabel) : messages.updatedUnknownTime
 }
-
-export function toProcessSyncHeaderEntries(command: {
-  readonly containers: readonly Pick<ContainerDetailVM, 'number' | 'carrierCode' | 'sync'>[]
-  readonly processCarrier: string | null | undefined
-}): readonly ProcessSyncHeaderEntry[] {
-  return sortProcessSyncHeaderEntries(
-    command.containers.map((container) => ({
-      containerNumber: normalizeContainerNumber(container.number),
-      carrier: container.sync.carrier ?? container.carrierCode ?? command.processCarrier ?? null,
-      sync: container.sync,
-    })),
-  )
-}

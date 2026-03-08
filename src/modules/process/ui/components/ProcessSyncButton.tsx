@@ -4,9 +4,9 @@ import type { ProcessSyncStatus } from '~/modules/process/ui/viewmodels/process-
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
-export type SyncStatus = ProcessSyncStatus
+type SyncStatus = ProcessSyncStatus
 
-export type ProcessSyncButtonProps = {
+type ProcessSyncButtonProps = {
   readonly processId: string
   readonly status: SyncStatus
   readonly lastSyncAt?: string | null
