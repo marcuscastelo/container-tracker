@@ -2,6 +2,7 @@ import { A, useLocation } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
+import { toInternalAppPathname } from '~/shared/ui/navigation/app-navigation'
 
 type ExistingInfo = {
   processId?: string
@@ -26,12 +27,8 @@ export function ExistingProcessError(props: Props): JSX.Element {
     const current = loc.pathname || ''
     // compare explicit link first
     if (existing.link) {
-      try {
-        const u = new URL(existing.link, window.location.origin)
-        if (u.pathname === current) return true
-      } catch {
-        // ignore
-      }
+      const linkPathname = toInternalAppPathname(existing.link)
+      if (linkPathname === current) return true
     }
     // compare processId by checking if pathname includes it (handles /shipments/:id)
     if (existing.processId && current.includes(existing.processId)) return true

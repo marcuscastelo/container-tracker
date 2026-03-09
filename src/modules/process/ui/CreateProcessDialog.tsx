@@ -1,8 +1,10 @@
+import { useNavigate } from '@solidjs/router'
 import type { Accessor, JSX, Setter } from 'solid-js'
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import { CreateProcessDialogView } from '~/modules/process/ui/CreateProcessDialog.view'
 import { useTranslation } from '~/shared/localization/i18n'
+import { navigateToAppHref } from '~/shared/ui/navigation/app-navigation'
 import { findDuplicateStrings } from '~/shared/utils/findDuplicateStrings'
 
 type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
@@ -146,6 +148,7 @@ type CreateContainerFeedbackHandlersParams = {
   readonly containerRequiredMessage: Accessor<string>
   readonly duplicateContainerMessage: Accessor<string>
   readonly confirmLoseProgressMessage: Accessor<string>
+  readonly navigateToAppLink: (href: string) => void
 }
 
 type DialogState = {
@@ -564,9 +567,9 @@ function createContainerFeedbackHandlers(params: CreateContainerFeedbackHandlers
     const linkUrl = params.serverErrors()[`container-${container.id}`]?.link
     if (!linkUrl) return
 
-    const shouldNavigate = window.confirm(params.confirmLoseProgressMessage())
+    const shouldNavigate = globalThis.confirm(params.confirmLoseProgressMessage())
     if (shouldNavigate) {
-      window.location.href = linkUrl
+      params.navigateToAppLink(linkUrl)
     }
   }
 
@@ -763,6 +766,7 @@ function createDialogFormMemo(
 }
 
 export function CreateProcessDialog(props: Props): JSX.Element {
+  const navigate = useNavigate()
   const { t, keys } = useTranslation()
   const state = createDialogState()
   const formFieldSetters = asFormFieldSetters(state)
@@ -814,6 +818,12 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     containerRequiredMessage: () => t(keys.createProcess.validation.containerNumberRequired),
     duplicateContainerMessage: () => t(keys.createProcess.validation.duplicateContainer),
     confirmLoseProgressMessage: () => t(keys.createProcess.action.confirmLoseProgress),
+    navigateToAppLink: (href) => {
+      navigateToAppHref({
+        navigate,
+        href,
+      })
+    },
   })
 
   const onContainerBlur = createContainerBlurHandler({
