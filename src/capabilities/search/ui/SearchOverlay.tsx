@@ -1,4 +1,4 @@
-import { useNavigate } from '@solidjs/router'
+import { useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js'
 import { fetchSearchResults } from '~/capabilities/search/ui/fetchSearch'
@@ -9,11 +9,16 @@ import {
   type SearchResultItemVm,
   type SearchUiState,
 } from '~/capabilities/search/ui/search.vm'
+import { prefetchProcessDetail } from '~/modules/process/ui/fetchProcess'
+import { useTranslation } from '~/shared/localization/i18n'
+import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
 
 const SEARCH_DEBOUNCE_MS = 180
 
 export function SearchOverlay(): JSX.Element {
+  const { locale } = useTranslation()
   const navigate = useNavigate()
+  const preloadRoute = usePreloadRoute()
 
   const [isOpen, setIsOpen] = createSignal(false)
   const [query, setQuery] = createSignal('')
@@ -121,8 +126,20 @@ export function SearchOverlay(): JSX.Element {
     }),
   )
 
+  const prefetchResultIntent = (processId: string) => {
+    prefetchProcessIntent({
+      processId,
+      preloadRoute,
+      preloadData: () => prefetchProcessDetail(processId, locale()),
+    })
+  }
+
   const navigateToResult = (item: SearchResultItemVm) => {
-    navigate(`/shipments/${item.processId}`)
+    prefetchResultIntent(item.processId)
+    navigateToProcess({
+      navigate,
+      processId: item.processId,
+    })
     close()
   }
 
@@ -165,7 +182,13 @@ export function SearchOverlay(): JSX.Element {
       onQueryInput={setQuery}
       onInputKeyDown={handleInputKeyDown}
       onSelectResult={navigateToResult}
-      onHoverIndex={setActiveIndex}
+      onHoverIndex={(index) => {
+        setActiveIndex(index)
+        const item = results()[index]
+        if (item) {
+          prefetchResultIntent(item.processId)
+        }
+      }}
       setInputRef={(element) => {
         inputRef = element
       }}

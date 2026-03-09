@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from '@solidjs/router'
+import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, onMount, Show } from 'solid-js'
 import {
@@ -11,6 +11,7 @@ import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardM
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
 import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
+import { prefetchProcessDetail } from '~/modules/process/ui/fetchProcess'
 import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
@@ -71,7 +72,7 @@ import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
-import { navigateToProcess } from '~/shared/ui/navigation/app-navigation'
+import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
 
 function toPathWithSearch(pathname: string, searchParams: URLSearchParams): string {
   const nextQuery = searchParams.toString()
@@ -126,9 +127,10 @@ function hydrateDashboardQueryState(params: {
 
 // eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { locale, t, keys } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
+  const preloadRoute = usePreloadRoute()
   const [processes, { refetch: refetchProcesses }] = createResource(() =>
     fetchDashboardProcessSummaries(),
   )
@@ -223,6 +225,14 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     navigateToProcess({
       navigate,
       processId,
+    })
+  }
+
+  const handleProcessIntent = (processId: string) => {
+    prefetchProcessIntent({
+      processId,
+      preloadRoute,
+      preloadData: () => prefetchProcessDetail(processId, locale()),
     })
   }
 
@@ -358,6 +368,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             onSortToggle={handleSortToggle}
             onProcessSync={handleProcessSync}
             onOpenProcess={handleOpenProcess}
+            onProcessIntent={handleProcessIntent}
           />
         </main>
       </div>

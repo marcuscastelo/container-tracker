@@ -35,6 +35,7 @@ type Props = {
   readonly onSortToggle: (field: DashboardSortField) => void
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
+  readonly onProcessIntent: (processId: string) => void
 }
 
 type RowProps = {
@@ -42,6 +43,7 @@ type RowProps = {
   readonly index: number
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
+  readonly onProcessIntent: (processId: string) => void
 }
 
 type TableRowsProps = {
@@ -50,6 +52,7 @@ type TableRowsProps = {
   readonly onSortToggle: (field: DashboardSortField) => void
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
+  readonly onProcessIntent: (processId: string) => void
 }
 
 type SortHeaderProps = {
@@ -254,6 +257,10 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   }
 
   const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
+  const triggerProcessIntent = () => {
+    props.onProcessIntent(props.process.id)
+  }
+
   const openProcess = () => {
     props.onOpenProcess(props.process.id)
   }
@@ -303,6 +310,9 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 cursor-pointer ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
+      onPointerEnter={triggerProcessIntent}
+      onFocusIn={triggerProcessIntent}
+      onPointerDown={triggerProcessIntent}
     >
       {/* Process — visual anchor */}
       <div class="overflow-hidden px-3 py-2">
@@ -310,13 +320,23 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
           href={processHref()}
           class="text-md-ui font-semibold text-slate-900 hover:text-blue-700 hover:underline whitespace-nowrap truncate block"
           onClick={handleProcessLinkClick}
+          onPointerEnter={triggerProcessIntent}
+          onFocusIn={triggerProcessIntent}
+          onPointerDown={triggerProcessIntent}
         >
           {displayProcessRef(props.process)}
         </A>
       </div>
       {/* Route — secondary */}
       <div class="overflow-hidden px-3 py-2">
-        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+        <A
+          href={processHref()}
+          class="block"
+          onClick={handleProcessLinkClick}
+          onPointerEnter={triggerProcessIntent}
+          onFocusIn={triggerProcessIntent}
+          onPointerDown={triggerProcessIntent}
+        >
           <div class="flex items-center gap-1 text-xs-ui text-slate-500 leading-tight">
             <span class="truncate">{route().origin}</span>
             <ArrowIcon />
@@ -329,7 +349,14 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </div>
       {/* Status */}
       <div class="px-3 py-2 text-center">
-        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+        <A
+          href={processHref()}
+          class="block"
+          onClick={handleProcessLinkClick}
+          onPointerEnter={triggerProcessIntent}
+          onFocusIn={triggerProcessIntent}
+          onPointerDown={triggerProcessIntent}
+        >
           <StatusBadge
             variant={props.process.status}
             label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
@@ -338,7 +365,14 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </div>
       {/* ETA — emphasis by exception */}
       <div class="px-3 py-2 text-center">
-        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+        <A
+          href={processHref()}
+          class="block"
+          onClick={handleProcessLinkClick}
+          onPointerEnter={triggerProcessIntent}
+          onFocusIn={triggerProcessIntent}
+          onPointerDown={triggerProcessIntent}
+        >
           <Show
             when={props.process.eta}
             fallback={<span class="text-xs-ui text-slate-300">—</span>}
@@ -362,7 +396,14 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </div>
       {/* Alerts — compact icon + count with tooltip */}
       <div class="px-3 py-2 text-center">
-        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+        <A
+          href={processHref()}
+          class="block"
+          onClick={handleProcessLinkClick}
+          onPointerEnter={triggerProcessIntent}
+          onFocusIn={triggerProcessIntent}
+          onPointerDown={triggerProcessIntent}
+        >
           <Show
             when={dominantSeverity() !== 'none'}
             fallback={
@@ -455,6 +496,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
               index={i()}
               onProcessSync={props.onProcessSync}
               onOpenProcess={props.onOpenProcess}
+              onProcessIntent={props.onProcessIntent}
             />
           )}
         </For>
@@ -512,6 +554,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
         onSortToggle={props.onSortToggle}
         onProcessSync={props.onProcessSync}
         onOpenProcess={props.onOpenProcess}
+        onProcessIntent={props.onProcessIntent}
       />
     )
   }
