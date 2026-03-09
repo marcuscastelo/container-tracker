@@ -45,7 +45,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
       <div class="grid gap-2 lg:grid-cols-3">
         <div class="space-y-3 lg:col-span-2">
-          <div class="sticky top-0 z-50">
+          <div class=" ">
             <AlertsPanel
               activeAlerts={props.activeAlerts}
               archivedAlerts={props.archivedAlerts}
