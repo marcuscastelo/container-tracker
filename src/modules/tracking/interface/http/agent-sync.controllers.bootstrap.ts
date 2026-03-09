@@ -1,5 +1,6 @@
 import { z } from 'zod/v4'
 
+import { bootstrapAgentMonitoringModule } from '~/modules/agent/infrastructure/bootstrap/agent.bootstrap'
 import { containerUseCases } from '~/modules/container/infrastructure/bootstrap/container.bootstrap'
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 import {
@@ -18,11 +19,9 @@ import {
 } from '~/shared/supabase/unwrapSupabaseResult'
 
 const { trackingUseCases } = bootstrapTrackingModule()
+const { agentMonitoringUseCases } = bootstrapAgentMonitoringModule()
 
 const SyncRequestRowsSchema = z.array(SyncRequestRowSchema)
-const AgentAuthRowSchema = z.object({
-  tenant_id: z.string().uuid(),
-})
 
 function parseSyncRequestRows(raw: unknown): readonly SyncRequestRow[] {
   return SyncRequestRowsSchema.parse(raw)
@@ -144,24 +143,37 @@ export function bootstrapAgentSyncControllers(): AgentSyncControllers {
     },
 
     async authenticateAgentToken({ token }) {
+      return agentMonitoringUseCases.authenticateAgentToken({ token })
+    },
+
+    async getTenantQueueLagSeconds({ tenantId }) {
       const result = await supabaseServer
-        .from('tracking_agents')
-        .select('tenant_id')
-        .eq('agent_token', token)
-        .is('revoked_at', null)
+        .from('sync_requests')
+        .select('created_at')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle()
 
       const data = unwrapSupabaseSingleOrNull(result, {
-        operation: 'authenticate_agent_token',
-        table: 'tracking_agents',
+        operation: 'getTenantQueueLagSeconds',
+        table: 'sync_requests',
       })
 
-      if (!data) return null
-      const row = AgentAuthRowSchema.parse(data)
+      if (!data?.created_at) return null
+      const createdAt = new Date(data.created_at)
+      if (Number.isNaN(createdAt.getTime())) return null
 
-      return {
-        tenantId: row.tenant_id,
-      }
+      return Math.max(0, Math.floor((Date.now() - createdAt.getTime()) / 1000))
+    },
+
+    async updateAgentRuntimeState(command) {
+      await agentMonitoringUseCases.updateRuntimeState(command)
+    },
+
+    async recordAgentActivity(command) {
+      await agentMonitoringUseCases.recordActivity(command)
     },
     leaseMinutes: serverEnv.AGENT_LEASE_MINUTES,
   })

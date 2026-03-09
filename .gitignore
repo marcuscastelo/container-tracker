@@ -12,3 +12,4 @@ marucs-src/
 .ralph-loop/
 .agent-runtime/
 .playwright-mcp/
+supabase/.temp/

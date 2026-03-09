@@ -74,6 +74,15 @@ export type AgentEnrollControllersDeps = {
     readonly agentVersion: string
   }) => Promise<EnrolledAgentRecord>
   readonly emitAuditEvent: (event: AgentEnrollAuditEvent) => Promise<void>
+  readonly recordAgentActivity: (command: {
+    readonly agentId: string
+    readonly tenantId: string
+    readonly type: 'ENROLLED'
+    readonly message: string
+    readonly severity: 'success'
+    readonly metadata: Record<string, unknown>
+    readonly occurredAt?: string
+  }) => Promise<void>
   readonly isRateLimited: (command: { readonly ipAddress: string }) => boolean
   readonly generateAgentToken?: () => string
 }
@@ -168,6 +177,21 @@ async function emitAuditEventSafely(
       hostname: event.hostname,
       ipAddress: event.ipAddress,
       reason: event.reason,
+      error,
+    })
+  }
+}
+
+async function recordAgentActivitySafely(
+  deps: AgentEnrollControllersDeps,
+  command: Parameters<AgentEnrollControllersDeps['recordAgentActivity']>[0],
+): Promise<void> {
+  try {
+    await deps.recordAgentActivity(command)
+  } catch (error) {
+    console.error('[agent-enroll] failed to persist enrollment activity', {
+      agentId: command.agentId,
+      tenantId: command.tenantId,
       error,
     })
   }
@@ -290,6 +314,19 @@ export function createAgentEnrollControllers(deps: AgentEnrollControllersDeps) {
           })
 
       const response = toAgentEnrollResponse(enrolledAgent)
+      await recordAgentActivitySafely(deps, {
+        agentId: enrolledAgent.id,
+        tenantId: installerAuth.tenantId,
+        type: 'ENROLLED',
+        message: `Agent enrolled (${requestBody.hostname})`,
+        severity: 'success',
+        metadata: {
+          hostname: requestBody.hostname,
+          machineFingerprint: requestBody.machineFingerprint,
+          os: requestBody.os,
+          agentVersion: requestBody.agentVersion,
+        },
+      })
       await emitAuditEventSafely(deps, {
         eventType: 'ENROLL_SUCCESS',
         statusCode: 200,

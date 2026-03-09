@@ -345,15 +345,66 @@ export type Database = {
         }
         Relationships: []
       }
+      tracking_agent_activity_events: {
+        Row: {
+          agent_id: string
+          created_at: string
+          event_type: string
+          id: string
+          message: string
+          metadata: Json
+          occurred_at: string
+          severity: string
+          tenant_id: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          message: string
+          metadata?: Json
+          occurred_at?: string
+          severity?: string
+          tenant_id: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string
+          metadata?: Json
+          occurred_at?: string
+          severity?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_agent_activity_events_agent_id_fkey'
+            columns: ['agent_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_agents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       tracking_agents: {
         Row: {
+          active_jobs: number
           agent_token: string
           agent_version: string
+          capabilities: Json
           created_at: string
+          enrolled_at: string
+          enrollment_method: string
           hostname: string
           id: string
           interval_sec: number
           last_enrolled_at: string
+          last_error: string | null
+          last_seen_at: string | null
+          lease_health: string
           machine_fingerprint: string
           maersk_enabled: boolean
           maersk_headless: boolean
@@ -361,20 +412,32 @@ export type Database = {
           maersk_user_data_dir: string | null
           max_concurrent: number
           os: string
+          processing_state: string
+          queue_lag_seconds: number | null
+          realtime_state: string
           revoked_at: string | null
+          status: string
           supabase_anon_key: string | null
           supabase_url: string | null
           tenant_id: string
+          token_id_masked: string | null
           updated_at: string
         }
         Insert: {
+          active_jobs?: number
           agent_token: string
           agent_version: string
+          capabilities?: Json
           created_at?: string
+          enrolled_at?: string
+          enrollment_method?: string
           hostname: string
           id?: string
           interval_sec?: number
           last_enrolled_at?: string
+          last_error?: string | null
+          last_seen_at?: string | null
+          lease_health?: string
           machine_fingerprint: string
           maersk_enabled?: boolean
           maersk_headless?: boolean
@@ -382,20 +445,32 @@ export type Database = {
           maersk_user_data_dir?: string | null
           max_concurrent?: number
           os: string
+          processing_state?: string
+          queue_lag_seconds?: number | null
+          realtime_state?: string
           revoked_at?: string | null
+          status?: string
           supabase_anon_key?: string | null
           supabase_url?: string | null
           tenant_id: string
+          token_id_masked?: string | null
           updated_at?: string
         }
         Update: {
+          active_jobs?: number
           agent_token?: string
           agent_version?: string
+          capabilities?: Json
           created_at?: string
+          enrolled_at?: string
+          enrollment_method?: string
           hostname?: string
           id?: string
           interval_sec?: number
           last_enrolled_at?: string
+          last_error?: string | null
+          last_seen_at?: string | null
+          lease_health?: string
           machine_fingerprint?: string
           maersk_enabled?: boolean
           maersk_headless?: boolean
@@ -403,10 +478,15 @@ export type Database = {
           maersk_user_data_dir?: string | null
           max_concurrent?: number
           os?: string
+          processing_state?: string
+          queue_lag_seconds?: number | null
+          realtime_state?: string
           revoked_at?: string | null
+          status?: string
           supabase_anon_key?: string | null
           supabase_url?: string | null
           tenant_id?: string
+          token_id_masked?: string | null
           updated_at?: string
         }
         Relationships: []
