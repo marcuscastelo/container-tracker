@@ -1,6 +1,6 @@
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertMessageContract } from '~/modules/tracking/application/projection/tracking.alert-message-contract.mapper'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { TrackingAlertMessageContract } from '~/modules/tracking/domain/model/trackingAlert'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
@@ -15,48 +15,6 @@ import type {
  *
  * This is the only place that shapes alert display data for the HTTP boundary.
  */
-function toAlertMessageContractDto(
-  alert: TrackingAlertDisplayReadModel,
-): TrackingAlertMessageContract {
-  switch (alert.message_key) {
-    case 'alerts.transshipmentDetected':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-    case 'alerts.customsHoldDetected':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-    case 'alerts.noMovementDetected':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-    case 'alerts.etaMissing':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-    case 'alerts.etaPassed':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-    case 'alerts.portChange':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-    case 'alerts.dataInconsistent':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
-  }
-}
-
 export function toAlertResponseDto(alert: TrackingAlertDisplayReadModel): AlertResponseDto {
   return {
     id: alert.id,
@@ -64,7 +22,7 @@ export function toAlertResponseDto(alert: TrackingAlertDisplayReadModel): AlertR
     category: alert.category,
     type: alert.type,
     severity: alert.severity,
-    ...toAlertMessageContractDto(alert),
+    ...toTrackingAlertMessageContract(alert),
     detected_at: alert.detected_at,
     triggered_at: alert.triggered_at,
     retroactive: alert.retroactive,

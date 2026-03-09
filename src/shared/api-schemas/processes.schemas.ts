@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
 
@@ -76,70 +77,7 @@ const ObservationResponseSchema = z.object({
   created_at: z.string(),
 })
 
-/**
- * Tracking alert shape as returned in the API.
- * Maps from the tracking domain TrackingAlert.
- */
-const EmptyMessageParamsSchema = z.object({}).strict()
-
-const TrackingAlertResponseBaseSchema = z.object({
-  id: z.string(),
-  container_number: z.string(),
-  category: z.string(),
-  type: z.string(),
-  severity: z.string(),
-  detected_at: z.string(),
-  triggered_at: z.string(),
-  retroactive: z.boolean(),
-  provider: z.string().nullable(),
-  acked_at: z.string().nullable(),
-})
-
-const TrackingAlertResponseSchema = z.discriminatedUnion('message_key', [
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.transshipmentDetected'),
-    message_params: z
-      .object({
-        port: z.string(),
-        fromVessel: z.string(),
-        toVessel: z.string(),
-      })
-      .strict(),
-  }),
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.customsHoldDetected'),
-    message_params: z
-      .object({
-        location: z.string(),
-      })
-      .strict(),
-  }),
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.noMovementDetected'),
-    message_params: z
-      .object({
-        days: z.number(),
-        lastEventDate: z.string(),
-      })
-      .strict(),
-  }),
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.etaMissing'),
-    message_params: EmptyMessageParamsSchema,
-  }),
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.etaPassed'),
-    message_params: EmptyMessageParamsSchema,
-  }),
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.portChange'),
-    message_params: EmptyMessageParamsSchema,
-  }),
-  TrackingAlertResponseBaseSchema.extend({
-    message_key: z.literal('alerts.dataInconsistent'),
-    message_params: EmptyMessageParamsSchema,
-  }),
-])
+const TrackingAlertResponseSchema = AlertResponseDtoSchema
 
 const OperationalEtaResponseSchema = z.object({
   event_time: z.string(),

@@ -19,6 +19,7 @@ import {
   type TrackingAlertDisplaySource,
   toTrackingAlertDisplayReadModels,
 } from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertMessageContract } from '~/modules/tracking/application/projection/tracking.alert-message-contract.mapper'
 import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
@@ -229,53 +230,13 @@ function toObservationResponse(obs: TrackingObservationRecord) {
 }
 
 function toTrackingAlertResponse(a: TrackingAlertDisplayReadModel) {
-  const messageContract = (() => {
-    switch (a.message_key) {
-      case 'alerts.transshipmentDetected':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-      case 'alerts.customsHoldDetected':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-      case 'alerts.noMovementDetected':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-      case 'alerts.etaMissing':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-      case 'alerts.etaPassed':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-      case 'alerts.portChange':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-      case 'alerts.dataInconsistent':
-        return {
-          message_key: a.message_key,
-          message_params: a.message_params,
-        }
-    }
-  })()
-
   return {
     id: a.id,
     container_number: a.container_number,
     category: a.category,
     type: a.type,
     severity: a.severity,
-    ...messageContract,
+    ...toTrackingAlertMessageContract(a),
     detected_at: a.detected_at,
     triggered_at: a.triggered_at,
     retroactive: a.retroactive,
