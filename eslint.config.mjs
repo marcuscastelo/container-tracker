@@ -63,6 +63,72 @@ const uiCoreRestrictedPatterns = [
   },
 ]
 
+const trackingInterpretationRestrictedPaths = [
+  {
+    name: '~/modules/tracking/domain/derive/deriveTimeline',
+    importNames: ['deriveTimeline'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/features/timeline/domain/derive/deriveTimeline',
+    importNames: ['deriveTimeline'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/domain/derive/deriveStatus',
+    importNames: ['deriveStatus'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/features/status/domain/derive/deriveStatus',
+    importNames: ['deriveStatus'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/domain/derive/deriveAlerts',
+    importNames: ['deriveAlerts'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/features/alerts/domain/derive/deriveAlerts',
+    importNames: ['deriveAlerts'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/application/projection/tracking.series.classification',
+    importNames: ['classifyTrackingSeries'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+  {
+    name: '~/modules/tracking/features/series/application/projection/tracking.series.classification',
+    importNames: ['classifyTrackingSeries'],
+    message:
+      'Tracking interpretation must stay inside src/modules/tracking/**. Consume tracking read-model outputs instead.',
+  },
+]
+
+const trackingReadModelRestrictedPaths = [
+  {
+    name: '~/modules/tracking/application/projection/tracking.timeline.readmodel',
+    importNames: ['deriveTimelineWithSeriesReadModel'],
+    message:
+      'UI must not derive timeline semantics; consume timeline read-model output from backend responses.',
+  },
+  {
+    name: '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel',
+    importNames: ['deriveTimelineWithSeriesReadModel'],
+    message:
+      'UI must not derive timeline semantics; consume timeline read-model output from backend responses.',
+  },
+]
+
 // biome-ignore lint/style/noDefaultExport: ESLint configs use default exports
 export default [
   // Ignore build/output folders from linting
@@ -118,6 +184,31 @@ export default [
                 'API routes must use capability interface/http adapters instead of internal layers.',
             },
           ],
+          paths: trackingInterpretationRestrictedPaths,
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/routes/**/*.{ts,tsx}'],
+    ignores: ['src/routes/api/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: trackingInterpretationRestrictedPaths,
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/shared/**/*.{ts,tsx}'],
+    ignores: ['src/shared/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: trackingInterpretationRestrictedPaths,
         },
       ],
     },
@@ -139,7 +230,10 @@ export default [
     },
   },
   {
-    files: ['src/modules/*/application/**/*.{ts,tsx}'],
+    files: [
+      'src/modules/*/application/**/*.{ts,tsx}',
+      'src/modules/*/features/*/application/**/*.{ts,tsx}',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -161,7 +255,34 @@ export default [
   },
   {
     files: [
+      'src/modules/*/application/**/*.{ts,tsx}',
+      'src/modules/*/features/*/application/**/*.{ts,tsx}',
+    ],
+    ignores: ['src/modules/tracking/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['~/shared/ui/**'],
+              message: 'Application layer must not import UI types/components from shared/ui.',
+            },
+            {
+              group: ['~/shared/api-schemas/**'],
+              message:
+                'Application layer must not depend on HTTP DTO schemas from shared/api-schemas.',
+            },
+          ],
+          paths: trackingInterpretationRestrictedPaths,
+        },
+      ],
+    },
+  },
+  {
+    files: [
       'src/modules/*/ui/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/**/*.{ts,tsx}',
       'src/capabilities/*/ui/**/*.{ts,tsx}',
       'src/shared/ui/**/*.{ts,tsx}',
     ],
@@ -175,7 +296,11 @@ export default [
     },
   },
   {
-    files: ['src/modules/*/ui/components/**/*.{ts,tsx}', 'src/shared/ui/**/*.{ts,tsx}'],
+    files: [
+      'src/modules/*/ui/components/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/components/**/*.{ts,tsx}',
+      'src/shared/ui/**/*.{ts,tsx}',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -212,6 +337,11 @@ export default [
       'src/modules/*/ui/pages/**/*.{ts,tsx}',
       'src/modules/*/ui/*View.tsx',
       'src/modules/*/ui/*Dialog.tsx',
+      'src/modules/*/features/*/ui/screens/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/routes/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/pages/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/*View.tsx',
+      'src/modules/*/features/*/ui/*Dialog.tsx',
       'src/capabilities/*/ui/screens/**/*.{ts,tsx}',
       'src/capabilities/*/ui/routes/**/*.{ts,tsx}',
       'src/capabilities/*/ui/pages/**/*.{ts,tsx}',
@@ -243,6 +373,7 @@ export default [
   {
     files: [
       'src/modules/*/ui/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/**/*.{ts,tsx}',
       'src/capabilities/*/ui/**/*.{ts,tsx}',
       'src/shared/ui/**/*.{ts,tsx}',
     ],
@@ -253,6 +384,7 @@ export default [
   {
     files: [
       'src/modules/*/ui/**/*.tsx',
+      'src/modules/*/features/*/ui/**/*.tsx',
       'src/capabilities/*/ui/**/*.tsx',
       'src/shared/ui/**/*.tsx',
     ],
@@ -279,12 +411,13 @@ export default [
                 'Capabilities must not import module infrastructure directly; compose through application contracts.',
             },
           ],
+          paths: trackingInterpretationRestrictedPaths,
         },
       ],
     },
   },
   {
-    files: ['src/modules/*/domain/**/*.{ts,tsx}'],
+    files: ['src/modules/*/domain/**/*.{ts,tsx}', 'src/modules/*/features/*/domain/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -311,28 +444,17 @@ export default [
   {
     files: [
       'src/modules/*/ui/**/*.{ts,tsx}',
+      'src/modules/*/features/*/ui/**/*.{ts,tsx}',
       'src/capabilities/*/ui/**/*.{ts,tsx}',
       'src/shared/ui/**/*.{ts,tsx}',
     ],
+    ignores: ['src/modules/tracking/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: uiCoreRestrictedPatterns,
-          paths: [
-            {
-              name: '~/modules/tracking/application/projection/tracking.timeline.readmodel',
-              importNames: ['deriveTimelineWithSeriesReadModel'],
-              message:
-                'UI must not derive timeline semantics; consume timeline read-model output from backend responses.',
-            },
-            {
-              name: '~/modules/tracking/application/projection/tracking.series.classification',
-              importNames: ['classifyTrackingSeries'],
-              message:
-                'UI must not classify tracking series; consume classified series from tracking read models.',
-            },
-          ],
+          paths: [...trackingReadModelRestrictedPaths, ...trackingInterpretationRestrictedPaths],
         },
       ],
     },
