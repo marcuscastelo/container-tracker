@@ -82,3 +82,5 @@ References
 
 Output format (required)
 : The agent must return a plain Markdown snippet starting with `Title:` on a single line, a blank line, then `Body:` and the full PR body. Do not output any internal generation notes.
+
+Remember to use 4 backticks for code blocks in the output (so that it is copyable), and ensure the final output is clean and ready to be used as a PR draft.
