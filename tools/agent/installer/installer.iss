@@ -39,12 +39,18 @@ Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "boot
 [Run]
 Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1"""""""; Flags: runhidden waituntilterminated
 Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1"""""""; Flags: runhidden waituntilterminated
-Filename: "schtasks.exe"; Parameters: "/Run /TN ""{#AgentTaskName}"""; Flags: runhidden waituntilterminated
-Filename: "schtasks.exe"; Parameters: "/Run /TN ""{#UpdaterTaskName}"""; Flags: runhidden waituntilterminated
+Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#AgentTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
+Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#UpdaterTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
 
 [UninstallRun]
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\ContainerTracker\*"
+Type: dirifempty; Name: "{localappdata}\ContainerTracker"
+Type: filesandordirs; Name: "{localappdata}\Programs\ContainerTrackerAgent\*"
+Type: dirifempty; Name: "{localappdata}\Programs\ContainerTrackerAgent"
 
 [Code]
 var
