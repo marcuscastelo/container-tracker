@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod/v4'
 
 import type {
@@ -194,47 +195,82 @@ function resolveManifestsDir(dirFromEnv: string | undefined): string {
   return path.resolve(process.cwd(), normalized)
 }
 
+function appendUniquePath(paths: string[], candidate: string): void {
+  if (paths.includes(candidate)) {
+    return
+  }
+
+  paths.push(candidate)
+}
+
+function resolveManifestsDirCandidates(dirFromEnv: string | undefined): readonly string[] {
+  const configuredDir = normalizeOptionalNonBlank(dirFromEnv) ?? 'agent-manifests'
+
+  if (path.isAbsolute(configuredDir)) {
+    return [configuredDir]
+  }
+
+  const candidates: string[] = [resolveManifestsDir(configuredDir)]
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url))
+
+  let current = moduleDir
+  for (;;) {
+    appendUniquePath(candidates, path.resolve(current, configuredDir))
+    const parent = path.dirname(current)
+    if (parent === current) {
+      break
+    }
+    current = parent
+  }
+
+  return candidates
+}
+
 export function createAgentUpdateManifestService(deps: {
   readonly repository: Pick<AgentMonitoringRepository, 'getAgentDetailForTenant'>
   readonly manifestsDir?: string
   readonly cacheTtlMs?: number
   readonly now?: () => Date
 }) {
-  const manifestsDir = resolveManifestsDir(deps.manifestsDir)
+  const manifestsDirCandidates = resolveManifestsDirCandidates(deps.manifestsDir)
   const cacheTtlMs = deps.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
   const now = deps.now ?? (() => new Date())
   const cacheByChannel = new Map<string, CachedManifest>()
 
   async function readManifestFromDisk(channel: string): Promise<AgentManifestFile | null> {
-    const manifestPath = path.join(manifestsDir, `${channel}.json`)
-    let rawManifest = ''
+    for (const manifestsDir of manifestsDirCandidates) {
+      const manifestPath = path.join(manifestsDir, `${channel}.json`)
+      let rawManifest = ''
 
-    try {
-      rawManifest = await fs.readFile(manifestPath, 'utf8')
-    } catch (error) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 'ENOENT'
-      ) {
-        return null
+      try {
+        rawManifest = await fs.readFile(manifestPath, 'utf8')
+      } catch (error) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          error.code === 'ENOENT'
+        ) {
+          continue
+        }
+
+        continue
       }
 
-      return null
-    }
+      try {
+        const parsedJson: unknown = JSON.parse(rawManifest)
+        const parsedManifest = agentManifestFileSchema.safeParse(parsedJson)
+        if (!parsedManifest.success) {
+          continue
+        }
 
-    try {
-      const parsedJson: unknown = JSON.parse(rawManifest)
-      const parsedManifest = agentManifestFileSchema.safeParse(parsedJson)
-      if (!parsedManifest.success) {
-        return null
+        return parsedManifest.data
+      } catch {
+        continue
       }
-
-      return parsedManifest.data
-    } catch {
-      return null
     }
+
+    return null
   }
 
   async function loadManifestForChannel(channel: string): Promise<AgentManifestFile | null> {

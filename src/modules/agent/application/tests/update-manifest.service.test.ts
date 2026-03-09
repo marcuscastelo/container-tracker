@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { z } from 'zod/v4'
 
 import type {
   AgentMonitoringRecord,
@@ -90,6 +91,10 @@ function writeManifestFile(command: {
 
   fs.writeFileSync(manifestPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
 }
+
+const bundledStableManifestSchema = z.object({
+  version: z.string().min(1),
+})
 
 describe('agent update manifest service', () => {
   it('parses manifest and serves legacy updates when desired_version is equivalent to current', async () => {
@@ -231,5 +236,31 @@ describe('agent update manifest service', () => {
       kind: 'manifest_unavailable',
       channel: 'dev',
     })
+  })
+
+  it('resolves manifests when configured relative path only works from module location', async () => {
+    const repoRoot = process.cwd()
+    const bundledStablePath = path.join(repoRoot, 'agent-manifests', 'stable.json')
+    const bundledStableRaw = fs.readFileSync(bundledStablePath, 'utf8')
+    const bundledStableManifest = bundledStableManifestSchema.parse(JSON.parse(bundledStableRaw))
+
+    const service = createAgentUpdateManifestService({
+      repository: createRepository({
+        ...BASE_RECORD,
+        currentVersion: 'unknown',
+        desiredVersion: null,
+      }),
+      manifestsDir: path.join('..', '..', '..', '..', 'agent-manifests'),
+    })
+
+    const result = await service.resolveForAgent({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+    })
+
+    expect(result.kind).toBe('resolved')
+    if (result.kind !== 'resolved') return
+    expect(result.manifest.version).toBe(bundledStableManifest.version)
+    expect(result.manifest.updateAvailable).toBe(true)
   })
 })
