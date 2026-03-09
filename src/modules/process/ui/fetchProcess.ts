@@ -5,13 +5,16 @@ import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.sche
 
 const PROCESS_PREFETCH_TTL_MS = 15_000
 
+export type FetchProcessMode = 'cache-first' | 'network-only'
+
+type FetchProcessOptions = {
+  readonly mode?: FetchProcessMode
+  readonly dedupeInFlight?: boolean
+}
+
 type ProcessCacheRecord = {
   readonly expiresAtMs: number
   readonly value: ShipmentDetailVM | null
-}
-
-type FetchProcessOptions = {
-  readonly preferCached?: boolean
 }
 
 const processCache = new Map<string, ProcessCacheRecord>()
@@ -78,14 +81,36 @@ async function fetchProcessFromApi(id: string, locale: string): Promise<Shipment
   }
 }
 
-async function fetchProcessAndWriteCache(
+async function loadProcessFromNetwork(
   id: string,
   locale: string,
+  dedupeInFlight = true,
 ): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
-  const value = await fetchProcessFromApi(id, locale)
-  writeCachedProcess(key, value)
-  return value
+
+  // When dedupeInFlight is true we reuse any in-flight request for the same
+  // process/locale key to avoid duplicating network traffic. Callers that
+  // require a canonical post-mutation snapshot should request
+  // dedupeInFlight=false to force an independent network call.
+  if (dedupeInFlight) {
+    const inFlight = inFlightProcessRequests.get(key)
+    if (inFlight) return inFlight
+  }
+
+  const request = fetchProcessFromApi(id, locale)
+    .then((value) => {
+      writeCachedProcess(key, value)
+      return value
+    })
+    .finally(() => {
+      inFlightProcessRequests.delete(key)
+    })
+
+  // Only register the in-flight promise when deduping is enabled so that
+  // callers which forced a fresh network request don't join subsequent
+  // in-flight requests that they intentionally avoided.
+  if (dedupeInFlight) inFlightProcessRequests.set(key, request)
+  return request
 }
 
 async function loadProcessWithCache(id: string, locale: string): Promise<ShipmentDetailVM | null> {
@@ -93,15 +118,7 @@ async function loadProcessWithCache(id: string, locale: string): Promise<Shipmen
   const cached = readFreshCachedProcess(key)
   if (cached !== undefined) return cached
 
-  const inFlight = inFlightProcessRequests.get(key)
-  if (inFlight) return inFlight
-
-  const request = fetchProcessAndWriteCache(id, locale).finally(() => {
-    inFlightProcessRequests.delete(key)
-  })
-
-  inFlightProcessRequests.set(key, request)
-  return request
+  return loadProcessFromNetwork(id, locale)
 }
 
 export async function fetchProcess(
@@ -109,8 +126,13 @@ export async function fetchProcess(
   locale: string = 'en-US',
   options?: FetchProcessOptions,
 ): Promise<ShipmentDetailVM | null> {
-  if (options?.preferCached === false) {
-    return fetchProcessAndWriteCache(id, locale)
+  // By default, network-only callers force a fresh request (no in-flight dedupe)
+  // so post-mutation reads do not race with older in-flight requests.
+  const explicitDedupe = options?.dedupeInFlight
+  const dedupeInFlight = explicitDedupe ?? options?.mode !== 'network-only'
+
+  if (options?.mode === 'network-only') {
+    return loadProcessFromNetwork(id, locale, dedupeInFlight)
   }
 
   return loadProcessWithCache(id, locale)
