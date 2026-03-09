@@ -46,11 +46,25 @@ export function AgentHealthCard(props: Props): JSX.Element {
         <Row label="Realtime">
           <AgentStatusBadge label={props.vm.realtimeLabel} tone={props.vm.realtimeTone} />
         </Row>
+        <Row label="Boot">
+          <span class="text-sm-ui text-slate-700">{props.vm.bootStatusLabel}</span>
+        </Row>
         <Row label="Lease Health">
           <AgentStatusBadge label={props.vm.leaseHealthLabel} tone={props.vm.leaseHealthTone} />
         </Row>
         <Row label="Processing">
           <span class="text-sm-ui text-slate-700">{props.vm.processingStateLabel}</span>
+        </Row>
+        <Row label="Restart Required">
+          <span
+            class={
+              props.vm.restartRequired
+                ? 'text-sm-ui font-semibold text-amber-700'
+                : 'text-sm-ui text-slate-700'
+            }
+          >
+            {props.vm.restartRequired ? 'Yes' : 'No'}
+          </span>
         </Row>
       </div>
     </section>

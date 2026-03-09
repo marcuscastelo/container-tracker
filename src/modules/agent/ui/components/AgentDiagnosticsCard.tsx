@@ -26,6 +26,15 @@ export function AgentDiagnosticsCard(props: Props): JSX.Element {
           )}
         </Show>
 
+        <Show when={props.vm.lastUpdateError}>
+          {(error) => (
+            <div class="mb-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-2">
+              <span class="text-xs-ui font-semibold text-amber-700">Last Update Error</span>
+              <p class="mt-0.5 break-all text-micro text-amber-700">{error()}</p>
+            </div>
+          )}
+        </Show>
+
         {/* Diagnostic flags */}
         <Show
           when={props.vm.diagnosticFlags.length > 0}

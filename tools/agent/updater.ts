@@ -4,6 +4,17 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { appendPendingActivityEvents } from './pending-activity.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { readReleaseState, writeReleaseState } from './release-state.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { writeSupervisorControl } from './supervisor-control.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { fetchUpdateManifest, stageReleaseFromManifest } from './updater.core.ts'
+
 const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 const MAX_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
@@ -15,15 +26,6 @@ function toErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function resolveDotenvPath(): string {
-  const fromEnv = process.env.DOTENV_PATH?.trim()
-  if (fromEnv && fromEnv.length > 0) {
-    return fromEnv
-  }
-
-  return path.win32.join(resolveDataRoot(), 'config.env')
-}
-
 function resolveDataRoot(): string {
   const localAppData = process.env.LOCALAPPDATA?.trim()
   if (localAppData && localAppData.length > 0) {
@@ -31,6 +33,15 @@ function resolveDataRoot(): string {
   }
 
   return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
+}
+
+function resolveDotenvPath(): string {
+  const fromEnv = process.env.DOTENV_PATH?.trim()
+  if (fromEnv && fromEnv.length > 0) {
+    return fromEnv
+  }
+
+  return path.win32.join(resolveDataRoot(), 'config.env')
 }
 
 function resolveLogPath(): string {
@@ -67,19 +78,35 @@ function parseEnvLine(line: string): { readonly key: string; readonly value: str
   }
 }
 
-function loadEnvFile(dotenvPath: string): void {
-  if (!fs.existsSync(dotenvPath)) {
-    throw new Error(`DOTENV_PATH file not found: ${dotenvPath}`)
+function readConfigFromEnvFile(filePath: string): {
+  readonly backendUrl: string
+  readonly agentToken: string
+  readonly agentId: string
+} {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`DOTENV_PATH file not found: ${filePath}`)
   }
 
-  const raw = fs.readFileSync(dotenvPath, 'utf8')
-  for (const line of raw.split(/\r?\n/)) {
+  const raw = fs.readFileSync(filePath, 'utf8')
+  const values = new Map<string, string>()
+  for (const line of raw.split(/\r?\n/u)) {
     const parsed = parseEnvLine(line)
     if (!parsed) continue
+    values.set(parsed.key, parsed.value)
+  }
 
-    if (typeof process.env[parsed.key] === 'undefined') {
-      process.env[parsed.key] = parsed.value
-    }
+  const backendUrl = values.get('BACKEND_URL')?.trim() ?? ''
+  const agentToken = values.get('AGENT_TOKEN')?.trim() ?? ''
+  const agentId = values.get('AGENT_ID')?.trim() ?? os.hostname()
+
+  if (backendUrl.length === 0 || agentToken.length === 0) {
+    throw new Error('config.env must define BACKEND_URL and AGENT_TOKEN for updater execution')
+  }
+
+  return {
+    backendUrl: backendUrl.replace(/\/+$/u, ''),
+    agentToken,
+    agentId: agentId.length > 0 ? agentId : os.hostname(),
   }
 }
 
@@ -148,25 +175,156 @@ function readAgentVersion(startDir: string): string {
     ) {
       return parsed.version
     }
-
-    return 'unknown'
   } catch {
-    return 'unknown'
+    // handled by fallback below
   }
+
+  return 'unknown'
 }
 
-function main(): void {
+async function runUpdater(): Promise<void> {
   const scriptPath = fileURLToPath(import.meta.url)
   const scriptDir = path.dirname(scriptPath)
 
-  try {
-    const dotenvPath = resolveDotenvPath()
-    loadEnvFile(dotenvPath)
+  const dotenvPath = resolveDotenvPath()
+  const config = readConfigFromEnvFile(dotenvPath)
+  const runningVersion = readAgentVersion(scriptDir)
+  const nowIso = new Date().toISOString()
 
-    const version = readAgentVersion(scriptDir)
-    appendLogLine(`[updater] version=${version}`)
-    appendLogLine(`[updater] timestamp=${new Date().toISOString()}`)
-    appendLogLine('[updater] NO UPDATES (stub mode)')
+  const layout = resolveAgentPathLayout()
+  ensureAgentPathLayout(layout)
+
+  let releaseState = readReleaseState(layout.releaseStatePath, runningVersion)
+  appendLogLine(`[updater] version=${runningVersion}`)
+  appendLogLine(`[updater] state=${releaseState.activation_state}`)
+
+  const manifest = await fetchUpdateManifest({
+    backendUrl: config.backendUrl,
+    agentToken: config.agentToken,
+    agentId: config.agentId,
+  })
+
+  appendPendingActivityEvents(layout.pendingActivityPath, [
+    {
+      type: 'UPDATE_CHECKED',
+      message: `Checked update manifest (desired=${manifest.desired_version ?? 'none'})`,
+      severity: 'info',
+      metadata: {
+        version: manifest.version,
+        updateAvailable: manifest.update_available,
+      },
+      occurred_at: nowIso,
+    },
+  ])
+
+  const staged = await stageReleaseFromManifest({
+    manifest,
+    layout,
+    state: releaseState,
+  })
+
+  if (staged.kind === 'no_update') {
+    appendLogLine('[updater] no update available')
+    return
+  }
+
+  if (staged.kind === 'blocked') {
+    releaseState = {
+      ...releaseState,
+      activation_state: 'blocked',
+      last_error: staged.reason,
+      last_update_attempt: nowIso,
+      automatic_updates_blocked: true,
+    }
+    writeReleaseState(layout.releaseStatePath, releaseState)
+    appendPendingActivityEvents(layout.pendingActivityPath, [
+      {
+        type: 'UPDATE_APPLY_FAILED',
+        message: staged.reason,
+        severity: 'danger',
+        metadata: {
+          version: staged.manifest.version,
+        },
+        occurred_at: nowIso,
+      },
+    ])
+    appendLogLine(`[updater] blocked: ${staged.reason}`)
+    return
+  }
+
+  appendPendingActivityEvents(layout.pendingActivityPath, [
+    {
+      type: 'UPDATE_AVAILABLE',
+      message: `Update available: ${staged.manifest.version}`,
+      severity: 'info',
+      metadata: {
+        version: staged.manifest.version,
+        channel: staged.manifest.channel,
+      },
+      occurred_at: nowIso,
+    },
+  ])
+
+  if (staged.downloaded) {
+    appendPendingActivityEvents(layout.pendingActivityPath, [
+      {
+        type: 'UPDATE_DOWNLOAD_STARTED',
+        message: `Downloading release ${staged.manifest.version}`,
+        severity: 'info',
+        metadata: {
+          version: staged.manifest.version,
+          url: staged.manifest.download_url,
+        },
+        occurred_at: nowIso,
+      },
+      {
+        type: 'UPDATE_DOWNLOAD_COMPLETED',
+        message: `Downloaded release ${staged.manifest.version}`,
+        severity: 'success',
+        metadata: {
+          version: staged.manifest.version,
+          checksum: staged.manifest.checksum,
+        },
+        occurred_at: nowIso,
+      },
+    ])
+  }
+
+  releaseState = {
+    ...releaseState,
+    target_version: staged.manifest.version,
+    activation_state: 'pending',
+    last_update_attempt: nowIso,
+    last_error: null,
+    automatic_updates_blocked: false,
+  }
+  writeReleaseState(layout.releaseStatePath, releaseState)
+
+  writeSupervisorControl(layout.supervisorControlPath, {
+    drain_requested: true,
+    reason: 'update',
+    requested_at: nowIso,
+  })
+
+  appendPendingActivityEvents(layout.pendingActivityPath, [
+    {
+      type: 'UPDATE_READY',
+      message: `Release ${staged.manifest.version} is staged and pending activation`,
+      severity: 'success',
+      metadata: {
+        version: staged.manifest.version,
+        releaseDir: staged.releaseDir,
+      },
+      occurred_at: nowIso,
+    },
+  ])
+
+  appendLogLine(`[updater] staged version ${staged.manifest.version}`)
+}
+
+async function main(): Promise<void> {
+  try {
+    await runUpdater()
     process.exit(0)
   } catch (error) {
     appendLogLine(`[updater] failed: ${toErrorMessage(error)}`)
@@ -174,4 +332,4 @@ function main(): void {
   }
 }
 
-main()
+void main()

@@ -3,11 +3,13 @@ import type { z } from 'zod/v4'
 import {
   AgentDetailResponseSchema,
   AgentListResponseSchema,
+  AgentRequestOperationResponseSchema,
 } from '~/modules/agent/interface/http/agent-monitoring.schemas'
 import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
 
 type AgentListResponseDto = z.infer<typeof AgentListResponseSchema>
 type AgentDetailResponseDto = z.infer<typeof AgentDetailResponseSchema>
+type AgentRequestOperationDto = z.infer<typeof AgentRequestOperationResponseSchema>
 
 export type AgentSummaryPayload = AgentListResponseDto['agents'][number]
 export type AgentFleetSummary = AgentListResponseDto['summary']
@@ -68,4 +70,41 @@ export async function fetchAgentDetail(agentId: string): Promise<AgentDetailPayl
     }
     throw error
   }
+}
+
+export async function requestAgentUpdate(command: {
+  readonly agentId: string
+  readonly desiredVersion: string
+  readonly updateChannel?: string
+}): Promise<AgentRequestOperationDto> {
+  return typedFetch(
+    `/api/agents/${command.agentId}/request-update`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        desired_version: command.desiredVersion,
+        update_channel: command.updateChannel ?? 'stable',
+      }),
+    },
+    AgentRequestOperationResponseSchema,
+  )
+}
+
+export async function requestAgentRestart(command: {
+  readonly agentId: string
+}): Promise<AgentRequestOperationDto> {
+  return typedFetch(
+    `/api/agents/${command.agentId}/request-restart`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    },
+    AgentRequestOperationResponseSchema,
+  )
 }

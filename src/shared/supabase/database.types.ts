@@ -394,8 +394,11 @@ export type Database = {
           active_jobs: number
           agent_token: string
           agent_version: string
+          boot_status: string
           capabilities: Json
           created_at: string
+          current_version: string
+          desired_version: string | null
           enrolled_at: string
           enrollment_method: string
           hostname: string
@@ -415,20 +418,29 @@ export type Database = {
           processing_state: string
           queue_lag_seconds: number | null
           realtime_state: string
+          restart_requested_at: string | null
           revoked_at: string | null
           status: string
           supabase_anon_key: string | null
           supabase_url: string | null
           tenant_id: string
           token_id_masked: string | null
+          update_channel: string
+          update_ready_version: string | null
           updated_at: string
+          updater_last_checked_at: string | null
+          updater_last_error: string | null
+          updater_state: string
         }
         Insert: {
           active_jobs?: number
           agent_token: string
           agent_version: string
+          boot_status?: string
           capabilities?: Json
           created_at?: string
+          current_version?: string
+          desired_version?: string | null
           enrolled_at?: string
           enrollment_method?: string
           hostname: string
@@ -448,20 +460,29 @@ export type Database = {
           processing_state?: string
           queue_lag_seconds?: number | null
           realtime_state?: string
+          restart_requested_at?: string | null
           revoked_at?: string | null
           status?: string
           supabase_anon_key?: string | null
           supabase_url?: string | null
           tenant_id: string
           token_id_masked?: string | null
+          update_channel?: string
+          update_ready_version?: string | null
           updated_at?: string
+          updater_last_checked_at?: string | null
+          updater_last_error?: string | null
+          updater_state?: string
         }
         Update: {
           active_jobs?: number
           agent_token?: string
           agent_version?: string
+          boot_status?: string
           capabilities?: Json
           created_at?: string
+          current_version?: string
+          desired_version?: string | null
           enrolled_at?: string
           enrollment_method?: string
           hostname?: string
@@ -481,13 +502,19 @@ export type Database = {
           processing_state?: string
           queue_lag_seconds?: number | null
           realtime_state?: string
+          restart_requested_at?: string | null
           revoked_at?: string | null
           status?: string
           supabase_anon_key?: string | null
           supabase_url?: string | null
           tenant_id?: string
           token_id_masked?: string | null
+          update_channel?: string
+          update_ready_version?: string | null
           updated_at?: string
+          updater_last_checked_at?: string | null
+          updater_last_error?: string | null
+          updater_state?: string
         }
         Relationships: []
       }

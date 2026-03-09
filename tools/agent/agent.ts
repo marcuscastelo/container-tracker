@@ -20,6 +20,22 @@ import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-re
 import { createAgentScheduler } from './agent.scheduler.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { computeBackoffDelayMs } from './backoff.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { drainPendingActivityEvents } from './pending-activity.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { readReleaseState, writeReleaseState } from './release-state.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { writeRuntimeHealth } from './runtime-health.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import type { AgentPathLayout } from './runtime-paths.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+// biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
+import * as runtimePaths from './runtime-paths.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+// biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
+import * as supervisorControl from './supervisor-control.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { fetchUpdateManifest, stageReleaseFromManifest } from './updater.core.ts'
 
 const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 
@@ -212,6 +228,8 @@ const PLACEHOLDER_BACKEND_HOST = 'your-backend.example.com'
 const PLACEHOLDER_SUPABASE_HOST = 'your-project.supabase.co'
 const PLACEHOLDER_TOKEN_FRAGMENT = 'replace-with-'
 const PLACEHOLDER_TENANT_ID = '00000000-0000-4000-8000-000000000000'
+const EXIT_CODE_RESTART_FOR_UPDATE = 42
+const UPDATE_CHECK_INTERVAL_MS = 60_000
 
 function resolveUrlHost(value: string): string | null {
   try {
@@ -382,6 +400,11 @@ function resolveMachineFingerprint(hostname: string): string {
 }
 
 function resolveAgentVersion(): string {
+  const activeReleaseVersion = normalizeOptionalEnv(process.env.AGENT_ACTIVE_RELEASE_VERSION)
+  if (activeReleaseVersion) {
+    return activeReleaseVersion
+  }
+
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const candidatePaths = [
     path.resolve(scriptDir, '../../package.json'),
@@ -626,6 +649,18 @@ type AgentRealtimeState = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CONNECTING' | 'DISCO
 type AgentProcessingState = 'idle' | 'leasing' | 'processing' | 'backing_off' | 'unknown'
 type AgentLeaseHealth = 'healthy' | 'stale' | 'conflict' | 'unknown'
 type AgentActivitySeverity = 'info' | 'warning' | 'danger' | 'success'
+type AgentBootStatus = 'starting' | 'healthy' | 'degraded' | 'unknown'
+type AgentUpdateState =
+  | 'idle'
+  | 'checking'
+  | 'downloading'
+  | 'ready'
+  | 'draining'
+  | 'applying'
+  | 'rollback'
+  | 'blocked'
+  | 'error'
+  | 'unknown'
 type AgentActivityType =
   | 'ENROLLED'
   | 'HEARTBEAT'
@@ -635,6 +670,15 @@ type AgentActivityType =
   | 'REALTIME_SUBSCRIBED'
   | 'REALTIME_CHANNEL_ERROR'
   | 'LEASE_CONFLICT'
+  | 'UPDATE_CHECKED'
+  | 'UPDATE_AVAILABLE'
+  | 'UPDATE_DOWNLOAD_STARTED'
+  | 'UPDATE_DOWNLOAD_COMPLETED'
+  | 'UPDATE_READY'
+  | 'UPDATE_APPLY_STARTED'
+  | 'UPDATE_APPLY_FAILED'
+  | 'RESTART_FOR_UPDATE'
+  | 'ROLLBACK_EXECUTED'
 
 type AgentRuntimeActivity = {
   readonly type: AgentActivityType
@@ -651,6 +695,12 @@ type AgentRuntimeState = {
   activeJobs: number
   queueLagSeconds: number | null
   lastError: string | null
+  bootStatus: AgentBootStatus
+  updateState: AgentUpdateState
+  desiredVersion: string | null
+  updateReadyVersion: string | null
+  restartRequestedAt: string | null
+  updaterLastCheckedAt: string | null
 }
 
 function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
@@ -677,7 +727,7 @@ async function sendHeartbeat(command: {
   readonly state: AgentRuntimeState
   readonly activity: readonly AgentRuntimeActivity[]
   readonly occurredAt: string
-}): Promise<void> {
+}): Promise<string> {
   const response = await fetch(`${command.config.BACKEND_URL}/api/agent/heartbeat`, {
     method: 'POST',
     headers: buildHeaders(command.config, true),
@@ -685,9 +735,16 @@ async function sendHeartbeat(command: {
       tenant_id: command.config.TENANT_ID,
       hostname: os.hostname(),
       agent_version: command.agentVersion,
+      current_version: command.agentVersion,
+      desired_version: command.state.desiredVersion,
+      update_ready_version: command.state.updateReadyVersion,
+      restart_requested_at: command.state.restartRequestedAt,
       realtime_state: command.state.realtimeState,
       processing_state: command.state.processingState,
       lease_health: command.state.leaseHealth,
+      boot_status: command.state.bootStatus,
+      update_state: command.state.updateState,
+      updater_last_checked_at: command.state.updaterLastCheckedAt,
       active_jobs: command.state.activeJobs,
       capabilities: resolveAgentCapabilities(command.config),
       interval_sec: command.config.INTERVAL_SEC,
@@ -714,6 +771,8 @@ async function sendHeartbeat(command: {
   if (!parsed.success) {
     throw new Error(`invalid heartbeat response: ${parsed.error.message}`)
   }
+
+  return parsed.data.updatedAt
 }
 
 async function sendHeartbeatSafely(command: {
@@ -722,18 +781,102 @@ async function sendHeartbeatSafely(command: {
   readonly state: AgentRuntimeState
   readonly activity?: readonly AgentRuntimeActivity[]
   readonly occurredAt?: string
-}): Promise<void> {
+}): Promise<{
+  readonly ok: boolean
+  readonly updatedAt: string | null
+}> {
   try {
-    await sendHeartbeat({
+    const updatedAt = await sendHeartbeat({
       config: command.config,
       agentVersion: command.agentVersion,
       state: command.state,
       activity: command.activity ?? [],
       occurredAt: command.occurredAt ?? new Date().toISOString(),
     })
+
+    return {
+      ok: true,
+      updatedAt,
+    }
   } catch (error) {
     console.warn(`[agent] heartbeat publish failed: ${toErrorMessage(error)}`)
+    return {
+      ok: false,
+      updatedAt: null,
+    }
   }
+}
+
+function resolveSupervisorPaths(dataDir: string): {
+  readonly healthPath: string
+  readonly controlPath: string
+  readonly pendingActivityPath: string
+} {
+  const healthPath =
+    normalizeOptionalEnv(process.env.AGENT_SUPERVISOR_HEALTH_PATH) ??
+    path.join(dataDir, 'runtime-health.json')
+
+  const controlPath =
+    normalizeOptionalEnv(process.env.AGENT_SUPERVISOR_CONTROL_PATH) ??
+    path.join(dataDir, 'supervisor-control.json')
+
+  const pendingActivityPath =
+    normalizeOptionalEnv(process.env.AGENT_PENDING_ACTIVITY_PATH) ??
+    path.join(dataDir, 'pending-activity-events.json')
+
+  return {
+    healthPath,
+    controlPath,
+    pendingActivityPath,
+  }
+}
+
+function toRuntimeActivityFromPending(
+  event: ReturnType<typeof drainPendingActivityEvents>[number],
+): AgentRuntimeActivity {
+  return {
+    type: event.type,
+    message: event.message,
+    severity: event.severity,
+    metadata: event.metadata,
+    occurredAt: event.occurred_at,
+  }
+}
+
+async function sendHeartbeatAndPersistHealth(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly activity?: readonly AgentRuntimeActivity[]
+  readonly occurredAt?: string
+  readonly healthPath: string
+}): Promise<void> {
+  const occurredAt = command.occurredAt ?? new Date().toISOString()
+  const heartbeat = await sendHeartbeatSafely({
+    config: command.config,
+    agentVersion: command.agentVersion,
+    state: command.state,
+    activity: command.activity ?? [],
+    occurredAt,
+  })
+
+  if (heartbeat.ok && heartbeat.updatedAt) {
+    command.state.bootStatus = 'healthy'
+  } else if (command.state.bootStatus === 'starting') {
+    command.state.bootStatus = 'degraded'
+  }
+
+  writeRuntimeHealth(command.healthPath, {
+    agent_version: command.agentVersion,
+    boot_status: command.state.bootStatus,
+    update_state: command.state.updateState,
+    last_heartbeat_at: occurredAt,
+    last_heartbeat_ok_at: heartbeat.updatedAt,
+    active_jobs: command.state.activeJobs,
+    processing_state: command.state.processingState,
+    updated_at: new Date().toISOString(),
+    pid: process.pid,
+  })
 }
 
 async function fetchTargets(config: RuntimeConfig, limit: number): Promise<TargetsResponse> {
@@ -1059,10 +1202,188 @@ function subscribeToRealtimeIfConfigured(command: {
   }
 }
 
+async function runUpdateCheck(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly releaseStatePath: string
+  readonly agentLayout: AgentPathLayout
+  readonly supervisorControlPath: string
+}): Promise<{
+  readonly activities: readonly AgentRuntimeActivity[]
+  readonly shouldDrain: boolean
+}> {
+  const nowIso = new Date().toISOString()
+  const activities: AgentRuntimeActivity[] = []
+  command.state.updaterLastCheckedAt = nowIso
+  command.state.updateState = 'checking'
+
+  try {
+    const manifest = await fetchUpdateManifest({
+      backendUrl: command.config.BACKEND_URL,
+      agentToken: command.config.AGENT_TOKEN,
+      agentId: command.config.AGENT_ID,
+    })
+
+    command.state.desiredVersion = manifest.desired_version
+    command.state.restartRequestedAt = manifest.restart_requested_at
+    command.state.updateReadyVersion = manifest.update_ready_version
+
+    activities.push({
+      type: 'UPDATE_CHECKED',
+      message: `Checked update manifest (desired=${manifest.desired_version ?? 'none'})`,
+      severity: 'info',
+      metadata: {
+        version: manifest.version,
+        updateAvailable: manifest.update_available,
+      },
+      occurredAt: nowIso,
+    })
+
+    let shouldDrain = false
+    if (manifest.restart_required) {
+      command.state.updateState = 'draining'
+      shouldDrain = true
+      supervisorControl.writeSupervisorControl(command.supervisorControlPath, {
+        drain_requested: true,
+        reason: 'restart',
+        requested_at: nowIso,
+      })
+    }
+
+    const releaseState = readReleaseState(command.releaseStatePath, command.agentVersion)
+    const stagedRelease = await stageReleaseFromManifest({
+      manifest,
+      layout: command.agentLayout,
+      state: releaseState,
+    })
+
+    if (stagedRelease.kind === 'no_update') {
+      if (command.state.updateState !== 'draining') {
+        command.state.updateState = releaseState.automatic_updates_blocked ? 'blocked' : 'idle'
+      }
+      return { activities, shouldDrain }
+    }
+
+    if (stagedRelease.kind === 'blocked') {
+      command.state.updateState = 'blocked'
+      command.state.lastError = stagedRelease.reason
+      writeReleaseState(command.releaseStatePath, {
+        ...releaseState,
+        activation_state: 'blocked',
+        automatic_updates_blocked: true,
+        last_update_attempt: nowIso,
+        last_error: stagedRelease.reason,
+      })
+
+      activities.push({
+        type: 'UPDATE_APPLY_FAILED',
+        message: stagedRelease.reason,
+        severity: 'danger',
+        metadata: {
+          version: stagedRelease.manifest.version,
+        },
+        occurredAt: nowIso,
+      })
+      return { activities, shouldDrain }
+    }
+
+    activities.push({
+      type: 'UPDATE_AVAILABLE',
+      message: `Update available: ${stagedRelease.manifest.version}`,
+      severity: 'info',
+      metadata: {
+        version: stagedRelease.manifest.version,
+        channel: stagedRelease.manifest.channel,
+      },
+      occurredAt: nowIso,
+    })
+
+    if (stagedRelease.downloaded) {
+      activities.push({
+        type: 'UPDATE_DOWNLOAD_STARTED',
+        message: `Downloading release ${stagedRelease.manifest.version}`,
+        severity: 'info',
+        metadata: {
+          version: stagedRelease.manifest.version,
+          url: stagedRelease.manifest.download_url,
+        },
+        occurredAt: nowIso,
+      })
+      activities.push({
+        type: 'UPDATE_DOWNLOAD_COMPLETED',
+        message: `Downloaded release ${stagedRelease.manifest.version}`,
+        severity: 'success',
+        metadata: {
+          version: stagedRelease.manifest.version,
+          checksum: stagedRelease.manifest.checksum,
+        },
+        occurredAt: nowIso,
+      })
+    }
+
+    writeReleaseState(command.releaseStatePath, {
+      ...releaseState,
+      target_version: stagedRelease.manifest.version,
+      activation_state: 'pending',
+      last_update_attempt: nowIso,
+      last_error: null,
+      automatic_updates_blocked: false,
+    })
+
+    command.state.updateState = 'ready'
+    command.state.updateReadyVersion = stagedRelease.manifest.version
+    command.state.lastError = null
+    shouldDrain = true
+
+    supervisorControl.writeSupervisorControl(command.supervisorControlPath, {
+      drain_requested: true,
+      reason: 'update',
+      requested_at: nowIso,
+    })
+
+    activities.push({
+      type: 'UPDATE_READY',
+      message: `Release ${stagedRelease.manifest.version} staged and pending activation`,
+      severity: 'success',
+      metadata: {
+        version: stagedRelease.manifest.version,
+        releaseDir: stagedRelease.releaseDir,
+      },
+      occurredAt: nowIso,
+    })
+
+    return {
+      activities,
+      shouldDrain,
+    }
+  } catch (error) {
+    const errorMessage = `Updater check failed: ${toErrorMessage(error)}`
+    command.state.updateState = 'error'
+    command.state.lastError = errorMessage
+    return {
+      activities: [
+        ...activities,
+        {
+          type: 'UPDATE_APPLY_FAILED',
+          message: errorMessage,
+          severity: 'danger',
+          metadata: {},
+          occurredAt: nowIso,
+        },
+      ],
+      shouldDrain: false,
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const paths = resolvePathLayout()
+  const agentLayout = runtimePaths.resolveAgentPathLayout()
+  runtimePaths.ensureAgentPathLayout(agentLayout)
   const runtimeConfig = await resolveRuntimeConfigWithBootstrap(paths)
   const agentVersion = resolveAgentVersion()
+  const supervisorPaths = resolveSupervisorPaths(paths.dataDir)
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
@@ -1076,34 +1397,113 @@ async function main(): Promise<void> {
     activeJobs: 0,
     queueLagSeconds: null,
     lastError: null,
+    bootStatus: 'starting',
+    updateState: 'idle',
+    desiredVersion: null,
+    updateReadyVersion: null,
+    restartRequestedAt: null,
+    updaterLastCheckedAt: null,
   }
 
-  await sendHeartbeatSafely({
+  const pendingActivities = drainPendingActivityEvents(supervisorPaths.pendingActivityPath).map(
+    toRuntimeActivityFromPending,
+  )
+  await sendHeartbeatAndPersistHealth({
     config: runtimeConfig,
     agentVersion,
     state: runtimeState,
-    activity: [],
+    activity: pendingActivities,
+    healthPath: supervisorPaths.healthPath,
   })
 
   let lastRealtimeState: AgentRealtimeState = runtimeState.realtimeState
+  let lastUpdateCheckAtMs = 0
+  let requestRestartAfterHeartbeat = false
+  let scheduler: ReturnType<typeof createAgentScheduler> | null = null
+  let realtimeSubscription: { readonly unsubscribe: () => void } | null = null
 
-  const scheduler = createAgentScheduler({
+  scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
-    runCycle: async (_reason) => {
-      const cycleActivities = await runOnce(runtimeConfig, agentVersion, runtimeState)
-      await sendHeartbeatSafely({
+    runCycle: async () => {
+      const cycleActivities: AgentRuntimeActivity[] = []
+
+      const controlState = supervisorControl.readSupervisorControl(supervisorPaths.controlPath)
+      if (controlState?.drain_requested) {
+        runtimeState.updateState = 'draining'
+        runtimeState.restartRequestedAt = controlState.requested_at
+      }
+
+      if (runtimeState.updateState !== 'draining') {
+        const runActivities = await runOnce(runtimeConfig, agentVersion, runtimeState)
+        cycleActivities.push(...runActivities)
+      } else {
+        runtimeState.processingState = 'idle'
+        runtimeState.activeJobs = 0
+      }
+
+      const nowMs = Date.now()
+      const shouldRunUpdateCheck =
+        runtimeState.updateState !== 'draining' &&
+        nowMs - lastUpdateCheckAtMs >= UPDATE_CHECK_INTERVAL_MS
+
+      if (shouldRunUpdateCheck) {
+        const updateResult = await runUpdateCheck({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          releaseStatePath: agentLayout.releaseStatePath,
+          agentLayout,
+          supervisorControlPath: supervisorPaths.controlPath,
+        })
+        lastUpdateCheckAtMs = nowMs
+        cycleActivities.push(...updateResult.activities)
+        if (updateResult.shouldDrain) {
+          runtimeState.updateState = 'draining'
+        }
+      }
+
+      if (runtimeState.updateState === 'draining' && runtimeState.activeJobs === 0) {
+        requestRestartAfterHeartbeat = true
+        cycleActivities.push({
+          type: 'RESTART_FOR_UPDATE',
+          message: 'Runtime drained and ready to restart for update',
+          severity: 'warning',
+          metadata: {
+            targetVersion: runtimeState.updateReadyVersion,
+            desiredVersion: runtimeState.desiredVersion,
+          },
+          occurredAt: new Date().toISOString(),
+        })
+      }
+
+      await sendHeartbeatAndPersistHealth({
         config: runtimeConfig,
         agentVersion,
         state: runtimeState,
         activity: cycleActivities,
+        healthPath: supervisorPaths.healthPath,
       })
+
+      if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
+        supervisorControl.writeSupervisorControl(supervisorPaths.controlPath, {
+          drain_requested: false,
+          reason: null,
+          requested_at: null,
+        })
+        scheduler?.stop()
+        realtimeSubscription?.unsubscribe()
+        setTimeout(() => {
+          process.exit(EXIT_CODE_RESTART_FOR_UPDATE)
+        }, 0)
+      }
     },
     onRunError({ reason, error }) {
       const errorMessage = toErrorMessage(error)
       runtimeState.processingState = 'backing_off'
+      runtimeState.bootStatus = 'degraded'
       runtimeState.lastError = errorMessage
       console.error(`[agent] cycle failed (reason=${reason}): ${errorMessage}`)
-      void sendHeartbeatSafely({
+      void sendHeartbeatAndPersistHealth({
         config: runtimeConfig,
         agentVersion,
         state: runtimeState,
@@ -1117,14 +1517,15 @@ async function main(): Promise<void> {
             },
           },
         ],
+        healthPath: supervisorPaths.healthPath,
       })
     },
   })
 
-  const realtimeSubscription = subscribeToRealtimeIfConfigured({
+  realtimeSubscription = subscribeToRealtimeIfConfigured({
     config: runtimeConfig,
     onWake() {
-      scheduler.triggerRun('realtime')
+      scheduler?.triggerRun('realtime')
     },
     onRealtimeStateChange(state) {
       if (lastRealtimeState === state) return
@@ -1132,7 +1533,7 @@ async function main(): Promise<void> {
       runtimeState.realtimeState = state
 
       if (state === 'SUBSCRIBED') {
-        void sendHeartbeatSafely({
+        void sendHeartbeatAndPersistHealth({
           config: runtimeConfig,
           agentVersion,
           state: runtimeState,
@@ -1144,13 +1545,14 @@ async function main(): Promise<void> {
               metadata: {},
             },
           ],
+          healthPath: supervisorPaths.healthPath,
         })
         return
       }
 
       if (state === 'CHANNEL_ERROR') {
         runtimeState.lastError = 'Realtime channel degraded'
-        void sendHeartbeatSafely({
+        void sendHeartbeatAndPersistHealth({
           config: runtimeConfig,
           agentVersion,
           state: runtimeState,
@@ -1162,6 +1564,7 @@ async function main(): Promise<void> {
               metadata: {},
             },
           ],
+          healthPath: supervisorPaths.healthPath,
         })
       }
     },
@@ -1173,14 +1576,18 @@ async function main(): Promise<void> {
     console.log(`[agent] received ${signal}, shutting down`)
     runtimeState.realtimeState = 'DISCONNECTED'
     runtimeState.processingState = 'idle'
-    void sendHeartbeatSafely({
+    runtimeState.updateState = 'idle'
+    runtimeState.bootStatus = 'degraded'
+    void sendHeartbeatAndPersistHealth({
       config: runtimeConfig,
       agentVersion,
       state: runtimeState,
       activity: [],
+      healthPath: supervisorPaths.healthPath,
     })
     realtimeSubscription?.unsubscribe()
-    scheduler.stop()
+    scheduler?.stop()
+    supervisorControl.clearSupervisorControl(supervisorPaths.controlPath)
   }
 
   process.once('SIGINT', () => shutdown('SIGINT'))

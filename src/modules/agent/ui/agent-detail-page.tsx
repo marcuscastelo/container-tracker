@@ -9,7 +9,11 @@ import {
   onCleanup,
   Show,
 } from 'solid-js'
-import { fetchAgentDetail } from '~/modules/agent/ui/api/agent.api'
+import {
+  fetchAgentDetail,
+  requestAgentRestart,
+  requestAgentUpdate,
+} from '~/modules/agent/ui/api/agent.api'
 import { AgentCapabilitiesCard } from '~/modules/agent/ui/components/AgentCapabilitiesCard'
 import { AgentDiagnosticsCard } from '~/modules/agent/ui/components/AgentDiagnosticsCard'
 import { AgentEnrollmentCard } from '~/modules/agent/ui/components/AgentEnrollmentCard'
@@ -19,6 +23,7 @@ import { AgentMetricsCard } from '~/modules/agent/ui/components/AgentMetricsCard
 import { AgentRecentActivityCard } from '~/modules/agent/ui/components/AgentRecentActivityCard'
 import { AgentStatusBadge } from '~/modules/agent/ui/components/AgentStatusBadge'
 import { toAgentDetailVM } from '~/modules/agent/ui/mappers/agent.ui-mapper'
+import type { AgentDetailVM } from '~/modules/agent/ui/vm/agent.vm'
 import {
   subscribeToTrackingAgentActivityByAgentId,
   subscribeToTrackingAgentsByTenant,
@@ -90,6 +95,96 @@ function AgentNotFound(): JSX.Element {
   )
 }
 
+type AgentDetailToolbarProps = {
+  readonly vm: () => AgentDetailVM | null
+  readonly onBack: () => void
+  readonly onRefresh: () => void
+  readonly onRequestUpdate: () => Promise<void>
+  readonly onRequestRestart: () => Promise<void>
+  readonly lastRefreshed: () => Date
+}
+
+function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
+  return (
+    <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => props.onBack()}
+          class="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Agents
+        </button>
+
+        <Show when={props.vm()}>
+          {(currentVM) => (
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg-ui font-semibold text-slate-900">{currentVM().hostname}</h1>
+              <AgentStatusBadge label={currentVM().status} tone={currentVM().statusTone} />
+              <span class="text-sm-ui text-slate-500">{currentVM().tenantName}</span>
+            </div>
+          )}
+        </Show>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void props.onRequestUpdate()}
+          class="inline-flex items-center rounded border border-sky-200 bg-sky-50 px-2.5 py-1 text-sm-ui font-medium text-sky-700 transition-colors hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200"
+        >
+          Request update
+        </button>
+        <button
+          type="button"
+          onClick={() => void props.onRequestRestart()}
+          class="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-sm-ui font-medium text-amber-700 transition-colors hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200"
+        >
+          Request restart
+        </button>
+        <span class="text-micro text-slate-400">
+          Updated {formatRefreshTime(props.lastRefreshed())}
+        </span>
+        <button
+          type="button"
+          onClick={() => props.onRefresh()}
+          class="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </section>
+  )
+}
+
 function formatRefreshTime(d: Date): string {
   return d.toLocaleTimeString('en-US', {
     hour: '2-digit',
@@ -109,6 +204,8 @@ export function AgentDetailPage(props: Props): JSX.Element {
   const navigate = useNavigate()
   const [detail, { refetch }] = createResource(() => props.agentId, fetchAgentDetail)
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
+  const [actionMessage, setActionMessage] = createSignal<string | null>(null)
+  const [actionError, setActionError] = createSignal<string | null>(null)
 
   const fallbackPollTimer = setInterval(() => {
     setLastRefreshed(new Date())
@@ -169,74 +266,77 @@ export function AgentDetailPage(props: Props): JSX.Element {
     void navigate('/agents')
   }
 
+  async function handleRequestUpdate(): Promise<void> {
+    const versionInput =
+      typeof globalThis.prompt === 'function' ? globalThis.prompt('Desired version to apply') : null
+    if (!versionInput || versionInput.trim().length === 0) {
+      return
+    }
+
+    setActionError(null)
+    setActionMessage(null)
+
+    try {
+      const response = await requestAgentUpdate({
+        agentId: props.agentId,
+        desiredVersion: versionInput.trim(),
+      })
+      setActionMessage(`Update requested at ${response.requestedAt}`)
+      setLastRefreshed(new Date())
+      await refetch()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setActionError(message)
+    }
+  }
+
+  async function handleRequestRestart(): Promise<void> {
+    setActionError(null)
+    setActionMessage(null)
+
+    try {
+      const response = await requestAgentRestart({
+        agentId: props.agentId,
+      })
+      setActionMessage(`Restart requested at ${response.requestedAt}`)
+      setLastRefreshed(new Date())
+      await refetch()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setActionError(message)
+    }
+  }
+
   return (
     <div class="relative min-h-screen bg-slate-50/80">
       <div class="relative z-10">
         <AppHeader />
 
         <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
-          <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleBack}
-                class="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                Agents
-              </button>
+          <AgentDetailToolbar
+            vm={vm}
+            onBack={handleBack}
+            onRefresh={handleRefresh}
+            onRequestUpdate={handleRequestUpdate}
+            onRequestRestart={handleRequestRestart}
+            lastRefreshed={lastRefreshed}
+          />
 
-              <Show when={vm()}>
-                {(currentVM) => (
-                  <div class="flex items-center gap-2">
-                    <h1 class="text-lg-ui font-semibold text-slate-900">{currentVM().hostname}</h1>
-                    <AgentStatusBadge label={currentVM().status} tone={currentVM().statusTone} />
-                    <span class="text-sm-ui text-slate-500">{currentVM().tenantName}</span>
-                  </div>
-                )}
-              </Show>
-            </div>
+          <Show when={actionMessage()}>
+            {(message) => (
+              <div class="mb-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm-ui text-emerald-700">
+                {message()}
+              </div>
+            )}
+          </Show>
 
-            <div class="flex items-center gap-3">
-              <span class="text-micro text-slate-400">
-                Updated {formatRefreshTime(lastRefreshed())}
-              </span>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                class="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Refresh
-              </button>
-            </div>
-          </section>
+          <Show when={actionError()}>
+            {(message) => (
+              <div class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm-ui text-red-700">
+                {message()}
+              </div>
+            )}
+          </Show>
 
           <Show when={detail.loading}>
             <DetailSkeleton />

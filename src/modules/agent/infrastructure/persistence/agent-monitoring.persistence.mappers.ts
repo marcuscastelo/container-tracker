@@ -64,7 +64,16 @@ function toAgentActivityType(value: string): AgentActivityEventRecord['type'] {
   if (value === 'REQUEST_FAILED') return 'REQUEST_FAILED'
   if (value === 'REALTIME_SUBSCRIBED') return 'REALTIME_SUBSCRIBED'
   if (value === 'REALTIME_CHANNEL_ERROR') return 'REALTIME_CHANNEL_ERROR'
-  return 'LEASE_CONFLICT'
+  if (value === 'LEASE_CONFLICT') return 'LEASE_CONFLICT'
+  if (value === 'UPDATE_CHECKED') return 'UPDATE_CHECKED'
+  if (value === 'UPDATE_AVAILABLE') return 'UPDATE_AVAILABLE'
+  if (value === 'UPDATE_DOWNLOAD_STARTED') return 'UPDATE_DOWNLOAD_STARTED'
+  if (value === 'UPDATE_DOWNLOAD_COMPLETED') return 'UPDATE_DOWNLOAD_COMPLETED'
+  if (value === 'UPDATE_READY') return 'UPDATE_READY'
+  if (value === 'UPDATE_APPLY_STARTED') return 'UPDATE_APPLY_STARTED'
+  if (value === 'UPDATE_APPLY_FAILED') return 'UPDATE_APPLY_FAILED'
+  if (value === 'RESTART_FOR_UPDATE') return 'RESTART_FOR_UPDATE'
+  return 'ROLLBACK_EXECUTED'
 }
 
 function toAgentActivitySeverity(value: string): AgentActivityEventRecord['severity'] {
@@ -80,6 +89,26 @@ function toCapabilities(value: unknown): readonly string[] {
   return value.filter((item): item is string => typeof item === 'string')
 }
 
+function toAgentBootStatus(value: string): AgentMonitoringRecord['bootStatus'] {
+  if (value === 'starting') return 'starting'
+  if (value === 'healthy') return 'healthy'
+  if (value === 'degraded') return 'degraded'
+  return 'unknown'
+}
+
+function toAgentUpdaterState(value: string): AgentMonitoringRecord['updaterState'] {
+  if (value === 'idle') return 'idle'
+  if (value === 'checking') return 'checking'
+  if (value === 'downloading') return 'downloading'
+  if (value === 'ready') return 'ready'
+  if (value === 'draining') return 'draining'
+  if (value === 'applying') return 'applying'
+  if (value === 'rollback') return 'rollback'
+  if (value === 'blocked') return 'blocked'
+  if (value === 'error') return 'error'
+  return 'unknown'
+}
+
 function toNullableInteger(value: number | null | undefined): number | null | undefined {
   if (value === undefined) return undefined
   if (value === null) return null
@@ -93,6 +122,15 @@ export const agentMonitoringPersistenceMappers = {
       tenantId: row.tenant_id,
       hostname: row.hostname,
       version: row.agent_version,
+      currentVersion: row.current_version,
+      desiredVersion: row.desired_version,
+      updateChannel: row.update_channel,
+      updaterState: toAgentUpdaterState(row.updater_state),
+      updaterLastCheckedAt: row.updater_last_checked_at,
+      updaterLastError: row.updater_last_error,
+      updateReadyVersion: row.update_ready_version,
+      restartRequestedAt: row.restart_requested_at,
+      bootStatus: toAgentBootStatus(row.boot_status),
       status: toAgentStatus(row.status),
       enrolledAt: row.enrolled_at,
       lastSeenAt: row.last_seen_at,
@@ -123,6 +161,23 @@ export const agentMonitoringPersistenceMappers = {
     return {
       ...(command.hostname !== undefined ? { hostname: command.hostname } : {}),
       ...(command.version !== undefined ? { agent_version: command.version } : {}),
+      ...(command.currentVersion !== undefined ? { current_version: command.currentVersion } : {}),
+      ...(command.desiredVersion !== undefined ? { desired_version: command.desiredVersion } : {}),
+      ...(command.updateChannel !== undefined ? { update_channel: command.updateChannel } : {}),
+      ...(command.updaterState !== undefined ? { updater_state: command.updaterState } : {}),
+      ...(command.updaterLastCheckedAt !== undefined
+        ? { updater_last_checked_at: command.updaterLastCheckedAt }
+        : {}),
+      ...(command.updaterLastError !== undefined
+        ? { updater_last_error: command.updaterLastError }
+        : {}),
+      ...(command.updateReadyVersion !== undefined
+        ? { update_ready_version: command.updateReadyVersion }
+        : {}),
+      ...(command.restartRequestedAt !== undefined
+        ? { restart_requested_at: command.restartRequestedAt }
+        : {}),
+      ...(command.bootStatus !== undefined ? { boot_status: command.bootStatus } : {}),
       ...(command.status !== undefined ? { status: command.status } : {}),
       ...(command.lastSeenAt !== undefined ? { last_seen_at: command.lastSeenAt } : {}),
       ...(command.realtimeState !== undefined ? { realtime_state: command.realtimeState } : {}),

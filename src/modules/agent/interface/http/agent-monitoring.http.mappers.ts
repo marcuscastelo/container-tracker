@@ -20,6 +20,15 @@ type HeartbeatActivityCommand = {
     | 'REALTIME_SUBSCRIBED'
     | 'REALTIME_CHANNEL_ERROR'
     | 'LEASE_CONFLICT'
+    | 'UPDATE_CHECKED'
+    | 'UPDATE_AVAILABLE'
+    | 'UPDATE_DOWNLOAD_STARTED'
+    | 'UPDATE_DOWNLOAD_COMPLETED'
+    | 'UPDATE_READY'
+    | 'UPDATE_APPLY_STARTED'
+    | 'UPDATE_APPLY_FAILED'
+    | 'RESTART_FOR_UPDATE'
+    | 'ROLLBACK_EXECUTED'
   readonly message: string
   readonly severity: 'info' | 'warning' | 'danger' | 'success'
   readonly metadata?: unknown
@@ -61,6 +70,14 @@ export function toHeartbeatCommand(command: {
     tenantId: command.tenantId,
     hostname: command.payload.hostname,
     version: command.payload.agent_version,
+    currentVersion: command.payload.current_version ?? command.payload.agent_version,
+    desiredVersion: command.payload.desired_version,
+    updaterState: command.payload.update_state,
+    updaterLastCheckedAt: command.payload.updater_last_checked_at,
+    updaterLastError: command.payload.updater_last_error,
+    updateReadyVersion: command.payload.update_ready_version,
+    restartRequestedAt: command.payload.restart_requested_at,
+    bootStatus: command.payload.boot_status,
     realtimeState: command.payload.realtime_state,
     processingState: command.payload.processing_state,
     leaseHealth: command.payload.lease_health,

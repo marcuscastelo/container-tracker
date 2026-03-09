@@ -20,10 +20,10 @@ vi.mock('~/modules/agent/interface/http/agent-monitoring.controllers.bootstrap',
   }),
 }))
 
-import { POST as heartbeatPost } from '~/routes/api/agent/heartbeat'
+import { GET as updateManifestGet } from '~/routes/api/agent/update-manifest'
 
-describe('agent heartbeat route', () => {
-  it('binds POST /api/agent/heartbeat to monitoring controller', () => {
-    expect(heartbeatPost).toBe(agentMonitoringHandlers.heartbeat)
+describe('agent update manifest route', () => {
+  it('binds GET /api/agent/update-manifest to getUpdateManifest controller', () => {
+    expect(updateManifestGet).toBe(agentMonitoringHandlers.getUpdateManifest)
   })
 })
