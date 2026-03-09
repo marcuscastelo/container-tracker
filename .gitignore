@@ -13,3 +13,4 @@ marucs-src/
 .agent-runtime/
 .playwright-mcp/
 supabase/.temp/
+/.tmp*/
