@@ -19,6 +19,11 @@ type ProcessCacheRecord = {
 
 const processCache = new Map<string, ProcessCacheRecord>()
 const inFlightProcessRequests = new Map<string, Promise<ShipmentDetailVM | null>>()
+// Generation tokens used to prevent outdated in-flight responses from
+// repopulating the cache after a targeted invalidation. When an invalidation
+// occurs we bump the generation for affected keys; any in-flight request that
+// captured an older generation will skip writing the cache when it resolves.
+const processRequestGeneration = new Map<string, number>()
 
 function toProcessCacheKey(id: string, locale: string): string {
   return `${id}::${locale}`
@@ -97,9 +102,18 @@ async function loadProcessFromNetwork(
     if (inFlight) return inFlight
   }
 
+  // Capture the current generation for this key so we can detect whether the
+  // request becomes outdated while in flight (for example, due to a cache
+  // invalidation or a mutation). Only write the cache if the generation still
+  // matches when the network response arrives.
+  const generationAtRequest = processRequestGeneration.get(key) ?? 0
+
   const request = fetchProcessFromApi(id, locale)
     .then((value) => {
-      writeCachedProcess(key, value)
+      const currentGeneration = processRequestGeneration.get(key) ?? 0
+      if (currentGeneration === generationAtRequest) {
+        writeCachedProcess(key, value)
+      }
       return value
     })
     .finally(() => {
@@ -147,6 +161,13 @@ export async function prefetchProcessDetail(id: string, locale: string = 'en-US'
 }
 
 export function clearPrefetchedProcessDetails(): void {
+  // Bump generation for all known keys so any in-flight requests don't write
+  // back into cache after we cleared it.
+  for (const key of processCache.keys()) {
+    const prev = processRequestGeneration.get(key) ?? 0
+    processRequestGeneration.set(key, prev + 1)
+  }
+
   processCache.clear()
   inFlightProcessRequests.clear()
 }
@@ -162,5 +183,14 @@ export function clearPrefetchedProcessDetailById(processId: string): void {
   for (const key of inFlightProcessRequests.keys()) {
     if (!key.startsWith(processCacheKeyPrefix)) continue
     inFlightProcessRequests.delete(key)
+  }
+
+  // Bump generation for keys matching this process so any already-running
+  // requests that were started before this invalidation will not write stale
+  // values back into the cache.
+  for (const [key] of processRequestGeneration.entries()) {
+    if (!key.startsWith(processCacheKeyPrefix)) continue
+    const prev = processRequestGeneration.get(key) ?? 0
+    processRequestGeneration.set(key, prev + 1)
   }
 }

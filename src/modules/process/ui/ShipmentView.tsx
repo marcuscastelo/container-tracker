@@ -972,7 +972,28 @@ export function ShipmentView(props: { readonly params: { readonly id: string } }
 
   createEffect(() => {
     const currentProcessResourceKey = processResourceKey()
-    if (currentProcessResourceKey === null) return
+
+    // If the resource key is null, make sure we reset transient view state so
+    // the UI does not continue showing stale process data (for example when
+    // the route param is blank/invalid). Also reset the remembered
+    // `previousProcessId` so future navigations are handled normally.
+    if (currentProcessResourceKey === null) {
+      previousProcessId = null
+
+      if (activeRealtimeCleanup) {
+        activeRealtimeCleanup()
+        activeRealtimeCleanup = null
+      }
+      setIsRefreshing(false)
+      setRefreshRetry(null)
+      setRefreshError(null)
+      setRefreshHint(null)
+      setLastRefreshDoneAt(null)
+      setSelectedContainerId('')
+      mutate(undefined)
+      return
+    }
+
     const [currentProcessId] = currentProcessResourceKey
     if (previousProcessId === null) {
       previousProcessId = currentProcessId
