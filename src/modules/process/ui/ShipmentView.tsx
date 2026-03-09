@@ -1,11 +1,12 @@
 import { useNavigate, usePreloadRoute } from '@solidjs/router'
-import type { JSX } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, onCleanup } from 'solid-js'
 import { z } from 'zod/v4'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 
 import { ShipmentViewLayout } from '~/modules/process/ui/components/ShipmentViewLayout'
-import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { clearPrefetchedProcessDetailById, fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { toProcessResourceKey } from '~/modules/process/ui/utils/process-resource-key'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-realtime-coordinator'
 import {
@@ -210,7 +211,9 @@ async function refreshTrackingDataOnly(command: {
   readonly current: ShipmentDetailVM | null | undefined
   readonly apply: (next: ShipmentDetailVM) => void
 }): Promise<void> {
-  const latest = await fetchProcess(command.processId, command.locale)
+  const latest = await fetchProcess(command.processId, command.locale, {
+    preferCached: false,
+  })
   if (!latest) return
 
   if (!command.current) {
@@ -662,6 +665,7 @@ type ProcessDialogsControllerCommand = {
   readonly processId: () => string
   readonly navigate: ReturnType<typeof useNavigate>
   readonly refetchShipment: () => unknown
+  readonly resetProcessDetailCacheById: (processId: string) => void
 }
 
 type ProcessDialogsController = {
@@ -695,6 +699,15 @@ function useProcessDialogsController(
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
+  createEffect(() => {
+    command.processId()
+    setIsEditOpen(false)
+    setEditInitialData(null)
+    setFocusFieldOnOpen(null)
+    setIsCreateDialogOpen(false)
+    setCreateError(null)
+  })
+
   const handleCreateSubmit = async (formData: CreateProcessDialogFormData) => {
     try {
       try {
@@ -725,7 +738,9 @@ function useProcessDialogsController(
       const input = toCreateProcessInput(formData)
 
       try {
-        await updateProcessRequest(command.processId(), input)
+        const currentProcessId = command.processId()
+        await updateProcessRequest(currentProcessId, input)
+        command.resetProcessDetailCacheById(currentProcessId)
 
         await command.refetchShipment()
         setIsEditOpen(false)
@@ -790,6 +805,7 @@ function useProcessDialogsController(
 }
 
 type AlertActionsCommand = {
+  readonly processId: () => string
   readonly acknowledgeErrorMessage: string
   readonly unacknowledgeErrorMessage: string
   readonly reconcileTrackingView: () => Promise<void>
@@ -815,6 +831,13 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
   const [busyAlertIds, setBusyAlertIds] = createSignal<ReadonlySet<string>>(new Set())
   const [collapsingAlertIds, setCollapsingAlertIds] = createSignal<ReadonlySet<string>>(new Set())
   const [alertActionError, setAlertActionError] = createSignal<string | null>(null)
+
+  createEffect(() => {
+    command.processId()
+    setBusyAlertIds(new Set<string>())
+    setCollapsingAlertIds(new Set<string>())
+    setAlertActionError(null)
+  })
 
   const acknowledgeAlert = async (alertId: string) => {
     if (busyAlertIds().has(alertId)) return
@@ -865,11 +888,26 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
   }
 }
 
-export function ShipmentView(props: { params: { id: string } }): JSX.Element {
+function useEnsureSelectedContainer(command: {
+  readonly shipment: Accessor<ShipmentDetailVM | null | undefined>
+  readonly selectedContainerId: Accessor<string>
+  readonly setSelectedContainerId: (value: string) => void
+}): void {
+  createEffect(() => {
+    const data = command.shipment()
+    if (data && data.containers.length > 0 && !command.selectedContainerId()) {
+      command.setSelectedContainerId(String(data.containers[0].id))
+    }
+  })
+}
+
+export function ShipmentView(props: { readonly params: { readonly id: string } }): JSX.Element {
   const { locale, t, keys } = useTranslation()
   const preloadRoute = usePreloadRoute()
+  const processId = createMemo(() => props.params.id)
+  const processResourceKey = createMemo(() => toProcessResourceKey(processId(), locale()))
   const [shipment, { refetch, mutate }] = createResource(
-    () => [props.params.id, locale()] as const,
+    processResourceKey,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
   const [isRefreshing, setIsRefreshing] = createSignal(false)
@@ -877,6 +915,8 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const [refreshError, setRefreshError] = createSignal<string | null>(null)
   const [refreshHint, setRefreshHint] = createSignal<string | null>(null)
   const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Date | null>(null)
+  const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
+  let previousProcessId: string | null = null
   let disposed = false
   let activeRealtimeCleanup: (() => void) | null = null
   onCleanup(() => {
@@ -887,13 +927,18 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     disposed = true
   })
   const refetchView = () => refetch()
-  const reconcileTrackingView = () =>
-    refreshTrackingDataOnly({
-      processId: props.params.id,
-      locale: locale(),
+  const reconcileTrackingView = async () => {
+    const currentProcessResourceKey = processResourceKey()
+    if (currentProcessResourceKey === null) return
+
+    const [currentProcessId, currentLocale] = currentProcessResourceKey
+    await refreshTrackingDataOnly({
+      processId: currentProcessId,
+      locale: currentLocale,
       current: shipment(),
       apply: mutate,
     })
+  }
   const syncNow = useSyncRealtimeCoordinator({
     shipment,
     isRefreshing,
@@ -953,12 +998,14 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     })
   }
   const dialogs = useProcessDialogsController({
-    processId: () => props.params.id,
+    processId,
     navigate,
     refetchShipment: refetchView,
+    resetProcessDetailCacheById: clearPrefetchedProcessDetailById,
   })
 
   const alertActions = useAlertActionsController({
+    processId,
     acknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorAcknowledge),
     unacknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorUnacknowledge),
     reconcileTrackingView,
@@ -973,7 +1020,31 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     },
   })
 
-  const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
+  createEffect(() => {
+    const currentProcessResourceKey = processResourceKey()
+    if (currentProcessResourceKey === null) return
+    const [currentProcessId] = currentProcessResourceKey
+    if (previousProcessId === null) {
+      previousProcessId = currentProcessId
+      return
+    }
+    if (previousProcessId === currentProcessId) {
+      return
+    }
+    previousProcessId = currentProcessId
+
+    if (activeRealtimeCleanup) {
+      activeRealtimeCleanup()
+      activeRealtimeCleanup = null
+    }
+    setIsRefreshing(false)
+    setRefreshRetry(null)
+    setRefreshError(null)
+    setRefreshHint(null)
+    setLastRefreshDoneAt(null)
+    setSelectedContainerId('')
+    mutate(undefined)
+  })
 
   const selectedContainer = createMemo(() => {
     const data = shipment()
@@ -1006,13 +1077,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     return toSortedArchivedAlerts(data.alerts)
   })
 
-  // Update selected container when data loads
-  createEffect(() => {
-    const data = shipment()
-    if (data && data.containers.length > 0 && !selectedContainerId()) {
-      setSelectedContainerId(String(data.containers[0].id))
-    }
-  })
+  useEnsureSelectedContainer({ shipment, selectedContainerId, setSelectedContainerId })
 
   return (
     <ShipmentViewLayout

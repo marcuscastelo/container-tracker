@@ -10,6 +10,10 @@ type ProcessCacheRecord = {
   readonly value: ShipmentDetailVM | null
 }
 
+type FetchProcessOptions = {
+  readonly preferCached?: boolean
+}
+
 const processCache = new Map<string, ProcessCacheRecord>()
 const inFlightProcessRequests = new Map<string, Promise<ShipmentDetailVM | null>>()
 
@@ -74,6 +78,16 @@ async function fetchProcessFromApi(id: string, locale: string): Promise<Shipment
   }
 }
 
+async function fetchProcessAndWriteCache(
+  id: string,
+  locale: string,
+): Promise<ShipmentDetailVM | null> {
+  const key = toProcessCacheKey(id, locale)
+  const value = await fetchProcessFromApi(id, locale)
+  writeCachedProcess(key, value)
+  return value
+}
+
 async function loadProcessWithCache(id: string, locale: string): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
   const cached = readFreshCachedProcess(key)
@@ -82,14 +96,9 @@ async function loadProcessWithCache(id: string, locale: string): Promise<Shipmen
   const inFlight = inFlightProcessRequests.get(key)
   if (inFlight) return inFlight
 
-  const request = fetchProcessFromApi(id, locale)
-    .then((value) => {
-      writeCachedProcess(key, value)
-      return value
-    })
-    .finally(() => {
-      inFlightProcessRequests.delete(key)
-    })
+  const request = fetchProcessAndWriteCache(id, locale).finally(() => {
+    inFlightProcessRequests.delete(key)
+  })
 
   inFlightProcessRequests.set(key, request)
   return request
@@ -98,7 +107,12 @@ async function loadProcessWithCache(id: string, locale: string): Promise<Shipmen
 export async function fetchProcess(
   id: string,
   locale: string = 'en-US',
+  options?: FetchProcessOptions,
 ): Promise<ShipmentDetailVM | null> {
+  if (options?.preferCached === false) {
+    return fetchProcessAndWriteCache(id, locale)
+  }
+
   return loadProcessWithCache(id, locale)
 }
 
@@ -113,4 +127,18 @@ export async function prefetchProcessDetail(id: string, locale: string = 'en-US'
 export function clearPrefetchedProcessDetails(): void {
   processCache.clear()
   inFlightProcessRequests.clear()
+}
+
+export function clearPrefetchedProcessDetailById(processId: string): void {
+  const processCacheKeyPrefix = `${processId}::`
+
+  for (const key of processCache.keys()) {
+    if (!key.startsWith(processCacheKeyPrefix)) continue
+    processCache.delete(key)
+  }
+
+  for (const key of inFlightProcessRequests.keys()) {
+    if (!key.startsWith(processCacheKeyPrefix)) continue
+    inFlightProcessRequests.delete(key)
+  }
 }

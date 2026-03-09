@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { toProcessResourceKey } from '~/modules/process/ui/utils/process-resource-key'
 import {
   shouldEnableAutoSyncFallbackPolling,
   toTrackedContainerNumberFromRealtimeEvent,
@@ -26,6 +27,18 @@ function makeRealtimeEvent(
 }
 
 describe('ShipmentView sync realtime helpers', () => {
+  it('builds process resource key when processId is valid', () => {
+    expect(toProcessResourceKey(' process-123 ', 'pt-BR')).toEqual(['process-123', 'pt-BR'])
+  })
+
+  it('returns null process resource key for blank processId', () => {
+    expect(toProcessResourceKey('   ', 'pt-BR')).toBeNull()
+  })
+
+  it('returns null process resource key for string literal undefined', () => {
+    expect(toProcessResourceKey('undefined', 'pt-BR')).toBeNull()
+  })
+
   it('maps realtime event row ref_value to normalized tracked container number', () => {
     const containerNumber = toTrackedContainerNumberFromRealtimeEvent(
       makeRealtimeEvent({
