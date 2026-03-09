@@ -276,7 +276,33 @@ function BlockChildren(props: {
   )
 }
 
-function railDotVariant(group: BlockGroup): RailDotVariant {
+/**
+ * Determine the current voyage group index — the last voyage group that has
+ * at least one ACTUAL event but no confirmed DISCHARGE (ACTUAL).
+ * Fallback: last voyage group with any ACTUAL event.
+ */
+function currentVoyageIndexInGroups(groups: readonly BlockGroup[]): number {
+  let fallbackIdx = -1
+
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i]
+    if (g.kind !== 'voyage') continue
+
+    const hasActual = g.block.events.some((e) => e.eventTimeType === 'ACTUAL')
+    if (!hasActual) continue
+
+    fallbackIdx = i
+    const hasActualDischarge = g.block.events.some(
+      (e) => e.type === 'DISCHARGE' && e.eventTimeType === 'ACTUAL',
+    )
+    if (!hasActualDischarge) return i // still on this vessel
+  }
+
+  return fallbackIdx // last voyage with ACTUAL = most recent
+}
+
+function railDotVariant(group: BlockGroup, isCurrent: boolean): RailDotVariant {
+  if (isCurrent && group.kind === 'voyage') return 'current-voyage'
   switch (group.kind) {
     case 'voyage':
       return 'voyage'
@@ -303,14 +329,15 @@ function TimelineBlockList(props: {
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlightedTypes: ReadonlySet<string>
 }): JSX.Element {
-  const groups = () => groupRenderItems(props.renderList)
+  const groups = createMemo(() => groupRenderItems(props.renderList))
+  const currentVoyageIdx = createMemo(() => currentVoyageIndexInGroups(groups()))
 
-  const renderGroupContent = (group: BlockGroup): JSX.Element | null => {
+  const renderGroupContent = (group: BlockGroup, isCurrent: boolean): JSX.Element | null => {
     switch (group.kind) {
       case 'voyage':
         return (
-          <BlockCard variant="voyage">
-            <VoyageBlockHeader block={group.block} />
+          <BlockCard variant="voyage" isCurrent={isCurrent}>
+            <VoyageBlockHeader block={group.block} isCurrent={isCurrent} />
             <BlockChildren
               children={group.children}
               carrier={props.carrier}
@@ -362,19 +389,22 @@ function TimelineBlockList(props: {
 
   return (
     <div class="relative mt-1 pl-5">
-      {/* Continuous vertical rail connecting all timeline blocks */}
+      {/* Continuous vertical rail — spans the full block list height */}
       <div
-        class="absolute top-3 bottom-3 w-px bg-slate-200/60"
+        class="absolute inset-y-0 w-px bg-slate-200"
         style={{ left: '8px' }}
         aria-hidden="true"
       />
       <For each={groups()}>
-        {(group, index) => (
-          <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
-            <RailDot variant={railDotVariant(group)} />
-            {renderGroupContent(group)}
-          </div>
-        )}
+        {(group, index) => {
+          const isCurrent = index() === currentVoyageIdx()
+          return (
+            <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
+              <RailDot variant={railDotVariant(group, isCurrent)} />
+              {renderGroupContent(group, isCurrent)}
+            </div>
+          )
+        }}
       </For>
     </div>
   )
