@@ -41,8 +41,8 @@ Source: "stop-agent-runtime.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 [Run]
 Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""cmd.exe /d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1"""""""; Flags: runhidden waituntilterminated
 Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""cmd.exe /d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1"""""""; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#AgentTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#UpdaterTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
+Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\agent-tray-host.ps1"""; Flags: runhidden waituntilterminated
+Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\updater-hidden.ps1"""; Flags: runhidden waituntilterminated
 
 [UninstallRun]
 Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-agent-task"
