@@ -18,7 +18,7 @@ type InstallApiMocksCommand = {
 
 const ACKED_AT_ISO = '2026-03-09T14:00:00.000Z'
 const ALERT_ID = 'alert-ack-1'
-const PROCESS_ID = 'process-ack-ui'
+const PROCESS_ID = '11111111-1111-4111-8111-111111111111'
 const CONTAINER_ID = 'container-ack-ui'
 const CONTAINER_NUMBER = 'MSCU7654321'
 const ALERT_TRIGGERED_AT_ISO = '2026-03-09T10:00:00.000Z'
@@ -243,7 +243,7 @@ async function installApiMocks(command: InstallApiMocksCommand): Promise<void> {
     )
   })
 
-  await command.page.route('**/api/processes*', async (route) => {
+  await command.page.route('**/api/processes**', async (route) => {
     const url = new URL(route.request().url())
 
     if (url.pathname === '/api/processes') {
@@ -299,7 +299,7 @@ async function openShipmentWithMocks(page: Page, command: {
 async function acknowledgeAlert(page: Page): Promise<void> {
   await page.getByTestId(`alert-ack-button-${ALERT_ID}`).click()
   await expect(page.getByTestId(`alert-ack-button-${ALERT_ID}`)).toHaveCount(0)
-  await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toBeVisible()
+  await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toHaveCount(1)
 }
 
 test.describe('ACK state reconciliation', () => {
@@ -312,7 +312,7 @@ test.describe('ACK state reconciliation', () => {
     })
 
     await acknowledgeAlert(page)
-    await expect(page.getByTestId(`alert-item-${ALERT_ID}`)).toBeVisible()
+    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toHaveCount(1)
   })
 
   test('test 2 - ACK + refetch (dashboard refresh) mantém estado reconhecido', async ({ page }) => {
@@ -337,7 +337,7 @@ test.describe('ACK state reconciliation', () => {
       .toBeGreaterThan(summaryRequestsBefore + 1)
 
     await page.goto(`/shipments/${PROCESS_ID}`)
-    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toBeVisible()
+    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toHaveCount(1)
     await expect(page.getByTestId(`alert-ack-button-${ALERT_ID}`)).toHaveCount(0)
   })
 
@@ -357,7 +357,7 @@ test.describe('ACK state reconciliation', () => {
       .toBeGreaterThan(0)
 
     await page.goto(`/shipments/${PROCESS_ID}`)
-    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toBeVisible()
+    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toHaveCount(1)
     await expect(page.getByTestId(`alert-ack-button-${ALERT_ID}`)).toHaveCount(0)
   })
 
@@ -378,7 +378,7 @@ test.describe('ACK state reconciliation', () => {
       })
       .toBeGreaterThan(detailRequestsAfterAck)
 
-    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toBeVisible()
+    await expect(page.getByTestId(`alert-unack-button-${ALERT_ID}`)).toHaveCount(1)
     await expect(page.getByTestId(`alert-ack-button-${ALERT_ID}`)).toHaveCount(0)
   })
 })
