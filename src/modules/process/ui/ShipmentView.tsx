@@ -972,14 +972,8 @@ export function ShipmentView(props: { readonly params: { readonly id: string } }
 
   createEffect(() => {
     const currentProcessResourceKey = processResourceKey()
-
-    // If the resource key is null, make sure we reset transient view state so
-    // the UI does not continue showing stale process data (for example when
-    // the route param is blank/invalid). Also reset the remembered
-    // `previousProcessId` so future navigations are handled normally.
     if (currentProcessResourceKey === null) {
       previousProcessId = null
-
       if (activeRealtimeCleanup) {
         activeRealtimeCleanup()
         activeRealtimeCleanup = null
@@ -993,17 +987,13 @@ export function ShipmentView(props: { readonly params: { readonly id: string } }
       mutate(undefined)
       return
     }
-
     const [currentProcessId] = currentProcessResourceKey
     if (previousProcessId === null) {
       previousProcessId = currentProcessId
       return
     }
-    if (previousProcessId === currentProcessId) {
-      return
-    }
+    if (previousProcessId === currentProcessId) return
     previousProcessId = currentProcessId
-
     if (activeRealtimeCleanup) {
       activeRealtimeCleanup()
       activeRealtimeCleanup = null
@@ -1049,46 +1039,128 @@ export function ShipmentView(props: { readonly params: { readonly id: string } }
   })
 
   useEnsureSelectedContainer({ shipment, selectedContainerId, setSelectedContainerId })
+  return ShipmentViewContent({
+    refreshError,
+    alertActionError: alertActions.alertActionError,
+    refreshHint,
+    onDismissRefreshError: () => setRefreshError(null),
+    onDismissAlertActionError: alertActions.clearAlertActionError,
+    isEditOpen: dialogs.isEditOpen,
+    onCloseEdit: dialogs.closeEditDialog,
+    editInitialData: dialogs.editInitialData,
+    focusFieldOnOpen: dialogs.focusFieldOnOpen,
+    onEditSubmit: dialogs.handleEditSubmit,
+    isCreateDialogOpen: dialogs.isCreateDialogOpen,
+    onCloseCreate: dialogs.closeCreateDialog,
+    onCreateSubmit: dialogs.handleCreateSubmit,
+    hasCreateError: dialogs.hasCreateError,
+    createErrorMessage: dialogs.createErrorMessage,
+    createErrorExisting: dialogs.createErrorExisting,
+    onAcknowledgeCreateError: dialogs.clearCreateError,
+    shipmentData: shipment,
+    shipmentLoading: () => shipment.loading,
+    shipmentError: () => shipment.error,
+    activeAlerts,
+    archivedAlerts,
+    busyAlertIds: alertActions.busyAlertIds,
+    collapsingAlertIds: alertActions.collapsingAlertIds,
+    isRefreshing,
+    refreshRetry,
+    syncNow,
+    onTriggerRefresh: triggerRefresh,
+    onAcknowledgeAlert: alertActions.acknowledgeAlert,
+    onUnacknowledgeAlert: alertActions.unacknowledgeAlert,
+    selectedContainerId,
+    onSelectContainer: (id: string) => setSelectedContainerId(String(id)),
+    selectedContainer,
+    selectedContainerEtaVm,
+    onOpenEditForShipment: dialogs.openEditForShipment,
+    onOpenCreateProcess: dialogs.openCreateDialog,
+    onDashboardIntent: handleDashboardIntent,
+  })
+}
 
+function ShipmentViewContent(props: {
+  readonly refreshError: () => string | null
+  readonly alertActionError: () => string | null
+  readonly refreshHint: () => string | null
+  readonly onDismissRefreshError: () => void
+  readonly onDismissAlertActionError: () => void
+  readonly isEditOpen: () => boolean
+  readonly onCloseEdit: () => void
+  readonly editInitialData: () => CreateProcessDialogFormData | null
+  readonly focusFieldOnOpen: () => 'reference' | 'carrier' | null
+  readonly onEditSubmit: (formData: CreateProcessDialogFormData) => Promise<void>
+  readonly isCreateDialogOpen: () => boolean
+  readonly onCloseCreate: () => void
+  readonly onCreateSubmit: (formData: CreateProcessDialogFormData) => Promise<void>
+  readonly hasCreateError: () => boolean
+  readonly createErrorMessage: () => string
+  readonly createErrorExisting: () => ExistingProcessConflict | undefined
+  readonly onAcknowledgeCreateError: () => void
+  readonly shipmentData: Accessor<ShipmentDetailVM | null | undefined>
+  readonly shipmentLoading: () => boolean
+  readonly shipmentError: () => unknown
+  readonly activeAlerts: () => readonly AlertDisplayVM[]
+  readonly archivedAlerts: () => readonly AlertDisplayVM[]
+  readonly busyAlertIds: () => ReadonlySet<string>
+  readonly collapsingAlertIds: () => ReadonlySet<string>
+  readonly isRefreshing: () => boolean
+  readonly refreshRetry: () => RefreshRetryState | null
+  readonly syncNow: () => () => Promise<void>
+  readonly onTriggerRefresh: () => Promise<void>
+  readonly onAcknowledgeAlert: (alertId: string) => Promise<void>
+  readonly onUnacknowledgeAlert: (alertId: string) => Promise<void>
+  readonly selectedContainerId: () => string
+  readonly onSelectContainer: (id: string) => void
+  readonly selectedContainer: () => ContainerEtaDetailVM | null
+  readonly selectedContainerEtaVm: () => ContainerEtaDetailVM | null
+  readonly onOpenEditForShipment: (
+    shipment: ShipmentDetailVM,
+    focus?: 'reference' | 'carrier' | null,
+  ) => void
+  readonly onOpenCreateProcess: () => void
+  readonly onDashboardIntent: () => void
+}) {
   return (
     <ShipmentViewLayout
-      refreshError={refreshError()}
-      alertActionError={alertActions.alertActionError()}
-      refreshHint={refreshHint()}
-      onDismissRefreshError={() => setRefreshError(null)}
-      onDismissAlertActionError={alertActions.clearAlertActionError}
-      isEditOpen={dialogs.isEditOpen()}
-      onCloseEdit={dialogs.closeEditDialog}
-      editInitialData={dialogs.editInitialData()}
-      focusFieldOnOpen={dialogs.focusFieldOnOpen()}
-      onEditSubmit={dialogs.handleEditSubmit}
-      isCreateDialogOpen={dialogs.isCreateDialogOpen()}
-      onCloseCreate={dialogs.closeCreateDialog}
-      onCreateSubmit={dialogs.handleCreateSubmit}
-      hasCreateError={dialogs.hasCreateError()}
-      createErrorMessage={dialogs.createErrorMessage()}
-      createErrorExisting={dialogs.createErrorExisting()}
-      onAcknowledgeCreateError={dialogs.clearCreateError}
-      shipmentData={shipment()}
-      shipmentLoading={shipment.loading}
-      shipmentError={shipment.error}
-      activeAlerts={activeAlerts()}
-      archivedAlerts={archivedAlerts()}
-      busyAlertIds={alertActions.busyAlertIds()}
-      collapsingAlertIds={alertActions.collapsingAlertIds()}
-      isRefreshing={isRefreshing()}
-      refreshRetry={refreshRetry()}
-      syncNow={syncNow()}
-      onTriggerRefresh={triggerRefresh}
-      onAcknowledgeAlert={alertActions.acknowledgeAlert}
-      onUnacknowledgeAlert={alertActions.unacknowledgeAlert}
-      selectedContainerId={selectedContainerId()}
-      onSelectContainer={(id) => setSelectedContainerId(String(id))}
-      selectedContainer={selectedContainer()}
-      selectedContainerEtaVm={selectedContainerEtaVm()}
-      onOpenEditForShipment={dialogs.openEditForShipment}
-      onOpenCreateProcess={dialogs.openCreateDialog}
-      onDashboardIntent={handleDashboardIntent}
+      refreshError={props.refreshError()}
+      alertActionError={props.alertActionError()}
+      refreshHint={props.refreshHint()}
+      onDismissRefreshError={props.onDismissRefreshError}
+      onDismissAlertActionError={props.onDismissAlertActionError}
+      isEditOpen={props.isEditOpen()}
+      onCloseEdit={props.onCloseEdit}
+      editInitialData={props.editInitialData()}
+      focusFieldOnOpen={props.focusFieldOnOpen()}
+      onEditSubmit={props.onEditSubmit}
+      isCreateDialogOpen={props.isCreateDialogOpen()}
+      onCloseCreate={props.onCloseCreate}
+      onCreateSubmit={props.onCreateSubmit}
+      hasCreateError={props.hasCreateError()}
+      createErrorMessage={props.createErrorMessage()}
+      createErrorExisting={props.createErrorExisting()}
+      onAcknowledgeCreateError={props.onAcknowledgeCreateError}
+      shipmentData={props.shipmentData()}
+      shipmentLoading={props.shipmentLoading()}
+      shipmentError={props.shipmentError()}
+      activeAlerts={props.activeAlerts()}
+      archivedAlerts={props.archivedAlerts()}
+      busyAlertIds={props.busyAlertIds()}
+      collapsingAlertIds={props.collapsingAlertIds()}
+      isRefreshing={props.isRefreshing()}
+      refreshRetry={props.refreshRetry()}
+      syncNow={props.syncNow()}
+      onTriggerRefresh={props.onTriggerRefresh}
+      onAcknowledgeAlert={props.onAcknowledgeAlert}
+      onUnacknowledgeAlert={props.onUnacknowledgeAlert}
+      selectedContainerId={props.selectedContainerId()}
+      onSelectContainer={props.onSelectContainer}
+      selectedContainer={props.selectedContainer()}
+      selectedContainerEtaVm={props.selectedContainerEtaVm()}
+      onOpenEditForShipment={props.onOpenEditForShipment}
+      onOpenCreateProcess={props.onOpenCreateProcess}
+      onDashboardIntent={props.onDashboardIntent}
     />
   )
 }
