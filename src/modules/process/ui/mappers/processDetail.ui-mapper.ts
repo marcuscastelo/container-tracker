@@ -1,4 +1,4 @@
-import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
+import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import {
   createNeverContainerSyncVM,
   normalizeContainerNumber,

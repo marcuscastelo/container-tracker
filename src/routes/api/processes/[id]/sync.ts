@@ -1,5 +1,5 @@
-import { processControllers } from '~/modules/process/interface/http/process.controllers.bootstrap'
+import { syncControllers } from '~/shared/api/sync.controllers.bootstrap'
 
 export const runtime = 'nodejs'
 
-export const POST = processControllers.syncProcessById
+export const POST = syncControllers.syncProcessById
