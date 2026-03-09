@@ -37,8 +37,8 @@ Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\Containe
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
 
 [Run]
-Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1"""""""; Flags: runhidden waituntilterminated
-Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1"""""""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""cmd.exe /d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1"""""""; Flags: runhidden waituntilterminated
+Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#UpdaterTaskName}"" /RL LIMITED /IT /TR ""cmd.exe /d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1"""""""; Flags: runhidden waituntilterminated
 Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#AgentTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
 Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#UpdaterTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
 
@@ -47,7 +47,7 @@ Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /
 Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#UpdaterTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-updater-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#UpdaterTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-updater-task"
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$nodeRoot = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Programs', '{#AppDirName}', 'node'); Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object Path -Like ($nodeRoot + '*') | Stop-Process -Force -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "kill-agent-node-process"
+Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$nodeRoot = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Programs', '{#AppDirName}', 'node'); Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object Path -Like ($nodeRoot + '*') | Stop-Process -Force -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "kill-agent-node-process"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
 
@@ -688,14 +688,7 @@ begin
     '"$nodeRoot = [System.IO.Path]::Combine($env:LOCALAPPDATA, ''Programs'', ''{#AppDirName}'', ''node''); ' +
     'Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object Path -Like ($nodeRoot + ''*'') | Stop-Process -Force -ErrorAction SilentlyContinue"';
 
-  if not Exec(
-    'powershell.exe',
-    KillNodeParams,
-    '',
-    SW_HIDE,
-    ewWaitUntilTerminated,
-    ResultCode
-  ) then
+  if not RunCmdHidden('/C powershell.exe ' + KillNodeParams, ResultCode) then
   begin
     ErrorMessage := 'Failed to terminate running node process before install/update.';
     Result := False;
