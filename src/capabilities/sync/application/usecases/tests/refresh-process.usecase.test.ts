@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createRefreshProcessUseCase,
   type RefreshProcessDeps,
-} from '~/modules/process/features/process-sync/application/usecases/refresh-process.usecase'
+} from '~/capabilities/sync/application/usecases/refresh-process.usecase'
 import { HttpError } from '~/shared/errors/httpErrors'
 
 function toHttpErrorOrThrow(error: unknown): HttpError {

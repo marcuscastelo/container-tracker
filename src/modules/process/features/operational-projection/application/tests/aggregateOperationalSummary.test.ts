@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateOperationalSummary } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
-import type { OperationalStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
+import type { OperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 
 type TrackingAlertLike = {
   readonly id: string

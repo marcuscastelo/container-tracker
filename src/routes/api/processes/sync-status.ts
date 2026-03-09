@@ -1,3 +1,3 @@
-import { processControllers } from '~/modules/process/interface/http/process.controllers.bootstrap'
+import { syncStatusControllers } from '~/shared/api/sync.controllers.bootstrap'
 
-export const GET = processControllers.listProcessesSyncStatus
+export const GET = syncStatusControllers.listProcessesSyncStatus
