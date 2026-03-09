@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/operational-projection/deriveProcessStatus'
 
 describe('deriveProcessStatusFromContainers', () => {
   it('returns UNKNOWN when no statuses provided', () => {

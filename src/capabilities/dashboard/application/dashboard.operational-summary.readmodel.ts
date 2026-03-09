@@ -1,4 +1,4 @@
-import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
+import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import {
   type TrackingOperationalAlertCategory,

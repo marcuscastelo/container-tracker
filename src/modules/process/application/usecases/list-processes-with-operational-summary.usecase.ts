@@ -1,13 +1,13 @@
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
+import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
+import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
+import type { ProcessRepository } from '~/modules/process/application/process.repository'
+import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/operational-projection/deriveProcessStatus'
 import {
   type OperationalStatus,
   toOperationalAlertSeverity,
   toOperationalStatus,
-} from '~/modules/process/application/operational-projection/operationalSemantics'
-import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
-import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
-import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
-import type { ProcessRepository } from '~/modules/process/application/process.repository'
+} from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
+import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/operational-projection/processOperationalSummary'
 
 /**
  * Minimal tracking summary needed for process-level aggregation.

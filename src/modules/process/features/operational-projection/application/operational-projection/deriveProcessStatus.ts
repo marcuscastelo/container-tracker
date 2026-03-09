@@ -2,7 +2,7 @@ import {
   type OperationalStatus,
   operationalStatusDominanceIndex,
   type ProcessAggregatedStatus,
-} from '~/modules/process/application/operational-projection/operationalSemantics'
+} from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
 
 /**
  * Statuses that indicate the container is still in active movement
