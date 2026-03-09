@@ -21,6 +21,7 @@ function createControllers(command: {
     | {
         readonly kind: 'manifest_unavailable'
         readonly channel: string
+        readonly reason: 'manifest_missing' | 'platform_asset_missing'
       }
     | {
         readonly kind: 'resolved'
@@ -143,6 +144,7 @@ describe('update manifest controllers', () => {
       manifestResult: {
         kind: 'manifest_unavailable',
         channel: 'stable',
+        reason: 'manifest_missing',
       },
     })
     const response = await controllers.getUpdateManifest({
@@ -154,5 +156,8 @@ describe('update manifest controllers', () => {
     })
 
     expect(response.status).toBe(204)
+    expect(response.headers.get('x-agent-update-status')).toBe('manifest_unavailable')
+    expect(response.headers.get('x-agent-update-channel')).toBe('stable')
+    expect(response.headers.get('x-agent-update-reason')).toBe('manifest_missing')
   })
 })

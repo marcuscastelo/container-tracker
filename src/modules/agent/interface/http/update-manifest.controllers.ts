@@ -41,10 +41,11 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
         return jsonResponse({ error: 'Unauthorized' }, 401)
       }
 
+      const platform = getAgentPlatform(request)
       const result = await deps.updateManifestService.resolveForAgent({
         tenantId: auth.tenantId,
         agentId: auth.agentId,
-        platform: getAgentPlatform(request),
+        platform,
       })
 
       if (result.kind === 'agent_not_found') {
@@ -52,7 +53,18 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
       }
 
       if (result.kind === 'manifest_unavailable') {
-        return new Response(null, { status: 204 })
+        console.warn(
+          `[agent:update-manifest] 204 manifest_unavailable tenant=${auth.tenantId} agent=${auth.agentId} channel=${result.channel} platform=${platform ?? 'default'} reason=${result.reason}`,
+        )
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'x-agent-update-status': 'manifest_unavailable',
+            'x-agent-update-channel': result.channel,
+            'x-agent-update-platform': platform ?? 'default',
+            'x-agent-update-reason': result.reason,
+          },
+        })
       }
 
       const response = {
@@ -68,6 +80,10 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
         restart_required: result.manifest.restartRequired,
         restart_requested_at: result.manifest.restartRequestedAt,
       }
+
+      console.info(
+        `[agent:update-manifest] 200 resolved tenant=${auth.tenantId} agent=${auth.agentId} channel=${response.channel} version=${response.version} update_available=${response.update_available} desired=${response.desired_version ?? 'none'} current=${response.current_version} update_ready=${response.update_ready_version ?? 'none'} platform=${platform ?? 'default'}`,
+      )
 
       return jsonResponse(response, 200, AgentUpdateManifestResponseSchema)
     } catch (error) {

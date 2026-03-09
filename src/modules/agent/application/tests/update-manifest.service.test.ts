@@ -235,6 +235,7 @@ describe('agent update manifest service', () => {
     expect(result).toEqual({
       kind: 'manifest_unavailable',
       channel: 'dev',
+      reason: 'manifest_missing',
     })
   })
 

@@ -76,6 +76,7 @@ export type ResolveAgentUpdateManifestResult =
   | {
       readonly kind: 'manifest_unavailable'
       readonly channel: string
+      readonly reason: 'manifest_missing' | 'platform_asset_missing'
     }
   | {
       readonly kind: 'resolved'
@@ -355,6 +356,7 @@ export function createAgentUpdateManifestService(deps: {
       return {
         kind: 'manifest_unavailable',
         channel: requestedChannel,
+        reason: 'manifest_missing',
       }
     }
 
@@ -366,6 +368,7 @@ export function createAgentUpdateManifestService(deps: {
       return {
         kind: 'manifest_unavailable',
         channel: requestedChannel,
+        reason: 'platform_asset_missing',
       }
     }
 

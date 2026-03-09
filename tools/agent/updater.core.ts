@@ -153,18 +153,32 @@ export async function fetchUpdateManifest(
   fetchImpl: FetchLike = fetch,
 ): Promise<UpdateManifestResponse> {
   const platform = command.platform ?? resolveAgentPlatformKey()
-  const response = await fetchImpl(`${command.backendUrl}/api/agent/update-manifest`, {
+  const manifestUrl = `${command.backendUrl}/api/agent/update-manifest`
+  console.log(
+    `[agent:update] checking manifest url=${manifestUrl} platform=${platform} agent=${command.agentId}`,
+  )
+
+  const response = await fetchImpl(manifestUrl, {
     method: 'GET',
     headers: buildAuthHeaders(command, false),
   })
 
-  if (!response.ok) {
-    const details = await response.text().catch(() => '')
-    throw new Error(`update manifest request failed (${response.status}): ${details}`)
+  if (response.status === 204) {
+    const status = response.headers.get('x-agent-update-status') ?? 'unknown'
+    const channel = response.headers.get('x-agent-update-channel') ?? 'unknown'
+    const reason = response.headers.get('x-agent-update-reason') ?? 'unknown'
+    console.warn(
+      `[agent:update] manifest status=204 (No Content) status=${status} channel=${channel} reason=${reason} platform=${platform}; backend reported manifest_unavailable for this agent/channel`,
+    )
+    return createNoUpdateManifest('stable')
   }
 
-  if (response.status === 204) {
-    return createNoUpdateManifest('stable')
+  if (!response.ok) {
+    const details = await response.text().catch(() => '')
+    console.error(
+      `[agent:update] manifest request failed status=${response.status} platform=${platform}`,
+    )
+    throw new Error(`update manifest request failed (${response.status}): ${details}`)
   }
 
   const payload: unknown = await response.json().catch(() => ({}))
@@ -172,6 +186,10 @@ export async function fetchUpdateManifest(
   if (!parsed.success) {
     throw new Error(`invalid update manifest payload: ${parsed.error.message}`)
   }
+
+  console.log(
+    `[agent:update] manifest status=${response.status} channel=${parsed.data.channel} version=${parsed.data.version} update_available=${parsed.data.update_available} desired=${parsed.data.desired_version ?? 'none'} current=${parsed.data.current_version} update_ready=${parsed.data.update_ready_version ?? 'none'}`,
+  )
 
   const asset = selectManifestAsset({
     manifest: parsed.data,
