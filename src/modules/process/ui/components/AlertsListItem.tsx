@@ -120,6 +120,7 @@ export function AlertItem(props: {
 
   return (
     <li
+      data-testid={`alert-item-${props.alert.id}`}
       class={`list-none rounded border px-2 py-1.5 transition-all duration-200 ease-out overflow-hidden hover:shadow-sm ${toAlertCardClasses(
         props.alert.severity,
         props.mode,
@@ -159,6 +160,7 @@ export function AlertItem(props: {
           <button
             type="button"
             disabled={isBusy()}
+            data-testid={`alert-unack-button-${props.alert.id}`}
             class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-micro font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
             onClick={() => props.onUnacknowledge(props.alert.id)}
@@ -170,6 +172,7 @@ export function AlertItem(props: {
         <button
           type="button"
           disabled={isBusy()}
+          data-testid={`alert-ack-button-${props.alert.id}`}
           class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-slate-400 transition hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label={t(keys.shipmentView.alerts.action.acknowledgeAria)}
           title={t(keys.shipmentView.alerts.action.acknowledge)}
