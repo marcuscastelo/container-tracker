@@ -74,6 +74,44 @@ function basenameFromPath(targetPath: string | null): string | null {
   return base.length > 0 ? base : null
 }
 
+function normalizePathForComparison(targetPath: string): string {
+  const resolved = path.resolve(targetPath)
+  if (process.platform === 'win32') {
+    return resolved.toLowerCase()
+  }
+
+  return resolved
+}
+
+function arePathsEqual(leftPath: string, rightPath: string): boolean {
+  return normalizePathForComparison(leftPath) === normalizePathForComparison(rightPath)
+}
+
+function isPathWithinDirectory(directoryPath: string, candidatePath: string): boolean {
+  const normalizedDirectory = normalizePathForComparison(directoryPath)
+  const normalizedCandidate = normalizePathForComparison(candidatePath)
+  const relativePath = path.relative(normalizedDirectory, normalizedCandidate)
+
+  if (relativePath.length === 0) {
+    return true
+  }
+
+  return !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+}
+
+function removeInvalidCurrentRelease(layout: AgentPathLayout, linkedReleasePath: string): void {
+  removePathIfExists(layout.currentLinkPath)
+
+  const previousLinkedReleasePath = safeRealpath(layout.previousLinkPath)
+  if (previousLinkedReleasePath && arePathsEqual(previousLinkedReleasePath, linkedReleasePath)) {
+    removePathIfExists(layout.previousLinkPath)
+  }
+
+  if (isPathWithinDirectory(layout.releasesDir, linkedReleasePath)) {
+    removePathIfExists(linkedReleasePath)
+  }
+}
+
 function isSupervisorShimEntrypoint(entrypointPath: string): boolean {
   if (path.basename(entrypointPath).toLowerCase() !== 'agent.js') {
     return false
@@ -122,6 +160,8 @@ export function resolveRuntimeEntrypoint(command: {
         source: 'release',
       }
     }
+
+    removeInvalidCurrentRelease(command.layout, linkedReleasePath)
   }
 
   return {

@@ -214,6 +214,28 @@ function writeFileAtomic(filePath: string, content: Buffer | string): void {
   fs.renameSync(tempPath, filePath)
 }
 
+function removeReleaseDirectoryIfPresent(releaseDir: string): void {
+  if (!fs.existsSync(releaseDir)) {
+    return
+  }
+
+  fs.rmSync(releaseDir, { recursive: true, force: true })
+}
+
+function removeReleaseDirectoryWhenEntrypointMissing(releaseDir: string): boolean {
+  if (!fs.existsSync(releaseDir)) {
+    return false
+  }
+
+  if (releaseManager.resolveReleaseEntrypoint(releaseDir)) {
+    return false
+  }
+
+  console.warn(`[agent:update] removing release without executable entrypoint: ${releaseDir}`)
+  removeReleaseDirectoryIfPresent(releaseDir)
+  return true
+}
+
 function findReleaseDirFromExtractedRoot(extractedRoot: string): string | null {
   const rootEntrypoint = releaseManager.resolveReleaseEntrypoint(extractedRoot)
   if (rootEntrypoint) {
@@ -255,6 +277,7 @@ function prepareReleaseDirectory(command: {
   }
 
   if (command.archiveKind === 'javascript') {
+    removeReleaseDirectoryWhenEntrypointMissing(releaseDir)
     fs.mkdirSync(releaseDir, { recursive: true })
     writeFileAtomic(path.join(releaseDir, 'agent.js'), command.payload)
     return {
@@ -287,14 +310,7 @@ function prepareReleaseDirectory(command: {
     )
   }
 
-  if (fs.existsSync(releaseDir)) {
-    fs.rmSync(stagingDir, { recursive: true, force: true })
-    return {
-      releaseDir,
-      archivePath,
-      archiveKind: command.archiveKind,
-    }
-  }
+  removeReleaseDirectoryWhenEntrypointMissing(releaseDir)
 
   fs.renameSync(extractedReleaseDir, releaseDir)
   fs.rmSync(stagingDir, { recursive: true, force: true })
@@ -355,6 +371,8 @@ export async function stageReleaseFromManifest(command: {
     }
   }
 
+  removeReleaseDirectoryWhenEntrypointMissing(releaseDir)
+
   const response = await (command.fetchImpl ?? fetch)(command.manifest.download_url)
   if (!response.ok) {
     const details = await response.text().catch(() => '')
@@ -381,6 +399,7 @@ export async function stageReleaseFromManifest(command: {
   })
 
   if (!releaseManager.resolveReleaseEntrypoint(downloadedRelease.releaseDir)) {
+    removeReleaseDirectoryIfPresent(downloadedRelease.releaseDir)
     throw new Error(`staged release ${command.manifest.version} has no executable entrypoint`)
   }
 

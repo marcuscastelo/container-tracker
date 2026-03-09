@@ -177,6 +177,46 @@ describe('updater core', () => {
     expect(fs.existsSync(path.join(result.releaseDir, 'agent.js'))).toBe(true)
   })
 
+  it('removes stale release directory when entrypoint is missing before restaging', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-updater-test-'))
+    const layout = createLayout(tempDir)
+    const staleReleaseDir = path.join(layout.releasesDir, '2.0.2')
+    fs.mkdirSync(staleReleaseDir, { recursive: true })
+    fs.writeFileSync(path.join(staleReleaseDir, 'stale.txt'), 'stale release content\n', 'utf8')
+
+    const releaseBody = "console.log('agent v202')\n"
+    const checksum = sha256(releaseBody)
+    const fetchRelease = async (): Promise<Response> =>
+      new Response(releaseBody, {
+        status: 200,
+        headers: { 'content-type': 'application/javascript' },
+      })
+
+    const result = await stageReleaseFromManifest({
+      manifest: {
+        version: '2.0.2',
+        download_url: 'https://agent.test.local/release-v202.js',
+        checksum,
+        channel: 'stable',
+        update_available: true,
+        desired_version: '2.0.2',
+        current_version: '1.0.0',
+        update_ready_version: null,
+        restart_required: false,
+        restart_requested_at: null,
+      },
+      layout,
+      state: createInitialReleaseState('1.0.0'),
+      fetchImpl: fetchRelease,
+    })
+
+    expect(result.kind).toBe('staged')
+    if (result.kind !== 'staged') return
+    expect(result.downloaded).toBe(true)
+    expect(fs.existsSync(path.join(result.releaseDir, 'stale.txt'))).toBe(false)
+    expect(fs.readFileSync(path.join(result.releaseDir, 'agent.js'), 'utf8')).toBe(releaseBody)
+  })
+
   it('fails when checksum does not match downloaded release', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-updater-test-'))
     const layout = createLayout(tempDir)

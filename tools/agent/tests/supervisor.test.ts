@@ -192,6 +192,29 @@ describe('supervisor release policies', () => {
     expect(rolledBack.current_version).toBe('fallback-runtime')
   })
 
+  it('removes invalid current release directory when runtime entrypoint is missing', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-supervisor-test-'))
+    const layout = createLayout(tempDir)
+    const invalidReleaseDir = path.join(layout.releasesDir, '2.0.9')
+    fs.mkdirSync(invalidReleaseDir, { recursive: true })
+    fs.writeFileSync(path.join(invalidReleaseDir, 'stale.txt'), 'invalid release payload\n', 'utf8')
+    linkCurrent(layout, invalidReleaseDir)
+
+    const fallbackEntrypoint = path.join(tempDir, 'agent-fallback.js')
+    fs.writeFileSync(fallbackEntrypoint, "console.log('fallback')\n", 'utf8')
+
+    const runtimeSelection = resolveRuntimeEntrypoint({
+      layout,
+      fallbackEntrypoint,
+      expectedVersion: '2.0.9',
+    })
+
+    expect(runtimeSelection.source).toBe('fallback')
+    expect(runtimeSelection.entrypointPath).toBe(fallbackEntrypoint)
+    expect(fs.existsSync(layout.currentLinkPath)).toBe(false)
+    expect(fs.existsSync(invalidReleaseDir)).toBe(false)
+  })
+
   it('skips supervisor shim entrypoint when selecting release runtime', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-supervisor-test-'))
     const layout = createLayout(tempDir)
