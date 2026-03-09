@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
-import { deriveTimeline } from '~/modules/tracking/domain/derive/deriveTimeline'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'CXDU2058677'

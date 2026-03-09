@@ -1,8 +1,8 @@
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import {
   groupVoyageSegments,
   type VoyageSegment,
 } from '~/modules/tracking/application/projection/voyageSegments'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 export type TerminalSegmentKind = 'pre-carriage' | 'transshipment-terminal' | 'post-carriage'
 

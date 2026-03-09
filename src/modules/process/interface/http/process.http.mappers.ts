@@ -24,11 +24,11 @@ import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
-} from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
-import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+} from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record

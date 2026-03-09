@@ -3,7 +3,7 @@ import {
   toCurrentVoyageGroups,
 } from '~/modules/process/ui/timeline/currentVoyage'
 import { buildTimelineRenderList } from '~/modules/process/ui/timeline/timelineBlockModel'
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 function findLatestPreferredTimelineValue(
   timeline: readonly TrackingTimelineItem[],

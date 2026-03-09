@@ -1,5 +1,8 @@
-import type { Timeline, TimelineHole } from '~/modules/tracking/domain/model/timeline'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type {
+  Timeline,
+  TimelineHole,
+} from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**
  * Compute a semantic group key for reconciliation.

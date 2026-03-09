@@ -5,16 +5,16 @@ import {
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
-import { deriveTimeline } from '~/modules/tracking/domain/derive/deriveTimeline'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { Timeline } from '~/modules/tracking/domain/model/timeline'
 import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**
  * Command to retrieve the full tracking summary for a container.

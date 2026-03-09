@@ -7,8 +7,8 @@ import {
   type TimelineRenderItem as TrackingTimelineRenderItem,
   type TransshipmentBlock as TrackingTransshipmentBlock,
   type VoyageBlock as TrackingVoyageBlock,
-} from '~/modules/tracking/application/projection/tracking.timeline.blocks.readmodel'
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+} from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 export type GapMarker = TrackingGapMarker
 export type PortRiskMarker = TrackingPortRiskMarker

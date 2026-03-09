@@ -1,13 +1,13 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
-import {
-  buildSeriesKey,
-  compareObservationsChronologically,
-} from '~/modules/tracking/domain/derive/deriveTimeline'
 import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { DerivedObservationState } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
 import { deriveObservationState } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
 import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import { classifySeries } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
+import {
+  buildSeriesKey,
+  compareObservationsChronologically,
+} from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 
 export type TrackingSeriesHistoryItem = {
   readonly id: string

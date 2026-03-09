@@ -5,7 +5,7 @@ import {
   seriesLabelToClass,
   seriesLabelToKey,
 } from '~/modules/process/ui/mappers/seriesLabel.ui-mapper'
-import type { TrackingSeriesHistoryItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingSeriesHistoryItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 

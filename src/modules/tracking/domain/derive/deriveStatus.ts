@@ -1,6 +1,6 @@
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
-import type { Timeline } from '~/modules/tracking/domain/model/timeline'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
+import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**
  * Maps observation types to the status they imply.

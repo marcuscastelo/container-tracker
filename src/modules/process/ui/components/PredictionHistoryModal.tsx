@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { createMemo, Show } from 'solid-js'
 import { PredictionHistoryTable } from '~/modules/process/ui/components/PredictionHistoryTable'
-import type { TrackingSeriesHistory } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingSeriesHistory } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 

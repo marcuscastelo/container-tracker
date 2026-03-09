@@ -16,13 +16,13 @@ import {
   ProcessRefreshRequestSchema,
 } from '~/modules/process/interface/http/process.schemas'
 import { createTrackingOperationalSummaryFallback } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
-import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
   type ContainerSyncRecord,
   createContainerSyncMetadataFallback,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
+import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
