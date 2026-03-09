@@ -5,6 +5,7 @@ import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingS
 import {
   deriveCurrentLocationFromTimeline,
   deriveCurrentVesselFromTimeline,
+  shouldHideCurrentVesselForCompletedLeg,
 } from '~/modules/process/ui/utils/current-tracking-context'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -29,10 +30,14 @@ function StatusRow(props: { readonly label: string; readonly children: JSX.Eleme
 export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const unknown = () => t(keys.shipmentView.currentStatus.unknown)
+  const vesselNotApplicable = () => t(keys.shipmentView.currentStatus.vesselNotApplicable)
 
   const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.container.timeline))
   const currentLocation = createMemo(() =>
     deriveCurrentLocationFromTimeline(props.container.timeline),
+  )
+  const hideCurrentVessel = createMemo(() =>
+    shouldHideCurrentVesselForCompletedLeg(props.container.timeline),
   )
 
   const syncLabel = createMemo(() =>
@@ -69,7 +74,9 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
         </StatusRow>
 
         <StatusRow label={t(keys.shipmentView.currentStatus.currentVessel)}>
-          <span class="font-medium break-words">{currentVessel() ?? unknown()}</span>
+          <span class="font-medium break-words">
+            {hideCurrentVessel() ? vesselNotApplicable() : (currentVessel() ?? unknown())}
+          </span>
         </StatusRow>
 
         <StatusRow label={t(keys.shipmentView.currentStatus.currentLocation)}>

@@ -245,7 +245,8 @@
       "eta": "ETA",
       "lastUpdate": "Última atualização",
       "noContainer": "Selecione um contentor para ver o estado.",
-      "unknown": "—"
+      "unknown": "—",
+      "vesselNotApplicable": "Já descarregado"
     },
     "containerSummary": {
       "moreContainers": "+{{count}} contentores neste processo",

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveCurrentLocationFromTimeline,
   deriveCurrentVesselFromTimeline,
+  shouldHideCurrentVesselForCompletedLeg,
 } from '~/modules/process/ui/utils/current-tracking-context'
 import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 
@@ -76,5 +77,70 @@ describe('current tracking context', () => {
 
     expect(deriveCurrentVesselFromTimeline(timeline)).toBeNull()
     expect(deriveCurrentLocationFromTimeline(timeline)).toBeNull()
+  })
+
+  it('hides current vessel when post-carriage has ACTUAL events', () => {
+    const timeline: readonly TrackingTimelineItem[] = [
+      createTimelineEvent({
+        id: 'load',
+        type: 'LOAD',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+        vesselName: 'MSC Maya',
+      }),
+      createTimelineEvent({
+        id: 'discharge',
+        type: 'DISCHARGE',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+      }),
+      createTimelineEvent({
+        id: 'gate-out',
+        type: 'GATE_OUT',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+      }),
+    ]
+
+    expect(shouldHideCurrentVesselForCompletedLeg(timeline)).toBe(true)
+  })
+
+  it('hides current vessel when only discharged voyage remains as fallback', () => {
+    const timeline: readonly TrackingTimelineItem[] = [
+      createTimelineEvent({
+        id: 'load',
+        type: 'LOAD',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+      }),
+      createTimelineEvent({
+        id: 'discharge',
+        type: 'DISCHARGE',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+      }),
+    ]
+
+    expect(shouldHideCurrentVesselForCompletedLeg(timeline)).toBe(true)
+  })
+
+  it('keeps current vessel visible while an active voyage exists', () => {
+    const timeline: readonly TrackingTimelineItem[] = [
+      createTimelineEvent({
+        id: 'load',
+        type: 'LOAD',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+        vesselName: 'CMA Horizon',
+      }),
+      createTimelineEvent({
+        id: 'departure',
+        type: 'DEPARTURE',
+        eventTimeType: 'ACTUAL',
+        derivedState: 'ACTUAL',
+      }),
+    ]
+
+    expect(shouldHideCurrentVesselForCompletedLeg(timeline)).toBe(false)
   })
 })

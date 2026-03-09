@@ -234,7 +234,8 @@
       "eta": "ETA",
       "lastUpdate": "Last update",
       "noContainer": "Select a container to view its status.",
-      "unknown": "—"
+      "unknown": "—",
+      "vesselNotApplicable": "Already discharged"
     },
     "containerSummary": {
       "moreContainers": "+{{count}} containers in this process",
