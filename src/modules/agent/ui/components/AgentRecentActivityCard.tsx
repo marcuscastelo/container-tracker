@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import type { AgentActivityVM, AgentStatusTone } from '~/modules/agent/ui/vm/agent.vm'
 
 type Props = {
@@ -20,7 +20,31 @@ const severityBorder: Record<AgentStatusTone, string> = {
   neutral: 'border-slate-200',
 }
 
+function ActivityRow(props: { readonly activity: AgentActivityVM }): JSX.Element {
+  return (
+    <div
+      class={`flex items-start gap-2.5 border-b px-3 py-2 last:border-b-0 ${severityBorder[props.activity.severityTone]}`}
+    >
+      <span
+        class={`mt-1 h-2 w-2 shrink-0 rounded-full ${severityDot[props.activity.severityTone]}`}
+        aria-hidden="true"
+      />
+      <div class="min-w-0 flex-1">
+        <div class="flex items-baseline justify-between gap-2">
+          <span class="text-xs-ui font-semibold text-slate-700">{props.activity.typeLabel}</span>
+          <span class="shrink-0 text-micro text-slate-400" title={props.activity.occurredAtDisplay}>
+            {props.activity.occurredAtRelative}
+          </span>
+        </div>
+        <p class="text-micro text-slate-500">{props.activity.message}</p>
+      </div>
+    </div>
+  )
+}
+
 export function AgentRecentActivityCard(props: Props): JSX.Element {
+  const activities = () => [...props.activities]
+
   return (
     <section class="rounded-lg border border-slate-200 bg-white">
       <header class="border-b border-slate-100 px-3 py-2">
@@ -30,36 +54,17 @@ export function AgentRecentActivityCard(props: Props): JSX.Element {
         <p class="text-micro text-slate-400">Operational events — not shipment tracking timeline</p>
       </header>
       <div class="max-h-90 overflow-y-auto">
-        <For
-          each={[...props.activities]}
-          fallback={
-            <div class="px-3 py-4 text-center text-sm-ui text-slate-400">No recent activity</div>
-          }
-        >
-          {(activity) => (
-            <div
-              class={`flex items-start gap-2.5 border-b px-3 py-2 last:border-b-0 ${severityBorder[activity.severityTone]}`}
-            >
-              <span
-                class={`mt-1 h-2 w-2 shrink-0 rounded-full ${severityDot[activity.severityTone]}`}
-                aria-hidden="true"
-              />
-              <div class="min-w-0 flex-1">
-                <div class="flex items-baseline justify-between gap-2">
-                  <span class="text-xs-ui font-semibold text-slate-700">{activity.typeLabel}</span>
-                  <span
-                    class="shrink-0 text-micro text-slate-400"
-                    title={activity.occurredAtDisplay}
-                  >
-                    {activity.occurredAtRelative}
-                  </span>
-                </div>
-                <p class="text-micro text-slate-500">{activity.message}</p>
-              </div>
-            </div>
-          )}
-        </For>
+        <Show when={activities().length === 0}>
+          <EmptyActivityState />
+        </Show>
+        <Show when={activities().length > 0}>
+          <For each={activities()}>{(activity) => <ActivityRow activity={activity} />}</For>
+        </Show>
       </div>
     </section>
   )
+}
+
+function EmptyActivityState(): JSX.Element {
+  return <div class="px-3 py-4 text-center text-sm-ui text-slate-400">No recent activity</div>
 }

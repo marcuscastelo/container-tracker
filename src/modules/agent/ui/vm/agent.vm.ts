@@ -2,7 +2,7 @@
 // Agent UI ViewModels — display-ready shapes consumed by components.
 // ---------------------------------------------------------------------------
 
-import type { AgentActivitySeverity, AgentActivityType } from '~/modules/agent/ui/mock/agent.mock'
+import type { AgentActivitySeverity, AgentActivityType } from '~/modules/agent/ui/api/agent.api'
 
 // --- Status visual tone ---
 

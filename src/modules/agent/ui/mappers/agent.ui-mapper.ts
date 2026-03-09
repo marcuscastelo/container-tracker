@@ -9,7 +9,7 @@ import type {
   AgentFleetSummary,
   AgentStatus,
   AgentSummaryPayload,
-} from '~/modules/agent/ui/mock/agent.mock'
+} from '~/modules/agent/ui/api/agent.api'
 import type {
   AgentActivityVM,
   AgentDetailVM,
@@ -73,9 +73,11 @@ function realtimeTone(state: string): AgentStatusTone {
   }
 }
 
-function formatDateTime(iso: string): string {
+function formatDateTime(iso: string | null): string {
+  if (!iso) return '—'
   try {
     const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return '—'
     return d.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -89,9 +91,11 @@ function formatDateTime(iso: string): string {
   }
 }
 
-function relativeTime(iso: string, now: Date): string {
+function relativeTime(iso: string | null, now: Date): string {
+  if (!iso) return 'never'
   try {
     const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return 'never'
     const diffMs = now.getTime() - d.getTime()
     if (diffMs < 0) return 'just now'
     const diffSec = Math.floor(diffMs / 1000)
@@ -108,9 +112,11 @@ function relativeTime(iso: string, now: Date): string {
   }
 }
 
-function freshnessBucket(iso: string, now: Date): 'fresh' | 'recent' | 'stale' | 'offline' {
+function freshnessBucket(iso: string | null, now: Date): 'fresh' | 'recent' | 'stale' | 'offline' {
+  if (!iso) return 'offline'
   try {
     const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return 'offline'
     const diffMs = now.getTime() - d.getTime()
     const diffSec = diffMs / 1000
     if (diffSec < 60) return 'fresh'

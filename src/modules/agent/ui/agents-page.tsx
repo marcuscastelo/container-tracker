@@ -1,10 +1,7 @@
-// ---------------------------------------------------------------------------
-// Agents List Page — main fleet monitoring surface.
-// ---------------------------------------------------------------------------
-
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, onCleanup } from 'solid-js'
+import { type AgentListQuery, fetchAgentList } from '~/modules/agent/ui/api/agent.api'
 import { AgentCardList } from '~/modules/agent/ui/components/AgentCardList'
 import {
   AgentFiltersBar,
@@ -14,55 +11,17 @@ import { AgentFleetSummary } from '~/modules/agent/ui/components/AgentFleetSumma
 import { AgentPageHeader } from '~/modules/agent/ui/components/AgentPageHeader'
 import { type AgentSortField, AgentsTable } from '~/modules/agent/ui/components/AgentsTable'
 import { toAgentListItemVM, toFleetSummaryVM } from '~/modules/agent/ui/mappers/agent.ui-mapper'
-import { deriveFleetSummary, fetchAgentList } from '~/modules/agent/ui/mock/agent.mock.api'
 import type { AgentListItemVM } from '~/modules/agent/ui/vm/agent.vm'
+import { subscribeToTrackingAgentsByTenant } from '~/shared/api/agent-monitoring.realtime.client'
 import { AppHeader } from '~/shared/ui/AppHeader'
 
-// --- Status severity order for default sort ---
-
-const STATUS_SEVERITY: Record<string, number> = {
-  Disconnected: 0,
-  Degraded: 1,
-  Unknown: 2,
-  Connected: 3,
+function mapStatusFilter(value: AgentStatusFilter): AgentListQuery['status'] | undefined {
+  if (value === 'all') return undefined
+  if (value === 'connected') return 'CONNECTED'
+  if (value === 'degraded') return 'DEGRADED'
+  if (value === 'disconnected') return 'DISCONNECTED'
+  return 'UNKNOWN'
 }
-
-// --- Sort helpers ---
-
-function sortAgents(
-  agents: readonly AgentListItemVM[],
-  field: AgentSortField,
-  asc: boolean,
-): readonly AgentListItemVM[] {
-  const copy = [...agents]
-  const dir = asc ? 1 : -1
-
-  copy.sort((a, b) => {
-    switch (field) {
-      case 'status':
-        return ((STATUS_SEVERITY[a.status] ?? 99) - (STATUS_SEVERITY[b.status] ?? 99)) * dir
-      case 'tenant':
-        return a.tenantName.localeCompare(b.tenantName) * dir
-      case 'lastSeen':
-        return a.lastSeenDisplay.localeCompare(b.lastSeenDisplay) * dir
-      case 'failures':
-        return (a.failuresLastHour - b.failuresLastHour) * dir
-      case 'queueLag': {
-        const aLag = a.queueLagDisplay === '—' ? -1 : Number.parseFloat(a.queueLagDisplay)
-        const bLag = b.queueLagDisplay === '—' ? -1 : Number.parseFloat(b.queueLagDisplay)
-        return (aLag - bLag) * dir
-      }
-      case 'activeJobs':
-        return (a.activeJobs - b.activeJobs) * dir
-      default:
-        return 0
-    }
-  })
-
-  return copy
-}
-
-// --- Formatting helpers ---
 
 function formatRefreshTime(d: Date): string {
   return d.toLocaleTimeString('en-US', {
@@ -75,11 +34,6 @@ function formatRefreshTime(d: Date): string {
 
 export function AgentsPage(): JSX.Element {
   const navigate = useNavigate()
-
-  // --- Data resource ---
-  const [agents, { refetch }] = createResource(fetchAgentList)
-
-  // --- UI state ---
   const [searchText, setSearchText] = createSignal('')
   const [statusFilter, setStatusFilter] = createSignal<AgentStatusFilter>('all')
   const [capabilityFilter, setCapabilityFilter] = createSignal('')
@@ -89,84 +43,76 @@ export function AgentsPage(): JSX.Element {
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
   const [isLive] = createSignal(true)
 
-  // --- Simulated polling ---
-  const pollInterval = setInterval(() => {
-    setLastRefreshed(new Date())
-    void refetch()
-  }, 15_000)
+  const listQuery = createMemo<AgentListQuery>(() => ({
+    search: searchText().trim().length > 0 ? searchText().trim() : undefined,
+    status: mapStatusFilter(statusFilter()),
+    capability: capabilityFilter().trim().length > 0 ? capabilityFilter() : undefined,
+    onlyProblematic: onlyProblematic(),
+    sortField: sortField(),
+    sortDir: sortAsc() ? 'asc' : 'desc',
+  }))
 
-  onCleanup(() => clearInterval(pollInterval))
+  const [agentsResponse, { refetch }] = createResource(listQuery, (query) => fetchAgentList(query))
 
-  // --- Derived: now signal for relative time ---
   const now = createMemo(() => lastRefreshed())
 
-  // --- Derived: mapped VMs ---
   const agentVMs = createMemo<readonly AgentListItemVM[]>(() => {
-    const raw = agents()
-    if (!raw) return []
-    return raw.map((dto) => toAgentListItemVM(dto, now()))
+    const response = agentsResponse()
+    if (!response) return []
+    return response.agents.map((dto) => toAgentListItemVM(dto, now()))
   })
 
-  // --- Derived: available capabilities ---
   const availableCapabilities = createMemo(() => {
     const caps = new Set<string>()
     for (const vm of agentVMs()) {
       for (const cap of vm.capabilitiesDisplay.split(', ')) {
-        if (cap) caps.add(cap)
+        if (cap.trim().length > 0) caps.add(cap)
       }
     }
     return [...caps].sort()
   })
 
-  // --- Derived: filtered ---
-  const filteredAgents = createMemo(() => {
-    let result = agentVMs()
-
-    const search = searchText().toLowerCase().trim()
-    if (search) {
-      result = result.filter(
-        (a) =>
-          a.tenantName.toLowerCase().includes(search) ||
-          a.hostname.toLowerCase().includes(search) ||
-          a.agentId.toLowerCase().includes(search),
-      )
-    }
-
-    const sf = statusFilter()
-    if (sf !== 'all') {
-      result = result.filter((a) => a.status.toLowerCase() === sf)
-    }
-
-    const cf = capabilityFilter()
-    if (cf) {
-      result = result.filter((a) => a.capabilitiesDisplay.includes(cf))
-    }
-
-    if (onlyProblematic()) {
-      result = result.filter((a) => a.isProblematic)
-    }
-
-    return result
-  })
-
-  // --- Derived: sorted ---
-  const sortedAgents = createMemo(() => sortAgents(filteredAgents(), sortField(), sortAsc()))
-
-  // --- Derived: fleet summary ---
   const fleetSummary = createMemo(() => {
-    const raw = agents()
-    if (!raw) return null
-    return toFleetSummaryVM(deriveFleetSummary(raw))
+    const response = agentsResponse()
+    if (!response) return null
+    return toFleetSummaryVM(response.summary)
   })
 
-  // --- Handlers ---
+  const tenantIdForRealtime = createMemo(() => {
+    const response = agentsResponse()
+    return response?.agents[0]?.tenantId ?? null
+  })
+
+  const fallbackPollTimer = setInterval(() => {
+    setLastRefreshed(new Date())
+    void refetch()
+  }, 20_000)
+
+  onCleanup(() => clearInterval(fallbackPollTimer))
+
+  createEffect(() => {
+    const tenantId = tenantIdForRealtime()
+    if (!tenantId) return
+
+    const subscription = subscribeToTrackingAgentsByTenant({
+      tenantId,
+      onEvent() {
+        setLastRefreshed(new Date())
+        void refetch()
+      },
+    })
+
+    onCleanup(() => subscription.unsubscribe())
+  })
+
   function handleSortChange(field: AgentSortField): void {
     if (sortField() === field) {
       setSortAsc((prev) => !prev)
-    } else {
-      setSortField(field)
-      setSortAsc(true)
+      return
     }
+
+    setSortField(field)
+    setSortAsc(true)
   }
 
   function handleAgentClick(agentId: string): void {
@@ -192,7 +138,7 @@ export function AgentsPage(): JSX.Element {
             onRefresh={handleRefresh}
           />
 
-          <AgentFleetSummary summary={fleetSummary()} loading={agents.loading} />
+          <AgentFleetSummary summary={fleetSummary()} loading={agentsResponse.loading} />
 
           <AgentFiltersBar
             searchText={searchText()}
@@ -207,9 +153,9 @@ export function AgentsPage(): JSX.Element {
           />
 
           <AgentsTable
-            agents={sortedAgents()}
-            loading={agents.loading}
-            hasError={Boolean(agents.error)}
+            agents={agentVMs()}
+            loading={agentsResponse.loading}
+            hasError={Boolean(agentsResponse.error)}
             sortField={sortField()}
             sortAsc={sortAsc()}
             onSortChange={handleSortChange}
@@ -218,9 +164,9 @@ export function AgentsPage(): JSX.Element {
           />
 
           <AgentCardList
-            agents={sortedAgents()}
-            loading={agents.loading}
-            hasError={Boolean(agents.error)}
+            agents={agentVMs()}
+            loading={agentsResponse.loading}
+            hasError={Boolean(agentsResponse.error)}
             onAgentClick={handleAgentClick}
             onRetry={handleRefresh}
           />

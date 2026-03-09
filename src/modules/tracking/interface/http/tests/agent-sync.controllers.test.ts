@@ -14,6 +14,7 @@ import {
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const SYNC_REQUEST_ID = '22222222-2222-4222-8222-222222222222'
 const SNAPSHOT_ID = '33333333-3333-4333-8333-333333333333'
+const AGENT_ID = '44444444-4444-4444-8444-444444444444'
 
 function createSyncRequestRow(overrides: Partial<SyncRequestRow> = {}): SyncRequestRow {
   return {
@@ -24,7 +25,7 @@ function createSyncRequestRow(overrides: Partial<SyncRequestRow> = {}): SyncRequ
     ref_value: 'MSCU1234567',
     status: 'LEASED',
     priority: 10,
-    leased_by: 'agent-1',
+    leased_by: AGENT_ID,
     leased_until: '2026-02-25T10:00:00.000Z',
     attempts: 1,
     last_error: null,
@@ -48,7 +49,13 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
       },
     ]),
     saveAndProcess: vi.fn(async () => ({ snapshotId: SNAPSHOT_ID })),
-    authenticateAgentToken: vi.fn(async () => ({ tenantId: TENANT_ID })),
+    authenticateAgentToken: vi.fn(async () => ({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+    })),
+    getTenantQueueLagSeconds: vi.fn(async () => 12),
+    updateAgentRuntimeState: vi.fn(async () => undefined),
+    recordAgentActivity: vi.fn(async () => undefined),
     leaseMinutes: 5,
     ...overrides,
   }
@@ -104,6 +111,7 @@ describe('agent sync controllers', () => {
     const deps = createDeps({
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        agentId: AGENT_ID,
       })),
     })
     const controllers = createAgentSyncControllers(deps)
@@ -144,9 +152,10 @@ describe('agent sync controllers', () => {
     expect(body.targets).toHaveLength(1)
     expect(body.targets[0]?.sync_request_id).toBe(SYNC_REQUEST_ID)
     expect(body.leased_until).toBe('2026-02-25T10:00:00.000Z')
+    expect(body.queue_lag_seconds).toBe(12)
     expect(deps.leaseSyncRequests).toHaveBeenCalledWith({
       tenantId: TENANT_ID,
-      agentId: 'agent-1',
+      agentId: AGENT_ID,
       limit: 1,
       leaseMinutes: 5,
     })
@@ -182,7 +191,7 @@ describe('agent sync controllers', () => {
     expect(deps.markSyncRequestDone).toHaveBeenCalledWith({
       tenantId: TENANT_ID,
       syncRequestId: SYNC_REQUEST_ID,
-      agentId: 'agent-1',
+      agentId: AGENT_ID,
     })
   })
 
@@ -190,6 +199,7 @@ describe('agent sync controllers', () => {
     const deps = createDeps({
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        agentId: AGENT_ID,
       })),
     })
     const controllers = createAgentSyncControllers(deps)
@@ -246,6 +256,12 @@ describe('agent sync controllers', () => {
     expect(response.status).toBe(422)
     expect(String(body.error)).toContain('No container found')
     expect(deps.markSyncRequestFailed).toHaveBeenCalledTimes(1)
+    expect(deps.markSyncRequestFailed).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      syncRequestId: SYNC_REQUEST_ID,
+      agentId: AGENT_ID,
+      errorMessage: expect.stringContaining('No container found'),
+    })
   })
 
   it('marks sync request as FAILED when container is ambiguous', async () => {
@@ -281,6 +297,12 @@ describe('agent sync controllers', () => {
     expect(response.status).toBe(422)
     expect(String(body.error)).toContain('Ambiguous container')
     expect(deps.markSyncRequestFailed).toHaveBeenCalledTimes(1)
+    expect(deps.markSyncRequestFailed).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      syncRequestId: SYNC_REQUEST_ID,
+      agentId: AGENT_ID,
+      errorMessage: expect.stringContaining('Ambiguous container'),
+    })
   })
 
   it('returns lease_conflict when request is no longer leased', async () => {

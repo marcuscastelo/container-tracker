@@ -1,10 +1,15 @@
-// ---------------------------------------------------------------------------
-// Agent Detail Page — single-agent operational cockpit.
-// ---------------------------------------------------------------------------
-
 import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, Index, onCleanup, Show } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  Index,
+  onCleanup,
+  Show,
+} from 'solid-js'
+import { fetchAgentDetail } from '~/modules/agent/ui/api/agent.api'
 import { AgentCapabilitiesCard } from '~/modules/agent/ui/components/AgentCapabilitiesCard'
 import { AgentDiagnosticsCard } from '~/modules/agent/ui/components/AgentDiagnosticsCard'
 import { AgentEnrollmentCard } from '~/modules/agent/ui/components/AgentEnrollmentCard'
@@ -14,7 +19,10 @@ import { AgentMetricsCard } from '~/modules/agent/ui/components/AgentMetricsCard
 import { AgentRecentActivityCard } from '~/modules/agent/ui/components/AgentRecentActivityCard'
 import { AgentStatusBadge } from '~/modules/agent/ui/components/AgentStatusBadge'
 import { toAgentDetailVM } from '~/modules/agent/ui/mappers/agent.ui-mapper'
-import { fetchAgentDetail } from '~/modules/agent/ui/mock/agent.mock.api'
+import {
+  subscribeToTrackingAgentActivityByAgentId,
+  subscribeToTrackingAgentsByTenant,
+} from '~/shared/api/agent-monitoring.realtime.client'
 import { AppHeader } from '~/shared/ui/AppHeader'
 
 type Props = {
@@ -82,24 +90,69 @@ function AgentNotFound(): JSX.Element {
   )
 }
 
+function formatRefreshTime(d: Date): string {
+  return d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+
+function extractRealtimeRowId(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null) return null
+  const idValue = Reflect.get(value, 'id')
+  return typeof idValue === 'string' ? idValue : null
+}
+
 export function AgentDetailPage(props: Props): JSX.Element {
   const navigate = useNavigate()
-
-  // --- Data resource ---
   const [detail, { refetch }] = createResource(() => props.agentId, fetchAgentDetail)
-
-  // --- UI state ---
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
 
-  // --- Simulated polling ---
-  const pollInterval = setInterval(() => {
+  const fallbackPollTimer = setInterval(() => {
     setLastRefreshed(new Date())
     void refetch()
-  }, 15_000)
+  }, 20_000)
 
-  onCleanup(() => clearInterval(pollInterval))
+  onCleanup(() => clearInterval(fallbackPollTimer))
 
-  // --- Derived VM ---
+  createEffect(() => {
+    try {
+      const subscription = subscribeToTrackingAgentActivityByAgentId({
+        agentId: props.agentId,
+        onEvent() {
+          setLastRefreshed(new Date())
+          void refetch()
+        },
+      })
+
+      onCleanup(() => subscription.unsubscribe())
+    } catch (error) {
+      console.warn('[agents] unable to subscribe to agent activity realtime', error)
+    }
+  })
+
+  createEffect(() => {
+    const tenantId = detail()?.tenantId
+    if (!tenantId) return
+
+    const subscription = subscribeToTrackingAgentsByTenant({
+      tenantId,
+      onEvent(event) {
+        if (event.table !== 'tracking_agents') return
+        const rowId = extractRealtimeRowId(event.row)
+        const oldRowId = extractRealtimeRowId(event.oldRow)
+        if (rowId !== props.agentId && oldRowId !== props.agentId) return
+
+        setLastRefreshed(new Date())
+        void refetch()
+      },
+    })
+
+    onCleanup(() => subscription.unsubscribe())
+  })
+
   const now = createMemo(() => lastRefreshed())
   const vm = createMemo(() => {
     const dto = detail()
@@ -107,7 +160,6 @@ export function AgentDetailPage(props: Props): JSX.Element {
     return toAgentDetailVM(dto, now())
   })
 
-  // --- Handlers ---
   function handleRefresh(): void {
     setLastRefreshed(new Date())
     void refetch()
@@ -117,22 +169,12 @@ export function AgentDetailPage(props: Props): JSX.Element {
     void navigate('/agents')
   }
 
-  function formatRefreshTime(d: Date): string {
-    return d.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-  }
-
   return (
     <div class="relative min-h-screen bg-slate-50/80">
       <div class="relative z-10">
         <AppHeader />
 
         <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
-          {/* Back + header */}
           <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
               <button
@@ -196,22 +238,18 @@ export function AgentDetailPage(props: Props): JSX.Element {
             </div>
           </section>
 
-          {/* Loading */}
           <Show when={detail.loading}>
             <DetailSkeleton />
           </Show>
 
-          {/* Error */}
           <Show when={!detail.loading && detail.error}>
             <DetailError onRetry={handleRefresh} />
           </Show>
 
-          {/* Not found */}
           <Show when={!detail.loading && !detail.error && !detail()}>
             <AgentNotFound />
           </Show>
 
-          {/* Content */}
           <Show when={!detail.loading && !detail.error && vm()}>
             {(currentVM) => (
               <div class="grid gap-4 lg:grid-cols-2">

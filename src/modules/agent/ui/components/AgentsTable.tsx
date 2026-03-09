@@ -31,6 +31,11 @@ function SortHeader(props: {
   readonly class?: string
 }): JSX.Element {
   const isActive = () => props.currentField === props.field
+  const iconPath = () =>
+    props.currentAsc
+      ? 'M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z'
+      : 'M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z'
+
   return (
     <th
       class={`cursor-pointer select-none px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-700 ${props.class ?? ''}`}
@@ -40,14 +45,7 @@ function SortHeader(props: {
         {props.label}
         <Show when={isActive()}>
           <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-            <Show
-              when={props.currentAsc}
-              fallback={
-                <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-              }
-            >
-              <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-            </Show>
+            <path d={iconPath()} />
           </svg>
         </Show>
       </span>
@@ -97,7 +95,103 @@ function EmptyRow(): JSX.Element {
   )
 }
 
+function AgentDataRow(props: {
+  readonly agent: AgentListItemVM
+  readonly onAgentClick: (agentId: string) => void
+}): JSX.Element {
+  const rowBg = () => {
+    if (props.agent.statusTone === 'danger') return 'bg-red-50/40'
+    if (props.agent.statusTone === 'warning') return 'bg-amber-50/30'
+    return ''
+  }
+
+  return (
+    <tr
+      class={`cursor-pointer transition-colors hover:bg-slate-50 ${rowBg()}`}
+      onClick={() => props.onAgentClick(props.agent.agentId)}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          props.onAgentClick(props.agent.agentId)
+        }
+      }}
+    >
+      <td class="px-2.5 py-2">
+        <AgentRowStatus
+          status={props.agent.status}
+          tone={props.agent.statusTone}
+          freshness={props.agent.freshness}
+        />
+      </td>
+      <td
+        class="max-w-35 truncate px-2.5 py-2 text-sm-ui text-slate-700"
+        title={props.agent.tenantName}
+      >
+        {props.agent.tenantName}
+      </td>
+      <td class="px-2.5 py-2 text-micro font-mono text-slate-500" title={props.agent.agentId}>
+        {props.agent.agentId}
+      </td>
+      <td
+        class="max-w-50 truncate px-2.5 py-2 text-micro font-mono text-slate-500"
+        title={props.agent.hostname}
+      >
+        {props.agent.hostname}
+      </td>
+      <td class="px-2.5 py-2 text-micro text-slate-400">{props.agent.version}</td>
+      <td class="px-2.5 py-2 text-micro text-slate-500" title={props.agent.lastSeenDisplay}>
+        {props.agent.lastSeenRelative}
+      </td>
+      <td class="px-2.5 py-2 text-right text-sm-ui tabular-nums text-slate-700">
+        {props.agent.activeJobs}
+      </td>
+      <td
+        class={`px-2.5 py-2 text-right text-sm-ui tabular-nums ${props.agent.failuresLastHour > 0 ? 'font-semibold text-red-600' : 'text-slate-700'}`}
+      >
+        {props.agent.failuresLastHour}
+      </td>
+      <td class="px-2.5 py-2 text-right text-micro tabular-nums text-slate-500">
+        {props.agent.queueLagDisplay}
+      </td>
+      <td
+        class="max-w-40 truncate px-2.5 py-2 text-micro text-slate-400"
+        title={props.agent.capabilitiesDisplay}
+      >
+        {props.agent.capabilitiesDisplay}
+      </td>
+    </tr>
+  )
+}
+
 export function AgentsTable(props: Props): JSX.Element {
+  const bodyRows = (): JSX.Element => {
+    if (props.hasError) {
+      return <ErrorRow onRetry={props.onRetry} />
+    }
+
+    if (props.loading) {
+      return (
+        <>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </>
+      )
+    }
+
+    if (props.agents.length === 0) {
+      return <EmptyRow />
+    }
+
+    return (
+      <For each={props.agents}>
+        {(agent) => <AgentDataRow agent={agent} onAgentClick={props.onAgentClick} />}
+      </For>
+    )
+  }
+
   return (
     <div class="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white md:block">
       <table class="min-w-full divide-y divide-slate-100">
@@ -162,91 +256,7 @@ export function AgentsTable(props: Props): JSX.Element {
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-50">
-          <Show when={props.hasError}>
-            <ErrorRow onRetry={props.onRetry} />
-          </Show>
-          <Show when={!props.hasError && props.loading}>
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-            <SkeletonRow />
-          </Show>
-          <Show when={!props.hasError && !props.loading && props.agents.length === 0}>
-            <EmptyRow />
-          </Show>
-          <Show when={!props.hasError && !props.loading && props.agents.length > 0}>
-            <For each={props.agents}>
-              {(agent) => {
-                const rowBg = () => {
-                  if (agent.statusTone === 'danger') return 'bg-red-50/40'
-                  if (agent.statusTone === 'warning') return 'bg-amber-50/30'
-                  return ''
-                }
-                return (
-                  <tr
-                    class={`cursor-pointer transition-colors hover:bg-slate-50 ${rowBg()}`}
-                    onClick={() => props.onAgentClick(agent.agentId)}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        props.onAgentClick(agent.agentId)
-                      }
-                    }}
-                  >
-                    <td class="px-2.5 py-2">
-                      <AgentRowStatus
-                        status={agent.status}
-                        tone={agent.statusTone}
-                        freshness={agent.freshness}
-                      />
-                    </td>
-                    <td
-                      class="max-w-35 truncate px-2.5 py-2 text-sm-ui text-slate-700"
-                      title={agent.tenantName}
-                    >
-                      {agent.tenantName}
-                    </td>
-                    <td
-                      class="px-2.5 py-2 text-micro font-mono text-slate-500"
-                      title={agent.agentId}
-                    >
-                      {agent.agentId}
-                    </td>
-                    <td
-                      class="max-w-50 truncate px-2.5 py-2 text-micro font-mono text-slate-500"
-                      title={agent.hostname}
-                    >
-                      {agent.hostname}
-                    </td>
-                    <td class="px-2.5 py-2 text-micro text-slate-400">{agent.version}</td>
-                    <td class="px-2.5 py-2 text-micro text-slate-500" title={agent.lastSeenDisplay}>
-                      {agent.lastSeenRelative}
-                    </td>
-                    <td class="px-2.5 py-2 text-right text-sm-ui tabular-nums text-slate-700">
-                      {agent.activeJobs}
-                    </td>
-                    <td
-                      class={`px-2.5 py-2 text-right text-sm-ui tabular-nums ${agent.failuresLastHour > 0 ? 'font-semibold text-red-600' : 'text-slate-700'}`}
-                    >
-                      {agent.failuresLastHour}
-                    </td>
-                    <td class="px-2.5 py-2 text-right text-micro tabular-nums text-slate-500">
-                      {agent.queueLagDisplay}
-                    </td>
-                    <td
-                      class="max-w-40 truncate px-2.5 py-2 text-micro text-slate-400"
-                      title={agent.capabilitiesDisplay}
-                    >
-                      {agent.capabilitiesDisplay}
-                    </td>
-                  </tr>
-                )
-              }}
-            </For>
-          </Show>
-        </tbody>
+        <tbody class="divide-y divide-slate-50">{bodyRows()}</tbody>
       </table>
     </div>
   )

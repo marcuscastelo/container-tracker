@@ -19,6 +19,7 @@ const AgentTargetSchema = z.object({
 export const GetAgentTargetsResponseSchema = z.object({
   targets: z.array(AgentTargetSchema),
   leased_until: z.string().nullable(),
+  queue_lag_seconds: z.number().int().min(0).nullable(),
 })
 
 export const IngestSnapshotBodySchema = z.object({

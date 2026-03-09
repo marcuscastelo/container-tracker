@@ -1,5 +1,6 @@
 import { z } from 'zod/v4'
 
+import { bootstrapAgentMonitoringModule } from '~/modules/agent/infrastructure/bootstrap/agent.bootstrap'
 import {
   type AgentEnrollControllers,
   createAgentEnrollControllers,
@@ -35,6 +36,18 @@ const TrackingAgentRowSchema = z.object({
   maersk_timeout_ms: z.number().int().positive(),
   maersk_user_data_dir: z.string().nullable(),
 })
+
+const { agentMonitoringUseCases } = bootstrapAgentMonitoringModule()
+
+function maskAgentToken(token: string): string {
+  if (token.length <= 8) return `tok_${token}`
+  return `tok_${token.slice(0, 4)}...${token.slice(-4)}`
+}
+
+function toDefaultCapabilities(maerskEnabled: boolean): readonly string[] {
+  if (maerskEnabled) return ['msc', 'cmacgm', 'maersk']
+  return ['msc', 'cmacgm']
+}
 
 type RateLimitBucket = {
   readonly timestampsMs: number[]
@@ -161,6 +174,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
     },
 
     async createAgent({ tenantId, machineFingerprint, hostname, os, agentVersion, agentToken }) {
+      const maerskEnabled = serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED
       const result = await supabaseServer
         .from('tracking_agents')
         .insert({
@@ -174,14 +188,26 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
           supabase_url: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? null,
           supabase_anon_key: serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null,
-          maersk_enabled: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED,
+          maersk_enabled: maerskEnabled,
           maersk_headless: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS,
           maersk_timeout_ms: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS,
           maersk_user_data_dir: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR ?? null,
           last_enrolled_at: new Date().toISOString(),
+          enrolled_at: new Date().toISOString(),
+          last_seen_at: new Date().toISOString(),
+          status: 'CONNECTED',
+          realtime_state: 'CONNECTING',
+          processing_state: 'idle',
+          lease_health: 'unknown',
+          active_jobs: 0,
+          capabilities: toDefaultCapabilities(maerskEnabled),
+          enrollment_method: 'bootstrap-token',
+          token_id_masked: maskAgentToken(agentToken),
+          last_error: null,
+          queue_lag_seconds: null,
         })
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
+          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
         )
         .single()
 
@@ -202,6 +228,7 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
       os,
       agentVersion,
     }) {
+      const maerskEnabled = serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED
       const result = await supabaseServer
         .from('tracking_agents')
         .update({
@@ -212,17 +239,28 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
           supabase_url: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? null,
           supabase_anon_key: serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null,
-          maersk_enabled: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_ENABLED,
+          maersk_enabled: maerskEnabled,
           maersk_headless: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS,
           maersk_timeout_ms: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS,
           maersk_user_data_dir: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR ?? null,
           last_enrolled_at: new Date().toISOString(),
+          enrolled_at: new Date().toISOString(),
+          last_seen_at: new Date().toISOString(),
+          status: 'CONNECTED',
+          realtime_state: 'CONNECTING',
+          processing_state: 'idle',
+          lease_health: 'unknown',
+          active_jobs: 0,
+          capabilities: toDefaultCapabilities(maerskEnabled),
+          enrollment_method: 'bootstrap-token',
+          last_error: null,
+          queue_lag_seconds: null,
         })
         .eq('id', agentId)
         .eq('tenant_id', tenantId)
         .eq('machine_fingerprint', machineFingerprint)
         .select(
-          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir',
+          'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
         )
         .single()
 
@@ -258,6 +296,10 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
 
     isRateLimited({ ipAddress }) {
       return enrollRateLimitGuard.isRateLimited(ipAddress)
+    },
+
+    async recordAgentActivity(command) {
+      await agentMonitoringUseCases.recordActivity(command)
     },
   })
 }

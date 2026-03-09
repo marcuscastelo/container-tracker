@@ -54,6 +54,7 @@ function createDeps(
       maerskUserDataDir: 'C:\\AgentData',
     })),
     emitAuditEvent: vi.fn(async () => undefined),
+    recordAgentActivity: vi.fn(async () => undefined),
     isRateLimited: vi.fn(() => false),
     generateAgentToken: vi.fn(() => 'generated-agent-token'),
     ...overrides,

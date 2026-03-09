@@ -607,12 +607,51 @@ type AgentTarget = z.infer<typeof AgentTargetSchema>
 const TargetsResponseSchema = z.object({
   targets: z.array(AgentTargetSchema),
   leased_until: z.string().nullable(),
+  queue_lag_seconds: z.number().int().min(0).nullable(),
 })
 
 const IngestAcceptedResponseSchema = z.object({
   ok: z.literal(true),
   snapshot_id: z.string().uuid(),
 })
+
+const HeartbeatAckResponseSchema = z.object({
+  ok: z.literal(true),
+  updatedAt: z.string().datetime({ offset: true }),
+})
+
+type TargetsResponse = z.infer<typeof TargetsResponseSchema>
+
+type AgentRealtimeState = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CONNECTING' | 'DISCONNECTED' | 'UNKNOWN'
+type AgentProcessingState = 'idle' | 'leasing' | 'processing' | 'backing_off' | 'unknown'
+type AgentLeaseHealth = 'healthy' | 'stale' | 'conflict' | 'unknown'
+type AgentActivitySeverity = 'info' | 'warning' | 'danger' | 'success'
+type AgentActivityType =
+  | 'ENROLLED'
+  | 'HEARTBEAT'
+  | 'LEASED_TARGET'
+  | 'SNAPSHOT_INGESTED'
+  | 'REQUEST_FAILED'
+  | 'REALTIME_SUBSCRIBED'
+  | 'REALTIME_CHANNEL_ERROR'
+  | 'LEASE_CONFLICT'
+
+type AgentRuntimeActivity = {
+  readonly type: AgentActivityType
+  readonly message: string
+  readonly severity: AgentActivitySeverity
+  readonly metadata?: Record<string, unknown>
+  readonly occurredAt?: string
+}
+
+type AgentRuntimeState = {
+  realtimeState: AgentRealtimeState
+  processingState: AgentProcessingState
+  leaseHealth: AgentLeaseHealth
+  activeJobs: number
+  queueLagSeconds: number | null
+  lastError: string | null
+}
 
 function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
   const headers = new Headers()
@@ -627,7 +666,77 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
   return headers
 }
 
-async function fetchTargets(config: RuntimeConfig, limit: number): Promise<readonly AgentTarget[]> {
+function resolveAgentCapabilities(config: RuntimeConfig): readonly string[] {
+  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'maersk']
+  return ['msc', 'cmacgm']
+}
+
+async function sendHeartbeat(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly activity: readonly AgentRuntimeActivity[]
+  readonly occurredAt: string
+}): Promise<void> {
+  const response = await fetch(`${command.config.BACKEND_URL}/api/agent/heartbeat`, {
+    method: 'POST',
+    headers: buildHeaders(command.config, true),
+    body: JSON.stringify({
+      tenant_id: command.config.TENANT_ID,
+      hostname: os.hostname(),
+      agent_version: command.agentVersion,
+      realtime_state: command.state.realtimeState,
+      processing_state: command.state.processingState,
+      lease_health: command.state.leaseHealth,
+      active_jobs: command.state.activeJobs,
+      capabilities: resolveAgentCapabilities(command.config),
+      interval_sec: command.config.INTERVAL_SEC,
+      queue_lag_seconds: command.state.queueLagSeconds,
+      last_error: command.state.lastError,
+      occurred_at: command.occurredAt,
+      activity: command.activity.map((event) => ({
+        type: event.type,
+        message: event.message,
+        severity: event.severity,
+        metadata: event.metadata ?? {},
+        occurred_at: event.occurredAt,
+      })),
+    }),
+  })
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '')
+    throw new Error(`heartbeat failed (${response.status}): ${details}`)
+  }
+
+  const payload: unknown = await response.json().catch(() => ({}))
+  const parsed = HeartbeatAckResponseSchema.safeParse(payload)
+  if (!parsed.success) {
+    throw new Error(`invalid heartbeat response: ${parsed.error.message}`)
+  }
+}
+
+async function sendHeartbeatSafely(command: {
+  readonly config: RuntimeConfig
+  readonly agentVersion: string
+  readonly state: AgentRuntimeState
+  readonly activity?: readonly AgentRuntimeActivity[]
+  readonly occurredAt?: string
+}): Promise<void> {
+  try {
+    await sendHeartbeat({
+      config: command.config,
+      agentVersion: command.agentVersion,
+      state: command.state,
+      activity: command.activity ?? [],
+      occurredAt: command.occurredAt ?? new Date().toISOString(),
+    })
+  } catch (error) {
+    console.warn(`[agent] heartbeat publish failed: ${toErrorMessage(error)}`)
+  }
+}
+
+async function fetchTargets(config: RuntimeConfig, limit: number): Promise<TargetsResponse> {
   const url = new URL('/api/agent/targets', config.BACKEND_URL)
   url.searchParams.set('tenant_id', config.TENANT_ID)
   url.searchParams.set('limit', String(limit))
@@ -648,7 +757,7 @@ async function fetchTargets(config: RuntimeConfig, limit: number): Promise<reado
     throw new Error(`invalid targets response: ${parsed.error.message}`)
   }
 
-  return parsed.data.targets
+  return parsed.data
 }
 
 const maerskCaptureService = createMaerskCaptureService()
@@ -691,7 +800,9 @@ async function ingestSnapshot(
   target: AgentTarget,
   scrape: { readonly raw: unknown; readonly observedAt: string },
   agentVersion: string,
-): Promise<void> {
+): Promise<
+  { readonly kind: 'accepted'; readonly snapshotId: string } | { readonly kind: 'lease_conflict' }
+> {
   const response = await fetch(`${config.BACKEND_URL}/api/tracking/snapshots/ingest`, {
     method: 'POST',
     headers: buildHeaders(config, true),
@@ -715,7 +826,7 @@ async function ingestSnapshot(
   if (response.status === 409) {
     const body = await response.json().catch(() => ({}))
     console.warn(`[agent] lease conflict for ${target.sync_request_id}:`, body)
-    return
+    return { kind: 'lease_conflict' }
   }
 
   if (!response.ok) {
@@ -730,47 +841,146 @@ async function ingestSnapshot(
   }
 
   console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}`)
+  return { kind: 'accepted', snapshotId: parsed.data.snapshot_id }
 }
+
+type ProcessTargetResult =
+  | {
+      readonly kind: 'success'
+      readonly durationMs: number
+      readonly snapshotId: string
+    }
+  | {
+      readonly kind: 'lease_conflict'
+      readonly durationMs: number
+      readonly errorMessage: string
+    }
+  | {
+      readonly kind: 'failed'
+      readonly durationMs: number
+      readonly errorMessage: string
+    }
 
 async function processTarget(
   config: RuntimeConfig,
   target: AgentTarget,
   agentVersion: string,
-): Promise<void> {
+): Promise<ProcessTargetResult> {
+  const startedAtMs = Date.now()
+
   try {
     const scrape = await scrapeTarget(config, target)
-    await ingestSnapshot(config, target, scrape, agentVersion)
+    const ingestResult = await ingestSnapshot(config, target, scrape, agentVersion)
+
+    if (ingestResult.kind === 'lease_conflict') {
+      return {
+        kind: 'lease_conflict',
+        durationMs: Math.max(0, Date.now() - startedAtMs),
+        errorMessage: `Lease conflict for ${target.sync_request_id}`,
+      }
+    }
+
+    return {
+      kind: 'success',
+      durationMs: Math.max(0, Date.now() - startedAtMs),
+      snapshotId: ingestResult.snapshotId,
+    }
   } catch (error) {
-    console.error(`[agent] target ${target.sync_request_id} failed: ${toErrorMessage(error)}`)
+    const message = toErrorMessage(error)
+    console.error(`[agent] target ${target.sync_request_id} failed: ${message}`)
     console.warn(
       `[agent] target ${target.sync_request_id} will be available again after lease expiration`,
     )
+
+    return {
+      kind: 'failed',
+      durationMs: Math.max(0, Date.now() - startedAtMs),
+      errorMessage: message,
+    }
   }
 }
 
-async function runOnce(config: RuntimeConfig, agentVersion: string): Promise<void> {
+async function runOnce(
+  config: RuntimeConfig,
+  agentVersion: string,
+  state: AgentRuntimeState,
+): Promise<readonly AgentRuntimeActivity[]> {
   const leaseBatchSize = 1
   let processed = 0
+  const activities: AgentRuntimeActivity[] = []
+  state.processingState = 'leasing'
+  state.activeJobs = 0
 
   while (processed < config.LIMIT) {
     const remaining = config.LIMIT - processed
-    const targets = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
+    const targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
+    const targets = targetsResponse.targets
+    state.queueLagSeconds = targetsResponse.queue_lag_seconds
+
     if (targets.length === 0) {
       if (processed === 0) {
         console.log('[agent] no targets available')
       }
+      state.processingState = 'idle'
+      state.activeJobs = 0
       break
     }
 
     for (const target of targets) {
-      await processTarget(config, target, agentVersion)
+      state.processingState = 'processing'
+      state.activeJobs = 1
+      const result = await processTarget(config, target, agentVersion)
+      state.activeJobs = 0
       processed += 1
+
+      if (result.kind === 'success') {
+        state.lastError = null
+        state.leaseHealth = 'healthy'
+        continue
+      }
+
+      if (result.kind === 'lease_conflict') {
+        state.leaseHealth = 'conflict'
+        state.lastError = result.errorMessage
+        activities.push({
+          type: 'LEASE_CONFLICT',
+          message: result.errorMessage,
+          severity: 'warning',
+          metadata: {
+            syncRequestId: target.sync_request_id,
+            provider: target.provider,
+            ref: target.ref,
+            durationMs: result.durationMs,
+          },
+        })
+        continue
+      }
+
+      state.processingState = 'backing_off'
+      state.lastError = result.errorMessage
+      activities.push({
+        type: 'REQUEST_FAILED',
+        message: result.errorMessage,
+        severity: 'danger',
+        metadata: {
+          syncRequestId: target.sync_request_id,
+          provider: target.provider,
+          ref: target.ref,
+          durationMs: result.durationMs,
+        },
+      })
     }
   }
 
   if (processed > 0) {
     console.log(`[agent] cycle processed ${processed} target(s)`)
   }
+
+  if (state.processingState !== 'backing_off') {
+    state.processingState = 'idle'
+  }
+
+  return activities
 }
 
 function shouldWakeForRealtimeEvent(event: {
@@ -787,13 +997,17 @@ function shouldWakeForRealtimeEvent(event: {
 function subscribeToRealtimeIfConfigured(command: {
   readonly config: RuntimeConfig
   readonly onWake: () => void
+  readonly onRealtimeStateChange: (state: AgentRealtimeState) => void
 }): { readonly unsubscribe: () => void } | null {
   if (!command.config.SUPABASE_URL || !command.config.SUPABASE_ANON_KEY) {
     console.warn('[agent] realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured')
+    command.onRealtimeStateChange('DISCONNECTED')
     return null
   }
 
   try {
+    command.onRealtimeStateChange('CONNECTING')
+
     const supabaseRealtime = createClient(
       command.config.SUPABASE_URL,
       command.config.SUPABASE_ANON_KEY,
@@ -821,11 +1035,18 @@ function subscribeToRealtimeIfConfigured(command: {
       onStatus(status) {
         if (status.state === 'SUBSCRIBED') {
           console.log('[agent] realtime subscribed for tenant sync requests')
+          command.onRealtimeStateChange('SUBSCRIBED')
           return
         }
 
         if (status.state === 'CHANNEL_ERROR' || status.state === 'TIMED_OUT') {
           console.warn('[agent] realtime channel degraded; interval sweep remains active', status)
+          command.onRealtimeStateChange('CHANNEL_ERROR')
+          return
+        }
+
+        if (status.state === 'CLOSED') {
+          command.onRealtimeStateChange('DISCONNECTED')
         }
       },
     })
@@ -833,6 +1054,7 @@ function subscribeToRealtimeIfConfigured(command: {
     console.warn(
       `[agent] realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`,
     )
+    command.onRealtimeStateChange('CHANNEL_ERROR')
     return null
   }
 }
@@ -846,13 +1068,56 @@ async function main(): Promise<void> {
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
 
+  const runtimeState: AgentRuntimeState = {
+    realtimeState:
+      runtimeConfig.SUPABASE_URL && runtimeConfig.SUPABASE_ANON_KEY ? 'CONNECTING' : 'DISCONNECTED',
+    processingState: 'idle',
+    leaseHealth: 'unknown',
+    activeJobs: 0,
+    queueLagSeconds: null,
+    lastError: null,
+  }
+
+  await sendHeartbeatSafely({
+    config: runtimeConfig,
+    agentVersion,
+    state: runtimeState,
+    activity: [],
+  })
+
+  let lastRealtimeState: AgentRealtimeState = runtimeState.realtimeState
+
   const scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
     runCycle: async (_reason) => {
-      await runOnce(runtimeConfig, agentVersion)
+      const cycleActivities = await runOnce(runtimeConfig, agentVersion, runtimeState)
+      await sendHeartbeatSafely({
+        config: runtimeConfig,
+        agentVersion,
+        state: runtimeState,
+        activity: cycleActivities,
+      })
     },
     onRunError({ reason, error }) {
-      console.error(`[agent] cycle failed (reason=${reason}): ${toErrorMessage(error)}`)
+      const errorMessage = toErrorMessage(error)
+      runtimeState.processingState = 'backing_off'
+      runtimeState.lastError = errorMessage
+      console.error(`[agent] cycle failed (reason=${reason}): ${errorMessage}`)
+      void sendHeartbeatSafely({
+        config: runtimeConfig,
+        agentVersion,
+        state: runtimeState,
+        activity: [
+          {
+            type: 'REQUEST_FAILED',
+            message: `Agent cycle failed (${reason}): ${errorMessage}`,
+            severity: 'danger',
+            metadata: {
+              reason,
+            },
+          },
+        ],
+      })
     },
   })
 
@@ -861,12 +1126,59 @@ async function main(): Promise<void> {
     onWake() {
       scheduler.triggerRun('realtime')
     },
+    onRealtimeStateChange(state) {
+      if (lastRealtimeState === state) return
+      lastRealtimeState = state
+      runtimeState.realtimeState = state
+
+      if (state === 'SUBSCRIBED') {
+        void sendHeartbeatSafely({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          activity: [
+            {
+              type: 'REALTIME_SUBSCRIBED',
+              message: 'Realtime subscribed for tenant sync requests',
+              severity: 'success',
+              metadata: {},
+            },
+          ],
+        })
+        return
+      }
+
+      if (state === 'CHANNEL_ERROR') {
+        runtimeState.lastError = 'Realtime channel degraded'
+        void sendHeartbeatSafely({
+          config: runtimeConfig,
+          agentVersion,
+          state: runtimeState,
+          activity: [
+            {
+              type: 'REALTIME_CHANNEL_ERROR',
+              message: 'Realtime channel error; interval sweep is active',
+              severity: 'warning',
+              metadata: {},
+            },
+          ],
+        })
+      }
+    },
   })
 
   scheduler.start()
 
   const shutdown = (signal: 'SIGINT' | 'SIGTERM') => {
     console.log(`[agent] received ${signal}, shutting down`)
+    runtimeState.realtimeState = 'DISCONNECTED'
+    runtimeState.processingState = 'idle'
+    void sendHeartbeatSafely({
+      config: runtimeConfig,
+      agentVersion,
+      state: runtimeState,
+      activity: [],
+    })
     realtimeSubscription?.unsubscribe()
     scheduler.stop()
   }
