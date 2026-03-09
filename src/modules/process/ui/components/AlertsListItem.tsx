@@ -92,12 +92,12 @@ function AlertCategoryChip(props: {
   t: ReturnType<typeof useTranslation>['t']
   keys: ReturnType<typeof useTranslation>['keys']
 }): JSX.Element {
-  const bg = props.mode === 'archived' ? 'bg-slate-200' : 'bg-slate-100'
+  const bg = () => (props.mode === 'archived' ? 'bg-slate-200' : 'bg-slate-100')
   const textColor = 'text-slate-500'
 
   return (
     <span
-      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs-ui font-normal leading-none ${bg} ${textColor}`}
+      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs-ui font-normal leading-none ${bg()} ${textColor}`}
     >
       <span aria-hidden="true">{toAlertCategoryIcon(props.type)}</span>
       {toAlertCategoryLabel(props.type, props.t, props.keys)}
@@ -127,7 +127,7 @@ export function AlertItem(props: {
         props.mode,
       )} ${
         isCollapsing()
-          ? 'max-h-0 translate-y-[-4px] border-transparent py-0 opacity-0'
+          ? 'max-h-0 -translate-y-1 border-transparent py-0 opacity-0'
           : 'max-h-40 opacity-100'
       } flex items-start gap-1.5`}
     >
