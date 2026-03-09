@@ -32,18 +32,66 @@ export const AlertActionBodySchema = z.object({
  * This is the HTTP-boundary shape — it does NOT leak domain entities.
  * Fields are serialisable (strings, booleans, nulls).
  */
-export const AlertResponseDtoSchema = z.object({
+const EmptyMessageParamsSchema = z.object({}).strict()
+
+const AlertResponseBaseSchema = z.object({
   id: z.string(),
+  container_number: z.string(),
   category: z.string(),
   type: z.string(),
   severity: z.string(),
-  message: z.string(),
   detected_at: z.string(),
   triggered_at: z.string(),
   retroactive: z.boolean(),
   provider: z.string().nullable(),
   acked_at: z.string().nullable(),
 })
+
+export const AlertResponseDtoSchema = z.discriminatedUnion('message_key', [
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.transshipmentDetected'),
+    message_params: z
+      .object({
+        port: z.string(),
+        fromVessel: z.string(),
+        toVessel: z.string(),
+      })
+      .strict(),
+  }),
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.customsHoldDetected'),
+    message_params: z
+      .object({
+        location: z.string(),
+      })
+      .strict(),
+  }),
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.noMovementDetected'),
+    message_params: z
+      .object({
+        days: z.number(),
+        lastEventDate: z.string(),
+      })
+      .strict(),
+  }),
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.etaMissing'),
+    message_params: EmptyMessageParamsSchema,
+  }),
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.etaPassed'),
+    message_params: EmptyMessageParamsSchema,
+  }),
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.portChange'),
+    message_params: EmptyMessageParamsSchema,
+  }),
+  AlertResponseBaseSchema.extend({
+    message_key: z.literal('alerts.dataInconsistent'),
+    message_params: EmptyMessageParamsSchema,
+  }),
+])
 export type AlertResponseDto = z.infer<typeof AlertResponseDtoSchema>
 
 // ---------------------------------------------------------------------------

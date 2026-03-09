@@ -18,6 +18,9 @@ export type TrackingAlertRepository = {
   /** Fetch all alerts for a container (active + acknowledged). */
   findByContainerId(containerId: string): Promise<readonly TrackingAlert[]>
 
+  /** Resolve container numbers for container ids. */
+  findContainerNumbersByIds(containerIds: readonly string[]): Promise<ReadonlyMap<string, string>>
+
   /** Fetch the set of active alert types for a container (for dedup). */
   findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>>
 

@@ -1,5 +1,8 @@
+import {
+  type TrackingAlertDisplayReadModel,
+  toTrackingAlertDisplayReadModels,
+} from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 
 /**
  * Command to list active alerts for a container by its ID.
@@ -12,7 +15,7 @@ type ListActiveAlertsByContainerIdCommand = {
  * Result — ordered list of active (non-acked) alerts.
  */
 export type ListActiveAlertsByContainerIdResult = {
-  readonly alerts: readonly TrackingAlert[]
+  readonly alerts: readonly TrackingAlertDisplayReadModel[]
 }
 
 /**
@@ -26,5 +29,14 @@ export async function listActiveAlertsByContainerId(
   cmd: ListActiveAlertsByContainerIdCommand,
 ): Promise<ListActiveAlertsByContainerIdResult> {
   const alerts = await deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId)
-  return { alerts }
+  const containerNumberByContainerId = await deps.trackingAlertRepository.findContainerNumbersByIds(
+    [cmd.containerId],
+  )
+
+  return {
+    alerts: toTrackingAlertDisplayReadModels(
+      alerts,
+      (containerId) => containerNumberByContainerId.get(containerId) ?? null,
+    ),
+  }
 }

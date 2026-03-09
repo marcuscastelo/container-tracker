@@ -40,16 +40,24 @@ type ContainerFixture = {
 
 type AlertFixture = {
   readonly id: string
+  readonly container_number: string
   readonly category: 'fact' | 'monitoring'
   readonly type: string
   readonly severity: 'info' | 'warning' | 'danger'
-  readonly message: string
+  readonly message_key:
+    | 'alerts.transshipmentDetected'
+    | 'alerts.customsHoldDetected'
+    | 'alerts.noMovementDetected'
+    | 'alerts.etaMissing'
+    | 'alerts.etaPassed'
+    | 'alerts.portChange'
+    | 'alerts.dataInconsistent'
+  readonly message_params: Record<string, string | number>
   readonly detected_at: string
   readonly triggered_at: string
   readonly retroactive: boolean
   readonly provider: string | null
   readonly acked_at: string | null
-  readonly dismissed_at: string | null
 }
 
 type ProcessDetailFixture = {
@@ -446,16 +454,21 @@ test.describe('Process Detail QA', () => {
       alerts: [
         {
           id: 'alert-ts',
+          container_number: 'MSCU5000001',
           category: 'fact',
           type: 'TRANSSHIPMENT',
           severity: 'warning',
-          message: 'Transshipment detected: 2 intermediate port(s)',
+          message_key: 'alerts.transshipmentDetected',
+          message_params: {
+            port: 'EGPSDTM',
+            fromVessel: 'VESSEL A',
+            toVessel: 'VESSEL B',
+          },
           detected_at: ISO_CREATED_AT,
           triggered_at: ISO_CREATED_AT,
           retroactive: false,
           provider: 'msc',
           acked_at: null,
-          dismissed_at: null,
         },
       ],
     })
@@ -467,11 +480,11 @@ test.describe('Process Detail QA', () => {
     await expect(page.getByTestId('transshipment-card')).toContainText('2 portos')
     await expect(page.getByTestId('transshipment-card')).toContainText('EGPSDTM')
     await expect(page.getByTestId('transshipment-card')).toContainText('ESBCN07')
-    await expect(page.getByText('Transshipment detected')).toHaveCount(0)
+    await expect(page.getByText('Transbordo detectado')).toHaveCount(0)
 
     await page.getByTestId('container-card-c-2').click()
     await expect(page.getByTestId('transshipment-card')).toHaveCount(0)
-    await expect(page.getByText('Transshipment detected')).toHaveCount(1)
+    await expect(page.getByText('Transbordo detectado')).toHaveCount(1)
   })
 
   test('layout simples: sem overflow horizontal, chips compactos e coluna direita densa', async ({
@@ -503,16 +516,20 @@ test.describe('Process Detail QA', () => {
       alerts: [
         {
           id: 'alert-1',
+          container_number: 'MSCU6000001',
           category: 'monitoring',
           type: 'NO_MOVEMENT',
           severity: 'warning',
-          message: 'Sem movimentação há 10 dias',
+          message_key: 'alerts.noMovementDetected',
+          message_params: {
+            days: 10,
+            lastEventDate: '2026-02-20',
+          },
           detected_at: ISO_CREATED_AT,
           triggered_at: ISO_CREATED_AT,
           retroactive: false,
           provider: 'msc',
           acked_at: null,
-          dismissed_at: null,
         },
       ],
     })

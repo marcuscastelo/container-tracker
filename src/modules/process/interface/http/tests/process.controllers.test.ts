@@ -136,6 +136,7 @@ function createSummary(
   containerId: string,
   containerNumber: string,
   operational: TrackingOperationalSummary,
+  alerts: GetContainerSummaryResult['alerts'] = [],
 ): GetContainerSummaryResult {
   const status: ContainerSummaryStatus = isContainerStatus(operational.status)
     ? operational.status
@@ -177,7 +178,7 @@ function createSummary(
       transshipmentCount: operational.transshipment.count,
       ports: operational.transshipment.ports.map((port) => port.code),
     },
-    alerts: [],
+    alerts,
     operational,
   }
 }
@@ -259,6 +260,78 @@ function createControllersWithSyncMock(
 }
 
 describe('process controllers', () => {
+  it('returns enriched alert contract with container number and semantic message fields', async () => {
+    const containerOneSummary: TrackingOperationalSummary = {
+      status: 'IN_TRANSIT',
+      eta: null,
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    }
+
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        if (containerId === 'container-1') {
+          return createSummary(containerId, containerNumber, containerOneSummary, [
+            {
+              id: 'alert-1',
+              container_id: 'container-1',
+              category: 'fact',
+              type: 'TRANSSHIPMENT',
+              severity: 'warning',
+              message_key: 'alerts.transshipmentDetected',
+              message_params: {
+                port: 'MAPTM02',
+                fromVessel: 'MAERSK NARMADA',
+                toVessel: 'CMA CGM LISA MARIE',
+              },
+              detected_at: '2026-03-01T10:00:00.000Z',
+              triggered_at: '2026-03-01T10:00:00.000Z',
+              source_observation_fingerprints: ['fp-1', 'fp-2'],
+              alert_fingerprint: 'fp-alert',
+              retroactive: false,
+              provider: 'maersk',
+              acked_at: null,
+              acked_by: null,
+              acked_source: null,
+            },
+          ])
+        }
+
+        return createSummary(containerId, containerNumber, containerOneSummary)
+      },
+    )
+
+    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.alerts).toEqual([
+      {
+        id: 'alert-1',
+        container_number: 'MSCU1234567',
+        category: 'fact',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        message_key: 'alerts.transshipmentDetected',
+        message_params: {
+          port: 'MAPTM02',
+          fromVessel: 'MAERSK NARMADA',
+          toVessel: 'CMA CGM LISA MARIE',
+        },
+        detected_at: '2026-03-01T10:00:00.000Z',
+        triggered_at: '2026-03-01T10:00:00.000Z',
+        retroactive: false,
+        provider: 'maersk',
+        acked_at: null,
+      },
+    ])
+  })
+
   it('returns process detail with container operational and process coverage', async () => {
     const containerOneSummary: TrackingOperationalSummary = {
       status: 'IN_TRANSIT',

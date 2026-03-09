@@ -89,6 +89,33 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     return (data ?? []).map(alertRowToDomain)
   },
 
+  async findContainerNumbersByIds(
+    containerIds: readonly string[],
+  ): Promise<ReadonlyMap<string, string>> {
+    if (containerIds.length === 0) {
+      return new Map()
+    }
+
+    const uniqueContainerIds = Array.from(new Set(containerIds))
+    const result = await supabase
+      .from(CONTAINERS_TABLE)
+      .select('id, container_number')
+      .in('id', uniqueContainerIds)
+
+    const rows =
+      unwrapSupabaseResultOrThrow(result, {
+        operation: 'findContainerNumbersByIds',
+        table: CONTAINERS_TABLE,
+      }) ?? []
+
+    const containerNumberByContainerId = new Map<string, string>()
+    for (const row of rows) {
+      containerNumberByContainerId.set(row.id, row.container_number)
+    }
+
+    return containerNumberByContainerId
+  },
+
   async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
     const alertsResult = await supabase
       .from(TABLE)

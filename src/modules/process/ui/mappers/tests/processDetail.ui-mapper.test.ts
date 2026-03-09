@@ -111,10 +111,16 @@ describe('toShipmentDetailVM', () => {
       alerts: [
         {
           id: 'alert-1',
+          container_number: 'MSCU1234567',
           category: 'fact',
           type: 'TRANSSHIPMENT',
           severity: 'warning',
-          message: 'Transshipment detected: 1 intermediate port(s)',
+          message_key: 'alerts.transshipmentDetected',
+          message_params: {
+            port: 'MAPTM02',
+            fromVessel: 'MAERSK NARMADA',
+            toVessel: 'CMA CGM LISA MARIE',
+          },
           detected_at: new Date().toISOString(),
           triggered_at: '2026-02-01T10:00:00.000Z',
           retroactive: false,
@@ -133,6 +139,8 @@ describe('toShipmentDetailVM', () => {
     expect(result.alerts[0].category).toBe('fact')
     expect(result.alerts[0].triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
     expect(result.alerts[0].ackedAtIso).toBeNull()
+    expect(result.alerts[0].containerNumber).toBe('MSCU1234567')
+    expect(result.alerts[0].messageKey).toBe('alerts.transshipmentDetected')
   })
 
   it('maps container sync metadata by normalized container number', () => {
@@ -190,10 +198,15 @@ describe('toShipmentDetailVM fallback mapping', () => {
       alerts: [
         {
           id: 'alert-acked',
+          container_number: 'TEST1234567',
           category: 'monitoring',
           type: 'NO_MOVEMENT',
           severity: 'warning',
-          message: 'No movement for 10 days',
+          message_key: 'alerts.noMovementDetected',
+          message_params: {
+            days: 10,
+            lastEventDate: '2026-02-24',
+          },
           detected_at: new Date().toISOString(),
           triggered_at: new Date().toISOString(),
           retroactive: false,

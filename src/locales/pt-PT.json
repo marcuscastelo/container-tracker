@@ -461,6 +461,16 @@
       "danger": "Crítico"
     }
   },
+  "alerts": {
+    "containerLabel": "Contentor",
+    "transshipmentDetected": "Transbordo detetado em {{port}} — Troca de navio: {{fromVessel}} → {{toVessel}}",
+    "customsHoldDetected": "Retenção alfandegária detetada em {{location}}",
+    "noMovementDetected": "Sem movimentação há {{days}} dias (último evento: {{lastEventDate}})",
+    "etaMissing": "ETA em falta",
+    "etaPassed": "ETA expirado sem confirmação de chegada",
+    "portChange": "Alteração do porto final de destino",
+    "dataInconsistent": "Dados de rastreio inconsistentes detetados"
+  },
   "about": {
     "page": "Sobre"
   },

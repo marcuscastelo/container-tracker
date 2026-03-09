@@ -2,10 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createTrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { TrackingAlertAckSource } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  TrackingAlert,
+  TrackingAlertAckSource,
+} from '~/modules/tracking/domain/model/trackingAlert'
 import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
 
-function createControllers() {
+function createControllers(options?: {
+  readonly activeAlerts?: readonly TrackingAlert[]
+  readonly containerNumberByContainerId?: ReadonlyMap<string, string>
+}) {
   const acknowledge = vi.fn(
     async (
       _alertId: string,
@@ -17,6 +23,23 @@ function createControllers() {
     ) => undefined,
   )
   const unacknowledge = vi.fn(async (_alertId: string) => undefined)
+  const findActiveByContainerId = vi.fn(async (containerId: string) => {
+    const alerts = options?.activeAlerts ?? []
+    return alerts.filter((alert) => alert.container_id === containerId)
+  })
+  const findContainerNumbersByIds = vi.fn(async (containerIds: readonly string[]) => {
+    const map = new Map<string, string>()
+    const source = options?.containerNumberByContainerId ?? new Map<string, string>()
+
+    for (const containerId of containerIds) {
+      const containerNumber = source.get(containerId)
+      if (containerNumber !== undefined) {
+        map.set(containerId, containerNumber)
+      }
+    }
+
+    return map
+  })
 
   const deps: TrackingUseCasesDeps = {
     snapshotRepository: {
@@ -36,8 +59,9 @@ function createControllers() {
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
       listActiveAlertReadModel: vi.fn(async () => []),
-      findActiveByContainerId: vi.fn(async () => []),
+      findActiveByContainerId,
       findByContainerId: vi.fn(async () => []),
+      findContainerNumbersByIds,
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge,
       unacknowledge,
@@ -54,10 +78,73 @@ function createControllers() {
     controllers,
     acknowledge,
     unacknowledge,
+    findActiveByContainerId,
+    findContainerNumbersByIds,
   }
 }
 
 describe('tracking controllers', () => {
+  it('list alerts returns enriched display DTO with container and semantic message contract', async () => {
+    const containerId = 'container-1'
+    const activeAlerts: readonly TrackingAlert[] = [
+      {
+        id: 'alert-1',
+        container_id: containerId,
+        category: 'fact',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        message_key: 'alerts.transshipmentDetected',
+        message_params: {
+          port: 'MAPTM02',
+          fromVessel: 'MAERSK NARMADA',
+          toVessel: 'CMA CGM LISA MARIE',
+        },
+        detected_at: '2026-03-01T10:00:00.000Z',
+        triggered_at: '2026-03-01T10:00:00.000Z',
+        source_observation_fingerprints: ['fp-1', 'fp-2'],
+        alert_fingerprint: 'fp-alert',
+        retroactive: false,
+        provider: 'maersk',
+        acked_at: null,
+        acked_by: null,
+        acked_source: null,
+      },
+    ]
+
+    const { controllers, findActiveByContainerId, findContainerNumbersByIds } = createControllers({
+      activeAlerts,
+      containerNumberByContainerId: new Map([[containerId, 'MRSU8798130']]),
+    })
+
+    const request = new Request(`http://localhost/api/alerts?container_id=${containerId}`)
+    const response = await controllers.alerts.listAlerts({ request })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual([
+      {
+        id: 'alert-1',
+        container_number: 'MRSU8798130',
+        category: 'fact',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        message_key: 'alerts.transshipmentDetected',
+        message_params: {
+          port: 'MAPTM02',
+          fromVessel: 'MAERSK NARMADA',
+          toVessel: 'CMA CGM LISA MARIE',
+        },
+        detected_at: '2026-03-01T10:00:00.000Z',
+        triggered_at: '2026-03-01T10:00:00.000Z',
+        retroactive: false,
+        provider: 'maersk',
+        acked_at: null,
+      },
+    ])
+    expect(findActiveByContainerId).toHaveBeenCalledWith(containerId)
+    expect(findContainerNumbersByIds).toHaveBeenCalledWith([containerId])
+  })
+
   it('acknowledge action sends null metadata when fields are omitted', async () => {
     const { controllers, acknowledge, unacknowledge } = createControllers()
 

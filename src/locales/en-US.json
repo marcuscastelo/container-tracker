@@ -450,6 +450,16 @@
       "danger": "Critical"
     }
   },
+  "alerts": {
+    "containerLabel": "Container",
+    "transshipmentDetected": "Transshipment detected at {{port}} — Vessel change: {{fromVessel}} → {{toVessel}}",
+    "customsHoldDetected": "Customs hold detected at {{location}}",
+    "noMovementDetected": "No movement detected for {{days}} days (last event: {{lastEventDate}})",
+    "etaMissing": "ETA missing",
+    "etaPassed": "ETA passed without arrival confirmation",
+    "portChange": "Final destination port changed",
+    "dataInconsistent": "Inconsistent tracking data detected"
+  },
   "about": {
     "page": "About Page"
   },

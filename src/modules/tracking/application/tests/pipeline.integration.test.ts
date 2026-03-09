@@ -130,6 +130,20 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     const list = Array.from(this.alerts.values()).filter((a) => a.container_id === containerId)
     return list
   }
+  async findContainerNumbersByIds(
+    containerIds: readonly string[],
+  ): Promise<ReadonlyMap<string, string>> {
+    const containerNumberByContainerId = new Map<string, string>()
+    for (const containerId of containerIds) {
+      const firstAlertForContainer = Array.from(this.alerts.values()).find(
+        (alert) => alert.container_id === containerId,
+      )
+      if (firstAlertForContainer) {
+        containerNumberByContainerId.set(containerId, 'UNKNOWN')
+      }
+    }
+    return containerNumberByContainerId
+  }
   async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
     const types = Array.from(this.alerts.values())
       .filter((a) => a.container_id === containerId && !a.acked_at)

@@ -169,7 +169,12 @@ describe('alertRowToDomain', () => {
     category: 'fact',
     type: 'TRANSSHIPMENT',
     severity: 'warning',
-    message: 'Transshipment detected',
+    message_key: 'alerts.transshipmentDetected',
+    message_params: {
+      port: 'SGSIN',
+      fromVessel: 'VESSEL A',
+      toVessel: 'VESSEL B',
+    },
     detected_at: '2026-01-15T10:00:00.000Z',
     triggered_at: '2026-01-15T12:00:00.000Z',
     source_observation_fingerprints: ['fp-1', 'fp-2'],
@@ -188,6 +193,12 @@ describe('alertRowToDomain', () => {
     expect(result.category).toBe('fact')
     expect(result.type).toBe('TRANSSHIPMENT')
     expect(result.severity).toBe('warning')
+    expect(result.message_key).toBe('alerts.transshipmentDetected')
+    expect(result.message_params).toEqual({
+      port: 'SGSIN',
+      fromVessel: 'VESSEL A',
+      toVessel: 'VESSEL B',
+    })
     expect(result.source_observation_fingerprints).toEqual(['fp-1', 'fp-2'])
     expect(result.alert_fingerprint).toBe('TRANSSHIPMENT:fp-1,fp-2')
   })
@@ -241,7 +252,12 @@ describe('alertToInsertRow', () => {
       category: 'fact' as const,
       type: 'TRANSSHIPMENT' as const,
       severity: 'warning' as const,
-      message: 'Transshipment detected',
+      message_key: 'alerts.transshipmentDetected' as const,
+      message_params: {
+        port: 'SGSIN',
+        fromVessel: 'VESSEL A',
+        toVessel: 'VESSEL B',
+      },
       detected_at: '2026-01-15T10:00:00.000Z',
       triggered_at: '2026-01-15T12:00:00.000Z',
       source_observation_fingerprints: ['fp-1'],
