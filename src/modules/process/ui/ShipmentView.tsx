@@ -78,33 +78,6 @@ function toSortedArchivedAlerts(alerts: readonly AlertDisplayVM[]): readonly Ale
   return [...alerts].filter((alert) => alert.ackedAtIso !== null).sort(compareAlertsByAckedAtDesc)
 }
 
-function withAlertMarkedAsAcknowledged(
-  alerts: readonly AlertDisplayVM[],
-  alertId: string,
-  ackedAtIso: string,
-): readonly AlertDisplayVM[] {
-  return alerts.map((alert) => {
-    if (alert.id !== alertId) return alert
-    return {
-      ...alert,
-      ackedAtIso,
-    }
-  })
-}
-
-function withAlertMarkedAsActive(
-  alerts: readonly AlertDisplayVM[],
-  alertId: string,
-): readonly AlertDisplayVM[] {
-  return alerts.map((alert) => {
-    if (alert.id !== alertId) return alert
-    return {
-      ...alert,
-      ackedAtIso: null,
-    }
-  })
-}
-
 function withSetEntry(set: ReadonlySet<string>, value: string): ReadonlySet<string> {
   const next = new Set(set)
   next.add(value)
@@ -210,7 +183,9 @@ async function refreshTrackingDataOnly(command: {
   readonly current: ShipmentDetailVM | null | undefined
   readonly apply: (next: ShipmentDetailVM) => void
 }): Promise<void> {
-  const latest = await fetchProcess(command.processId, command.locale)
+  const latest = await fetchProcess(command.processId, command.locale, {
+    mode: 'network-only',
+  })
   if (!latest) return
 
   if (!command.current) {
@@ -790,9 +765,6 @@ type AlertActionsCommand = {
   readonly acknowledgeErrorMessage: string
   readonly unacknowledgeErrorMessage: string
   readonly reconcileTrackingView: () => Promise<void>
-  readonly updateAlerts: (
-    updater: (current: readonly AlertDisplayVM[]) => readonly AlertDisplayVM[],
-  ) => void
 }
 
 type AlertActionsController = {
@@ -804,13 +776,10 @@ type AlertActionsController = {
   readonly unacknowledgeAlert: (alertId: string) => Promise<void> // i18n-enforce-ignore
 }
 
-function wait(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds))
-}
+const EMPTY_ALERT_IDS: ReadonlySet<string> = new Set()
 
 function useAlertActionsController(command: AlertActionsCommand): AlertActionsController {
   const [busyAlertIds, setBusyAlertIds] = createSignal<ReadonlySet<string>>(new Set())
-  const [collapsingAlertIds, setCollapsingAlertIds] = createSignal<ReadonlySet<string>>(new Set())
   const [alertActionError, setAlertActionError] = createSignal<string | null>(null)
 
   const acknowledgeAlert = async (alertId: string) => {
@@ -820,18 +789,12 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
 
     try {
       await acknowledgeTrackingAlertRequest(alertId)
-      setCollapsingAlertIds((prev) => withSetEntry(prev, alertId))
-      await wait(180)
-      command.updateAlerts((alerts) => {
-        return withAlertMarkedAsAcknowledged(alerts, alertId, new Date().toISOString())
-      })
       await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to acknowledge alert:', err)
       setAlertActionError(command.acknowledgeErrorMessage)
     } finally {
       setBusyAlertIds((prev) => withoutSetEntry(prev, alertId))
-      setCollapsingAlertIds((prev) => withoutSetEntry(prev, alertId))
     }
   }
 
@@ -842,7 +805,6 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
 
     try {
       await unacknowledgeTrackingAlertRequest(alertId)
-      command.updateAlerts((alerts) => withAlertMarkedAsActive(alerts, alertId))
       await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to unacknowledge alert:', err)
@@ -854,7 +816,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
 
   return {
     busyAlertIds,
-    collapsingAlertIds,
+    collapsingAlertIds: () => EMPTY_ALERT_IDS,
     alertActionError,
     clearAlertActionError: () => setAlertActionError(null),
     acknowledgeAlert,
@@ -959,15 +921,6 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     acknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorAcknowledge),
     unacknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorUnacknowledge),
     reconcileTrackingView,
-    updateAlerts: (updater) => {
-      mutate((current) => {
-        if (!current) return current
-        return {
-          ...current,
-          alerts: updater(current.alerts),
-        }
-      })
-    },
   })
 
   const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')

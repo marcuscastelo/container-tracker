@@ -5,6 +5,12 @@ import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.sche
 
 const PROCESS_PREFETCH_TTL_MS = 15_000
 
+export type FetchProcessMode = 'cache-first' | 'network-only'
+
+type FetchProcessOptions = {
+  readonly mode?: FetchProcessMode
+}
+
 type ProcessCacheRecord = {
   readonly expiresAtMs: number
   readonly value: ShipmentDetailVM | null
@@ -74,11 +80,8 @@ async function fetchProcessFromApi(id: string, locale: string): Promise<Shipment
   }
 }
 
-async function loadProcessWithCache(id: string, locale: string): Promise<ShipmentDetailVM | null> {
+async function loadProcessFromNetwork(id: string, locale: string): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
-  const cached = readFreshCachedProcess(key)
-  if (cached !== undefined) return cached
-
   const inFlight = inFlightProcessRequests.get(key)
   if (inFlight) return inFlight
 
@@ -95,10 +98,22 @@ async function loadProcessWithCache(id: string, locale: string): Promise<Shipmen
   return request
 }
 
+async function loadProcessWithCache(id: string, locale: string): Promise<ShipmentDetailVM | null> {
+  const key = toProcessCacheKey(id, locale)
+  const cached = readFreshCachedProcess(key)
+  if (cached !== undefined) return cached
+
+  return loadProcessFromNetwork(id, locale)
+}
+
 export async function fetchProcess(
   id: string,
   locale: string = 'en-US',
+  options?: FetchProcessOptions,
 ): Promise<ShipmentDetailVM | null> {
+  if (options?.mode === 'network-only') {
+    return loadProcessFromNetwork(id, locale)
+  }
   return loadProcessWithCache(id, locale)
 }
 
