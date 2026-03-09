@@ -7,8 +7,30 @@ $ErrorActionPreference = 'Stop'
 
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $normalizedInstallRoot = $installRoot.ToLowerInvariant()
+$appRootPath = Join-Path $installRoot 'app'
 $nodeModulesPath = Join-Path $installRoot 'app\node_modules'
 $pnpmStorePath = Join-Path $nodeModulesPath '.pnpm'
+$logsDir = Join-Path (Join-Path $env:LOCALAPPDATA 'ContainerTracker') 'logs'
+$cleanupLogPath = Join-Path $logsDir 'uninstall-cleanup.log'
+
+function Write-CleanupLog {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Message
+  )
+
+  try {
+    if (-not (Test-Path -LiteralPath $logsDir)) {
+      New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+    }
+
+    $line = '[{0}] {1}' -f [DateTime]::UtcNow.ToString('o'), $Message
+    Add-Content -Path $cleanupLogPath -Value $line
+  }
+  catch {
+    # Best effort logging only.
+  }
+}
 
 function Test-IsInstallRootProcess {
   param(
@@ -18,13 +40,15 @@ function Test-IsInstallRootProcess {
 
   $commandLine = if ($ProcessRecord.CommandLine) {
     $ProcessRecord.CommandLine.ToLowerInvariant()
-  } else {
+  }
+  else {
     ''
   }
 
   $executablePath = if ($ProcessRecord.ExecutablePath) {
     $ProcessRecord.ExecutablePath.ToLowerInvariant()
-  } else {
+  }
+  else {
     ''
   }
 
@@ -96,7 +120,7 @@ function Get-InstallRootRelatedProcessIds {
     }
   }
 
-  return $relatedProcessIds
+  return @($relatedProcessIds)
 }
 
 function Stop-InstallRootProcesses {
@@ -104,11 +128,13 @@ function Stop-InstallRootProcesses {
 
   for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
     $processMap = Get-ProcessMap
-    $relatedProcessIds = Get-InstallRootRelatedProcessIds -ProcessMap $processMap
+    $relatedProcessIds = @(Get-InstallRootRelatedProcessIds -ProcessMap $processMap)
     if ($relatedProcessIds.Count -eq 0) {
+      Write-CleanupLog -Message "stop-process attempt=$attempt no matching processes"
       return
     }
 
+    Write-CleanupLog -Message "stop-process attempt=$attempt found=$($relatedProcessIds.Count)"
     $orderedIds = @($relatedProcessIds) | Sort-Object -Descending
     foreach ($processId in $orderedIds) {
       Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
@@ -141,42 +167,92 @@ function Remove-PathWithRetries {
 
   for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
     if (-not (Test-Path -LiteralPath $Path)) {
+      Write-CleanupLog -Message "remove-path path=$Path status=already-absent"
       return $true
     }
 
     try {
       Clear-ReadOnlyAttributes -Path $Path
       Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
-    } catch {
-      # Retry with cmd fallback below.
+    }
+    catch {
+      Write-CleanupLog -Message "remove-path path=$Path attempt=$attempt remove-item-error=$($_.Exception.Message)"
     }
 
     if (Test-Path -LiteralPath $Path) {
       $quotedPath = '"' + $Path.Replace('"', '""') + '"'
       $null = & cmd.exe /d /s /c "rmdir /s /q $quotedPath >NUL 2>&1"
+      if ($LASTEXITCODE -ne 0) {
+        Write-CleanupLog -Message "remove-path path=$Path attempt=$attempt rmdir-exit=$LASTEXITCODE"
+      }
     }
 
     if (-not (Test-Path -LiteralPath $Path)) {
+      Write-CleanupLog -Message "remove-path path=$Path status=removed attempt=$attempt"
       return $true
     }
 
     Start-Sleep -Milliseconds $DelayMilliseconds
   }
 
+  Write-CleanupLog -Message "remove-path path=$Path status=failed attempts=$MaxAttempts"
   return (-not (Test-Path -LiteralPath $Path))
 }
 
+function Remove-TopLevelNodeModulesLinks {
+  if (-not (Test-Path -LiteralPath $nodeModulesPath)) {
+    return
+  }
+
+  $entries = @(Get-ChildItem -LiteralPath $nodeModulesPath -Force -ErrorAction SilentlyContinue)
+  foreach ($entry in $entries) {
+    if (-not ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+      continue
+    }
+
+    try {
+      Remove-Item -LiteralPath $entry.FullName -Recurse -Force -ErrorAction Stop
+      Write-CleanupLog -Message "remove-link path=$($entry.FullName) status=removed"
+    }
+    catch {
+      Write-CleanupLog -Message "remove-link path=$($entry.FullName) status=failed error=$($_.Exception.Message)"
+    }
+  }
+}
+
 function Invoke-NodeModulesCleanup {
+  Write-CleanupLog -Message "cleanup-start nodeModules=$nodeModulesPath pnpm=$pnpmStorePath"
+  Remove-TopLevelNodeModulesLinks
   $null = Remove-PathWithRetries -Path $pnpmStorePath -MaxAttempts 10 -DelayMilliseconds 500
   $null = Remove-PathWithRetries -Path $nodeModulesPath -MaxAttempts 6 -DelayMilliseconds 500
+  $null = Remove-PathWithRetries -Path $appRootPath -MaxAttempts 4 -DelayMilliseconds 500
+  Write-CleanupLog -Message "cleanup-finish"
 }
+
+Write-CleanupLog -Message "script-start pid=$PID cleanupNodeModules=$CleanupNodeModules installRoot=$installRoot"
 
 try {
   Stop-InstallRootProcesses
+}
+catch {
+  Write-CleanupLog -Message "stop-processes-failed error=$($_.Exception.Message)"
+}
 
-  if ($CleanupNodeModules) {
+if ($CleanupNodeModules) {
+  try {
     Invoke-NodeModulesCleanup
   }
-} catch {
-  # Best-effort runtime stop/cleanup; ignore failures to avoid blocking installer flows.
+  catch {
+    Write-CleanupLog -Message "cleanup-failed error=$($_.Exception.Message)"
+  }
+}
+
+try {
+  if ($CleanupNodeModules) {
+    $existsAfterCleanup = Test-Path -LiteralPath $nodeModulesPath
+    Write-CleanupLog -Message "script-finish nodeModulesExists=$existsAfterCleanup"
+  }
+}
+catch {
+  # Best effort logging only.
 }
