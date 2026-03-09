@@ -278,11 +278,14 @@ async function installApiMocks(command: InstallApiMocksCommand): Promise<void> {
   })
 }
 
-async function openShipmentWithMocks(page: Page, command: {
-  readonly processId: string
-  readonly scenario: AckScenarioState
-  readonly syncInProgress: boolean
-}): Promise<void> {
+async function openShipmentWithMocks(
+  page: Page,
+  command: {
+    readonly processId: string
+    readonly scenario: AckScenarioState
+    readonly syncInProgress: boolean
+  },
+): Promise<void> {
   await page.addInitScript(() => {
     window.localStorage.setItem('locale', 'en-US')
   })

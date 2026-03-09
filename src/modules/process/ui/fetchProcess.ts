@@ -80,7 +80,10 @@ async function fetchProcessFromApi(id: string, locale: string): Promise<Shipment
   }
 }
 
-async function loadProcessFromNetwork(id: string, locale: string): Promise<ShipmentDetailVM | null> {
+async function loadProcessFromNetwork(
+  id: string,
+  locale: string,
+): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
   const inFlight = inFlightProcessRequests.get(key)
   if (inFlight) return inFlight
