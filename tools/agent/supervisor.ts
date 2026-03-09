@@ -327,6 +327,7 @@ async function main(): Promise<void> {
   appendSupervisorLog(layout.logsDir, 'supervisor started')
 
   let shuttingDown = false
+  let consecutiveReleaseRuntimeFailures = 0
   process.once('SIGINT', () => {
     shuttingDown = true
   })
@@ -426,6 +427,10 @@ async function main(): Promise<void> {
       fallbackEntrypoint,
       expectedVersion: state.current_version,
     })
+    appendSupervisorLog(
+      layout.logsDir,
+      `runtime selected source=${runtimeSelection.source} version=${runtimeSelection.version} entrypoint=${runtimeSelection.entrypointPath} activation_state=${state.activation_state}`,
+    )
 
     clearSupervisorControl(layout.supervisorControlPath)
 
@@ -483,8 +488,20 @@ async function main(): Promise<void> {
     const refreshedState = readReleaseState(layout.releaseStatePath, fallbackVersion)
 
     if (runResult.exitCode === EXIT_CODE_RESTART_FOR_UPDATE) {
+      consecutiveReleaseRuntimeFailures = 0
       await sleep(1_000)
       continue
+    }
+
+    const failedReleaseRuntimeWithoutHealthGate =
+      !requireHealthGate &&
+      runtimeSelection.source === 'release' &&
+      runResult.exitCode !== 0
+
+    if (failedReleaseRuntimeWithoutHealthGate) {
+      consecutiveReleaseRuntimeFailures += 1
+    } else {
+      consecutiveReleaseRuntimeFailures = 0
     }
 
     const shouldRollbackFromHealthGate =
@@ -524,6 +541,7 @@ async function main(): Promise<void> {
       })
 
       writeReleaseState(layout.releaseStatePath, rolledBackState)
+      consecutiveReleaseRuntimeFailures = 0
       appendSupervisorLog(
         layout.logsDir,
         `rollback executed to ${rollbackVersion} after health gate failure (target=${refreshedState.target_version})`,
@@ -550,6 +568,70 @@ async function main(): Promise<void> {
           occurred_at: new Date().toISOString(),
         },
       ])
+      await sleep(RESTART_BACKOFF_MS)
+      continue
+    }
+
+    if (failedReleaseRuntimeWithoutHealthGate) {
+      appendSupervisorLog(
+        layout.logsDir,
+        `release runtime failure count=${consecutiveReleaseRuntimeFailures}/${crashLoopThreshold} version=${runtimeSelection.version}`,
+      )
+    }
+
+    const shouldFallbackAfterReleaseCrashLoop =
+      failedReleaseRuntimeWithoutHealthGate &&
+      consecutiveReleaseRuntimeFailures >= crashLoopThreshold
+
+    if (shouldFallbackAfterReleaseCrashLoop) {
+      const now = new Date().toISOString()
+      const failureTracked = withRecordedFailure({
+        state: refreshedState,
+        version: runtimeSelection.version,
+        nowIso: now,
+        crashLoopWindowMs,
+        crashLoopThreshold,
+        maxActivationFailures: MAX_ACTIVATION_FAILURES,
+      })
+
+      const fallbackState = releaseManager.rollbackRelease({
+        layout,
+        state: failureTracked.nextState,
+        rollbackVersion: fallbackVersion,
+        nowIso: now,
+        reason: `release crash loop detected for version ${runtimeSelection.version}; switching to fallback runtime`,
+        crashLoopDetected: failureTracked.isCrashLoop,
+      })
+
+      writeReleaseState(layout.releaseStatePath, fallbackState)
+      appendSupervisorLog(
+        layout.logsDir,
+        `release crash loop guard switched runtime to fallback version=${fallbackVersion} from release=${runtimeSelection.version}`,
+      )
+      appendPendingActivityEvents(layout.pendingActivityPath, [
+        {
+          type: 'UPDATE_APPLY_FAILED',
+          message: `Release ${runtimeSelection.version} entered crash loop; switched to fallback runtime`,
+          severity: 'danger',
+          metadata: {
+            version: runtimeSelection.version,
+            fallbackVersion,
+            failures: consecutiveReleaseRuntimeFailures,
+          },
+          occurred_at: now,
+        },
+        {
+          type: 'ROLLBACK_EXECUTED',
+          message: `Rollback executed to fallback runtime ${fallbackVersion}`,
+          severity: 'warning',
+          metadata: {
+            rollbackVersion: fallbackVersion,
+            crashLoopDetected: failureTracked.isCrashLoop,
+          },
+          occurred_at: now,
+        },
+      ])
+      consecutiveReleaseRuntimeFailures = 0
       await sleep(RESTART_BACKOFF_MS)
       continue
     }

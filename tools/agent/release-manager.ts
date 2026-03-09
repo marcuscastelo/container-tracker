@@ -222,6 +222,9 @@ export function rollbackRelease(command: {
       linkPath: command.layout.currentLinkPath,
       targetPath: rollbackDir,
     })
+  } else {
+    removePathIfExists(command.layout.currentLinkPath)
+    removePathIfExists(command.layout.previousLinkPath)
   }
 
   return {

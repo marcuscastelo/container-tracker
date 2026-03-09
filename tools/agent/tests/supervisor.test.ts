@@ -1,7 +1,11 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { confirmRelease, rollbackRelease } from '@tools/agent/release-manager'
+import {
+  confirmRelease,
+  resolveRuntimeEntrypoint,
+  rollbackRelease,
+} from '@tools/agent/release-manager'
 import { createInitialReleaseState, withRecordedFailure } from '@tools/agent/release-state'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { describe, expect, it } from 'vitest'
@@ -126,5 +130,44 @@ describe('supervisor release policies', () => {
     expect(third.nextState.activation_state).toBe('blocked')
     expect(third.nextState.blocked_versions).toContain('2.0.0')
     expect(third.nextState.automatic_updates_blocked).toBe(true)
+  })
+
+  it('clears release links and falls back when rollback target is missing', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-supervisor-test-'))
+    const layout = createLayout(tempDir)
+    const releaseV1 = writeReleaseEntrypoint(layout, '1.0.0')
+    linkCurrent(layout, releaseV1)
+    const linkType = process.platform === 'win32' ? 'junction' : 'dir'
+    fs.symlinkSync(releaseV1, layout.previousLinkPath, linkType)
+
+    const rolledBack = rollbackRelease({
+      layout,
+      state: {
+        ...createInitialReleaseState('1.0.0'),
+        current_version: '1.0.0',
+        target_version: '2.0.0',
+        activation_state: 'verifying',
+        last_known_good_version: '1.0.0',
+      },
+      rollbackVersion: 'fallback-runtime',
+      nowIso: new Date().toISOString(),
+      reason: 'release directory missing',
+      crashLoopDetected: false,
+    })
+
+    expect(fs.existsSync(layout.currentLinkPath)).toBe(false)
+    expect(fs.existsSync(layout.previousLinkPath)).toBe(false)
+
+    const fallbackEntrypoint = path.join(tempDir, 'agent-fallback.js')
+    fs.writeFileSync(fallbackEntrypoint, "console.log('fallback')\n", 'utf8')
+    const runtimeSelection = resolveRuntimeEntrypoint({
+      layout,
+      fallbackEntrypoint,
+      expectedVersion: rolledBack.current_version,
+    })
+
+    expect(runtimeSelection.source).toBe('fallback')
+    expect(runtimeSelection.entrypointPath).toBe(fallbackEntrypoint)
+    expect(rolledBack.current_version).toBe('fallback-runtime')
   })
 })
