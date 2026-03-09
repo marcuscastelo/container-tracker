@@ -1,5 +1,4 @@
-const INTERACTIVE_ROW_TARGET_SELECTOR =
-  'a,button,input,select,textarea,[role="button"],[data-no-row-nav]'
+const INTERACTIVE_ROW_TARGET_SELECTOR = 'a,button,input,select,textarea,[data-no-row-nav]'
 
 type DashboardRowClickCommand = {
   readonly defaultPrevented: boolean

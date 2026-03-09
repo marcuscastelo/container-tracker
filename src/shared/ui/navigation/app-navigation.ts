@@ -53,12 +53,19 @@ function shouldThrottleProcessIntent(processId: string, nowMs: number): boolean 
 function rememberProcessIntent(processId: string, nowMs: number): void {
   processIntentAtById.set(processId, nowMs)
 
-  if (processIntentAtById.size <= 500) return
+  // Bound the intent map to avoid unbounded growth in long-lived sessions.
+  // If the map grows beyond the configured max, evict the oldest entries by
+  // timestamp so recent intents are kept.
+  const PROCESS_INTENT_MAX_ENTRIES = 500
+  if (processIntentAtById.size <= PROCESS_INTENT_MAX_ENTRIES) return
 
-  for (const [cachedProcessId, cachedAt] of processIntentAtById.entries()) {
-    if (nowMs - cachedAt > 30_000) {
-      processIntentAtById.delete(cachedProcessId)
-    }
+  const entries = Array.from(processIntentAtById.entries())
+  entries.sort((a, b) => a[1] - b[1])
+  let idx = 0
+  while (processIntentAtById.size > PROCESS_INTENT_MAX_ENTRIES && idx < entries.length) {
+    const keyToDelete = entries[idx][0]
+    processIntentAtById.delete(keyToDelete)
+    idx++
   }
 }
 
