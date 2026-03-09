@@ -880,7 +880,8 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     }
     disposed = true
   })
-  const refreshTrackingData = () =>
+  const refetchView = () => refetch()
+  const reconcileTrackingView = () =>
     refreshTrackingDataOnly({
       processId: props.params.id,
       locale: locale(),
@@ -890,7 +891,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const syncNow = useSyncRealtimeCoordinator({
     shipment,
     isRefreshing,
-    refreshTrackingData,
+    refreshTrackingData: reconcileTrackingView,
     isDisposed: () => disposed,
   })
   const triggerRefresh = async () => {
@@ -928,7 +929,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
         }
         activeRealtimeCleanup = cleanup
       },
-      refreshTrackingData,
+      refreshTrackingData: reconcileTrackingView,
       isDisposed: () => disposed,
       toTimeoutMessage: (totalRetries) =>
         t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries }),
@@ -941,13 +942,13 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const dialogs = useProcessDialogsController({
     processId: () => props.params.id,
     navigate,
-    refetchShipment: () => refetch(),
+    refetchShipment: refetchView,
   })
 
   const alertActions = useAlertActionsController({
     acknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorAcknowledge),
     unacknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorUnacknowledge),
-    reconcileTrackingView: refreshTrackingData,
+    reconcileTrackingView,
     updateAlerts: (updater) => {
       mutate((current) => {
         if (!current) return current
