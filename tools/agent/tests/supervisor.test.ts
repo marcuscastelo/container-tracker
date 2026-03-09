@@ -103,6 +103,7 @@ describe('supervisor release policies', () => {
       nowIso: new Date(now).toISOString(),
       crashLoopWindowMs: 5 * 60 * 1000,
       crashLoopThreshold: 3,
+      maxActivationFailures: 5,
     })
     const second = withRecordedFailure({
       state: first.nextState,
@@ -110,6 +111,7 @@ describe('supervisor release policies', () => {
       nowIso: new Date(now + 10_000).toISOString(),
       crashLoopWindowMs: 5 * 60 * 1000,
       crashLoopThreshold: 3,
+      maxActivationFailures: 5,
     })
     const third = withRecordedFailure({
       state: second.nextState,
@@ -117,6 +119,7 @@ describe('supervisor release policies', () => {
       nowIso: new Date(now + 20_000).toISOString(),
       crashLoopWindowMs: 5 * 60 * 1000,
       crashLoopThreshold: 3,
+      maxActivationFailures: 5,
     })
 
     expect(third.isCrashLoop).toBe(true)

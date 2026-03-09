@@ -1,9 +1,9 @@
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
-const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
+// biome-ignore lint/style/noRestrictedImports: Runtime path resolver needs direct relative imports in release bundles.
+import { resolvePlatformAdapter } from './platform/platform.adapter.ts'
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
   if (typeof value !== 'string') {
@@ -14,13 +14,26 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
   return normalized.length > 0 ? normalized : undefined
 }
 
-function resolveDefaultDataDir(): string {
-  const localAppData = normalizeOptionalEnv(process.env.LOCALAPPDATA)
-  if (localAppData) {
-    return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
+export function resolveDataDir(): string {
+  const dataDirFromEnv = normalizeOptionalEnv(process.env.AGENT_DATA_DIR)
+  if (dataDirFromEnv) {
+    return dataDirFromEnv
   }
 
-  return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
+  const adapter = resolvePlatformAdapter()
+  return adapter.resolvePaths({ env: process.env }).dataDir
+}
+
+export function resolveReleasesDir(dataDir: string): string {
+  return path.join(dataDir, 'releases')
+}
+
+export function resolveCurrentRelease(currentLinkPath: string): string | null {
+  try {
+    return fs.realpathSync(currentLinkPath)
+  } catch {
+    return null
+  }
 }
 
 export type AgentPathLayout = {
@@ -40,7 +53,7 @@ export type AgentPathLayout = {
 }
 
 export function resolveAgentPathLayout(): AgentPathLayout {
-  const dataDir = normalizeOptionalEnv(process.env.AGENT_DATA_DIR) ?? resolveDefaultDataDir()
+  const dataDir = resolveDataDir()
   const configPath =
     normalizeOptionalEnv(process.env.DOTENV_PATH) ?? path.join(dataDir, 'config.env')
   const bootstrapPath =
@@ -51,7 +64,7 @@ export function resolveAgentPathLayout(): AgentPathLayout {
     configPath,
     bootstrapPath,
     consumedBootstrapPath: `${bootstrapPath}.consumed`,
-    releasesDir: path.join(dataDir, 'releases'),
+    releasesDir: resolveReleasesDir(dataDir),
     downloadsDir: path.join(dataDir, 'downloads'),
     logsDir: path.join(dataDir, 'logs'),
     currentLinkPath: path.join(dataDir, 'current'),

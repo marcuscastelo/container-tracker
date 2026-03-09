@@ -10,6 +10,8 @@ const releaseFailureEntrySchema = z.object({
   occurred_at: z.string().datetime({ offset: true }),
 })
 
+const activationFailuresSchema = z.record(z.string().min(1), z.number().int().min(0)).default({})
+
 const releaseStateSchema = z.object({
   current_version: z.string().min(1),
   previous_version: z.string().min(1).nullable(),
@@ -21,6 +23,7 @@ const releaseStateSchema = z.object({
   blocked_versions: z.array(z.string().min(1)).default([]),
   automatic_updates_blocked: z.boolean().default(false),
   recent_failures: z.array(releaseFailureEntrySchema).default([]),
+  activation_failures: activationFailuresSchema,
   last_error: z.string().nullable().default(null),
 })
 
@@ -51,6 +54,7 @@ export function createInitialReleaseState(currentVersion: string): ReleaseState 
     blocked_versions: [],
     automatic_updates_blocked: false,
     recent_failures: [],
+    activation_failures: {},
     last_error: null,
   }
 }
@@ -99,9 +103,11 @@ export function withRecordedFailure(command: {
   readonly nowIso: string
   readonly crashLoopWindowMs: number
   readonly crashLoopThreshold: number
+  readonly maxActivationFailures: number
 }): {
   readonly nextState: ReleaseState
   readonly isCrashLoop: boolean
+  readonly activationFailuresForVersion: number
 } {
   const nowMs = new Date(command.nowIso).getTime()
   const windowStartMs = nowMs - command.crashLoopWindowMs
@@ -117,20 +123,34 @@ export function withRecordedFailure(command: {
   const failures = [...inWindow, { version: command.version, occurred_at: command.nowIso }]
   const failuresForVersion = failures.filter((entry) => entry.version === command.version).length
   const crashLoopDetected = failuresForVersion >= command.crashLoopThreshold
+  const currentActivationFailures = command.state.activation_failures[command.version] ?? 0
+  const activationFailuresForVersion = currentActivationFailures + 1
+  const activationFailures = {
+    ...command.state.activation_failures,
+    [command.version]: activationFailuresForVersion,
+  }
+  const activationFailureLimitReached =
+    activationFailuresForVersion >= command.maxActivationFailures
 
-  const blockedVersions = crashLoopDetected
-    ? [...new Set([...command.state.blocked_versions, command.version])]
-    : [...command.state.blocked_versions]
+  const blockedVersions =
+    crashLoopDetected || activationFailureLimitReached
+      ? [...new Set([...command.state.blocked_versions, command.version])]
+      : [...command.state.blocked_versions]
+
+  const shouldBlockUpdates =
+    crashLoopDetected || activationFailureLimitReached || command.state.automatic_updates_blocked
 
   return {
     nextState: {
       ...command.state,
       failure_count: command.state.failure_count + 1,
       recent_failures: failures,
+      activation_failures: activationFailures,
       blocked_versions: blockedVersions,
-      automatic_updates_blocked: crashLoopDetected || command.state.automatic_updates_blocked,
-      activation_state: crashLoopDetected ? 'blocked' : command.state.activation_state,
+      automatic_updates_blocked: shouldBlockUpdates,
+      activation_state: shouldBlockUpdates ? 'blocked' : command.state.activation_state,
     },
     isCrashLoop: crashLoopDetected,
+    activationFailuresForVersion,
   }
 }

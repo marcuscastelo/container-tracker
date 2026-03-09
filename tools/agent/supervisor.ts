@@ -1,10 +1,11 @@
-import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 // biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import { appendPendingActivityEvents } from './pending-activity.ts'
+// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
+import { resolvePlatformAdapter } from './platform/platform.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 // biome-ignore lint/performance/noNamespaceImport: Supervisor runtime keeps grouped release-manager symbols for resilient formatting.
 import * as releaseManager from './release-manager.ts'
@@ -19,17 +20,19 @@ import { clearSupervisorControl } from './supervisor-control.ts'
 
 const EXIT_CODE_RESTART_FOR_UPDATE = 42
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000
-const DEFAULT_STABILITY_WINDOW_MS = 120_000
+const DEFAULT_HEALTH_GRACE_MS = 120_000
 const DEFAULT_CRASH_LOOP_WINDOW_MS = 5 * 60 * 1000
 const DEFAULT_CRASH_LOOP_THRESHOLD = 3
+const DEFAULT_MAX_ACTIVATION_FAILURES = 5
 const RESTART_BACKOFF_MS = 2_000
 const HEALTH_POLL_INTERVAL_MS = 500
+const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 type ChildRunOutcome = {
   readonly exitCode: number | null
   readonly startupConfirmed: boolean
   readonly startupTimedOut: boolean
-  readonly stabilityConfirmed: boolean
+  readonly healthGraceConfirmed: boolean
 }
 
 function sleep(ms: number): Promise<void> {
@@ -63,6 +66,34 @@ function resolveNumberEnv(value: string | undefined, fallback: number): number {
     return fallback
   }
   return parsed
+}
+
+function rotateLogIfNeeded(logPath: string): void {
+  if (!fs.existsSync(logPath)) {
+    return
+  }
+
+  const stat = fs.statSync(logPath)
+  if (stat.size <= MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES) {
+    return
+  }
+
+  const rotationPath = `${logPath}.1`
+  if (fs.existsSync(rotationPath)) {
+    fs.rmSync(rotationPath, { force: true })
+  }
+
+  fs.renameSync(logPath, rotationPath)
+}
+
+function appendSupervisorLog(logsDir: string, message: string): void {
+  const line = `[${new Date().toISOString()}] [supervisor] ${message}`
+  console.log(line)
+
+  const logPath = path.join(logsDir, 'supervisor.log')
+  fs.mkdirSync(path.dirname(logPath), { recursive: true })
+  rotateLogIfNeeded(logPath)
+  fs.appendFileSync(logPath, `${line}\n`, 'utf8')
 }
 
 function resolveFallbackRuntimeEntrypoint(scriptDir: string): string {
@@ -150,21 +181,27 @@ async function runChildWithHealthGate(command: {
   readonly scriptPath: string
   readonly expectedVersion: string
   readonly startupTimeoutMs: number
-  readonly stabilityWindowMs: number
+  readonly healthGraceMs: number
   readonly healthPath: string
   readonly env: NodeJS.ProcessEnv
+  readonly logsDir: string
   readonly onStabilityConfirmed: () => void
 }): Promise<ChildRunOutcome> {
-  const child = spawn(process.execPath, [command.scriptPath], {
+  const platformAdapter = resolvePlatformAdapter()
+  const child = platformAdapter.startRuntime({
+    scriptPath: command.scriptPath,
     env: command.env,
     stdio: 'inherit',
-    shell: false,
   })
+  appendSupervisorLog(
+    command.logsDir,
+    `started runtime pid=${child.pid ?? 'unknown'} version=${command.expectedVersion} entrypoint=${command.scriptPath}`,
+  )
 
   let childExited = false
   let startupConfirmed = false
   let startupTimedOut = false
-  let stabilityConfirmed = false
+  let healthGraceConfirmed = false
   let onStabilityConfirmedCalled = false
 
   const exitPromise = new Promise<number | null>((resolve) => {
@@ -192,7 +229,7 @@ async function runChildWithHealthGate(command: {
 
     if (!startupConfirmed && !childExited) {
       startupTimedOut = true
-      child.kill('SIGTERM')
+      platformAdapter.stopRuntime({ child })
       return
     }
 
@@ -200,13 +237,13 @@ async function runChildWithHealthGate(command: {
       return
     }
 
-    const stabilityDeadlineMs = Date.now() + command.stabilityWindowMs
-    while (!childExited && Date.now() < stabilityDeadlineMs) {
+    const healthGraceDeadlineMs = Date.now() + command.healthGraceMs
+    while (!childExited && Date.now() < healthGraceDeadlineMs) {
       await sleep(HEALTH_POLL_INTERVAL_MS)
     }
 
     if (!childExited) {
-      stabilityConfirmed = true
+      healthGraceConfirmed = true
       if (!onStabilityConfirmedCalled) {
         onStabilityConfirmedCalled = true
         command.onStabilityConfirmed()
@@ -221,19 +258,26 @@ async function runChildWithHealthGate(command: {
     exitCode,
     startupConfirmed,
     startupTimedOut,
-    stabilityConfirmed,
+    healthGraceConfirmed,
   }
 }
 
 async function runChildWithoutHealthGate(command: {
   readonly scriptPath: string
   readonly env: NodeJS.ProcessEnv
+  readonly logsDir: string
+  readonly version: string
 }): Promise<ChildRunOutcome> {
-  const child = spawn(process.execPath, [command.scriptPath], {
+  const platformAdapter = resolvePlatformAdapter()
+  const child = platformAdapter.startRuntime({
+    scriptPath: command.scriptPath,
     env: command.env,
     stdio: 'inherit',
-    shell: false,
   })
+  appendSupervisorLog(
+    command.logsDir,
+    `started runtime pid=${child.pid ?? 'unknown'} version=${command.version} entrypoint=${command.scriptPath}`,
+  )
 
   const exitCode = await new Promise<number | null>((resolve) => {
     child.once('exit', (code) => {
@@ -245,7 +289,7 @@ async function runChildWithoutHealthGate(command: {
     exitCode,
     startupConfirmed: false,
     startupTimedOut: false,
-    stabilityConfirmed: false,
+    healthGraceConfirmed: false,
   }
 }
 
@@ -259,9 +303,10 @@ async function main(): Promise<void> {
     normalizeOptionalEnv(process.env.AGENT_UPDATE_STARTUP_TIMEOUT_MS),
     DEFAULT_STARTUP_TIMEOUT_MS,
   )
-  const stabilityWindowMs = resolveNumberEnv(
-    normalizeOptionalEnv(process.env.AGENT_UPDATE_STABILITY_WINDOW_MS),
-    DEFAULT_STABILITY_WINDOW_MS,
+  const HEALTH_GRACE_MS = resolveNumberEnv(
+    normalizeOptionalEnv(process.env.AGENT_UPDATE_HEALTH_GRACE_MS) ??
+      normalizeOptionalEnv(process.env.AGENT_UPDATE_STABILITY_WINDOW_MS),
+    DEFAULT_HEALTH_GRACE_MS,
   )
   const crashLoopWindowMs = resolveNumberEnv(
     normalizeOptionalEnv(process.env.AGENT_UPDATE_CRASH_LOOP_WINDOW_MS),
@@ -271,10 +316,15 @@ async function main(): Promise<void> {
     normalizeOptionalEnv(process.env.AGENT_UPDATE_CRASH_LOOP_THRESHOLD),
     DEFAULT_CRASH_LOOP_THRESHOLD,
   )
+  const MAX_ACTIVATION_FAILURES = resolveNumberEnv(
+    normalizeOptionalEnv(process.env.AGENT_UPDATE_MAX_ACTIVATION_FAILURES),
+    DEFAULT_MAX_ACTIVATION_FAILURES,
+  )
 
   const layout = resolveAgentPathLayout()
   ensureAgentPathLayout(layout)
   clearSupervisorControl(layout.supervisorControlPath)
+  appendSupervisorLog(layout.logsDir, 'supervisor started')
 
   let shuttingDown = false
   process.once('SIGINT', () => {
@@ -296,13 +346,15 @@ async function main(): Promise<void> {
 
     if (state.activation_state === 'pending' && state.target_version) {
       try {
+        const targetVersion = state.target_version
         state = releaseManager.activateTargetRelease({
           layout,
           state,
-          targetVersion: state.target_version,
+          targetVersion,
           nowIso,
         })
         writeReleaseState(layout.releaseStatePath, state)
+        appendSupervisorLog(layout.logsDir, `activation started for version=${targetVersion}`)
         appendPendingActivityEvents(layout.pendingActivityPath, [
           {
             type: 'UPDATE_APPLY_STARTED',
@@ -314,6 +366,18 @@ async function main(): Promise<void> {
         ])
       } catch (error) {
         const errorMessage = toErrorMessage(error)
+        const failedTargetVersion = state.target_version
+        const failureTracked =
+          failedTargetVersion === null
+            ? null
+            : withRecordedFailure({
+                state,
+                version: failedTargetVersion,
+                nowIso: new Date().toISOString(),
+                crashLoopWindowMs,
+                crashLoopThreshold,
+                maxActivationFailures: MAX_ACTIVATION_FAILURES,
+              })
         const rollbackVersion = selectRollbackVersion({
           releasesDir: layout.releasesDir,
           lastKnownGoodVersion: state.last_known_good_version,
@@ -322,19 +386,27 @@ async function main(): Promise<void> {
         })
         state = releaseManager.rollbackRelease({
           layout,
-          state,
+          state: failureTracked?.nextState ?? state,
           rollbackVersion,
           nowIso,
           reason: `failed to activate pending release: ${errorMessage}`,
-          crashLoopDetected: false,
+          crashLoopDetected: failureTracked?.isCrashLoop ?? false,
         })
         writeReleaseState(layout.releaseStatePath, state)
+        appendSupervisorLog(
+          layout.logsDir,
+          `activation failed target=${failedTargetVersion ?? 'unknown'} rollback=${rollbackVersion} error="${errorMessage}"`,
+        )
         appendPendingActivityEvents(layout.pendingActivityPath, [
           {
             type: 'UPDATE_APPLY_FAILED',
             message: `Failed to activate pending release: ${errorMessage}`,
             severity: 'danger',
-            metadata: { targetVersion: state.target_version },
+            metadata: {
+              targetVersion: failedTargetVersion,
+              activationFailures: failureTracked?.activationFailuresForVersion ?? 0,
+              crashLoopDetected: failureTracked?.isCrashLoop ?? false,
+            },
             occurred_at: nowIso,
           },
           {
@@ -375,9 +447,10 @@ async function main(): Promise<void> {
           scriptPath: runtimeSelection.entrypointPath,
           expectedVersion: runtimeSelection.version,
           startupTimeoutMs,
-          stabilityWindowMs,
+          healthGraceMs: HEALTH_GRACE_MS,
           healthPath: layout.runtimeHealthPath,
           env: childEnv,
+          logsDir: layout.logsDir,
           onStabilityConfirmed() {
             const currentState = readReleaseState(layout.releaseStatePath, fallbackVersion)
             if (!currentState.target_version) {
@@ -390,11 +463,17 @@ async function main(): Promise<void> {
               nowIso: new Date().toISOString(),
             })
             writeReleaseState(layout.releaseStatePath, confirmedState)
+            appendSupervisorLog(
+              layout.logsDir,
+              `activation confirmed for version=${currentState.target_version}`,
+            )
           },
         })
       : await runChildWithoutHealthGate({
           scriptPath: runtimeSelection.entrypointPath,
           env: childEnv,
+          logsDir: layout.logsDir,
+          version: runtimeSelection.version,
         })
 
     if (shuttingDown) {
@@ -412,7 +491,7 @@ async function main(): Promise<void> {
       requireHealthGate &&
       (!runResult.startupConfirmed ||
         runResult.startupTimedOut ||
-        (runResult.startupConfirmed && !runResult.stabilityConfirmed))
+        (runResult.startupConfirmed && !runResult.healthGraceConfirmed))
 
     if (shouldRollbackFromHealthGate && refreshedState.target_version) {
       const failureReason = runResult.startupTimedOut
@@ -425,6 +504,7 @@ async function main(): Promise<void> {
         nowIso: new Date().toISOString(),
         crashLoopWindowMs,
         crashLoopThreshold,
+        maxActivationFailures: MAX_ACTIVATION_FAILURES,
       })
 
       const rollbackVersion = selectRollbackVersion({
@@ -444,6 +524,10 @@ async function main(): Promise<void> {
       })
 
       writeReleaseState(layout.releaseStatePath, rolledBackState)
+      appendSupervisorLog(
+        layout.logsDir,
+        `rollback executed to ${rollbackVersion} after health gate failure (target=${refreshedState.target_version})`,
+      )
       appendPendingActivityEvents(layout.pendingActivityPath, [
         {
           type: 'UPDATE_APPLY_FAILED',
@@ -471,9 +555,14 @@ async function main(): Promise<void> {
     }
 
     if (runResult.exitCode === 0) {
+      appendSupervisorLog(layout.logsDir, 'runtime exited cleanly, supervisor stopping')
       break
     }
 
+    appendSupervisorLog(
+      layout.logsDir,
+      `runtime exited with code=${runResult.exitCode ?? 'unknown'}, restarting after backoff`,
+    )
     await sleep(RESTART_BACKOFF_MS)
   }
 }

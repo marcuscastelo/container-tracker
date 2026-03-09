@@ -32,6 +32,7 @@ jobs:
           gh release download "agent/v${VERSION}" \
             --repo "${GITHUB_REPOSITORY}" \
             --pattern "agent-linux-x64.sha256" \
+            --pattern "agent-windows-x64.sha256" \
             --dir /tmp/agent-release \
             --clobber
 
@@ -45,18 +46,31 @@ jobs:
           fi
 
           CHECKSUM="$(awk '{print $1}' /tmp/agent-release/agent-linux-x64.sha256)"
-          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          WINDOWS_CHECKSUM="$(awk '{print $1}' /tmp/agent-release/agent-windows-x64.sha256)"
+          LINUX_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          WINDOWS_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-windows-x64.zip"
           PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
           jq \
             --arg version "${VERSION}" \
-            --arg download_url "${DOWNLOAD_URL}" \
-            --arg checksum "${CHECKSUM}" \
+            --arg linux_download_url "${LINUX_DOWNLOAD_URL}" \
+            --arg linux_checksum "${CHECKSUM}" \
+            --arg windows_download_url "${WINDOWS_DOWNLOAD_URL}" \
+            --arg windows_checksum "${WINDOWS_CHECKSUM}" \
             --arg published_at "${PUBLISHED_AT}" \
             '.channel = "stable"
               | .version = $version
-              | .download_url = $download_url
-              | .checksum = $checksum
+              | .platforms = {
+                  "linux-x64": {
+                    "url": $linux_download_url,
+                    "checksum": $linux_checksum
+                  },
+                  "windows-x64": {
+                    "url": $windows_download_url,
+                    "checksum": $windows_checksum
+                  }
+                }
+              | del(.download_url, .checksum)
               | .published_at = $published_at' \
             agent-manifests/canary.json > agent-manifests/stable.json
 

@@ -8,19 +8,40 @@ import type {
 } from '~/modules/agent/application/agent-monitoring.repository'
 
 const DEFAULT_CHANNEL = 'stable'
+const DEFAULT_PLATFORM = 'linux-x64'
 const DEFAULT_CACHE_TTL_MS = 60_000
 const CHECKSUM_PATTERN = /^[a-f0-9]{64}$/iu
 const PLACEHOLDER_VERSION = '0.0.0'
 
-const agentManifestFileSchema = z.object({
+const manifestPlatformAssetSchema = z.object({
+  url: z.string().url(),
+  checksum: z.string().regex(CHECKSUM_PATTERN),
+})
+
+const agentManifestUnifiedFileSchema = z.object({
+  channel: z.string().trim().min(1),
+  version: z.string().trim().min(1),
+  platforms: z.record(z.string().min(1), manifestPlatformAssetSchema),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
+})
+
+const agentManifestLegacyFileSchema = z.object({
   channel: z.string().trim().min(1),
   version: z.string().trim().min(1),
   download_url: z.string().url(),
   checksum: z.string().regex(CHECKSUM_PATTERN),
-  published_at: z.string().datetime({ offset: true }),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
 })
 
+const agentManifestFileSchema = z.union([
+  agentManifestUnifiedFileSchema,
+  agentManifestLegacyFileSchema,
+])
+
+const agentPlatformSchema = z.enum(['linux-x64', 'windows-x64'])
+
 type AgentManifestFile = z.infer<typeof agentManifestFileSchema>
+type AgentPlatform = z.infer<typeof agentPlatformSchema>
 
 type CachedManifest = {
   readonly expiresAtMs: number
@@ -32,7 +53,7 @@ type AgentUpdateManifestResolved = {
   readonly downloadUrl: string
   readonly checksum: string
   readonly channel: string
-  readonly publishedAt: string
+  readonly publishedAt: string | null
   readonly updateAvailable: boolean
   readonly desiredVersion: string | null
   readonly currentVersion: string
@@ -72,6 +93,15 @@ function normalizeOptionalNonBlank(value: string | null | undefined): string | n
 
 function normalizeChannel(value: string | null | undefined): string {
   return normalizeOptionalNonBlank(value)?.toLowerCase() ?? DEFAULT_CHANNEL
+}
+
+function normalizePlatform(value: string | null | undefined): AgentPlatform {
+  const normalized = normalizeOptionalNonBlank(value)?.toLowerCase() ?? DEFAULT_PLATFORM
+  const parsed = agentPlatformSchema.safeParse(normalized)
+  if (!parsed.success) {
+    return DEFAULT_PLATFORM
+  }
+  return parsed.data
 }
 
 function isRestartRequired(record: AgentMonitoringRecord): boolean {
@@ -116,6 +146,39 @@ function resolveManifestUpdateAvailability(command: {
   }
 
   return command.manifestVersion !== command.currentVersion
+}
+
+function resolveManifestAsset(command: {
+  readonly manifest: AgentManifestFile
+  readonly platform: AgentPlatform
+}): {
+  readonly downloadUrl: string
+  readonly checksum: string
+} | null {
+  if ('platforms' in command.manifest) {
+    const requestedAsset = command.manifest.platforms[command.platform]
+    if (requestedAsset) {
+      return {
+        downloadUrl: requestedAsset.url,
+        checksum: requestedAsset.checksum,
+      }
+    }
+
+    const fallbackAsset = command.manifest.platforms[DEFAULT_PLATFORM]
+    if (fallbackAsset) {
+      return {
+        downloadUrl: fallbackAsset.url,
+        checksum: fallbackAsset.checksum,
+      }
+    }
+
+    return null
+  }
+
+  return {
+    downloadUrl: command.manifest.download_url,
+    checksum: command.manifest.checksum,
+  }
 }
 
 function resolveManifestsDir(dirFromEnv: string | undefined): string {
@@ -206,6 +269,7 @@ export function createAgentUpdateManifestService(deps: {
   async function resolveForAgent(command: {
     readonly tenantId: string
     readonly agentId: string
+    readonly platform?: string
   }): Promise<ResolveAgentUpdateManifestResult> {
     const record = await deps.repository.getAgentDetailForTenant({
       tenantId: command.tenantId,
@@ -219,8 +283,20 @@ export function createAgentUpdateManifestService(deps: {
     }
 
     const requestedChannel = normalizeChannel(record.updateChannel)
+    const requestedPlatform = normalizePlatform(command.platform)
     const manifest = await loadManifestWithFallback(requestedChannel)
     if (!manifest) {
+      return {
+        kind: 'manifest_unavailable',
+        channel: requestedChannel,
+      }
+    }
+
+    const manifestAsset = resolveManifestAsset({
+      manifest,
+      platform: requestedPlatform,
+    })
+    if (!manifestAsset) {
       return {
         kind: 'manifest_unavailable',
         channel: requestedChannel,
@@ -239,10 +315,10 @@ export function createAgentUpdateManifestService(deps: {
       kind: 'resolved',
       manifest: {
         version: manifest.version,
-        downloadUrl: manifest.download_url,
-        checksum: manifest.checksum,
+        downloadUrl: manifestAsset.downloadUrl,
+        checksum: manifestAsset.checksum,
         channel: manifest.channel,
-        publishedAt: manifest.published_at,
+        publishedAt: manifest.published_at ?? null,
         updateAvailable,
         desiredVersion,
         currentVersion,

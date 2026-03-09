@@ -1,9 +1,12 @@
-import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { z } from 'zod/v4'
+// biome-ignore lint/style/noRestrictedImports: Shared updater runtime resolves direct .ts imports in release artifacts.
+import type { AgentPlatformKey } from './platform/platform.adapter.ts'
+// biome-ignore lint/style/noRestrictedImports: Shared updater runtime resolves direct .ts imports in release artifacts.
+import { resolveAgentPlatformKey, resolvePlatformAdapter } from './platform/platform.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Shared updater runtime resolves direct .ts imports in release artifacts.
 // biome-ignore lint/performance/noNamespaceImport: Updater core keeps grouped release-manager symbols for stable formatting.
 import * as releaseManager from './release-manager.ts'
@@ -16,10 +19,16 @@ import type { AgentPathLayout } from './runtime-paths.ts'
 
 const CHECKSUM_PATTERN = /^[a-f0-9]{64}$/iu
 
+const manifestPlatformAssetSchema = z.object({
+  url: z.string().url(),
+  checksum: z.string().regex(CHECKSUM_PATTERN),
+})
+
 const updateManifestResponseSchema = z.object({
   version: z.string().min(1),
-  download_url: z.string().url().nullable(),
-  checksum: z.string().regex(CHECKSUM_PATTERN).nullable(),
+  download_url: z.string().url().nullable().optional(),
+  checksum: z.string().regex(CHECKSUM_PATTERN).nullable().optional(),
+  platforms: z.record(z.string().min(1), manifestPlatformAssetSchema).optional(),
   channel: z.string().min(1),
   published_at: z.string().datetime({ offset: true }).nullable().optional(),
   update_available: z.boolean(),
@@ -30,12 +39,21 @@ const updateManifestResponseSchema = z.object({
   restart_requested_at: z.string().datetime({ offset: true }).nullable(),
 })
 
-export type UpdateManifestResponse = z.infer<typeof updateManifestResponseSchema>
+type ParsedUpdateManifestResponse = z.infer<typeof updateManifestResponseSchema>
+
+export type UpdateManifestResponse = Omit<
+  ParsedUpdateManifestResponse,
+  'download_url' | 'checksum'
+> & {
+  readonly download_url: string | null
+  readonly checksum: string | null
+}
 
 export type UpdateFetchCommand = {
   readonly backendUrl: string
   readonly agentToken: string
   readonly agentId: string
+  readonly platform?: AgentPlatformKey
 }
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
@@ -85,6 +103,7 @@ function buildAuthHeaders(command: UpdateFetchCommand, includeContentType: boole
   const headers = new Headers()
   headers.set('authorization', `Bearer ${command.agentToken}`)
   headers.set('x-agent-id', command.agentId)
+  headers.set('x-agent-platform', command.platform ?? resolveAgentPlatformKey())
   headers.set('user-agent', `container-tracker-agent/${command.agentId}`)
   if (includeContentType) {
     headers.set('content-type', 'application/json')
@@ -108,10 +127,32 @@ function createNoUpdateManifest(channel: string): UpdateManifestResponse {
   }
 }
 
+function selectManifestAsset(command: {
+  readonly manifest: ParsedUpdateManifestResponse
+  readonly platform: AgentPlatformKey
+}): {
+  readonly downloadUrl: string | null
+  readonly checksum: string | null
+} {
+  const platformAsset = command.manifest.platforms?.[command.platform]
+  if (platformAsset) {
+    return {
+      downloadUrl: platformAsset.url,
+      checksum: platformAsset.checksum,
+    }
+  }
+
+  return {
+    downloadUrl: command.manifest.download_url ?? null,
+    checksum: command.manifest.checksum ?? null,
+  }
+}
+
 export async function fetchUpdateManifest(
   command: UpdateFetchCommand,
   fetchImpl: FetchLike = fetch,
 ): Promise<UpdateManifestResponse> {
+  const platform = command.platform ?? resolveAgentPlatformKey()
   const response = await fetchImpl(`${command.backendUrl}/api/agent/update-manifest`, {
     method: 'GET',
     headers: buildAuthHeaders(command, false),
@@ -132,7 +173,16 @@ export async function fetchUpdateManifest(
     throw new Error(`invalid update manifest payload: ${parsed.error.message}`)
   }
 
-  return parsed.data
+  const asset = selectManifestAsset({
+    manifest: parsed.data,
+    platform,
+  })
+
+  return {
+    ...parsed.data,
+    download_url: asset.downloadUrl,
+    checksum: asset.checksum,
+  }
 }
 
 function computeSha256(buffer: Buffer): string {
@@ -144,41 +194,6 @@ function writeFileAtomic(filePath: string, content: Buffer | string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   fs.writeFileSync(tempPath, content)
   fs.renameSync(tempPath, filePath)
-}
-
-function extractArchive(command: {
-  readonly archiveKind: 'zip' | 'tar' | 'tgz'
-  readonly archivePath: string
-  readonly destinationDir: string
-}): void {
-  fs.mkdirSync(command.destinationDir, { recursive: true })
-
-  const run = (program: string, args: readonly string[]): void => {
-    const result = spawnSync(program, [...args], {
-      stdio: 'ignore',
-      shell: false,
-    })
-    if (result.status !== 0) {
-      throw new Error(`${program} exited with code ${result.status ?? 'unknown'}`)
-    }
-  }
-
-  if (command.archiveKind === 'zip') {
-    try {
-      run('unzip', ['-oq', command.archivePath, '-d', command.destinationDir])
-      return
-    } catch {
-      run('tar', ['-xf', command.archivePath, '-C', command.destinationDir])
-      return
-    }
-  }
-
-  if (command.archiveKind === 'tgz') {
-    run('tar', ['-xzf', command.archivePath, '-C', command.destinationDir])
-    return
-  }
-
-  run('tar', ['-xf', command.archivePath, '-C', command.destinationDir])
 }
 
 function findReleaseDirFromExtractedRoot(extractedRoot: string): string | null {
@@ -239,7 +254,8 @@ function prepareReleaseDirectory(command: {
   )
   fs.mkdirSync(stagingDir, { recursive: true })
 
-  extractArchive({
+  const platformAdapter = resolvePlatformAdapter()
+  platformAdapter.extractBundle({
     archiveKind: command.archiveKind,
     archivePath,
     destinationDir: stagingDir,

@@ -191,6 +191,9 @@ export function confirmRelease(command: {
   readonly confirmedVersion: string
   readonly nowIso: string
 }): ReleaseState {
+  const activationFailures = { ...command.state.activation_failures }
+  delete activationFailures[command.confirmedVersion]
+
   return {
     ...command.state,
     current_version: command.confirmedVersion,
@@ -199,6 +202,7 @@ export function confirmRelease(command: {
     target_version: null,
     activation_state: 'idle',
     failure_count: 0,
+    activation_failures: activationFailures,
     last_update_attempt: command.nowIso,
     last_error: null,
   }

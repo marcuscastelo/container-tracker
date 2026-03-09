@@ -135,6 +135,7 @@ describe('self-update integration flows', () => {
       nowIso: new Date().toISOString(),
       crashLoopWindowMs: 5 * 60 * 1000,
       crashLoopThreshold: 3,
+      maxActivationFailures: 5,
     })
 
     const rolledBack = rollbackRelease({

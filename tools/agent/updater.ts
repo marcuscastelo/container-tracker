@@ -7,7 +7,11 @@ import { fileURLToPath } from 'node:url'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { appendPendingActivityEvents } from './pending-activity.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { readReleaseState, writeReleaseState } from './release-state.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import type { AgentPathLayout } from './runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
@@ -15,7 +19,6 @@ import { writeSupervisorControl } from './supervisor-control.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { fetchUpdateManifest, stageReleaseFromManifest } from './updater.core.ts'
 
-const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 const MAX_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 function toErrorMessage(error: unknown): string {
@@ -26,26 +29,17 @@ function toErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function resolveDataRoot(): string {
-  const localAppData = process.env.LOCALAPPDATA?.trim()
-  if (localAppData && localAppData.length > 0) {
-    return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
-  }
-
-  return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
-}
-
-function resolveDotenvPath(): string {
+function resolveDotenvPath(layout: AgentPathLayout): string {
   const fromEnv = process.env.DOTENV_PATH?.trim()
   if (fromEnv && fromEnv.length > 0) {
     return fromEnv
   }
 
-  return path.win32.join(resolveDataRoot(), 'config.env')
+  return layout.configPath
 }
 
-function resolveLogPath(): string {
-  return path.win32.join(resolveDataRoot(), 'logs', 'updater.log')
+function resolveLogPath(layout: AgentPathLayout): string {
+  return path.join(layout.logsDir, 'updater.log')
 }
 
 function unquoteValue(value: string): string {
@@ -128,11 +122,11 @@ function rotateLogIfNeeded(logPath: string): void {
   fs.renameSync(logPath, rotationPath)
 }
 
-function appendLogLine(message: string): void {
+function appendLogLine(layout: AgentPathLayout, message: string): void {
   const line = `[${new Date().toISOString()}] ${message}`
   console.log(line)
 
-  const logPath = resolveLogPath()
+  const logPath = resolveLogPath(layout)
   const logDir = path.dirname(logPath)
   fs.mkdirSync(logDir, { recursive: true })
   rotateLogIfNeeded(logPath)
@@ -186,22 +180,22 @@ async function runUpdater(): Promise<void> {
   const scriptPath = fileURLToPath(import.meta.url)
   const scriptDir = path.dirname(scriptPath)
 
-  const dotenvPath = resolveDotenvPath()
+  const layout = resolveAgentPathLayout()
+  ensureAgentPathLayout(layout)
+  const dotenvPath = resolveDotenvPath(layout)
   const config = readConfigFromEnvFile(dotenvPath)
   const runningVersion = readAgentVersion(scriptDir)
   const nowIso = new Date().toISOString()
 
-  const layout = resolveAgentPathLayout()
-  ensureAgentPathLayout(layout)
-
   let releaseState = readReleaseState(layout.releaseStatePath, runningVersion)
-  appendLogLine(`[updater] version=${runningVersion}`)
-  appendLogLine(`[updater] state=${releaseState.activation_state}`)
+  appendLogLine(layout, `[updater] version=${runningVersion}`)
+  appendLogLine(layout, `[updater] state=${releaseState.activation_state}`)
 
   const manifest = await fetchUpdateManifest({
     backendUrl: config.backendUrl,
     agentToken: config.agentToken,
     agentId: config.agentId,
+    platform: resolveAgentPlatformKey(),
   })
 
   appendPendingActivityEvents(layout.pendingActivityPath, [
@@ -224,7 +218,7 @@ async function runUpdater(): Promise<void> {
   })
 
   if (staged.kind === 'no_update') {
-    appendLogLine('[updater] no update available')
+    appendLogLine(layout, '[updater] no update available')
     return
   }
 
@@ -248,7 +242,7 @@ async function runUpdater(): Promise<void> {
         occurred_at: nowIso,
       },
     ])
-    appendLogLine(`[updater] blocked: ${staged.reason}`)
+    appendLogLine(layout, `[updater] blocked: ${staged.reason}`)
     return
   }
 
@@ -319,7 +313,7 @@ async function runUpdater(): Promise<void> {
     },
   ])
 
-  appendLogLine(`[updater] staged version ${staged.manifest.version}`)
+  appendLogLine(layout, `[updater] staged version ${staged.manifest.version}`)
 }
 
 async function main(): Promise<void> {
@@ -327,7 +321,9 @@ async function main(): Promise<void> {
     await runUpdater()
     process.exit(0)
   } catch (error) {
-    appendLogLine(`[updater] failed: ${toErrorMessage(error)}`)
+    const layout = resolveAgentPathLayout()
+    ensureAgentPathLayout(layout)
+    appendLogLine(layout, `[updater] failed: ${toErrorMessage(error)}`)
     process.exit(1)
   }
 }

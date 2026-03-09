@@ -79,6 +79,49 @@ describe('updater core', () => {
     expect(manifest.update_available).toBe(true)
   })
 
+  it('selects platform asset from unified manifest payload', async () => {
+    const fetchManifest = async (): Promise<Response> => {
+      return new Response(
+        JSON.stringify({
+          version: '2.0.0',
+          channel: 'stable',
+          platforms: {
+            'linux-x64': {
+              url: 'https://example.com/agent-v2-linux.tar.gz',
+              checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            },
+            'windows-x64': {
+              url: 'https://example.com/agent-v2-windows.zip',
+              checksum: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+            },
+          },
+          update_available: true,
+          desired_version: '2.0.0',
+          current_version: '1.0.0',
+          update_ready_version: null,
+          restart_required: false,
+          restart_requested_at: null,
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    const manifest = await fetchUpdateManifest(
+      {
+        backendUrl: 'https://agent.test.local',
+        agentToken: 'tok_test',
+        agentId: 'agent-test',
+        platform: 'windows-x64',
+      },
+      fetchManifest,
+    )
+
+    expect(manifest.download_url).toBe('https://example.com/agent-v2-windows.zip')
+    expect(manifest.checksum).toBe(
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    )
+  })
+
   it('treats 204 response as no update available', async () => {
     const fetchManifest = async (): Promise<Response> => {
       return new Response(null, { status: 204 })

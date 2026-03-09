@@ -43,13 +43,26 @@ jobs:
           tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
           sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
 
+      - name: Package windows artifact
+        run: |
+          rm -rf /tmp/agent-windows-x64
+          mkdir -p /tmp/agent-windows-x64
+          cp -R tools/agent/dist /tmp/agent-windows-x64/dist
+          (
+            cd /tmp
+            zip -qr "${GITHUB_WORKSPACE}/agent-windows-x64.zip" agent-windows-x64
+          )
+          sha256sum agent-windows-x64.zip | awk '{print $1}' > agent-windows-x64.sha256
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agent-linux-x64
+          name: agent-release-assets
           path: |
             agent-linux-x64.tar.gz
             agent-linux-x64.sha256
+            agent-windows-x64.zip
+            agent-windows-x64.sha256
           if-no-files-found: error
 
   publish-release:
@@ -64,7 +77,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: agent-linux-x64
+          name: agent-release-assets
           path: .
 
       - name: Publish prerelease
@@ -76,13 +89,17 @@ jobs:
           files: |
             agent-linux-x64.tar.gz
             agent-linux-x64.sha256
+            agent-windows-x64.zip
+            agent-windows-x64.sha256
 
       - name: Generate canary manifest
         env:
           VERSION: ${{ inputs.version }}
         run: |
           CHECKSUM="$(awk '{print $1}' agent-linux-x64.sha256)"
-          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          WINDOWS_CHECKSUM="$(awk '{print $1}' agent-windows-x64.sha256)"
+          LINUX_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          WINDOWS_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-windows-x64.zip"
           PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
           mkdir -p agent-manifests
@@ -90,8 +107,16 @@ jobs:
           {
             "channel": "canary",
             "version": "${VERSION}",
-            "download_url": "${DOWNLOAD_URL}",
-            "checksum": "${CHECKSUM}",
+            "platforms": {
+              "linux-x64": {
+                "url": "${LINUX_DOWNLOAD_URL}",
+                "checksum": "${CHECKSUM}"
+              },
+              "windows-x64": {
+                "url": "${WINDOWS_DOWNLOAD_URL}",
+                "checksum": "${WINDOWS_CHECKSUM}"
+              }
+            },
             "published_at": "${PUBLISHED_AT}"
           }
           EOF

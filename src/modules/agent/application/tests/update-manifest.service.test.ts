@@ -57,24 +57,38 @@ function writeManifestFile(command: {
   readonly manifestsDir: string
   readonly channel: string
   readonly version: string
+  readonly mode?: 'legacy' | 'unified'
 }): void {
   const manifestPath = path.join(command.manifestsDir, `${command.channel}.json`)
+  const mode = command.mode ?? 'legacy'
   fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
-  fs.writeFileSync(
-    manifestPath,
-    `${JSON.stringify(
-      {
-        channel: command.channel,
-        version: command.version,
-        download_url: `https://example.com/agent/${command.channel}/${command.version}/agent-linux-x64.tar.gz`,
-        checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        published_at: '2026-03-09T10:00:00.000Z',
-      },
-      null,
-      2,
-    )}\n`,
-    'utf8',
-  )
+
+  const payload =
+    mode === 'legacy'
+      ? {
+          channel: command.channel,
+          version: command.version,
+          download_url: `https://example.com/agent/${command.channel}/${command.version}/agent-linux-x64.tar.gz`,
+          checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          published_at: '2026-03-09T10:00:00.000Z',
+        }
+      : {
+          channel: command.channel,
+          version: command.version,
+          platforms: {
+            'linux-x64': {
+              url: `https://example.com/agent/${command.channel}/${command.version}/agent-linux-x64.tar.gz`,
+              checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            },
+            'windows-x64': {
+              url: `https://example.com/agent/${command.channel}/${command.version}/agent-windows-x64.zip`,
+              checksum: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+            },
+          },
+          published_at: '2026-03-09T10:00:00.000Z',
+        }
+
+  fs.writeFileSync(manifestPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
 }
 
 describe('agent update manifest service', () => {
@@ -165,6 +179,37 @@ describe('agent update manifest service', () => {
     if (result.kind !== 'resolved') return
     expect(result.manifest.updateAvailable).toBe(false)
     expect(result.manifest.desiredVersion).toBe('3.0.0')
+  })
+
+  it('selects platform-specific asset from unified manifest', async () => {
+    const manifestsDir = createManifestDir()
+    writeManifestFile({
+      manifestsDir,
+      channel: 'stable',
+      version: '2.2.0',
+      mode: 'unified',
+    })
+
+    const service = createAgentUpdateManifestService({
+      repository: createRepository({
+        ...BASE_RECORD,
+        currentVersion: '1.0.0',
+      }),
+      manifestsDir,
+    })
+
+    const result = await service.resolveForAgent({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+      platform: 'windows-x64',
+    })
+
+    expect(result.kind).toBe('resolved')
+    if (result.kind !== 'resolved') return
+    expect(result.manifest.downloadUrl).toContain('agent-windows-x64.zip')
+    expect(result.manifest.checksum).toBe(
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    )
   })
 
   it('returns manifest_unavailable when no channel manifest exists', async () => {

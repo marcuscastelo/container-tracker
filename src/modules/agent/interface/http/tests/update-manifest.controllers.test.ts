@@ -115,6 +115,26 @@ describe('update manifest controllers', () => {
     expect(resolveForAgent).toHaveBeenCalledWith({
       tenantId: TENANT_ID,
       agentId: AGENT_ID,
+      platform: undefined,
+    })
+  })
+
+  it('forwards x-agent-platform header to manifest resolution', async () => {
+    const { controllers, resolveForAgent } = createControllers({})
+    const response = await controllers.getUpdateManifest({
+      request: new Request('http://localhost/api/agent/update-manifest', {
+        headers: {
+          authorization: 'Bearer token-123',
+          'x-agent-platform': 'windows-x64',
+        },
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(resolveForAgent).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+      platform: 'windows-x64',
     })
   })
 

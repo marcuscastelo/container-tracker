@@ -16,6 +16,16 @@ function getBearerToken(authorization: string | null): string | null {
   return token
 }
 
+function getAgentPlatform(request: Request): string | undefined {
+  const headerValue = request.headers.get('x-agent-platform')
+  if (!headerValue) {
+    return undefined
+  }
+
+  const normalized = headerValue.trim().toLowerCase()
+  return normalized.length > 0 ? normalized : undefined
+}
+
 export function createUpdateManifestControllers(deps: UpdateManifestControllersDeps) {
   async function getUpdateManifest({ request }: { readonly request: Request }): Promise<Response> {
     try {
@@ -34,6 +44,7 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
       const result = await deps.updateManifestService.resolveForAgent({
         tenantId: auth.tenantId,
         agentId: auth.agentId,
+        platform: getAgentPlatform(request),
       })
 
       if (result.kind === 'agent_not_found') {

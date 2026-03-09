@@ -23,6 +23,8 @@ import { computeBackoffDelayMs } from './backoff.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { drainPendingActivityEvents } from './pending-activity.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { readReleaseState, writeReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { writeRuntimeHealth } from './runtime-health.ts'
@@ -1223,6 +1225,7 @@ async function runUpdateCheck(command: {
       backendUrl: command.config.BACKEND_URL,
       agentToken: command.config.AGENT_TOKEN,
       agentId: command.config.AGENT_ID,
+      platform: resolveAgentPlatformKey(),
     })
 
     command.state.desiredVersion = manifest.desired_version
