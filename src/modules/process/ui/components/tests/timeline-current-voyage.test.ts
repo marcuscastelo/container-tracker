@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type CurrentVoyageGroup,
   resolveCurrentVoyageIndex,
-} from '~/modules/process/ui/components/TimelinePanel'
+} from '~/modules/process/ui/timeline/currentVoyage'
 
 function voyageGroup(
   events: readonly { readonly type: string; readonly eventTimeType: 'ACTUAL' | 'EXPECTED' }[],

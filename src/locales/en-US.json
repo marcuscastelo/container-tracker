@@ -225,6 +225,18 @@
       "title": "Containers",
       "selectionHint": "Select a container to view its timeline."
     },
+    "currentStatus": {
+      "title": "Current Status",
+      "container": "Container",
+      "status": "Status",
+      "currentVessel": "Current vessel",
+      "currentLocation": "Current location",
+      "eta": "ETA",
+      "lastUpdate": "Last update",
+      "noContainer": "Select a container to view its status.",
+      "unknown": "—",
+      "vesselNotApplicable": "Already discharged"
+    },
     "containerSummary": {
       "moreContainers": "+{{count}} containers in this process",
       "alertCount": "{{count}} alert(s)"

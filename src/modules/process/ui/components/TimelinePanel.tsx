@@ -4,6 +4,10 @@ import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
 import type { NonMappedIndicatorVariant } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import {
+  resolveCurrentVoyageIndex,
+  toCurrentVoyageGroups,
+} from '~/modules/process/ui/timeline/currentVoyage'
+import {
   BlockCard,
   EventSeparator,
   GapMarkerRow,
@@ -16,9 +20,9 @@ import {
 } from '~/modules/process/ui/timeline/TimelineBlocks'
 import {
   buildTimelineRenderList,
-  type TerminalSegmentKind,
   type TimelineRenderItem,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
+import { deriveCurrentVesselFromTimeline } from '~/modules/process/ui/utils/current-tracking-context'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -56,25 +60,6 @@ function buildHighlightedEventTypes(alerts: readonly AlertDisplayVM[]): Readonly
   return types
 }
 
-function deriveCurrentVessel(container: ContainerDetailVM | null): string | null {
-  if (!container) return null
-  const timeline = container.timeline
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.vesselName && event.eventTimeType === 'ACTUAL') {
-      return event.vesselName
-    }
-  }
-  // Fallback: any vessel from expected events
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.vesselName) {
-      return event.vesselName
-    }
-  }
-  return null
-}
-
 function derivePortsRoute(container: ContainerDetailVM | null): string | null {
   if (!container) return null
   const ports = container.transshipment.ports
@@ -86,7 +71,7 @@ export function TimelinePanel(props: Props): JSX.Element {
   const timeline = () => props.selectedContainer?.timeline ?? []
   const { t, keys } = useTranslation()
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
-  const currentVessel = createMemo(() => deriveCurrentVessel(props.selectedContainer))
+  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(timeline()))
   const portsRoute = createMemo(() => derivePortsRoute(props.selectedContainer))
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 
@@ -277,86 +262,6 @@ function BlockChildren(props: {
   )
 }
 
-type CurrentVoyageEvent = {
-  readonly type: string
-  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
-}
-
-export type CurrentVoyageGroup =
-  | {
-      readonly kind: 'voyage'
-      readonly events: readonly CurrentVoyageEvent[]
-    }
-  | {
-      readonly kind: 'terminal'
-      readonly terminalKind: TerminalSegmentKind
-      readonly events: readonly CurrentVoyageEvent[]
-    }
-  | {
-      readonly kind: 'other'
-    }
-
-function toCurrentVoyageGroups(groups: readonly BlockGroup[]): readonly CurrentVoyageGroup[] {
-  return groups.map((group) => {
-    switch (group.kind) {
-      case 'voyage':
-        return {
-          kind: 'voyage',
-          events: group.block.events,
-        }
-      case 'terminal':
-        return {
-          kind: 'terminal',
-          terminalKind: group.block.kind,
-          events: group.block.events,
-        }
-      default:
-        return { kind: 'other' }
-    }
-  })
-}
-
-/**
- * Determine the current voyage group index.
- *
- * Rules:
- * - Prefer the first voyage that has ACTUAL events and no ACTUAL DISCHARGE.
- * - Fallback to the last voyage with any ACTUAL event.
- * - If fallback applies and a post-carriage block has ACTUAL events after that voyage,
- *   return -1 (voyage is no longer current).
- */
-export function resolveCurrentVoyageIndex(groups: readonly CurrentVoyageGroup[]): number {
-  let fallbackIdx = -1
-
-  for (let i = 0; i < groups.length; i++) {
-    const group = groups[i]
-    if (group.kind !== 'voyage') continue
-
-    const hasActual = group.events.some((event) => event.eventTimeType === 'ACTUAL')
-    if (!hasActual) continue
-
-    fallbackIdx = i
-    const hasActualDischarge = group.events.some(
-      (event) => event.type === 'DISCHARGE' && event.eventTimeType === 'ACTUAL',
-    )
-    if (!hasActualDischarge) return i
-  }
-
-  if (fallbackIdx < 0) return -1
-
-  for (let i = fallbackIdx + 1; i < groups.length; i++) {
-    const group = groups[i]
-    if (group.kind !== 'terminal' || group.terminalKind !== 'post-carriage') continue
-
-    const hasActualPostCarriageEvent = group.events.some(
-      (event) => event.eventTimeType === 'ACTUAL',
-    )
-    if (hasActualPostCarriageEvent) return -1
-  }
-
-  return fallbackIdx
-}
-
 function railDotVariant(group: BlockGroup, isCurrent: boolean): RailDotVariant {
   if (isCurrent && group.kind === 'voyage') return 'current-voyage'
   switch (group.kind) {
@@ -387,7 +292,7 @@ function TimelineBlockList(props: {
 }): JSX.Element {
   const groups = createMemo(() => groupRenderItems(props.renderList))
   const currentVoyageIdx = createMemo(() =>
-    resolveCurrentVoyageIndex(toCurrentVoyageGroups(groups())),
+    resolveCurrentVoyageIndex(toCurrentVoyageGroups(props.renderList)),
   )
 
   const renderGroupContent = (group: BlockGroup, isCurrent: boolean): JSX.Element | null => {
@@ -455,10 +360,11 @@ function TimelineBlockList(props: {
       />
       <For each={groups()}>
         {(group, index) => {
+          const isCurrent = createMemo(() => index() === currentVoyageIdx())
           return (
             <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
-              <RailDot variant={railDotVariant(group, index() === currentVoyageIdx())} />
-              {renderGroupContent(group, index() === currentVoyageIdx())}
+              <RailDot variant={railDotVariant(group, isCurrent())} />
+              {renderGroupContent(group, isCurrent())}
             </div>
           )
         }}

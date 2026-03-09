@@ -236,6 +236,18 @@
       "title": "Containers",
       "selectionHint": "Selecione um container para ver sua timeline."
     },
+    "currentStatus": {
+      "title": "Status Atual",
+      "container": "Container",
+      "status": "Status",
+      "currentVessel": "Navio atual",
+      "currentLocation": "Local atual",
+      "eta": "ETA",
+      "lastUpdate": "Última atualização",
+      "noContainer": "Selecione um container para visualizar o status.",
+      "unknown": "—",
+      "vesselNotApplicable": "Já descarregado"
+    },
     "containerSummary": {
       "moreContainers": "+{{count}} containers neste processo",
       "alertCount": "{{count}} alerta(s)"

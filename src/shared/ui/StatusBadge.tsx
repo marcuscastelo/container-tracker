@@ -31,8 +31,10 @@ const statusConfig: Record<StatusVariant, { icon: string; bgClass: string; textC
   },
   loaded: {
     icon: '●',
-    bgClass: 'bg-emerald-50',
-    textClass: 'text-emerald-700',
+    // Use same visual tone as 'in-transit' (blue) so "Carregado" appears
+    // with the same color across the app as requested.
+    bgClass: 'bg-blue-50',
+    textClass: 'text-blue-700',
   },
   customs: {
     icon: '●',
