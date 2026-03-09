@@ -8,33 +8,94 @@ import type {
   VoyageBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
 import { useTranslation } from '~/shared/localization/i18n'
+import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // ---------------------------------------------------------------------------
 // Phase 20 — Voyage Block Header ("Identity Card")
 // ---------------------------------------------------------------------------
 
-export function VoyageBlockHeader(props: { readonly block: VoyageBlock }): JSX.Element {
-  const { t, keys } = useTranslation()
+export function VoyageBlockHeader(props: {
+  readonly block: VoyageBlock
+  readonly isCurrent?: boolean
+}): JSX.Element {
+  const { t, keys, locale } = useTranslation()
 
   const route = () => {
     const b = props.block
+    // For current leg: only show route when both origin AND destination are known
+    // (destination is null when voyage is ongoing; we show destinationLine instead)
     if (!b.origin && !b.destination) return null
+    if (props.isCurrent && !b.destination) return null
     return t(keys.shipmentView.timeline.blocks.voyageRoute, {
       origin: b.origin ?? '?',
       destination: b.destination ?? '?',
     })
   }
 
+  /** Destination line for the current leg: "→ Santos · ETA 13/03" */
+  const destinationLine = () => {
+    if (!props.isCurrent) return null
+    const events = props.block.events
+
+    // Prefer confirmed destination (when DISCHARGE ACTUAL exists)
+    let dest = props.block.destination
+    let etaIso: string | null = null
+
+    if (!dest) {
+      // Fall back: pick destination from the last EXPECTED ARRIVAL event
+      for (let i = events.length - 1; i >= 0; i--) {
+        const ev = events[i]
+        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED') {
+          dest = ev.location ?? null
+          etaIso = ev.eventTimeIso
+          break
+        }
+      }
+    }
+
+    if (!dest) return null
+
+    // If ETA not found yet, prefer EXPECTED ARRIVAL or EXPECTED DISCHARGE events only.
+    // Avoid picking unrelated EXPECTED events (e.g., DEPARTURE) as ETA when destination
+    // is already known from actuals.
+    if (!etaIso) {
+      for (let i = events.length - 1; i >= 0; i--) {
+        const ev = events[i]
+        if (
+          ev.eventTimeType === 'EXPECTED' &&
+          ev.eventTimeIso &&
+          (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')
+        ) {
+          etaIso = ev.eventTimeIso
+          break
+        }
+      }
+    }
+
+    if (etaIso) {
+      return t(keys.shipmentView.timeline.blocks.destinationEta, {
+        destination: dest,
+        eta: formatDateForLocale(etaIso, locale()),
+      })
+    }
+    return t(keys.shipmentView.timeline.blocks.destinationNoEta, { destination: dest })
+  }
+
   return (
-    <div class="mb-1 rounded-t border-b border-slate-100/70 bg-slate-50/60 px-2 py-1.5">
+    <div class="rounded-t border-b border-slate-200/50 bg-gradient-to-r from-slate-50/80 to-white px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
         <span class="text-sm shrink-0" aria-hidden="true">
           🚢
         </span>
-        <span class="text-md-ui font-semibold text-slate-900">
+        <span class="text-md-ui font-semibold text-slate-800 tracking-tight">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
+        <Show when={props.isCurrent}>
+          <span class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-px text-micro font-bold uppercase tracking-wider text-blue-700 ring-1 ring-blue-200">
+            {t(keys.shipmentView.timeline.blocks.currentLeg)}
+          </span>
+        </Show>
       </div>
       <Show when={props.block.voyage}>
         {(voyage) => (
@@ -45,6 +106,9 @@ export function VoyageBlockHeader(props: { readonly block: VoyageBlock }): JSX.E
       </Show>
       <Show when={route()}>
         {(routeStr) => <p class="mt-0.5 text-micro text-slate-500">{routeStr()}</p>}
+      </Show>
+      <Show when={destinationLine()}>
+        {(line) => <p class="mt-0.5 text-micro font-semibold text-blue-600">{line()}</p>}
       </Show>
     </div>
   )
@@ -82,12 +146,12 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   }
 
   return (
-    <div class="mb-1 rounded-t border-b border-slate-100/60 bg-white/80 px-2 py-1.5">
+    <div class="rounded-t border-b border-slate-100 bg-slate-50/30 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         <span class="text-sm shrink-0" aria-hidden="true">
           {icon()}
         </span>
-        <span class="text-sm-ui font-medium text-slate-600">{title()}</span>
+        <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
       </div>
       <Show when={props.block.location}>
         {(loc) => <p class="mt-0.5 text-micro text-slate-400">{loc()}</p>}
@@ -103,21 +167,37 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
 export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlock }): JSX.Element {
   const { t, keys } = useTranslation()
 
+  const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
+
   return (
-    <div class="my-1 rounded border-l-4 border-amber-400 bg-amber-50 px-2.5 py-1.5">
+    <div class="rounded-md border-l-4 border-amber-400 bg-amber-50/80 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         <span class="text-sm" aria-hidden="true">
           🔁
         </span>
-        <span class="text-sm-ui font-semibold text-amber-900">
+        <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>
       </div>
       <Show when={props.block.port}>
         {(port) => <p class="mt-0.5 text-micro font-medium text-amber-800">{port()}</p>}
       </Show>
-      <Show when={props.block.reason}>
-        {(reason) => <p class="mt-0.5 text-micro text-amber-700">{reason()}</p>}
+      <Show
+        when={hasVesselChange()}
+        fallback={
+          <Show when={props.block.reason}>
+            {(reason) => <p class="mt-0.5 text-micro text-amber-700">{reason()}</p>}
+          </Show>
+        }
+      >
+        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/60 px-2 py-0.5 text-micro">
+          <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
+            {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+              from: props.block.fromVessel ?? '?',
+              to: props.block.toVessel ?? '?',
+            })}
+          </span>
+        </div>
       </Show>
     </div>
   )
@@ -142,12 +222,13 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
   }
 
   return (
-    <div class="flex items-center gap-1.5 py-0.5 pl-3">
-      {/* Timeline spine continuation (thin dot for the marker) */}
+    <div class="flex items-center py-1.5 pl-3">
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
       </div>
-      <p class="text-micro italic text-slate-600">⏳ {label()}</p>
+      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50/80 px-2 py-0.5 text-micro italic text-slate-400 ring-1 ring-slate-100/80">
+        ⏳ {label()}
+      </span>
     </div>
   )
 }
@@ -189,7 +270,7 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
   const icon = () => (props.marker.severity === 'danger' ? '⚠' : '⏳')
 
   return (
-    <div class="flex items-center gap-1.5 py-0.5 pl-3">
+    <div class="flex items-center gap-1.5 py-1 pl-3">
       {/* Timeline spine continuation */}
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
@@ -212,16 +293,21 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
 
 /**
  * Wraps block content in a styled card. VoyageBlocks use a subtle card;
- * TerminalBlocks use a neutral card.
+ * TerminalBlocks use a neutral card. Current-voyage gets a blue accent.
  */
 export function BlockCard(props: {
   readonly variant: 'voyage' | 'terminal'
+  readonly isCurrent?: boolean
   readonly children: JSX.Element
 }): JSX.Element {
-  const baseClass = () =>
-    props.variant === 'voyage'
-      ? 'rounded border border-slate-200/60 bg-slate-50/40 mb-1.5'
-      : 'rounded border border-slate-100/80 bg-white mb-1.5'
+  const baseClass = () => {
+    if (props.isCurrent) {
+      return 'rounded-lg border border-blue-200 bg-blue-50/30 shadow-[0_1px_3px_rgba(59,130,246,0.08)] ring-1 ring-blue-100/60'
+    }
+    return props.variant === 'voyage'
+      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+      : 'rounded-lg border border-slate-100 bg-white'
+  }
 
   return <div class={baseClass()}>{props.children}</div>
 }
@@ -231,4 +317,50 @@ export function BlockCard(props: {
  */
 export function EventSeparator(): JSX.Element {
   return <div class="ml-3 border-t border-slate-50" />
+}
+
+// ---------------------------------------------------------------------------
+// Continuous Rail — Visual connector between timeline blocks
+// ---------------------------------------------------------------------------
+
+export type RailDotVariant =
+  | 'voyage'
+  | 'terminal'
+  | 'transshipment'
+  | 'gap'
+  | 'risk'
+  | 'event'
+  | 'current-voyage'
+
+/**
+ * A dot marker positioned on the outer timeline rail.
+ * When placed inside a `relative` wrapper at `pl-5` from the rail container,
+ * the dot centers on the rail line at `left: 8px`.
+ */
+export function RailDot(props: { readonly variant: RailDotVariant }): JSX.Element {
+  const cls = (): string => {
+    switch (props.variant) {
+      case 'current-voyage':
+        return 'h-3 w-3 bg-blue-500 ring-2 ring-blue-200 shadow-[0_0_4px_rgba(59,130,246,0.4)]'
+      case 'voyage':
+        return 'h-2.5 w-2.5 bg-blue-400 ring-2 ring-white'
+      case 'terminal':
+        return 'h-2 w-2 bg-slate-400 ring-2 ring-white'
+      case 'transshipment':
+        return 'h-3 w-3 bg-amber-400 ring-2 ring-white'
+      case 'gap':
+        return 'h-1.5 w-1.5 bg-slate-300 ring-1 ring-white'
+      case 'risk':
+        return 'h-2 w-2 bg-amber-400 ring-1 ring-white'
+      case 'event':
+        return 'h-2 w-2 bg-emerald-400 ring-1 ring-white'
+    }
+  }
+
+  return (
+    <div
+      class={`absolute top-3 -left-3 -translate-x-1/2 rounded-full z-10 ${cls()}`}
+      aria-hidden="true"
+    />
+  )
 }

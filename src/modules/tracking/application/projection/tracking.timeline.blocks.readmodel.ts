@@ -147,6 +147,8 @@ export type TransshipmentBlock = {
   readonly blockType: 'transshipment'
   readonly port: string | null
   readonly reason: string | null
+  readonly fromVessel: string | null
+  readonly toVessel: string | null
 }
 
 export type GapMarker = {
@@ -168,10 +170,18 @@ export type PortRiskMarker = {
 // Phase 5 — Transshipment Detection
 // ---------------------------------------------------------------------------
 
-function detectTransshipmentsBetweenVoyages(
-  voyageSegments: readonly VoyageSegment[],
-): readonly { readonly afterVoyageIndex: number; readonly port: string | null }[] {
-  const transshipments: { afterVoyageIndex: number; port: string | null }[] = []
+function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegment[]): readonly {
+  readonly afterVoyageIndex: number
+  readonly port: string | null
+  readonly fromVessel: string | null
+  readonly toVessel: string | null
+}[] {
+  const transshipments: {
+    afterVoyageIndex: number
+    port: string | null
+    fromVessel: string | null
+    toVessel: string | null
+  }[] = []
 
   // Only consider segments that are actual voyages (vessel !== null)
   const voyageOnly = voyageSegments
@@ -184,7 +194,12 @@ function detectTransshipmentsBetweenVoyages(
     // Transshipment when vessel or voyage differs
     if (current.seg.vessel !== next.seg.vessel || current.seg.voyage !== next.seg.voyage) {
       const port = current.seg.destination ?? next.seg.origin ?? null
-      transshipments.push({ afterVoyageIndex: current.idx, port })
+      transshipments.push({
+        afterVoyageIndex: current.idx,
+        port,
+        fromVessel: current.seg.vessel,
+        toVessel: next.seg.vessel,
+      })
     }
   }
 
@@ -393,6 +408,8 @@ export function buildTimelineRenderList(
       blockType: 'transshipment',
       port: ts.port,
       reason: 'Vessel change',
+      fromVessel: ts.fromVessel,
+      toVessel: ts.toVessel,
     })
   }
 

@@ -82,3 +82,42 @@ References
 
 Output format (required)
 : The agent must return a plain Markdown snippet starting with `Title:` on a single line, a blank line, then `Body:` and the full PR body. Do not output any internal generation notes.
+
+Important: The agent MUST produce output that is directly copy-pastable and nothing else. The exact output requirements are:
+
+- The entire assistant response MUST be wrapped in four backticks (````) so users can copy/paste without modification.
+- Inside the four-backtick block, the first line MUST be `Title:` followed by the PR title on the same line.
+- Then a single blank line.
+- Then a line with `Body:` followed by the full PR body in Markdown. The PR body MUST include the following sections as Markdown headings: `Summary`, `What changed`, `Why`, `How to test / QA steps`, `Related issues / references`, and optionally `Release notes / migration notes` and `Suggested reviewers and labels`.
+- The assistant MUST NOT add any surrounding commentary, notes, metadata, or explanation outside the four-backtick block.
+- The assistant MUST NOT ask for the branch interactively; branch discovery is automatic via the helper script. If helper script fails, return a short actionable error (not a question asking for branch input).
+
+Example (the assistant's full response must exactly follow this pattern — nothing else):
+
+````
+Title: Short imperative PR title (#123)
+
+Body:
+### Summary
+One-sentence summary of the change.
+
+### What changed
+- Bullet 1
+- Bullet 2
+
+### Why
+Short rationale.
+
+### How to test / QA steps
+1. Step one
+2. Step two
+
+### Related issues / references
+#123
+
+### Suggested reviewers and labels
+Reviewers: @team
+Labels: `feature`, `needs-review`
+````
+
+The agent should follow the rest of the original prompt (auto-discovery, parsing branch, constructing title/body) but must always produce the copyable four-backtick-wrapped output described above.
