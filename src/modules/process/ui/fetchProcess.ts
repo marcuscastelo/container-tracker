@@ -28,10 +28,31 @@ function readFreshCachedProcess(key: string): ShipmentDetailVM | null | undefine
 }
 
 function writeCachedProcess(key: string, value: ShipmentDetailVM | null): void {
+  // Opportunistically prune expired entries so TTL actually limits memory growth
+  pruneExpiredCacheEntries()
+
   processCache.set(key, {
     value,
     expiresAtMs: Date.now() + PROCESS_PREFETCH_TTL_MS,
   })
+
+  // Keep the cache bounded to avoid unbounded memory growth in long sessions.
+  // If the cache grows too large, evict the oldest entries by expiresAtMs.
+  const CACHE_MAX_ENTRIES = 1000
+  if (processCache.size > CACHE_MAX_ENTRIES) {
+    const entries = Array.from(processCache.entries())
+    entries.sort((a, b) => a[1].expiresAtMs - b[1].expiresAtMs)
+    for (let i = 0; processCache.size > CACHE_MAX_ENTRIES && i < entries.length; i++) {
+      processCache.delete(entries[i][0])
+    }
+  }
+}
+
+function pruneExpiredCacheEntries(): void {
+  const now = Date.now()
+  for (const [key, record] of processCache.entries()) {
+    if (record.expiresAtMs <= now) processCache.delete(key)
+  }
 }
 
 async function fetchProcessFromApi(id: string, locale: string): Promise<ShipmentDetailVM | null> {
@@ -39,13 +60,16 @@ async function fetchProcessFromApi(id: string, locale: string): Promise<Shipment
     const data = await typedFetch(`/api/processes/${id}`, undefined, ProcessDetailResponseSchema)
     return toShipmentDetailVM(data, locale)
   } catch (err: unknown) {
-    if (err instanceof TypedFetchError && err.status === 404) return null
+    // typedFetch throws TypedFetchError with status for non-2xx responses.
+    // Return `null` only for 404; rethrow other HTTP errors and non-typed errors.
+    if (err instanceof TypedFetchError) {
+      if (err.status === 404) return null
+      throw err
+    }
 
-    if (err instanceof Error && err.message?.includes('Not Found')) return null
-
-    // Fallback for non-typed HTTP failures that may still represent 404.
-    const response = await fetch(`/api/processes/${id}`)
-    if (!response.ok && response.status === 404) return null
+    // Non-typed errors should be surfaced to the caller; do not issue a
+    // secondary network request here as it can double-load the API and
+    // mask the original failure.
     throw err
   }
 }
