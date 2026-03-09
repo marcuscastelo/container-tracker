@@ -334,8 +334,19 @@ function Invoke-SafeTaskDelete {
 }
 
 function Show-TaskDiagnostics {
-  & schtasks.exe /Query /TN $agentTaskName /V /FO LIST 2>$null
-  & schtasks.exe /Query /TN $updaterTaskName /V /FO LIST 2>$null
+  function Show-OptionalTaskQuery {
+    param(
+      [string]$TaskName
+    )
+
+    & cmd.exe /d /s /c "schtasks /Query /TN ""$TaskName"" /V /FO LIST 2>NUL || (echo [agent:rebuild-restart] task not found: $TaskName & exit /B 0)"
+    if ($LASTEXITCODE -ne 0) {
+      throw "failed to query scheduled task $TaskName (exit code $LASTEXITCODE)"
+    }
+  }
+
+  Show-OptionalTaskQuery -TaskName $agentTaskName
+  Show-OptionalTaskQuery -TaskName $updaterTaskName
 
   $updaterLog = Join-Path $dataLogDir 'updater.log'
   if (Test-Path $updaterLog) {
