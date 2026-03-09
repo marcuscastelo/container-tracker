@@ -1,6 +1,5 @@
 import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
 import type {
-  ContainerDetailVM,
   ContainerSyncState,
   ContainerSyncVM,
 } from '~/modules/process/ui/viewmodels/shipment.vm'
