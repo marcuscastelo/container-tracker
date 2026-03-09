@@ -7,7 +7,8 @@
     "nav": {
       "dashboard": "Painel",
       "shipments": "Expedições",
-      "containers": "Contentores"
+      "containers": "Contentores",
+      "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
     "alertsBadge": "{{count}} Alertas"
