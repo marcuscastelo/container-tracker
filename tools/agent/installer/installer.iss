@@ -32,9 +32,11 @@ Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs cr
 Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
 Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
+Source: "stop-agent-runtime.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
 Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: uninsneveruninstall
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
+Source: "stop-agent-runtime.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Run]
 Filename: "schtasks.exe"; Parameters: "/Create /F /SC ONLOGON /TN ""{#AgentTaskName}"" /RL LIMITED /IT /TR ""cmd.exe /d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1"""""""; Flags: runhidden waituntilterminated
@@ -47,7 +49,7 @@ Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /
 Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#UpdaterTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-updater-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#UpdaterTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-updater-task"
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$nodeRoot = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Programs', '{#AppDirName}', 'node'); Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object Path -Like ($nodeRoot + '*') | Stop-Process -Force -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "kill-agent-node-process"
+Filename: "cmd.exe"; Parameters: "/C if exist ""{app}\app\dist\stop-agent-runtime.ps1"" (powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\stop-agent-runtime.ps1"" >NUL 2>&1) else (exit /B 0)"; Flags: runhidden waituntilterminated; RunOnceId: "kill-agent-runtime-processes"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
 
@@ -638,7 +640,7 @@ end;
 function StopAgentRuntimeBeforeInstall(var ErrorMessage: string): Boolean;
 var
   ResultCode: Integer;
-  KillNodeParams: string;
+  StopRuntimeScriptPath: string;
 begin
   ErrorMessage := '';
   ResultCode := -1;
@@ -683,14 +685,16 @@ begin
     exit;
   end;
 
-  KillNodeParams :=
-    '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ' +
-    '"$nodeRoot = [System.IO.Path]::Combine($env:LOCALAPPDATA, ''Programs'', ''{#AppDirName}'', ''node''); ' +
-    'Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object Path -Like ($nodeRoot + ''*'') | Stop-Process -Force -ErrorAction SilentlyContinue"';
+  ExtractTemporaryFile('stop-agent-runtime.ps1');
+  StopRuntimeScriptPath := ExpandConstant('{tmp}\stop-agent-runtime.ps1');
 
-  if not RunCmdHidden('/C powershell.exe ' + KillNodeParams, ResultCode) then
+  if not RunCmdHidden(
+    '/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+    StopRuntimeScriptPath + '" >NUL 2>&1',
+    ResultCode
+  ) then
   begin
-    ErrorMessage := 'Failed to terminate running node process before install/update.';
+    ErrorMessage := 'Failed to terminate running agent processes before install/update.';
     Result := False;
     exit;
   end;
