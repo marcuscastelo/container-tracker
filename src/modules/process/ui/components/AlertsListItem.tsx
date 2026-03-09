@@ -92,11 +92,12 @@ function AlertCategoryChip(props: {
   t: ReturnType<typeof useTranslation>['t']
   keys: ReturnType<typeof useTranslation>['keys']
 }): JSX.Element {
+  const bg = props.mode === 'archived' ? 'bg-slate-200' : 'bg-slate-100'
+  const textColor = 'text-slate-500'
+
   return (
     <span
-      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs-ui font-normal leading-none ${
-        props.mode === 'archived' ? 'bg-slate-200 text-slate-500' : 'bg-slate-100 text-slate-500'
-      }`}
+      class={`inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-xs-ui font-normal leading-none ${bg} ${textColor}`}
     >
       <span aria-hidden="true">{toAlertCategoryIcon(props.type)}</span>
       {toAlertCategoryLabel(props.type, props.t, props.keys)}

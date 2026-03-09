@@ -263,8 +263,8 @@ export function ShipmentHeader(props: Props): JSX.Element {
     return (
       <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
         <div class="flex items-center gap-2 min-w-0">
-          <h1 class=" text-lg-ui gap-2 font-bold text-slate-900 leading-tight">
-            <span class="truncate">
+          <h1 class="flex items-center gap-2 text-lg-ui font-bold text-slate-900 leading-tight min-w-0">
+            <span class="truncate min-w-0">
               {t(keys.shipmentView.header)} {p.props.data.processRef}
             </span>
             <Show when={!p.props.data.reference}>
