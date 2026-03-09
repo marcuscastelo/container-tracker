@@ -363,9 +363,12 @@ describe('deriveAlerts', () => {
       expect(transAlert?.alert_fingerprint).toBeTruthy()
       // detected_at = time of LOAD onto new vessel
       expect(transAlert?.detected_at).toBe('2025-12-03T00:00:00.000Z')
-      expect(transAlert?.message).toContain('SGSIN')
-      expect(transAlert?.message).toContain('VesselA')
-      expect(transAlert?.message).toContain('VesselB')
+      expect(transAlert?.message_key).toBe('alerts.transshipmentDetected')
+      expect(transAlert?.message_params).toEqual({
+        port: 'SGSIN',
+        fromVessel: 'VesselA',
+        toVessel: 'VesselB',
+      })
       // source fingerprints = [discharge, load]
       expect(transAlert?.source_observation_fingerprints).toContain('fp-discharge-sgsin')
       expect(transAlert?.source_observation_fingerprints).toContain('fp-load-sgsin')
@@ -392,7 +395,12 @@ describe('deriveAlerts', () => {
           category: 'fact' as const,
           type: 'TRANSSHIPMENT' as const,
           severity: 'warning' as const,
-          message: 'Existing transshipment',
+          message_key: 'alerts.transshipmentDetected' as const,
+          message_params: {
+            port: 'SGSIN',
+            fromVessel: 'VesselA',
+            toVessel: 'VesselB',
+          },
           detected_at: '2025-12-03T00:00:00.000Z',
           triggered_at: '2025-12-03T00:00:00.000Z',
           source_observation_fingerprints: ['fp-discharge-sgsin', 'fp-load-sgsin'],
@@ -592,6 +600,10 @@ describe('deriveAlerts', () => {
       expect(customsAlert?.category).toBe('fact')
       expect(customsAlert?.severity).toBe('danger')
       expect(customsAlert?.alert_fingerprint).toBeTruthy()
+      expect(customsAlert?.message_key).toBe('alerts.customsHoldDetected')
+      expect(customsAlert?.message_params).toEqual({
+        location: 'NAPLES, IT',
+      })
     })
   })
 
@@ -614,6 +626,11 @@ describe('deriveAlerts', () => {
       expect(noMoveAlert?.category).toBe('monitoring')
       expect(noMoveAlert?.retroactive).toBe(false)
       expect(noMoveAlert?.alert_fingerprint).toBeNull()
+      expect(noMoveAlert?.message_key).toBe('alerts.noMovementDetected')
+      expect(noMoveAlert?.message_params).toEqual({
+        days: 19,
+        lastEventDate: '2025-11-01',
+      })
     })
 
     it('should NOT create NO_MOVEMENT alert during backfill', () => {

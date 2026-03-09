@@ -422,7 +422,8 @@ export type Database = {
           created_at: string
           detected_at: string
           id: string
-          message: string
+          message_key: string
+          message_params: Json
           provider: string | null
           retroactive: boolean
           severity: string
@@ -440,7 +441,8 @@ export type Database = {
           created_at?: string
           detected_at: string
           id?: string
-          message: string
+          message_key: string
+          message_params?: Json
           provider?: string | null
           retroactive: boolean
           severity: string
@@ -458,7 +460,8 @@ export type Database = {
           created_at?: string
           detected_at?: string
           id?: string
-          message?: string
+          message_key?: string
+          message_params?: Json
           provider?: string | null
           retroactive?: boolean
           severity?: string

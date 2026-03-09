@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
 
@@ -76,22 +77,7 @@ const ObservationResponseSchema = z.object({
   created_at: z.string(),
 })
 
-/**
- * Tracking alert shape as returned in the API.
- * Maps from the tracking domain TrackingAlert.
- */
-const TrackingAlertResponseSchema = z.object({
-  id: z.string(),
-  category: z.string(),
-  type: z.string(),
-  severity: z.string(),
-  message: z.string(),
-  detected_at: z.string(),
-  triggered_at: z.string(),
-  retroactive: z.boolean(),
-  provider: z.string().nullable(),
-  acked_at: z.string().nullable(),
-})
+const TrackingAlertResponseSchema = AlertResponseDtoSchema
 
 const OperationalEtaResponseSchema = z.object({
   event_time: z.string(),

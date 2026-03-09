@@ -163,14 +163,18 @@ export function deriveAlerts(
     if (!existingFactFingerprints.has(alertFingerprint)) {
       // detected_at = time the LOAD onto the new vessel was confirmed
       const detectedAt = pair.loadObs.event_time ?? nowIso
-      const message = `Transshipment detected at ${pair.port} — Vessel change: ${pair.vesselFrom} → ${pair.vesselTo}`
 
       alerts.push({
         container_id: timeline.container_id,
         category: 'fact',
         type: 'TRANSSHIPMENT',
         severity: 'warning',
-        message,
+        message_key: 'alerts.transshipmentDetected',
+        message_params: {
+          port: pair.port,
+          fromVessel: pair.vesselFrom,
+          toVessel: pair.vesselTo,
+        },
         detected_at: detectedAt,
         triggered_at: nowIso,
         source_observation_fingerprints: pairFingerprints,
@@ -202,7 +206,10 @@ export function deriveAlerts(
         category: 'fact',
         type: 'CUSTOMS_HOLD',
         severity: 'danger',
-        message: `Customs hold detected at ${locationText}`,
+        message_key: 'alerts.customsHoldDetected',
+        message_params: {
+          location: locationText,
+        },
         detected_at: firstHold?.event_time ?? nowIso,
         triggered_at: nowIso,
         source_observation_fingerprints: fingerprints,
@@ -237,12 +244,17 @@ export function deriveAlerts(
         !isTerminal &&
         !existingMonitoringTypes.has('NO_MOVEMENT')
       ) {
+        const daysWithoutMovement = Math.floor(daysSinceLastEvent)
         alerts.push({
           container_id: timeline.container_id,
           category: 'monitoring',
           type: 'NO_MOVEMENT',
           severity: 'warning',
-          message: `No movement detected for ${Math.floor(daysSinceLastEvent)} days (last event: ${lastEventWithTime.event_time.slice(0, 10)})`,
+          message_key: 'alerts.noMovementDetected',
+          message_params: {
+            days: daysWithoutMovement,
+            lastEventDate: lastEventWithTime.event_time.slice(0, 10),
+          },
           detected_at: nowIso,
           triggered_at: nowIso,
           source_observation_fingerprints: [lastEventWithTime.fingerprint],

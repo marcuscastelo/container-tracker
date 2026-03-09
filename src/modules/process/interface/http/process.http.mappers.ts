@@ -15,6 +15,12 @@ import type { RefreshProcessResult } from '~/modules/process/application/usecase
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import {
+  type TrackingAlertDisplayReadModel,
+  type TrackingAlertDisplaySource,
+  toTrackingAlertDisplayReadModels,
+} from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertMessageContract } from '~/modules/tracking/application/projection/tracking.alert-message-contract.mapper'
+import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
@@ -100,18 +106,7 @@ type TrackingObservationRecord = {
   readonly created_at: string
 }
 
-type TrackingAlertRecord = {
-  readonly id: string
-  readonly category: string
-  readonly type: string
-  readonly severity: string
-  readonly message: string
-  readonly detected_at: string
-  readonly triggered_at: string
-  readonly retroactive: boolean
-  readonly provider: string | null
-  readonly acked_at: string | null
-}
+type TrackingAlertRecord = TrackingAlertDisplaySource
 
 type ContainerWithTrackingResponse = {
   id: string
@@ -234,13 +229,14 @@ function toObservationResponse(obs: TrackingObservationRecord) {
   }
 }
 
-function toTrackingAlertResponse(a: TrackingAlertRecord) {
+function toTrackingAlertResponse(a: TrackingAlertDisplayReadModel) {
   return {
     id: a.id,
+    container_number: a.container_number,
     category: a.category,
     type: a.type,
     severity: a.severity,
-    message: a.message,
+    ...toTrackingAlertMessageContract(a),
     detected_at: a.detected_at,
     triggered_at: a.triggered_at,
     retroactive: a.retroactive,
@@ -424,11 +420,23 @@ export function toProcessDetailResponse(
     return createdFallback
   })
 
+  const containerNumberByContainerId = new Map<string, string>()
+  for (const container of containersWithTracking) {
+    containerNumberByContainerId.set(container.id, container.container_number)
+  }
+
+  const alertDisplayReadModel = toTrackingAlertDisplayReadModels(
+    alerts,
+    (containerId) => containerNumberByContainerId.get(containerId) ?? null,
+  )
+
   return {
     ...processToResponseFields(pwc.process),
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
-    alerts: [...alerts].sort(compareAlertsByTriggeredAtDesc).map(toTrackingAlertResponse),
+    alerts: [...alertDisplayReadModel]
+      .sort(compareAlertsByTriggeredAtDesc)
+      .map(toTrackingAlertResponse),
     process_operational: toProcessOperationalResponse(summariesForProcess),
   }
 }

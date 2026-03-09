@@ -30,7 +30,51 @@ export type TrackingAlertType =
 
 export type TrackingAlertAckSource = 'dashboard' | 'process_view' | 'api'
 
-export type TrackingAlert = {
+type EmptyAlertMessageParams = Readonly<Record<never, never>>
+
+export type TrackingAlertMessageContract =
+  | {
+      readonly message_key: 'alerts.transshipmentDetected'
+      readonly message_params: {
+        readonly port: string
+        readonly fromVessel: string
+        readonly toVessel: string
+      }
+    }
+  | {
+      readonly message_key: 'alerts.customsHoldDetected'
+      readonly message_params: {
+        readonly location: string
+      }
+    }
+  | {
+      readonly message_key: 'alerts.noMovementDetected'
+      readonly message_params: {
+        readonly days: number
+        readonly lastEventDate: string
+      }
+    }
+  | {
+      readonly message_key: 'alerts.etaMissing'
+      readonly message_params: EmptyAlertMessageParams
+    }
+  | {
+      readonly message_key: 'alerts.etaPassed'
+      readonly message_params: EmptyAlertMessageParams
+    }
+  | {
+      readonly message_key: 'alerts.portChange'
+      readonly message_params: EmptyAlertMessageParams
+    }
+  | {
+      readonly message_key: 'alerts.dataInconsistent'
+      readonly message_params: EmptyAlertMessageParams
+    }
+
+export type TrackingAlertMessageKey = TrackingAlertMessageContract['message_key']
+export type TrackingAlertMessageParams = TrackingAlertMessageContract['message_params']
+
+type TrackingAlertBase = {
   /** Primary key (UUID) */
   id: string
 
@@ -45,9 +89,6 @@ export type TrackingAlert = {
 
   /** Severity level */
   severity: TrackingAlertSeverity
-
-  /** Human-readable summary */
-  message: string
 
   /** When the underlying fact was detected in the timeline (UTC ISO) */
   detected_at: string
@@ -82,6 +123,12 @@ export type TrackingAlert = {
 }
 
 /**
+ * Tracking alert with semantic message contract bound by discriminated union.
+ */
+export type TrackingAlert = TrackingAlertBase & TrackingAlertMessageContract
+
+/**
  * Shape for inserting a new tracking alert.
  */
-export type NewTrackingAlert = Omit<TrackingAlert, 'id'>
+type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id'>
+export type NewTrackingAlert = NewTrackingAlertBase & TrackingAlertMessageContract

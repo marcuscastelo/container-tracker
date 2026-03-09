@@ -13,7 +13,12 @@ import type { Confidence } from '~/modules/tracking/domain/model/observationDraf
 import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+  TrackingAlertMessageContract,
+  TrackingAlertMessageKey,
+} from '~/modules/tracking/domain/model/trackingAlert'
 import { stringsToJson, toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import type {
   InsertTrackingAlertRow,
@@ -140,6 +145,25 @@ const ALERT_SEVERITY_MAP: Record<string, AlertSeverity> = {
   danger: 'danger',
 }
 
+const ALERT_MESSAGE_KEY_MAP: Record<string, TrackingAlertMessageKey> = {
+  'alerts.transshipmentDetected': 'alerts.transshipmentDetected',
+  'alerts.customsHoldDetected': 'alerts.customsHoldDetected',
+  'alerts.noMovementDetected': 'alerts.noMovementDetected',
+  'alerts.etaMissing': 'alerts.etaMissing',
+  'alerts.etaPassed': 'alerts.etaPassed',
+  'alerts.portChange': 'alerts.portChange',
+  'alerts.dataInconsistent': 'alerts.dataInconsistent',
+}
+
+function requireAlertMessageKey(value: unknown, field: string): TrackingAlertMessageKey {
+  const s = requireString(value, field)
+  const mapped = ALERT_MESSAGE_KEY_MAP[s]
+  if (mapped === undefined) {
+    throw new Error(`tracking persistence mapper: ${field} is not a valid message key: ${s}`)
+  }
+  return mapped
+}
+
 type AlertAckSource = NonNullable<TrackingAlert['acked_source']>
 const ALERT_ACK_SOURCE_MAP: Record<string, AlertAckSource> = {
   dashboard: 'dashboard',
@@ -175,6 +199,17 @@ function requireString(value: unknown, field: string): string {
   return value
 }
 
+function requireFiniteNumber(value: unknown, field: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`tracking persistence mapper: ${field} is required but got ${String(value)}`)
+  }
+  return value
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function requireTimestamp(value: unknown, field: string): string {
   const normalized = normalizeTimestamptz(value)
   if (normalized === null) {
@@ -205,6 +240,68 @@ function normalizeAlertIso(value: unknown): string | null {
     return null
   }
   return null
+}
+
+function requireAlertMessageContract(
+  keyValue: unknown,
+  paramsValue: unknown,
+  field: string,
+): TrackingAlertMessageContract {
+  const messageKey = requireAlertMessageKey(keyValue, `${field}.message_key`)
+  const value = paramsValue
+  const params = isRecord(value) ? value : null
+  if (params === null) {
+    throw new Error(
+      `tracking persistence mapper: ${field} is not a valid message params object: ${String(value)}`,
+    )
+  }
+
+  if (messageKey === 'alerts.transshipmentDetected') {
+    return {
+      message_key: messageKey,
+      message_params: {
+        port: requireString(params.port, `${field}.port`),
+        fromVessel: requireString(params.fromVessel, `${field}.fromVessel`),
+        toVessel: requireString(params.toVessel, `${field}.toVessel`),
+      },
+    }
+  }
+
+  if (messageKey === 'alerts.customsHoldDetected') {
+    return {
+      message_key: messageKey,
+      message_params: {
+        location: requireString(params.location, `${field}.location`),
+      },
+    }
+  }
+
+  if (messageKey === 'alerts.noMovementDetected') {
+    return {
+      message_key: messageKey,
+      message_params: {
+        days: requireFiniteNumber(params.days, `${field}.days`),
+        lastEventDate: requireString(params.lastEventDate, `${field}.lastEventDate`),
+      },
+    }
+  }
+
+  if (
+    messageKey === 'alerts.etaMissing' ||
+    messageKey === 'alerts.etaPassed' ||
+    messageKey === 'alerts.portChange' ||
+    messageKey === 'alerts.dataInconsistent'
+  ) {
+    return {
+      message_key: messageKey,
+      message_params: {},
+    }
+  }
+
+  const unsupportedMessageKey: never = messageKey
+  throw new Error(
+    `tracking persistence mapper: ${field} reached unsupported message key: ${String(unsupportedMessageKey)}`,
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +391,11 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
       (v): v is string => typeof v === 'string',
     )
   }
+  const messageContract = requireAlertMessageContract(
+    row.message_key,
+    row.message_params,
+    'alert.message',
+  )
 
   return {
     id: requireString(row.id, 'alert.id'),
@@ -301,7 +403,7 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     category: requireAlertCategory(row.category, 'alert.category'),
     type: requireAlertType(row.type, 'alert.type'),
     severity: requireAlertSeverity(row.severity, 'alert.severity'),
-    message: requireString(row.message, 'alert.message'),
+    ...messageContract,
     detected_at: requireString(normalizeAlertIso(row.detected_at), 'alert.detected_at'),
     triggered_at: requireString(normalizeAlertIso(row.triggered_at), 'alert.triggered_at'),
     source_observation_fingerprints: fingerprints,
@@ -320,7 +422,8 @@ export function alertToInsertRow(alert: NewTrackingAlert): InsertTrackingAlertRo
     category: alert.category,
     type: alert.type,
     severity: alert.severity,
-    message: alert.message,
+    message_key: alert.message_key,
+    message_params: toJson(alert.message_params),
     detected_at: alert.detected_at,
     triggered_at: alert.triggered_at,
     source_observation_fingerprints: stringsToJson(alert.source_observation_fingerprints),

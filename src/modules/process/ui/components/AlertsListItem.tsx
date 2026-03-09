@@ -116,6 +116,7 @@ export function AlertItem(props: {
   const isBusy = () => props.busyAlertIds.has(props.alert.id)
   const isCollapsing = () => props.collapsingAlertIds.has(props.alert.id)
   const actionDateIso = () => props.alert.ackedAtIso ?? props.alert.triggeredAtIso
+  const translatedMessage = () => t(props.alert.messageKey, props.alert.messageParams)
 
   return (
     <li
@@ -145,7 +146,11 @@ export function AlertItem(props: {
           </span>
         </div>
         <p class="mt-0.5 text-sm-ui font-medium leading-tight text-slate-700">
-          {props.alert.message}
+          {translatedMessage()}
+        </p>
+        <p class="mt-0.5 text-xs-ui text-slate-600">
+          {t(keys.alerts.containerLabel)}:{' '}
+          <span class="font-semibold text-slate-700">{props.alert.containerNumber}</span>
         </p>
       </div>
       <Show
