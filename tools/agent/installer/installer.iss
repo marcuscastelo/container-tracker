@@ -33,7 +33,7 @@ Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs crea
 Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
 Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
 Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion
-Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: uninsneveruninstall
 Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
 
 [Run]
@@ -243,26 +243,76 @@ begin
   Result := RegQueryStringValue(RootKey, SubKey, 'UninstallString', UninstallCommand);
 end;
 
-function TryFindInstalledUninstaller(var UninstallerPath: string): Boolean;
+function NormalizeAppIdForRegistry(const AppId: string): string;
+begin
+  Result := AppId;
+  StringChangeEx(Result, '{{', '{', True);
+  StringChangeEx(Result, '}}', '}', True);
+end;
+
+function TryReadUninstallStringFromAppId(
+  const AppId: string;
+  var UninstallCommand: string
+): Boolean;
 var
   UninstallKeyPath: string;
+begin
+  UninstallKeyPath := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\' + AppId + '_is1';
+
+  Result :=
+    TryReadUninstallString(HKCU64, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKCU32, UninstallKeyPath, UninstallCommand) or
+    TryReadUninstallString(HKCU, UninstallKeyPath, UninstallCommand);
+end;
+
+function TryFindUninstallerInLocalAppData(var UninstallerPath: string): Boolean;
+var
+  InstallDir: string;
+  CandidatePath: string;
+  I: Integer;
+begin
+  InstallDir := ExpandConstant('{localappdata}\Programs\{#AppDirName}');
+
+  for I := 0 to 9 do
+  begin
+    CandidatePath := AddBackslash(InstallDir) + Format('unins%.3d.exe', [I]);
+    if IsExistingFilePath(CandidatePath, UninstallerPath) then
+    begin
+      Result := True;
+      exit;
+    end;
+  end;
+
+  Result := False;
+end;
+
+function TryFindInstalledUninstaller(var UninstallerPath: string): Boolean;
+var
+  RawAppId: string;
+  NormalizedAppId: string;
   UninstallCommand: string;
 begin
   UninstallerPath := '';
   UninstallCommand := '';
-  UninstallKeyPath := 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{#AppIdValue}_is1';
+  RawAppId := '{#AppIdValue}';
+  NormalizedAppId := NormalizeAppIdForRegistry(RawAppId);
 
-  if not (
-    TryReadUninstallString(HKCU64, UninstallKeyPath, UninstallCommand) or
-    TryReadUninstallString(HKCU32, UninstallKeyPath, UninstallCommand) or
-    TryReadUninstallString(HKCU, UninstallKeyPath, UninstallCommand)
-  ) then
+  if TryReadUninstallStringFromAppId(NormalizedAppId, UninstallCommand) and
+     TryExtractExecutablePathFromCommand(UninstallCommand, UninstallerPath) then
   begin
-    Result := False;
+    Result := True;
     exit;
   end;
 
-  Result := TryExtractExecutablePathFromCommand(UninstallCommand, UninstallerPath);
+  if (CompareText(RawAppId, NormalizedAppId) <> 0) and
+     TryReadUninstallStringFromAppId(RawAppId, UninstallCommand) and
+     TryExtractExecutablePathFromCommand(UninstallCommand, UninstallerPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+
+  Result := TryFindUninstallerInLocalAppData(UninstallerPath);
 end;
 
 function TryResolveDisplayIconPath(const DisplayIconValue: string; var ResolvedPath: string): Boolean;
