@@ -49,12 +49,14 @@ function deriveCurrentLocation(container: ContainerDetailVM | null): string | nu
 }
 
 function StatusRow(props: { readonly label: string; readonly children: JSX.Element }): JSX.Element {
+  // Each row is a responsive grid: single column on xs (label above value),
+  // two columns on sm+ (label + value) with a horizontal gap for clear separation.
   return (
-    <div class="flex items-center gap-2">
-      <span class="w-28 shrink-0 text-micro font-medium uppercase tracking-wider text-slate-400">
+    <div class="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4 items-start">
+      <dt class="whitespace-nowrap text-micro font-medium uppercase tracking-wider text-slate-400 sm:w-40 sm:flex-shrink-0">
         {props.label}
-      </span>
-      <span class="text-sm-ui text-slate-700">{props.children}</span>
+      </dt>
+      <dd class="text-sm-ui text-slate-700">{props.children}</dd>
     </div>
   )
 }
@@ -94,41 +96,47 @@ export function ShipmentCurrentStatus(props: Props): JSX.Element {
         }
       >
         {(container) => (
-          <div class="space-y-1.5 px-2.5 py-2">
-            {/* Container identity */}
-            <StatusRow label={t(keys.shipmentView.currentStatus.container)}>
-              <span class="font-semibold tracking-wide text-slate-800">{container().number}</span>
-            </StatusRow>
+          <div class="flex flex-col gap-2 px-2.5 py-2">
+            <dl class="flex flex-col gap-2">
+              {/* Container identity */}
+              <StatusRow label={t(keys.shipmentView.currentStatus.container)}>
+                <span class="font-semibold tracking-wide text-slate-800 break-words">
+                  {container().number}
+                </span>
+              </StatusRow>
 
-            {/* Status */}
-            <StatusRow label={t(keys.shipmentView.currentStatus.status)}>
-              <StatusBadge
-                variant={container().status}
-                label={t(trackingStatusToLabelKey(keys, container().statusCode))}
-              />
-            </StatusRow>
+              {/* Status */}
+              <StatusRow label={t(keys.shipmentView.currentStatus.status)}>
+                <div class="flex items-start">
+                  <StatusBadge
+                    variant={container().status}
+                    label={t(trackingStatusToLabelKey(keys, container().statusCode))}
+                  />
+                </div>
+              </StatusRow>
 
-            {/* Current vessel */}
-            <StatusRow label={t(keys.shipmentView.currentStatus.currentVessel)}>
-              <span class="font-medium">{currentVessel() ?? unknown()}</span>
-            </StatusRow>
+              {/* Current vessel */}
+              <StatusRow label={t(keys.shipmentView.currentStatus.currentVessel)}>
+                <span class="font-medium break-words">{currentVessel() ?? unknown()}</span>
+              </StatusRow>
 
-            {/* Current location */}
-            <StatusRow label={t(keys.shipmentView.currentStatus.currentLocation)}>
-              <span>{currentLocation() ?? unknown()}</span>
-            </StatusRow>
+              {/* Current location */}
+              <StatusRow label={t(keys.shipmentView.currentStatus.currentLocation)}>
+                <span class="break-words">{currentLocation() ?? unknown()}</span>
+              </StatusRow>
 
-            {/* ETA */}
-            <StatusRow label={t(keys.shipmentView.currentStatus.eta)}>
-              <span class="font-bold tabular-nums">
-                {container().etaChipVm.date ?? container().eta ?? unknown()}
-              </span>
-            </StatusRow>
+              {/* ETA */}
+              <StatusRow label={t(keys.shipmentView.currentStatus.eta)}>
+                <span class="font-bold tabular-nums">
+                  {container().etaChipVm.date ?? container().eta ?? unknown()}
+                </span>
+              </StatusRow>
 
-            {/* Last update */}
-            <StatusRow label={t(keys.shipmentView.currentStatus.lastUpdate)}>
-              <span class="text-slate-500">{syncLabel() ?? unknown()}</span>
-            </StatusRow>
+              {/* Last update */}
+              <StatusRow label={t(keys.shipmentView.currentStatus.lastUpdate)}>
+                <span class="text-slate-500">{syncLabel() ?? unknown()}</span>
+              </StatusRow>
+            </dl>
           </div>
         )}
       </Show>
