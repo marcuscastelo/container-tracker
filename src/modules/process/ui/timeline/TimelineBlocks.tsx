@@ -191,8 +191,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
         }
       >
         <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/60 px-2 py-0.5 text-micro">
-          <span class="font-semibold text-amber-900 truncate">{props.block.fromVessel ?? '?'}</span>
-          <span class="text-amber-600 shrink-0" aria-hidden="true">
+          <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
             {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
               from: props.block.fromVessel ?? '?',
               to: props.block.toVessel ?? '?',
