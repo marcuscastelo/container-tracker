@@ -214,11 +214,12 @@ async function resolveBootstrapEnvConfig(repoRoot: string): Promise<BootstrapEnv
   return {
     BACKEND_URL: backendUrl,
     INSTALLER_TOKEN: installerToken,
-    AGENT_ID: getFirstEnvValue({
-      dotenvValues,
-      keys: ['AGENT_ID'],
-      fallback: hostnameFallback,
-    }) ?? hostnameFallback,
+    AGENT_ID:
+      getFirstEnvValue({
+        dotenvValues,
+        keys: ['AGENT_ID'],
+        fallback: hostnameFallback,
+      }) ?? hostnameFallback,
     INTERVAL_SEC:
       getFirstEnvValue({
         dotenvValues,

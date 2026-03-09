@@ -265,9 +265,7 @@ export function createAgentUpdateManifestService(deps: {
         }
 
         return parsedManifest.data
-      } catch {
-        continue
-      }
+      } catch {}
     }
 
     return null
