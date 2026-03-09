@@ -399,3 +399,137 @@ Guidelines:
 - For code refactors, prefer Serena symbolic tools (`find_symbol`, `find_referencing_symbols`, `rename_symbol`, `replace_symbol_body`).
 - Use plain text/regex replacement only for non-code artifacts or when symbol-level operations are not applicable.
 - If Serena bootstrap/cache/network fails under sandbox constraints, rerun outside sandbox.
+
+## 22) UI Complexity Guardrail (JSX max depth / `ui:complexity:ci`)
+
+When `ui:complexity:ci` or JSX max depth fails, **do not “game” the rule** by replacing `<Show>` / `<For>` with inline JavaScript conditionals or by moving the same branching into component-level early returns.
+
+This includes forbidden patterns such as:
+
+- `{condition && <Component />}`
+- `{condition ? <A /> : <B />}`
+- nested ternaries inside JSX
+- inline `.map()` chains used to avoid `<For>`
+- `if (x) return ...` / `if (y) return ...` chains at component top level used only to bypass JSX nesting checks
+
+These are **not valid fixes**. They hide structural complexity instead of reducing it.
+
+### Forbidden response to complexity failures
+
+Do **not** resolve JSX complexity by:
+
+- swapping `<Show>` for `&&`
+- swapping `<Show>` for ternary-only JSX
+- swapping `<For>` for inline `.map()` inside large JSX trees
+- replacing nested JSX with top-level early returns for each branch
+- collapsing multiple branches into one long return block
+- moving nested JSX into anonymous inline render lambdas without semantic extraction
+
+### Correct way to reduce UI complexity
+
+Reduce complexity by **changing structure**, not syntax.
+
+Preferred strategies, in order:
+
+1. **Extract child components**
+   - If a JSX branch represents a semantic UI block, extract it to a named component.
+   - Typical candidates:
+     - loading block
+     - error block
+     - empty state block
+     - table row
+     - table cell variant
+     - toolbar section
+     - alert summary
+     - timeline item
+     - panel body
+     - modal body
+
+2. **Extract branch bodies into named components**
+   - Keep the parent structure explicit with `<Show>` / `<For>`.
+   - Make each branch shallow by rendering a dedicated child component instead of large inline JSX.
+   - Example:
+     - bad: large `<Show when=...>{...huge JSX...}</Show>`
+     - good: `<Show when=...><ShipmentEmptyState /></Show>`
+
+3. **Prepare display data before JSX**
+   - Compute booleans, labels, grouped collections, display flags, and UI-only formatting before rendering.
+   - JSX should mostly render already-prepared view data.
+   - UI may map DTO → ViewModel, but must not re-derive domain truth.
+
+4. **Split by responsibility**
+   - Parent component: orchestration and layout composition
+   - Child component: focused rendering of one region
+   - List item component: rendering of one repeated unit
+   - Variant component: rendering of one state-specific body
+
+5. **Flatten repeated markup into semantic building blocks**
+   - Repeated wrappers, badges, rows, cells, and metadata blocks should become explicit components.
+   - Prefer named structure over duplicated JSX fragments.
+
+6. **Move non-trivial `<For>` bodies into item components**
+   - Keep `<For>` when iterating.
+   - Reduce complexity by extracting the item renderer into a named component such as:
+     - `<ProcessRow />`
+     - `<AlertListItem />`
+     - `<ContainerSummaryItem />`
+
+### Keep Solid semantics explicit
+
+`<Show>` and `<For>` are preferred when the UI is actually expressing rendered structure.
+They are **not** the problem.
+The problem is excessive responsibility and deeply nested inline JSX.
+
+Good:
+- shallow `<Show>` / `<For>`
+- named subcomponents
+- prepared ViewModels
+- explicit UI regions
+- small, reviewable JSX bodies
+
+Bad:
+- giant monolithic JSX return
+- syntax swapping to satisfy lint
+- top-level early-return branching instead of structural extraction
+- hiding complexity in inline lambdas or expressions
+
+### Architectural rule
+
+UI is a presentation layer. It may:
+
+- map DTO → ViewModel
+- sort/filter/group for display
+- format dates/labels
+- manage interaction state
+
+UI must **not**:
+
+- re-derive domain semantics
+- reinterpret tracking truth
+- reimplement status/alert/timeline derivation
+
+When reducing complexity, extract **presentation structure only**.
+If simplification requires semantic re-derivation, move that responsibility to the proper backend/read-model owner.
+
+### Review heuristic
+
+A complexity fix is acceptable only if it improves at least one of these:
+
+- smaller inline JSX regions
+- fewer responsibilities per component
+- clearer semantic naming of UI regions
+- better reviewability and reuse
+- better boundary adherence
+
+If the diff only replaces `<Show>` / `<For>` with `&&`, ternary, `.map()`, or top-level `return` branches, it is not a real fix and should be rejected.
+
+### Non-negotiable rule
+
+`ui:complexity:ci` must be solved by **component extraction and responsibility split**.
+
+It must **not** be solved by:
+- `&&`
+- ternary JSX
+- inline `.map()`
+- top-level early returns
+- anonymous render helpers returning JSX
