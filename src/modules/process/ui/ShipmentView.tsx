@@ -1107,13 +1107,13 @@ function ShipmentViewContent(props: {
   readonly collapsingAlertIds: () => ReadonlySet<string>
   readonly isRefreshing: () => boolean
   readonly refreshRetry: () => RefreshRetryState | null
-  readonly syncNow: () => () => Promise<void>
-  readonly onTriggerRefresh: () => Promise<void>
-  readonly onAcknowledgeAlert: (alertId: string) => Promise<void>
-  readonly onUnacknowledgeAlert: (alertId: string) => Promise<void>
+  readonly syncNow: () => Date
+  readonly onTriggerRefresh: () => void
+  readonly onAcknowledgeAlert: (alertId: string) => void
+  readonly onUnacknowledgeAlert: (alertId: string) => void
   readonly selectedContainerId: () => string
   readonly onSelectContainer: (id: string) => void
-  readonly selectedContainer: () => ContainerEtaDetailVM | null
+  readonly selectedContainer: () => ShipmentDetailVM['containers'][number] | null
   readonly selectedContainerEtaVm: () => ContainerEtaDetailVM | null
   readonly onOpenEditForShipment: (
     shipment: ShipmentDetailVM,
