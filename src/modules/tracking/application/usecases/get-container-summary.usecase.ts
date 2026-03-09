@@ -3,11 +3,11 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
+import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'

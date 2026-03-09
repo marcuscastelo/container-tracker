@@ -4,7 +4,7 @@ import {
   type TrackingAlertProjection,
   type TrackingAlertProjectionSource,
   toTrackingAlertProjections,
-} from '~/modules/tracking/application/projection/tracking.alert.projection'
+} from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 
 function projectionToAlertDisplayVM(
   projection: TrackingAlertProjection,

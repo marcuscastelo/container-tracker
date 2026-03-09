@@ -1,5 +1,5 @@
 import { deriveTrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
-import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
+import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { listActiveAlertReadModel } from '~/modules/tracking/application/usecases/list-active-alert-read-model.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import { listActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase'
+import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 function createDeps(
   listActiveAlertReadModelImpl: TrackingUseCasesDeps['trackingAlertRepository']['listActiveAlertReadModel'],

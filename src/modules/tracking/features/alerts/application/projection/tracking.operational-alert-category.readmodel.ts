@@ -1,4 +1,4 @@
-import type { TrackingAlertType } from '~/modules/tracking/domain/model/trackingAlert'
+import type { TrackingAlertType } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 export type TrackingOperationalAlertCategory = 'eta' | 'movement' | 'customs' | 'status' | 'data'
 

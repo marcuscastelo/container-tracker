@@ -1,10 +1,16 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
-import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import {
+  deriveAlerts,
+  deriveTransshipment,
+} from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
+import type {
+  NewTrackingAlert,
+  TrackingAlert,
+} from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import type {

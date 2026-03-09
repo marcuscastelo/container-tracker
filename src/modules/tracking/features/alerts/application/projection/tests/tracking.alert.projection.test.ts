@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toTrackingAlertProjection } from '~/modules/tracking/application/projection/tracking.alert.projection'
+import { toTrackingAlertProjection } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 
 describe('toTrackingAlertProjection', () => {
   it('maps alert type, severity, and category to semantic projection values', () => {

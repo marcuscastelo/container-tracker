@@ -1,7 +1,7 @@
 import type {
   TrackingAlert,
   TrackingAlertMessageContract,
-} from '~/modules/tracking/domain/model/trackingAlert'
+} from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 type TrackingAlertProjectionSourceBase = {
   readonly id: string

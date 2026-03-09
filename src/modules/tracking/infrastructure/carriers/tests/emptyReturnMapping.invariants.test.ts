@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAlerts } from '~/modules/tracking/domain/derive/deriveAlerts'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { deriveAlerts } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'

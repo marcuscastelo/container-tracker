@@ -1,5 +1,5 @@
-import { toTrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import { toTrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 
 /**
  * Result shape for global operational active alerts read model.

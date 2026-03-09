@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
 import {
   type GetContainerSummaryCommand,
   getContainerSummary,
@@ -7,7 +6,8 @@ import {
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 

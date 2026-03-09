@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
-import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
+import {
+  deriveAlerts,
+  deriveTransshipment,
+} from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
+import { computeAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 

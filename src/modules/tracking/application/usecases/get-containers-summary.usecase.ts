@@ -4,7 +4,7 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
+import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'

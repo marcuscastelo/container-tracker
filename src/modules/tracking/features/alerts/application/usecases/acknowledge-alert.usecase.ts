@@ -1,5 +1,5 @@
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { TrackingAlertAckSource } from '~/modules/tracking/domain/model/trackingAlert'
+import type { TrackingAlertAckSource } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 /**
  * Command to acknowledge a tracking alert.

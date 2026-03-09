@@ -1,6 +1,6 @@
-import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
-import { toTrackingAlertMessageContract } from '~/modules/tracking/application/projection/tracking.alert-message-contract.mapper'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,

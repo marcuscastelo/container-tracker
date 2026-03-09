@@ -1,4 +1,4 @@
-import type { TrackingAlertMessageContract } from '~/modules/tracking/domain/model/trackingAlert'
+import type { TrackingAlertMessageContract } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 export function toTrackingAlertMessageContract(
   alert: TrackingAlertMessageContract,

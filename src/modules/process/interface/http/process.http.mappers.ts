@@ -15,16 +15,16 @@ import type { RefreshProcessResult } from '~/modules/process/application/usecase
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import {
-  type TrackingAlertDisplayReadModel,
-  type TrackingAlertDisplaySource,
-  toTrackingAlertDisplayReadModels,
-} from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
-import { toTrackingAlertMessageContract } from '~/modules/tracking/application/projection/tracking.alert-message-contract.mapper'
-import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import {
+  type TrackingAlertDisplayReadModel,
+  type TrackingAlertDisplaySource,
+  toTrackingAlertDisplayReadModels,
+} from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
 import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,

@@ -4,7 +4,7 @@ import {
   type TrackingAlertDisplaySource,
   toTrackingAlertDisplayReadModel,
   toTrackingAlertDisplayReadModels,
-} from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
+} from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 
 function makeTransshipmentAlertSource(): TrackingAlertDisplaySource {
   return {

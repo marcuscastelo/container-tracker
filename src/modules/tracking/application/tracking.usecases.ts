@@ -1,7 +1,6 @@
 import type { PipelineResult } from '~/modules/tracking/application/orchestration/pipeline'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
-import { acknowledgeAlert } from '~/modules/tracking/application/usecases/acknowledge-alert.usecase'
 import {
   type FetchAndProcessResult,
   fetchAndProcess,
@@ -22,10 +21,6 @@ import {
 import { getLatestSnapshot } from '~/modules/tracking/application/usecases/get-latest-snapshot.usecase'
 import { getSnapshotsForContainer } from '~/modules/tracking/application/usecases/get-snapshots-for-container.usecase'
 import {
-  type ListActiveAlertReadModelResult,
-  listActiveAlertReadModel,
-} from '~/modules/tracking/application/usecases/list-active-alert-read-model.usecase'
-import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
@@ -33,10 +28,15 @@ import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { unacknowledgeAlert } from '~/modules/tracking/application/usecases/unacknowledge-alert.usecase'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { TrackingAlertAckSource } from '~/modules/tracking/domain/model/trackingAlert'
+import { acknowledgeAlert } from '~/modules/tracking/features/alerts/application/usecases/acknowledge-alert.usecase'
+import {
+  type ListActiveAlertReadModelResult,
+  listActiveAlertReadModel,
+} from '~/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase'
+import { unacknowledgeAlert } from '~/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase'
+import type { TrackingAlertAckSource } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.

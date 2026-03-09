@@ -15,7 +15,7 @@ import type {
   TrackingAlert,
   TrackingAlertMessageContract,
   TrackingAlertMessageKey,
-} from '~/modules/tracking/domain/model/trackingAlert'
+} from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   NewObservation,
   Observation,

@@ -102,7 +102,7 @@ type TrackingAlertBase = {
   /**
    * Deterministic fingerprint for FACT alerts (used for deduplication).
    * Nullable for MONITORING alerts (which use TYPE-based dedup only).
-   * @see src/modules/tracking/domain/identity/alertFingerprint.ts
+   * @see src/modules/tracking/features/alerts/domain/identity/alertFingerprint.ts
    */
   alert_fingerprint: string | null
 

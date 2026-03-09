@@ -1,4 +1,4 @@
-import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 /**
  * Tracking application read model for operational active alerts.
