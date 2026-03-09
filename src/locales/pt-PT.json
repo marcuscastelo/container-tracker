@@ -236,6 +236,17 @@
       "title": "Contentores",
       "selectionHint": "Selecione um contentor para ver a sua linha temporal."
     },
+    "currentStatus": {
+      "title": "Estado Atual",
+      "container": "Contentor",
+      "status": "Estado",
+      "currentVessel": "Navio atual",
+      "currentLocation": "Local atual",
+      "eta": "ETA",
+      "lastUpdate": "Última atualização",
+      "noContainer": "Selecione um contentor para ver o estado.",
+      "unknown": "—"
+    },
     "containerSummary": {
       "moreContainers": "+{{count}} contentores neste processo",
       "alertCount": "{{count}} alerta(s)"

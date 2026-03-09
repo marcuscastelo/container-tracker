@@ -1,7 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
-import { ShipmentHeaderContainerSummary } from '~/modules/process/ui/components/ShipmentHeaderContainerSummary'
 // sync header helpers removed — not used in the simplified header
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -364,17 +363,8 @@ export function ShipmentHeader(props: Props): JSX.Element {
     )
   }
 
-  function ShipmentHeaderRow3(p: { props: Props }) {
-    return (
-      <ShipmentHeaderContainerSummary
-        containers={p.props.data.containers}
-        syncNow={p.props.syncNow}
-      />
-    )
-  }
-
-  // NOTE: removed the per-container "Atualizado: ..." sync summary which duplicated
-  // information already visible in the container list. Rows are now split into subcomponents.
+  // NOTE: ShipmentHeaderContainerSummary (Row3) removed — container info is now consolidated
+  // in the dedicated ContainersPanel section below the header, eliminating duplication.
 
   return (
     <section class="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 sm:px-4 sm:py-2.5">
@@ -385,8 +375,6 @@ export function ShipmentHeader(props: Props): JSX.Element {
       />
 
       <ShipmentHeaderRow2 props={props} />
-
-      <ShipmentHeaderRow3 props={props} />
     </section>
   )
 }

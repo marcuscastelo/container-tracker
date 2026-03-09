@@ -397,11 +397,11 @@ function TimelineBlockList(props: {
       />
       <For each={groups()}>
         {(group, index) => {
-          const isCurrent = index() === currentVoyageIdx()
+          const isCurrent = createMemo(() => index() === currentVoyageIdx())
           return (
             <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
-              <RailDot variant={railDotVariant(group, isCurrent)} />
-              {renderGroupContent(group, isCurrent)}
+              <RailDot variant={railDotVariant(group, isCurrent())} />
+              {renderGroupContent(group, isCurrent())}
             </div>
           )
         }}
