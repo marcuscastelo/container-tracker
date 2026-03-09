@@ -157,58 +157,7 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
       </h3>
       <div class="space-y-3">
         <For each={props.containers}>
-          {(container, index) => (
-            <div class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div class="flex-1">
-                <FormInput
-                  label={`${t(keys.createProcess.field.containerNumber)} ${index() + 1}`}
-                  name={`container-${container.id}`}
-                  value={container.containerNumber}
-                  onInput={(value) => props.onUpdateContainer(container.id, value)}
-                  onBlur={() => props.onContainerBlur(container)}
-                  placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
-                  error={props.getContainerError(container) ?? props.getDuplicateError(container)}
-                  required
-                />
-
-                <Show when={props.getContainerLink(container)}>
-                  <p class="mt-1 text-xs-ui text-slate-600 underline">
-                    <button
-                      type="button"
-                      class="underline hover:cursor-pointer"
-                      onClick={() => props.onOpenContainerLink(container)}
-                    >
-                      {t(keys.createProcess.action.existingProcessLink)}
-                    </button>
-                  </p>
-                </Show>
-              </div>
-
-              <Show when={props.containers.length > 1}>
-                <button
-                  type="button"
-                  onClick={() => props.onRemoveContainer(container.id)}
-                  class="mt-7 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
-                  aria-label={t(keys.createProcess.action.removeContainer)}
-                >
-                  <svg
-                    class="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </Show>
-            </div>
-          )}
+          {(container, index) => <ContainerRow container={container} index={index} {...props} />}
         </For>
       </div>
 
@@ -234,6 +183,67 @@ function ContainersSection(props: ContainerSectionProps): JSX.Element {
         {t(keys.createProcess.action.addContainer)}
       </button>
     </section>
+  )
+}
+
+function ContainerRow(
+  props: { container: ContainerInput; index: () => number } & ContainerSectionProps,
+): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <div class="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div class="flex-1">
+        <FormInput
+          label={`${t(keys.createProcess.field.containerNumber)} ${props.index() + 1}`}
+          name={`container-${props.container.id}`}
+          value={props.container.containerNumber}
+          onInput={(value) => props.onUpdateContainer(props.container.id, value)}
+          onBlur={() => props.onContainerBlur(props.container)}
+          placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
+          error={
+            props.getContainerError(props.container) ?? props.getDuplicateError(props.container)
+          }
+          required
+        />
+
+        <Show when={props.getContainerLink(props.container)}>
+          <p class="mt-1 text-xs-ui text-slate-600 underline">
+            <button
+              type="button"
+              class="underline hover:cursor-pointer"
+              onClick={() => props.onOpenContainerLink(props.container)}
+            >
+              {t(keys.createProcess.action.existingProcessLink)}
+            </button>
+          </p>
+        </Show>
+      </div>
+
+      <Show when={props.containers.length > 1}>
+        <button
+          type="button"
+          onClick={() => props.onRemoveContainer(props.container.id)}
+          class="mt-7 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+          aria-label={t(keys.createProcess.action.removeContainer)}
+        >
+          <svg
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </Show>
+    </div>
   )
 }
 
