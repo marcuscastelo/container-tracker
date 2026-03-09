@@ -43,7 +43,10 @@ const REQUIRED_CONFIG_KEYS = [
   'LIMIT',
 ] as const
 
-const REQUIRED_RUNTIME_DEPENDENCY_PACKAGES = ['@supabase/functions-js'] as const
+const REQUIRED_RUNTIME_DEPENDENCY_PACKAGES = [
+  '@supabase/supabase-js',
+  '@supabase/functions-js',
+] as const
 
 const STATIC_GATE_FILES = [
   'tools/agent/installer/installer.iss',

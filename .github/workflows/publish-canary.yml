@@ -32,14 +32,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run agent:build
+      - name: Build release app
+        env:
+          BACKEND_URL: https://agent.invalid
+          INSTALLER_TOKEN: ci-installer-token
+        run: pnpm run agent:release
 
       - name: Package linux artifact
         run: |
           rm -rf /tmp/agent-linux-x64
           mkdir -p /tmp/agent-linux-x64
-          cp -R tools/agent/dist /tmp/agent-linux-x64/dist
+          cp -R release/app/. /tmp/agent-linux-x64
+          test -f /tmp/agent-linux-x64/node_modules/@supabase/supabase-js/package.json
           tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
           sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
 
@@ -47,7 +51,8 @@ jobs:
         run: |
           rm -rf /tmp/agent-windows-x64
           mkdir -p /tmp/agent-windows-x64
-          cp -R tools/agent/dist /tmp/agent-windows-x64/dist
+          cp -R release/app/. /tmp/agent-windows-x64
+          test -f /tmp/agent-windows-x64/node_modules/@supabase/supabase-js/package.json
           (
             cd /tmp
             zip -qr "${GITHUB_WORKSPACE}/agent-windows-x64.zip" agent-windows-x64
