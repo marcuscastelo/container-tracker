@@ -348,7 +348,9 @@ export function resolveCurrentVoyageIndex(groups: readonly CurrentVoyageGroup[])
     const group = groups[i]
     if (group.kind !== 'terminal' || group.terminalKind !== 'post-carriage') continue
 
-    const hasActualPostCarriageEvent = group.events.some((event) => event.eventTimeType === 'ACTUAL')
+    const hasActualPostCarriageEvent = group.events.some(
+      (event) => event.eventTimeType === 'ACTUAL',
+    )
     if (hasActualPostCarriageEvent) return -1
   }
 
@@ -384,7 +386,9 @@ function TimelineBlockList(props: {
   readonly highlightedTypes: ReadonlySet<string>
 }): JSX.Element {
   const groups = createMemo(() => groupRenderItems(props.renderList))
-  const currentVoyageIdx = createMemo(() => resolveCurrentVoyageIndex(toCurrentVoyageGroups(groups())))
+  const currentVoyageIdx = createMemo(() =>
+    resolveCurrentVoyageIndex(toCurrentVoyageGroups(groups())),
+  )
 
   const renderGroupContent = (group: BlockGroup, isCurrent: boolean): JSX.Element | null => {
     switch (group.kind) {

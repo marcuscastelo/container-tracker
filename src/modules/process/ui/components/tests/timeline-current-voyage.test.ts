@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  resolveCurrentVoyageIndex,
   type CurrentVoyageGroup,
+  resolveCurrentVoyageIndex,
 } from '~/modules/process/ui/components/TimelinePanel'
 
 function voyageGroup(
