@@ -24,7 +24,8 @@
       "!coverage",
       "!public",
       "!out",
-      "!.output"
+      "!.output",
+      "!.agent-runtime"
     ]
   },
   "linter": {

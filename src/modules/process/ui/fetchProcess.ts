@@ -19,6 +19,11 @@ type ProcessCacheRecord = {
 
 const processCache = new Map<string, ProcessCacheRecord>()
 const inFlightProcessRequests = new Map<string, Promise<ShipmentDetailVM | null>>()
+// Generation tokens used to prevent outdated in-flight responses from
+// repopulating the cache after a targeted invalidation. When an invalidation
+// occurs we bump the generation for affected keys; any in-flight request that
+// captured an older generation will skip writing the cache when it resolves.
+const processRequestGeneration = new Map<string, number>()
 
 function toProcessCacheKey(id: string, locale: string): string {
   return `${id}::${locale}`
@@ -90,16 +95,25 @@ async function loadProcessFromNetwork(
 
   // When dedupeInFlight is true we reuse any in-flight request for the same
   // process/locale key to avoid duplicating network traffic. Callers that
-  // require a canonical post-mutation snapshot (for example after ACK/UNACK)
-  // should request dedupeInFlight=false to force an independent network call.
+  // require a canonical post-mutation snapshot should request
+  // dedupeInFlight=false to force an independent network call.
   if (dedupeInFlight) {
     const inFlight = inFlightProcessRequests.get(key)
     if (inFlight) return inFlight
   }
 
+  // Capture the current generation for this key so we can detect whether the
+  // request becomes outdated while in flight (for example, due to a cache
+  // invalidation or a mutation). Only write the cache if the generation still
+  // matches when the network response arrives.
+  const generationAtRequest = processRequestGeneration.get(key) ?? 0
+
   const request = fetchProcessFromApi(id, locale)
     .then((value) => {
-      writeCachedProcess(key, value)
+      const currentGeneration = processRequestGeneration.get(key) ?? 0
+      if (currentGeneration === generationAtRequest) {
+        writeCachedProcess(key, value)
+      }
       return value
     })
     .finally(() => {
@@ -126,18 +140,15 @@ export async function fetchProcess(
   locale: string = 'en-US',
   options?: FetchProcessOptions,
 ): Promise<ShipmentDetailVM | null> {
-  // Decide whether callers want in-flight deduplication. By default we keep
-  // previous behaviour (dedupe enabled) for cache-first loads. For
-  // `network-only` callers we default to forcing a fresh network request so
-  // callers that need a canonical post-mutation snapshot don't join older
-  // in-flight requests. Consumers can override this with `dedupeInFlight`.
+  // By default, network-only callers force a fresh request (no in-flight dedupe)
+  // so post-mutation reads do not race with older in-flight requests.
   const explicitDedupe = options?.dedupeInFlight
   const dedupeInFlight = explicitDedupe ?? options?.mode !== 'network-only'
 
   if (options?.mode === 'network-only') {
     return loadProcessFromNetwork(id, locale, dedupeInFlight)
   }
-  // cache-first path continues to dedupe by default
+
   return loadProcessWithCache(id, locale)
 }
 
@@ -150,6 +161,36 @@ export async function prefetchProcessDetail(id: string, locale: string = 'en-US'
 }
 
 export function clearPrefetchedProcessDetails(): void {
+  // Bump generation for all known keys so any in-flight requests don't write
+  // back into cache after we cleared it.
+  for (const key of processCache.keys()) {
+    const prev = processRequestGeneration.get(key) ?? 0
+    processRequestGeneration.set(key, prev + 1)
+  }
+
   processCache.clear()
   inFlightProcessRequests.clear()
+}
+
+export function clearPrefetchedProcessDetailById(processId: string): void {
+  const processCacheKeyPrefix = `${processId}::`
+
+  for (const key of processCache.keys()) {
+    if (!key.startsWith(processCacheKeyPrefix)) continue
+    processCache.delete(key)
+  }
+
+  for (const key of inFlightProcessRequests.keys()) {
+    if (!key.startsWith(processCacheKeyPrefix)) continue
+    inFlightProcessRequests.delete(key)
+  }
+
+  // Bump generation for keys matching this process so any already-running
+  // requests that were started before this invalidation will not write stale
+  // values back into the cache.
+  for (const [key] of processRequestGeneration.entries()) {
+    if (!key.startsWith(processCacheKeyPrefix)) continue
+    const prev = processRequestGeneration.get(key) ?? 0
+    processRequestGeneration.set(key, prev + 1)
+  }
 }

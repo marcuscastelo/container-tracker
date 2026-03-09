@@ -51,20 +51,18 @@ export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRec
 
 export function toUpdateProcessRecord(dto: Partial<CreateProcessInput>): UpdateProcessRecord {
   return {
-    ...(dto.reference !== undefined ? { reference: dto.reference ?? undefined } : {}),
-    ...(dto.origin !== undefined ? { origin: dto.origin?.display_name } : {}),
-    ...(dto.destination !== undefined ? { destination: dto.destination?.display_name } : {}),
+    ...(dto.reference !== undefined ? { reference: dto.reference ?? null } : {}),
+    ...(dto.origin !== undefined ? { origin: dto.origin?.display_name ?? null } : {}),
+    ...(dto.destination !== undefined
+      ? { destination: dto.destination?.display_name ?? null }
+      : {}),
     ...(dto.carrier !== undefined ? { carrier: dto.carrier } : {}),
-    ...(dto.bill_of_lading !== undefined
-      ? { bill_of_lading: dto.bill_of_lading ?? undefined }
-      : {}),
-    ...(dto.booking_number !== undefined
-      ? { booking_number: dto.booking_number ?? undefined }
-      : {}),
-    ...(dto.importer_name !== undefined ? { importer_name: dto.importer_name ?? undefined } : {}),
-    ...(dto.exporter_name !== undefined ? { exporter_name: dto.exporter_name ?? undefined } : {}),
+    ...(dto.bill_of_lading !== undefined ? { bill_of_lading: dto.bill_of_lading ?? null } : {}),
+    ...(dto.booking_number !== undefined ? { booking_number: dto.booking_number ?? null } : {}),
+    ...(dto.importer_name !== undefined ? { importer_name: dto.importer_name ?? null } : {}),
+    ...(dto.exporter_name !== undefined ? { exporter_name: dto.exporter_name ?? null } : {}),
     ...(dto.reference_importer !== undefined
-      ? { reference_importer: dto.reference_importer ?? undefined }
+      ? { reference_importer: dto.reference_importer ?? null }
       : {}),
     ...(dto.product !== undefined ? { product: dto.product ?? null } : {}),
     ...(dto.redestination_number !== undefined

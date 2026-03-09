@@ -1,21 +1,26 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearPrefetchedProcessDetails, fetchProcess } from '~/modules/process/ui/fetchProcess'
+import {
+  clearPrefetchedProcessDetailById,
+  clearPrefetchedProcessDetails,
+  fetchProcess,
+} from '~/modules/process/ui/fetchProcess'
 
 type BuildProcessDetailResponseCommand = {
+  readonly processId: string
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly reference: string
   readonly ackedAt: string | null
 }
 
-const PROCESS_ID = 'process-ack-race'
-const CONTAINER_ID = 'container-ack-race'
-const CONTAINER_NUMBER = 'MSCU1234567'
 const TRIGGERED_AT_ISO = '2026-03-08T12:00:00.000Z'
 
 function buildProcessDetailResponse(
   command: BuildProcessDetailResponseCommand,
 ): Record<string, unknown> {
   return {
-    id: PROCESS_ID,
-    reference: 'REF-ACK-RACE',
+    id: command.processId,
+    reference: command.reference,
     origin: { display_name: 'Shanghai' },
     destination: { display_name: 'Santos' },
     carrier: 'msc',
@@ -32,8 +37,8 @@ function buildProcessDetailResponse(
     updated_at: '2026-03-08T10:00:00.000Z',
     containers: [
       {
-        id: CONTAINER_ID,
-        container_number: CONTAINER_NUMBER,
+        id: command.containerId,
+        container_number: command.containerNumber,
         carrier_code: 'MSC',
         status: 'IN_TRANSIT',
         observations: [],
@@ -52,8 +57,8 @@ function buildProcessDetailResponse(
     ],
     alerts: [
       {
-        id: 'alert-ack-race',
-        container_number: CONTAINER_NUMBER,
+        id: `alert-${command.processId}`,
+        container_number: command.containerNumber,
         category: 'monitoring',
         type: 'ETA_MISSING',
         severity: 'warning',
@@ -76,7 +81,7 @@ function buildProcessDetailResponse(
     },
     containersSync: [
       {
-        containerNumber: CONTAINER_NUMBER,
+        containerNumber: command.containerNumber,
         carrier: 'MSC',
         lastSuccessAt: null,
         lastAttemptAt: null,
@@ -104,13 +109,31 @@ describe('fetchProcess cache behavior', () => {
   it('returns cached process data in cache-first mode', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(toJsonResponse(buildProcessDetailResponse({ ackedAt: null })))
       .mockResolvedValueOnce(
-        toJsonResponse(buildProcessDetailResponse({ ackedAt: '2026-03-08T12:30:00.000Z' })),
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-cache',
+            containerId: 'container-cache',
+            containerNumber: 'MSCU1234567',
+            reference: 'REF-CACHE',
+            ackedAt: null,
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-cache',
+            containerId: 'container-cache',
+            containerNumber: 'MSCU1234567',
+            reference: 'REF-CACHE',
+            ackedAt: '2026-03-08T12:30:00.000Z',
+          }),
+        ),
       )
 
-    const first = await fetchProcess(PROCESS_ID, 'en-US')
-    const second = await fetchProcess(PROCESS_ID, 'en-US')
+    const first = await fetchProcess('process-cache', 'en-US')
+    const second = await fetchProcess('process-cache', 'en-US')
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     expect(first?.alerts[0]?.ackedAtIso).toBeNull()
@@ -120,18 +143,86 @@ describe('fetchProcess cache behavior', () => {
   it('bypasses cache and refreshes canonical snapshot in network-only mode', async () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(toJsonResponse(buildProcessDetailResponse({ ackedAt: null })))
       .mockResolvedValueOnce(
-        toJsonResponse(buildProcessDetailResponse({ ackedAt: '2026-03-08T12:30:00.000Z' })),
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-network',
+            containerId: 'container-network',
+            containerNumber: 'MSCU7654321',
+            reference: 'REF-NETWORK',
+            ackedAt: null,
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-network',
+            containerId: 'container-network',
+            containerNumber: 'MSCU7654321',
+            reference: 'REF-NETWORK',
+            ackedAt: '2026-03-08T12:30:00.000Z',
+          }),
+        ),
       )
 
-    const stale = await fetchProcess(PROCESS_ID, 'en-US')
-    const refreshed = await fetchProcess(PROCESS_ID, 'en-US', { mode: 'network-only' })
-    const fromUpdatedCache = await fetchProcess(PROCESS_ID, 'en-US')
+    const stale = await fetchProcess('process-network', 'en-US')
+    const refreshed = await fetchProcess('process-network', 'en-US', { mode: 'network-only' })
+    const fromUpdatedCache = await fetchProcess('process-network', 'en-US')
 
     expect(fetchSpy).toHaveBeenCalledTimes(2)
     expect(stale?.alerts[0]?.ackedAtIso).toBeNull()
     expect(refreshed?.alerts[0]?.ackedAtIso).toBe('2026-03-08T12:30:00.000Z')
     expect(fromUpdatedCache?.alerts[0]?.ackedAtIso).toBe('2026-03-08T12:30:00.000Z')
+  })
+
+  it('invalidates only the targeted process cache entries by processId', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-a',
+            containerId: 'container-a',
+            containerNumber: 'MSCU1111111',
+            reference: 'REF-A',
+            ackedAt: null,
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-b',
+            containerId: 'container-b',
+            containerNumber: 'MSCU2222222',
+            reference: 'REF-B',
+            ackedAt: null,
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        toJsonResponse(
+          buildProcessDetailResponse({
+            processId: 'process-a',
+            containerId: 'container-a',
+            containerNumber: 'MSCU1111111',
+            reference: 'REF-A',
+            ackedAt: '2026-03-08T12:40:00.000Z',
+          }),
+        ),
+      )
+
+    const firstA = await fetchProcess('process-a', 'en-US')
+    const firstB = await fetchProcess('process-b', 'en-US')
+    clearPrefetchedProcessDetailById('process-a')
+    const refreshedA = await fetchProcess('process-a', 'en-US')
+    const cachedB = await fetchProcess('process-b', 'en-US')
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
+    expect(firstA?.alerts[0]?.ackedAtIso).toBeNull()
+    expect(firstB?.alerts[0]?.ackedAtIso).toBeNull()
+    expect(refreshedA?.alerts[0]?.ackedAtIso).toBe('2026-03-08T12:40:00.000Z')
+    expect(cachedB?.alerts[0]?.ackedAtIso).toBeNull()
   })
 })
