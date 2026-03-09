@@ -24,7 +24,7 @@
     "ui:complexity:allowlist:check": "node scripts/ui-complexity-allowlist-check.mjs",
     "ui:complexity:ci": "pnpm run ui:complexity:report && pnpm run ui:complexity:allowlist:check",
     "flint": "pnpm run fix && pnpm run lint",
-    "check": "run-p flint type-check test architecture:boundary-scan ui:complexity:ci",
+    "check": "run-p flint type-check test architecture:boundary-scan ui:complexity:ci knip:files",
     "maersk:smoke:puppeteer": "node scripts/maersk-puppeteer-smoke.mjs",
     "ai:loop:doctor": "bash scripts/ai/ralph-loop-doctor.sh",
     "ai:loop:start": "bash scripts/ai/ralph-loop-start.sh",
