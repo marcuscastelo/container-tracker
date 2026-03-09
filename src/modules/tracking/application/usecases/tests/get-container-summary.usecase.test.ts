@@ -6,10 +6,10 @@ import {
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
-import type { Observation } from '~/modules/tracking/domain/model/observation'
-import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
 type ObservationOverrides = {
   readonly type?: Observation['type']

@@ -1,5 +1,4 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
-import type { TrackingObservationProjection } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import {
   buildSeriesKey,
   compareObservationsChronologically,
@@ -8,6 +7,7 @@ import type { DerivedObservationState } from '~/modules/tracking/domain/reconcil
 import { deriveObservationState } from '~/modules/tracking/domain/reconcile/expiredExpected'
 import type { SeriesLabel } from '~/modules/tracking/domain/reconcile/seriesClassification'
 import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassification'
+import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 
 export type TrackingSeriesHistoryItem = {
   readonly id: string

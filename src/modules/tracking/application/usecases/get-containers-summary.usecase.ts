@@ -1,4 +1,3 @@
-import { toTrackingObservationProjections } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import {
   createTrackingOperationalSummaryFallback,
   deriveTrackingOperationalSummary,
@@ -8,6 +7,7 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/domain/derive/deriveTimeline'
+import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 
 export type GetContainersSummaryCommand = {
   readonly containers: readonly {

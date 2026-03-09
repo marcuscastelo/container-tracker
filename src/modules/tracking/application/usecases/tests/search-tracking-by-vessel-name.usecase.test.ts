@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import type { Observation } from '~/modules/tracking/domain/model/observation'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 
 type ObservationParams = Readonly<{
   id: string

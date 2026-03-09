@@ -1,5 +1,5 @@
-import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 
 /**
  * EventTimeType — differentiates between confirmed facts and predictions.

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveTimeline } from '~/modules/tracking/domain/derive/deriveTimeline'
 import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
-import type { Observation } from '~/modules/tracking/domain/model/observation'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'CXDU2058677'

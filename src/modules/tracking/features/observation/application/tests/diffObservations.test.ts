@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { diffObservations } from '~/modules/tracking/application/orchestration/diffObservations'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
-import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
+import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
+import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'

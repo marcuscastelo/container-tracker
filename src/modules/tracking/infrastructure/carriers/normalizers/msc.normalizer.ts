@@ -1,10 +1,10 @@
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type {
   Confidence,
   EventTimeType,
   ObservationDraft,
-} from '~/modules/tracking/domain/model/observationDraft'
-import type { ObservationType } from '~/modules/tracking/domain/model/observationType'
-import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+} from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'

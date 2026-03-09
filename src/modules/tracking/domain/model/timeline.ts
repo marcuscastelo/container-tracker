@@ -1,4 +1,4 @@
-import type { Observation } from '~/modules/tracking/domain/model/observation'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 
 /**
  * Timeline — ordered sequence of Observations for a single container.

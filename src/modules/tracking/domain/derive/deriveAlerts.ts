@@ -1,9 +1,9 @@
 import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
-import type { Observation } from '~/modules/tracking/domain/model/observation'
 import type { Timeline } from '~/modules/tracking/domain/model/timeline'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 
 /**
  * Internal representation of a confirmed transshipment event.

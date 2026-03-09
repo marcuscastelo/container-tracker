@@ -1,6 +1,6 @@
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
-import type { NewObservation } from '~/modules/tracking/domain/model/observation'
-import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
+import type { NewObservation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
 /**
  * Diff observation drafts against already-persisted observations.

@@ -1,4 +1,3 @@
-import { toTrackingObservationProjections } from '~/modules/tracking/application/projection/tracking.observation.projection'
 import { deriveTrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
 import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
@@ -7,7 +6,8 @@ import {
   deriveTimeline,
 } from '~/modules/tracking/domain/derive/deriveTimeline'
 import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
-import type { Observation } from '~/modules/tracking/domain/model/observation'
+import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 
 export type TrackingSearchObservationProjection = Readonly<{
   processId: string
