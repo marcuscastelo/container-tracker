@@ -64,6 +64,7 @@ type ShipmentViewLayoutProps = {
     focus?: 'reference' | 'carrier' | null | undefined,
   ) => void
   readonly onOpenCreateProcess: () => void
+  readonly onDashboardIntent?: () => void
 }
 
 export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
@@ -71,6 +72,9 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
   const shouldShowNotFound = () => props.shipmentData === null && !props.shipmentLoading
   const shouldShowLoadError = () =>
     Boolean(props.shipmentError) && props.shipmentData === undefined && !props.shipmentLoading
+  const triggerDashboardIntent = () => {
+    props.onDashboardIntent?.()
+  }
 
   return (
     <div class="relative min-h-screen bg-slate-50">
@@ -115,6 +119,9 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
           <A
             href="/"
             class="mb-1.5 inline-flex items-center gap-1 text-micro text-slate-400 hover:text-slate-700"
+            onPointerEnter={triggerDashboardIntent}
+            onFocusIn={triggerDashboardIntent}
+            onPointerDown={triggerDashboardIntent}
           >
             <ChevronLeftIcon />
             {t(keys.shipmentView.backToList)}
@@ -137,7 +144,13 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
           <Show when={shouldShowLoadError()}>
             <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
               <p class="text-red-500">{t(keys.shipmentView.loadError)}</p>
-              <A href="/" class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900">
+              <A
+                href="/"
+                class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900"
+                onPointerEnter={triggerDashboardIntent}
+                onFocusIn={triggerDashboardIntent}
+                onPointerDown={triggerDashboardIntent}
+              >
                 {t(keys.shipmentView.backToDashboard)}
               </A>
             </div>
@@ -146,7 +159,13 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
           <Show when={shouldShowNotFound()}>
             <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
               <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
-              <A href="/" class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900">
+              <A
+                href="/"
+                class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900"
+                onPointerEnter={triggerDashboardIntent}
+                onFocusIn={triggerDashboardIntent}
+                onPointerDown={triggerDashboardIntent}
+              >
                 {t(keys.shipmentView.backToDashboard)}
               </A>
             </div>

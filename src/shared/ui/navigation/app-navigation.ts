@@ -26,8 +26,16 @@ type PrefetchProcessIntentCommand = {
   readonly nowMs?: number
 }
 
+type PrefetchDashboardIntentCommand = {
+  readonly preloadRoute: PreloadRouteFn
+  readonly preloadData?: () => Promise<unknown> | unknown
+  readonly nowMs?: number
+}
+
 const PROCESS_INTENT_THROTTLE_MS = 120
+const DASHBOARD_INTENT_THROTTLE_MS = 120
 const processIntentAtById = new Map<string, number>()
+let lastDashboardIntentAtMs: number | null = null
 
 function normalizeInternalHref(href: string): string | null {
   const trimmed = href.trim()
@@ -58,6 +66,10 @@ export function buildProcessHref(processId: string): string {
   return `/shipments/${encodeURIComponent(processId)}`
 }
 
+export function buildDashboardHref(): string {
+  return '/'
+}
+
 export function isInternalAppHref(href: string): boolean {
   return normalizeInternalHref(href) !== null
 }
@@ -80,12 +92,30 @@ export function navigateToProcess(command: NavigateToProcessCommand): void {
   void command.navigate(buildProcessHref(command.processId), { replace: command.replace })
 }
 
+function shouldThrottleDashboardIntent(nowMs: number): boolean {
+  if (lastDashboardIntentAtMs === null) return false
+  return nowMs - lastDashboardIntentAtMs < DASHBOARD_INTENT_THROTTLE_MS
+}
+
 export function prefetchProcessIntent(command: PrefetchProcessIntentCommand): void {
   const nowMs = command.nowMs ?? Date.now()
   if (shouldThrottleProcessIntent(command.processId, nowMs)) return
 
   rememberProcessIntent(command.processId, nowMs)
   const href = buildProcessHref(command.processId)
+  command.preloadRoute(href, { preloadData: true })
+
+  if (command.preloadData) {
+    void command.preloadData()
+  }
+}
+
+export function prefetchDashboardIntent(command: PrefetchDashboardIntentCommand): void {
+  const nowMs = command.nowMs ?? Date.now()
+  if (shouldThrottleDashboardIntent(nowMs)) return
+
+  lastDashboardIntentAtMs = nowMs
+  const href = buildDashboardHref()
   command.preloadRoute(href, { preloadData: true })
 
   if (command.preloadData) {

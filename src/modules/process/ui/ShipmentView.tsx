@@ -1,4 +1,4 @@
-import { useNavigate } from '@solidjs/router'
+import { useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, onCleanup } from 'solid-js'
 import { z } from 'zod/v4'
@@ -11,6 +11,8 @@ import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-real
 import {
   acknowledgeTrackingAlertRequest,
   createProcessRequest,
+  prefetchDashboardGlobalAlertsSummary,
+  prefetchDashboardProcessSummaries,
   toCreateProcessInput,
   unacknowledgeTrackingAlertRequest,
   updateProcessRequest,
@@ -29,7 +31,7 @@ import {
   subscribeToSyncRequestsRealtimeByIds,
 } from '~/shared/api/sync-requests.realtime.client'
 import { useTranslation } from '~/shared/localization/i18n'
-import { navigateToProcess } from '~/shared/ui/navigation/app-navigation'
+import { navigateToProcess, prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'
 
 type DialogCarrier = CreateProcessDialogFormData['carrier']
 type RefreshRetryState = { readonly current: number; readonly total: number }
@@ -862,6 +864,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { locale, t, keys } = useTranslation()
+  const preloadRoute = usePreloadRoute()
   const [shipment, { refetch, mutate }] = createResource(
     () => [props.params.id, locale()] as const,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
@@ -939,6 +942,13 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   }
 
   const navigate = useNavigate()
+  const handleDashboardIntent = () => {
+    prefetchDashboardIntent({
+      preloadRoute,
+      preloadData: () =>
+        Promise.all([prefetchDashboardProcessSummaries(), prefetchDashboardGlobalAlertsSummary()]),
+    })
+  }
   const dialogs = useProcessDialogsController({
     processId: () => props.params.id,
     navigate,
@@ -1039,6 +1049,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       selectedContainerEtaVm={selectedContainerEtaVm()}
       onOpenEditForShipment={dialogs.openEditForShipment}
       onOpenCreateProcess={dialogs.openCreateDialog}
+      onDashboardIntent={handleDashboardIntent}
     />
   )
 }

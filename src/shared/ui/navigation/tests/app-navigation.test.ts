@@ -1,14 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildDashboardHref,
   buildProcessHref,
   isInternalAppHref,
   navigateToAppHref,
   navigateToProcess,
+  prefetchDashboardIntent,
   prefetchProcessIntent,
   toInternalAppPathname,
 } from '~/shared/ui/navigation/app-navigation'
 
 describe('app-navigation helpers', () => {
+  it('builds dashboard href', () => {
+    expect(buildDashboardHref()).toBe('/')
+  })
+
   it('builds process href with encoded process id', () => {
     expect(buildProcessHref('process/with space')).toBe('/shipments/process%2Fwith%20space')
   })
@@ -79,6 +85,36 @@ describe('app-navigation helpers', () => {
       preloadData: true,
     })
     expect(preloadRoute).toHaveBeenNthCalledWith(2, '/shipments/intent-process-1', {
+      preloadData: true,
+    })
+    expect(preloadData).toHaveBeenCalledTimes(2)
+  })
+
+  it('prefetches dashboard intent with throttle', async () => {
+    const preloadRoute = vi.fn()
+    const preloadData = vi.fn(async () => undefined)
+
+    prefetchDashboardIntent({
+      preloadRoute,
+      preloadData,
+      nowMs: 2_000,
+    })
+    prefetchDashboardIntent({
+      preloadRoute,
+      preloadData,
+      nowMs: 2_050,
+    })
+    prefetchDashboardIntent({
+      preloadRoute,
+      preloadData,
+      nowMs: 2_200,
+    })
+
+    expect(preloadRoute).toHaveBeenCalledTimes(2)
+    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/', {
+      preloadData: true,
+    })
+    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/', {
       preloadData: true,
     })
     expect(preloadData).toHaveBeenCalledTimes(2)

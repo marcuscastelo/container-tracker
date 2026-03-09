@@ -131,12 +131,22 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
-  const [processes, { refetch: refetchProcesses }] = createResource(() =>
-    fetchDashboardProcessSummaries(),
-  )
-  const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(() =>
-    fetchDashboardGlobalAlertsSummary(),
-  )
+  let shouldPreferPrefetchedProcesses = true
+  let shouldPreferPrefetchedGlobalAlerts = true
+  const [processes, { refetch: refetchProcesses }] = createResource(() => {
+    const preferPrefetched = shouldPreferPrefetchedProcesses
+    shouldPreferPrefetchedProcesses = false
+    return fetchDashboardProcessSummaries(undefined, {
+      preferPrefetched,
+    })
+  })
+  const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(() => {
+    const preferPrefetched = shouldPreferPrefetchedGlobalAlerts
+    shouldPreferPrefetchedGlobalAlerts = false
+    return fetchDashboardGlobalAlertsSummary({
+      preferPrefetched,
+    })
+  })
   const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
     parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
   )
