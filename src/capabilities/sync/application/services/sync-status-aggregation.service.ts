@@ -1,59 +1,31 @@
-type SyncRequestStatus = 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'
+import type { SyncRequestRecord } from '~/capabilities/sync/application/ports/sync-status-read.port'
 
-type ProcessSyncCandidate = {
-  readonly processId: string
-  readonly archivedAt: string | null
-}
-
-type SyncRequestRecord = {
-  readonly containerNumber: string
-  readonly status: SyncRequestStatus
-  readonly createdAt: string
-  readonly updatedAt: string
-}
-
-type ProcessSyncContainerRecord = {
-  readonly containerNumber: string
-}
-
-export type ProcessSyncState = 'idle' | 'syncing' | 'completed' | 'failed'
-
-export type ProcessSyncVisibility = 'active' | 'archived_in_flight'
-
-export type ProcessSyncStateReadModel = {
-  readonly processId: string
-  readonly syncStatus: ProcessSyncState
+export type SyncStatusDerivedState = {
+  readonly syncStatus: 'idle' | 'syncing' | 'completed' | 'failed'
   readonly startedAt: string | null
   readonly finishedAt: string | null
   readonly containerCount: number
   readonly completedContainers: number
   readonly failedContainers: number
-  readonly visibility: ProcessSyncVisibility
 }
 
-type ListProcessSyncStatesResult = {
-  readonly generatedAt: string
-  readonly processes: readonly ProcessSyncStateReadModel[]
-}
-
-export type ListProcessSyncStatesDeps = {
-  readonly listProcessSyncCandidates: () => Promise<readonly ProcessSyncCandidate[]>
-  readonly listContainersByProcessIds: (command: {
-    readonly processIds: readonly string[]
-  }) => Promise<{
-    readonly containersByProcessId: ReadonlyMap<string, readonly ProcessSyncContainerRecord[]>
-  }>
-  readonly listSyncRequestsByContainerNumbers: (command: {
+type SyncStatusAggregationService = {
+  readonly normalizeContainerNumber: (value: string) => string
+  readonly mapRecordsByContainerNumber: (
+    records: readonly SyncRequestRecord[],
+  ) => ReadonlyMap<string, readonly SyncRequestRecord[]>
+  readonly deriveProcessSyncState: (command: {
     readonly containerNumbers: readonly string[]
-  }) => Promise<readonly SyncRequestRecord[]>
-  readonly nowFactory?: () => Date
+    readonly recordsByContainerNumber: ReadonlyMap<string, readonly SyncRequestRecord[]>
+  }) => SyncStatusDerivedState
+  readonly deriveVisibility: (archivedAt: string | null) => 'active' | 'archived_in_flight'
 }
 
 function normalizeContainerNumber(value: string): string {
   return value.trim().toUpperCase()
 }
 
-function isOpenStatus(status: SyncRequestStatus): boolean {
+function isOpenStatus(status: SyncRequestRecord['status']): boolean {
   return status === 'PENDING' || status === 'LEASED'
 }
 
@@ -94,10 +66,30 @@ function pickMaxIso(current: string | null, candidate: string): string {
     : current
 }
 
-function deriveProcessSyncStatus(command: {
+function mapRecordsByContainerNumber(
+  records: readonly SyncRequestRecord[],
+): ReadonlyMap<string, readonly SyncRequestRecord[]> {
+  const byContainerNumber = new Map<string, SyncRequestRecord[]>()
+
+  for (const record of records) {
+    const normalizedContainerNumber = normalizeContainerNumber(record.containerNumber)
+    const currentRecords = byContainerNumber.get(normalizedContainerNumber)
+
+    if (currentRecords) {
+      currentRecords.push(record)
+      continue
+    }
+
+    byContainerNumber.set(normalizedContainerNumber, [record])
+  }
+
+  return byContainerNumber
+}
+
+function deriveProcessSyncState(command: {
   readonly containerNumbers: readonly string[]
   readonly recordsByContainerNumber: ReadonlyMap<string, readonly SyncRequestRecord[]>
-}): Omit<ProcessSyncStateReadModel, 'processId' | 'visibility'> {
+}): SyncStatusDerivedState {
   const containerCount = command.containerNumbers.length
   if (containerCount === 0) {
     return {
@@ -113,7 +105,6 @@ function deriveProcessSyncStatus(command: {
   let processHasOpenRequests = false
   let completedContainers = 0
   let failedContainers = 0
-
   let startedAt: string | null = null
   let finishedAt: string | null = null
 
@@ -195,77 +186,17 @@ function deriveProcessSyncStatus(command: {
   }
 }
 
-export function createListProcessSyncStatesUseCase(deps: ListProcessSyncStatesDeps) {
-  const nowFactory = deps.nowFactory ?? (() => new Date())
+function deriveVisibility(archivedAt: string | null): 'active' | 'archived_in_flight' {
+  return archivedAt === null ? 'active' : 'archived_in_flight'
+}
 
-  return async function execute(): Promise<ListProcessSyncStatesResult> {
-    const candidates = await deps.listProcessSyncCandidates()
-    if (candidates.length === 0) {
-      return {
-        generatedAt: nowFactory().toISOString(),
-        processes: [],
-      }
-    }
-
-    const processIds = candidates.map((candidate) => candidate.processId)
-    const { containersByProcessId } = await deps.listContainersByProcessIds({
-      processIds,
-    })
-
-    const allContainerNumbers = Array.from(
-      new Set(
-        processIds.flatMap((processId) => {
-          const containers = containersByProcessId.get(processId) ?? []
-          return containers.map((container) => normalizeContainerNumber(container.containerNumber))
-        }),
-      ),
-    )
-
-    const syncRequests =
-      allContainerNumbers.length === 0
-        ? []
-        : await deps.listSyncRequestsByContainerNumbers({ containerNumbers: allContainerNumbers })
-
-    const recordsByContainerNumber = new Map<string, SyncRequestRecord[]>()
-    for (const record of syncRequests) {
-      const normalizedContainerNumber = normalizeContainerNumber(record.containerNumber)
-      const records = recordsByContainerNumber.get(normalizedContainerNumber)
-      if (records) {
-        records.push(record)
-        continue
-      }
-      recordsByContainerNumber.set(normalizedContainerNumber, [record])
-    }
-
-    const processStates: ProcessSyncStateReadModel[] = []
-    for (const candidate of candidates) {
-      const containers = containersByProcessId.get(candidate.processId) ?? []
-      const containerNumbers = containers.map((container) =>
-        normalizeContainerNumber(container.containerNumber),
-      )
-
-      const derived = deriveProcessSyncStatus({
-        containerNumbers,
-        recordsByContainerNumber,
-      })
-
-      const visibility: ProcessSyncVisibility =
-        candidate.archivedAt === null ? 'active' : 'archived_in_flight'
-
-      if (visibility === 'archived_in_flight' && derived.syncStatus !== 'syncing') {
-        continue
-      }
-
-      processStates.push({
-        processId: candidate.processId,
-        visibility,
-        ...derived,
-      })
-    }
-
-    return {
-      generatedAt: nowFactory().toISOString(),
-      processes: processStates,
-    }
+export function createSyncStatusAggregationService(): SyncStatusAggregationService {
+  return {
+    normalizeContainerNumber,
+    mapRecordsByContainerNumber,
+    deriveProcessSyncState,
+    deriveVisibility,
   }
 }
+
+export type { SyncStatusAggregationService }

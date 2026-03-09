@@ -11,8 +11,6 @@ import type { ProcessEntity } from '~/modules/process/domain/process.entity'
 import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/operational-projection/deriveProcessStatus'
 import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/operational-projection/processOperationalSummary'
-import type { ProcessSyncStateReadModel } from '~/modules/process/features/process-sync/application/usecases/list-process-sync-states.usecase'
-import type { RefreshProcessResult } from '~/modules/process/features/process-sync/application/usecases/refresh-process.usecase'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import {
   createTrackingOperationalSummaryFallback,
@@ -169,39 +167,6 @@ export function toProcessResponseWithSummary(
     last_event_at: summary.last_event_at,
     last_sync_status: sync.lastSyncStatus,
     last_sync_at: sync.lastSyncAt,
-  }
-}
-
-export function toProcessSyncStateResponse(sync: ProcessSyncStateReadModel) {
-  return {
-    process_id: sync.processId,
-    sync_status: sync.syncStatus,
-    started_at: sync.startedAt,
-    finished_at: sync.finishedAt,
-    container_count: sync.containerCount,
-    completed_containers: sync.completedContainers,
-    failed_containers: sync.failedContainers,
-    visibility: sync.visibility,
-  }
-}
-
-export function toProcessRefreshResponse(result: RefreshProcessResult) {
-  return {
-    ok: true as const,
-    processId: result.processId,
-    mode: result.mode,
-    requestedContainers: result.requestedContainers,
-    queuedContainers: result.queuedContainers,
-    syncRequestIds: [...result.syncRequestIds],
-    requests: result.requests.map((request) => ({
-      container_number: request.containerNumber,
-      sync_request_id: request.syncRequestId,
-      deduped: request.deduped,
-    })),
-    failures: result.failures.map((failure) => ({
-      container_number: failure.containerNumber,
-      error: failure.error,
-    })),
   }
 }
 

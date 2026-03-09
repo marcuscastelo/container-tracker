@@ -16,31 +16,11 @@ import {
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
-import {
-  createListProcessSyncStatesUseCase,
-  type ListProcessSyncStatesDeps,
-} from '~/modules/process/features/process-sync/application/usecases/list-process-sync-states.usecase'
-import {
-  createRefreshProcessUseCase,
-  type RefreshProcessDeps,
-} from '~/modules/process/features/process-sync/application/usecases/refresh-process.usecase'
-import {
-  createSyncAllProcessesUseCase,
-  type SyncAllProcessesDeps,
-} from '~/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase'
-import {
-  createSyncProcessContainersUseCase,
-  type SyncProcessContainersDeps,
-} from '~/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase'
 
 export type CreateProcessUseCasesDeps = {
   repository: ProcessRepository
   containerUseCases: ContainerUseCasesForProcess
   trackingUseCases: ListProcessesWithOperationalSummaryDeps['trackingUseCases']
-  syncAllProcessesDeps: SyncAllProcessesDeps
-  syncProcessContainersDeps: SyncProcessContainersDeps
-  listProcessSyncStatesDeps: ListProcessSyncStatesDeps
-  refreshProcessDeps: RefreshProcessDeps
 }
 
 /**
@@ -87,10 +67,6 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     containerUseCases: deps.containerUseCases,
     trackingUseCases: deps.trackingUseCases,
   })
-  const syncAllProcesses = createSyncAllProcessesUseCase(deps.syncAllProcessesDeps)
-  const syncProcessContainers = createSyncProcessContainersUseCase(deps.syncProcessContainersDeps)
-  const listProcessSyncStates = createListProcessSyncStatesUseCase(deps.listProcessSyncStatesDeps)
-  const refreshProcess = createRefreshProcessUseCase(deps.refreshProcessDeps)
 
   return {
     listProcesses,
@@ -103,10 +79,6 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     deleteProcess,
     removeContainerFromProcess,
     searchByText,
-    syncAllProcesses,
-    syncProcessContainers,
-    listProcessSyncStates,
-    refreshProcess,
   }
 }
 

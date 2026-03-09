@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  createListProcessSyncStatesUseCase,
-  type ListProcessSyncStatesDeps,
-} from '~/modules/process/features/process-sync/application/usecases/list-process-sync-states.usecase'
+  createGetSyncStatusUseCase,
+  type GetSyncStatusDeps,
+} from '~/capabilities/sync/application/usecases/get-sync-status.usecase'
 
-type ProcessCandidates = Awaited<ReturnType<ListProcessSyncStatesDeps['listProcessSyncCandidates']>>
+type ProcessCandidates = Awaited<
+  ReturnType<GetSyncStatusDeps['statusReadPort']['listProcessSyncCandidates']>
+>
 
 function createDeps(command: {
   readonly candidates: ProcessCandidates
@@ -19,18 +21,20 @@ function createDeps(command: {
     readonly updatedAt: string
   }[]
   readonly now?: Date
-}): ListProcessSyncStatesDeps {
+}): GetSyncStatusDeps {
   return {
-    listProcessSyncCandidates: vi.fn(async () => command.candidates),
-    listContainersByProcessIds: vi.fn(async () => ({
-      containersByProcessId: command.containersByProcessId,
-    })),
-    listSyncRequestsByContainerNumbers: vi.fn(async () => command.syncRequests),
+    statusReadPort: {
+      listProcessSyncCandidates: vi.fn(async () => command.candidates),
+      listContainersByProcessIds: vi.fn(async () => ({
+        containersByProcessId: command.containersByProcessId,
+      })),
+      listSyncRequestsByContainerNumbers: vi.fn(async () => command.syncRequests),
+    },
     nowFactory: () => command.now ?? new Date('2026-03-06T15:00:00.000Z'),
   }
 }
 
-describe('list-process-sync-states.usecase', () => {
+describe('get-sync-status.usecase', () => {
   it('derives syncing state with active and archived_in_flight visibility', async () => {
     const deps = createDeps({
       candidates: [
@@ -67,7 +71,7 @@ describe('list-process-sync-states.usecase', () => {
       now: new Date('2026-03-06T12:00:00.000Z'),
     })
 
-    const execute = createListProcessSyncStatesUseCase(deps)
+    const execute = createGetSyncStatusUseCase(deps)
     const result = await execute()
 
     expect(result.generatedAt).toBe('2026-03-06T12:00:00.000Z')
@@ -109,7 +113,7 @@ describe('list-process-sync-states.usecase', () => {
       ],
     })
 
-    const execute = createListProcessSyncStatesUseCase(deps)
+    const execute = createGetSyncStatusUseCase(deps)
     const result = await execute()
 
     expect(result.processes).toEqual([])
@@ -137,7 +141,7 @@ describe('list-process-sync-states.usecase', () => {
       ],
     })
 
-    const execute = createListProcessSyncStatesUseCase(deps)
+    const execute = createGetSyncStatusUseCase(deps)
     const result = await execute()
 
     expect(result.processes).toEqual([

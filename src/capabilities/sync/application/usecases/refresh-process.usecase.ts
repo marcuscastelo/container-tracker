@@ -1,6 +1,5 @@
+import type { SupportedSyncProvider } from '~/capabilities/sync/application/ports/sync-queue.port'
 import { HttpError } from '~/shared/errors/httpErrors'
-
-type SupportedProvider = 'msc' | 'maersk' | 'cmacgm'
 
 type RefreshMode = 'process' | 'container'
 
@@ -44,7 +43,7 @@ export type RefreshProcessDeps = {
     readonly containers: readonly RefreshProcessContainerRecord[]
   }>
   readonly enqueueContainerSyncRequest: (command: {
-    readonly provider: SupportedProvider
+    readonly provider: SupportedSyncProvider
     readonly containerNumber: string
   }) => Promise<{
     readonly id: string
@@ -53,7 +52,7 @@ export type RefreshProcessDeps = {
   }>
 }
 
-const PROVIDER_BY_CARRIER: Readonly<Record<string, SupportedProvider>> = {
+const PROVIDER_BY_CARRIER: Readonly<Record<string, SupportedSyncProvider>> = {
   msc: 'msc',
   maersk: 'maersk',
   cmacgm: 'cmacgm',
@@ -70,7 +69,7 @@ function normalizeContainerNumber(value: string): string {
   return value.trim().toUpperCase()
 }
 
-function toSupportedProvider(carrierCode: string | null): SupportedProvider | null {
+function toSupportedProvider(carrierCode: string | null): SupportedSyncProvider | null {
   if (!carrierCode) return null
   const normalizedCarrierCode = normalizeCarrierCode(carrierCode)
   return PROVIDER_BY_CARRIER[normalizedCarrierCode] ?? null
