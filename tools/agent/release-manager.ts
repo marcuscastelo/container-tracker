@@ -9,7 +9,9 @@ import type { AgentPathLayout } from './runtime-paths.ts'
 const RELEASE_ENTRYPOINT_CANDIDATES = [
   'agent.js',
   path.join('dist', 'agent.js'),
+  path.join('dist', 'tools', 'agent', 'agent.js'),
   path.join('app', 'dist', 'agent.js'),
+  path.join('app', 'dist', 'tools', 'agent', 'agent.js'),
 ] as const
 
 export function sanitizeVersionForPath(version: string): string {

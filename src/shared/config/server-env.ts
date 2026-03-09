@@ -34,6 +34,7 @@ const serverEnvSchema = z.object({
   AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
   AGENT_ENROLL_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(20),
   AGENT_ENROLL_RATE_LIMIT_WINDOW_SEC: z.coerce.number().int().positive().default(60),
+  AGENT_UPDATE_MANIFESTS_DIR: z.string().min(1).default('agent-manifests'),
   AGENT_UPDATE_MANIFEST_VERSION: z.string().min(1).optional(),
   AGENT_UPDATE_MANIFEST_DOWNLOAD_URL: z.string().url().optional(),
   AGENT_UPDATE_MANIFEST_CHECKSUM: z
@@ -75,6 +76,8 @@ const getServerEnvVars = (): unknown => {
     ),
     AGENT_ENROLL_RATE_LIMIT_MAX_REQUESTS: process.env.AGENT_ENROLL_RATE_LIMIT_MAX_REQUESTS,
     AGENT_ENROLL_RATE_LIMIT_WINDOW_SEC: process.env.AGENT_ENROLL_RATE_LIMIT_WINDOW_SEC,
+    AGENT_UPDATE_MANIFESTS_DIR:
+      normalizeOptionalEnv(process.env.AGENT_UPDATE_MANIFESTS_DIR) ?? 'agent-manifests',
     AGENT_UPDATE_MANIFEST_VERSION: normalizeOptionalEnv(process.env.AGENT_UPDATE_MANIFEST_VERSION),
     AGENT_UPDATE_MANIFEST_DOWNLOAD_URL: normalizeOptionalEnv(
       process.env.AGENT_UPDATE_MANIFEST_DOWNLOAD_URL,

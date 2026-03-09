@@ -1,7 +1,7 @@
 {
-  "channel": "stable",
+  "channel": "dev",
   "version": "0.0.0",
-  "download_url": "https://example.invalid/agent/stable/0.0.0/agent-linux-x64.tar.gz",
+  "download_url": "https://example.invalid/agent/dev/0.0.0/agent-linux-x64.tar.gz",
   "checksum": "0000000000000000000000000000000000000000000000000000000000000000",
   "published_at": "1970-01-01T00:00:00.000Z"
 }

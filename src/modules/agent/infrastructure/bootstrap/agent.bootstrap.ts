@@ -3,6 +3,10 @@ import {
   type AgentMonitoringUseCases,
   createAgentMonitoringUseCases,
 } from '~/modules/agent/application/agent-monitoring.usecases'
+import {
+  type AgentUpdateManifestService,
+  createAgentUpdateManifestService,
+} from '~/modules/agent/application/update-manifest.service'
 import { supabaseAgentMonitoringRepository } from '~/modules/agent/infrastructure/persistence/supabaseAgentMonitoringRepository'
 import { serverEnv } from '~/shared/config/server-env'
 
@@ -12,6 +16,7 @@ type AgentMonitoringBootstrapOverrides = {
 
 type AgentMonitoringModule = {
   readonly agentMonitoringUseCases: AgentMonitoringUseCases
+  readonly updateManifestService: AgentUpdateManifestService
 }
 
 export function bootstrapAgentMonitoringModule(
@@ -27,8 +32,13 @@ export function bootstrapAgentMonitoringModule(
       channel: serverEnv.AGENT_UPDATE_MANIFEST_CHANNEL,
     },
   })
+  const updateManifestService = createAgentUpdateManifestService({
+    repository,
+    manifestsDir: serverEnv.AGENT_UPDATE_MANIFESTS_DIR,
+  })
 
   return {
     agentMonitoringUseCases,
+    updateManifestService,
   }
 }

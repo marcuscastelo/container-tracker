@@ -1,0 +1,81 @@
+name: Rollback Channel
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel to rollback
+        required: true
+        type: choice
+        options:
+          - dev
+          - canary
+          - stable
+      version:
+        description: "Version to restore (example: 1.2.2)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  rollback-channel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate release and fetch checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release view "agent/v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null
+          rm -rf /tmp/agent-release
+          mkdir -p /tmp/agent-release
+          gh release download "agent/v${VERSION}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "agent-linux-x64.sha256" \
+            --dir /tmp/agent-release \
+            --clobber
+
+      - name: Update channel manifest
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          CHECKSUM="$(awk '{print $1}' /tmp/agent-release/agent-linux-x64.sha256)"
+          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          TARGET_FILE="agent-manifests/${CHANNEL}.json"
+
+          mkdir -p agent-manifests
+          cat > "${TARGET_FILE}" <<EOF
+          {
+            "channel": "${CHANNEL}",
+            "version": "${VERSION}",
+            "download_url": "${DOWNLOAD_URL}",
+            "checksum": "${CHECKSUM}",
+            "published_at": "${PUBLISHED_AT}"
+          }
+          EOF
+
+      - name: Commit rollback manifest
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          TARGET_FILE="agent-manifests/${CHANNEL}.json"
+          if git diff --quiet -- "${TARGET_FILE}"; then
+            echo "No rollback manifest changes detected"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${TARGET_FILE}"
+          git commit -m "chore(agent): rollback ${CHANNEL} to ${VERSION}"
+          git push origin main

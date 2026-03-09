@@ -1,0 +1,112 @@
+name: Publish Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (example: 1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run agent:build
+
+      - name: Package linux artifact
+        run: |
+          rm -rf /tmp/agent-linux-x64
+          mkdir -p /tmp/agent-linux-x64
+          cp -R tools/agent/dist /tmp/agent-linux-x64/dist
+          tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
+          sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-linux-x64
+          path: |
+            agent-linux-x64.tar.gz
+            agent-linux-x64.sha256
+          if-no-files-found: error
+
+  publish-release:
+    needs: build-artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-linux-x64
+          path: .
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agent/v${{ inputs.version }}
+          name: Agent v${{ inputs.version }} (canary)
+          prerelease: true
+          files: |
+            agent-linux-x64.tar.gz
+            agent-linux-x64.sha256
+
+      - name: Generate canary manifest
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          CHECKSUM="$(awk '{print $1}' agent-linux-x64.sha256)"
+          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          mkdir -p agent-manifests
+          cat > agent-manifests/canary.json <<EOF
+          {
+            "channel": "canary",
+            "version": "${VERSION}",
+            "download_url": "${DOWNLOAD_URL}",
+            "checksum": "${CHECKSUM}",
+            "published_at": "${PUBLISHED_AT}"
+          }
+          EOF
+
+      - name: Commit canary manifest
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git diff --quiet -- agent-manifests/canary.json; then
+            echo "No manifest changes detected"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add agent-manifests/canary.json
+          git commit -m "chore(agent): publish canary ${VERSION}"
+          git push origin main

@@ -1,0 +1,52 @@
+name: Build Agent
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: build-agent-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run agent:build
+
+      - name: Package linux artifact
+        run: |
+          rm -rf /tmp/agent-linux-x64
+          mkdir -p /tmp/agent-linux-x64
+          cp -R tools/agent/dist /tmp/agent-linux-x64/dist
+          tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
+          sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-linux-x64
+          path: |
+            agent-linux-x64.tar.gz
+            agent-linux-x64.sha256
+          if-no-files-found: error

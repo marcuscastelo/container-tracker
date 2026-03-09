@@ -203,6 +203,7 @@ export const AgentUpdateManifestResponseSchema = z.object({
     .regex(/^[a-f0-9]{64}$/iu)
     .nullable(),
   channel: z.string().min(1),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
   update_available: z.boolean(),
   desired_version: z.string().nullable(),
   current_version: z.string().min(1),

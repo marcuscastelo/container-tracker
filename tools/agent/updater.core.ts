@@ -21,6 +21,7 @@ const updateManifestResponseSchema = z.object({
   download_url: z.string().url().nullable(),
   checksum: z.string().regex(CHECKSUM_PATTERN).nullable(),
   channel: z.string().min(1),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
   update_available: z.boolean(),
   desired_version: z.string().min(1).nullable(),
   current_version: z.string().min(1),
@@ -91,6 +92,22 @@ function buildAuthHeaders(command: UpdateFetchCommand, includeContentType: boole
   return headers
 }
 
+function createNoUpdateManifest(channel: string): UpdateManifestResponse {
+  return {
+    version: '0.0.0',
+    download_url: null,
+    checksum: null,
+    channel,
+    published_at: null,
+    update_available: false,
+    desired_version: null,
+    current_version: 'unknown',
+    update_ready_version: null,
+    restart_required: false,
+    restart_requested_at: null,
+  }
+}
+
 export async function fetchUpdateManifest(
   command: UpdateFetchCommand,
   fetchImpl: FetchLike = fetch,
@@ -103,6 +120,10 @@ export async function fetchUpdateManifest(
   if (!response.ok) {
     const details = await response.text().catch(() => '')
     throw new Error(`update manifest request failed (${response.status}): ${details}`)
+  }
+
+  if (response.status === 204) {
+    return createNoUpdateManifest('stable')
   }
 
   const payload: unknown = await response.json().catch(() => ({}))

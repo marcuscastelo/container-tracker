@@ -79,6 +79,25 @@ describe('updater core', () => {
     expect(manifest.update_available).toBe(true)
   })
 
+  it('treats 204 response as no update available', async () => {
+    const fetchManifest = async (): Promise<Response> => {
+      return new Response(null, { status: 204 })
+    }
+
+    const manifest = await fetchUpdateManifest(
+      {
+        backendUrl: 'https://agent.test.local',
+        agentToken: 'tok_test',
+        agentId: 'agent-test',
+      },
+      fetchManifest,
+    )
+
+    expect(manifest.update_available).toBe(false)
+    expect(manifest.download_url).toBeNull()
+    expect(manifest.channel).toBe('stable')
+  })
+
   it('stages release download and validates checksum', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-updater-test-'))
     const layout = createLayout(tempDir)

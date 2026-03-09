@@ -1,0 +1,76 @@
+name: Promote Stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to promote from canary (example: 1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote-stable:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate release and fetch checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release view "agent/v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null
+          rm -rf /tmp/agent-release
+          mkdir -p /tmp/agent-release
+          gh release download "agent/v${VERSION}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "agent-linux-x64.sha256" \
+            --dir /tmp/agent-release \
+            --clobber
+
+      - name: Generate stable manifest from canary
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ ! -f agent-manifests/canary.json ]; then
+            echo "agent-manifests/canary.json not found"
+            exit 1
+          fi
+
+          CHECKSUM="$(awk '{print $1}' /tmp/agent-release/agent-linux-x64.sha256)"
+          DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          jq \
+            --arg version "${VERSION}" \
+            --arg download_url "${DOWNLOAD_URL}" \
+            --arg checksum "${CHECKSUM}" \
+            --arg published_at "${PUBLISHED_AT}" \
+            '.channel = "stable"
+              | .version = $version
+              | .download_url = $download_url
+              | .checksum = $checksum
+              | .published_at = $published_at' \
+            agent-manifests/canary.json > agent-manifests/stable.json
+
+      - name: Commit stable manifest
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git diff --quiet -- agent-manifests/stable.json; then
+            echo "No stable manifest changes detected"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add agent-manifests/stable.json
+          git commit -m "chore(agent): promote stable ${VERSION}"
+          git push origin main

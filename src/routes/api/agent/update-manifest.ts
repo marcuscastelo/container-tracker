@@ -1,7 +1,7 @@
-import { bootstrapAgentMonitoringControllers } from '~/modules/agent/interface/http/agent-monitoring.controllers.bootstrap'
+import { bootstrapUpdateManifestControllers } from '~/modules/agent/interface/http/update-manifest.controllers.bootstrap'
 
 export const runtime = 'nodejs'
 
-const agentMonitoringControllers = bootstrapAgentMonitoringControllers()
+const updateManifestControllers = bootstrapUpdateManifestControllers()
 
-export const GET = agentMonitoringControllers.getUpdateManifest
+export const GET = updateManifestControllers.getUpdateManifest
