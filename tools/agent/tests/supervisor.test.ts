@@ -41,7 +41,10 @@ function writeReleaseEntrypoint(layout: AgentPathLayout, version: string): strin
   return releaseDir
 }
 
-function writeReleaseWithSupervisorShim(layout: AgentPathLayout, version: string): {
+function writeReleaseWithSupervisorShim(
+  layout: AgentPathLayout,
+  version: string,
+): {
   readonly releaseDir: string
   readonly runtimeEntrypoint: string
 } {

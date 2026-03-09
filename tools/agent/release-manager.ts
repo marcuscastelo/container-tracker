@@ -14,7 +14,8 @@ const RELEASE_ENTRYPOINT_CANDIDATES = [
   'agent.js',
 ] as const
 
-const SUPERVISOR_SHIM_IMPORT_PATTERN = /^\s*import\s+['"]\.\/tools\/agent\/supervisor\.js['"];?\s*$/mu
+const SUPERVISOR_SHIM_IMPORT_PATTERN =
+  /^\s*import\s+['"]\.\/tools\/agent\/supervisor\.js['"];?\s*$/mu
 
 export function sanitizeVersionForPath(version: string): string {
   const trimmed = version.trim()
