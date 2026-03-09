@@ -125,7 +125,7 @@ function ContainerSelectorItem(props: {
             <span
               data-testid={`container-int-chip-${props.container.id}`}
               class={`inline-flex rounded px-1 py-px text-micro font-medium leading-none ${
-                props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-slate-100 text-slate-400'
+                props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-slate-100 text-slate-500'
               }`}
               title={props.container.tsChipVm.portsTooltip ?? undefined}
             >

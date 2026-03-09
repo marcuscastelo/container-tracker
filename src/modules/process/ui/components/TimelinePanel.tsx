@@ -133,7 +133,7 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.currentVessel}>
         {(vessel) => (
           <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
+            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
               {t(keys.shipmentView.timeline.vessel)}
             </span>
             <span class="text-micro font-semibold text-slate-600">{vessel()}</span>
@@ -144,7 +144,7 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.portsRoute}>
         {(route) => (
           <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
+            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
               {t(keys.shipmentView.transshipment.title)}
             </span>
             <span class="text-micro font-medium tabular-nums text-slate-500">{route()}</span>

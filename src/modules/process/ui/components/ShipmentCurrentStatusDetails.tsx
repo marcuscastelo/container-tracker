@@ -19,7 +19,7 @@ type Props = {
 function StatusRow(props: { readonly label: string; readonly children: JSX.Element }): JSX.Element {
   return (
     <div class="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4 items-start">
-      <dt class="whitespace-nowrap text-micro font-medium uppercase tracking-wider text-slate-400 sm:w-40 sm:flex-shrink-0">
+      <dt class="whitespace-nowrap text-micro font-medium uppercase tracking-wider text-slate-500 sm:w-40 sm:flex-shrink-0">
         {props.label}
       </dt>
       <dd class="text-sm-ui text-slate-700">{props.children}</dd>

@@ -53,7 +53,7 @@ export function AlertsPanel(props: Props): JSX.Element {
 
       <Show when={props.archivedAlerts.length > 0}>
         <details class="rounded-lg border border-slate-100 bg-slate-50/50 p-1.5">
-          <summary class="cursor-pointer select-none text-micro font-medium uppercase tracking-wider text-slate-400">
+          <summary class="cursor-pointer select-none text-micro font-medium uppercase tracking-wider text-slate-500">
             {t(keys.shipmentView.alerts.archived.title, { count: props.archivedAlerts.length })}
           </summary>
           <div class="mt-1">

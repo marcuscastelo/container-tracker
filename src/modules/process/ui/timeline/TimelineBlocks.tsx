@@ -154,7 +154,7 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
         <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
       </div>
       <Show when={props.block.location}>
-        {(loc) => <p class="mt-0.5 text-micro text-slate-400">{loc()}</p>}
+        {(loc) => <p class="mt-0.5 text-micro text-slate-500">{loc()}</p>}
       </Show>
     </div>
   )
