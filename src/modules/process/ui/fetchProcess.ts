@@ -9,6 +9,7 @@ export type FetchProcessMode = 'cache-first' | 'network-only'
 
 type FetchProcessOptions = {
   readonly mode?: FetchProcessMode
+  readonly dedupeInFlight?: boolean
 }
 
 type ProcessCacheRecord = {
@@ -83,10 +84,18 @@ async function fetchProcessFromApi(id: string, locale: string): Promise<Shipment
 async function loadProcessFromNetwork(
   id: string,
   locale: string,
+  dedupeInFlight = true,
 ): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
-  const inFlight = inFlightProcessRequests.get(key)
-  if (inFlight) return inFlight
+
+  // When dedupeInFlight is true we reuse any in-flight request for the same
+  // process/locale key to avoid duplicating network traffic. Callers that
+  // require a canonical post-mutation snapshot (for example after ACK/UNACK)
+  // should request dedupeInFlight=false to force an independent network call.
+  if (dedupeInFlight) {
+    const inFlight = inFlightProcessRequests.get(key)
+    if (inFlight) return inFlight
+  }
 
   const request = fetchProcessFromApi(id, locale)
     .then((value) => {
@@ -97,7 +106,10 @@ async function loadProcessFromNetwork(
       inFlightProcessRequests.delete(key)
     })
 
-  inFlightProcessRequests.set(key, request)
+  // Only register the in-flight promise when deduping is enabled so that
+  // callers which forced a fresh network request don't join subsequent
+  // in-flight requests that they intentionally avoided.
+  if (dedupeInFlight) inFlightProcessRequests.set(key, request)
   return request
 }
 
@@ -114,9 +126,18 @@ export async function fetchProcess(
   locale: string = 'en-US',
   options?: FetchProcessOptions,
 ): Promise<ShipmentDetailVM | null> {
+  // Decide whether callers want in-flight deduplication. By default we keep
+  // previous behaviour (dedupe enabled) for cache-first loads. For
+  // `network-only` callers we default to forcing a fresh network request so
+  // callers that need a canonical post-mutation snapshot don't join older
+  // in-flight requests. Consumers can override this with `dedupeInFlight`.
+  const explicitDedupe = options?.dedupeInFlight
+  const dedupeInFlight = explicitDedupe ?? options?.mode !== 'network-only'
+
   if (options?.mode === 'network-only') {
-    return loadProcessFromNetwork(id, locale)
+    return loadProcessFromNetwork(id, locale, dedupeInFlight)
   }
+  // cache-first path continues to dedupe by default
   return loadProcessWithCache(id, locale)
 }
 
