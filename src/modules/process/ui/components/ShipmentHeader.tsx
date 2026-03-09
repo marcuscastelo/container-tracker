@@ -228,7 +228,7 @@ function ProcessEtaSummary(props: {
     <Show when={props.processEtaSecondaryVm.visible}>
       <div
         data-testid="process-eta-summary"
-        class="inline-flex items-center gap-1 text-micro text-slate-400"
+        class="inline-flex items-center gap-1 text-micro text-slate-500"
       >
         <span class="font-medium">{props.processEtaTitle}:</span>
         <span data-testid="process-eta-date" class="text-xs-ui font-bold text-slate-800">
@@ -263,8 +263,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
     return (
       <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
         <div class="flex items-center gap-2 min-w-0">
-          <h1 class="truncate text-lg-ui font-bold text-slate-900 leading-tight">
-            {t(keys.shipmentView.header)} {p.props.data.processRef}
+          <h1 class=" text-lg-ui gap-2 font-bold text-slate-900 leading-tight">
+            <span class="truncate">
+              {t(keys.shipmentView.header)} {p.props.data.processRef}
+            </span>
             <Show when={!p.props.data.reference}>
               <InternalIdHint
                 message={t(keys.shipmentView.internalIdMessage)}
@@ -273,7 +275,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
               />
             </Show>
           </h1>
-          <span class="hidden text-xs-ui text-slate-400/80 sm:inline-flex sm:items-center sm:gap-0.5">
+          <span class="hidden text-xs-ui text-slate-500 sm:inline-flex sm:items-center sm:gap-0.5">
             {p.props.data.origin}
             <ArrowIcon />
             {p.props.data.destination}
@@ -285,7 +287,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
             variant={p.props.data.status}
             label={t(trackingStatusToLabelKey(keys, p.props.data.statusCode))}
           />
-          <span class="text-micro font-medium uppercase tracking-wider text-slate-400">
+          <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
             {p.props.data.carrier ?? '—'}
           </span>
 
@@ -347,7 +349,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
           noEta={t(keys.shipmentView.operational.header.noEta)}
           incomplete={t(keys.shipmentView.operational.header.incomplete)}
         />
-        <div class="inline-flex items-center gap-2 text-micro text-slate-400">
+        <div class="inline-flex items-center gap-2 text-micro text-slate-500">
           <span>
             <span class="font-medium">{t(keys.shipmentView.containers.title)}:</span>{' '}
             <span class="text-slate-500">{p.props.data.containers.length}</span>

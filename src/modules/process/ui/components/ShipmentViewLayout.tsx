@@ -118,7 +118,7 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
         <main class="mx-auto max-w-7xl px-2 py-2 sm:px-4 lg:px-8">
           <A
             href="/"
-            class="mb-1.5 inline-flex items-center gap-1 text-micro text-slate-400 hover:text-slate-700"
+            class="mb-1.5 inline-flex items-center gap-1 text-micro text-slate-500 hover:text-slate-700"
             onPointerEnter={triggerDashboardIntent}
             onFocusIn={triggerDashboardIntent}
             onPointerDown={triggerDashboardIntent}

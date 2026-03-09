@@ -163,7 +163,7 @@ export function TimelineNode(props: {
         return {
           dot: 'border border-slate-300 bg-white',
           line: 'bg-slate-200',
-          text: 'text-slate-400',
+          text: 'text-slate-500',
         }
     }
   })

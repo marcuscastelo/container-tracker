@@ -17,7 +17,7 @@ function InfoRow(props: InfoRowProps): JSX.Element | null {
   return (
     <Show when={props.value}>
       <div class="flex items-baseline justify-between gap-2 py-0.5">
-        <span class="text-micro font-medium uppercase tracking-wider text-slate-400 shrink-0">
+        <span class="text-micro font-medium uppercase tracking-wider text-slate-500 shrink-0">
           {props.label}
         </span>
         <span class="text-xs-ui font-medium text-slate-700 text-right truncate">{props.value}</span>
