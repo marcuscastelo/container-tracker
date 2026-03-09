@@ -2,6 +2,10 @@ import type { JSX } from 'solid-js'
 import { createMemo } from 'solid-js'
 import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import {
+  deriveCurrentLocationFromTimeline,
+  deriveCurrentVesselFromTimeline,
+} from '~/modules/process/ui/utils/current-tracking-context'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
@@ -9,40 +13,6 @@ import { StatusBadge } from '~/shared/ui/StatusBadge'
 type Props = {
   readonly container: ContainerDetailVM
   readonly syncNow: Date
-}
-
-function deriveCurrentVessel(container: ContainerDetailVM): string | null {
-  const timeline = container.timeline
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.vesselName && event.eventTimeType === 'ACTUAL') {
-      return event.vesselName
-    }
-  }
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.vesselName) {
-      return event.vesselName
-    }
-  }
-  return null
-}
-
-function deriveCurrentLocation(container: ContainerDetailVM): string | null {
-  const timeline = container.timeline
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.location && event.eventTimeType === 'ACTUAL') {
-      return event.location
-    }
-  }
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.location) {
-      return event.location
-    }
-  }
-  return null
 }
 
 function StatusRow(props: { readonly label: string; readonly children: JSX.Element }): JSX.Element {
@@ -60,8 +30,10 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const unknown = () => t(keys.shipmentView.currentStatus.unknown)
 
-  const currentVessel = createMemo(() => deriveCurrentVessel(props.container))
-  const currentLocation = createMemo(() => deriveCurrentLocation(props.container))
+  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.container.timeline))
+  const currentLocation = createMemo(() =>
+    deriveCurrentLocationFromTimeline(props.container.timeline),
+  )
 
   const syncLabel = createMemo(() =>
     toContainerSyncLabel(
@@ -105,9 +77,7 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
         </StatusRow>
 
         <StatusRow label={t(keys.shipmentView.currentStatus.eta)}>
-          <span class="font-bold tabular-nums">
-            {props.container.etaChipVm.date ?? props.container.eta ?? unknown()}
-          </span>
+          <span class="font-bold tabular-nums">{props.container.etaChipVm.date ?? unknown()}</span>
         </StatusRow>
 
         <StatusRow label={t(keys.shipmentView.currentStatus.lastUpdate)}>

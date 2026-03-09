@@ -19,6 +19,7 @@ import {
   type TerminalSegmentKind,
   type TimelineRenderItem,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
+import { deriveCurrentVesselFromTimeline } from '~/modules/process/ui/utils/current-tracking-context'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -56,25 +57,6 @@ function buildHighlightedEventTypes(alerts: readonly AlertDisplayVM[]): Readonly
   return types
 }
 
-function deriveCurrentVessel(container: ContainerDetailVM | null): string | null {
-  if (!container) return null
-  const timeline = container.timeline
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.vesselName && event.eventTimeType === 'ACTUAL') {
-      return event.vesselName
-    }
-  }
-  // Fallback: any vessel from expected events
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const event = timeline[i]
-    if (event.vesselName) {
-      return event.vesselName
-    }
-  }
-  return null
-}
-
 function derivePortsRoute(container: ContainerDetailVM | null): string | null {
   if (!container) return null
   const ports = container.transshipment.ports
@@ -86,7 +68,7 @@ export function TimelinePanel(props: Props): JSX.Element {
   const timeline = () => props.selectedContainer?.timeline ?? []
   const { t, keys } = useTranslation()
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
-  const currentVessel = createMemo(() => deriveCurrentVessel(props.selectedContainer))
+  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(timeline()))
   const portsRoute = createMemo(() => derivePortsRoute(props.selectedContainer))
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 
@@ -282,7 +264,7 @@ type CurrentVoyageEvent = {
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
 }
 
-export type CurrentVoyageGroup =
+type CurrentVoyageGroup =
   | {
       readonly kind: 'voyage'
       readonly events: readonly CurrentVoyageEvent[]
@@ -325,7 +307,7 @@ function toCurrentVoyageGroups(groups: readonly BlockGroup[]): readonly CurrentV
  * - If fallback applies and a post-carriage block has ACTUAL events after that voyage,
  *   return -1 (voyage is no longer current).
  */
-export function resolveCurrentVoyageIndex(groups: readonly CurrentVoyageGroup[]): number {
+function resolveCurrentVoyageIndex(groups: readonly CurrentVoyageGroup[]): number {
   let fallbackIdx = -1
 
   for (let i = 0; i < groups.length; i++) {
