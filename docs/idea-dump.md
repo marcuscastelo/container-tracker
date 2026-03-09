@@ -1,22 +1,3 @@
-# Feedbacks
-Aumentar navbar altura
-Linhas finas verticais tabela para reconhecer colunas
-Trocar botado do sync por (duas setas, igual browser)
-Adicionar order em todas as colunas, padrao é severidade critico, warning, e nada
-Process Ref sempre caber na coluna (testar no windows, chrome, en e ptbr)
-Fazer cards/panels terem mais destaque para com o fundo por meio de sombras
-Tentar aumentar hierarquia de fontes, para "Intervalo X dias sem novos eventos ficar mais visivel"
-Adicionar importador e exportador nas colunas do dashboard
-Colapsar 3 colunas SEVERIDADE DOMINANTE, ALERTA DOMINANTE, ALERTAS ATIVOS -> 1 coluna capaz de exibir quantidade de alertas e alerta dominante
-Remover chip atencao, mantendo apenas strip de atencao + icone warning.
-Icone warning tooltip exibe o alerta dominante (e potencialmente mais 2 ou 3) em vez de ter coluna dedicada
-Adicionar Importador como primeiras colunas apos processo
-Permitir reordenar as colunas entre si (localstorage)
-Permitir sort em todas as colunas.
-Sync em penultimo ou ultimo
-Fotinha no tray icon do agent no windows
-Fazer alertas nao ser mais sticky no process
-
 # Bugs
 Criando novo processo: adiciona um container ja existente, edita para um nao existente. Adiciona outro container ja existente, REMOVE com a lixeira, readiciona so que nao existente. Resultado: soft-lock mensagem "container ja existente" e nao da para resolver pq o campo foi deletado.
 Nao da pra remover BL do processo no update (será que nao da pra remover nada? será que é qualquer tipo de update? testar)
