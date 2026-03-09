@@ -378,3 +378,24 @@ Execution guideline for PR-suggestion tasks:
 2. Prioritize actionable code suggestions (correctness/performance/tests/clarity).
 3. Implement what is technically sound and aligned with architecture/invariants.
 4. Run required checks/build and keep it green before commit.
+
+---
+
+## 21) Serena MCP for Semantic Refactors (Codex CLI)
+
+Use this flow when refactoring symbols across files (rename, method extraction, call-site updates) and prefer semantic/LSP edits over plain regex replacements.
+
+Codex CLI MCP config (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.serena]
+command = "uvx"
+args = ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--context", "ide", "--project-from-cwd"]
+```
+
+Guidelines:
+
+- Keep `.serena/project.yml` aligned with the repo languages (for this repo: `typescript`).
+- For code refactors, prefer Serena symbolic tools (`find_symbol`, `find_referencing_symbols`, `rename_symbol`, `replace_symbol_body`).
+- Use plain text/regex replacement only for non-code artifacts or when symbol-level operations are not applicable.
+- If Serena bootstrap/cache/network fails under sandbox constraints, rerun outside sandbox.

@@ -4,14 +4,17 @@ import { processSnapshot } from '~/modules/tracking/application/orchestration/pi
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
-import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
-} from '~/modules/tracking/domain/model/trackingAlert'
+} from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type {
+  NewObservation,
+  Observation,
+} from '~/modules/tracking/features/observation/domain/model/observation'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 
 // Note: repositories now throw on infra errors and return direct types.

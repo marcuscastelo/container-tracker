@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
 import { groupVoyageSegments } from '~/modules/tracking/application/projection/voyageSegments'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 function makeEvent(
   overrides: Partial<TrackingTimelineItem> & Pick<TrackingTimelineItem, 'type'>,

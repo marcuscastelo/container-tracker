@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { DashboardOperationalSummaryReadModelDeps } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import { createDashboardUseCases } from '~/capabilities/dashboard/application/dashboard.usecases'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 
 type ProcessesProjection = Awaited<
   ReturnType<

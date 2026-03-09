@@ -1,8 +1,8 @@
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import {
   TRACKING_STATUS_CODES,
   toTrackingStatusCode,
-} from '~/modules/tracking/application/projection/tracking.status.projection'
+} from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 

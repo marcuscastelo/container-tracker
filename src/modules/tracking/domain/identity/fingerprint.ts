@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
+import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
 /**
  * Computes a deterministic fingerprint for an ObservationDraft.

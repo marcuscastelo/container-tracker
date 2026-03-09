@@ -1,6 +1,9 @@
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { TrackingSearchObservationProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
-import type { NewObservation, Observation } from '~/modules/tracking/domain/model/observation'
+import type {
+  NewObservation,
+  Observation,
+} from '~/modules/tracking/features/observation/domain/model/observation'
 import {
   observationRowToDomain,
   observationToInsertRow,

@@ -1,9 +1,9 @@
-import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
+import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import {
   type TrackingOperationalAlertCategory,
   toTrackingOperationalAlertCategory,
-} from '~/modules/tracking/application/projection/tracking.operational-alert-category.readmodel'
+} from '~/modules/tracking/features/alerts/application/projection/tracking.operational-alert-category.readmodel'
 
 type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 

@@ -1,8 +1,8 @@
+import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import {
   type TrackingAlertDisplayReadModel,
   toTrackingAlertDisplayReadModels,
-} from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
-import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+} from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 
 /**
  * Command to list active alerts for a container by its ID.

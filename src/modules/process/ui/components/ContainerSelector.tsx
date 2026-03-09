@@ -4,7 +4,7 @@ import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 import { CopyButton } from '~/shared/ui/CopyButton'
 import { StatusBadge } from '~/shared/ui/StatusBadge'

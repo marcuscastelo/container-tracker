@@ -1,4 +1,4 @@
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type DashboardProcessExceptionSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'

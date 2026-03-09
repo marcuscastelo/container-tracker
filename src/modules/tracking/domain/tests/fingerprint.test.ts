@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
-import type { ObservationDraft } from '~/modules/tracking/domain/model/observationDraft'
+import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 
 function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft {
   return {

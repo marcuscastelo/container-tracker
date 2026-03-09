@@ -5,7 +5,7 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import type {
   TrackingAlert,
   TrackingAlertAckSource,
-} from '~/modules/tracking/domain/model/trackingAlert'
+} from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
 
 function createControllers(options?: {

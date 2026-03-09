@@ -1,6 +1,3 @@
-import { deriveProcessStatusFromContainers } from '~/modules/process/application/operational-projection/deriveProcessStatus'
-import { toOperationalStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
-import type { ProcessOperationalSummary } from '~/modules/process/application/operational-projection/processOperationalSummary'
 import type {
   ProcessContainerRecord,
   ProcessWithContainers,
@@ -9,26 +6,29 @@ import type {
   InsertProcessRecord,
   UpdateProcessRecord,
 } from '~/modules/process/application/process.records'
-import type { ProcessSyncStateReadModel } from '~/modules/process/application/usecases/list-process-sync-states.usecase'
 import type { ProcessSyncSummaryReadModel } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
-import type { RefreshProcessResult } from '~/modules/process/application/usecases/refresh-process.usecase'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
+import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/operational-projection/deriveProcessStatus'
+import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
+import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/operational-projection/processOperationalSummary'
+import type { ProcessSyncStateReadModel } from '~/modules/process/features/process-sync/application/usecases/list-process-sync-states.usecase'
+import type { RefreshProcessResult } from '~/modules/process/features/process-sync/application/usecases/refresh-process.usecase'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
-import {
-  type TrackingAlertDisplayReadModel,
-  type TrackingAlertDisplaySource,
-  toTrackingAlertDisplayReadModels,
-} from '~/modules/tracking/application/projection/tracking.alert-display.readmodel'
-import { toTrackingAlertMessageContract } from '~/modules/tracking/application/projection/tracking.alert-message-contract.mapper'
 import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import {
+  type TrackingAlertDisplayReadModel,
+  type TrackingAlertDisplaySource,
+  toTrackingAlertDisplayReadModels,
+} from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
+import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
 import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
-} from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
-import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+} from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record

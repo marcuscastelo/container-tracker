@@ -1,9 +1,9 @@
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
-} from '~/modules/tracking/domain/model/trackingAlert'
+} from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 /**
  * Repository interface for TrackingAlert persistence.

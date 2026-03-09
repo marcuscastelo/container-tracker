@@ -1,4 +1,4 @@
-import type { ProcessAggregatedStatus } from '~/modules/process/application/operational-projection/operationalSemantics'
+import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
 import {
   createNeverContainerSyncVM,
   normalizeContainerNumber,
@@ -10,7 +10,7 @@ import {
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'

@@ -4,7 +4,7 @@ import {
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
-import { TRACKING_STATUS_CODES } from '~/modules/tracking/application/projection/tracking.status.projection'
+import { TRACKING_STATUS_CODES } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 
 export type ProcessListItemSource = {
   id: string

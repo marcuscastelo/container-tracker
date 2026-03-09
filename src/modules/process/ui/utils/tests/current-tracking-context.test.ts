@@ -4,7 +4,7 @@ import {
   deriveCurrentVesselFromTimeline,
   shouldHideCurrentVesselForCompletedLeg,
 } from '~/modules/process/ui/utils/current-tracking-context'
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 function createTimelineEvent(
   overrides: {

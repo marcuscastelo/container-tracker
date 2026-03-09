@@ -15,7 +15,7 @@ import type {
   DashboardStatusFilterOption,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 /**
  * VoyageSegment — a contiguous group of timeline events

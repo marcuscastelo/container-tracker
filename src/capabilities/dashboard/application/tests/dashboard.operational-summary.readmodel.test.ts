@@ -3,7 +3,7 @@ import {
   createDashboardOperationalSummaryReadModelUseCase,
   type DashboardOperationalSummaryReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
-import type { TrackingActiveAlertReadModel } from '~/modules/tracking/application/projection/tracking.active-alert.readmodel'
+import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 
 type ProcessesProjection = Awaited<
   ReturnType<

@@ -7,7 +7,7 @@ import {
   resolveTimelineEventLabelPresentation,
 } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { TimelineNodeLayout } from '~/modules/process/ui/TimelineNode.layout'
-import type { TrackingTimelineItem } from '~/modules/tracking/application/projection/tracking.timeline.readmodel'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
