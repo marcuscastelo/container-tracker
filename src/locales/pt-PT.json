@@ -330,6 +330,7 @@
       "count": "{{count}} portos intermédios"
     },
     "loading": "A carregar...",
+    "loadError": "Falha ao carregar detalhes do processo",
     "notFound": "Processo não encontrado",
     "noEvents": "Nenhum evento registado ainda",
     "internalIdMessage": "Este processo está a ser mostrado com um ID interno porque não foi fornecida uma referência. Pode adicionar uma referência personalizada para facilitar a identificação.",

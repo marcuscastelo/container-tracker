@@ -29,6 +29,7 @@ import {
   subscribeToSyncRequestsRealtimeByIds,
 } from '~/shared/api/sync-requests.realtime.client'
 import { useTranslation } from '~/shared/localization/i18n'
+import { navigateToProcess } from '~/shared/ui/navigation/app-navigation'
 
 type DialogCarrier = CreateProcessDialogFormData['carrier']
 type RefreshRetryState = { readonly current: number; readonly total: number }
@@ -657,7 +658,7 @@ function toCreateErrorExisting(
 
 type ProcessDialogsControllerCommand = {
   readonly processId: () => string
-  readonly navigate: (to: string) => void
+  readonly navigate: ReturnType<typeof useNavigate>
   readonly refetchShipment: () => unknown
 }
 
@@ -697,7 +698,10 @@ function useProcessDialogsController(
       try {
         const resultId = await createProcessRequest(toCreateProcessInput(formData))
         setIsCreateDialogOpen(false)
-        command.navigate(`/shipments/${resultId}`)
+        navigateToProcess({
+          navigate: command.navigate,
+          processId: resultId,
+        })
       } catch (err) {
         const conflict = parseExistingProcessConflictError(err)
         if (conflict) {
@@ -783,7 +787,7 @@ function useProcessDialogsController(
 type AlertActionsCommand = {
   readonly acknowledgeErrorMessage: string
   readonly unacknowledgeErrorMessage: string
-  readonly refetchShipment: () => unknown
+  readonly reconcileTrackingView: () => Promise<void>
   readonly updateAlerts: (
     updater: (current: readonly AlertDisplayVM[]) => readonly AlertDisplayVM[],
   ) => void
@@ -819,7 +823,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
       command.updateAlerts((alerts) => {
         return withAlertMarkedAsAcknowledged(alerts, alertId, new Date().toISOString())
       })
-      await command.refetchShipment()
+      await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to acknowledge alert:', err)
       setAlertActionError(command.acknowledgeErrorMessage)
@@ -837,7 +841,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
     try {
       await unacknowledgeTrackingAlertRequest(alertId)
       command.updateAlerts((alerts) => withAlertMarkedAsActive(alerts, alertId))
-      await command.refetchShipment()
+      await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to unacknowledge alert:', err)
       setAlertActionError(command.unacknowledgeErrorMessage)
@@ -943,7 +947,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const alertActions = useAlertActionsController({
     acknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorAcknowledge),
     unacknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorUnacknowledge),
-    refetchShipment: () => refetch(),
+    reconcileTrackingView: refreshTrackingData,
     updateAlerts: (updater) => {
       mutate((current) => {
         if (!current) return current

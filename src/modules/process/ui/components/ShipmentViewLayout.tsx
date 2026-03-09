@@ -68,8 +68,9 @@ type ShipmentViewLayoutProps = {
 
 export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element {
   const { t, keys } = useTranslation()
-  const shouldShowNotFound = () =>
-    Boolean(props.shipmentError) || (props.shipmentData === null && !props.shipmentLoading)
+  const shouldShowNotFound = () => props.shipmentData === null && !props.shipmentLoading
+  const shouldShowLoadError = () =>
+    Boolean(props.shipmentError) && props.shipmentData === undefined && !props.shipmentLoading
 
   return (
     <div class="relative min-h-screen bg-slate-50">
@@ -130,6 +131,15 @@ export function ShipmentViewLayout(props: ShipmentViewLayoutProps): JSX.Element 
           <Show when={props.shipmentLoading}>
             <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
               <p class="text-slate-500">{t(keys.shipmentView.loading)}</p>
+            </div>
+          </Show>
+
+          <Show when={shouldShowLoadError()}>
+            <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
+              <p class="text-red-500">{t(keys.shipmentView.loadError)}</p>
+              <A href="/" class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900">
+                {t(keys.shipmentView.backToDashboard)}
+              </A>
             </div>
           </Show>
 
