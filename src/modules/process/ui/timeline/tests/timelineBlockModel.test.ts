@@ -56,6 +56,8 @@ describe('buildTimelineRenderList', () => {
 
     if (tsBlocks[0].type === 'transshipment-block') {
       expect(tsBlocks[0].block.port).toBe('B')
+      expect(tsBlocks[0].block.fromVessel).toBe('V1')
+      expect(tsBlocks[0].block.toVessel).toBe('V2')
     }
   })
 

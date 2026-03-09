@@ -55,11 +55,17 @@ export function VoyageBlockHeader(props: {
 
     if (!dest) return null
 
-    // If ETA not found yet, look for any EXPECTED event
+    // If ETA not found yet, prefer EXPECTED ARRIVAL or EXPECTED DISCHARGE events only.
+    // Avoid picking unrelated EXPECTED events (e.g., DEPARTURE) as ETA when destination
+    // is already known from actuals.
     if (!etaIso) {
       for (let i = events.length - 1; i >= 0; i--) {
         const ev = events[i]
-        if (ev.eventTimeType === 'EXPECTED' && ev.eventTimeIso) {
+        if (
+          ev.eventTimeType === 'EXPECTED' &&
+          ev.eventTimeIso &&
+          (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')
+        ) {
           etaIso = ev.eventTimeIso
           break
         }
@@ -185,11 +191,12 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
         }
       >
         <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/60 px-2 py-0.5 text-micro">
-          <span class="font-semibold text-amber-900 truncate">{props.block.fromVessel ?? '?'}</span>
-          <span class="text-amber-600 shrink-0" aria-hidden="true">
-            →
+          <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
+            {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+              from: props.block.fromVessel ?? '?',
+              to: props.block.toVessel ?? '?',
+            })}
           </span>
-          <span class="font-semibold text-amber-900 truncate">{props.block.toVessel ?? '?'}</span>
         </div>
       </Show>
     </div>
