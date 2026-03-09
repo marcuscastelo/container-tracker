@@ -71,6 +71,7 @@ import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
+import { navigateToProcess } from '~/shared/ui/navigation/app-navigation'
 
 function toPathWithSearch(pathname: string, searchParams: URLSearchParams): string {
   const nextQuery = searchParams.toString()
@@ -218,6 +219,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     await refetchProcesses()
   }
 
+  const handleOpenProcess = (processId: string) => {
+    navigateToProcess({
+      navigate,
+      processId,
+    })
+  }
+
   const handleSortToggle = (field: DashboardSortField) => {
     const nextSelection = nextDashboardSortSelection(sortSelection(), field)
     setSortSelection(nextSelection)
@@ -263,7 +271,10 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       setIsCreateDialogOpen(false)
 
-      navigate(`/shipments/${processId}`)
+      navigateToProcess({
+        navigate,
+        processId,
+      })
     } catch (err) {
       console.error('Failed to create process:', err)
       const conflict = parseExistingProcessConflictError(err)
@@ -346,6 +357,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             sortSelection={sortSelection()}
             onSortToggle={handleSortToggle}
             onProcessSync={handleProcessSync}
+            onOpenProcess={handleOpenProcess}
           />
         </main>
       </div>

@@ -3,6 +3,12 @@ import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
 import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import {
+  hasDashboardRowSelectedText,
+  isInteractiveDashboardRowTarget,
+  shouldHandleDashboardRowClick,
+  shouldHandleDashboardRowKeydown,
+} from '~/modules/process/ui/utils/dashboard-row-navigation'
 import { getActiveDashboardSortDirection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type {
   DashboardSortDirection,
@@ -12,6 +18,7 @@ import type {
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
+import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -27,12 +34,14 @@ type Props = {
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
   readonly onProcessSync: (processId: string) => Promise<void>
+  readonly onOpenProcess: (processId: string) => void
 }
 
 type RowProps = {
   readonly process: ProcessSummaryVM
   readonly index: number
   readonly onProcessSync: (processId: string) => Promise<void>
+  readonly onOpenProcess: (processId: string) => void
 }
 
 type TableRowsProps = {
@@ -40,6 +49,7 @@ type TableRowsProps = {
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
   readonly onProcessSync: (processId: string) => Promise<void>
+  readonly onOpenProcess: (processId: string) => void
 }
 
 type SortHeaderProps = {
@@ -181,9 +191,37 @@ function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
   return '✓'
 }
 
+function formatDashboardAlertAge(params: {
+  readonly triggeredAtIso: string | null
+  readonly t: (key: string, opts?: Record<string, unknown>) => string
+  readonly keys: ReturnType<typeof useTranslation>['keys']
+}): { label: string; agingClass: string } | null {
+  if (!params.triggeredAtIso) return null
+  const date = new Date(params.triggeredAtIso)
+  if (Number.isNaN(date.getTime())) return null
+
+  const diffMs = Date.now() - date.getTime()
+  const hours = Math.floor(diffMs / 3_600_000)
+  const days = Math.floor(hours / 24)
+
+  let label: string
+  if (hours < 1) label = params.t(params.keys.dashboard.table.age.now)
+  else if (hours < 24) label = params.t(params.keys.dashboard.table.age.hours, { count: hours })
+  else label = params.t(params.keys.dashboard.table.age.days, { count: days })
+
+  // Aging color: 0-24h neutral, 1-3d warning, 4+d danger.
+  let agingClass: string
+  if (days >= 4) agingClass = 'text-red-500'
+  else if (days >= 1) agingClass = 'text-amber-500'
+  else agingClass = 'text-slate-400'
+
+  return { label, agingClass }
+}
+
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const route = () => displayRoute(props.process)
+  const processHref = () => buildProcessHref(props.process.id)
 
   const dominantSeverity = () => toDominantSeverity(props.process)
   const dominantAlertLabel = () => toDominantAlertLabel(props.process, t, keys)
@@ -196,30 +234,12 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
   }
 
-  /** Format alert age from the dominant alert creation timestamp. */
-  function formatAge(ts: string | null): { label: string; agingClass: string } | null {
-    if (!ts) return null
-    const date = new Date(ts)
-    if (Number.isNaN(date.getTime())) return null
-    const diffMs = Date.now() - date.getTime()
-    const hours = Math.floor(diffMs / 3_600_000)
-    const days = Math.floor(hours / 24)
-
-    let label: string
-    if (hours < 1) label = t(keys.dashboard.table.age.now)
-    else if (hours < 24) label = t(keys.dashboard.table.age.hours, { count: hours })
-    else label = t(keys.dashboard.table.age.days, { count: days })
-
-    // Aging color: 0-24h neutral, 1-3d warning, 4+d danger
-    let agingClass: string
-    if (days >= 4) agingClass = 'text-red-500'
-    else if (days >= 1) agingClass = 'text-amber-500'
-    else agingClass = 'text-slate-400'
-
-    return { label, agingClass }
-  }
-
-  const alertAge = () => formatAge(props.process.dominantAlertCreatedAt)
+  const alertAge = () =>
+    formatDashboardAlertAge({
+      triggeredAtIso: props.process.dominantAlertCreatedAt,
+      t,
+      keys,
+    })
 
   const alertTooltip = (): string | undefined => {
     if (dominantSeverity() === 'none') return undefined
@@ -234,47 +254,102 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   }
 
   const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
+  const openProcess = () => {
+    props.onOpenProcess(props.process.id)
+  }
+
+  const handleRowClick = (event: MouseEvent) => {
+    const shouldNavigate = shouldHandleDashboardRowClick({
+      defaultPrevented: event.defaultPrevented,
+      button: event.button,
+      metaKey: event.metaKey,
+      ctrlKey: event.ctrlKey,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      interactiveTarget: isInteractiveDashboardRowTarget(event.target),
+      hasSelectedText: hasDashboardRowSelectedText(),
+    })
+    if (!shouldNavigate) return
+
+    event.preventDefault()
+    openProcess()
+  }
+
+  const handleProcessLinkClick = (event: MouseEvent) => {
+    if (event.defaultPrevented) return
+    if (event.button !== 0) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    openProcess()
+  }
+
+  const handleRowKeydown = (event: KeyboardEvent) => {
+    const shouldNavigate = shouldHandleDashboardRowKeydown({
+      defaultPrevented: event.defaultPrevented,
+      key: event.key,
+      interactiveTarget: isInteractiveDashboardRowTarget(event.target),
+    })
+    if (!shouldNavigate) return
+
+    event.preventDefault()
+    openProcess()
+  }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: Row-level delegated navigation must coexist with internal interactive controls, which prevents using a single semantic <button>/<a> wrapper.
     <div
-      class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      role="button"
+      tabIndex={0}
+      class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 cursor-pointer ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      onClick={handleRowClick}
+      onKeyDown={handleRowKeydown}
     >
       {/* Process — visual anchor */}
       <div class="overflow-hidden px-3 py-2">
         <A
-          href={`/shipments/${props.process.id}`}
+          href={processHref()}
           class="text-md-ui font-semibold text-slate-900 hover:text-blue-700 hover:underline whitespace-nowrap truncate block"
+          onClick={handleProcessLinkClick}
         >
           {displayProcessRef(props.process)}
         </A>
       </div>
       {/* Route — secondary */}
       <div class="overflow-hidden px-3 py-2">
-        <div class="flex items-center gap-1 text-xs-ui text-slate-500 leading-tight">
-          <span class="truncate">{route().origin}</span>
-          <ArrowIcon />
-          <span class="truncate font-medium text-slate-600">{route().destination}</span>
-          <Show when={props.process.redestinationNumber}>
-            <span class="text-micro text-slate-400">({props.process.redestinationNumber})</span>
-          </Show>
-        </div>
+        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+          <div class="flex items-center gap-1 text-xs-ui text-slate-500 leading-tight">
+            <span class="truncate">{route().origin}</span>
+            <ArrowIcon />
+            <span class="truncate font-medium text-slate-600">{route().destination}</span>
+            <Show when={props.process.redestinationNumber}>
+              <span class="text-micro text-slate-400">({props.process.redestinationNumber})</span>
+            </Show>
+          </div>
+        </A>
       </div>
       {/* Status */}
       <div class="px-3 py-2 text-center">
-        <StatusBadge
-          variant={props.process.status}
-          label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
-        />
+        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+          <StatusBadge
+            variant={props.process.status}
+            label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
+          />
+        </A>
       </div>
       {/* ETA — emphasis by exception */}
       <div class="px-3 py-2 text-center">
-        <Show when={props.process.eta} fallback={<span class="text-xs-ui text-slate-300">—</span>}>
-          <span
-            class={`text-md-ui font-bold tabular-nums ${props.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
+        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+          <Show
+            when={props.process.eta}
+            fallback={<span class="text-xs-ui text-slate-300">—</span>}
           >
-            {displayEta(props.process.eta)}
-          </span>
-        </Show>
+            <span
+              class={`text-md-ui font-bold tabular-nums ${props.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
+            >
+              {displayEta(props.process.eta)}
+            </span>
+          </Show>
+        </A>
       </div>
       {/* Sync */}
       <div class="px-3 py-2 text-center">
@@ -287,23 +362,29 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       </div>
       {/* Alerts — compact icon + count with tooltip */}
       <div class="px-3 py-2 text-center">
-        <Show
-          when={dominantSeverity() !== 'none'}
-          fallback={
-            <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
-              ✓
-            </span>
-          }
-        >
-          <span
-            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
-            title={alertTooltip()}
+        <A href={processHref()} class="block" onClick={handleProcessLinkClick}>
+          <Show
+            when={dominantSeverity() !== 'none'}
+            fallback={
+              <span
+                class="text-xs-ui text-emerald-400"
+                role="img"
+                aria-label={dominantAlertLabel()}
+              >
+                ✓
+              </span>
+            }
           >
-            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
-            {props.process.alertsCount}
-            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-          </span>
-        </Show>
+            <span
+              class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
+              title={alertTooltip()}
+            >
+              <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
+              {props.process.alertsCount}
+              <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
+            </span>
+          </Show>
+        </A>
       </div>
     </div>
   )
@@ -373,6 +454,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
               process={process}
               index={i()}
               onProcessSync={props.onProcessSync}
+              onOpenProcess={props.onOpenProcess}
             />
           )}
         </For>
@@ -429,6 +511,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
         sortSelection={props.sortSelection}
         onSortToggle={props.onSortToggle}
         onProcessSync={props.onProcessSync}
+        onOpenProcess={props.onOpenProcess}
       />
     )
   }
