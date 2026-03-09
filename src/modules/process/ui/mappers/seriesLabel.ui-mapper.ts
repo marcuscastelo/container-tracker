@@ -1,4 +1,4 @@
-import type { SeriesLabel } from '~/modules/tracking/application/projection/tracking.series.classification'
+import type { SeriesLabel } from '~/modules/tracking/features/series/application/projection/tracking.series.classification'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 
 export function seriesLabelToKey(keys: TranslationKeys, label: SeriesLabel): string {

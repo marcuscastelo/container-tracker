@@ -3,7 +3,7 @@ import {
   compareObservationsChronologically,
 } from '~/modules/tracking/domain/derive/deriveTimeline'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
-import { classifySeries } from '~/modules/tracking/domain/reconcile/seriesClassification'
+import { classifySeries } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 
 type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
 

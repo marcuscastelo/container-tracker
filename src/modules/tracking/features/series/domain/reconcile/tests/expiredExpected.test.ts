@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import {
   deriveObservationState,
   isExpiredExpected,
-} from '~/modules/tracking/domain/reconcile/expiredExpected'
-import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+} from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'TEST-CONTAINER-123'
