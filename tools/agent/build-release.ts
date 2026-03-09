@@ -717,6 +717,8 @@ async function runPreflightChecks(command: {
   readonly installerFilePath: string
   readonly bootstrapTemplatePath: string
   readonly updaterSourcePath: string
+  readonly runtimePathsSourcePath: string
+  readonly windowsAdapterSourcePath: string
 }): Promise<void> {
   const errors: string[] = []
 
@@ -854,15 +856,38 @@ async function runPreflightChecks(command: {
       errors.push('updater.ts must reference DOTENV_PATH')
     }
 
-    if (
-      !updaterSource.includes('DEFAULT_DATA_DIR_NAME') ||
-      !updaterSource.includes('ContainerTracker') ||
-      !updaterSource.includes('LOCALAPPDATA')
-    ) {
-      errors.push('updater.ts must resolve fallback paths under LOCALAPPDATA\\ContainerTracker')
+    if (!updaterSource.includes('resolveAgentPathLayout')) {
+      errors.push('updater.ts must resolve runtime paths through resolveAgentPathLayout')
     }
   } else {
     errors.push(`updater.ts not found: ${command.updaterSourcePath}`)
+  }
+
+  if (await pathExists(command.runtimePathsSourcePath)) {
+    const runtimePathsSource = await fs.readFile(command.runtimePathsSourcePath, 'utf8')
+    if (
+      !runtimePathsSource.includes('resolvePlatformAdapter') ||
+      !runtimePathsSource.includes('resolvePaths({ env: process.env }).dataDir')
+    ) {
+      errors.push('runtime-paths.ts must resolve dataDir through platform adapter')
+    }
+  } else {
+    errors.push(`runtime-paths.ts not found: ${command.runtimePathsSourcePath}`)
+  }
+
+  if (await pathExists(command.windowsAdapterSourcePath)) {
+    const windowsAdapterSource = await fs.readFile(command.windowsAdapterSourcePath, 'utf8')
+    if (
+      !windowsAdapterSource.includes('DEFAULT_DATA_DIR_NAME') ||
+      !windowsAdapterSource.includes('ContainerTracker') ||
+      !windowsAdapterSource.includes('LOCALAPPDATA')
+    ) {
+      errors.push(
+        'windows.adapter.ts must resolve fallback paths under LOCALAPPDATA\\ContainerTracker',
+      )
+    }
+  } else {
+    errors.push(`windows.adapter.ts not found: ${command.windowsAdapterSourcePath}`)
   }
 
   for (const relativePath of STATIC_GATE_FILES) {
@@ -976,6 +1001,8 @@ async function buildRelease(): Promise<void> {
     installerFilePath: path.join(installerDir, 'installer.iss'),
     bootstrapTemplatePath: path.join(installerDir, 'bootstrap.env.template'),
     updaterSourcePath: path.join(toolsAgentDir, 'updater.ts'),
+    runtimePathsSourcePath: path.join(toolsAgentDir, 'runtime-paths.ts'),
+    windowsAdapterSourcePath: path.join(toolsAgentDir, 'platform', 'windows.adapter.ts'),
   })
 }
 
