@@ -41,6 +41,24 @@ function writeReleaseEntrypoint(layout: AgentPathLayout, version: string): strin
   return releaseDir
 }
 
+function writeReleaseWithSupervisorShim(layout: AgentPathLayout, version: string): {
+  readonly releaseDir: string
+  readonly runtimeEntrypoint: string
+} {
+  const releaseDir = path.join(layout.releasesDir, version)
+  const runtimeEntrypoint = path.join(releaseDir, 'app', 'dist', 'tools', 'agent', 'agent.js')
+  const supervisorShimEntrypoint = path.join(releaseDir, 'app', 'dist', 'agent.js')
+
+  fs.mkdirSync(path.dirname(runtimeEntrypoint), { recursive: true })
+  fs.writeFileSync(runtimeEntrypoint, "console.log('runtime')\n", 'utf8')
+  fs.writeFileSync(supervisorShimEntrypoint, "import './tools/agent/supervisor.js'\n", 'utf8')
+
+  return {
+    releaseDir,
+    runtimeEntrypoint,
+  }
+}
+
 function linkCurrent(layout: AgentPathLayout, releaseDir: string): void {
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
   if (fs.existsSync(layout.currentLinkPath)) {
@@ -169,5 +187,21 @@ describe('supervisor release policies', () => {
     expect(runtimeSelection.source).toBe('fallback')
     expect(runtimeSelection.entrypointPath).toBe(fallbackEntrypoint)
     expect(rolledBack.current_version).toBe('fallback-runtime')
+  })
+
+  it('skips supervisor shim entrypoint when selecting release runtime', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-supervisor-test-'))
+    const layout = createLayout(tempDir)
+    const release = writeReleaseWithSupervisorShim(layout, '2.0.0')
+    linkCurrent(layout, release.releaseDir)
+
+    const runtimeSelection = resolveRuntimeEntrypoint({
+      layout,
+      fallbackEntrypoint: path.join(tempDir, 'agent-fallback.js'),
+      expectedVersion: '2.0.0',
+    })
+
+    expect(runtimeSelection.source).toBe('release')
+    expect(runtimeSelection.entrypointPath).toBe(release.runtimeEntrypoint)
   })
 })

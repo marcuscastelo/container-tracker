@@ -7,12 +7,14 @@ import type { ReleaseState } from './release-state.ts'
 import type { AgentPathLayout } from './runtime-paths.ts'
 
 const RELEASE_ENTRYPOINT_CANDIDATES = [
-  'agent.js',
-  path.join('dist', 'agent.js'),
   path.join('dist', 'tools', 'agent', 'agent.js'),
-  path.join('app', 'dist', 'agent.js'),
   path.join('app', 'dist', 'tools', 'agent', 'agent.js'),
+  path.join('dist', 'agent.js'),
+  path.join('app', 'dist', 'agent.js'),
+  'agent.js',
 ] as const
+
+const SUPERVISOR_SHIM_IMPORT_PATTERN = /^\s*import\s+['"]\.\/tools\/agent\/supervisor\.js['"];?\s*$/mu
 
 export function sanitizeVersionForPath(version: string): string {
   const trimmed = version.trim()
@@ -71,10 +73,27 @@ function basenameFromPath(targetPath: string | null): string | null {
   return base.length > 0 ? base : null
 }
 
+function isSupervisorShimEntrypoint(entrypointPath: string): boolean {
+  if (path.basename(entrypointPath).toLowerCase() !== 'agent.js') {
+    return false
+  }
+
+  try {
+    const content = fs.readFileSync(entrypointPath, 'utf8')
+    return SUPERVISOR_SHIM_IMPORT_PATTERN.test(content)
+  } catch {
+    return false
+  }
+}
+
 export function resolveReleaseEntrypoint(releaseDir: string): string | null {
   for (const candidate of RELEASE_ENTRYPOINT_CANDIDATES) {
     const fullPath = path.join(releaseDir, candidate)
     if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+      if (isSupervisorShimEntrypoint(fullPath)) {
+        continue
+      }
+
       return fullPath
     }
   }
