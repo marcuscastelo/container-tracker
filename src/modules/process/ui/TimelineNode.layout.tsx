@@ -41,30 +41,20 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
   return (
     <div
-      class={clsx('flex items-start gap-1.5 sm:gap-2 rounded-sm px-0.5 -mx-0.5', {
+      class={clsx('flex items-start gap-1.5 sm:gap-2 rounded-sm px-1 py-0.5', {
         'opacity-70': isFuture(),
         'opacity-35': props.isExpiredExpected,
         'bg-amber-50/60': props.highlighted && !props.isExpected,
       })}
     >
-      {/* Timeline rail */}
-      <div class="flex flex-col items-center pt-[3px] w-3 shrink-0">
+      {/* Minimal status dot — no vertical line; outer rail handles continuity */}
+      <div class="flex shrink-0 items-center pt-[5px]">
         <div
           class={clsx('shrink-0 rounded-full', props.dotClass, {
-            'h-1.5 w-1.5 border border-dashed border-slate-400': props.isExpected,
-            'h-[7px] w-[7px]': !props.isExpected,
+            'h-1.5 w-1.5 border border-dashed border-slate-300': props.isExpected,
+            'h-[5px] w-[5px]': !props.isExpected,
           })}
         />
-
-        <Show when={!props.isLast}>
-          <div
-            class={clsx(
-              'w-px flex-1 min-h-3',
-              props.lineClass,
-              props.isExpected && 'border-l border-dashed border-slate-300 bg-transparent',
-            )}
-          />
-        </Show>
       </div>
 
       {/* Content */}

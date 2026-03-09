@@ -26,13 +26,13 @@ export function VoyageBlockHeader(props: { readonly block: VoyageBlock }): JSX.E
   }
 
   return (
-    <div class="mb-1 rounded-t border-b border-slate-100/70 bg-slate-50/60 px-2 py-1.5">
+    <div class="rounded-t border-b border-slate-200/50 bg-gradient-to-r from-slate-50/80 to-white px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
         <span class="text-sm shrink-0" aria-hidden="true">
           🚢
         </span>
-        <span class="text-md-ui font-semibold text-slate-900">
+        <span class="text-md-ui font-semibold text-slate-800 tracking-tight">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
       </div>
@@ -82,12 +82,12 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   }
 
   return (
-    <div class="mb-1 rounded-t border-b border-slate-100/60 bg-white/80 px-2 py-1.5">
+    <div class="rounded-t border-b border-slate-100 bg-slate-50/30 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         <span class="text-sm shrink-0" aria-hidden="true">
           {icon()}
         </span>
-        <span class="text-sm-ui font-medium text-slate-600">{title()}</span>
+        <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
       </div>
       <Show when={props.block.location}>
         {(loc) => <p class="mt-0.5 text-micro text-slate-400">{loc()}</p>}
@@ -104,12 +104,12 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   const { t, keys } = useTranslation()
 
   return (
-    <div class="my-1 rounded border-l-4 border-amber-400 bg-amber-50 px-2.5 py-1.5">
+    <div class="rounded-md border-l-4 border-amber-400 bg-amber-50/80 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         <span class="text-sm" aria-hidden="true">
           🔁
         </span>
-        <span class="text-sm-ui font-semibold text-amber-900">
+        <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>
       </div>
@@ -142,12 +142,13 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
   }
 
   return (
-    <div class="flex items-center gap-1.5 py-0.5 pl-3">
-      {/* Timeline spine continuation (thin dot for the marker) */}
+    <div class="flex items-center py-1.5 pl-3">
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
       </div>
-      <p class="text-micro italic text-slate-600">⏳ {label()}</p>
+      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50/80 px-2 py-0.5 text-micro italic text-slate-400 ring-1 ring-slate-100/80">
+        ⏳ {label()}
+      </span>
     </div>
   )
 }
@@ -189,7 +190,7 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
   const icon = () => (props.marker.severity === 'danger' ? '⚠' : '⏳')
 
   return (
-    <div class="flex items-center gap-1.5 py-0.5 pl-3">
+    <div class="flex items-center gap-1.5 py-1 pl-3">
       {/* Timeline spine continuation */}
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
@@ -220,8 +221,8 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () =>
     props.variant === 'voyage'
-      ? 'rounded border border-slate-200/60 bg-slate-50/40 mb-1.5'
-      : 'rounded border border-slate-100/80 bg-white mb-1.5'
+      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+      : 'rounded-lg border border-slate-100 bg-white'
 
   return <div class={baseClass()}>{props.children}</div>
 }
@@ -231,4 +232,41 @@ export function BlockCard(props: {
  */
 export function EventSeparator(): JSX.Element {
   return <div class="ml-3 border-t border-slate-50" />
+}
+
+// ---------------------------------------------------------------------------
+// Continuous Rail — Visual connector between timeline blocks
+// ---------------------------------------------------------------------------
+
+export type RailDotVariant = 'voyage' | 'terminal' | 'transshipment' | 'gap' | 'risk' | 'event'
+
+/**
+ * A dot marker positioned on the outer timeline rail.
+ * When placed inside a `relative` wrapper at `pl-5` from the rail container,
+ * the dot centers on the rail line at `left: 8px`.
+ */
+export function RailDot(props: { readonly variant: RailDotVariant }): JSX.Element {
+  const cls = (): string => {
+    switch (props.variant) {
+      case 'voyage':
+        return 'h-2.5 w-2.5 bg-blue-400 ring-2 ring-white'
+      case 'terminal':
+        return 'h-2 w-2 bg-slate-400 ring-2 ring-white'
+      case 'transshipment':
+        return 'h-3 w-3 bg-amber-400 ring-2 ring-white'
+      case 'gap':
+        return 'h-1.5 w-1.5 bg-slate-300 ring-1 ring-white'
+      case 'risk':
+        return 'h-2 w-2 bg-amber-400 ring-1 ring-white'
+      case 'event':
+        return 'h-2 w-2 bg-emerald-400 ring-1 ring-white'
+    }
+  }
+
+  return (
+    <div
+      class={`absolute top-3 -left-3 -translate-x-1/2 rounded-full z-10 ${cls()}`}
+      aria-hidden="true"
+    />
+  )
 }

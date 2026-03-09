@@ -8,6 +8,8 @@ import {
   EventSeparator,
   GapMarkerRow,
   PortRiskMarkerRow,
+  RailDot,
+  type RailDotVariant,
   TerminalBlockHeader,
   TransshipmentBlockCard,
   VoyageBlockHeader,
@@ -274,6 +276,26 @@ function BlockChildren(props: {
   )
 }
 
+function railDotVariant(group: BlockGroup): RailDotVariant {
+  switch (group.kind) {
+    case 'voyage':
+      return 'voyage'
+    case 'terminal':
+      return 'terminal'
+    case 'transshipment':
+      return 'transshipment'
+    case 'standalone':
+      switch (group.item.type) {
+        case 'gap-marker':
+          return 'gap'
+        case 'port-risk-marker':
+          return 'risk'
+        default:
+          return 'event'
+      }
+  }
+}
+
 function TimelineBlockList(props: {
   readonly renderList: readonly TimelineRenderItem[]
   readonly carrier?: string | null
@@ -283,63 +305,76 @@ function TimelineBlockList(props: {
 }): JSX.Element {
   const groups = () => groupRenderItems(props.renderList)
 
+  const renderGroupContent = (group: BlockGroup): JSX.Element | null => {
+    switch (group.kind) {
+      case 'voyage':
+        return (
+          <BlockCard variant="voyage">
+            <VoyageBlockHeader block={group.block} />
+            <BlockChildren
+              children={group.children}
+              carrier={props.carrier}
+              containerNumber={props.containerNumber}
+              nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
+              highlightedTypes={props.highlightedTypes}
+            />
+          </BlockCard>
+        )
+      case 'terminal':
+        return (
+          <BlockCard variant="terminal">
+            <TerminalBlockHeader block={group.block} />
+            <BlockChildren
+              children={group.children}
+              carrier={props.carrier}
+              containerNumber={props.containerNumber}
+              nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
+              highlightedTypes={props.highlightedTypes}
+            />
+          </BlockCard>
+        )
+      case 'transshipment':
+        return <TransshipmentBlockCard block={group.block} />
+      case 'standalone':
+        switch (group.item.type) {
+          case 'event':
+            return (
+              <TimelineNode
+                event={group.item.event}
+                isLast={group.item.isLast}
+                carrier={props.carrier}
+                containerNumber={props.containerNumber}
+                nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
+                highlighted={props.highlightedTypes.has(group.item.event.type)}
+              />
+            )
+          case 'gap-marker':
+            return <GapMarkerRow marker={group.item.marker} />
+          case 'port-risk-marker':
+            return <PortRiskMarkerRow marker={group.item.marker} />
+          default:
+            return null
+        }
+      default:
+        return null
+    }
+  }
+
   return (
-    <div>
+    <div class="relative mt-1 pl-5">
+      {/* Continuous vertical rail connecting all timeline blocks */}
+      <div
+        class="absolute top-3 bottom-3 w-px bg-slate-200/60"
+        style={{ left: '8px' }}
+        aria-hidden="true"
+      />
       <For each={groups()}>
-        {(group) => {
-          switch (group.kind) {
-            case 'voyage':
-              return (
-                <BlockCard variant="voyage">
-                  <VoyageBlockHeader block={group.block} />
-                  <BlockChildren
-                    children={group.children}
-                    carrier={props.carrier}
-                    containerNumber={props.containerNumber}
-                    nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
-                    highlightedTypes={props.highlightedTypes}
-                  />
-                </BlockCard>
-              )
-            case 'terminal':
-              return (
-                <BlockCard variant="terminal">
-                  <TerminalBlockHeader block={group.block} />
-                  <BlockChildren
-                    children={group.children}
-                    carrier={props.carrier}
-                    containerNumber={props.containerNumber}
-                    nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
-                    highlightedTypes={props.highlightedTypes}
-                  />
-                </BlockCard>
-              )
-            case 'transshipment':
-              return <TransshipmentBlockCard block={group.block} />
-            case 'standalone':
-              switch (group.item.type) {
-                case 'event':
-                  return (
-                    <TimelineNode
-                      event={group.item.event}
-                      isLast={group.item.isLast}
-                      carrier={props.carrier}
-                      containerNumber={props.containerNumber}
-                      nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
-                      highlighted={props.highlightedTypes.has(group.item.event.type)}
-                    />
-                  )
-                case 'gap-marker':
-                  return <GapMarkerRow marker={group.item.marker} />
-                case 'port-risk-marker':
-                  return <PortRiskMarkerRow marker={group.item.marker} />
-                default:
-                  return null
-              }
-            default:
-              return null
-          }
-        }}
+        {(group, index) => (
+          <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
+            <RailDot variant={railDotVariant(group)} />
+            {renderGroupContent(group)}
+          </div>
+        )}
       </For>
     </div>
   )
