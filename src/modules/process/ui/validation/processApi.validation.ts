@@ -19,6 +19,8 @@ import {
 } from '~/shared/api-schemas/processes.schemas'
 
 const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
+const DASHBOARD_OPERATIONAL_SUMMARY_ENDPOINT = '/api/dashboard/operational-summary'
+const DASHBOARD_PREFETCH_TTL_MS = 15_000
 const AlertActionResponseSchema = z.object({
   ok: z.literal(true),
   alert_id: z.string(),
@@ -37,6 +39,28 @@ type DashboardProcessSummariesQuery = {
   readonly sortDir?: DashboardSortDirection
   readonly filters?: DashboardProcessFiltersQuery
 }
+
+type DashboardFetchOptions = {
+  readonly preferPrefetched?: boolean
+}
+
+type DashboardProcessSummariesCacheRecord = {
+  readonly expiresAtMs: number
+  readonly value: readonly ProcessSummaryVM[]
+}
+
+type DashboardGlobalAlertsCacheRecord = {
+  readonly expiresAtMs: number
+  readonly value: DashboardGlobalAlertsVM
+}
+
+const dashboardProcessSummariesCacheByPath = new Map<string, DashboardProcessSummariesCacheRecord>()
+const inFlightDashboardProcessSummariesByPath = new Map<
+  string,
+  Promise<readonly ProcessSummaryVM[]>
+>()
+let dashboardGlobalAlertsCache: DashboardGlobalAlertsCacheRecord | null = null
+let inFlightDashboardGlobalAlerts: Promise<DashboardGlobalAlertsVM> | null = null
 
 function appendNonBlankQueryValues(
   searchParams: URLSearchParams,
@@ -85,6 +109,92 @@ function toDashboardProcessesPath(query?: DashboardProcessSummariesQuery): strin
   return `${DASHBOARD_PROCESSES_ENDPOINT}?${queryString}`
 }
 
+function readFreshDashboardProcessSummariesCache(path: string): readonly ProcessSummaryVM[] | null {
+  const cached = dashboardProcessSummariesCacheByPath.get(path)
+  if (!cached) return null
+  if (cached.expiresAtMs <= Date.now()) {
+    dashboardProcessSummariesCacheByPath.delete(path)
+    return null
+  }
+  return cached.value
+}
+
+function writeDashboardProcessSummariesCache(
+  path: string,
+  value: readonly ProcessSummaryVM[],
+): void {
+  dashboardProcessSummariesCacheByPath.set(path, {
+    value,
+    expiresAtMs: Date.now() + DASHBOARD_PREFETCH_TTL_MS,
+  })
+}
+
+function readFreshDashboardGlobalAlertsCache(): DashboardGlobalAlertsVM | null {
+  if (!dashboardGlobalAlertsCache) return null
+  if (dashboardGlobalAlertsCache.expiresAtMs <= Date.now()) {
+    dashboardGlobalAlertsCache = null
+    return null
+  }
+  return dashboardGlobalAlertsCache.value
+}
+
+function writeDashboardGlobalAlertsCache(value: DashboardGlobalAlertsVM): void {
+  dashboardGlobalAlertsCache = {
+    value,
+    expiresAtMs: Date.now() + DASHBOARD_PREFETCH_TTL_MS,
+  }
+}
+
+async function loadDashboardProcessSummaries(
+  path: string,
+  command?: { readonly preferCached?: boolean },
+): Promise<readonly ProcessSummaryVM[]> {
+  if (command?.preferCached === true) {
+    const cached = readFreshDashboardProcessSummariesCache(path)
+    if (cached !== null) return cached
+  }
+
+  const inFlight = inFlightDashboardProcessSummariesByPath.get(path)
+  if (inFlight) return inFlight
+
+  const request = typedFetch(path, undefined, ProcessListResponseSchema)
+    .then((data) => toProcessSummaryVMs(data))
+    .then((value) => {
+      writeDashboardProcessSummariesCache(path, value)
+      return value
+    })
+    .finally(() => {
+      inFlightDashboardProcessSummariesByPath.delete(path)
+    })
+
+  inFlightDashboardProcessSummariesByPath.set(path, request)
+  return request
+}
+
+async function loadDashboardGlobalAlerts(command?: {
+  readonly preferCached?: boolean
+}): Promise<DashboardGlobalAlertsVM> {
+  if (command?.preferCached === true) {
+    const cached = readFreshDashboardGlobalAlertsCache()
+    if (cached !== null) return cached
+  }
+
+  if (inFlightDashboardGlobalAlerts) return inFlightDashboardGlobalAlerts
+
+  const request = fetchDashboardOperationalSummary()
+    .then((data) => toDashboardGlobalAlertsVM(data))
+    .then((value) => {
+      writeDashboardGlobalAlertsCache(value)
+      return value
+    })
+    .finally(() => {
+      inFlightDashboardGlobalAlerts = null
+    })
+
+  inFlightDashboardGlobalAlerts = request
+  return request
+}
+
 export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateProcessInput {
   return {
     reference: data.reference || null,
@@ -107,26 +217,46 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
 
 export async function fetchDashboardProcessSummaries(
   query?: DashboardProcessSummariesQuery,
+  options?: DashboardFetchOptions,
 ): Promise<readonly ProcessSummaryVM[]> {
-  const data = await typedFetch(
-    toDashboardProcessesPath(query),
-    undefined,
-    ProcessListResponseSchema,
-  )
-  return toProcessSummaryVMs(data)
+  const path = toDashboardProcessesPath(query)
+  return loadDashboardProcessSummaries(path, {
+    preferCached: options?.preferPrefetched === true,
+  })
 }
 
 async function fetchDashboardOperationalSummary() {
   return typedFetch(
-    '/api/dashboard/operational-summary',
+    DASHBOARD_OPERATIONAL_SUMMARY_ENDPOINT,
     undefined,
     DashboardOperationalSummaryResponseSchema,
   )
 }
 
-export async function fetchDashboardGlobalAlertsSummary(): Promise<DashboardGlobalAlertsVM> {
-  const data = await fetchDashboardOperationalSummary()
-  return toDashboardGlobalAlertsVM(data)
+export async function fetchDashboardGlobalAlertsSummary(
+  options?: DashboardFetchOptions,
+): Promise<DashboardGlobalAlertsVM> {
+  return loadDashboardGlobalAlerts({
+    preferCached: options?.preferPrefetched === true,
+  })
+}
+
+export async function prefetchDashboardProcessSummaries(
+  query?: DashboardProcessSummariesQuery,
+): Promise<void> {
+  const path = toDashboardProcessesPath(query)
+  await loadDashboardProcessSummaries(path, { preferCached: true })
+}
+
+export async function prefetchDashboardGlobalAlertsSummary(): Promise<void> {
+  await loadDashboardGlobalAlerts({ preferCached: true })
+}
+
+export function clearDashboardPrefetchCache(): void {
+  dashboardProcessSummariesCacheByPath.clear()
+  inFlightDashboardProcessSummariesByPath.clear()
+  dashboardGlobalAlertsCache = null
+  inFlightDashboardGlobalAlerts = null
 }
 
 export async function createProcessRequest(input: CreateProcessInput): Promise<string> {

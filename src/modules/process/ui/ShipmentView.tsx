@@ -1,4 +1,4 @@
-import { useNavigate } from '@solidjs/router'
+import { useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, onCleanup } from 'solid-js'
 import { z } from 'zod/v4'
@@ -11,6 +11,8 @@ import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-real
 import {
   acknowledgeTrackingAlertRequest,
   createProcessRequest,
+  prefetchDashboardGlobalAlertsSummary,
+  prefetchDashboardProcessSummaries,
   toCreateProcessInput,
   unacknowledgeTrackingAlertRequest,
   updateProcessRequest,
@@ -29,6 +31,7 @@ import {
   subscribeToSyncRequestsRealtimeByIds,
 } from '~/shared/api/sync-requests.realtime.client'
 import { useTranslation } from '~/shared/localization/i18n'
+import { navigateToProcess, prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'
 
 type DialogCarrier = CreateProcessDialogFormData['carrier']
 type RefreshRetryState = { readonly current: number; readonly total: number }
@@ -657,7 +660,7 @@ function toCreateErrorExisting(
 
 type ProcessDialogsControllerCommand = {
   readonly processId: () => string
-  readonly navigate: (to: string) => void
+  readonly navigate: ReturnType<typeof useNavigate>
   readonly refetchShipment: () => unknown
 }
 
@@ -697,7 +700,10 @@ function useProcessDialogsController(
       try {
         const resultId = await createProcessRequest(toCreateProcessInput(formData))
         setIsCreateDialogOpen(false)
-        command.navigate(`/shipments/${resultId}`)
+        navigateToProcess({
+          navigate: command.navigate,
+          processId: resultId,
+        })
       } catch (err) {
         const conflict = parseExistingProcessConflictError(err)
         if (conflict) {
@@ -783,7 +789,7 @@ function useProcessDialogsController(
 type AlertActionsCommand = {
   readonly acknowledgeErrorMessage: string
   readonly unacknowledgeErrorMessage: string
-  readonly refetchShipment: () => unknown
+  readonly reconcileTrackingView: () => Promise<void>
   readonly updateAlerts: (
     updater: (current: readonly AlertDisplayVM[]) => readonly AlertDisplayVM[],
   ) => void
@@ -819,7 +825,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
       command.updateAlerts((alerts) => {
         return withAlertMarkedAsAcknowledged(alerts, alertId, new Date().toISOString())
       })
-      await command.refetchShipment()
+      await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to acknowledge alert:', err)
       setAlertActionError(command.acknowledgeErrorMessage)
@@ -837,7 +843,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
     try {
       await unacknowledgeTrackingAlertRequest(alertId)
       command.updateAlerts((alerts) => withAlertMarkedAsActive(alerts, alertId))
-      await command.refetchShipment()
+      await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to unacknowledge alert:', err)
       setAlertActionError(command.unacknowledgeErrorMessage)
@@ -858,6 +864,7 @@ function useAlertActionsController(command: AlertActionsCommand): AlertActionsCo
 
 export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const { locale, t, keys } = useTranslation()
+  const preloadRoute = usePreloadRoute()
   const [shipment, { refetch, mutate }] = createResource(
     () => [props.params.id, locale()] as const,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
@@ -876,7 +883,8 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
     }
     disposed = true
   })
-  const refreshTrackingData = () =>
+  const refetchView = () => refetch()
+  const reconcileTrackingView = () =>
     refreshTrackingDataOnly({
       processId: props.params.id,
       locale: locale(),
@@ -886,7 +894,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   const syncNow = useSyncRealtimeCoordinator({
     shipment,
     isRefreshing,
-    refreshTrackingData,
+    refreshTrackingData: reconcileTrackingView,
     isDisposed: () => disposed,
   })
   const triggerRefresh = async () => {
@@ -924,7 +932,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
         }
         activeRealtimeCleanup = cleanup
       },
-      refreshTrackingData,
+      refreshTrackingData: reconcileTrackingView,
       isDisposed: () => disposed,
       toTimeoutMessage: (totalRetries) =>
         t(keys.shipmentView.refreshSyncTimeout, { total: totalRetries }),
@@ -934,16 +942,23 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
   }
 
   const navigate = useNavigate()
+  const handleDashboardIntent = () => {
+    prefetchDashboardIntent({
+      preloadRoute,
+      preloadData: () =>
+        Promise.all([prefetchDashboardProcessSummaries(), prefetchDashboardGlobalAlertsSummary()]),
+    })
+  }
   const dialogs = useProcessDialogsController({
     processId: () => props.params.id,
     navigate,
-    refetchShipment: () => refetch(),
+    refetchShipment: refetchView,
   })
 
   const alertActions = useAlertActionsController({
     acknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorAcknowledge),
     unacknowledgeErrorMessage: t(keys.shipmentView.alerts.action.errorUnacknowledge),
-    refetchShipment: () => refetch(),
+    reconcileTrackingView,
     updateAlerts: (updater) => {
       mutate((current) => {
         if (!current) return current
@@ -1034,6 +1049,7 @@ export function ShipmentView(props: { params: { id: string } }): JSX.Element {
       selectedContainerEtaVm={selectedContainerEtaVm()}
       onOpenEditForShipment={dialogs.openEditForShipment}
       onOpenCreateProcess={dialogs.openCreateDialog}
+      onDashboardIntent={handleDashboardIntent}
     />
   )
 }

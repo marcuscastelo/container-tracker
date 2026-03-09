@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   acknowledgeTrackingAlertRequest,
+  clearDashboardPrefetchCache,
+  fetchDashboardGlobalAlertsSummary,
   fetchDashboardProcessSummaries,
+  prefetchDashboardGlobalAlertsSummary,
+  prefetchDashboardProcessSummaries,
   unacknowledgeTrackingAlertRequest,
 } from '~/modules/process/ui/validation/processApi.validation'
 
@@ -17,9 +21,42 @@ function mockProcessListFetch() {
   )
 }
 
+function mockDashboardOperationalSummaryFetch() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(
+    async () =>
+      new Response(
+        JSON.stringify({
+          generated_at: '2026-01-15T10:00:00.000Z',
+          total_active_alerts: 0,
+          by_severity: {
+            danger: 0,
+            warning: 0,
+            info: 0,
+            success: 0,
+          },
+          by_category: {
+            eta: 0,
+            movement: 0,
+            customs: 0,
+            status: 0,
+            data: 0,
+          },
+          process_exceptions: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+  )
+}
+
 describe('fetchDashboardProcessSummaries', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
   })
 
   it('uses the existing dashboard endpoint when sort params are omitted', async () => {
@@ -105,11 +142,61 @@ describe('fetchDashboardProcessSummaries', () => {
 
     expect(fetchSpy).toHaveBeenCalledWith('/api/processes', undefined)
   })
+
+  it('uses prefetched process summaries when preferPrefetched is enabled', async () => {
+    const fetchSpy = mockProcessListFetch()
+
+    await prefetchDashboardProcessSummaries()
+    fetchSpy.mockClear()
+
+    await fetchDashboardProcessSummaries(undefined, { preferPrefetched: true })
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('dedupes concurrent process summaries prefetch calls', async () => {
+    const fetchSpy = mockProcessListFetch()
+
+    await Promise.all([prefetchDashboardProcessSummaries(), prefetchDashboardProcessSummaries()])
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('fetchDashboardGlobalAlertsSummary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
+  })
+
+  it('uses prefetched global alerts summary when preferPrefetched is enabled', async () => {
+    const fetchSpy = mockDashboardOperationalSummaryFetch()
+
+    await prefetchDashboardGlobalAlertsSummary()
+    fetchSpy.mockClear()
+
+    await fetchDashboardGlobalAlertsSummary({ preferPrefetched: true })
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('dedupes concurrent global alerts summary prefetch calls', async () => {
+    const fetchSpy = mockDashboardOperationalSummaryFetch()
+
+    await Promise.all([
+      prefetchDashboardGlobalAlertsSummary(),
+      prefetchDashboardGlobalAlertsSummary(),
+    ])
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).toHaveBeenCalledWith('/api/dashboard/operational-summary', undefined)
+  })
 })
 
 describe('tracking alert action requests', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
   })
 
   it('sends acknowledge action with the expected payload', async () => {

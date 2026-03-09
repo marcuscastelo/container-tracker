@@ -1,4 +1,5 @@
 import type { JSX } from 'solid-js'
+import { ErrorBoundary } from 'solid-js'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { OperationalSummaryStrip } from '~/modules/process/ui/components/OperationalSummaryStrip'
@@ -7,6 +8,7 @@ import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCa
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import { useTranslation } from '~/shared/localization/i18n'
 
 type ShipmentDataViewProps = {
   readonly data: ShipmentDetailVM
@@ -28,6 +30,8 @@ type ShipmentDataViewProps = {
 }
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
+  const { t, keys } = useTranslation()
+
   return (
     <>
       <ShipmentHeader
@@ -45,15 +49,26 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
       <div class="grid gap-2 lg:grid-cols-3">
         <div class="space-y-3 lg:col-span-2">
-          <div class="sticky top-0 z-50">
-            <AlertsPanel
-              activeAlerts={props.activeAlerts}
-              archivedAlerts={props.archivedAlerts}
-              busyAlertIds={props.busyAlertIds}
-              collapsingAlertIds={props.collapsingAlertIds}
-              onAcknowledge={props.onAcknowledgeAlert}
-              onUnacknowledge={props.onUnacknowledgeAlert}
-            />
+          <div class=" ">
+            <ErrorBoundary
+              fallback={(err) => {
+                console.error('Alerts panel render failure:', err)
+                return (
+                  <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs-ui text-amber-800">
+                    {t(keys.app.unexpectedRenderError)}
+                  </div>
+                )
+              }}
+            >
+              <AlertsPanel
+                activeAlerts={props.activeAlerts}
+                archivedAlerts={props.archivedAlerts}
+                busyAlertIds={props.busyAlertIds}
+                collapsingAlertIds={props.collapsingAlertIds}
+                onAcknowledge={props.onAcknowledgeAlert}
+                onUnacknowledge={props.onUnacknowledgeAlert}
+              />
+            </ErrorBoundary>
           </div>
           <section id="shipment-containers" class="scroll-mt-[120px]">
             <ContainersPanel
@@ -64,11 +79,22 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             />
           </section>
           <section id="shipment-timeline" class="scroll-mt-[120px]">
-            <TimelinePanel
-              selectedContainer={props.selectedContainer}
-              carrier={props.data.carrier}
-              alerts={props.activeAlerts}
-            />
+            <ErrorBoundary
+              fallback={(err) => {
+                console.error('Timeline panel render failure:', err)
+                return (
+                  <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs-ui text-red-700">
+                    {t(keys.app.unexpectedRenderError)}
+                  </div>
+                )
+              }}
+            >
+              <TimelinePanel
+                selectedContainer={props.selectedContainer}
+                carrier={props.data.carrier}
+                alerts={props.activeAlerts}
+              />
+            </ErrorBoundary>
           </section>
         </div>
         <div class="space-y-2">
