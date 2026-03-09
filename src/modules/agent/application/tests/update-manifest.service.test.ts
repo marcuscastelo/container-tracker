@@ -238,7 +238,7 @@ describe('agent update manifest service', () => {
     })
   })
 
-  it('resolves manifests when configured relative path only works from module location', async () => {
+  it('resolves manifests from bundled json imports when using default manifestsDir', async () => {
     const repoRoot = process.cwd()
     const bundledStablePath = path.join(repoRoot, 'agent-manifests', 'stable.json')
     const bundledStableRaw = fs.readFileSync(bundledStablePath, 'utf8')
@@ -250,7 +250,7 @@ describe('agent update manifest service', () => {
         currentVersion: 'unknown',
         desiredVersion: null,
       }),
-      manifestsDir: path.join('..', '..', '..', '..', 'agent-manifests'),
+      manifestsDir: 'agent-manifests',
     })
 
     const result = await service.resolveForAgent({

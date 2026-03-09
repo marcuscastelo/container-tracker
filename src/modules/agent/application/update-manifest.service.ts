@@ -2,11 +2,16 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod/v4'
-
 import type {
   AgentMonitoringRecord,
   AgentMonitoringRepository,
 } from '~/modules/agent/application/agent-monitoring.repository'
+// biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
+import bundledCanaryManifest from '../../../../agent-manifests/canary.json'
+// biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
+import bundledDevManifest from '../../../../agent-manifests/dev.json'
+// biome-ignore lint/style/noRestrictedImports: Release manager is executed from Node runtime with direct .ts imports.
+import bundledStableManifest from '../../../../agent-manifests/stable.json'
 
 const DEFAULT_CHANNEL = 'stable'
 const DEFAULT_PLATFORM = 'linux-x64'
@@ -40,6 +45,7 @@ const agentManifestFileSchema = z.union([
 ])
 
 const agentPlatformSchema = z.enum(['linux-x64', 'windows-x64'])
+const DEFAULT_MANIFESTS_DIR = 'agent-manifests'
 
 type AgentManifestFile = z.infer<typeof agentManifestFileSchema>
 type AgentPlatform = z.infer<typeof agentPlatformSchema>
@@ -77,6 +83,12 @@ export type ResolveAgentUpdateManifestResult =
     }
 
 export type AgentUpdateManifestService = ReturnType<typeof createAgentUpdateManifestService>
+
+const BUNDLED_MANIFEST_BY_CHANNEL: Readonly<Record<string, unknown>> = {
+  stable: bundledStableManifest,
+  canary: bundledCanaryManifest,
+  dev: bundledDevManifest,
+}
 
 function parseIsoDate(value: string | null): Date | null {
   if (value === null) return null
@@ -185,7 +197,7 @@ function resolveManifestAsset(command: {
 function resolveManifestsDir(dirFromEnv: string | undefined): string {
   const normalized = normalizeOptionalNonBlank(dirFromEnv)
   if (!normalized) {
-    return path.resolve(process.cwd(), 'agent-manifests')
+    return path.resolve(process.cwd(), DEFAULT_MANIFESTS_DIR)
   }
 
   if (path.isAbsolute(normalized)) {
@@ -204,7 +216,7 @@ function appendUniquePath(paths: string[], candidate: string): void {
 }
 
 function resolveManifestsDirCandidates(dirFromEnv: string | undefined): readonly string[] {
-  const configuredDir = normalizeOptionalNonBlank(dirFromEnv) ?? 'agent-manifests'
+  const configuredDir = normalizeOptionalNonBlank(dirFromEnv) ?? DEFAULT_MANIFESTS_DIR
 
   if (path.isAbsolute(configuredDir)) {
     return [configuredDir]
@@ -226,13 +238,32 @@ function resolveManifestsDirCandidates(dirFromEnv: string | undefined): readonly
   return candidates
 }
 
+function readBundledManifest(channel: string): AgentManifestFile | null {
+  const rawManifest = BUNDLED_MANIFEST_BY_CHANNEL[channel]
+  if (rawManifest === undefined) {
+    return null
+  }
+
+  const parsedManifest = agentManifestFileSchema.safeParse(rawManifest)
+  if (!parsedManifest.success) {
+    return null
+  }
+
+  return parsedManifest.data
+}
+
 export function createAgentUpdateManifestService(deps: {
   readonly repository: Pick<AgentMonitoringRepository, 'getAgentDetailForTenant'>
   readonly manifestsDir?: string
   readonly cacheTtlMs?: number
   readonly now?: () => Date
 }) {
-  const manifestsDirCandidates = resolveManifestsDirCandidates(deps.manifestsDir)
+  const normalizedManifestsDir = normalizeOptionalNonBlank(deps.manifestsDir)
+  const useBundledManifests =
+    normalizedManifestsDir === null || normalizedManifestsDir === DEFAULT_MANIFESTS_DIR
+  const manifestsDirCandidates = useBundledManifests
+    ? []
+    : resolveManifestsDirCandidates(normalizedManifestsDir)
   const cacheTtlMs = deps.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
   const now = deps.now ?? (() => new Date())
   const cacheByChannel = new Map<string, CachedManifest>()
@@ -278,7 +309,8 @@ export function createAgentUpdateManifestService(deps: {
       return cached.manifest
     }
 
-    const manifest = await readManifestFromDisk(channel)
+    const bundledManifest = useBundledManifests ? readBundledManifest(channel) : null
+    const manifest = bundledManifest ?? (await readManifestFromDisk(channel))
     cacheByChannel.set(channel, {
       manifest,
       expiresAtMs: nowMs + cacheTtlMs,

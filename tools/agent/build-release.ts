@@ -372,7 +372,7 @@ async function runPnpmDeployWithLegacyFallback(command: {
   readonly cwd: string
 }): Promise<void> {
   const argsWithLegacy = [...command.args]
-  const deployIndex = argsWithLegacy.findIndex((arg) => arg === 'deploy')
+  const deployIndex = argsWithLegacy.indexOf('deploy')
   if (deployIndex < 0) {
     await runPnpmCommand(command.args, command.cwd)
     return
