@@ -43,6 +43,11 @@ Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run 
 Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & schtasks /Run /TN ""{#UpdaterTaskName}"" >NUL 2>&1"; Flags: runhidden waituntilterminated
 
 [UninstallRun]
+Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-agent-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#UpdaterTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-updater-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-agent-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#UpdaterTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-updater-task"
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$nodeRoot = [System.IO.Path]::Combine($env:LOCALAPPDATA, 'Programs', '{#AppDirName}', 'node').ToLowerInvariant(); Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.ToLowerInvariant().StartsWith($nodeRoot) } | Stop-Process -Force -ErrorAction SilentlyContinue"""; Flags: runhidden waituntilterminated; RunOnceId: "kill-agent-node-process"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-agent-task"
 Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
 
