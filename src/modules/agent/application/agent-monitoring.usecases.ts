@@ -309,6 +309,10 @@ function toSummaryReadModel(command: {
   return {
     agentId: command.record.agentId,
     tenantId: command.record.tenantId,
+    // NOTE: tenantName currently carries the tenantId until a tenant lookup/read-model
+    // is available to resolve a human-friendly name. Reviewer suggested resolving
+    // the actual tenant name or renaming the field; that change requires cross-boundary
+    // lookups and is deferred for a follow-up issue: keep ID here to avoid breaking types.
     tenantName: command.record.tenantId,
     hostname: command.record.hostname,
     version: command.record.version,

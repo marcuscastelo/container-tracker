@@ -193,7 +193,6 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           maersk_timeout_ms: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS,
           maersk_user_data_dir: serverEnv.AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR ?? null,
           last_enrolled_at: new Date().toISOString(),
-          enrolled_at: new Date().toISOString(),
           last_seen_at: new Date().toISOString(),
           status: 'CONNECTED',
           realtime_state: 'CONNECTING',

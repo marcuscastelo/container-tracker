@@ -43,8 +43,6 @@ function ActivityRow(props: { readonly activity: AgentActivityVM }): JSX.Element
 }
 
 export function AgentRecentActivityCard(props: Props): JSX.Element {
-  const activities = () => [...props.activities]
-
   return (
     <section class="rounded-lg border border-slate-200 bg-white">
       <header class="border-b border-slate-100 px-3 py-2">
@@ -54,11 +52,11 @@ export function AgentRecentActivityCard(props: Props): JSX.Element {
         <p class="text-micro text-slate-400">Operational events — not shipment tracking timeline</p>
       </header>
       <div class="max-h-90 overflow-y-auto">
-        <Show when={activities().length === 0}>
+        <Show when={props.activities.length === 0}>
           <EmptyActivityState />
         </Show>
-        <Show when={activities().length > 0}>
-          <For each={activities()}>{(activity) => <ActivityRow activity={activity} />}</For>
+        <Show when={props.activities.length > 0}>
+          <For each={props.activities}>{(activity) => <ActivityRow activity={activity} />}</For>
         </Show>
       </div>
     </section>
