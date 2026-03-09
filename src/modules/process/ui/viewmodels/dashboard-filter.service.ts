@@ -2,7 +2,7 @@ import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-s
 import {
   TRACKING_STATUS_CODES,
   type TrackingStatusCode,
-} from '~/modules/tracking/application/projection/tracking.status.projection'
+} from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 
 const PT_BR_COLLATOR =
   typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined'

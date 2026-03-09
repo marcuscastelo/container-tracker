@@ -9,7 +9,7 @@ import type {
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {

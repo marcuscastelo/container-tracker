@@ -1,7 +1,7 @@
 import {
   CONTAINER_STATUSES,
   type ContainerStatus,
-} from '~/modules/tracking/domain/model/containerStatus'
+} from '~/modules/tracking/features/status/domain/model/containerStatus'
 
 export const TRACKING_STATUS_CODES: readonly ContainerStatus[] = CONTAINER_STATUSES
 

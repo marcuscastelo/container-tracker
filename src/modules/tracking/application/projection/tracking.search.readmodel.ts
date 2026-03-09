@@ -1,9 +1,9 @@
 import { deriveTrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
-import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
+import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import {
   compareObservationsChronologically,
   deriveTimeline,

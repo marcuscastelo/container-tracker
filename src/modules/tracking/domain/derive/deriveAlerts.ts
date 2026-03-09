@@ -1,8 +1,8 @@
 import { computeAlertFingerprint } from '~/modules/tracking/domain/identity/alertFingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**

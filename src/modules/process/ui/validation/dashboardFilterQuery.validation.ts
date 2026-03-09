@@ -7,7 +7,7 @@ import {
 import {
   TRACKING_STATUS_CODES,
   type TrackingStatusCode,
-} from '~/modules/tracking/application/projection/tracking.status.projection'
+} from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 
 const FILTER_PROVIDER_QUERY_KEY = 'provider'
 const FILTER_STATUS_QUERY_KEY = 'status'

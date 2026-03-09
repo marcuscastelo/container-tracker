@@ -1,5 +1,5 @@
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
+import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**

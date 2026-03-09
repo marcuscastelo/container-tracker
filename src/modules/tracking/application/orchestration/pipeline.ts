@@ -2,9 +2,7 @@ import type { TrackingAlertRepository } from '~/modules/tracking/application/por
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import { deriveAlerts, deriveTransshipment } from '~/modules/tracking/domain/derive/deriveAlerts'
-import { deriveStatus } from '~/modules/tracking/domain/derive/deriveStatus'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
-import type { ContainerStatus } from '~/modules/tracking/domain/model/containerStatus'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { NewTrackingAlert, TrackingAlert } from '~/modules/tracking/domain/model/trackingAlert'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
@@ -13,6 +11,8 @@ import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
+import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 

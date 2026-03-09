@@ -67,7 +67,7 @@ import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import type { TrackingStatusCode } from '~/modules/tracking/application/projection/tracking.status.projection'
+import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
