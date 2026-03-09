@@ -2,7 +2,6 @@ node_modules/
 .env
 .vinxi/
 .output/
-release/
 tools/agent/dist/
 tools/agent/.cache/
 dist/agent-installer-bundle.zip
