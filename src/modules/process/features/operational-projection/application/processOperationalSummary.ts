@@ -1,7 +1,7 @@
 import type {
   OperationalAlertSeverity,
   ProcessAggregatedStatus,
-} from '~/modules/process/features/operational-projection/application/operational-projection/operationalSemantics'
+} from '~/modules/process/features/operational-projection/application/operationalSemantics'
 
 /**
  * Process-level operational summary — Application-layer read model.
