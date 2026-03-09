@@ -123,7 +123,7 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  *
  * @param timeline - Derived timeline
  * @param status - Current derived status
- * @param existingActiveAlerts - Active alerts for this container (to avoid duplicates)
+ * @param existingAlerts - Alert history for this container (active + acknowledged)
  * @param isBackfill - Whether this derivation is part of a backfill/onboarding
  * @param now - Current time (injectable for testing)
  * @returns Array of new alert descriptors to persist
@@ -133,7 +133,7 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
 export function deriveAlerts(
   timeline: Timeline,
   status: ContainerStatus,
-  existingActiveAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlert[],
   isBackfill: boolean = false,
   now: Date = new Date(),
 ): NewTrackingAlert[] {
@@ -141,16 +141,18 @@ export function deriveAlerts(
   const nowIso = now.toISOString()
 
   // Build deduplication sets
-  // - FACT alerts: deduplicate by fingerprint
-  // - MONITORING alerts: deduplicate by type (legacy behavior)
+  // - FACT alerts: deduplicate by fingerprint across full history (ACK must not reset idempotency)
+  // - MONITORING alerts: deduplicate by active type (legacy behavior)
   const existingFactFingerprints = new Set(
-    existingActiveAlerts
+    existingAlerts
       .filter((a) => a.category === 'fact' && a.alert_fingerprint !== null)
       .map((a) => a.alert_fingerprint)
       .filter((fp): fp is string => fp !== null),
   )
   const existingMonitoringTypes = new Set(
-    existingActiveAlerts.filter((a) => a.category === 'monitoring').map((a) => a.type),
+    existingAlerts
+      .filter((a) => a.category === 'monitoring' && a.acked_at === null)
+      .map((a) => a.type),
   )
 
   // === FACT-BASED ALERTS ===

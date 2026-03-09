@@ -420,6 +420,42 @@ describe('deriveAlerts', () => {
       expect(transAlert).toBeUndefined()
     })
 
+    it('should NOT create duplicate TRANSSHIPMENT alert when matching fingerprint is acknowledged', () => {
+      const timeline = makeTransshipmentTimeline('fp-discharge-sgsin', 'fp-load-sgsin')
+
+      const existingFingerprint = computeAlertFingerprint('TRANSSHIPMENT', [
+        'fp-discharge-sgsin',
+        'fp-load-sgsin',
+      ])
+      const existingAlerts = [
+        {
+          id: '00000000-0000-0000-0000-999999999998',
+          container_id: CONTAINER_ID,
+          category: 'fact' as const,
+          type: 'TRANSSHIPMENT' as const,
+          severity: 'warning' as const,
+          message_key: 'alerts.transshipmentDetected' as const,
+          message_params: {
+            port: 'SGSIN',
+            fromVessel: 'VesselA',
+            toVessel: 'VesselB',
+          },
+          detected_at: '2025-12-03T00:00:00.000Z',
+          triggered_at: '2025-12-03T00:00:00.000Z',
+          source_observation_fingerprints: ['fp-discharge-sgsin', 'fp-load-sgsin'],
+          alert_fingerprint: existingFingerprint,
+          retroactive: false,
+          provider: null,
+          acked_at: '2025-12-04T10:00:00.000Z',
+          acked_by: 'operator@test',
+          acked_source: 'dashboard' as const,
+        },
+      ]
+      const alerts = deriveAlerts(timeline, 'DISCHARGED', existingAlerts)
+      const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
+      expect(transAlert).toBeUndefined()
+    })
+
     it('should create separate alerts for each vessel-change pair', () => {
       // Two transshipments: CNSHA → SGSIN (A→B) → BRSSZ (B→C) → BRIOA
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
