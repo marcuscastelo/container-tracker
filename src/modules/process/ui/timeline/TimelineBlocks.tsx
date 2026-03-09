@@ -22,7 +22,10 @@ export function VoyageBlockHeader(props: {
 
   const route = () => {
     const b = props.block
+    // For current leg: only show route when both origin AND destination are known
+    // (destination is null when voyage is ongoing; we show destinationLine instead)
     if (!b.origin && !b.destination) return null
+    if (props.isCurrent && !b.destination) return null
     return t(keys.shipmentView.timeline.blocks.voyageRoute, {
       origin: b.origin ?? '?',
       destination: b.destination ?? '?',
@@ -32,18 +35,37 @@ export function VoyageBlockHeader(props: {
   /** Destination line for the current leg: "→ Santos · ETA 13/03" */
   const destinationLine = () => {
     if (!props.isCurrent) return null
-    const dest = props.block.destination
-    if (!dest) return null
-    // Try to find the last event with an ETA in this voyage block
     const events = props.block.events
+
+    // Prefer confirmed destination (when DISCHARGE ACTUAL exists)
+    let dest = props.block.destination
     let etaIso: string | null = null
-    for (let i = events.length - 1; i >= 0; i--) {
-      const ev = events[i]
-      if (ev.eventTimeType === 'EXPECTED' && ev.eventTimeIso) {
-        etaIso = ev.eventTimeIso
-        break
+
+    if (!dest) {
+      // Fall back: pick destination from the last EXPECTED ARRIVAL event
+      for (let i = events.length - 1; i >= 0; i--) {
+        const ev = events[i]
+        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED') {
+          dest = ev.location ?? null
+          etaIso = ev.eventTimeIso
+          break
+        }
       }
     }
+
+    if (!dest) return null
+
+    // If ETA not found yet, look for any EXPECTED event
+    if (!etaIso) {
+      for (let i = events.length - 1; i >= 0; i--) {
+        const ev = events[i]
+        if (ev.eventTimeType === 'EXPECTED' && ev.eventTimeIso) {
+          etaIso = ev.eventTimeIso
+          break
+        }
+      }
+    }
+
     if (etaIso) {
       return t(keys.shipmentView.timeline.blocks.destinationEta, {
         destination: dest,
