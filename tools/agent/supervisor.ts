@@ -494,9 +494,7 @@ async function main(): Promise<void> {
     }
 
     const failedReleaseRuntimeWithoutHealthGate =
-      !requireHealthGate &&
-      runtimeSelection.source === 'release' &&
-      runResult.exitCode !== 0
+      !requireHealthGate && runtimeSelection.source === 'release' && runResult.exitCode !== 0
 
     if (failedReleaseRuntimeWithoutHealthGate) {
       consecutiveReleaseRuntimeFailures += 1
