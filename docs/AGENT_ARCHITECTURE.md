@@ -2,6 +2,8 @@
 
 This document describes the architecture, runtime model, and operational integration of the Container Tracker Agent system.
 
+Note: for current source-of-truth sync documentation, prefer `docs/SYNC_OVERVIEW.md`, `docs/SYNC_FLOWS.md`, `docs/SYNC_RUNTIME_MODEL.md`, `docs/SYNC_REQUESTS_MODEL.md`, `docs/SYNC_ARCHITECTURE_BOUNDARIES.md`, `docs/SYNC_FAQ.md`, `docs/SYNC_GAPS_AND_ROADMAP.md`, and `docs/SYNC_CODEMAP.md`.
+
 ## 0. System Overview
 
                 +----------------+
