@@ -183,6 +183,8 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           hostname,
           os,
           agent_version: agentVersion,
+          current_version: agentVersion,
+          desired_version: agentVersion,
           agent_token: agentToken,
           interval_sec: serverEnv.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
           max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
@@ -204,6 +206,13 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           token_id_masked: maskAgentToken(agentToken),
           last_error: null,
           queue_lag_seconds: null,
+          update_channel: 'stable',
+          updater_state: 'idle',
+          updater_last_checked_at: null,
+          updater_last_error: null,
+          update_ready_version: null,
+          restart_requested_at: null,
+          boot_status: 'starting',
         })
         .select(
           'id,tenant_id,machine_fingerprint,hostname,os,agent_version,agent_token,interval_sec,max_concurrent,supabase_url,supabase_anon_key,maersk_enabled,maersk_headless,maersk_timeout_ms,maersk_user_data_dir,status,enrolled_at,last_seen_at,realtime_state,processing_state,lease_health,active_jobs,capabilities,enrollment_method,token_id_masked,last_error,queue_lag_seconds',
@@ -234,6 +243,8 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           hostname,
           os,
           agent_version: agentVersion,
+          current_version: agentVersion,
+          desired_version: agentVersion,
           interval_sec: serverEnv.AGENT_ENROLL_DEFAULT_INTERVAL_SEC,
           max_concurrent: serverEnv.AGENT_ENROLL_DEFAULT_LIMIT,
           supabase_url: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? null,
@@ -254,6 +265,13 @@ export function bootstrapAgentEnrollControllers(): AgentEnrollControllers {
           enrollment_method: 'bootstrap-token',
           last_error: null,
           queue_lag_seconds: null,
+          update_channel: 'stable',
+          updater_state: 'idle',
+          updater_last_checked_at: null,
+          updater_last_error: null,
+          update_ready_version: null,
+          restart_requested_at: null,
+          boot_status: 'starting',
         })
         .eq('id', agentId)
         .eq('tenant_id', tenantId)

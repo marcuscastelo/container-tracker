@@ -88,6 +88,14 @@ function AgentCard(props: {
         <span>
           Lag: <span class="font-medium text-slate-700">{props.agent.queueLagDisplay}</span>
         </span>
+        <span>
+          Update:{' '}
+          <span
+            class={`font-medium ${props.agent.updateAvailable ? 'text-amber-700' : 'text-slate-700'}`}
+          >
+            {props.agent.updaterStateLabel}
+          </span>
+        </span>
       </div>
 
       <Show when={props.agent.capabilitiesDisplay}>

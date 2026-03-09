@@ -3,6 +3,7 @@ import type {
   AgentActivitySeverity,
   AgentActivityType,
   AgentAuthenticatedIdentity,
+  AgentBootStatus,
   AgentLeaseHealth,
   AgentListSortDirection,
   AgentListSortField,
@@ -11,6 +12,7 @@ import type {
   AgentProcessingState,
   AgentRealtimeState,
   AgentStatus,
+  AgentUpdaterState,
 } from '~/modules/agent/application/agent-monitoring.repository'
 import type { Json } from '~/shared/supabase/database.types'
 
@@ -26,6 +28,15 @@ type AgentSummaryReadModel = {
   readonly tenantName: string
   readonly hostname: string
   readonly version: string
+  readonly currentVersion: string
+  readonly desiredVersion: string | null
+  readonly updateChannel: string
+  readonly updaterState: AgentUpdaterState
+  readonly updateAvailable: boolean
+  readonly restartRequired: boolean
+  readonly lastUpdateError: string | null
+  readonly updateReadyVersion: string | null
+  readonly bootStatus: AgentBootStatus
   readonly status: AgentStatus
   readonly enrolledAt: string | null
   readonly lastSeenAt: string | null
@@ -53,6 +64,8 @@ type AgentDetailReadModel = AgentSummaryReadModel & {
   readonly processingState: AgentProcessingState
   readonly leaseHealth: AgentLeaseHealth
   readonly lastError: string | null
+  readonly updaterLastCheckedAt: string | null
+  readonly restartRequestedAt: string | null
   readonly recentActivity: AgentActivityReadModel[]
 }
 
@@ -83,6 +96,15 @@ type UpdateRuntimeStateCommand = {
   readonly tenantId: string
   readonly hostname?: string
   readonly version?: string
+  readonly currentVersion?: string
+  readonly desiredVersion?: string | null
+  readonly updateChannel?: string
+  readonly updaterState?: AgentUpdaterState
+  readonly updaterLastCheckedAt?: string | null
+  readonly updaterLastError?: string | null
+  readonly updateReadyVersion?: string | null
+  readonly restartRequestedAt?: string | null
+  readonly bootStatus?: AgentBootStatus
   readonly realtimeState?: AgentRealtimeState
   readonly processingState?: AgentProcessingState
   readonly leaseHealth?: AgentLeaseHealth
@@ -116,6 +138,33 @@ type GetAgentDetailCommand = {
   readonly now?: Date
 }
 
+type RequestAgentUpdateCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly desiredVersion: string
+  readonly updateChannel: string
+  readonly requestedAt?: string
+}
+
+type RequestAgentRestartCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly requestedAt?: string
+}
+
+type AgentUpdateManifestReadModel = {
+  readonly version: string
+  readonly downloadUrl: string | null
+  readonly checksum: string | null
+  readonly channel: string
+  readonly updateAvailable: boolean
+  readonly desiredVersion: string | null
+  readonly currentVersion: string
+  readonly updateReadyVersion: string | null
+  readonly restartRequired: boolean
+  readonly restartRequestedAt: string | null
+}
+
 const DEFAULT_ACTIVITY_LIMIT = 40
 
 const STATUS_SORT_WEIGHT: Record<AgentStatus, number> = {
@@ -142,8 +191,31 @@ function hasNonBlankText(value: string | null | undefined): boolean {
   return value.trim().length > 0
 }
 
+function hasUpdateAvailable(record: AgentMonitoringRecord): boolean {
+  if (!record.desiredVersion) return false
+  return record.desiredVersion !== record.currentVersion
+}
+
+function isRestartRequired(record: AgentMonitoringRecord): boolean {
+  if (!record.restartRequestedAt) return false
+
+  const requestedAtMs = parseIsoDate(record.restartRequestedAt)?.getTime() ?? null
+  if (requestedAtMs === null) {
+    return false
+  }
+
+  const lastSeenMs = parseIsoDate(record.lastSeenAt)?.getTime() ?? null
+  if (lastSeenMs === null) {
+    return true
+  }
+
+  return lastSeenMs <= requestedAtMs
+}
+
 function deriveRuntimeStatus(command: {
   readonly status?: AgentStatus
+  readonly bootStatus?: AgentBootStatus
+  readonly updaterState?: AgentUpdaterState
   readonly realtimeState?: AgentRealtimeState
   readonly processingState?: AgentProcessingState
   readonly leaseHealth?: AgentLeaseHealth
@@ -154,6 +226,8 @@ function deriveRuntimeStatus(command: {
 
   if (command.realtimeState === 'DISCONNECTED') return 'DISCONNECTED'
   if (
+    command.bootStatus === 'degraded' ||
+    command.updaterState === 'error' ||
     command.realtimeState === 'CHANNEL_ERROR' ||
     command.processingState === 'backing_off' ||
     command.leaseHealth === 'conflict' ||
@@ -185,6 +259,9 @@ function deriveReadStatus(command: {
   if (elapsedMs > staleThresholdMs) return 'DISCONNECTED'
 
   if (
+    command.record.bootStatus === 'degraded' ||
+    command.record.updaterState === 'error' ||
+    command.record.updaterState === 'blocked' ||
     command.record.realtimeState === 'CHANNEL_ERROR' ||
     command.record.processingState === 'backing_off' ||
     command.record.leaseHealth === 'conflict' ||
@@ -316,6 +393,15 @@ function toSummaryReadModel(command: {
     tenantName: command.record.tenantId,
     hostname: command.record.hostname,
     version: command.record.version,
+    currentVersion: command.record.currentVersion,
+    desiredVersion: command.record.desiredVersion,
+    updateChannel: command.record.updateChannel,
+    updaterState: command.record.updaterState,
+    updateAvailable: hasUpdateAvailable(command.record),
+    restartRequired: isRestartRequired(command.record),
+    lastUpdateError: command.record.updaterLastError,
+    updateReadyVersion: command.record.updateReadyVersion,
+    bootStatus: command.record.bootStatus,
     status,
     enrolledAt: command.record.enrolledAt,
     lastSeenAt: command.record.lastSeenAt,
@@ -371,6 +457,8 @@ function isProblematicAgent(agent: AgentSummaryReadModel): boolean {
   return (
     agent.status === 'DEGRADED' ||
     agent.status === 'DISCONNECTED' ||
+    agent.updateAvailable ||
+    agent.restartRequired ||
     agent.failuresLastHour > 0 ||
     (agent.queueLagSeconds !== null && agent.queueLagSeconds > 30)
   )
@@ -417,6 +505,12 @@ function sortAgents(
 
 export function createAgentMonitoringUseCases(deps: {
   readonly repository: AgentMonitoringRepository
+  readonly updateManifestConfig?: {
+    readonly version?: string
+    readonly downloadUrl?: string
+    readonly checksum?: string
+    readonly channel?: string
+  }
 }) {
   const listAgents = async (
     command: ListAgentsCommand,
@@ -530,6 +624,8 @@ export function createAgentMonitoringUseCases(deps: {
       processingState: record.processingState,
       leaseHealth: record.leaseHealth,
       lastError: record.lastError,
+      updaterLastCheckedAt: record.updaterLastCheckedAt,
+      restartRequestedAt: record.restartRequestedAt,
       recentActivity: recentEvents.map((event) => ({
         id: event.id,
         occurredAt: event.occurredAt,
@@ -543,6 +639,8 @@ export function createAgentMonitoringUseCases(deps: {
   const updateRuntimeState = async (command: UpdateRuntimeStateCommand): Promise<void> => {
     const derivedStatus = deriveRuntimeStatus({
       status: command.status,
+      bootStatus: command.bootStatus,
+      updaterState: command.updaterState,
       realtimeState: command.realtimeState,
       processingState: command.processingState,
       leaseHealth: command.leaseHealth,
@@ -601,6 +699,75 @@ export function createAgentMonitoringUseCases(deps: {
     return deps.repository.authenticateAgentToken(command)
   }
 
+  const requestAgentUpdate = async (
+    command: RequestAgentUpdateCommand,
+  ): Promise<AgentMonitoringRecord | null> => {
+    const requestedAt = command.requestedAt ?? new Date().toISOString()
+    return deps.repository.requestAgentUpdate({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+      desiredVersion: command.desiredVersion,
+      updateChannel: command.updateChannel,
+      requestedAt,
+    })
+  }
+
+  const requestAgentRestart = async (
+    command: RequestAgentRestartCommand,
+  ): Promise<AgentMonitoringRecord | null> => {
+    const requestedAt = command.requestedAt ?? new Date().toISOString()
+    return deps.repository.requestAgentRestart({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+      requestedAt,
+    })
+  }
+
+  const getUpdateManifestForAgent = async (command: {
+    readonly tenantId: string
+    readonly agentId: string
+  }): Promise<AgentUpdateManifestReadModel | null> => {
+    const record = await deps.repository.getAgentDetailForTenant({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+    })
+
+    if (!record) {
+      return null
+    }
+
+    const configuredVersion = deps.updateManifestConfig?.version
+    const configuredChannel = deps.updateManifestConfig?.channel
+    const restartRequired = isRestartRequired(record)
+
+    const desiredVersion = record.desiredVersion
+    const version = configuredVersion ?? desiredVersion ?? record.currentVersion
+    const channel = configuredChannel ?? record.updateChannel
+    const canServeConfiguredManifest =
+      configuredVersion === undefined || desiredVersion === configuredVersion
+    const hasConfiguredManifest =
+      configuredVersion !== undefined &&
+      deps.updateManifestConfig?.downloadUrl !== undefined &&
+      deps.updateManifestConfig?.checksum !== undefined
+    const updateAvailable =
+      hasUpdateAvailable(record) && canServeConfiguredManifest && hasConfiguredManifest
+
+    return {
+      version,
+      downloadUrl: canServeConfiguredManifest
+        ? (deps.updateManifestConfig?.downloadUrl ?? null)
+        : null,
+      checksum: canServeConfiguredManifest ? (deps.updateManifestConfig?.checksum ?? null) : null,
+      channel,
+      updateAvailable,
+      desiredVersion,
+      currentVersion: record.currentVersion,
+      updateReadyVersion: record.updateReadyVersion,
+      restartRequired,
+      restartRequestedAt: record.restartRequestedAt,
+    }
+  }
+
   return {
     listAgents,
     getAgentDetail,
@@ -608,6 +775,9 @@ export function createAgentMonitoringUseCases(deps: {
     touchHeartbeat,
     recordActivity,
     authenticateAgentToken,
+    requestAgentUpdate,
+    requestAgentRestart,
+    getUpdateManifestForAgent,
   }
 }
 

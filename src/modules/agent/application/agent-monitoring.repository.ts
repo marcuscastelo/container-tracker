@@ -13,6 +13,20 @@ export type AgentProcessingState = 'idle' | 'leasing' | 'processing' | 'backing_
 
 export type AgentLeaseHealth = 'healthy' | 'stale' | 'conflict' | 'unknown'
 
+export type AgentBootStatus = 'starting' | 'healthy' | 'degraded' | 'unknown'
+
+export type AgentUpdaterState =
+  | 'idle'
+  | 'checking'
+  | 'downloading'
+  | 'ready'
+  | 'draining'
+  | 'applying'
+  | 'rollback'
+  | 'blocked'
+  | 'error'
+  | 'unknown'
+
 export type AgentEnrollmentMethod = 'bootstrap-token' | 'manual' | 'unknown'
 
 export type AgentActivityType =
@@ -24,6 +38,15 @@ export type AgentActivityType =
   | 'REALTIME_SUBSCRIBED'
   | 'REALTIME_CHANNEL_ERROR'
   | 'LEASE_CONFLICT'
+  | 'UPDATE_CHECKED'
+  | 'UPDATE_AVAILABLE'
+  | 'UPDATE_DOWNLOAD_STARTED'
+  | 'UPDATE_DOWNLOAD_COMPLETED'
+  | 'UPDATE_READY'
+  | 'UPDATE_APPLY_STARTED'
+  | 'UPDATE_APPLY_FAILED'
+  | 'RESTART_FOR_UPDATE'
+  | 'ROLLBACK_EXECUTED'
 
 export type AgentActivitySeverity = 'info' | 'warning' | 'danger' | 'success'
 
@@ -42,6 +65,15 @@ export type AgentMonitoringRecord = {
   readonly tenantId: string
   readonly hostname: string
   readonly version: string
+  readonly currentVersion: string
+  readonly desiredVersion: string | null
+  readonly updateChannel: string
+  readonly updaterState: AgentUpdaterState
+  readonly updaterLastCheckedAt: string | null
+  readonly updaterLastError: string | null
+  readonly updateReadyVersion: string | null
+  readonly restartRequestedAt: string | null
+  readonly bootStatus: AgentBootStatus
   readonly status: AgentStatus
   readonly enrolledAt: string | null
   readonly lastSeenAt: string | null
@@ -81,6 +113,15 @@ export type AgentRuntimeStateUpdate = {
   readonly tenantId: string
   readonly hostname?: string
   readonly version?: string
+  readonly currentVersion?: string
+  readonly desiredVersion?: string | null
+  readonly updateChannel?: string
+  readonly updaterState?: AgentUpdaterState
+  readonly updaterLastCheckedAt?: string | null
+  readonly updaterLastError?: string | null
+  readonly updateReadyVersion?: string | null
+  readonly restartRequestedAt?: string | null
+  readonly bootStatus?: AgentBootStatus
   readonly status?: AgentStatus
   readonly lastSeenAt?: string
   readonly realtimeState?: AgentRealtimeState
@@ -132,5 +173,17 @@ export type AgentMonitoringRepository = {
   readonly updateAgentRuntimeState: (
     command: AgentRuntimeStateUpdate,
   ) => Promise<AgentMonitoringRecord | null>
+  readonly requestAgentUpdate: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly desiredVersion: string
+    readonly updateChannel: string
+    readonly requestedAt: string
+  }) => Promise<AgentMonitoringRecord | null>
+  readonly requestAgentRestart: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly requestedAt: string
+  }) => Promise<AgentMonitoringRecord | null>
   readonly insertActivityEvents: (events: readonly AgentActivityInsertRecord[]) => Promise<void>
 }

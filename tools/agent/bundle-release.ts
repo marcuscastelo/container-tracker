@@ -13,6 +13,7 @@ const REQUIRED_RELEASE_FILES = [
   'release/node/node.exe',
   'release/app/dist/agent.js',
   'release/app/dist/updater.js',
+  'release/app/dist/tools/agent/supervisor.js',
   'release/config/bootstrap.env',
 ] as const
 

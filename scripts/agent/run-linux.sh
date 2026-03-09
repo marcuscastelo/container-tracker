@@ -151,4 +151,4 @@ fi
 DOTENV_PATH="$dotenv_path" \
 BOOTSTRAP_DOTENV_PATH="$bootstrap_path" \
 AGENT_DATA_DIR="$agent_data_dir" \
-node tools/agent/dist/tools/agent/agent.js
+node tools/agent/dist/tools/agent/supervisor.js

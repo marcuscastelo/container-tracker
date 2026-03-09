@@ -174,6 +174,53 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },
 
+  async requestAgentUpdate({ tenantId, agentId, desiredVersion, updateChannel, requestedAt }) {
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .update({
+        desired_version: desiredVersion,
+        update_channel: updateChannel,
+        updater_state: 'ready',
+        updater_last_error: null,
+        restart_requested_at: requestedAt,
+      })
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .select('*')
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'requestAgentUpdate',
+      table: 'tracking_agents',
+    })
+
+    if (!row) return null
+    return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
+  },
+
+  async requestAgentRestart({ tenantId, agentId, requestedAt }) {
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .update({
+        restart_requested_at: requestedAt,
+        updater_state: 'draining',
+      })
+      .eq('id', agentId)
+      .eq('tenant_id', tenantId)
+      .is('revoked_at', null)
+      .select('*')
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'requestAgentRestart',
+      table: 'tracking_agents',
+    })
+
+    if (!row) return null
+    return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
+  },
+
   async insertActivityEvents(events) {
     if (events.length === 0) return
 

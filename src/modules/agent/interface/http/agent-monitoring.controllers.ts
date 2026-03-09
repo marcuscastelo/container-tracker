@@ -11,6 +11,9 @@ import {
   AgentHeartbeatResponseSchema,
   AgentListQuerySchema,
   AgentListResponseSchema,
+  AgentRequestOperationResponseSchema,
+  AgentRequestUpdateBodySchema,
+  AgentUpdateManifestResponseSchema,
 } from '~/modules/agent/interface/http/agent-monitoring.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
@@ -19,7 +22,14 @@ type AgentMonitoringControllersDeps = {
   readonly defaultTenantId: string
   readonly agentMonitoringUseCases: Pick<
     AgentMonitoringUseCases,
-    'listAgents' | 'getAgentDetail' | 'authenticateAgentToken' | 'touchHeartbeat' | 'recordActivity'
+    | 'listAgents'
+    | 'getAgentDetail'
+    | 'authenticateAgentToken'
+    | 'touchHeartbeat'
+    | 'recordActivity'
+    | 'requestAgentUpdate'
+    | 'requestAgentRestart'
+    | 'getUpdateManifestForAgent'
   >
 }
 
@@ -159,10 +169,162 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
     }
   }
 
+  async function getUpdateManifest({ request }: { readonly request: Request }): Promise<Response> {
+    try {
+      const providedToken = getBearerToken(request.headers.get('authorization'))
+      if (!providedToken) {
+        return jsonResponse({ error: 'Unauthorized' }, 401)
+      }
+
+      const auth = await deps.agentMonitoringUseCases.authenticateAgentToken({
+        token: providedToken,
+      })
+      if (!auth) {
+        return jsonResponse({ error: 'Unauthorized' }, 401)
+      }
+
+      const manifest = await deps.agentMonitoringUseCases.getUpdateManifestForAgent({
+        tenantId: auth.tenantId,
+        agentId: auth.agentId,
+      })
+
+      if (!manifest) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      return jsonResponse(
+        {
+          version: manifest.version,
+          download_url: manifest.downloadUrl,
+          checksum: manifest.checksum,
+          channel: manifest.channel,
+          update_available: manifest.updateAvailable,
+          desired_version: manifest.desiredVersion,
+          current_version: manifest.currentVersion,
+          update_ready_version: manifest.updateReadyVersion,
+          restart_required: manifest.restartRequired,
+          restart_requested_at: manifest.restartRequestedAt,
+        },
+        200,
+        AgentUpdateManifestResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
+  async function requestAgentUpdate({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    try {
+      const agentId = params.id
+      if (!agentId) {
+        return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const rawBody: unknown = await request.json().catch(() => ({}))
+      const parsedBody = AgentRequestUpdateBodySchema.safeParse(rawBody)
+      if (!parsedBody.success) {
+        return jsonResponse({ error: `Invalid request: ${parsedBody.error.message}` }, 400)
+      }
+
+      const requestedAt = new Date().toISOString()
+      const updated = await deps.agentMonitoringUseCases.requestAgentUpdate({
+        tenantId: deps.defaultTenantId,
+        agentId,
+        desiredVersion: parsedBody.data.desired_version,
+        updateChannel: parsedBody.data.update_channel,
+        requestedAt,
+      })
+
+      if (!updated) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      await deps.agentMonitoringUseCases.recordActivity({
+        agentId,
+        tenantId: deps.defaultTenantId,
+        type: 'UPDATE_AVAILABLE',
+        message: `Update requested to ${parsedBody.data.desired_version}`,
+        severity: 'info',
+        metadata: {
+          desiredVersion: parsedBody.data.desired_version,
+          updateChannel: parsedBody.data.update_channel,
+        },
+        occurredAt: requestedAt,
+      })
+
+      return jsonResponse(
+        {
+          ok: true,
+          agentId,
+          requestedAt,
+        },
+        200,
+        AgentRequestOperationResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
+  async function requestAgentRestart({
+    params,
+  }: {
+    readonly params: { readonly id?: string }
+  }): Promise<Response> {
+    try {
+      const agentId = params.id
+      if (!agentId) {
+        return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const requestedAt = new Date().toISOString()
+      const updated = await deps.agentMonitoringUseCases.requestAgentRestart({
+        tenantId: deps.defaultTenantId,
+        agentId,
+        requestedAt,
+      })
+
+      if (!updated) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      await deps.agentMonitoringUseCases.recordActivity({
+        agentId,
+        tenantId: deps.defaultTenantId,
+        type: 'RESTART_FOR_UPDATE',
+        message: 'Manual restart requested by control plane',
+        severity: 'warning',
+        metadata: {},
+        occurredAt: requestedAt,
+      })
+
+      return jsonResponse(
+        {
+          ok: true,
+          agentId,
+          requestedAt,
+        },
+        200,
+        AgentRequestOperationResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
   return {
     listAgents,
     getAgentById,
     heartbeat,
+    getUpdateManifest,
+    requestAgentUpdate,
+    requestAgentRestart,
   }
 }
 

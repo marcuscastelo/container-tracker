@@ -28,6 +28,11 @@ export function AgentEnrollmentCard(props: Props): JSX.Element {
           <span class="font-mono text-micro">{props.vm.tokenIdMasked}</span>
         </Row>
         <Row label="Interval">{props.vm.intervalDisplay}</Row>
+        <Row label="Current Ver">{props.vm.currentVersion}</Row>
+        <Row label="Desired Ver">{props.vm.desiredVersion ?? '—'}</Row>
+        <Row label="Channel">{props.vm.updateChannel}</Row>
+        <Row label="Updater">{props.vm.updaterStateLabel}</Row>
+        <Row label="Last Check">{props.vm.updaterLastCheckedDisplay}</Row>
         <Row label="Enrolled">{props.vm.enrolledAtDisplay}</Row>
       </div>
     </section>

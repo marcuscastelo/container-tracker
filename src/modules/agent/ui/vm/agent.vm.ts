@@ -15,6 +15,12 @@ export type AgentListItemVM = {
   readonly tenantName: string
   readonly hostname: string
   readonly version: string
+  readonly currentVersion: string
+  readonly desiredVersionDisplay: string
+  readonly updateAvailable: boolean
+  readonly updaterStateLabel: string
+  readonly restartRequired: boolean
+  readonly lastUpdateError: string | null
   readonly status: string
   readonly statusTone: AgentStatusTone
   readonly enrolledAtDisplay: string
@@ -52,6 +58,15 @@ export type AgentDetailVM = {
   readonly tenantName: string
   readonly hostname: string
   readonly version: string
+  readonly currentVersion: string
+  readonly desiredVersion: string | null
+  readonly updateChannel: string
+  readonly updaterStateLabel: string
+  readonly updateAvailable: boolean
+  readonly restartRequired: boolean
+  readonly lastUpdateError: string | null
+  readonly updateReadyVersion: string | null
+  readonly bootStatusLabel: string
   readonly tenantId: string
 
   // Status & Health
@@ -78,6 +93,7 @@ export type AgentDetailVM = {
   readonly enrollmentMethodLabel: string
   readonly tokenIdMasked: string
   readonly intervalDisplay: string
+  readonly updaterLastCheckedDisplay: string
   readonly capabilities: readonly string[]
 
   // Diagnostics

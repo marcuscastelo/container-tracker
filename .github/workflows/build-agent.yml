@@ -1,0 +1,68 @@
+name: Build Agent
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: build-agent-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run agent:build
+
+      - name: Package linux artifact
+        run: |
+          rm -rf /tmp/agent-linux-x64
+          mkdir -p /tmp/agent-linux-x64
+          cp -R tools/agent/dist /tmp/agent-linux-x64/dist
+          tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
+          sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
+
+      - name: Package windows artifact
+        run: |
+          rm -rf /tmp/agent-windows-x64
+          mkdir -p /tmp/agent-windows-x64
+          cp -R tools/agent/dist /tmp/agent-windows-x64/dist
+          (
+            cd /tmp
+            zip -qr "${GITHUB_WORKSPACE}/agent-windows-x64.zip" agent-windows-x64
+          )
+          sha256sum agent-windows-x64.zip | awk '{print $1}' > agent-windows-x64.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-release-assets
+          path: |
+            agent-linux-x64.tar.gz
+            agent-linux-x64.sha256
+            agent-windows-x64.zip
+            agent-windows-x64.sha256
+          if-no-files-found: error

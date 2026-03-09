@@ -13,7 +13,15 @@
   "include": [
     "./agent.ts",
     "./agent.scheduler.ts",
+    "./supervisor.ts",
     "./updater.ts",
+    "./updater.core.ts",
+    "./release-manager.ts",
+    "./release-state.ts",
+    "./runtime-health.ts",
+    "./runtime-paths.ts",
+    "./pending-activity.ts",
+    "./supervisor-control.ts",
     "./build-release.ts",
     "./bundle-release.ts"
   ]

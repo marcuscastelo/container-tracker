@@ -73,6 +73,44 @@ function realtimeTone(state: string): AgentStatusTone {
   }
 }
 
+function updaterStateLabel(state: string): string {
+  switch (state) {
+    case 'idle':
+      return 'Idle'
+    case 'checking':
+      return 'Checking'
+    case 'downloading':
+      return 'Downloading'
+    case 'ready':
+      return 'Ready'
+    case 'draining':
+      return 'Draining'
+    case 'applying':
+      return 'Applying'
+    case 'rollback':
+      return 'Rollback'
+    case 'blocked':
+      return 'Blocked'
+    case 'error':
+      return 'Error'
+    default:
+      return 'Unknown'
+  }
+}
+
+function bootStatusLabel(status: string): string {
+  switch (status) {
+    case 'starting':
+      return 'Starting'
+    case 'healthy':
+      return 'Healthy'
+    case 'degraded':
+      return 'Degraded'
+    default:
+      return 'Unknown'
+  }
+}
+
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
   try {
@@ -195,6 +233,12 @@ export function toAgentListItemVM(dto: AgentSummaryPayload, now: Date): AgentLis
     tenantName: dto.tenantName,
     hostname: dto.hostname,
     version: dto.version,
+    currentVersion: dto.currentVersion,
+    desiredVersionDisplay: dto.desiredVersion ?? '—',
+    updateAvailable: dto.updateAvailable,
+    updaterStateLabel: updaterStateLabel(dto.updaterState),
+    restartRequired: dto.restartRequired,
+    lastUpdateError: dto.lastUpdateError,
     status: statusLabel(dto.status),
     statusTone: statusToTone(dto.status),
     enrolledAtDisplay: formatDateTime(dto.enrolledAt),
@@ -273,6 +317,18 @@ function buildDiagnosticFlags(dto: AgentDetailPayload): readonly DiagnosticFlag[
     flags.push({ label: 'Backing off — rate limit suspected', tone: 'warning' })
   }
 
+  if (dto.updateAvailable) {
+    flags.push({ label: 'Update pending activation', tone: 'warning' })
+  }
+
+  if (dto.restartRequired) {
+    flags.push({ label: 'Restart required', tone: 'warning' })
+  }
+
+  if (dto.lastUpdateError) {
+    flags.push({ label: 'Updater error', tone: 'danger' })
+  }
+
   return flags
 }
 
@@ -337,6 +393,15 @@ export function toAgentDetailVM(dto: AgentDetailPayload, now: Date): AgentDetail
     tenantId: dto.tenantId,
     hostname: dto.hostname,
     version: dto.version,
+    currentVersion: dto.currentVersion,
+    desiredVersion: dto.desiredVersion,
+    updateChannel: dto.updateChannel,
+    updaterStateLabel: updaterStateLabel(dto.updaterState),
+    updateAvailable: dto.updateAvailable,
+    restartRequired: dto.restartRequired,
+    lastUpdateError: dto.lastUpdateError,
+    updateReadyVersion: dto.updateReadyVersion,
+    bootStatusLabel: bootStatusLabel(dto.bootStatus),
 
     status: statusLabel(dto.status),
     statusTone: statusToTone(dto.status),
@@ -359,6 +424,7 @@ export function toAgentDetailVM(dto: AgentDetailPayload, now: Date): AgentDetail
     enrollmentMethodLabel: enrollmentMethodLabel(dto.enrollmentMethod),
     tokenIdMasked: dto.tokenIdMasked ?? '—',
     intervalDisplay: dto.intervalSec !== null ? `${dto.intervalSec}s` : '—',
+    updaterLastCheckedDisplay: formatDateTime(dto.updaterLastCheckedAt),
     capabilities: dto.capabilities,
 
     lastError: dto.lastError,

@@ -4,6 +4,9 @@ const agentMonitoringHandlers = vi.hoisted(() => ({
   listAgents: vi.fn(),
   getAgentById: vi.fn(),
   heartbeat: vi.fn(),
+  getUpdateManifest: vi.fn(),
+  requestAgentUpdate: vi.fn(),
+  requestAgentRestart: vi.fn(),
 }))
 
 vi.mock('~/modules/agent/interface/http/agent-monitoring.controllers.bootstrap', () => ({
@@ -11,6 +14,9 @@ vi.mock('~/modules/agent/interface/http/agent-monitoring.controllers.bootstrap',
     listAgents: agentMonitoringHandlers.listAgents,
     getAgentById: agentMonitoringHandlers.getAgentById,
     heartbeat: agentMonitoringHandlers.heartbeat,
+    getUpdateManifest: agentMonitoringHandlers.getUpdateManifest,
+    requestAgentUpdate: agentMonitoringHandlers.requestAgentUpdate,
+    requestAgentRestart: agentMonitoringHandlers.requestAgentRestart,
   }),
 }))
 

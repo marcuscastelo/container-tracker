@@ -1,0 +1,90 @@
+name: Promote Stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to promote from canary (example: 1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote-stable:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate release and fetch checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release view "agent/v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null
+          rm -rf /tmp/agent-release
+          mkdir -p /tmp/agent-release
+          gh release download "agent/v${VERSION}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "agent-linux-x64.sha256" \
+            --pattern "agent-windows-x64.sha256" \
+            --dir /tmp/agent-release \
+            --clobber
+
+      - name: Generate stable manifest from canary
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ ! -f agent-manifests/canary.json ]; then
+            echo "agent-manifests/canary.json not found"
+            exit 1
+          fi
+
+          CHECKSUM="$(awk '{print $1}' /tmp/agent-release/agent-linux-x64.sha256)"
+          WINDOWS_CHECKSUM="$(awk '{print $1}' /tmp/agent-release/agent-windows-x64.sha256)"
+          LINUX_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-linux-x64.tar.gz"
+          WINDOWS_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/agent/v${VERSION}/agent-windows-x64.zip"
+          PUBLISHED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          jq \
+            --arg version "${VERSION}" \
+            --arg linux_download_url "${LINUX_DOWNLOAD_URL}" \
+            --arg linux_checksum "${CHECKSUM}" \
+            --arg windows_download_url "${WINDOWS_DOWNLOAD_URL}" \
+            --arg windows_checksum "${WINDOWS_CHECKSUM}" \
+            --arg published_at "${PUBLISHED_AT}" \
+            '.channel = "stable"
+              | .version = $version
+              | .platforms = {
+                  "linux-x64": {
+                    "url": $linux_download_url,
+                    "checksum": $linux_checksum
+                  },
+                  "windows-x64": {
+                    "url": $windows_download_url,
+                    "checksum": $windows_checksum
+                  }
+                }
+              | del(.download_url, .checksum)
+              | .published_at = $published_at' \
+            agent-manifests/canary.json > agent-manifests/stable.json
+
+      - name: Commit stable manifest
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if git diff --quiet -- agent-manifests/stable.json; then
+            echo "No stable manifest changes detected"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add agent-manifests/stable.json
+          git commit -m "chore(agent): promote stable ${VERSION}"
+          git push origin main
