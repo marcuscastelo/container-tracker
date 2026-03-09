@@ -15,10 +15,10 @@ import {
   type CreateProcessUseCasesDeps,
   createProcessUseCases,
 } from '~/modules/process/application/process.usecases'
-import type { ListProcessSyncStatesDeps } from '~/modules/process/application/usecases/list-process-sync-states.usecase'
-import type { RefreshProcessDeps } from '~/modules/process/application/usecases/refresh-process.usecase'
-import type { SyncAllProcessesDeps } from '~/modules/process/application/usecases/sync-all-processes.usecase'
-import type { SyncProcessContainersDeps } from '~/modules/process/application/usecases/sync-process-containers.usecase'
+import type { ListProcessSyncStatesDeps } from '~/modules/process/features/process-sync/application/usecases/list-process-sync-states.usecase'
+import type { RefreshProcessDeps } from '~/modules/process/features/process-sync/application/usecases/refresh-process.usecase'
+import type { SyncAllProcessesDeps } from '~/modules/process/features/process-sync/application/usecases/sync-all-processes.usecase'
+import type { SyncProcessContainersDeps } from '~/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase'
 import { supabaseProcessRepository } from '~/modules/process/infrastructure/persistence/supabaseProcessRepository'
 import { bootstrapTrackingModule } from '~/modules/tracking/infrastructure/bootstrap/tracking.bootstrap'
 import { serverEnv } from '~/shared/config/server-env'

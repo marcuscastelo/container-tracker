@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createSyncProcessContainersUseCase,
   type SyncProcessContainersDeps,
-} from '~/modules/process/application/usecases/sync-process-containers.usecase'
+} from '~/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase'
 import { HttpError } from '~/shared/errors/httpErrors'
 
 function toHttpErrorOrThrow(error: unknown): HttpError {

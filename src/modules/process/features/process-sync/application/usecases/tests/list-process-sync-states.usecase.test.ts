@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createListProcessSyncStatesUseCase,
   type ListProcessSyncStatesDeps,
-} from '~/modules/process/application/usecases/list-process-sync-states.usecase'
+} from '~/modules/process/features/process-sync/application/usecases/list-process-sync-states.usecase'
 
 type ProcessCandidates = Awaited<ReturnType<ListProcessSyncStatesDeps['listProcessSyncCandidates']>>
 
