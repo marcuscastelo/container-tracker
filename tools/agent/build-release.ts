@@ -367,6 +367,39 @@ async function runPnpmCommand(args: readonly string[], cwd: string): Promise<voi
   await runCommand('pnpm', args, cwd)
 }
 
+async function runPnpmDeployWithLegacyFallback(command: {
+  readonly args: readonly string[]
+  readonly cwd: string
+}): Promise<void> {
+  const argsWithLegacy = [...command.args]
+  const deployIndex = argsWithLegacy.findIndex((arg) => arg === 'deploy')
+  if (deployIndex < 0) {
+    await runPnpmCommand(command.args, command.cwd)
+    return
+  }
+
+  argsWithLegacy.splice(deployIndex + 1, 0, '--legacy')
+
+  try {
+    await runPnpmCommand(argsWithLegacy, command.cwd)
+    return
+  } catch (legacyError) {
+    console.warn(
+      `[agent:release] pnpm deploy with --legacy failed (${toErrorMessage(
+        legacyError,
+      )}); retrying without --legacy`,
+    )
+  }
+
+  try {
+    await runPnpmCommand(command.args, command.cwd)
+  } catch (defaultError) {
+    throw new Error(
+      `pnpm deploy failed both with and without --legacy (${toErrorMessage(defaultError)})`,
+    )
+  }
+}
+
 async function extractZip(zipPath: string, destinationDir: string, cwd: string): Promise<void> {
   if (process.platform === 'win32') {
     try {
@@ -1152,10 +1185,10 @@ async function buildRelease(): Promise<void> {
   console.log(
     `[agent:release] deploying production dependencies from workspace "${agentDeployWorkspace}"`,
   )
-  await runPnpmCommand(
-    ['--filter', agentDeployWorkspace, 'deploy', '--prod', '--legacy', releaseAppDir],
-    repoRoot,
-  )
+  await runPnpmDeployWithLegacyFallback({
+    args: ['--filter', agentDeployWorkspace, 'deploy', '--prod', releaseAppDir],
+    cwd: repoRoot,
+  })
 
   await fs.cp(distDir, releaseAppDistDir, { recursive: true })
   await writeAgentEntrypointShims(releaseAppDistDir)
