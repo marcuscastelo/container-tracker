@@ -3,9 +3,16 @@ import type { Accessor, JSX, Setter } from 'solid-js'
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import { CreateProcessDialogView } from '~/modules/process/ui/CreateProcessDialog.view'
+import {
+  dropContainerScopedField,
+  listContainerScopedEntries,
+  retainContainerScopedFields,
+  toContainerFieldKey,
+} from '~/modules/process/ui/validation/containerFormState.validation'
 import { useTranslation } from '~/shared/localization/i18n'
 import { navigateToAppHref } from '~/shared/ui/navigation/app-navigation'
 import { findDuplicateStrings } from '~/shared/utils/findDuplicateStrings'
+import { isRecord } from '~/shared/utils/typeGuards'
 
 type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
 
@@ -91,8 +98,17 @@ type DialogStateSetters = FormFieldSetters & {
 
 type CreateContainerBlurHandlerParams = {
   readonly markTouched: (fieldKey: string) => void
+  readonly getContainers: Accessor<readonly ContainerInput[]>
   readonly initialContainerNumbers: Accessor<ReadonlySet<string>>
   readonly setServerErrors: Setter<Record<string, FieldError>>
+  readonly validationTracker: ContainerValidationTracker
+}
+
+type ContainerValidationTracker = {
+  readonly start: (containerId: string) => number
+  readonly isCurrent: (containerId: string, ticket: number) => boolean
+  readonly clear: (containerId: string) => void
+  readonly reset: () => void
 }
 
 type CreateSubmitHandlerParams = {
@@ -246,7 +262,7 @@ function buildGenericErrors(
   message: string,
 ): Record<string, FieldError> {
   return Object.fromEntries(
-    containers.map((container) => [`container-${container.id}`, { message }]),
+    containers.map((container) => [toContainerFieldKey(container.id), { message }]),
   )
 }
 
@@ -259,13 +275,59 @@ function buildConflictErrors(
     const match = entriesToCheck.find(
       (entry) => entry.normalized === normalizeContainerNumber(conflict.containerNumber),
     )
-    const fieldKey = match ? `container-${match.id}` : `container-${conflict.containerNumber}`
+    const fieldKey = match
+      ? toContainerFieldKey(match.id)
+      : toContainerFieldKey(conflict.containerNumber)
     errors[fieldKey] = {
       message: conflict.message ?? `Container ${conflict.containerNumber} already exists`,
       link: conflict.link,
     }
   }
   return errors
+}
+
+function toContainerConflictsFromPayload(payload: unknown): readonly ContainerConflict[] {
+  if (!isRecord(payload)) return []
+  if (!Array.isArray(payload.conflicts)) return []
+
+  const conflicts: ContainerConflict[] = []
+  for (const item of payload.conflicts) {
+    if (!isRecord(item)) continue
+    if (typeof item.containerNumber !== 'string' || item.containerNumber.trim().length === 0) {
+      continue
+    }
+
+    conflicts.push({
+      containerNumber: item.containerNumber,
+      link: typeof item.link === 'string' ? item.link : undefined,
+      message: typeof item.message === 'string' ? item.message : undefined,
+    })
+  }
+
+  return conflicts
+}
+
+function toErrorMessageFromPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) return null
+
+  if (typeof payload.message === 'string' && payload.message.trim().length > 0) {
+    return payload.message
+  }
+
+  if (typeof payload.error === 'string' && payload.error.trim().length > 0) {
+    return payload.error
+  }
+
+  if (Array.isArray(payload.duplicates)) {
+    const duplicates = payload.duplicates.filter(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
+    )
+    if (duplicates.length > 0) {
+      return `Duplicate container numbers in request: ${duplicates.join(', ')}`
+    }
+  }
+
+  return null
 }
 
 async function requestContainerConflicts(
@@ -279,16 +341,15 @@ async function requestContainerConflicts(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ containers: containerNumbers }),
   })
+  const payload: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    return { ok: false, message: text || DEFAULT_SERVER_ERROR }
+    return { ok: false, message: toErrorMessageFromPayload(payload) ?? DEFAULT_SERVER_ERROR }
   }
 
-  const json = await response.json().catch(() => ({}))
   return {
     ok: true,
-    conflicts: Array.isArray(json.conflicts) ? json.conflicts : [],
+    conflicts: toContainerConflictsFromPayload(payload),
   }
 }
 
@@ -422,11 +483,14 @@ function clearContainerServerError(
   setServerErrors: Setter<Record<string, FieldError>>,
   containerId: string,
 ): void {
-  setServerErrors((previous) => {
-    const next = { ...previous }
-    delete next[`container-${containerId}`]
-    return next
-  })
+  setServerErrors((previous) => dropContainerScopedField(previous, containerId))
+}
+
+function clearContainerTouched(
+  setTouched: Setter<Record<string, boolean>>,
+  containerId: string,
+): void {
+  setTouched((previous) => dropContainerScopedField(previous, containerId))
 }
 
 function markContainersAsTouched(
@@ -434,8 +498,18 @@ function markContainersAsTouched(
   markTouched: (fieldKey: string) => void,
 ): void {
   for (const container of containers) {
-    markTouched(`container-${container.id}`)
+    markTouched(toContainerFieldKey(container.id))
   }
+}
+
+function listVisibleContainerServerErrors(
+  serverErrors: Readonly<Record<string, FieldError>>,
+  containers: readonly ContainerInput[],
+): readonly (readonly [string, FieldError])[] {
+  return listContainerScopedEntries(
+    serverErrors,
+    containers.map((container) => container.id),
+  )
 }
 
 function cloneContainers(containers: readonly ContainerInput[]): ContainerInput[] {
@@ -443,6 +517,34 @@ function cloneContainers(containers: readonly ContainerInput[]): ContainerInput[
     id: container.id,
     containerNumber: container.containerNumber,
   }))
+}
+
+function findContainerById(
+  containers: readonly ContainerInput[],
+  containerId: string,
+): ContainerInput | undefined {
+  return containers.find((container) => container.id === containerId)
+}
+
+function createContainerValidationTracker(): ContainerValidationTracker {
+  const ticketsByContainerId = new Map<string, number>()
+
+  return {
+    start(containerId: string): number {
+      const ticket = (ticketsByContainerId.get(containerId) ?? 0) + 1
+      ticketsByContainerId.set(containerId, ticket)
+      return ticket
+    },
+    isCurrent(containerId: string, ticket: number): boolean {
+      return ticketsByContainerId.get(containerId) === ticket
+    },
+    clear(containerId: string): void {
+      ticketsByContainerId.delete(containerId)
+    },
+    reset(): void {
+      ticketsByContainerId.clear()
+    },
+  }
 }
 
 function buildCarrierOptions(
@@ -536,7 +638,7 @@ function createContainerFeedbackHandlers(params: CreateContainerFeedbackHandlers
   readonly openContainerLink: (container: ContainerInput) => void
 } {
   const getContainerError = (container: ContainerInput): string | undefined => {
-    const fieldKey = `container-${container.id}`
+    const fieldKey = toContainerFieldKey(container.id)
     if (!params.touched()[fieldKey]) return undefined
     if (!container.containerNumber.trim()) {
       return params.containerRequiredMessage()
@@ -561,10 +663,10 @@ function createContainerFeedbackHandlers(params: CreateContainerFeedbackHandlers
   }
 
   const getContainerLink = (container: ContainerInput): string | undefined =>
-    params.serverErrors()[`container-${container.id}`]?.link
+    params.serverErrors()[toContainerFieldKey(container.id)]?.link
 
   const openContainerLink = (container: ContainerInput) => {
-    const linkUrl = params.serverErrors()[`container-${container.id}`]?.link
+    const linkUrl = params.serverErrors()[toContainerFieldKey(container.id)]?.link
     if (!linkUrl) return
 
     const shouldNavigate = globalThis.confirm(params.confirmLoseProgressMessage())
@@ -580,22 +682,38 @@ function createContainerBlurHandler(
   params: CreateContainerBlurHandlerParams,
 ): (container: ContainerInput) => void {
   return (container) => {
-    params.markTouched(`container-${container.id}`)
+    params.markTouched(toContainerFieldKey(container.id))
+    clearContainerServerError(params.setServerErrors, container.id)
+
     const rawValue = container.containerNumber.trim()
-    if (!rawValue) return
+    if (!rawValue) {
+      params.validationTracker.clear(container.id)
+      return
+    }
 
     const normalized = normalizeContainerNumber(rawValue)
-    if (params.initialContainerNumbers().has(normalized)) return
+    if (params.initialContainerNumbers().has(normalized)) {
+      params.validationTracker.clear(container.id)
+      return
+    }
 
     void (async () => {
-      clearContainerServerError(params.setServerErrors, container.id)
+      const ticket = params.validationTracker.start(container.id)
 
       try {
         const result = await requestContainerConflicts([normalized])
+        if (!params.validationTracker.isCurrent(container.id, ticket)) return
+
+        const currentContainer = findContainerById(params.getContainers(), container.id)
+        if (!currentContainer) return
+
+        const currentNormalized = normalizeContainerNumber(currentContainer.containerNumber)
+        if (currentNormalized !== normalized) return
+
         if (!result.ok) {
           params.setServerErrors((previous) => ({
             ...previous,
-            [`container-${container.id}`]: { message: result.message },
+            [toContainerFieldKey(container.id)]: { message: result.message },
           }))
           return
         }
@@ -604,17 +722,24 @@ function createContainerBlurHandler(
           const conflict = result.conflicts[0]
           params.setServerErrors((previous) => ({
             ...previous,
-            [`container-${container.id}`]: {
+            [toContainerFieldKey(container.id)]: {
               message: conflict.message ?? `Container ${conflict.containerNumber} already exists`,
               link: conflict.link,
             },
           }))
         }
       } catch (err) {
+        if (!params.validationTracker.isCurrent(container.id, ticket)) return
+
+        const currentContainer = findContainerById(params.getContainers(), container.id)
+        if (!currentContainer) return
+        const currentNormalized = normalizeContainerNumber(currentContainer.containerNumber)
+        if (currentNormalized !== normalized) return
+
         console.error('onBlur check failed', err)
         params.setServerErrors((previous) => ({
           ...previous,
-          [`container-${container.id}`]: { message: DEFAULT_SERVER_ERROR },
+          [toContainerFieldKey(container.id)]: { message: DEFAULT_SERVER_ERROR },
         }))
       }
     })()
@@ -770,6 +895,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const state = createDialogState()
   const formFieldSetters = asFormFieldSetters(state)
+  const containerValidationTracker = createContainerValidationTracker()
 
   const initialContainerNumbersSet = createMemo(
     () =>
@@ -795,7 +921,16 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     state.setTouched((previous) => ({ ...previous, [fieldKey]: true }))
   }
 
+  createEffect(() => {
+    const containerIds = state.containers.map((container) => container.id)
+    state.setServerErrors((previous) => retainContainerScopedFields(previous, containerIds))
+    state.setTouched((previous) => retainContainerScopedFields(previous, containerIds))
+  })
+
   const updateContainer = (id: string, value: string) => {
+    clearContainerServerError(state.setServerErrors, id)
+    containerValidationTracker.clear(id)
+
     const index = state.containers.findIndex((container) => container.id === id)
     if (index >= 0) {
       state.setContainers(index, 'containerNumber', value)
@@ -808,6 +943,11 @@ export function CreateProcessDialog(props: Props): JSX.Element {
 
   const removeContainer = (id: string) => {
     if (state.containers.length <= 1) return
+
+    clearContainerServerError(state.setServerErrors, id)
+    clearContainerTouched(state.setTouched, id)
+    containerValidationTracker.clear(id)
+
     state.setContainers(state.containers.filter((container) => container.id !== id))
   }
 
@@ -828,11 +968,14 @@ export function CreateProcessDialog(props: Props): JSX.Element {
 
   const onContainerBlur = createContainerBlurHandler({
     markTouched,
+    getContainers: () => state.containers,
     initialContainerNumbers: initialContainerNumbersSet,
     setServerErrors: state.setServerErrors,
+    validationTracker: containerValidationTracker,
   })
 
   const handleClose = () => {
+    containerValidationTracker.reset()
     resetDialogState(asDialogStateSetters(state))
     props.onClose()
   }
@@ -840,12 +983,15 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const duplicateList = createMemo(() =>
     findDuplicateStrings(buildContainerNumbers(state.containers)),
   )
+  const visibleServerErrorEntries = createMemo(() =>
+    listVisibleContainerServerErrors(state.serverErrors(), state.containers),
+  )
 
   const isSubmitDisabled = createMemo(() => {
     if (!hasValidContainers(state.containers)) return true
     if ((duplicateList() ?? []).length > 0) return true
     if (state.carrier() === '') return true
-    if (Object.keys(state.serverErrors() ?? {}).length > 0) return true
+    if (visibleServerErrorEntries().length > 0) return true
     return false
   })
 
@@ -857,9 +1003,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       return `${t(keys.createProcess.validation.duplicateContainer)} (${duplicates[0]})`
     }
 
-    const serverErrorKeys = Object.keys(state.serverErrors() ?? {})
-    if (serverErrorKeys.length > 0) {
-      return state.serverErrors()[serverErrorKeys[0]]?.message ?? ''
+    const blockingError = visibleServerErrorEntries()[0]
+    if (blockingError) {
+      return blockingError[1].message
     }
 
     if (state.carrier() === '') return t(keys.createProcess.field.carrierPlaceholder)

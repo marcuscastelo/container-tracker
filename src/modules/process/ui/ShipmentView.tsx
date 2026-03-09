@@ -715,6 +715,7 @@ function useProcessDialogsController(
       }
     } catch (err) {
       console.error('Failed to create process:', err)
+      setCreateError(toReadableErrorMessage(err))
       setIsCreateDialogOpen(false)
     }
   }
@@ -742,6 +743,8 @@ function useProcessDialogsController(
       const conflict = parseExistingProcessConflictError(err)
       if (conflict) {
         setCreateError(conflict)
+      } else {
+        setCreateError(toReadableErrorMessage(err))
       }
       setIsEditOpen(false)
     }

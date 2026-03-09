@@ -6,6 +6,7 @@ import {
   fetchDashboardProcessSummaries,
   prefetchDashboardGlobalAlertsSummary,
   prefetchDashboardProcessSummaries,
+  toCreateProcessInput,
   unacknowledgeTrackingAlertRequest,
 } from '~/modules/process/ui/validation/processApi.validation'
 
@@ -52,6 +53,71 @@ function mockDashboardOperationalSummaryFetch() {
       ),
   )
 }
+
+describe('toCreateProcessInput', () => {
+  it('maps process form data into API payload with containers', () => {
+    const payload = toCreateProcessInput({
+      reference: 'REF-1001',
+      origin: 'Shanghai',
+      destination: 'Santos',
+      containers: [
+        { id: '1', containerNumber: 'MSCU1234567' },
+        { id: '2', containerNumber: 'MSCU7654321' },
+      ],
+      carrier: 'msc',
+      billOfLading: 'BL-123',
+      bookingNumber: 'BOOK-321',
+      importerName: 'Importer Co',
+      exporterName: 'Exporter Co',
+      referenceImporter: 'IMP-REF',
+      product: 'Coffee',
+      redestinationNumber: 'RD-9',
+    })
+
+    expect(payload).toEqual({
+      reference: 'REF-1001',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      bill_of_lading: 'BL-123',
+      booking_number: 'BOOK-321',
+      importer_name: 'Importer Co',
+      exporter_name: 'Exporter Co',
+      reference_importer: 'IMP-REF',
+      product: 'Coffee',
+      redestination_number: 'RD-9',
+      containers: [
+        { container_number: 'MSCU1234567', carrier_code: 'msc' },
+        { container_number: 'MSCU7654321', carrier_code: 'msc' },
+      ],
+    })
+  })
+
+  it('sends nullable fields as null when user clears the form values', () => {
+    const payload = toCreateProcessInput({
+      reference: '',
+      origin: '',
+      destination: '',
+      containers: [{ id: '1', containerNumber: 'MSCU1234567' }],
+      carrier: 'msc',
+      billOfLading: '',
+      bookingNumber: '',
+      importerName: '',
+      exporterName: '',
+      referenceImporter: '',
+      product: '',
+      redestinationNumber: '',
+    })
+
+    expect(payload.bill_of_lading).toBeNull()
+    expect(payload.booking_number).toBeNull()
+    expect(payload.importer_name).toBeNull()
+    expect(payload.exporter_name).toBeNull()
+    expect(payload.reference_importer).toBeNull()
+    expect(payload.product).toBeNull()
+    expect(payload.redestination_number).toBeNull()
+  })
+})
 
 describe('fetchDashboardProcessSummaries', () => {
   afterEach(() => {
