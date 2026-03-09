@@ -5,7 +5,7 @@
     "#container-tracker-eslint-plugin": "./scripts/eslint-plugin-container-tracker.mjs"
   },
   "scripts": {
-    "dev": "run-p dev:server agent:run",
+    "dev": "bash scripts/dev.sh",
     "dev:server": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",

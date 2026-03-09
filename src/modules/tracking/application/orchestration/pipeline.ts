@@ -103,12 +103,12 @@ export async function processSnapshot(
   const status = deriveStatus(timeline)
 
   // Step 7: Derive Alerts
-  const existingActiveAlerts =
-    await deps.trackingAlertRepository.findActiveByContainerId(containerId)
+  // Fact alerts dedupe by historical fingerprint, so derivation must see full history.
+  const existingAlerts = await deps.trackingAlertRepository.findByContainerId(containerId)
   const newAlertDescriptors: readonly NewTrackingAlert[] = deriveAlerts(
     timeline,
     status,
-    existingActiveAlerts,
+    existingAlerts,
     isBackfill,
   )
 
