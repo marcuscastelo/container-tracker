@@ -65,6 +65,7 @@ Sources: `supabase/migrations/20260310_02_operational_tables_auto_prune.sql`.
 
 | Entry point | How job is born |
 | --- | --- |
+| `pg_cron` provider-paced scheduler | cron `provider-paced-container-sync` executes `enqueue_container_sync_batch()` every 5 minutes, selecting due containers per provider with pacing limits (`supabase/migrations/20260310_03_provider_paced_sync_scheduler.sql`, `supabase/migrations/20260310_04_provider_paced_sync_scheduler_cron.sql`) |
 | `POST /api/refresh` | tracking refresh controller calls `enqueue_sync_request` through bootstrap deps (`src/modules/tracking/interface/http/refresh.controllers.ts:58-69`, `src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts:43-69`) |
 | `POST /api/processes/:id/refresh` | process refresh use case iterates process containers and calls the same enqueue port (`src/modules/process/interface/http/process.controllers.ts:463-490`, `src/modules/process/features/process-sync/application/usecases/refresh-process.usecase.ts:116-165`, `src/modules/process/infrastructure/bootstrap/process.bootstrap.ts:95-124`) |
 | `POST /api/processes/:id/sync` | sync use case enqueues targets before waiting on queue status (`src/modules/process/features/process-sync/application/usecases/sync-process-containers.usecase.ts:180-220`) |
@@ -73,6 +74,22 @@ Sources: `supabase/migrations/20260310_02_operational_tables_auto_prune.sql`.
 ### Dedupe behavior
 
 Open requests are deduplicated by a unique partial index on `(tenant_id, provider, ref_type, ref_value)` where status is `PENDING` or `LEASED`. `enqueue_sync_request()` inserts a new `PENDING` row or returns the existing open row with `is_new=false` (`supabase/migrations/20260225_02_refresh_queue_first.sql:23-117`).
+
+### Provider-paced scheduler behavior
+
+`enqueue_container_sync_batch()` applies operational pacing and target selection in DB:
+
+- runs with defaults: due window `24h`, recent dedupe window `1h`, limit `10` per provider
+- resolves tenant by:
+  - unique max active agents (`tracking_agents.revoked_at is null` and `status in ('CONNECTED','DEGRADED')`)
+  - fallback to latest tenant seen in `sync_requests`
+  - explicit failure when no tenant can be resolved
+- selects active containers only (process not archived/deleted, container not removed)
+- maps provider from normalized `carrier_code` and keeps only `maersk|msc|cmacgm`
+- ranks by oldest `DONE.updated_at` (null first), then `container_number`
+- enqueues via `enqueue_sync_request()` (preserving open-row dedupe semantics)
+
+Implementation: `supabase/migrations/20260310_03_provider_paced_sync_scheduler.sql`.
 
 ## Leasing Model
 

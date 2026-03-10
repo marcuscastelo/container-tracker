@@ -202,6 +202,74 @@ O agent continua consumindo normalmente.
 
 ---
 
+# Implementation Contract
+
+Implementação SQL adotada:
+
+```sql
+public.enqueue_container_sync_batch(
+  p_due_window interval default interval '24 hours',
+  p_recent_window interval default interval '1 hour',
+  p_limit_per_provider integer default 10
+)
+```
+
+Retorno operacional:
+
+```text
+provider
+selected_count
+enqueued_new_count
+deduped_open_count
+```
+
+Regras de resolução de tenant:
+
+1. escolher tenant com maior número de agentes ativos
+   - ativo = `revoked_at is null` e `status in ('CONNECTED', 'DEGRADED')`
+2. se houver empate (ou nenhum ativo), fallback para tenant mais recente em `sync_requests` (`created_at desc`)
+3. se ainda não houver tenant, falhar explicitamente
+
+Elegibilidade de containers:
+
+- processo ativo (`archived_at is null` e `deleted_at is null`)
+- container ativo (`removed_at is null`)
+- `container_number` não vazio
+- `carrier_code` mapeável para `maersk | msc | cmacgm`
+
+Seleção/ranking:
+
+- `last_done_at = max(updated_at)` em `sync_requests` com `status = 'DONE'`
+- due quando:
+  - nunca teve `DONE`, ou
+  - `last_done_at < now() - p_due_window`
+- exclusão de duplicação temporal:
+  - não selecionar alvos com qualquer `sync_request` recente (`created_at >= now() - p_recent_window`) para mesma chave `(tenant_id, provider, ref_type='container', ref_value)`
+- ordenação:
+  - `last_done_at` mais antigo (nulos primeiro)
+  - `container_number` ascendente
+- limite final:
+  - `row_number() partition by provider`
+  - `<= p_limit_per_provider`
+
+Enqueue:
+
+- usa `public.enqueue_sync_request(...)` (não `INSERT` direto)
+- preserva dedupe de abertos (`PENDING | LEASED`) e invariantes atuais da fila
+
+Índices de suporte:
+
+- lookup de último `DONE` por alvo + `updated_at desc`
+- lookup de requests recentes por alvo + `created_at desc`
+
+Rollout:
+
+- `20260310_03`: função + índices (validação manual)
+- `20260310_04`: ativa cron `provider-paced-container-sync` em `*/5 * * * *`
+- migração de cron remove defensivamente job legado `daily-container-sync` (se existir)
+
+---
+
 # Idempotência
 
 Garantias:
