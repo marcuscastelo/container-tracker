@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   acknowledgeTrackingAlertRequest,
   clearDashboardPrefetchCache,
+  deleteProcessRequest,
   fetchDashboardGlobalAlertsSummary,
   fetchDashboardProcessSummaries,
   prefetchDashboardGlobalAlertsSummary,
@@ -256,6 +257,38 @@ describe('fetchDashboardGlobalAlertsSummary', () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1)
     expect(fetchSpy).toHaveBeenCalledWith('/api/dashboard/operational-summary', undefined)
+  })
+})
+
+describe('deleteProcessRequest', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    clearDashboardPrefetchCache()
+  })
+
+  it('sends DELETE /api/processes/:id and resolves on 204', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(null, {
+          status: 204,
+        }),
+    )
+
+    await deleteProcessRequest('process-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/processes/process-1', { method: 'DELETE' })
+  })
+
+  it('throws API error message when delete fails', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ error: 'Process not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    )
+
+    await expect(deleteProcessRequest('missing-process')).rejects.toThrow('Process not found')
   })
 })
 

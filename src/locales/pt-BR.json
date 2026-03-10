@@ -235,7 +235,8 @@
     "actions": {
       "refresh": "Atualizar",
       "refreshing": "Atualizando…",
-      "edit": "Editar"
+      "edit": "Editar",
+      "delete": "Excluir embarque"
     },
     "containers": {
       "title": "Containers",
@@ -375,7 +376,30 @@
     "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
     "refreshCarrierUnknownMessage": "Este processo não tem um armador selecionado, portanto não é possível executar um refresh automático. Você pode editar o processo e escolher o armador correto para habilitar o refresh.",
     "refreshCarrierUnknownEditCTA": "Editar processo",
-    "refreshCarrierUnknownCancelCTA": "Cancelar"
+    "refreshCarrierUnknownCancelCTA": "Cancelar",
+    "deleteShipment": {
+      "title": "Excluir embarque?",
+      "description": "Isso excluirá permanentemente o embarque e TODOS os dados relacionados.",
+      "warningItems": {
+        "shipment": "o embarque",
+        "containers": "todos os containers do embarque",
+        "timeline": "toda a timeline de rastreio",
+        "carrierEvents": "todos os eventos do armador",
+        "alerts": "todos os alertas gerados para os containers"
+      },
+      "cannotUndo": "Esta ação não pode ser desfeita.",
+      "summaryShipment": "Embarque",
+      "summaryContainers": "Containers",
+      "summaryCarrier": "Armador",
+      "summaryRoute": "Rota",
+      "confirmationLabel": "Digite a referência do embarque para confirmar a exclusão",
+      "confirmationPlaceholder": "Digite \"{{reference}}\" para confirmar",
+      "cancel": "Cancelar",
+      "confirm": "Excluir embarque",
+      "deleting": "Excluindo…",
+      "errorTitle": "Não foi possível excluir o embarque.",
+      "errorMessage": "Por favor, tente novamente."
+    }
   },
   "createProcess": {
     "description": "Defina um novo embarque para rastrear um ou mais containers.",

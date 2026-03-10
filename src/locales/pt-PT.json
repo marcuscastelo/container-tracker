@@ -235,7 +235,8 @@
     "actions": {
       "refresh": "Atualizar",
       "refreshing": "A atualizar…",
-      "edit": "Editar"
+      "edit": "Editar",
+      "delete": "Eliminar expedição"
     },
     "containers": {
       "title": "Contentores",
@@ -375,7 +376,30 @@
     "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
     "refreshCarrierUnknownMessage": "Esta expedição não tem um armador selecionado, por isso não é possível executar um refresh automático. Pode editar o processo e escolher o armador correto para habilitar o refresh.",
     "refreshCarrierUnknownEditCTA": "Editar processo",
-    "refreshCarrierUnknownCancelCTA": "Cancelar"
+    "refreshCarrierUnknownCancelCTA": "Cancelar",
+    "deleteShipment": {
+      "title": "Eliminar expedição?",
+      "description": "Isto eliminará permanentemente a expedição e TODOS os dados relacionados.",
+      "warningItems": {
+        "shipment": "a expedição",
+        "containers": "todos os contentores da expedição",
+        "timeline": "toda a linha temporal de rastreio",
+        "carrierEvents": "todos os eventos do armador",
+        "alerts": "todos os alertas gerados para os contentores"
+      },
+      "cannotUndo": "Esta ação não pode ser revertida.",
+      "summaryShipment": "Expedição",
+      "summaryContainers": "Contentores",
+      "summaryCarrier": "Armador",
+      "summaryRoute": "Rota",
+      "confirmationLabel": "Escreva a referência da expedição para confirmar a eliminação",
+      "confirmationPlaceholder": "Escreva \"{{reference}}\" para confirmar",
+      "cancel": "Cancelar",
+      "confirm": "Eliminar expedição",
+      "deleting": "A eliminar…",
+      "errorTitle": "Não foi possível eliminar a expedição.",
+      "errorMessage": "Por favor, tente novamente."
+    }
   },
   "createProcess": {
     "description": "Defina uma nova expedição para rastrear um ou mais contentores.",

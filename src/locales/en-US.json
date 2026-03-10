@@ -224,7 +224,8 @@
     "actions": {
       "refresh": "Refresh",
       "refreshing": "Refreshing…",
-      "edit": "Edit"
+      "edit": "Edit",
+      "delete": "Delete shipment"
     },
     "containers": {
       "title": "Containers",
@@ -364,7 +365,30 @@
     "refreshCarrierUnknownTitle": "Cannot refresh — unknown carrier",
     "refreshCarrierUnknownMessage": "This shipment has no carrier selected, so an automatic refresh cannot be performed. You can edit the process and choose the correct carrier to enable refresh.",
     "refreshCarrierUnknownEditCTA": "Edit process",
-    "refreshCarrierUnknownCancelCTA": "Cancel"
+    "refreshCarrierUnknownCancelCTA": "Cancel",
+    "deleteShipment": {
+      "title": "Delete shipment?",
+      "description": "This will permanently delete the shipment and ALL related data.",
+      "warningItems": {
+        "shipment": "the shipment",
+        "containers": "all containers in the shipment",
+        "timeline": "the entire tracking timeline",
+        "carrierEvents": "all carrier events",
+        "alerts": "all alerts generated for the containers"
+      },
+      "cannotUndo": "This action cannot be undone.",
+      "summaryShipment": "Shipment",
+      "summaryContainers": "Containers",
+      "summaryCarrier": "Carrier",
+      "summaryRoute": "Route",
+      "confirmationLabel": "Type the shipment reference to confirm deletion",
+      "confirmationPlaceholder": "Type \"{{reference}}\" to confirm",
+      "cancel": "Cancel",
+      "confirm": "Delete shipment",
+      "deleting": "Deleting…",
+      "errorTitle": "Unable to delete shipment.",
+      "errorMessage": "Please try again."
+    }
   },
   "createProcess": {
     "description": "Define a new shipment to track one or more containers.",
