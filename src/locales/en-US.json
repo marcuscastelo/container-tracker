@@ -139,7 +139,10 @@
         "idle": "Sync process",
         "syncing": "Syncing process",
         "success": "Sync completed",
+        "successRecent": "Sync completed",
         "error": "Sync failed",
+        "failed": "Sync failed",
+        "disabled": "Sync unavailable",
         "unknown": "No previous sync",
         "lastSyncAt": "{{state}} · Last sync: {{timestamp}}"
       },

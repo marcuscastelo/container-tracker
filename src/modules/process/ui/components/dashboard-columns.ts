@@ -95,7 +95,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'sync',
     labelKey: 'sync',
-    width: '80px',
+    width: '56px',
     sortField: null,
     reorderable: false,
     pinned: false,
