@@ -11,6 +11,8 @@ import type { Provider } from '~/modules/tracking/domain/model/provider'
  */
 export type TrackingAlertCategory = 'fact' | 'monitoring'
 export type TrackingAlertSeverity = 'info' | 'warning' | 'danger'
+export type TrackingAlertLifecycleState = 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
+export type TrackingAlertResolvedReason = 'condition_cleared' | 'terminal_state'
 
 export type TrackingAlertType =
   /** Transshipment detected */
@@ -77,6 +79,9 @@ export type TrackingAlertMessageKey = TrackingAlertMessageContract['message_key'
 export type TrackingAlertMessageParams = TrackingAlertMessageContract['message_params']
 
 type TrackingAlertBase = {
+  /** Lifecycle state of this alert record */
+  lifecycle_state?: TrackingAlertLifecycleState
+
   /** Primary key (UUID) */
   id: string
 
@@ -122,6 +127,12 @@ type TrackingAlertBase = {
 
   /** Optional source context where this alert was acknowledged */
   acked_source: TrackingAlertAckSource | null
+
+  /** When this alert was auto-resolved by system lifecycle logic (UTC ISO) */
+  resolved_at?: string | null
+
+  /** Why this alert was auto-resolved */
+  resolved_reason?: TrackingAlertResolvedReason | null
 }
 
 /**
@@ -134,3 +145,16 @@ export type TrackingAlert = TrackingAlertBase & TrackingAlertMessageContract
  */
 type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id'>
 export type NewTrackingAlert = NewTrackingAlertBase & TrackingAlertMessageContract
+
+export function resolveAlertLifecycleState(alert: {
+  readonly lifecycle_state?: TrackingAlertLifecycleState
+  readonly acked_at: string | null
+  readonly resolved_at?: string | null
+}): TrackingAlertLifecycleState {
+  if (alert.lifecycle_state === 'ACTIVE') return 'ACTIVE'
+  if (alert.lifecycle_state === 'ACKED') return 'ACKED'
+  if (alert.lifecycle_state === 'AUTO_RESOLVED') return 'AUTO_RESOLVED'
+  if (alert.acked_at !== null) return 'ACKED'
+  if (alert.resolved_at !== null && alert.resolved_at !== undefined) return 'AUTO_RESOLVED'
+  return 'ACTIVE'
+}

@@ -38,6 +38,8 @@ describe('deriveTrackingOperationalSummary', () => {
     expect(summary.eta?.state).toBe('ACTIVE_EXPECTED')
     expect(summary.eta?.eventTimeType).toBe('EXPECTED')
     expect(summary.eta?.type).toBe('ARRIVAL')
+    expect(summary.etaApplicable).toBe(true)
+    expect(summary.lifecycleBucket).toBe('pre_arrival')
   })
 
   it('marks past EXPECTED ETA as EXPIRED_EXPECTED', () => {
@@ -58,6 +60,7 @@ describe('deriveTrackingOperationalSummary', () => {
     })
 
     expect(summary.eta?.state).toBe('EXPIRED_EXPECTED')
+    expect(summary.etaApplicable).toBe(true)
   })
 
   it('prefers ACTUAL as safe-first primary when available', () => {
@@ -75,7 +78,7 @@ describe('deriveTrackingOperationalSummary', () => {
           created_at: '2026-02-18T08:00:00.000Z',
         }),
       ],
-      status: 'ARRIVED_AT_POD',
+      status: 'IN_TRANSIT',
       transshipment: {
         hasTransshipment: false,
         transshipmentCount: 0,
@@ -88,6 +91,33 @@ describe('deriveTrackingOperationalSummary', () => {
     expect(summary.eta?.eventTimeType).toBe('ACTUAL')
     expect(summary.eta?.state).toBe('ACTUAL')
     expect(summary.eta?.eventTimeIso).toBe('2026-02-18T08:00:00.000Z')
+  })
+
+  it('forces eta=null at and after ARRIVED_AT_POD', () => {
+    const statuses = [
+      'ARRIVED_AT_POD',
+      'DISCHARGED',
+      'AVAILABLE_FOR_PICKUP',
+      'DELIVERED',
+      'EMPTY_RETURNED',
+    ]
+
+    for (const status of statuses) {
+      const summary = deriveTrackingOperationalSummary({
+        observations: [makeObservation()],
+        status,
+        transshipment: {
+          hasTransshipment: false,
+          transshipmentCount: 0,
+          ports: [],
+        },
+        podLocationCode: 'BRSSZ',
+        now: new Date('2026-02-15T00:00:00.000Z'),
+      })
+
+      expect(summary.eta).toBeNull()
+      expect(summary.etaApplicable).toBe(false)
+    }
   })
 
   it('falls back to DISCHARGE milestone when ARRIVAL is absent', () => {

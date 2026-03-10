@@ -182,6 +182,8 @@ describe('process controllers', () => {
     const containerOneSummary: TrackingOperationalSummary = {
       status: 'IN_TRANSIT',
       eta: null,
+      etaApplicable: true,
+      lifecycleBucket: 'pre_arrival',
       transshipment: {
         hasTransshipment: false,
         count: 0,
@@ -245,7 +247,10 @@ describe('process controllers', () => {
         triggered_at: '2026-03-01T10:00:00.000Z',
         retroactive: false,
         provider: 'maersk',
+        lifecycle_state: 'ACTIVE',
         acked_at: null,
+        resolved_at: null,
+        resolved_reason: null,
       },
     ])
   })
@@ -261,6 +266,8 @@ describe('process controllers', () => {
         locationCode: 'BRSSZ',
         locationDisplay: 'Santos',
       },
+      etaApplicable: true,
+      lifecycleBucket: 'pre_arrival',
       transshipment: {
         hasTransshipment: true,
         count: 1,

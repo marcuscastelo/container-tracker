@@ -2,6 +2,7 @@ import type {
   OperationalAlertSeverity,
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 
 /**
  * Process-level operational summary — Application-layer read model.
@@ -21,6 +22,14 @@ export type ProcessOperationalSummary = {
 
   readonly process_status: ProcessAggregatedStatus
   readonly eta: string | null
+  readonly lifecycle_bucket: TrackingLifecycleBucket
+  readonly final_delivery_complete: boolean
+  readonly full_logistics_complete: boolean
+  readonly eta_coverage: {
+    readonly total: number
+    readonly eligible_total: number
+    readonly with_eta: number
+  }
 
   readonly alerts_count: number
   readonly highest_alert_severity: OperationalAlertSeverity | null

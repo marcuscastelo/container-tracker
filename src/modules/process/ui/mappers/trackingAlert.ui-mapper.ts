@@ -20,6 +20,9 @@ function projectionToAlertDisplayVM(
     timestamp: formatRelativeTime(projection.triggeredAtIso, new Date(), locale),
     triggeredAtIso: projection.triggeredAtIso,
     ackedAtIso: projection.ackedAtIso,
+    resolvedAtIso: projection.resolvedAtIso,
+    lifecycleState: projection.lifecycleState,
+    resolvedReason: projection.resolvedReason,
     category: projection.category,
     retroactive: projection.retroactive,
   }

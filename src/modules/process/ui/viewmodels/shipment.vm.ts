@@ -59,6 +59,7 @@ export type ContainerDetailVM = {
   readonly statusCode: TrackingStatusCode
   readonly sync: ContainerSyncVM
   readonly eta: string | null
+  readonly etaApplicable?: boolean
   readonly etaChipVm: ContainerEtaChipVM
   readonly selectedEtaVm: ContainerEtaDetailVM
   readonly tsChipVm: ContainerTsChipVM

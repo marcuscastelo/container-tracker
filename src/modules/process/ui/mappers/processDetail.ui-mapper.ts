@@ -176,17 +176,17 @@ function toProcessEtaSecondaryVm(
   containers: readonly ShipmentDetailVM['containers'][number][],
   locale: string,
 ): ShipmentDetailVM['processEtaSecondaryVm'] {
-  const total = data.process_operational?.coverage.total ?? containers.length
+  const total = data.process_operational?.coverage.eligible_total ?? containers.length
   const withEta =
     data.process_operational?.coverage.with_eta ?? containers.filter((c) => c.selectedEtaVm).length
   const etaMax = data.process_operational?.eta_max ?? null
 
   return {
-    visible: containers.length > 1,
+    visible: containers.length > 1 && total > 0,
     date: etaMax?.event_time ? formatDateForLocale(etaMax.event_time, locale) : null,
     withEta,
     total,
-    incomplete: withEta < total,
+    incomplete: total > 0 && withEta < total,
   }
 }
 
@@ -219,6 +219,9 @@ export function toShipmentDetailVM(
     const statusCode = toTrackingStatusCode(container.status)
     const etaChipVm = toContainerEtaChipVm(container.operational?.eta, locale)
     const selectedEtaVm = toContainerEtaDetailVm(container.operational?.eta, locale)
+    const etaApplicable =
+      container.operational?.eta_applicable ??
+      container.operational?.lifecycle_bucket === 'pre_arrival'
     const transshipment = toTransshipmentVm(container.operational?.transshipment)
     const sync =
       syncByContainerNumber.get(normalizeContainerNumber(container.container_number)) ??
@@ -232,6 +235,7 @@ export function toShipmentDetailVM(
       statusCode,
       sync,
       eta: null,
+      etaApplicable,
       etaChipVm,
       selectedEtaVm,
       tsChipVm: toTsChipVm(transshipment),

@@ -1,6 +1,7 @@
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
+import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
@@ -16,6 +17,7 @@ import type {
  * This is the only place that shapes alert display data for the HTTP boundary.
  */
 export function toAlertResponseDto(alert: TrackingAlertDisplayReadModel): AlertResponseDto {
+  const lifecycleState = resolveAlertLifecycleState(alert)
   return {
     id: alert.id,
     container_number: alert.container_number,
@@ -27,7 +29,10 @@ export function toAlertResponseDto(alert: TrackingAlertDisplayReadModel): AlertR
     triggered_at: alert.triggered_at,
     retroactive: alert.retroactive,
     provider: alert.provider,
+    lifecycle_state: lifecycleState,
     acked_at: alert.acked_at,
+    resolved_at: alert.resolved_at ?? null,
+    resolved_reason: alert.resolved_reason ?? null,
   }
 }
 

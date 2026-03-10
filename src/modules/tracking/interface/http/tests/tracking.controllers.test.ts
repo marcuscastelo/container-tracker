@@ -23,6 +23,7 @@ function createControllers(options?: {
     ) => undefined,
   )
   const unacknowledge = vi.fn(async (_alertId: string) => undefined)
+  const autoResolveMany = vi.fn(async () => undefined)
   const findActiveByContainerId = vi.fn(async (containerId: string) => {
     const alerts = options?.activeAlerts ?? []
     return alerts.filter((alert) => alert.container_id === containerId)
@@ -65,6 +66,7 @@ function createControllers(options?: {
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge,
       unacknowledge,
+      autoResolveMany,
     },
     syncMetadataRepository: {
       listByContainerNumbers: vi.fn(async () => []),
@@ -78,6 +80,7 @@ function createControllers(options?: {
     controllers,
     acknowledge,
     unacknowledge,
+    autoResolveMany,
     findActiveByContainerId,
     findContainerNumbersByIds,
   }
@@ -138,7 +141,10 @@ describe('tracking controllers', () => {
         triggered_at: '2026-03-01T10:00:00.000Z',
         retroactive: false,
         provider: 'maersk',
+        lifecycle_state: 'ACTIVE',
         acked_at: null,
+        resolved_at: null,
+        resolved_reason: null,
       },
     ])
     expect(findActiveByContainerId).toHaveBeenCalledWith(containerId)

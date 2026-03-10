@@ -116,7 +116,16 @@ export function AlertItem(props: {
   const { t, keys } = useTranslation()
   const isBusy = () => props.busyAlertIds.has(props.alert.id)
   const isCollapsing = () => props.collapsingAlertIds.has(props.alert.id)
-  const actionDateIso = () => props.alert.ackedAtIso ?? props.alert.triggeredAtIso
+  const lifecycleState = () => {
+    if (props.alert.lifecycleState === 'ACTIVE') return 'ACTIVE'
+    if (props.alert.lifecycleState === 'ACKED') return 'ACKED'
+    if (props.alert.lifecycleState === 'AUTO_RESOLVED') return 'AUTO_RESOLVED'
+    if (props.alert.ackedAtIso) return 'ACKED'
+    if (props.alert.resolvedAtIso) return 'AUTO_RESOLVED'
+    return 'ACTIVE'
+  }
+  const actionDateIso = () =>
+    props.alert.ackedAtIso ?? props.alert.resolvedAtIso ?? props.alert.triggeredAtIso
   const translatedMessage = () => t(props.alert.messageKey, props.alert.messageParams)
 
   return (
@@ -155,21 +164,7 @@ export function AlertItem(props: {
           <span class="font-semibold text-slate-700">{props.alert.containerNumber}</span>
         </p>
       </div>
-      <Show
-        when={props.mode === 'active'}
-        fallback={
-          <button
-            type="button"
-            disabled={isBusy()}
-            data-testid={`alert-unack-button-${props.alert.id}`}
-            class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-micro font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
-            onClick={() => props.onUnacknowledge(props.alert.id)}
-          >
-            {t(keys.shipmentView.alerts.action.unacknowledge)}
-          </button>
-        }
-      >
+      <Show when={props.mode === 'active'}>
         <button
           type="button"
           disabled={isBusy()}
@@ -193,6 +188,21 @@ export function AlertItem(props: {
               d="M5 13l4 4L19 7"
             />
           </svg>
+        </button>
+      </Show>
+      <Show
+        when={props.mode === 'archived' && lifecycleState() === 'ACKED'}
+        fallback={<span class="inline-flex h-6 w-6" aria-hidden="true" />}
+      >
+        <button
+          type="button"
+          disabled={isBusy()}
+          data-testid={`alert-unack-button-${props.alert.id}`}
+          class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-micro font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
+          onClick={() => props.onUnacknowledge(props.alert.id)}
+        >
+          {t(keys.shipmentView.alerts.action.unacknowledge)}
         </button>
       </Show>
     </li>

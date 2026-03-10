@@ -24,10 +24,28 @@ function makeSummary(
     status?: OperationalStatus
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
+    operational?: {
+      etaEventTimeIso?: string | null
+      etaApplicable?: boolean
+      lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
+    }
   } = {},
 ) {
+  const etaEventTimeIso = overrides.operational?.etaEventTimeIso
+  const operational = overrides.operational
+    ? {
+        eta:
+          typeof etaEventTimeIso === 'string' && etaEventTimeIso.length > 0
+            ? { eventTimeIso: etaEventTimeIso }
+            : null,
+        etaApplicable: overrides.operational.etaApplicable,
+        lifecycleBucket: overrides.operational.lifecycleBucket,
+      }
+    : undefined
+
   return {
     status: overrides.status ?? 'UNKNOWN',
+    operational,
     alerts: overrides.alerts ?? [],
     timeline: {
       observations: overrides.observations ?? [],
@@ -92,9 +110,21 @@ describe('aggregateOperationalSummary', () => {
 
     const summaries = [
       makeSummary({
+        status: 'IN_TRANSIT',
+        operational: {
+          etaEventTimeIso: futureDate2,
+          etaApplicable: true,
+          lifecycleBucket: 'pre_arrival',
+        },
         observations: [{ event_time: pastDate }, { event_time: futureDate2 }],
       }),
       makeSummary({
+        status: 'IN_TRANSIT',
+        operational: {
+          etaEventTimeIso: futureDate1,
+          etaApplicable: true,
+          lifecycleBucket: 'pre_arrival',
+        },
         observations: [{ event_time: futureDate1 }],
       }),
     ]
@@ -107,7 +137,17 @@ describe('aggregateOperationalSummary', () => {
   it('returns null ETA when no future events', () => {
     const pastDate = new Date(Date.now() - 86400000).toISOString()
 
-    const summaries = [makeSummary({ observations: [{ event_time: pastDate }] })]
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        operational: {
+          etaEventTimeIso: pastDate,
+          etaApplicable: true,
+          lifecycleBucket: 'pre_arrival',
+        },
+        observations: [{ event_time: pastDate }],
+      }),
+    ]
 
     const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
 
