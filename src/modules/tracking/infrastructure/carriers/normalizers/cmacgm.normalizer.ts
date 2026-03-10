@@ -50,7 +50,9 @@ const CMACGM_STATUS_MAP: Record<string, ObservationType> = {
   // Delivery / return
   delivered: 'DELIVERY',
   delivery: 'DELIVERY',
+  'container to consignee': 'DELIVERY',
   'empty return': 'EMPTY_RETURN',
+  'empty in depot': 'EMPTY_RETURN',
   'container returned empty': 'EMPTY_RETURN',
   'devolucao de conteiner vazio': 'EMPTY_RETURN',
 

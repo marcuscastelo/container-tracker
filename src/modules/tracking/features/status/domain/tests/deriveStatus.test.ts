@@ -138,6 +138,31 @@ describe('deriveStatus', () => {
     expect(deriveStatus(timeline)).toBe('EMPTY_RETURNED')
   })
 
+  it('should derive EMPTY_RETURNED for lifecycle DISCHARGED -> DELIVERY -> EMPTY_RETURN', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'DISCHARGE',
+        id: '00000000-0000-0000-0000-000000000021',
+        fingerprint: 'fp21',
+        event_time: '2026-02-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DELIVERY',
+        id: '00000000-0000-0000-0000-000000000022',
+        fingerprint: 'fp22',
+        event_time: '2026-02-05T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'EMPTY_RETURN',
+        id: '00000000-0000-0000-0000-000000000023',
+        fingerprint: 'fp23',
+        event_time: '2026-02-08T00:00:00.000Z',
+      }),
+    ])
+
+    expect(deriveStatus(timeline)).toBe('EMPTY_RETURNED')
+  })
+
   it('should handle transshipment cycles correctly (LOAD → DISCHARGE → LOAD → DISCHARGE)', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({

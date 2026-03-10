@@ -5,6 +5,7 @@ import {
 } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import { computeAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
@@ -704,6 +705,94 @@ describe('deriveAlerts', () => {
       const alerts = deriveAlerts(timeline, 'DELIVERED', [], false, now)
       const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
       expect(noMoveAlert).toBeUndefined()
+    })
+
+    it('should NOT create NO_MOVEMENT alert for EMPTY_RETURNED containers', () => {
+      const lastEventTime = '2025-11-01T00:00:00.000Z'
+      const now = new Date('2025-11-20T00:00:00.000Z')
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+        makeObs({
+          type: 'EMPTY_RETURN',
+          event_time: lastEventTime,
+          id: '00000000-0000-0000-0000-000000000012',
+          fingerprint: 'fp2',
+        }),
+      ])
+
+      const alerts = deriveAlerts(timeline, 'EMPTY_RETURNED', [], false, now)
+      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
+      expect(noMoveAlert).toBeUndefined()
+    })
+
+    it('should NOT re-emit NO_MOVEMENT when the same monitoring alert was acknowledged', () => {
+      const lastEventTime = '2025-11-01T00:00:00.000Z'
+      const now = new Date('2025-11-20T00:00:00.000Z')
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+        makeObs({
+          type: 'LOAD',
+          event_time: lastEventTime,
+          id: '00000000-0000-0000-0000-000000000013',
+          fingerprint: 'fp3',
+        }),
+      ])
+
+      const existingAlerts = [
+        {
+          id: '00000000-0000-0000-0000-999999999997',
+          container_id: CONTAINER_ID,
+          category: 'monitoring' as const,
+          type: 'NO_MOVEMENT' as const,
+          severity: 'warning' as const,
+          message_key: 'alerts.noMovementDetected' as const,
+          message_params: {
+            days: 10,
+            lastEventDate: '2025-11-01',
+          },
+          detected_at: '2025-11-10T00:00:00.000Z',
+          triggered_at: '2025-11-10T00:00:00.000Z',
+          source_observation_fingerprints: ['fp3'],
+          alert_fingerprint: null,
+          retroactive: false,
+          provider: null,
+          acked_at: '2025-11-11T00:00:00.000Z',
+          acked_by: 'operator@test',
+          acked_source: 'dashboard' as const,
+        },
+      ]
+
+      const alerts = deriveAlerts(timeline, 'LOADED', existingAlerts, false, now)
+      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
+      expect(noMoveAlert).toBeUndefined()
+    })
+
+    it('should keep alerts empty for a closed lifecycle DISCHARGED -> DELIVERY -> EMPTY_RETURN', () => {
+      const now = new Date('2026-03-20T00:00:00.000Z')
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+        makeObs({
+          type: 'DISCHARGE',
+          event_time: '2026-03-01T00:00:00.000Z',
+          id: '00000000-0000-0000-0000-000000000021',
+          fingerprint: 'fp21',
+        }),
+        makeObs({
+          type: 'DELIVERY',
+          event_time: '2026-03-05T00:00:00.000Z',
+          id: '00000000-0000-0000-0000-000000000022',
+          fingerprint: 'fp22',
+        }),
+        makeObs({
+          type: 'EMPTY_RETURN',
+          event_time: '2026-03-08T00:00:00.000Z',
+          id: '00000000-0000-0000-0000-000000000023',
+          fingerprint: 'fp23',
+        }),
+      ])
+
+      const status = deriveStatus(timeline)
+      expect(status).toBe('EMPTY_RETURNED')
+
+      const alerts = deriveAlerts(timeline, status, [], false, now)
+      expect(alerts).toEqual([])
     })
 
     it('should NOT create NO_MOVEMENT alert when recent events exist', () => {

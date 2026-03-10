@@ -20,6 +20,8 @@ type TransshipmentPair = {
   readonly vesselTo: string
 }
 
+const TERMINAL_STATUSES: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
+
 function resolveObservationLocationDisplay(observation: Observation | null | undefined): string {
   const locationDisplay = observation?.location_display?.trim() ?? ''
   if (locationDisplay.length > 0) return locationDisplay
@@ -119,7 +121,7 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  * MONITORING alerts:
  *   - NO_MOVEMENT: if daysSinceLastEvent > threshold (default 7 days)
  *   - ETA_MISSING: no ETA-related data available
- *   - Deduplication: by TYPE only (legacy behavior)
+ *   - Deduplication: by TYPE across full alert history (ACK does not reset idempotency)
  *
  * @param timeline - Derived timeline
  * @param status - Current derived status
@@ -142,7 +144,7 @@ export function deriveAlerts(
 
   // Build deduplication sets
   // - FACT alerts: deduplicate by fingerprint across full history (ACK must not reset idempotency)
-  // - MONITORING alerts: deduplicate by active type (legacy behavior)
+  // - MONITORING alerts: deduplicate by type across full history (ACK must not reset idempotency)
   const existingFactFingerprints = new Set(
     existingAlerts
       .filter((a) => a.category === 'fact' && a.alert_fingerprint !== null)
@@ -150,9 +152,7 @@ export function deriveAlerts(
       .filter((fp): fp is string => fp !== null),
   )
   const existingMonitoringTypes = new Set(
-    existingAlerts
-      .filter((a) => a.category === 'monitoring' && a.acked_at === null)
-      .map((a) => a.type),
+    existingAlerts.filter((a) => a.category === 'monitoring').map((a) => a.type),
   )
 
   // === FACT-BASED ALERTS ===
@@ -241,8 +241,7 @@ export function deriveAlerts(
       const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
 
       // Only alert if container is not in a terminal state
-      const terminalStatuses: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
-      const isTerminal = terminalStatuses.includes(status)
+      const isTerminal = TERMINAL_STATUSES.includes(status)
 
       if (
         daysSinceLastEvent > NO_MOVEMENT_THRESHOLD_DAYS &&
