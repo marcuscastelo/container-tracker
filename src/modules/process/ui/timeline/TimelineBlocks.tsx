@@ -82,33 +82,33 @@ export function VoyageBlockHeader(props: {
   }
 
   return (
-    <div class="rounded-t border-b border-slate-200/40 bg-slate-50/50 px-2.5 py-2">
-      <div class="flex items-center gap-1.5">
+    <div class="rounded-t border-b border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2.5">
+      <div class="flex items-center gap-2">
         {/* Ship icon */}
         <span class="text-xs shrink-0 opacity-70" aria-hidden="true">
           🚢
         </span>
-        <span class="text-sm-ui font-bold text-slate-800 tracking-tight">
+        <span class="text-sm-ui font-semibold text-[var(--text-primary)] tracking-tight">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
         <Show when={props.isCurrent}>
-          <span class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-px text-micro font-bold uppercase tracking-wider text-blue-700 ring-1 ring-blue-200">
+          <span class="inline-flex items-center rounded-md bg-[var(--status-info-bg)] px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wider text-[var(--status-info-text)] ring-1 ring-inset ring-[var(--status-info-border)]">
             {t(keys.shipmentView.timeline.blocks.currentLeg)}
           </span>
         </Show>
       </div>
       <Show when={props.block.voyage}>
         {(voyage) => (
-          <p class="mt-0.5 text-micro font-medium text-slate-500">
+          <p class="mt-1 text-micro font-medium text-[var(--text-tertiary)]">
             {t(keys.shipmentView.timeline.blocks.voyage)} {voyage()}
           </p>
         )}
       </Show>
       <Show when={route()}>
-        {(routeStr) => <p class="mt-0.5 text-micro text-slate-500">{routeStr()}</p>}
+        {(routeStr) => <p class="mt-0.5 text-micro text-[var(--text-tertiary)]">{routeStr()}</p>}
       </Show>
       <Show when={destinationLine()}>
-        {(line) => <p class="mt-0.5 text-micro font-semibold text-blue-600">{line()}</p>}
+        {(line) => <p class="mt-0.5 text-micro font-semibold text-[var(--status-info-text)]">{line()}</p>}
       </Show>
     </div>
   )
@@ -146,15 +146,15 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   }
 
   return (
-    <div class="rounded-t border-b border-slate-100 bg-slate-50/30 px-2.5 py-2">
-      <div class="flex items-center gap-1.5">
+    <div class="rounded-t border-b border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2.5">
+      <div class="flex items-center gap-2">
         <span class="text-sm shrink-0" aria-hidden="true">
           {icon()}
         </span>
-        <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
+        <span class="text-sm-ui font-semibold text-[var(--text-secondary)] tracking-tight">{title()}</span>
       </div>
       <Show when={props.block.location}>
-        {(loc) => <p class="mt-0.5 text-micro text-slate-500">{loc()}</p>}
+        {(loc) => <p class="mt-0.5 text-micro text-[var(--text-tertiary)]">{loc()}</p>}
       </Show>
     </div>
   )
@@ -170,28 +170,28 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
 
   return (
-    <div class="rounded-md border-l-4 border-amber-400 bg-amber-50/80 px-2.5 py-2">
-      <div class="flex items-center gap-1.5">
+    <div class="rounded-lg border-l-4 border-[var(--status-warning-icon)] bg-[var(--status-warning-bg)] px-3 py-2.5">
+      <div class="flex items-center gap-2">
         <span class="text-sm" aria-hidden="true">
           🔁
         </span>
-        <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
+        <span class="text-sm-ui font-semibold text-[var(--status-warning-text)] tracking-tight">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>
       </div>
       <Show when={props.block.port}>
-        {(port) => <p class="mt-0.5 text-micro font-medium text-amber-800">{port()}</p>}
+        {(port) => <p class="mt-1 text-micro font-medium text-[var(--status-warning-text)]">{port()}</p>}
       </Show>
       <Show
         when={hasVesselChange()}
         fallback={
           <Show when={props.block.reason}>
-            {(reason) => <p class="mt-0.5 text-micro text-amber-700">{reason()}</p>}
+            {(reason) => <p class="mt-0.5 text-micro text-[var(--status-warning-text)]">{reason()}</p>}
           </Show>
         }
       >
-        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/60 px-2 py-0.5 text-micro">
-          <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
+        <div class="mt-1.5 flex items-center gap-1 rounded-md bg-[var(--bg-surface)] px-2 py-1 text-micro ring-1 ring-inset ring-[var(--border-default)]">
+          <span class="text-[var(--text-secondary)] font-semibold shrink-0" aria-hidden="true">
             {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
               from: props.block.fromVessel ?? '?',
               to: props.block.toVessel ?? '?',
@@ -222,11 +222,11 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
   }
 
   return (
-    <div class="flex items-center py-1.5 pl-3">
+    <div class="flex items-center py-2 pl-3">
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
       </div>
-      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50/80 px-2 py-0.5 text-micro italic text-slate-400 ring-1 ring-slate-100/80">
+      <span class="inline-flex items-center gap-1.5 rounded-md bg-[var(--bg-muted)] px-2.5 py-1 text-micro italic text-[var(--text-muted)] ring-1 ring-inset ring-[var(--border-default)]">
         ⏳ {label()}
       </span>
     </div>
@@ -259,24 +259,24 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
   const severityClasses = () => {
     switch (props.marker.severity) {
       case 'danger':
-        return 'border-amber-500 bg-amber-50 text-amber-900'
+        return 'border-[var(--status-warning-icon)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
       case 'warning':
-        return 'border-amber-400 bg-amber-50/60 text-amber-800'
+        return 'border-[var(--status-warning-icon)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
       default:
-        return 'border-slate-300 bg-slate-50 text-slate-600'
+        return 'border-[var(--border-strong)] bg-[var(--bg-muted)] text-[var(--text-secondary)]'
     }
   }
 
   const icon = () => (props.marker.severity === 'danger' ? '⚠' : '⏳')
 
   return (
-    <div class="flex items-center gap-1.5 py-1 pl-3">
+    <div class="flex items-center gap-2 py-1.5 pl-3">
       {/* Timeline spine continuation */}
       <div class="flex w-3 shrink-0 flex-col items-center">
         <div class="h-px w-px" />
       </div>
       <div
-        class={`flex items-center gap-1 rounded border-l-[3px] px-1.5 py-0.5 ${severityClasses()}`}
+        class={`flex items-center gap-1.5 rounded-md border-l-[3px] px-2 py-1 ${severityClasses()}`}
       >
         <span class="text-micro" aria-hidden="true">
           {icon()}
@@ -302,11 +302,11 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () => {
     if (props.isCurrent) {
-      return 'rounded-lg border border-blue-200/80 bg-blue-50/25 shadow-[0_1px_4px_rgba(59,130,246,0.12)] ring-1 ring-blue-100/50'
+      return 'rounded-lg border border-[var(--status-info-border)] bg-[var(--status-info-bg)] shadow-[var(--card-shadow)]'
     }
     return props.variant === 'voyage'
-      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
-      : 'rounded-lg border border-slate-100/80 bg-slate-50/30'
+      ? 'rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--card-shadow)]'
+      : 'rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)]'
   }
 
   return <div class={baseClass()}>{props.children}</div>
@@ -316,7 +316,7 @@ export function BlockCard(props: {
  * Micro-separator between event rows inside a block (Phase 24).
  */
 export function EventSeparator(): JSX.Element {
-  return <div class="ml-3 border-t border-slate-50" />
+  return <div class="ml-3 border-t border-[var(--border-subtle)]" />
 }
 
 // ---------------------------------------------------------------------------
@@ -341,19 +341,19 @@ export function RailDot(props: { readonly variant: RailDotVariant }): JSX.Elemen
   const cls = (): string => {
     switch (props.variant) {
       case 'current-voyage':
-        return 'h-3 w-3 bg-blue-500 ring-2 ring-blue-200 shadow-[0_0_4px_rgba(59,130,246,0.4)]'
+        return 'h-3 w-3 bg-[var(--status-info-icon)] ring-2 ring-[var(--status-info-border)] shadow-[0_0_4px_var(--status-info-icon)]'
       case 'voyage':
-        return 'h-2.5 w-2.5 bg-blue-400 ring-2 ring-white'
+        return 'h-2.5 w-2.5 bg-[var(--status-info-icon)] ring-2 ring-[var(--bg-surface)]'
       case 'terminal':
-        return 'h-2 w-2 bg-slate-400 ring-2 ring-white'
+        return 'h-2 w-2 bg-[var(--text-muted)] ring-2 ring-[var(--bg-surface)]'
       case 'transshipment':
-        return 'h-3 w-3 bg-amber-400 ring-2 ring-white'
+        return 'h-3 w-3 bg-[var(--status-warning-icon)] ring-2 ring-[var(--bg-surface)]'
       case 'gap':
-        return 'h-1.5 w-1.5 bg-slate-300 ring-1 ring-white'
+        return 'h-1.5 w-1.5 bg-[var(--border-strong)] ring-1 ring-[var(--bg-surface)]'
       case 'risk':
-        return 'h-2 w-2 bg-amber-400 ring-1 ring-white'
+        return 'h-2 w-2 bg-[var(--status-warning-icon)] ring-1 ring-[var(--bg-surface)]'
       case 'event':
-        return 'h-2 w-2 bg-emerald-400 ring-1 ring-white'
+        return 'h-2 w-2 bg-[var(--status-success-icon)] ring-1 ring-[var(--bg-surface)]'
     }
   }
 

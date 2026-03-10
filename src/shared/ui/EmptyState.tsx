@@ -10,9 +10,9 @@ type Props = {
 export function EmptyState(props: Props): JSX.Element {
   return (
     <div class="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+      <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--bg-muted)]">
         <svg
-          class="h-8 w-8 text-slate-400"
+          class="h-8 w-8 text-[var(--text-muted)]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -26,8 +26,8 @@ export function EmptyState(props: Props): JSX.Element {
           />
         </svg>
       </div>
-      <h3 class="mb-2 text-lg-ui font-semibold text-slate-900">{props.title}</h3>
-      <p class="mb-6 max-w-sm text-md-ui text-slate-500">{props.description}</p>
+      <h3 class="mb-2 text-lg-ui font-semibold text-[var(--text-primary)]">{props.title}</h3>
+      <p class="mb-6 max-w-sm text-md-ui text-[var(--text-tertiary)]">{props.description}</p>
       <Show when={props.actionLabel}>
         {(actionLabel) => (
           <Show when={props.onAction}>
@@ -35,7 +35,7 @@ export function EmptyState(props: Props): JSX.Element {
               <button
                 type="button"
                 onClick={onAction()}
-                class="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                class="inline-flex items-center gap-2 rounded-md bg-[var(--accent-primary)] px-4 py-2 text-sm-ui font-medium text-[var(--accent-primary-text)] transition-colors hover:bg-[var(--accent-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2"
               >
                 {actionLabel()}
               </button>

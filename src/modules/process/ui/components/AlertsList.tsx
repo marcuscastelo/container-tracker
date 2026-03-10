@@ -14,7 +14,7 @@ export function AlertsList(props: {
   onUnacknowledge: (alertId: string) => void
 }): JSX.Element {
   return (
-    <div class="flex flex-col gap-1.5">
+    <div class="flex flex-col gap-2">
       <For each={props.alerts}>
         {(alert) => (
           <AlertItem

@@ -91,7 +91,7 @@ export function TimelinePanel(props: Props): JSX.Element {
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-3 text-center text-xs-ui text-slate-400">
+            <p class="py-4 text-center text-sm-ui text-[var(--text-muted)]">
               {t(keys.shipmentView.noEvents)}
             </p>
           }
@@ -118,10 +118,10 @@ type ContainerContextHeaderProps = {
 function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
+    <div class="mb-2 space-y-1.5 border-b border-[var(--border-default)] pb-2">
       {/* Container identity + status */}
-      <div class="flex items-center gap-1.5">
-        <span class="text-xs-ui font-semibold tracking-wide text-slate-700">
+      <div class="flex items-center gap-2">
+        <span class="text-sm-ui font-semibold tracking-wide text-[var(--text-primary)]">
           {props.container.number}
         </span>
         <StatusBadge
@@ -132,22 +132,22 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       {/* Current vessel */}
       <Show when={props.currentVessel}>
         {(vessel) => (
-          <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
+          <div class="flex items-center gap-1.5">
+            <span class="text-micro font-medium uppercase tracking-wider text-[var(--text-muted)]">
               {t(keys.shipmentView.timeline.vessel)}
             </span>
-            <span class="text-micro font-semibold text-slate-600">{vessel()}</span>
+            <span class="text-micro font-semibold text-[var(--text-secondary)]">{vessel()}</span>
           </div>
         )}
       </Show>
       {/* Intermediate ports route */}
       <Show when={props.portsRoute}>
         {(route) => (
-          <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
+          <div class="flex items-center gap-1.5">
+            <span class="text-micro font-medium uppercase tracking-wider text-[var(--text-muted)]">
               {t(keys.shipmentView.transshipment.title)}
             </span>
-            <span class="text-micro font-medium tabular-nums text-slate-500">{route()}</span>
+            <span class="text-micro font-medium tabular-nums text-[var(--text-tertiary)]">{route()}</span>
           </div>
         )}
       </Show>
@@ -351,10 +351,10 @@ function TimelineBlockList(props: {
   }
 
   return (
-    <div class="relative mt-1 pl-5">
+    <div class="relative mt-2 pl-5">
       {/* Continuous vertical rail — spans the full block list height */}
       <div
-        class="absolute inset-y-0 w-px bg-slate-200"
+        class="absolute inset-y-0 w-px bg-[var(--border-default)]"
         style={{ left: '8px' }}
         aria-hidden="true"
       />

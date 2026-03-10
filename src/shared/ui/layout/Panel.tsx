@@ -13,7 +13,7 @@ type PanelProps = {
 function PanelTitle(props: { readonly title?: string }): JSX.Element | null {
   return (
     <Show when={props.title}>
-      <h2 class="text-micro font-semibold uppercase tracking-wider text-slate-500">
+      <h2 class="text-micro font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
         {props.title}
       </h2>
     </Show>
@@ -23,7 +23,7 @@ function PanelTitle(props: { readonly title?: string }): JSX.Element | null {
 function PanelSubtitle(props: { readonly subtitle?: string }): JSX.Element | null {
   return (
     <Show when={props.subtitle}>
-      <p class="mt-px text-micro text-slate-500">{props.subtitle}</p>
+      <p class="mt-px text-micro text-[var(--text-tertiary)]">{props.subtitle}</p>
     </Show>
   )
 }
@@ -31,10 +31,10 @@ function PanelSubtitle(props: { readonly subtitle?: string }): JSX.Element | nul
 export function Panel(props: PanelProps): JSX.Element {
   return (
     <section
-      class={`rounded-lg border border-slate-200/80 bg-white shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] ${props.class ?? ''}`.trim()}
+      class={`rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--card-shadow)] ${props.class ?? ''}`.trim()}
     >
       <Show when={props.title || props.headerSlot}>
-        <header class="border-b border-slate-100/80 px-2.5 py-2">
+        <header class="border-b border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-3 py-2.5">
           <div class="flex items-start justify-between gap-2">
             <div>
               <PanelTitle title={props.title} />

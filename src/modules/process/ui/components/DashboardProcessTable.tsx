@@ -166,7 +166,7 @@ function displayTruncatedText(value: string | null): string {
 function ArrowIcon(): JSX.Element {
   return (
     <svg
-      class="h-3 w-3 shrink-0 text-slate-300"
+      class="h-3 w-3 shrink-0 text-[var(--text-muted)]"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -194,7 +194,7 @@ function SortDirectionIcon(props: {
   return (
     <Show when={props.direction !== null}>
       <span
-        class="inline-flex h-4 w-4 items-center justify-center text-xs-ui leading-none text-slate-600"
+        class="inline-flex h-4 w-4 items-center justify-center text-xs-ui leading-none text-[var(--text-secondary)]"
         aria-hidden="true"
       >
         {arrow()}
@@ -215,7 +215,7 @@ function SortHeaderButton(props: SortHeaderProps): JSX.Element {
     <button
       type="button"
       class={`inline-flex w-full items-center ${justifyClass()} gap-1 transition-colors focus-visible:outline-none ${
-        isActive() ? 'text-slate-700' : 'hover:text-slate-600 focus-visible:text-slate-700'
+        isActive() ? 'text-[var(--text-secondary)]' : 'hover:text-[var(--text-secondary)] focus-visible:text-[var(--text-secondary)]'
       }`}
       onClick={() => props.onToggle(props.field)}
     >
@@ -248,9 +248,9 @@ function formatDashboardAlertAge(params: {
   else label = params.t(params.keys.dashboard.table.age.days, { count: days })
 
   let agingClass: string
-  if (days >= 4) agingClass = 'text-red-500'
-  else if (days >= 1) agingClass = 'text-amber-500'
-  else agingClass = 'text-slate-400'
+  if (days >= 4) agingClass = 'text-[var(--status-danger-text)]'
+  else if (days >= 1) agingClass = 'text-[var(--status-warning-text)]'
+  else agingClass = 'text-[var(--text-muted)]'
 
   return { label, agingClass }
 }

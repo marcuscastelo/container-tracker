@@ -34,7 +34,7 @@ function RefreshIcon(props: {
 }): JSX.Element {
   const iconClass = () => {
     const baseClass = props.spinning ? 'h-4 w-4 animate-spin' : 'h-4 w-4'
-    if (props.error) return `${baseClass} text-red-200`
+    if (props.error) return `${baseClass} opacity-60`
     return baseClass
   }
 
@@ -145,7 +145,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       disabled={isBlocked()}
       aria-busy={isLoading()}
       title={buttonTitle()}
-      class="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm-ui font-medium text-white transition-colors hover:bg-blue-700 hover:border-blue-700 disabled:bg-blue-400 disabled:border-blue-400 disabled:cursor-not-allowed"
+      class="inline-flex items-center gap-2 rounded-md bg-[var(--accent-primary)] px-3 py-1.5 text-sm-ui font-semibold text-[var(--accent-primary-text)] shadow-sm transition-colors hover:bg-[var(--accent-primary-hover)] disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-1"
     >
       <RefreshIcon
         spinning={visualState() === 'loading'}
