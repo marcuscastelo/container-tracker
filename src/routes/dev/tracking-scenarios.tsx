@@ -15,6 +15,8 @@ import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboa
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
+const SCENARIO_LAB_ENABLED = import.meta.env.DEV
+
 const ScenarioSummarySchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -389,7 +391,10 @@ function ShipmentPreview(props: {
 export default function TrackingScenariosPage(): JSX.Element {
   const navigate = useNavigate()
 
-  const [catalog] = createResource(fetchScenarioCatalog)
+  const [catalog] = createResource(
+    () => SCENARIO_LAB_ENABLED,
+    async (enabled) => (enabled ? fetchScenarioCatalog() : null),
+  )
   const [selectedScenarioId, setSelectedScenarioId] = createSignal<string | null>(null)
   const [selectedStep, setSelectedStep] = createSignal(1)
   const [loadingScenario, setLoadingScenario] = createSignal(false)
@@ -526,76 +531,95 @@ export default function TrackingScenariosPage(): JSX.Element {
   }
 
   return (
-    <div class="min-h-screen bg-slate-100">
-      <main class="mx-auto max-w-[1400px] space-y-4 px-3 py-4 sm:px-4 lg:px-6">
-        <header class="rounded-xl border border-slate-200 bg-white p-4">
-          <h1 class="text-lg-ui font-semibold text-slate-900">Tracking Scenario Lab</h1>
-          <p class="mt-1 text-xs-ui text-slate-600">
-            Multiverso progressivo de containers para validar timeline, status e alertas via
-            pipeline real.
-          </p>
-        </header>
+    <Show
+      when={SCENARIO_LAB_ENABLED}
+      fallback={
+        <main class="mx-auto max-w-xl px-4 py-12">
+          <section class="rounded-xl border border-slate-200 bg-white p-6">
+            <h1 class="text-lg-ui font-semibold text-slate-900">Not found</h1>
+            <p class="mt-2 text-xs-ui text-slate-600">
+              Tracking Scenario Lab is available only in development environments.
+            </p>
+            <A class="mt-4 inline-block text-xs-ui font-medium text-blue-700 underline" href="/">
+              Back to Dashboard
+            </A>
+          </section>
+        </main>
+      }
+    >
+      <div class="min-h-screen bg-slate-100">
+        <main class="mx-auto max-w-[1400px] space-y-4 px-3 py-4 sm:px-4 lg:px-6">
+          <header class="rounded-xl border border-slate-200 bg-white p-4">
+            <h1 class="text-lg-ui font-semibold text-slate-900">Tracking Scenario Lab</h1>
+            <p class="mt-1 text-xs-ui text-slate-600">
+              Multiverso progressivo de containers para validar timeline, status e alertas via
+              pipeline real.
+            </p>
+          </header>
 
-        <Show
-          when={catalog()}
-          fallback={
-            <div class="rounded-xl border border-slate-200 bg-white p-4 text-xs-ui text-slate-500">
-              Loading scenario catalog...
-            </div>
-          }
-        >
-          {(catalogData) => (
-            <>
-              <StageProgressBar stages={catalogData().stages} activeStage={activeStage()} />
-
-              <div class="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-                <ScenarioNavigator
-                  groups={catalogData().groups}
-                  scenariosById={scenariosById()}
-                  selectedScenarioId={selectedScenarioId()}
-                  onSelectScenario={selectScenario}
-                />
-
-                <div class="space-y-4">
-                  <ScenarioPlayback
-                    scenario={selectedScenario()}
-                    selectedStep={selectedStep()}
-                    isLoading={loadingScenario()}
-                    loadError={loadError()}
-                    onPrevious={() => setSelectedStep((value) => Math.max(1, value - 1))}
-                    onNext={() => {
-                      const scenario = selectedScenario()
-                      if (!scenario) return
-                      setSelectedStep((value) => Math.min(scenario.stepsCount, value + 1))
-                    }}
-                    onLoad={handleLoadScenario}
-                    canPrevious={canGoPrevious()}
-                    canNext={canGoNext()}
-                    loadResult={loadResult()}
-                  />
-
-                  <DashboardPreview
-                    rowLoading={dashboardRow.loading}
-                    rowError={dashboardRow.error}
-                    row={dashboardRow() ?? null}
-                    onOpenProcess={(processId) => {
-                      void navigate(`/shipments/${processId}`)
-                    }}
-                  />
-
-                  <ShipmentPreview
-                    shipmentLoading={shipmentPreview.loading}
-                    shipmentError={shipmentPreview.error}
-                    shipment={shipmentPreview()}
-                    selectedContainerId={selectedContainerId()}
-                    onSelectContainer={(containerId) => setSelectedContainerId(containerId)}
-                  />
-                </div>
+          <Show
+            when={catalog()}
+            fallback={
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-xs-ui text-slate-500">
+                Loading scenario catalog...
               </div>
-            </>
-          )}
-        </Show>
-      </main>
-    </div>
+            }
+          >
+            {(catalogData) => (
+              <>
+                <StageProgressBar stages={catalogData().stages} activeStage={activeStage()} />
+
+                <div class="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+                  <div class="order-2 xl:order-1">
+                    <ScenarioNavigator
+                      groups={catalogData().groups}
+                      scenariosById={scenariosById()}
+                      selectedScenarioId={selectedScenarioId()}
+                      onSelectScenario={selectScenario}
+                    />
+                  </div>
+
+                  <div class="order-1 space-y-4 xl:order-2">
+                    <ScenarioPlayback
+                      scenario={selectedScenario()}
+                      selectedStep={selectedStep()}
+                      isLoading={loadingScenario()}
+                      loadError={loadError()}
+                      onPrevious={() => setSelectedStep((value) => Math.max(1, value - 1))}
+                      onNext={() => {
+                        const scenario = selectedScenario()
+                        if (!scenario) return
+                        setSelectedStep((value) => Math.min(scenario.stepsCount, value + 1))
+                      }}
+                      onLoad={handleLoadScenario}
+                      canPrevious={canGoPrevious()}
+                      canNext={canGoNext()}
+                      loadResult={loadResult()}
+                    />
+
+                    <DashboardPreview
+                      rowLoading={dashboardRow.loading}
+                      rowError={dashboardRow.error}
+                      row={dashboardRow() ?? null}
+                      onOpenProcess={(processId) => {
+                        void navigate(`/shipments/${processId}`)
+                      }}
+                    />
+
+                    <ShipmentPreview
+                      shipmentLoading={shipmentPreview.loading}
+                      shipmentError={shipmentPreview.error}
+                      shipment={shipmentPreview()}
+                      selectedContainerId={selectedContainerId()}
+                      onSelectContainer={(containerId) => setSelectedContainerId(containerId)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </Show>
+        </main>
+      </div>
+    </Show>
   )
 }
