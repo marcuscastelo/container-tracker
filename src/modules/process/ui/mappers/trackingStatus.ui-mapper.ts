@@ -1,7 +1,4 @@
 import {
-  toTrackingStatusCode,
-} from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
-import {
   isProcessOnlyStatus,
   PROCESS_STATUS_COLOR,
   PROCESS_STATUS_FILTER_ORDER,
@@ -9,6 +6,7 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/process-status-color'
 import { STATUS_COLOR } from '~/modules/process/ui/status-color'
+import { toTrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 

@@ -3,13 +3,13 @@ import type { CreateProcessInput } from '~/modules/process/interface/http/proces
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
 import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { DashboardGlobalAlertsVM } from '~/modules/process/ui/viewmodels/dashboard-global-alerts.vm'
 import type {
   DashboardSortDirection,
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
-import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {

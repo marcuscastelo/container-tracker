@@ -6,6 +6,7 @@ import { ImporterChipDropdown } from '~/modules/process/ui/components/unified/Im
 import { MultiSelectChipDropdown } from '~/modules/process/ui/components/unified/MultiSelectChipDropdown'
 import { SingleSelectChipDropdown } from '~/modules/process/ui/components/unified/SingleSelectChipDropdown'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type {
   DashboardImporterFilterOption,
   DashboardImporterFilterValue,
@@ -15,7 +16,6 @@ import type {
   DashboardStatusFilterOption,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
-import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────

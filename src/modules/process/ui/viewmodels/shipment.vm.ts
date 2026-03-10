@@ -1,5 +1,5 @@
-import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'

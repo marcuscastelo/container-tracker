@@ -1,15 +1,12 @@
-import {
-  type OperationalStatus,
-  type ProcessAggregatedStatus,
+import type {
+  OperationalStatus,
+  ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 
 /**
  * Process pre-shipment phase mapped from container lifecycle.
  */
-const PRE_SHIPMENT_STATUSES: ReadonlySet<OperationalStatus> = new Set([
-  'UNKNOWN',
-  'IN_PROGRESS',
-])
+const PRE_SHIPMENT_STATUSES: ReadonlySet<OperationalStatus> = new Set(['UNKNOWN', 'IN_PROGRESS'])
 
 /**
  * Transportation + arrival statuses keep the process operationally in transit.

@@ -134,9 +134,7 @@ function shouldPreferAlertByTriggeredAt(
   return candidate.triggered_at > current.triggered_at
 }
 
-function hasAnyTrackingObservation(
-  summaries: readonly ContainerTrackingSummary[],
-): boolean {
+function hasAnyTrackingObservation(summaries: readonly ContainerTrackingSummary[]): boolean {
   return summaries.some((summary) => summary.timeline.observations.length > 0)
 }
 

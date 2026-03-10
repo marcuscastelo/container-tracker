@@ -1,8 +1,8 @@
-import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import {
   PROCESS_STATUS_FILTER_ORDER,
   type ProcessStatusCode,
 } from '~/modules/process/ui/process-status-color'
+import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
 const PT_BR_COLLATOR =
   typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined'

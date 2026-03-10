@@ -1,13 +1,13 @@
 import {
+  type ProcessStatusCode,
+  parseProcessStatusCode,
+} from '~/modules/process/ui/process-status-color'
+import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
   type DashboardSeverityFilterValue,
   hasActiveDashboardFilters,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
-import {
-  parseProcessStatusCode,
-  type ProcessStatusCode,
-} from '~/modules/process/ui/process-status-color'
 
 const FILTER_PROVIDER_QUERY_KEY = 'provider'
 const FILTER_STATUS_QUERY_KEY = 'status'

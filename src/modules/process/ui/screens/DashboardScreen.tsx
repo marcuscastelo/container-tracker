@@ -13,6 +13,7 @@ import { DashboardRefreshButton } from '~/modules/process/ui/components/Dashboar
 import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
 import { prefetchProcessDetail } from '~/modules/process/ui/fetchProcess'
 import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
 import {
@@ -71,7 +72,6 @@ import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
