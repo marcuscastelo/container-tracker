@@ -8,6 +8,7 @@ import { FormInput, FormSelect } from '~/shared/ui/FormFields'
 type ContainerSectionProps = {
   readonly containers: readonly ContainerInput[]
   readonly onUpdateContainer: (id: string, value: string) => void
+  readonly onContainerPaste: (container: ContainerInput, event: ClipboardEvent) => void
   readonly onContainerBlur: (container: ContainerInput) => void
   readonly onRemoveContainer: (id: string) => void
   readonly onAddContainer: () => void
@@ -199,6 +200,7 @@ function ContainerRow(
           name={`container-${props.container.id}`}
           value={props.container.containerNumber}
           onInput={(value) => props.onUpdateContainer(props.container.id, value)}
+          onPaste={(event) => props.onContainerPaste(props.container, event)}
           onBlur={() => props.onContainerBlur(props.container)}
           placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
           error={
@@ -370,6 +372,7 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
         <ContainersSection
           containers={props.form.containerSection.containers}
           onUpdateContainer={props.form.containerSection.onUpdateContainer}
+          onContainerPaste={props.form.containerSection.onContainerPaste}
           onContainerBlur={props.form.containerSection.onContainerBlur}
           onRemoveContainer={props.form.containerSection.onRemoveContainer}
           onAddContainer={props.form.containerSection.onAddContainer}

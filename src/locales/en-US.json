@@ -431,7 +431,8 @@
     "carrierUnknown": "Unknown",
     "validation": {
       "containerNumberRequired": "Container number is required.",
-      "duplicateContainer": "Duplicate container number"
+      "duplicateContainer": "Duplicate container number",
+      "pasteLimitExceeded": "You pasted more than {{max}} containers. Split the list into smaller parts."
     },
     "action": {
       "update": "Update Process",
