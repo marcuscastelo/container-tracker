@@ -32,7 +32,8 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
 
-  const processId = createMemo(() => props.processId())
+  // props.processId is already an Accessor<string>; no extra createMemo indirection required
+  const processId = props.processId
 
   // ── Resource ───────────────────────────────────────────────────────────────
   const resource = useShipmentScreenResource({
