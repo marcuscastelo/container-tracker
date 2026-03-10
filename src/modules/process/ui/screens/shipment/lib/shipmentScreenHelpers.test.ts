@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
-import {
-  toSortedActiveAlerts,
-  toSortedArchivedAlerts,
-} from './shipmentAlerts.sorting'
-import { buildRecentUpdateHint } from './shipmentRefresh.helpers'
-import { readErrorFromJsonBody, toReadableErrorMessage } from './shipmentError.presenter'
-import { toCreateErrorExisting, toCreateErrorMessage } from './shipmentEdit.mapper'
 import type { ExistingProcessConflict } from '~/modules/process/ui/validation/processConflict.validation'
+import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import { toSortedActiveAlerts, toSortedArchivedAlerts } from './shipmentAlerts.sorting'
+import { toCreateErrorExisting, toCreateErrorMessage } from './shipmentEdit.mapper'
+import { readErrorFromJsonBody, toReadableErrorMessage } from './shipmentError.presenter'
+import { buildRecentUpdateHint } from './shipmentRefresh.helpers'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
