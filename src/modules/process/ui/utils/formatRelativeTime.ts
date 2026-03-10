@@ -1,7 +1,9 @@
+import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+
 export function formatRelativeTime(
   dateString: string,
   now: Date = new Date(),
-  locale: string = 'en-US',
+  locale: string = DEFAULT_LOCALE,
 ): string {
   const date = new Date(dateString)
   const diffMs = now.getTime() - date.getTime()

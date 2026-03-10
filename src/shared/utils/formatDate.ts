@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 import { i18n } from '~/shared/localization/i18n'
 
 /**
@@ -9,7 +10,7 @@ import { i18n } from '~/shared/localization/i18n'
  * does not roll the day backward/forward.
  */
 export function formatDateForLocale(input: string | Date, locale?: string): string {
-  const lng = locale ?? i18n.language ?? 'en-US'
+  const lng = locale ?? i18n.language ?? DEFAULT_LOCALE
 
   // If given a Date instance, detect if it's a pure-midnight date (00:00:00)
   // and treat as date-only. Otherwise format normally.

@@ -5,6 +5,7 @@ import {
   type TrackingAlertProjectionSource,
   toTrackingAlertProjections,
 } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
+import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
 function projectionToAlertDisplayVM(
   projection: TrackingAlertProjection,
@@ -30,7 +31,7 @@ function projectionToAlertDisplayVM(
 
 export function toAlertDisplayVMs(
   alerts: readonly TrackingAlertProjectionSource[],
-  locale: string = 'en-US',
+  locale: string = DEFAULT_LOCALE,
 ): readonly AlertDisplayVM[] {
   return toTrackingAlertProjections(alerts).map((projection) =>
     projectionToAlertDisplayVM(projection, locale),

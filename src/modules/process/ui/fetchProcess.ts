@@ -2,10 +2,11 @@ import { toShipmentDetailVM } from '~/modules/process/ui/mappers/processDetail.u
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
+import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
 const PROCESS_PREFETCH_TTL_MS = 15_000
 
-export type FetchProcessMode = 'cache-first' | 'network-only'
+type FetchProcessMode = 'cache-first' | 'network-only'
 
 type FetchProcessOptions = {
   readonly mode?: FetchProcessMode
@@ -137,7 +138,7 @@ async function loadProcessWithCache(id: string, locale: string): Promise<Shipmen
 
 export async function fetchProcess(
   id: string,
-  locale: string = 'en-US',
+  locale: string = DEFAULT_LOCALE,
   options?: FetchProcessOptions,
 ): Promise<ShipmentDetailVM | null> {
   // By default, network-only callers force a fresh request (no in-flight dedupe)
@@ -152,7 +153,10 @@ export async function fetchProcess(
   return loadProcessWithCache(id, locale)
 }
 
-export async function prefetchProcessDetail(id: string, locale: string = 'en-US'): Promise<void> {
+export async function prefetchProcessDetail(
+  id: string,
+  locale: string = DEFAULT_LOCALE,
+): Promise<void> {
   try {
     await loadProcessWithCache(id, locale)
   } catch {

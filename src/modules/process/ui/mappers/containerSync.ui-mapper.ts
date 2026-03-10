@@ -4,6 +4,7 @@ import type {
   ContainerSyncVM,
 } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
+import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
 const SYNC_STALE_THRESHOLD_HOURS = 24
 const SYNC_STALE_THRESHOLD_MS = SYNC_STALE_THRESHOLD_HOURS * 60 * 60 * 1000
@@ -131,7 +132,7 @@ export function toContainerSyncLabel(
     ? formatRelativeTime(
         sync.relativeTimeAt,
         command?.now ?? new Date(),
-        command?.locale ?? 'en-US',
+        command?.locale ?? DEFAULT_LOCALE,
       )
     : ''
   const hasRelativeTimeLabel = relativeTimeLabel.length > 0
