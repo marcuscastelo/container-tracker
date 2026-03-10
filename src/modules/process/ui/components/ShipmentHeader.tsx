@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
+import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 import { ProcessStatusBadges } from '~/modules/process/ui/components/ProcessStatusBadges'
 import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
@@ -50,6 +51,11 @@ type RefreshButtonProps = {
 }
 
 type EditButtonProps = {
+  readonly title: string
+  readonly onClick: () => void
+}
+
+type DeleteButtonProps = {
   readonly title: string
   readonly onClick: () => void
 }
@@ -218,6 +224,27 @@ function EditButton(props: EditButtonProps): JSX.Element {
   )
 }
 
+function DeleteButton(props: DeleteButtonProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onClick()}
+      class="rounded-md p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
+      title={props.title}
+    >
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <title>{props.title}</title>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        />
+      </svg>
+    </button>
+  )
+}
+
 function ProcessEtaSummary(props: {
   readonly processEtaSecondaryVm: ShipmentDetailVM['processEtaSecondaryVm']
   readonly processEtaTitle: string
@@ -252,11 +279,13 @@ function ProcessEtaSummary(props: {
 
 export function ShipmentHeader(props: Props): JSX.Element {
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
+  const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
 
   function ShipmentHeaderRow1(p: {
     props: Props
     showUnknown: boolean
     setShowUnknown: (v: boolean) => void
+    onOpenDelete: () => void
   }) {
     const { t, keys } = useTranslation()
     const statusBadges = () =>
@@ -342,6 +371,13 @@ export function ShipmentHeader(props: Props): JSX.Element {
               title={t(keys.shipmentView.actions.edit)}
               onClick={() => p.props.onOpenEdit()}
             />
+
+            <span class="mx-0.5 h-4 w-px bg-slate-200" aria-hidden="true" />
+
+            <DeleteButton
+              title={t(keys.shipmentView.actions.delete)}
+              onClick={() => p.onOpenDelete()}
+            />
           </div>
         </div>
       </div>
@@ -384,9 +420,21 @@ export function ShipmentHeader(props: Props): JSX.Element {
         props={props}
         showUnknown={showUnknownCarrierDialog()}
         setShowUnknown={(v: boolean) => setShowUnknownCarrierDialog(v)}
+        onOpenDelete={() => setShowDeleteDialog(true)}
       />
 
       <ShipmentHeaderRow2 props={props} />
+
+      <DeleteShipmentDialog
+        open={showDeleteDialog()}
+        onClose={() => setShowDeleteDialog(false)}
+        processId={props.data.id}
+        processRef={props.data.processRef}
+        containerCount={props.data.containers.length}
+        carrier={props.data.carrier}
+        origin={props.data.origin}
+        destination={props.data.destination}
+      />
     </section>
   )
 }

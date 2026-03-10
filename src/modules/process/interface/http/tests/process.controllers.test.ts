@@ -494,6 +494,71 @@ describe('process controllers', () => {
     )
   })
 
+  it('returns 204 when deleting an existing process and emits PROCESS_DELETED log', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const controllers = createControllers('Santos', getContainerSummaryMock)
+      const response = await controllers.deleteProcessById({ params: { id: 'process-1' } })
+
+      expect(response.status).toBe(204)
+      expect(await response.text()).toBe('')
+      expect(consoleInfoSpy).toHaveBeenCalledTimes(1)
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('PROCESS_DELETED process_id=process-1'),
+      )
+      expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('reference=REF-1'))
+      expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('container_count=2'))
+      expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('timestamp='))
+    } finally {
+      consoleInfoSpy.mockRestore()
+    }
+  })
+
+  it('returns 404 and does not call delete use case when process does not exist', async () => {
+    const deleteProcessSpy = vi.fn(async () => ({ deleted: true as const }))
+    const { process, processWithContainers } = createProcessWithContainers('Santos')
+
+    const controllers = createProcessControllers({
+      processUseCases: {
+        listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
+        createProcess: vi.fn(async () => ({
+          process,
+          containers: [],
+          warnings: [],
+        })),
+        findProcessByIdWithContainers: vi.fn(async () => ({ process: null })),
+        updateProcess: vi.fn(async () => ({ process: processWithContainers })),
+        findProcessById: vi.fn(async () => ({ process })),
+        deleteProcess: deleteProcessSpy,
+      },
+      trackingUseCases: {
+        getContainerSummary: vi.fn<GetContainerSummaryMock>(
+          async (containerId: string, containerNumber: string) => {
+            return createSummary(
+              containerId,
+              containerNumber,
+              createTrackingOperationalSummaryFallback(false),
+            )
+          },
+        ),
+        getContainersSyncMetadata: vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      },
+    })
+
+    const response = await controllers.deleteProcessById({ params: { id: 'missing-process' } })
+
+    expect(response.status).toBe(404)
+    expect(await response.json()).toEqual({ error: 'Process not found' })
+    expect(deleteProcessSpy).not.toHaveBeenCalled()
+  })
+
   it('returns /api/processes-v2 envelope with generated_at and unchanged process items', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
     const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
