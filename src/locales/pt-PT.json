@@ -450,8 +450,7 @@
       "DISCHARGED": "Descarregado",
       "AVAILABLE_FOR_PICKUP": "Disponível para Recolha",
       "DELIVERED": "Entregue",
-      "EMPTY_RETURNED": "Vazio Devolvido",
-      "PARTIALLY_DELIVERED": "Parcialmente Entregue"
+      "EMPTY_RETURNED": "Vazio Devolvido"
     },
     "observationType": {
       "GATE_IN": "Entrada no Terminal",
