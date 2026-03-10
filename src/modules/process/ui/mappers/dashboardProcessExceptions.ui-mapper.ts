@@ -1,5 +1,5 @@
 import {
-  toTrackingStatusCode,
+  toProcessStatusCode,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type {
@@ -20,7 +20,7 @@ export function toDashboardProcessExceptionVMs(
   source: DashboardOperationalSummaryResponse,
 ): readonly DashboardProcessExceptionVM[] {
   return source.process_exceptions.map((process) => {
-    const statusCode = toTrackingStatusCode(process.derived_status)
+    const statusCode = toProcessStatusCode(process.derived_status)
 
     return {
       processId: process.process_id,

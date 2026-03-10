@@ -64,7 +64,7 @@ describe('toShipmentDetailVM', () => {
     expect(result.id).toBe('proc-1')
     expect(Array.isArray(result.containers)).toBe(true)
     expect(result.containers[0].number).toBe('MRKU1234567')
-    expect(result.containers[0].status).toBe('loaded')
+    expect(result.containers[0].status).toBe('indigo-500')
     expect(result.containers[0].statusCode).toBe('LOADED')
     expect(result.containers[0].timeline.length).toBe(1)
     expect(result.containers[0].timeline[0].type).toBe('LOAD')
@@ -131,7 +131,7 @@ describe('toShipmentDetailVM', () => {
     }
 
     const result = toShipmentDetailVM(example)
-    expect(result.status).toBe('in-transit')
+    expect(result.status).toBe('blue-500')
     expect(result.statusCode).toBe('IN_TRANSIT')
     expect(result.alerts.length).toBe(1)
     expect(result.alerts[0].type).toBe('transshipment')
@@ -246,7 +246,7 @@ describe('toShipmentDetailVM fallback mapping', () => {
     const result = toShipmentDetailVM(example)
     expect(result.containers[0].timeline.length).toBe(1)
     expect(result.containers[0].timeline[0].id).toBe('system-created')
-    expect(result.containers[0].status).toBe('unknown')
+    expect(result.containers[0].status).toBe('slate-400')
   })
 })
 

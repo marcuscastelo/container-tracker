@@ -1,10 +1,9 @@
 import {
-  toTrackingStatusCode,
+  toProcessStatusCode,
   trackingStatusToRank,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
-import { TRACKING_STATUS_CODES } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 
 export type ProcessListItemSource = {
   id: string
@@ -66,18 +65,10 @@ export function toProcessSummaryVMs(
   data: readonly ProcessListItemSource[],
 ): readonly ProcessSummaryVM[] {
   return data.map((process) => {
-    // Preserve the aggregated process status when present (e.g. PARTIALLY_DELIVERED)
     const rawStatus = process.process_status ?? null
     const eta = process.eta ?? null
-    // canonical statusCode used by most UI mappers (falls back to UNKNOWN)
-    const statusCode = toTrackingStatusCode(rawStatus)
-    const aggregatedStatus = rawStatus === 'PARTIALLY_DELIVERED' ? 'PARTIALLY_DELIVERED' : null
-
-    const statusRank = (() => {
-      if (TRACKING_STATUS_CODES.includes(statusCode)) return trackingStatusToRank(statusCode)
-      if (aggregatedStatus === 'PARTIALLY_DELIVERED') return trackingStatusToRank('DELIVERED')
-      return 0
-    })()
+    const statusCode = toProcessStatusCode(rawStatus)
+    const statusRank = trackingStatusToRank(statusCode)
 
     return {
       id: process.id,
@@ -91,12 +82,8 @@ export function toProcessSummaryVMs(
       containerNumbers: process.containers.map((container) =>
         normalizeContainerNumber(container.container_number),
       ),
-      status: trackingStatusToVariant(aggregatedStatus ?? statusCode),
+      status: trackingStatusToVariant(statusCode),
       statusCode,
-      aggregatedStatus,
-      // compute a sensible rank: use the canonical tracking rank when the code
-      // is one of the container statuses; for PARTIALLY_DELIVERED use the same
-      // rank as DELIVERED to position it appropriately in sorted lists.
       statusRank,
       eta,
       etaMsOrNull: toTimestampOrNull(eta),

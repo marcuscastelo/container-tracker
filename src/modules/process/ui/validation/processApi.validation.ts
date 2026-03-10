@@ -9,7 +9,7 @@ import type {
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {
@@ -29,7 +29,7 @@ const AlertActionResponseSchema = z.object({
 
 type DashboardProcessFiltersQuery = {
   readonly provider?: readonly string[]
-  readonly status?: readonly TrackingStatusCode[]
+  readonly status?: readonly ProcessStatusCode[]
   readonly importerId?: string
   readonly importerName?: string
 }

@@ -80,13 +80,13 @@ function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
 describe('toContainerSummaryRowVMs', () => {
   it('maps status label from tracking status key', () => {
     const container = makeContainer({
-      status: 'released',
+      status: 'orange-500',
       statusCode: 'DISCHARGED',
     })
     const command = makeMapperCommand([container])
     const [row] = toContainerSummaryRowVMs(command)
 
-    expect(row.statusVariant).toBe('released')
+    expect(row.statusVariant).toBe('orange-500')
     expect(row.statusLabel).toBe(command.t(command.keys.tracking.status.DISCHARGED))
   })
 

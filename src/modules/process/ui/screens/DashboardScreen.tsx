@@ -71,7 +71,7 @@ import type {
   DashboardSortField,
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
@@ -471,7 +471,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     persistDashboardFilters(toggleDashboardProviderFilter(filterSelection(), provider))
   }
 
-  const handleStatusFilterToggle = (status: TrackingStatusCode) => {
+  const handleStatusFilterToggle = (status: ProcessStatusCode) => {
     persistDashboardFilters(toggleDashboardStatusFilter(filterSelection(), status))
   }
 

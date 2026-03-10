@@ -1,4 +1,4 @@
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type ProcessSyncStatus = 'idle' | 'syncing' | 'success' | 'error'
@@ -14,12 +14,7 @@ export type ProcessSummaryVM = {
   readonly containerCount: number
   readonly containerNumbers: readonly string[]
   readonly status: StatusVariant
-  readonly statusCode: TrackingStatusCode
-  /** When the API provides a process-level aggregated status (e.g. PARTIALLY_DELIVERED),
-   * it's exposed here so the UI can render/process it without breaking existing
-   * mappers that expect canonical container tracking codes.
-   */
-  readonly aggregatedStatus?: 'PARTIALLY_DELIVERED' | null
+  readonly statusCode: ProcessStatusCode
   readonly statusRank: number
   readonly eta: string | null
   readonly etaMsOrNull: number | null

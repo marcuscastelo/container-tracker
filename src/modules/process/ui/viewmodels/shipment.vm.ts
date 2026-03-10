@@ -1,4 +1,5 @@
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
@@ -89,9 +90,7 @@ export type ShipmentDetailVM = {
   readonly origin: string
   readonly destination: string
   readonly status: StatusVariant
-  readonly statusCode: TrackingStatusCode
-  /** Process-level aggregated status when available (e.g. PARTIALLY_DELIVERED) */
-  readonly aggregatedStatus?: 'PARTIALLY_DELIVERED' | null
+  readonly statusCode: ProcessStatusCode
   readonly eta: string | null
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
   readonly containers: readonly ContainerDetailVM[]

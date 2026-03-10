@@ -439,7 +439,10 @@
   },
   "tracking": {
     "status": {
-      "UNKNOWN": "A aguardar dados",
+      "UNKNOWN": "Desconhecido",
+      "BOOKED": "Reservado",
+      "AWAITING_DATA": "A aguardar dados",
+      "NOT_SYNCED": "Não sincronizado",
       "IN_PROGRESS": "Em Curso",
       "LOADED": "Carregado",
       "IN_TRANSIT": "Em Trânsito",

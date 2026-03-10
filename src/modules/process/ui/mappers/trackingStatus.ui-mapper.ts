@@ -1,45 +1,49 @@
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import {
-  TRACKING_STATUS_CODES,
   toTrackingStatusCode,
 } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
+import {
+  isProcessOnlyStatus,
+  PROCESS_STATUS_COLOR,
+  PROCESS_STATUS_FILTER_ORDER,
+  type ProcessStatusCode,
+  toProcessStatusCode,
+} from '~/modules/process/ui/process-status-color'
+import { STATUS_COLOR } from '~/modules/process/ui/status-color'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export { toTrackingStatusCode }
+export { toProcessStatusCode }
+export type { ProcessStatusCode }
 
-export function trackingStatusToRank(statusCode: TrackingStatusCode): number {
-  const idx = TRACKING_STATUS_CODES.indexOf(statusCode)
+export function trackingStatusToRank(statusCode: ProcessStatusCode): number {
+  const idx = PROCESS_STATUS_FILTER_ORDER.indexOf(statusCode)
   return idx >= 0 ? idx : 0
 }
 
-export function trackingStatusToVariant(statusCode: TrackingStatusCode | string): StatusVariant {
-  switch (statusCode) {
-    case 'IN_TRANSIT':
-      return 'in-transit'
-    case 'LOADED':
-      return 'loaded'
-    case 'ARRIVED_AT_POD':
-    case 'DISCHARGED':
-    case 'AVAILABLE_FOR_PICKUP':
-      return 'released'
-    case 'DELIVERED':
-    case 'EMPTY_RETURNED':
-      return 'delivered'
-    case 'IN_PROGRESS':
-      return 'pending'
-    case 'PARTIALLY_DELIVERED':
-      return 'partial'
-    default:
-      return 'unknown'
+export function trackingStatusToVariant(statusCode: ProcessStatusCode | string): StatusVariant {
+  const normalizedStatusCode = toProcessStatusCode(statusCode)
+
+  if (isProcessOnlyStatus(normalizedStatusCode)) {
+    return PROCESS_STATUS_COLOR[normalizedStatusCode]
   }
+
+  return STATUS_COLOR[normalizedStatusCode]
 }
 
 export function trackingStatusToLabelKey(
   keys: TranslationKeys,
-  statusCode: TrackingStatusCode | string,
+  statusCode: ProcessStatusCode | string,
 ): string {
-  switch (statusCode) {
+  const normalizedStatusCode = toProcessStatusCode(statusCode)
+
+  switch (normalizedStatusCode) {
+    case 'BOOKED':
+      return keys.tracking.status.BOOKED
+    case 'AWAITING_DATA':
+      return keys.tracking.status.AWAITING_DATA
+    case 'NOT_SYNCED':
+      return keys.tracking.status.NOT_SYNCED
     case 'IN_PROGRESS':
       return keys.tracking.status.IN_PROGRESS
     case 'LOADED':
@@ -56,8 +60,6 @@ export function trackingStatusToLabelKey(
       return keys.tracking.status.DELIVERED
     case 'EMPTY_RETURNED':
       return keys.tracking.status.EMPTY_RETURNED
-    case 'PARTIALLY_DELIVERED':
-      return keys.tracking.status.PARTIALLY_DELIVERED
     default:
       return keys.tracking.status.UNKNOWN
   }

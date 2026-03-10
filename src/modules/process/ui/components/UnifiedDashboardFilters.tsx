@@ -15,7 +15,7 @@ import type {
   DashboardStatusFilterOption,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
 import { hasActiveDashboardFilters } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { useTranslation } from '~/shared/localization/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,12 +25,12 @@ type Props = {
   readonly importers: readonly DashboardImporterFilterOption[]
   readonly severities: readonly DashboardSeverityFilterOption[]
   readonly selectedProviders: readonly string[]
-  readonly selectedStatuses: readonly TrackingStatusCode[]
+  readonly selectedStatuses: readonly ProcessStatusCode[]
   readonly selectedImporterId: string | null
   readonly selectedImporterName: string | null
   readonly selectedSeverity: DashboardSeverityFilterValue | null
   readonly onProviderToggle: (provider: string) => void
-  readonly onStatusToggle: (status: TrackingStatusCode) => void
+  readonly onStatusToggle: (status: ProcessStatusCode) => void
   readonly onImporterSelect: (importer: DashboardImporterFilterValue | null) => void
   readonly onSeveritySelect: (severity: DashboardSeverityFilterValue | null) => void
   readonly onClearAllFilters: () => void
@@ -65,7 +65,7 @@ function ClearIcon(): JSX.Element {
 }
 export function UnifiedDashboardFilters(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
-  const statusOptions = (): readonly FilterControlOption<TrackingStatusCode>[] =>
+  const statusOptions = (): readonly FilterControlOption<ProcessStatusCode>[] =>
     props.statuses.map((status) => ({
       value: status.value,
       label: t(trackingStatusToLabelKey(keys, status.value)),

@@ -1,31 +1,51 @@
 import {
   type OperationalStatus,
-  operationalStatusDominanceIndex,
   type ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 
 /**
- * Statuses that indicate the container is still in active movement
- * (not yet at the discharge/destination port).
+ * Process pre-shipment phase mapped from container lifecycle.
  */
-const PRE_COMPLETION_STATUSES: ReadonlySet<OperationalStatus> = new Set([
+const PRE_SHIPMENT_STATUSES: ReadonlySet<OperationalStatus> = new Set([
   'UNKNOWN',
   'IN_PROGRESS',
+])
+
+/**
+ * Transportation + arrival statuses keep the process operationally in transit.
+ */
+const TRANSIT_STATUSES: ReadonlySet<OperationalStatus> = new Set([
   'LOADED',
   'IN_TRANSIT',
   'ARRIVED_AT_POD',
 ])
 
 /**
- * Statuses that indicate the container has reached a final delivery state.
+ * Arrival/port operation statuses that are not completed yet.
+ */
+const ARRIVAL_RISK_STATUSES: ReadonlySet<OperationalStatus> = new Set([
+  'DISCHARGED',
+  'AVAILABLE_FOR_PICKUP',
+])
+
+/**
+ * Final completion statuses.
  */
 const FINAL_DELIVERY_STATUSES: ReadonlySet<OperationalStatus> = new Set([
   'DELIVERED',
   'EMPTY_RETURNED',
 ])
 
-function isPreCompletion(status: OperationalStatus): boolean {
-  return PRE_COMPLETION_STATUSES.has(status)
+function isPreShipment(status: OperationalStatus): boolean {
+  return PRE_SHIPMENT_STATUSES.has(status)
+}
+
+function isTransit(status: OperationalStatus): boolean {
+  return TRANSIT_STATUSES.has(status)
+}
+
+function isArrivalRisk(status: OperationalStatus): boolean {
+  return ARRIVAL_RISK_STATUSES.has(status)
 }
 
 function isFinalDelivery(status: OperationalStatus): boolean {
@@ -33,58 +53,35 @@ function isFinalDelivery(status: OperationalStatus): boolean {
 }
 
 /**
- * Derive process-level aggregated status from multiple container statuses.
- *
- * Uses conservative aggregation:
- * - If ANY container is still moving AND some are delivered → PARTIALLY_DELIVERED
- * - If ANY container is still moving → most conservative (lowest) active status
- * - If ALL containers reached post-completion → lowest post-completion status
- *
- * Priority: In transit > Partially delivered > Discharged > Delivered
- *
- * @param statuses - Array of container statuses to aggregate
- * @returns The process-level aggregated status
+ * Derive process-level status from container statuses only.
+ * This function intentionally does not look at events/observations.
  */
 export function deriveProcessStatusFromContainers(
   statuses: readonly OperationalStatus[],
 ): ProcessAggregatedStatus {
   if (statuses.length === 0) return 'UNKNOWN'
 
-  const hasPreCompletion = statuses.some(isPreCompletion)
-  const hasFinalDelivery = statuses.some(isFinalDelivery)
+  const allFinal = statuses.every(isFinalDelivery)
+  if (allFinal) return 'DELIVERED'
 
-  if (hasPreCompletion && hasFinalDelivery) {
-    return 'PARTIALLY_DELIVERED'
+  const allDischargedOrBeyond = statuses.every(
+    (status) => isArrivalRisk(status) || isFinalDelivery(status),
+  )
+  const hasArrivalRisk = statuses.some(isArrivalRisk)
+  if (allDischargedOrBeyond && hasArrivalRisk) {
+    return 'DISCHARGED'
   }
 
-  if (hasPreCompletion) {
-    // Return the most conservative (lowest dominance) status — showing the least advanced container
-    let lowestStatus: OperationalStatus = statuses[0]
-    let lowestIdx = operationalStatusDominanceIndex(statuses[0])
-
-    for (let i = 1; i < statuses.length; i++) {
-      const idx = operationalStatusDominanceIndex(statuses[i])
-      // Skip UNKNOWN — prefer showing a more informative status if possible
-      if (lowestStatus === 'UNKNOWN' || (idx < lowestIdx && statuses[i] !== 'UNKNOWN')) {
-        lowestStatus = statuses[i]
-        lowestIdx = idx
-      }
-    }
-
-    return lowestStatus
+  const hasTransit = statuses.some(isTransit)
+  if (hasTransit) {
+    return 'IN_TRANSIT'
   }
 
-  // All containers are post-completion: use the lowest (most conservative) post-completion status
-  let lowestStatus: OperationalStatus = statuses[0]
-  let lowestIdx = operationalStatusDominanceIndex(statuses[0])
-
-  for (let i = 1; i < statuses.length; i++) {
-    const idx = operationalStatusDominanceIndex(statuses[i])
-    if (idx < lowestIdx) {
-      lowestStatus = statuses[i]
-      lowestIdx = idx
-    }
+  const allPreShipment = statuses.every(isPreShipment)
+  if (allPreShipment) {
+    return 'BOOKED'
   }
 
-  return lowestStatus
+  // Conservative fallback for mixed/inconsistent groups.
+  return 'IN_TRANSIT'
 }

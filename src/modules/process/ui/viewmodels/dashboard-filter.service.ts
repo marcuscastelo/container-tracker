@@ -1,8 +1,8 @@
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import {
-  TRACKING_STATUS_CODES,
-  type TrackingStatusCode,
-} from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
+  PROCESS_STATUS_FILTER_ORDER,
+  type ProcessStatusCode,
+} from '~/modules/process/ui/process-status-color'
 
 const PT_BR_COLLATOR =
   typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined'
@@ -13,7 +13,7 @@ export type DashboardSeverityFilterValue = 'danger' | 'warning' | 'none'
 
 export type DashboardFilterSelection = {
   readonly providers: readonly string[]
-  readonly statuses: readonly TrackingStatusCode[]
+  readonly statuses: readonly ProcessStatusCode[]
   readonly importerId: string | null
   readonly importerName: string | null
   readonly severity: DashboardSeverityFilterValue | null
@@ -25,7 +25,7 @@ export type DashboardProviderFilterOption = {
 }
 
 export type DashboardStatusFilterOption = {
-  readonly value: TrackingStatusCode
+  readonly value: ProcessStatusCode
   readonly count: number
 }
 
@@ -110,7 +110,7 @@ export function toggleDashboardProviderFilter(
 
 export function toggleDashboardStatusFilter(
   currentSelection: DashboardFilterSelection,
-  status: TrackingStatusCode,
+  status: ProcessStatusCode,
 ): DashboardFilterSelection {
   return {
     providers: currentSelection.providers,
@@ -142,14 +142,14 @@ export function deriveDashboardProviderFilterOptions(
 export function deriveDashboardStatusFilterOptions(
   processes: readonly ProcessSummaryVM[],
 ): readonly DashboardStatusFilterOption[] {
-  const countsByStatus = new Map<TrackingStatusCode, number>()
+  const countsByStatus = new Map<ProcessStatusCode, number>()
 
   for (const process of processes) {
     const currentCount = countsByStatus.get(process.statusCode) ?? 0
     countsByStatus.set(process.statusCode, currentCount + 1)
   }
 
-  return TRACKING_STATUS_CODES.flatMap((statusCode) => {
+  return PROCESS_STATUS_FILTER_ORDER.flatMap((statusCode) => {
     const count = countsByStatus.get(statusCode)
     if (!count) return []
     return [{ value: statusCode, count }]
