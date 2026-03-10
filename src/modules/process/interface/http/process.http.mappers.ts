@@ -8,7 +8,10 @@ import type {
 } from '~/modules/process/application/process.records'
 import type { ProcessSyncSummaryReadModel } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
-import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
+import {
+  deriveProcessStatusDispersion,
+  deriveProcessStatusFromContainers,
+} from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
 import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
@@ -168,6 +171,10 @@ export function toProcessResponseWithSummary(
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
     process_status: summary.process_status,
+    highest_container_status: summary.highest_container_status,
+    status_counts: summary.status_counts,
+    status_microbadge: summary.status_microbadge,
+    has_status_dispersion: summary.has_status_dispersion,
     lifecycle_bucket: summary.lifecycle_bucket,
     final_delivery_complete: summary.final_delivery_complete,
     full_logistics_complete: summary.full_logistics_complete,
@@ -357,13 +364,15 @@ function deriveProcessLifecycleBucket(
 
 function toProcessOperationalResponse(summaries: readonly TrackingOperationalSummary[]) {
   const total = summaries.length
-  const processStatus = deriveProcessStatusFromContainers(
-    summaries.map((summary) => toOperationalStatus(summary.status)),
-  )
+  const statuses = summaries.map((summary) => toOperationalStatus(summary.status))
+  const processStatus = deriveProcessStatusFromContainers(statuses)
+  const processStatusDispersion = deriveProcessStatusDispersion({
+    statuses,
+    primaryStatus: processStatus,
+  })
   const lifecycleBuckets = summaries.map((summary) => summary.lifecycleBucket ?? 'pre_arrival')
   const processLifecycleBucket = deriveProcessLifecycleBucket(lifecycleBuckets)
 
-  const statuses = summaries.map((summary) => toOperationalStatus(summary.status))
   const finalDeliveryComplete =
     statuses.length > 0 &&
     statuses.every((status) => status === 'DELIVERED' || status === 'EMPTY_RETURNED')
@@ -389,6 +398,10 @@ function toProcessOperationalResponse(summaries: readonly TrackingOperationalSum
 
   return {
     derived_status: processStatus,
+    highest_container_status: processStatusDispersion.highest_container_status,
+    status_counts: processStatusDispersion.status_counts,
+    status_microbadge: processStatusDispersion.status_microbadge,
+    has_status_dispersion: processStatusDispersion.has_status_dispersion,
     lifecycle_bucket: processLifecycleBucket,
     final_delivery_complete: finalDeliveryComplete,
     full_logistics_complete: fullLogisticsComplete,

@@ -28,6 +28,7 @@ function createProcess(
     containerNumbers: [],
     status: 'unknown',
     statusCode: 'UNKNOWN',
+    statusMicrobadge: null,
     statusRank: 0,
     eta: input.eta ?? null,
     etaMsOrNull: input.etaMsOrNull ?? null,

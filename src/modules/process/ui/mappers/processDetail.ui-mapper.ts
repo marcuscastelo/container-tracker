@@ -8,6 +8,7 @@ import {
   processStatusToVariant,
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
+import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
@@ -268,6 +269,7 @@ export function toShipmentDetailVM(
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),
     statusCode: toProcessStatusCode(processAggregatedStatus),
+    statusMicrobadge: toProcessStatusMicrobadgeVM(data.process_operational?.status_microbadge),
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,

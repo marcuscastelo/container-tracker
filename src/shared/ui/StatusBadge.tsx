@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 
 export type StatusVariant =
   | 'slate-400'
@@ -26,6 +26,8 @@ type Props = {
   readonly variant: StatusVariant
   readonly label: string
   readonly neutral?: boolean
+  readonly size?: 'default' | 'micro'
+  readonly hideIcon?: boolean
 }
 
 const statusConfig: Record<StatusVariant, { icon: string; bgClass: string; textClass: string }> = {
@@ -132,15 +134,24 @@ export function StatusBadge(props: Props): JSX.Element {
   const bgClass = createMemo(() => (props.neutral ? 'bg-slate-50' : config().bgClass))
   const textClass = createMemo(() => (props.neutral ? 'text-slate-600' : config().textClass))
   const iconColorClass = createMemo(() => (props.neutral ? 'text-slate-400' : ''))
+  const wrapperClass = createMemo(() => {
+    if (props.size === 'micro') {
+      return 'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro font-semibold leading-none whitespace-nowrap ring-1 ring-inset ring-current/15'
+    }
+
+    return 'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs-ui font-semibold leading-none tracking-wide whitespace-nowrap ring-1 ring-inset ring-current/15'
+  })
+  const iconClass = createMemo(() => (props.size === 'micro' ? 'text-[6px]' : 'text-[7px]'))
+  const labelClass = createMemo(() => (props.size === 'micro' ? 'truncate max-w-[11rem]' : ''))
 
   return (
-    <span
-      class={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs-ui font-semibold leading-none tracking-wide whitespace-nowrap ring-1 ring-inset ring-current/15 ${bgClass()} ${textClass()}`}
-    >
-      <span class={`text-[7px] ${iconColorClass()}`} aria-hidden="true">
-        {config().icon}
-      </span>
-      <span>{props.label}</span>
+    <span class={`${wrapperClass()} ${bgClass()} ${textClass()}`}>
+      <Show when={props.hideIcon !== true}>
+        <span class={`${iconClass()} ${iconColorClass()}`} aria-hidden="true">
+          {config().icon}
+        </span>
+      </Show>
+      <span class={labelClass()}>{props.label}</span>
     </span>
   )
 }

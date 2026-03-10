@@ -1,7 +1,10 @@
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
+import {
+  deriveProcessStatusDispersion,
+  deriveProcessStatusFromContainers,
+} from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
 import {
   type OperationalStatus,
   toOperationalAlertSeverity,
@@ -297,10 +300,14 @@ export function aggregateOperationalSummary(
   })
   const hasTrackingData = hasAnyTrackingObservation(summaries)
   const allUnknownStatuses = statuses.length > 0 && statuses.every((status) => status === 'UNKNOWN')
-  const processStatus =
+  const primaryProcessStatus =
     containerCount > 0 && !hasTrackingData && !allUnknownStatuses
       ? 'AWAITING_DATA'
       : deriveProcessStatusFromContainers(statuses)
+  const processStatusDispersion = deriveProcessStatusDispersion({
+    statuses,
+    primaryStatus: primaryProcessStatus,
+  })
 
   // --- ETA ---
   // Select earliest future ETA among ETA-eligible containers.
@@ -396,7 +403,11 @@ export function aggregateOperationalSummary(
     reference,
     carrier,
     container_count: containerCount,
-    process_status: processStatus,
+    process_status: primaryProcessStatus,
+    highest_container_status: processStatusDispersion.highest_container_status,
+    status_counts: processStatusDispersion.status_counts,
+    status_microbadge: processStatusDispersion.status_microbadge,
+    has_status_dispersion: processStatusDispersion.has_status_dispersion,
     lifecycle_bucket: processLifecycleBucket,
     final_delivery_complete: finalDeliveryComplete,
     full_logistics_complete: fullLogisticsComplete,
@@ -488,7 +499,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
           processStatus: summary.process_status,
           syncStatus: sync.lastSyncStatus,
         })
-          ? { ...summary, process_status: 'NOT_SYNCED' as const }
+          ? { ...summary, process_status: 'NOT_SYNCED' as const, status_microbadge: null }
           : summary
 
         return { pwc, summary: normalizedSummary, sync }

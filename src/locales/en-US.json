@@ -441,6 +441,28 @@
       "DELIVERED": "Delivered",
       "EMPTY_RETURNED": "Empty Returned"
     },
+    "statusMicrobadge": {
+      "ARRIVED_AT_POD": {
+        "one": "{{count}} at POD",
+        "other": "{{count}} at POD"
+      },
+      "DISCHARGED": {
+        "one": "{{count}} discharged",
+        "other": "{{count}} discharged"
+      },
+      "AVAILABLE_FOR_PICKUP": {
+        "one": "{{count}} available for pickup",
+        "other": "{{count}} available for pickup"
+      },
+      "DELIVERED": {
+        "one": "{{count}} delivered",
+        "other": "{{count}} delivered"
+      },
+      "EMPTY_RETURNED": {
+        "one": "{{count}} empty returned",
+        "other": "{{count}} empty returned"
+      }
+    },
     "observationType": {
       "GATE_IN": "Gate In",
       "GATE_OUT": "Gate Out",

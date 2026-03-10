@@ -92,6 +92,9 @@ describe('aggregateOperationalSummary', () => {
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
     expect(result.process_status).toBe('UNKNOWN')
+    expect(result.status_microbadge).toBeNull()
+    expect(result.has_status_dispersion).toBe(false)
+    expect(result.status_counts.UNKNOWN).toBe(2)
   })
 
   it('returns IN_TRANSIT when observations exist and at least one container is in transit phase', () => {
@@ -109,6 +112,93 @@ describe('aggregateOperationalSummary', () => {
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
     expect(result.process_status).toBe('IN_TRANSIT')
+  })
+
+  it('derives ARRIVED_AT_POD microbadge when process primary status is IN_TRANSIT', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'ARRIVED_AT_POD',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.status_microbadge).toEqual({
+      status: 'ARRIVED_AT_POD',
+      count: 1,
+    })
+  })
+
+  it('derives DISCHARGED microbadge count from process status distribution', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'DISCHARGED',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'DISCHARGED',
+        observations: [{ event_time: '2026-03-03T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 3, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.status_microbadge).toEqual({
+      status: 'DISCHARGED',
+      count: 2,
+    })
+    expect(result.status_counts.DISCHARGED).toBe(2)
+  })
+
+  it('derives DELIVERED microbadge when process primary status remains DISCHARGED', () => {
+    const summaries = [
+      makeSummary({
+        status: 'DISCHARGED',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'DELIVERED',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('DISCHARGED')
+    expect(result.status_microbadge).toEqual({
+      status: 'DELIVERED',
+      count: 1,
+    })
+  })
+
+  it('keeps microbadge null for homogeneous status distributions', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.status_microbadge).toBeNull()
+    expect(result.has_status_dispersion).toBe(false)
   })
 
   it('selects earliest future ETA among containers', () => {

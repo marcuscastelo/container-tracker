@@ -59,6 +59,10 @@ describe('toProcessSummaryVMs', () => {
         updated_at: new Date().toISOString(),
         containers: [{ id: 'c2', container_number: 'MSCU1111111' }],
         process_status: 'IN_TRANSIT',
+        status_microbadge: {
+          status: 'DISCHARGED',
+          count: 2,
+        },
         eta: '2025-06-01T00:00:00Z',
         alerts_count: 2,
         highest_alert_severity: 'warning',
@@ -73,6 +77,10 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs(example)
     expect(result[0].status).toBe('blue-500')
     expect(result[0].statusCode).toBe('IN_TRANSIT')
+    expect(result[0].statusMicrobadge).toEqual({
+      statusCode: 'DISCHARGED',
+      count: 2,
+    })
     expect(result[0].statusRank).toBeGreaterThan(0)
     expect(result[0].eta).toBe('2025-06-01T00:00:00Z')
     expect(result[0].etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
@@ -89,6 +97,7 @@ describe('toProcessSummaryVMs', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p3' })])
     expect(result[0].status).toBe('slate-400')
     expect(result[0].statusCode).toBe('UNKNOWN')
+    expect(result[0].statusMicrobadge).toBeNull()
     expect(result[0].statusRank).toBe(0)
     expect(result[0].eta).toBeNull()
     expect(result[0].etaMsOrNull).toBeNull()
@@ -138,6 +147,21 @@ describe('toProcessSummaryVMs', () => {
     expect(result[1].statusCode).toBe('AWAITING_DATA')
     expect(result[2].status).toBe('amber-700')
     expect(result[2].statusCode).toBe('NOT_SYNCED')
+  })
+
+  it('drops microbadge when API status is not operationally meaningful', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-micro-invalid',
+        process_status: 'IN_TRANSIT',
+        status_microbadge: {
+          status: 'IN_TRANSIT',
+          count: 3,
+        },
+      }),
+    ])
+
+    expect(result[0].statusMicrobadge).toBeNull()
   })
 
   it('maps invalid eta string to etaMsOrNull = null', () => {

@@ -305,6 +305,60 @@ describe('process controllers', () => {
     expect(body.containersSync).toHaveLength(2)
   })
 
+  it('returns process detail with derived microbadge fields when containers are in dispersed lifecycle phases', async () => {
+    const inTransitSummary: TrackingOperationalSummary = {
+      status: 'IN_TRANSIT',
+      eta: null,
+      etaApplicable: true,
+      lifecycleBucket: 'pre_arrival',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    }
+    const dischargedSummary: TrackingOperationalSummary = {
+      status: 'DISCHARGED',
+      eta: null,
+      etaApplicable: false,
+      lifecycleBucket: 'post_arrival_pre_delivery',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    }
+
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        if (containerId === 'container-2') {
+          return createSummary(containerId, containerNumber, dischargedSummary)
+        }
+
+        return createSummary(containerId, containerNumber, inTransitSummary)
+      },
+    )
+
+    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.process_operational?.derived_status).toBe('IN_TRANSIT')
+    expect(body.process_operational?.highest_container_status).toBe('DISCHARGED')
+    expect(body.process_operational?.has_status_dispersion).toBe(true)
+    expect(body.process_operational?.status_counts).toMatchObject({
+      IN_TRANSIT: 1,
+      DISCHARGED: 1,
+    })
+    expect(body.process_operational?.status_microbadge).toEqual({
+      status: 'DISCHARGED',
+      count: 1,
+    })
+  })
+
   it('falls back to deterministic empty sync metadata when sync metadata lookup fails', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
     const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(

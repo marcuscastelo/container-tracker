@@ -1,5 +1,6 @@
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
@@ -92,6 +93,7 @@ export type ShipmentDetailVM = {
   readonly destination: string
   readonly status: StatusVariant
   readonly statusCode: ProcessStatusCode
+  readonly statusMicrobadge: ProcessStatusMicrobadgeVM | null
   readonly eta: string | null
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
   readonly containers: readonly ContainerDetailVM[]

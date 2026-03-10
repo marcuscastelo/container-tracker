@@ -1,5 +1,10 @@
 import type {
+  OperationalStatusCounts,
+  ProcessStatusMicrobadge,
+} from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
+import type {
   OperationalAlertSeverity,
+  OperationalStatus,
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
@@ -21,6 +26,10 @@ export type ProcessOperationalSummary = {
   readonly container_count: number
 
   readonly process_status: ProcessAggregatedStatus
+  readonly highest_container_status: OperationalStatus | null
+  readonly status_counts: OperationalStatusCounts
+  readonly status_microbadge: ProcessStatusMicrobadge | null
+  readonly has_status_dispersion: boolean
   readonly eta: string | null
   readonly lifecycle_bucket: TrackingLifecycleBucket
   readonly final_delivery_complete: boolean
