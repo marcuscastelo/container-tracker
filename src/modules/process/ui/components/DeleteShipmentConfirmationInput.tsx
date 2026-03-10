@@ -38,6 +38,10 @@ export function DeleteShipmentConfirmationInput(props: Props): JSX.Element {
         class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm-ui text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
         aria-describedby="delete-confirm-hint"
       />
+      {/* Hint for assistive technologies: mirror the placeholder text so screen readers have explicit guidance. */}
+      <p id="delete-confirm-hint" class="sr-only">
+        {t(k.confirmationPlaceholder, { reference: props.expectedReference })}
+      </p>
     </div>
   )
 }

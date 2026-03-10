@@ -159,13 +159,7 @@ export function DeleteShipmentDialog(props: Props): JSX.Element {
   }
 
   return (
-    <Dialog
-      open={props.open}
-      onClose={handleClose}
-      title={t(k.title)}
-      aria-labelledby="delete-shipment-title"
-      aria-describedby="delete-shipment-description"
-    >
+    <Dialog open={props.open} onClose={handleClose} title={t(k.title)}>
       <div class="space-y-4">
         <WarningIcon title={t(k.title)} />
 
