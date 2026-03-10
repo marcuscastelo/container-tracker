@@ -859,6 +859,21 @@ function createContainerPasteHandler(
       return
     }
 
+    if (parsed.type === 'single') {
+      event.preventDefault()
+      params.validationTracker.clear(container.id)
+      clearContainerServerError(params.setServerErrors, container.id)
+
+      const current = params.getContainers()
+      const index = current.findIndex((c) => c.id === container.id)
+      if (index >= 0) {
+        // apply normalized/sanitized single value into the target container
+        params.setContainers(index, 'containerNumber', parsed.value)
+      }
+
+      return
+    }
+
     if (parsed.type !== 'multiple') return
 
     event.preventDefault()
