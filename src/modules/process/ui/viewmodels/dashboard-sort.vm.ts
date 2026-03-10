@@ -1,9 +1,11 @@
 export const DASHBOARD_SORT_FIELDS = [
   'processNumber',
   'importerName',
+  'exporterName',
   'createdAt',
   'status',
   'eta',
+  'alerts',
   'provider',
 ] as const
 

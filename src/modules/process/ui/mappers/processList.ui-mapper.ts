@@ -14,6 +14,7 @@ export type ProcessListItemSource = {
   carrier?: string | null
   importer_id?: string | null
   importer_name?: string | null
+  exporter_name?: string | null
   bill_of_lading?: string | null
   booking_number?: string | null
   source: string
@@ -85,6 +86,7 @@ export function toProcessSummaryVMs(
       destination: process.destination,
       importerId: toOptionalNonBlankString(process.importer_id),
       importerName: toOptionalNonBlankString(process.importer_name),
+      exporterName: toOptionalNonBlankString(process.exporter_name),
       containerCount: process.containers.length,
       containerNumbers: process.containers.map((container) =>
         normalizeContainerNumber(container.container_number),

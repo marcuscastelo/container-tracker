@@ -22,9 +22,11 @@ function parseDashboardSortField(value: string | null): DashboardSortField | nul
   switch (value) {
     case 'processNumber':
     case 'importerName':
+    case 'exporterName':
     case 'createdAt':
     case 'status':
     case 'eta':
+    case 'alerts':
     case 'provider':
       return value
     default:

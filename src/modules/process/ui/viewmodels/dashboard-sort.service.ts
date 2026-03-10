@@ -107,6 +107,21 @@ function toProcessNumberSortValue(process: ProcessSummaryVM): string | null {
   return normalizeSortableString(process.reference)
 }
 
+/** Severity weight for sort ordering (lower = higher priority). */
+const SEVERITY_RANK: Record<string, number> = {
+  danger: 0,
+  warning: 1,
+  info: 2,
+  none: 3,
+}
+
+function toAlertsSortValue(process: ProcessSummaryVM): number {
+  const sevRank = SEVERITY_RANK[process.highestAlertSeverity ?? 'none'] ?? 3
+  // Pack severity and count into a single number: lower severity rank = higher priority,
+  // then higher count = higher priority within the same severity tier.
+  return sevRank * 10_000 - process.alertsCount
+}
+
 function compareBySortField(
   left: ProcessSummaryVM,
   right: ProcessSummaryVM,
@@ -122,6 +137,8 @@ function compareBySortField(
       )
     case 'importerName':
       return compareNullableStringValues(left.importerName, right.importerName, direction)
+    case 'exporterName':
+      return compareNullableStringValues(left.exporterName, right.exporterName, direction)
     case 'createdAt':
       return compareNullableDateValues(
         toCreatedAtSortValue(left),
@@ -137,6 +154,13 @@ function compareBySortField(
       )
     case 'eta':
       return compareNullableDateValues(left.etaMsOrNull, right.etaMsOrNull, direction)
+    case 'alerts':
+      return compareNullableNumberValues(
+        toAlertsSortValue(left),
+        toAlertsSortValue(right),
+        direction,
+        'directional',
+      )
     case 'provider':
       return compareNullableStringValues(left.carrier, right.carrier, direction)
   }
