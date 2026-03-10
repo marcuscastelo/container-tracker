@@ -1,148 +1,216 @@
-# ADR-0016 — Daily Container Auto Sync Strategy
+# ADR-0016 — Provider-Paced Container Auto-Sync Scheduler
 
 Status: Accepted  
 Date: 2026-03-10  
-Authors: Container Tracker Architecture  
+Owner: Tracking / Agent Runtime  
 
 ---
 
 # Context
 
-O sistema de tracking depende da ingestão de snapshots provenientes dos carriers (Maersk, CMA CGM, MSC etc.) para manter a timeline dos containers atualizada.
+O Container Tracker depende de ingestão periódica de dados de carriers (Maersk, CMA CGM, MSC etc.) para manter timelines atualizadas.
 
-Hoje existem dois mecanismos principais para disparar sincronizações:
+Atualmente os syncs podem ser disparados por:
 
-1. Sync manual via UI/API
-2. Sync operacional disparado por eventos específicos
+- ações manuais
+- eventos operacionais
 
 Entretanto, carriers frequentemente:
 
-- atualizam eventos **retroativamente**
-- alteram **ETA / transbordos**
+- atualizam eventos retroativamente
+- corrigem ETA
 - liberam eventos atrasados
+- corrigem transbordos
 
-Se um container **não recebe eventos por muito tempo**, o sistema pode permanecer com dados desatualizados até que um sync manual seja feito.
+Sem sincronização periódica automática, containers podem permanecer desatualizados por longos períodos.
 
-Isso cria riscos operacionais:
+---
 
-- ETA incorreta
-- alertas defasados
-- timeline incompleta
+# Constraint Operacional
 
-Precisamos de um mecanismo que garanta **refresh periódico automático** dos containers.
+A integração com carriers é feita via:
+
+- scraping
+- requests de browser simulado
+
+Para evitar bloqueios ou throttling pelos carriers, devemos respeitar limites operacionais.
+
+Limite definido:
+
+```
+máximo de 10 containers a cada 5 minutos por carrier
+```
+
+Isso impõe um **throughput máximo de sync**.
+
+---
+
+# Problem
+
+Um auto-sync simples (cron diário que enfileira todos containers) causaria:
+
+- burst de requests
+- risco de bloqueio
+- saturação de agentes
+- comportamento pouco previsível
+
+Precisamos de um mecanismo que:
+
+- respeite limites por carrier
+- distribua carga ao longo do tempo
+- ainda garanta refresh periódico
 
 ---
 
 # Decision
 
-Adotar um **auto-sync diário baseado em fila**, reutilizando a infraestrutura existente de `sync_requests`.
+Implementar um **Provider-Paced Auto-Sync Scheduler**.
 
-Arquitetura escolhida:
+Esse scheduler:
 
-```
-pg_cron (daily)
-        ↓
-enqueue sync_requests
-        ↓
-agent lease
-        ↓
-provider fetch
-        ↓
-snapshot ingest
-        ↓
-tracking pipeline
-```
-
-O cron **não executa sync diretamente**.
-
-Ele apenas **cria pedidos de sincronização** na fila.
+- roda continuamente
+- enfileira sync_requests gradualmente
+- respeita limites por carrier
+- garante refresh periódico dos containers
 
 ---
 
-# Rationale
+# Architecture
 
-Essa abordagem respeita as invariantes do sistema:
+Fluxo:
 
-### 1. Separação de responsabilidades
+```
+scheduler (5 min)
+       ↓
+seleciona containers "due for sync"
+       ↓
+enqueue sync_requests
+       ↓
+agent lease
+       ↓
+carrier fetch
+       ↓
+snapshot ingest
+       ↓
+tracking pipeline
+```
 
-Cron:
+Importante:
+
+O scheduler **não executa sync diretamente**.
+
+Ele apenas **agenda trabalho na fila**.
+
+---
+
+# Boundaries
+
+O scheduler é infraestrutura operacional.
+
+Ele **não altera o domínio**.
+
+Responsabilidades permanecem separadas:
+
+Scheduler
 - agenda trabalho
 
-Agent:
+Agent
 - executa integração com carriers
 
-Tracking:
+Tracking BC
 - processa snapshots
+- gera observations
 - deriva timeline
 - deriva status
 - deriva alertas
 
-Nenhuma regra de domínio é movida para cron.
+---
+
+# Sync SLA
+
+Objetivo operacional:
+
+```
+todos containers devem ser sincronizados
+ao menos uma vez a cada 24 horas
+```
+
+O scheduler garante isso distribuindo trabalho ao longo do dia.
 
 ---
 
-### 2. Reuso da infraestrutura existente
+# Throughput
 
-A fila `sync_requests` já possui:
+Limite definido:
 
-- leasing
-- retries
-- controle de status
-- deduplicação operacional
+```
+10 containers / 5 min / carrier
+```
 
-Logo não é necessário criar um novo sistema.
+Capacidade diária por carrier:
+
+```
+12 execuções/hora
+288 execuções/dia
+2880 containers/dia/carrier
+```
+
+Se o número de containers exceder esse limite, o scheduler deve:
+
+- priorizar containers mais antigos
+- permitir refresh >24h para os restantes
 
 ---
 
-### 3. Escalabilidade
+# Container Selection
 
-Mesmo com:
-
-```
-10k containers
-```
-
-Carga estimada:
+Containers elegíveis são selecionados com base em:
 
 ```
-10k syncs / dia
-≈ 7 por minuto
+último sync DONE mais antigo
 ```
 
-Carga extremamente baixa.
+Prioridade de seleção:
+
+1. containers nunca sincronizados
+2. containers com sync mais antigo
+3. containers com falha recente (respeitando backoff)
 
 ---
 
-### 4. Idempotência
+# Queue
 
-O sistema já possui garantias de idempotência:
+O scheduler insere registros em:
 
-- fila controla execução
+```
+sync_requests
+```
+
+Campos principais:
+
+```
+tenant_id
+provider
+ref_type
+ref_value
+status
+priority
+attempts
+```
+
+O agent continua consumindo normalmente.
+
+---
+
+# Idempotência
+
+Garantias:
+
+- scheduler evita duplicação recente
+- fila controla estado
 - lease evita concorrência
 - ingestão de snapshot é idempotente
-- pipeline de tracking é determinístico
-
----
-
-# Implementation Summary
-
-1. Criar função SQL:
-
-```
-enqueue_daily_container_sync()
-```
-
-2. A função:
-
-- seleciona containers elegíveis
-- cria `sync_requests`
-- evita duplicação nas últimas 24h
-
-3. Registrar cron job:
-
-```
-03:00 UTC
-```
+- pipeline tracking é determinístico
 
 ---
 
@@ -150,139 +218,85 @@ enqueue_daily_container_sync()
 
 ## Positivas
 
-- todos containers recebem refresh diário
-- dados ficam mais confiáveis
-- menor dependência de sync manual
-- carriers com atualizações tardias são capturados
-- alertas ficam mais consistentes
-
----
+- refresh automático contínuo
+- respeito a limites de scraping
+- distribuição suave de carga
+- sistema mais resiliente
+- menor risco de bloqueio pelos carriers
 
 ## Negativas
 
-- aumento pequeno no volume de sync
-- pequena carga adicional no agent
+- maior complexidade de scheduler
+- refresh deixa de ser instantâneo
 
-Ambos considerados aceitáveis.
+Ambos aceitáveis.
 
 ---
 
-# Architectural Boundaries
+# Alternatives Considered
 
-Este mecanismo **não altera o domínio**.
+## Cron diário que enfileira todos containers
 
-Cron:
+Problema:
 
-- não executa derivação
-- não altera status
-- não interpreta eventos
+- gera burst
+- viola limites operacionais
 
-A verdade continua sendo derivada por:
+Rejeitado.
 
-```
-Snapshot
-   ↓
-Observation
-   ↓
-Series
-   ↓
-Status
-   ↓
-Alerts
-```
+---
 
-Tracking continua sendo **source of truth**.
+## Agent fazendo scan completo de containers
+
+Problema:
+
+- mistura responsabilidades
+- scheduling distribuído
+- difícil observabilidade
+
+Rejeitado.
 
 ---
 
 # Future Improvements
 
-Esta ADR documenta possíveis evoluções futuras do mecanismo de auto-sync.
-
-Essas melhorias **não fazem parte da implementação inicial**.
+Esta ADR registra possíveis evoluções.
 
 ---
 
-## 1. Sync baseado em última atualização
+## Adaptive Sync Frequency
 
-Hoje:
-
-```
-sync diário fixo
-```
-
-Melhoria possível:
-
-```
-sync apenas containers sem update recente
-```
+Frequência baseada no estado do container.
 
 Exemplo:
 
-```
-last_event_at > 48h
-```
-
-Benefício:
-
-- reduzir carga desnecessária.
+BOOKED → 48h  
+IN_TRANSIT → 24h  
+ARRIVING → 6h  
 
 ---
 
-## 2. Sync adaptativo por fase da viagem
+## Alert-Driven Sync
 
-Containers podem ter frequência diferente:
-
-```
-BOOKED → baixo
-IN_TRANSIT → médio
-ARRIVING → alto
-```
-
-Exemplo:
-
-| Status     | Frequência |
-| ---------- | ---------- |
-| BOOKED     | 48h        |
-| IN_TRANSIT | 24h        |
-| ARRIVING   | 6h         |
+Containers com alertas ativos podem receber refresh mais frequente.
 
 ---
 
-## 3. Sync baseado em alertas
+## Dynamic Priority
 
-Containers com alertas ativos poderiam receber refresh mais frequente.
-
-Exemplo:
+Tipos de sync:
 
 ```
-stagnation alert → sync mais frequente
-ETA risk → sync mais frequente
+manual sync
+alert sync
+scheduled sync
 ```
 
 ---
 
-## 4. Prioridade dinâmica
+## Intelligent Scheduler
 
-Hoje:
-
-```
-priority = 0
-```
-
-Futuro:
-
-```
-manual sync → prioridade alta
-alert-driven sync → média
-daily sync → baixa
-```
-
----
-
-## 5. Scheduler inteligente
-
-No futuro o sistema pode evoluir para:
+No futuro pode existir um:
 
 ```
 tracking scheduler
@@ -290,66 +304,26 @@ tracking scheduler
 
 que decide:
 
-```
-quando sincronizar
-qual container sincronizar
-qual prioridade
-```
-
-Isso permitiria:
-
-- sync adaptativo
-- balanceamento de carga
-- SLA operacional
+- quando sincronizar
+- qual container sincronizar
+- qual prioridade usar
 
 ---
 
-## 6. Multi-tenant fairness
+## Multi-Tenant Fairness
 
 Caso o sistema se torne multi-tenant:
 
 - limitar bursts por tenant
-- garantir fairness
-
----
-
-# Alternatives Considered
-
-## Agent executando full scan
-
-Agent poderia escanear todos containers diretamente.
-
-Problemas:
-
-- mistura responsabilidades
-- remove controle central da fila
-- dificulta observabilidade
-
----
-
-## Sync baseado em timers no agent
-
-Agent poderia manter timers internos.
-
-Problemas:
-
-- estado distribuído
-- reinícios quebram scheduling
-- difícil de auditar
+- evitar starvation
 
 ---
 
 # Decision Outcome
 
-Adotar **auto-sync diário via fila** é a solução mais simples, segura e consistente com a arquitetura atual.
+Adotar **Provider-Paced Auto-Sync Scheduler** garante:
 
-A ADR também estabelece um roadmap claro para evoluções futuras.
-
----
-
-# Related Documents
-
-PRD — Daily Auto Sync  
-Tracking Architecture  
-Agent Runtime Architecture  
-Alert Policy
+- refresh periódico
+- respeito a limites operacionais
+- preservação da arquitetura atual
+- escalabilidade futura.
