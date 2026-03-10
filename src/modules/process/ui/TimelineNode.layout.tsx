@@ -12,7 +12,7 @@ type Props = {
   readonly textClass: string
 
   readonly label: string
-  readonly eventIconPath?: string
+  readonly eventIcon?: JSX.Element
 
   readonly nonMappedBadgeLabel?: string
 
@@ -62,24 +62,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
         <div class="flex items-start justify-between gap-1.5">
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1">
-              <Show when={props.eventIconPath}>
-                {(eventIconPath) => (
-                  <svg
-                    class={`h-3.5 w-3.5 shrink-0 ${props.textClass}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1.5"
-                      d={eventIconPath()}
-                    />
-                  </svg>
-                )}
-              </Show>
+              <Show when={props.eventIcon}>{(eventIcon) => eventIcon()}</Show>
 
               <Show when={showInlineEta() && props.etaChipLabel}>
                 {(etaChipLabel) => <EtaChip label={etaChipLabel()} />}
