@@ -192,6 +192,39 @@ describe('normalizeCmaCgmSnapshot', () => {
     })
   })
 
+  it('maps CMA-CGM terminal labels to canonical DELIVERY and EMPTY_RETURN', () => {
+    const payload = {
+      ContainerReference: 'FSCU4565494',
+      PastMoves: [
+        {
+          DateString: '2026-02-01T10:00:00.000Z',
+          State: 'DONE',
+          StatusDescription: 'Container to consignee',
+          LocationCode: 'BRSSZ',
+          Location: 'SANTOS, BR',
+        },
+        {
+          DateString: '2026-02-02T10:00:00.000Z',
+          State: 'DONE',
+          StatusDescription: 'Empty in depot',
+          LocationCode: 'BRSSZ',
+          Location: 'SANTOS, BR',
+        },
+      ],
+    }
+
+    const drafts = normalizeCmaCgmSnapshot(makeSnapshot(payload))
+    expect(drafts).toHaveLength(2)
+
+    expect(drafts[0]?.type).toBe('DELIVERY')
+    expect(drafts[0]?.carrier_label).toBe('Container to consignee')
+    expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+
+    expect(drafts[1]?.type).toBe('EMPTY_RETURN')
+    expect(drafts[1]?.carrier_label).toBe('Empty in depot')
+    expect(drafts[1]?.event_time_type).toBe('ACTUAL')
+  })
+
   it('preserves raw carrier_label text without trimming', () => {
     const payload = {
       ContainerReference: 'FSCU4565494',

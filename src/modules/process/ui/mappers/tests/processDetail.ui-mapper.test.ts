@@ -204,6 +204,8 @@ describe('toShipmentDetailVM fallback mapping', () => {
           severity: 'warning',
           message_key: 'alerts.noMovementDetected',
           message_params: {
+            threshold_days: 10,
+            days_without_movement: 10,
             days: 10,
             lastEventDate: '2026-02-24',
           },

@@ -50,6 +50,8 @@ export type TrackingAlertMessageContract =
   | {
       readonly message_key: 'alerts.noMovementDetected'
       readonly message_params: {
+        readonly threshold_days: number
+        readonly days_without_movement: number
         readonly days: number
         readonly lastEventDate: string
       }
@@ -100,8 +102,8 @@ type TrackingAlertBase = {
   source_observation_fingerprints: string[]
 
   /**
-   * Deterministic fingerprint for FACT alerts (used for deduplication).
-   * Nullable for MONITORING alerts (which use TYPE-based dedup only).
+   * Deterministic fingerprint for alerts that require episode-aware idempotency.
+   * Nullable for alerts that are intentionally type-only.
    * @see src/modules/tracking/features/alerts/domain/identity/alertFingerprint.ts
    */
   alert_fingerprint: string | null
