@@ -1,12 +1,12 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
-import { timelineEventIconPath } from '~/modules/process/ui/components/Icons'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
   type NonMappedIndicatorVariant,
   resolveTimelineEventLabelPresentation,
 } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { TimelineNodeLayout } from '~/modules/process/ui/TimelineNode.layout'
+import { timelineEventIcon } from '~/modules/process/ui/timeline/timelineEventIcon'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
@@ -203,6 +203,11 @@ export function TimelineNode(props: {
   const expectedDateIso = createMemo(() =>
     props.event.eventTimeType === 'EXPECTED' ? props.event.eventTimeIso : null,
   )
+  const eventIcon = createMemo<JSX.Element | null>(() => {
+    const Icon = timelineEventIcon(props.event.type)
+    if (!Icon) return null
+    return <Icon class={`h-4 w-4 shrink-0 ${styles().text}`} aria-hidden="true" />
+  })
 
   return (
     <>
@@ -215,7 +220,7 @@ export function TimelineNode(props: {
         lineClass={styles().line}
         textClass={styles().text}
         label={labelPresentation().label}
-        eventIconPath={timelineEventIconPath(props.event.type)}
+        eventIcon={eventIcon()}
         etaChipLabel={etaChipLabel()}
         nonMappedBadgeLabel={
           labelPresentation().showNonMappedIndicator
