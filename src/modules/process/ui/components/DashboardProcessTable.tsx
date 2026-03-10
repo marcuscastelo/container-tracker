@@ -10,7 +10,10 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
-import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
+import {
+  SyncCell as SyncCellComponent,
+  type SyncCellState,
+} from '~/modules/process/ui/components/SyncCell'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import {
   hasDashboardRowSelectedText,
@@ -391,15 +394,20 @@ function EtaCell(ctx: CellContext): JSX.Element {
 }
 
 function SyncCell(ctx: CellContext): JSX.Element {
+  const cellState = (): SyncCellState => {
+    const s = ctx.process.syncStatus
+    if (s === 'syncing') return 'syncing'
+    if (s === 'success') return 'success_recent'
+    if (s === 'error') return 'failed'
+    return 'idle'
+  }
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
-      <ProcessSyncButton
-        processId={ctx.process.id}
-        status={ctx.process.syncStatus}
-        lastSyncAt={ctx.process.lastSyncAt}
-        onSync={ctx.onProcessSync}
-      />
-    </div>
+    <SyncCellComponent
+      state={cellState()}
+      onSync={() => {
+        void ctx.onProcessSync(ctx.process.id)
+      }}
+    />
   )
 }
 

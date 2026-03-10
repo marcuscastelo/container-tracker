@@ -150,7 +150,10 @@
         "idle": "Sincronizar processo",
         "syncing": "Sincronizando processo",
         "success": "Sincronização concluída",
+        "successRecent": "Sincronização concluída",
         "error": "Sincronização com erro",
+        "failed": "Sincronização com erro",
+        "disabled": "Sincronização indisponível",
         "unknown": "Sem sincronização anterior",
         "lastSyncAt": "{{state}} · Último sync: {{timestamp}}"
       },

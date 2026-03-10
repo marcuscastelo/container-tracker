@@ -15,13 +15,10 @@ describe('useProcessSyncRealtime helpers', () => {
     expect(toProcessSyncStateFromRealtimeStatus('LEASED')).toBe('syncing')
   })
 
-  it('maps DONE status to success', () => {
-    expect(toProcessSyncStateFromRealtimeStatus('DONE')).toBe('success')
-  })
-
-  it('maps FAILED/NOT_FOUND statuses to error', () => {
-    expect(toProcessSyncStateFromRealtimeStatus('FAILED')).toBe('error')
-    expect(toProcessSyncStateFromRealtimeStatus('NOT_FOUND')).toBe('error')
+  it('ignores terminal realtime statuses for direct row-state derivation', () => {
+    expect(toProcessSyncStateFromRealtimeStatus('DONE')).toBeNull()
+    expect(toProcessSyncStateFromRealtimeStatus('FAILED')).toBeNull()
+    expect(toProcessSyncStateFromRealtimeStatus('NOT_FOUND')).toBeNull()
   })
 
   it('keeps idle as the default derived state when no container status is active', () => {

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, onMount, Show } from 'solid-js'
+import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import {
   syncAllProcessesRequest,
   syncProcessRequest,
@@ -15,6 +15,10 @@ import { prefetchProcessDetail } from '~/modules/process/ui/fetchProcess'
 import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
+import {
+  type DashboardLocalSyncStatus,
+  resolveDashboardProcessSyncStatus,
+} from '~/modules/process/ui/utils/dashboard-sync-reconciliation'
 import {
   applyDashboardFiltersToSearchParams,
   hydrateDashboardFiltersFromQueryAndStorage,
@@ -74,6 +78,13 @@ import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
 
+const LOCAL_SYNC_FEEDBACK_TTL_MS = 3_000
+// Debounce for realtime reconciliation is handled in the realtime hook; avoid
+// stacking multiple debounce layers in the screen.
+const REALTIME_RECONCILIATION_DEBOUNCE_MS = 0
+
+type LocalSyncStateByProcessId = Readonly<Record<string, DashboardLocalSyncStatus>>
+
 function toPathWithSearch(pathname: string, searchParams: URLSearchParams): string {
   const nextQuery = searchParams.toString()
   return nextQuery ? `${pathname}?${nextQuery}` : pathname
@@ -125,6 +136,40 @@ function hydrateDashboardQueryState(params: {
   void params.navigate(nextPath, { replace: true })
 }
 
+function withProcessLocalSyncState(
+  previous: LocalSyncStateByProcessId,
+  processId: string,
+  syncStatus: DashboardLocalSyncStatus,
+): LocalSyncStateByProcessId {
+  return {
+    ...previous,
+    [processId]: syncStatus,
+  }
+}
+
+function withManyProcessLocalSyncStates(
+  previous: LocalSyncStateByProcessId,
+  processIds: readonly string[],
+  syncStatus: DashboardLocalSyncStatus,
+): LocalSyncStateByProcessId {
+  if (processIds.length === 0) return previous
+  const next: Record<string, DashboardLocalSyncStatus> = { ...previous }
+  for (const processId of processIds) {
+    next[processId] = syncStatus
+  }
+  return next
+}
+
+function withoutProcessLocalSyncState(
+  previous: LocalSyncStateByProcessId,
+  processId: string,
+): LocalSyncStateByProcessId {
+  if (previous[processId] === undefined) return previous
+  const next: Record<string, DashboardLocalSyncStatus> = { ...previous }
+  delete next[processId]
+  return next
+}
+
 // eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { locale, t, keys } = useTranslation()
@@ -155,6 +200,123 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   )
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+  const [localSyncStateByProcessId, setLocalSyncStateByProcessId] =
+    createSignal<LocalSyncStateByProcessId>({})
+
+  const localSyncFeedbackTimeoutByProcessId = new Map<string, ReturnType<typeof setTimeout>>()
+  let realtimeReconciliationTimeoutId: ReturnType<typeof setTimeout> | null = null
+  let realtimeReconciliationInFlight = false
+  let pendingRealtimeReconciliation = false
+
+  const clearLocalSyncFeedbackTimer = (processId: string): void => {
+    const timeoutId = localSyncFeedbackTimeoutByProcessId.get(processId)
+    if (timeoutId === undefined) return
+    clearTimeout(timeoutId)
+    localSyncFeedbackTimeoutByProcessId.delete(processId)
+  }
+
+  const clearLocalSyncState = (processId: string): void => {
+    clearLocalSyncFeedbackTimer(processId)
+    setLocalSyncStateByProcessId((previous) => withoutProcessLocalSyncState(previous, processId))
+  }
+
+  const setLocalSyncState = (
+    processId: string,
+    syncStatus: DashboardLocalSyncStatus,
+    options?: { readonly ttlMs?: number },
+  ): void => {
+    clearLocalSyncFeedbackTimer(processId)
+    setLocalSyncStateByProcessId((previous) =>
+      withProcessLocalSyncState(previous, processId, syncStatus),
+    )
+
+    if (options?.ttlMs === undefined) return
+    const timeoutId = setTimeout(() => {
+      clearLocalSyncState(processId)
+    }, options.ttlMs)
+    localSyncFeedbackTimeoutByProcessId.set(processId, timeoutId)
+  }
+
+  const setLocalSyncStates = (
+    processIds: readonly string[],
+    syncStatus: DashboardLocalSyncStatus,
+    options?: { readonly ttlMs?: number },
+  ): void => {
+    if (processIds.length === 0) return
+
+    for (const processId of processIds) {
+      clearLocalSyncFeedbackTimer(processId)
+    }
+
+    setLocalSyncStateByProcessId((previous) =>
+      withManyProcessLocalSyncStates(previous, processIds, syncStatus),
+    )
+
+    if (options?.ttlMs === undefined) return
+
+    // Use a single shared timeout to clear many local sync feedback entries at
+    // once instead of creating one timer per row. This reduces pressure when the
+    // dashboard contains many processes.
+    const timeoutId = setTimeout(() => {
+      for (const processId of processIds) {
+        clearLocalSyncState(processId)
+      }
+    }, options.ttlMs)
+
+    for (const processId of processIds) {
+      localSyncFeedbackTimeoutByProcessId.set(processId, timeoutId)
+    }
+  }
+
+  const clearRealtimeReconciliationTimer = (): void => {
+    if (realtimeReconciliationTimeoutId === null) return
+    clearTimeout(realtimeReconciliationTimeoutId)
+    realtimeReconciliationTimeoutId = null
+  }
+
+  const reconcileProcessesFromServerSnapshot = async (): Promise<void> => {
+    if (realtimeReconciliationInFlight) {
+      // Mark that a reconciliation was requested while a refetch was already in
+      // flight so we perform one additional refetch when the current one ends.
+      pendingRealtimeReconciliation = true
+      return
+    }
+
+    realtimeReconciliationInFlight = true
+    try {
+      await refetchProcesses()
+    } catch (error) {
+      console.error('Failed to reconcile dashboard process sync state from realtime:', error)
+    } finally {
+      realtimeReconciliationInFlight = false
+      if (pendingRealtimeReconciliation) {
+        // Clear the flag and run a single extra refetch to ensure the UI
+        // reflects updates that occurred while the previous request was in-flight.
+        pendingRealtimeReconciliation = false
+        try {
+          await refetchProcesses()
+        } catch (err) {
+          console.error('Failed to perform pending realtime reconciliation:', err)
+        }
+      }
+    }
+  }
+
+  const scheduleRealtimeReconciliation = (): void => {
+    clearRealtimeReconciliationTimer()
+    realtimeReconciliationTimeoutId = setTimeout(() => {
+      realtimeReconciliationTimeoutId = null
+      void reconcileProcessesFromServerSnapshot()
+    }, REALTIME_RECONCILIATION_DEBOUNCE_MS)
+  }
+
+  onCleanup(() => {
+    clearRealtimeReconciliationTimer()
+    for (const timeoutId of localSyncFeedbackTimeoutByProcessId.values()) {
+      clearTimeout(timeoutId)
+    }
+    localSyncFeedbackTimeoutByProcessId.clear()
+  })
 
   const providerFilterOptions = createMemo(() =>
     deriveDashboardProviderFilterOptions(processes() ?? []),
@@ -177,15 +339,24 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   )
   const realtimeSyncStateByProcessId = useProcessSyncRealtime({
     processes: () => processes() ?? [],
+    onRealtimeStateChanged: scheduleRealtimeReconciliation,
   })
   const sortedProcessesWithRealtimeSync = createMemo(() => {
-    const stateByProcessId = realtimeSyncStateByProcessId()
+    const realtimeStateByProcessId = realtimeSyncStateByProcessId()
+    const localStateByProcessId = localSyncStateByProcessId()
+
     return sortedProcesses().map((process) => {
-      const realtimeState = stateByProcessId[process.id]
-      if (!realtimeState) return process
+      const resolvedSyncState = resolveDashboardProcessSyncStatus({
+        serverSnapshotState: process.syncStatus,
+        realtimeState: realtimeStateByProcessId[process.id] === 'syncing' ? 'syncing' : null,
+        localState: localStateByProcessId[process.id] ?? null,
+      })
+
+      if (resolvedSyncState === process.syncStatus) return process
+
       return {
         ...process,
-        syncStatus: realtimeState,
+        syncStatus: resolvedSyncState,
       }
     })
   })
@@ -219,16 +390,51 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   const handleDashboardRefresh = async () => {
-    await refreshDashboardData({
-      syncAllProcesses: syncAllProcessesRequest,
-      refetchProcesses,
-      refetchGlobalAlerts,
-    })
+    const currentProcessIds = (processes() ?? []).map((process) => process.id)
+    setLocalSyncStates(currentProcessIds, 'syncing')
+
+    try {
+      await refreshDashboardData({
+        syncAllProcesses: syncAllProcessesRequest,
+        refetchProcesses,
+        refetchGlobalAlerts,
+      })
+
+      setLocalSyncStates(currentProcessIds, 'success', {
+        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+      })
+    } catch (error) {
+      setLocalSyncStates(currentProcessIds, 'error', {
+        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+      })
+      throw error
+    }
   }
 
   const handleProcessSync = async (processId: string) => {
-    await syncProcessRequest(processId)
-    await refetchProcesses()
+    const currentLocalState = localSyncStateByProcessId()[processId]
+    if (currentLocalState === 'syncing') return
+
+    setLocalSyncState(processId, 'syncing')
+
+    try {
+      await syncProcessRequest(processId)
+      await refetchProcesses()
+      setLocalSyncState(processId, 'success', {
+        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+      })
+    } catch (error) {
+      console.error(`Dashboard process sync failed for ${processId}:`, error)
+      await Promise.resolve(refetchProcesses()).catch((refetchError: unknown) => {
+        console.error(
+          `Failed to reconcile dashboard process row after sync failure for ${processId}:`,
+          refetchError,
+        )
+      })
+      setLocalSyncState(processId, 'error', {
+        ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+      })
+    }
   }
 
   const handleOpenProcess = (processId: string) => {
