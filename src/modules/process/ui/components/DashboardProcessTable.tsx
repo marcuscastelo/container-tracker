@@ -341,7 +341,7 @@ function RouteCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <div class="flex w-fit mx-auto outline min-w-0 items-center gap-1 text-xs-ui text-slate-500 leading-tight">
+        <div class="flex w-fit mx-auto min-w-0 items-center gap-1 text-xs-ui text-slate-500 leading-tight">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
           <span class="truncate font-medium text-slate-600">{route().destination}</span>
