@@ -77,7 +77,7 @@ export function StatusBadge(props: Props): JSX.Element {
 
   return (
     <span
-      class={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs-ui font-semibold leading-none tracking-wide ring-1 ring-inset ring-current/15 ${bgClass()} ${textClass()}`}
+      class={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs-ui font-semibold leading-none tracking-wide whitespace-nowrap ring-1 ring-inset ring-current/15 ${bgClass()} ${textClass()}`}
     >
       <span class={`text-[7px] ${iconColorClass()}`} aria-hidden="true">
         {config().icon}

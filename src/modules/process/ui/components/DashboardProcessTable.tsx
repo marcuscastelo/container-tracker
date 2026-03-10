@@ -169,14 +169,18 @@ function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
 }
 
 function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-l-4 border-l-red-500'
-  if (severity === 'warning') return 'border-l-4 border-l-amber-400'
-  if (severity === 'info') return 'border-l-4 border-l-blue-300'
+  // Use inset box-shadow instead of border-l-4 so the stripe is purely visual
+  // and does NOT participate in the box model. border-l-4 would reduce the grid
+  // container's content area by 4px, causing the fixed-width tracks to overflow
+  // and produce a horizontal scrollbar.
+  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_#ef4444]'
+  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_#fbbf24]'
+  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_#93c5fd]'
   return ''
 }
 
 /** Shared grid definition — single source of truth for header + rows */
-const GRID_COLS = 'grid grid-cols-[130px_1fr_150px_110px_70px_80px] divide-x divide-slate-200/50'
+const GRID_COLS = 'grid grid-cols-[130px_1fr_185px_110px_70px_80px] divide-x divide-slate-200/50'
 
 /** Severity weight for default priority ordering (lower = higher priority). */
 const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
@@ -318,7 +322,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <div class="overflow-hidden px-3 py-2">
         <A
           href={processHref()}
-          class="text-md-ui font-semibold text-slate-900 hover:text-sky-700 whitespace-nowrap truncate block"
+          class="row-link text-md-ui font-semibold text-slate-900 hover:text-sky-700 whitespace-nowrap truncate block"
           onClick={handleProcessLinkClick}
           onPointerEnter={triggerProcessIntent}
           onFocusIn={triggerProcessIntent}
@@ -331,7 +335,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <div class="overflow-hidden px-3 py-2">
         <A
           href={processHref()}
-          class="block"
+          class="row-link block"
           onClick={handleProcessLinkClick}
           onPointerEnter={triggerProcessIntent}
           onFocusIn={triggerProcessIntent}
@@ -348,10 +352,10 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
         </A>
       </div>
       {/* Status */}
-      <div class="px-3 py-2 text-center">
+      <div class="px-3 py-2 flex items-center justify-center">
         <A
           href={processHref()}
-          class="block"
+          class="row-link inline-flex items-center"
           onClick={handleProcessLinkClick}
           onPointerEnter={triggerProcessIntent}
           onFocusIn={triggerProcessIntent}
@@ -367,7 +371,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <div class="px-3 py-2 text-center">
         <A
           href={processHref()}
-          class="block"
+          class="row-link block"
           onClick={handleProcessLinkClick}
           onPointerEnter={triggerProcessIntent}
           onFocusIn={triggerProcessIntent}
@@ -398,7 +402,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <div class="px-3 py-2 text-center">
         <A
           href={processHref()}
-          class="block"
+          class="row-link block"
           onClick={handleProcessLinkClick}
           onPointerEnter={triggerProcessIntent}
           onFocusIn={triggerProcessIntent}
@@ -486,7 +490,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   )
 
   return (
-    <div class="overflow-x-auto">
+    <div class="overflow-x-hidden">
       {tableHeader}
       <div>
         <For each={prioritySorted()}>
