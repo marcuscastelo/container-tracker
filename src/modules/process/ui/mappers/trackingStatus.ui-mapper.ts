@@ -8,18 +8,6 @@ import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export { toTrackingStatusCode }
 
-const TRACKING_STATUS_FILTER_ORDER: readonly TrackingStatusCode[] = [
-  'UNKNOWN',
-  'IN_PROGRESS',
-  'LOADED',
-  'IN_TRANSIT',
-  'ARRIVED_AT_POD',
-  'DISCHARGED',
-  'AVAILABLE_FOR_PICKUP',
-  'DELIVERED',
-  'EMPTY_RETURNED',
-]
-
 export function trackingStatusToVariant(statusCode: TrackingStatusCode | string): StatusVariant {
   const normalizedStatusCode = toTrackingStatusCode(statusCode)
   return STATUS_COLOR[normalizedStatusCode]
