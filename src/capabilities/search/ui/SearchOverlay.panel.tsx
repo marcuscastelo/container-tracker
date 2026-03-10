@@ -424,7 +424,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
               <div class="flex items-center gap-2">
                 <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">
                   <svg
-                    class="inline-block w-3 h-3 align-text-bottom"
+                    class="inline-block w-3 h-3 align-text-center"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2"
@@ -433,9 +433,9 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                     viewBox="0 0 24 24"
                     aria-hidden="true"
                   >
-                    <path d="M12 19V5" />
-                    <path d="m5 12 7-7 7 7" />
-                    <path d="m5 12 7 7 7-7" />
+                    <path d="M12 22V1" />
+                    <path d="m5 8 7-7 7 7" />
+                    <path d="m5 16 7 7 7-7" />
                   </svg>
                 </kbd>
                 <span>{t(keys.search.footer.navigate)}</span>
