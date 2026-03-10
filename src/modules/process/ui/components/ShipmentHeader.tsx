@@ -113,9 +113,15 @@ function RefreshIcon(props: { readonly spinning: boolean; readonly title: string
   return (
     <Show
       when={props.spinning}
-      fallback={<RefreshCw class="h-4 w-4" title={props.title} aria-hidden="true" />}
+      fallback={
+        <span class="h-4 w-4" title={props.title} aria-hidden="true">
+          <RefreshCw class="h-4 w-4" />
+        </span>
+      }
     >
-      <RefreshCw class="h-4 w-4 animate-spin" title={props.title} aria-hidden="true" />
+      <span class="h-4 w-4" title={props.title} aria-hidden="true">
+        <RefreshCw class="h-4 w-4 animate-spin" />
+      </span>
     </Show>
   )
 }

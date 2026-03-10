@@ -33,9 +33,9 @@ function RefreshIcon(props: {
   readonly title: string
   readonly error: boolean
 }): JSX.Element {
-  const base = props.spinning ? 'h-4 w-4 animate-spin' : 'h-4 w-4'
-  const cls = props.error ? `${base} text-red-200` : base
-  return <RefreshCw class={cls} title={props.title} aria-hidden="true" />
+  const base = () => (props.spinning ? 'h-4 w-4 animate-spin' : 'h-4 w-4')
+  const cls = () => (props.error ? `${base()} text-red-200` : base())
+  return <RefreshCw class={cls()} aria-hidden="true" />
 }
 
 export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
