@@ -72,7 +72,23 @@ function toNoMovementDateDedupKeyFromParams(
   const lastEventDate = lastEventDateValue.trim()
   if (lastEventDate.length === 0) return null
 
-  return `${containerId}|date:${lastEventDate}|threshold:${normalizedThresholdDays}`
+  // Prefer adding a timestamp suffix when available to avoid false
+  // deduplication when late-arriving observations change the latest
+  // movement within the same calendar day. The message payload may include
+  // a `lastEventTimestamp` field (string or number) as a more specific anchor.
+  let timestampSuffix = ''
+  const lastEventTimestampValue = messageParams.lastEventTimestamp
+  if (typeof lastEventTimestampValue === 'string') {
+    const ts = lastEventTimestampValue.trim()
+    if (ts.length > 0) timestampSuffix = `|ts:${ts}`
+  } else if (
+    typeof lastEventTimestampValue === 'number' &&
+    Number.isFinite(lastEventTimestampValue)
+  ) {
+    timestampSuffix = `|ts:${lastEventTimestampValue}`
+  }
+
+  return `${containerId}|date:${lastEventDate}${timestampSuffix}|threshold:${normalizedThresholdDays}`
 }
 
 function toNoMovementSourceDedupKeys(
@@ -267,6 +283,15 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
 
     const rows = alertsToInsert.map(alertToInsertRow)
 
+    // NOTE: DB-level unique constraints (e.g. on (container_id, alert_fingerprint))
+    // are strongly recommended to make idempotency robust under concurrent
+    // pipeline runs. The client library's insert options for "on conflict"
+    // are not consistently typed across versions; for now fall back to a
+    // standard insert and rely on the pre-insert dedup checks. When the
+    // project standardizes on a supabase client that supports an upsert/ignore
+    // option with types, replace this call with an "on conflict do nothing"
+    // insert (or `.upsert(..., { onConflict: [...] })`) to make the operation
+    // atomic.
     const result = await supabase.from(TABLE).insert(rows).select('*')
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'insertMany',

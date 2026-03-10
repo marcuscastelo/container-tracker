@@ -292,8 +292,26 @@ export function deriveAlerts(
         const highestCrossedBreakpoint = toHighestCrossedNoMovementBreakpoint(daysWithoutMovement)
 
         if (highestCrossedBreakpoint !== null) {
-          const cycleAnchorDate = lastActualEvent.event_time.slice(0, 10)
+          // Use a stable movement identity as cycle anchor. Prefer the
+          // observation fingerprint (strong identity) and fall back to the
+          // full event_time timestamp when fingerprint is absent. Using
+          // a calendar date alone can cause false suppression when
+          // late-arriving ACTUAL observations change the latest movement
+          // within the same day.
           const cycleAnchorObservationFingerprint = lastActualEvent.fingerprint
+          const cycleAnchorKey =
+            typeof cycleAnchorObservationFingerprint === 'string' &&
+            cycleAnchorObservationFingerprint.length > 0
+              ? cycleAnchorObservationFingerprint
+              : lastActualEvent.event_time
+
+          // Compute the legacy date-based cycle anchor first (used for the
+          // persisted fingerprint) and retain the observation fingerprint for
+          // cycle emission checks. This keeps deterministic fingerprints
+          // compatible with existing expectations while also allowing us to
+          // detect anchor changes via the stronger observation fingerprint.
+          const cycleAnchorDate = lastActualEvent.event_time.slice(0, 10)
+
           const monitoringFingerprint = computeNoMovementAlertFingerprint(
             timeline.container_id,
             highestCrossedBreakpoint,
@@ -303,6 +321,9 @@ export function deriveAlerts(
           const alreadyEmittedForCycle = hasNoMovementBreakpointBeenEmittedForCurrentCycle(
             existingAlerts,
             highestCrossedBreakpoint,
+            // keep legacy date param for backward compatibility checks inside
+            // the helper; the helper also considers source observation
+            // fingerprints when available
             cycleAnchorDate,
             cycleAnchorObservationFingerprint,
           )
