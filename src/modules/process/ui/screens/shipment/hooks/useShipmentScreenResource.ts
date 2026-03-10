@@ -84,7 +84,7 @@ export function useShipmentScreenResource(
     shipment,
     loading: () => shipment.loading,
     error: () => shipment.error,
-    refetch: () => refetch() as unknown,
+    refetch,
     mutate,
     processResourceKey,
     reconcileTrackingView,
