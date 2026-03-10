@@ -46,11 +46,12 @@ UI must not:
 derive sync semantics
 ```
 
-UI must only reflect:
-
-```
-server snapshot
-```
+Server snapshots are the source of truth for sync state; the UI may show
+transient local or realtime indicators (for example: "syncing" feedback or a
+brief "success" state) while reconciliation with the server is in progress.
+These transient indicators must never be treated as authoritative long-term
+state — the UI should always reconcile and display the server snapshot once it
+has been fetched.
 
 ---
 

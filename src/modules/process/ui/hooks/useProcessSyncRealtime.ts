@@ -231,6 +231,11 @@ export function useProcessSyncRealtime(command: {
         })()
 
         if (nextStateByProcessId === currentStateByProcessId) {
+          // Even if the realtime state map doesn't change, terminal events should still
+          // trigger reconciliation to ensure we refetch the latest server snapshot.
+          if (isTerminalRealtimeStatus(row?.status)) {
+            scheduleReconciliation()
+          }
           return
         }
 

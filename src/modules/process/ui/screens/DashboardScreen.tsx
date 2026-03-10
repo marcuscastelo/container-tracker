@@ -79,7 +79,9 @@ import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
 
 const LOCAL_SYNC_FEEDBACK_TTL_MS = 3_000
-const REALTIME_RECONCILIATION_DEBOUNCE_MS = 400
+// Debounce for realtime reconciliation is handled in the realtime hook; avoid
+// stacking multiple debounce layers in the screen.
+const REALTIME_RECONCILIATION_DEBOUNCE_MS = 0
 
 type LocalSyncStateByProcessId = Readonly<Record<string, DashboardLocalSyncStatus>>
 
@@ -204,6 +206,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const localSyncFeedbackTimeoutByProcessId = new Map<string, ReturnType<typeof setTimeout>>()
   let realtimeReconciliationTimeoutId: ReturnType<typeof setTimeout> | null = null
   let realtimeReconciliationInFlight = false
+  let pendingRealtimeReconciliation = false
 
   const clearLocalSyncFeedbackTimer = (processId: string): void => {
     const timeoutId = localSyncFeedbackTimeoutByProcessId.get(processId)
@@ -250,10 +253,17 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     )
 
     if (options?.ttlMs === undefined) return
-    for (const processId of processIds) {
-      const timeoutId = setTimeout(() => {
+
+    // Use a single shared timeout to clear many local sync feedback entries at
+    // once instead of creating one timer per row. This reduces pressure when the
+    // dashboard contains many processes.
+    const timeoutId = setTimeout(() => {
+      for (const processId of processIds) {
         clearLocalSyncState(processId)
-      }, options.ttlMs)
+      }
+    }, options.ttlMs)
+
+    for (const processId of processIds) {
       localSyncFeedbackTimeoutByProcessId.set(processId, timeoutId)
     }
   }
@@ -265,7 +275,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   const reconcileProcessesFromServerSnapshot = async (): Promise<void> => {
-    if (realtimeReconciliationInFlight) return
+    if (realtimeReconciliationInFlight) {
+      // Mark that a reconciliation was requested while a refetch was already in
+      // flight so we perform one additional refetch when the current one ends.
+      pendingRealtimeReconciliation = true
+      return
+    }
+
     realtimeReconciliationInFlight = true
     try {
       await refetchProcesses()
@@ -273,6 +289,16 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       console.error('Failed to reconcile dashboard process sync state from realtime:', error)
     } finally {
       realtimeReconciliationInFlight = false
+      if (pendingRealtimeReconciliation) {
+        // Clear the flag and run a single extra refetch to ensure the UI
+        // reflects updates that occurred while the previous request was in-flight.
+        pendingRealtimeReconciliation = false
+        try {
+          await refetchProcesses()
+        } catch (err) {
+          console.error('Failed to perform pending realtime reconciliation:', err)
+        }
+      }
     }
   }
 
