@@ -351,7 +351,9 @@ function RouteCell(ctx: CellContext): JSX.Element {
 }
 
 function StatusCell(ctx: CellContext): JSX.Element {
-  const display = () =>
+  // compute display data once per render to avoid recomputing translations and
+  // microbadge mapping multiple times during JSX evaluation
+  const display = createMemo(() =>
     toDashboardStatusCellDisplay({
       source: {
         status: ctx.process.status,
@@ -360,7 +362,8 @@ function StatusCell(ctx: CellContext): JSX.Element {
       },
       t: ctx.t,
       keys: ctx.keys,
-    })
+    }),
+  )
 
   return (
     <div class="min-w-0 overflow-hidden px-3 py-2 flex items-center justify-center">

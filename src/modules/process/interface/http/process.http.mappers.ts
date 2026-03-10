@@ -346,8 +346,16 @@ function toContainerOperationalResponse(summary: TrackingOperationalSummary) {
   return {
     status: summary.status,
     eta: toOperationalEtaResponse(summary.eta),
-    eta_applicable: summary.etaApplicable ?? summary.lifecycleBucket === 'pre_arrival',
-    lifecycle_bucket: summary.lifecycleBucket ?? 'pre_arrival',
+    // normalize lifecycle bucket first so eta applicability uses the same fallback
+    // logic everywhere (legacy read models may lack lifecycleBucket)
+    lifecycle_bucket: (() => {
+      const bucket = summary.lifecycleBucket ?? 'pre_arrival'
+      return bucket
+    })(),
+    eta_applicable: (() => {
+      const bucket = summary.lifecycleBucket ?? 'pre_arrival'
+      return summary.etaApplicable ?? bucket === 'pre_arrival'
+    })(),
     transshipment: toOperationalTransshipmentResponse(summary.transshipment),
     data_issue: summary.dataIssue,
   }

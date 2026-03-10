@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { AlertIcon } from '~/modules/process/ui/components/Icons'
+import { resolveLifecycleState } from '~/modules/process/ui/screens/shipment/lib/alert-lifecycle'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
@@ -116,14 +117,7 @@ export function AlertItem(props: {
   const { t, keys } = useTranslation()
   const isBusy = () => props.busyAlertIds.has(props.alert.id)
   const isCollapsing = () => props.collapsingAlertIds.has(props.alert.id)
-  const lifecycleState = () => {
-    if (props.alert.lifecycleState === 'ACTIVE') return 'ACTIVE'
-    if (props.alert.lifecycleState === 'ACKED') return 'ACKED'
-    if (props.alert.lifecycleState === 'AUTO_RESOLVED') return 'AUTO_RESOLVED'
-    if (props.alert.ackedAtIso) return 'ACKED'
-    if (props.alert.resolvedAtIso) return 'AUTO_RESOLVED'
-    return 'ACTIVE'
-  }
+  const lifecycleState = () => resolveLifecycleState(props.alert)
   const actionDateIso = () =>
     props.alert.ackedAtIso ?? props.alert.resolvedAtIso ?? props.alert.triggeredAtIso
   const translatedMessage = () => t(props.alert.messageKey, props.alert.messageParams)
