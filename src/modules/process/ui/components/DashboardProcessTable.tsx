@@ -113,17 +113,17 @@ function toDominantAlertLabel(
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
-  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
-  if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
-  if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
-  return 'border-slate-200 bg-slate-50 text-slate-500'
+  if (severity === 'danger') return 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
+  if (severity === 'warning') return 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
+  if (severity === 'info') return 'border-[var(--status-info-border)] bg-[var(--status-info-bg)] text-[var(--status-info-text)]'
+  if (severity === 'success') return 'border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-text)]'
+  return 'border-[var(--border-default)] bg-[var(--bg-muted)] text-[var(--text-tertiary)]'
 }
 
 function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_#ef4444]'
-  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_#fbbf24]'
-  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_#93c5fd]'
+  if (severity === 'danger') return '[box-shadow:inset_3px_0_0_0_var(--status-danger-icon)]'
+  if (severity === 'warning') return '[box-shadow:inset_3px_0_0_0_var(--status-warning-icon)]'
+  if (severity === 'info') return '[box-shadow:inset_3px_0_0_0_var(--status-info-icon)]'
   return ''
 }
 
@@ -271,10 +271,10 @@ type CellContext = {
 
 function ProcessRefCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2.5">
       <A
         href={ctx.processHref}
-        class="row-link block truncate text-md-ui font-semibold text-slate-900 hover:text-sky-700"
+        class="row-link block truncate text-md-ui font-semibold text-[var(--text-primary)] hover:text-[var(--accent-primary)]"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
@@ -288,10 +288,10 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
 
 function ImporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2.5">
       <A
         href={ctx.processHref}
-        class="row-link block truncate text-xs-ui text-slate-600"
+        class="row-link block truncate text-sm-ui text-[var(--text-secondary)]"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
@@ -305,10 +305,10 @@ function ImporterCell(ctx: CellContext): JSX.Element {
 
 function ExporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2.5">
       <A
         href={ctx.processHref}
-        class="row-link block truncate text-xs-ui text-slate-600"
+        class="row-link block truncate text-sm-ui text-[var(--text-secondary)]"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
@@ -323,7 +323,7 @@ function ExporterCell(ctx: CellContext): JSX.Element {
 function RouteCell(ctx: CellContext): JSX.Element {
   const route = () => displayRoute(ctx.process)
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2.5">
       <A
         href={ctx.processHref}
         class="row-link block"
@@ -332,12 +332,12 @@ function RouteCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <div class="flex min-w-0 items-center gap-1 text-xs-ui text-slate-500 leading-tight">
+        <div class="flex min-w-0 items-center gap-1.5 text-sm-ui text-[var(--text-tertiary)] leading-tight">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
-          <span class="truncate font-medium text-slate-600">{route().destination}</span>
+          <span class="truncate font-medium text-[var(--text-secondary)]">{route().destination}</span>
           <Show when={ctx.process.redestinationNumber}>
-            <span class="shrink-0 text-micro text-slate-400">
+            <span class="shrink-0 text-micro text-[var(--text-muted)]">
               ({ctx.process.redestinationNumber})
             </span>
           </Show>
@@ -369,7 +369,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
 
 function EtaCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
+    <div class="min-w-0 overflow-hidden px-3 py-2.5 text-center">
       <A
         href={ctx.processHref}
         class="row-link block"
@@ -378,9 +378,9 @@ function EtaCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <Show when={ctx.process.eta} fallback={<span class="text-xs-ui text-slate-300">—</span>}>
+        <Show when={ctx.process.eta} fallback={<span class="text-sm-ui text-[var(--text-muted)]">—</span>}>
           <span
-            class={`text-md-ui font-bold tabular-nums ${ctx.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
+            class={`text-md-ui font-bold tabular-nums ${ctx.process.status === 'delayed' ? 'text-[var(--status-danger-text)]' : 'text-[var(--text-primary)]'}`}
           >
             {displayEta(ctx.process.eta)}
           </span>
@@ -493,7 +493,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
   const processHref = () => buildProcessHref(props.process.id)
   const dominantSeverity = () => toDominantSeverity(props.process)
-  const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
+  const zebraClass = () => (props.index % 2 === 1 ? 'bg-[var(--table-row-zebra)]' : 'bg-[var(--bg-surface)]')
 
   const triggerProcessIntent = () => {
     props.onProcessIntent(props.process.id)
@@ -553,7 +553,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <div
       role="button"
       tabIndex={0}
-      class={`grid items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 cursor-pointer ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      class={`grid items-center border-b border-[var(--border-subtle)] transition-colors last:border-b-0 hover:bg-[var(--table-row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-focus)] cursor-pointer ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
       style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
@@ -644,7 +644,7 @@ function DashboardTableHeader(props: {
 
   return (
     <div
-      class="grid border-b border-slate-200 bg-white/80 text-left text-xs-ui font-semibold uppercase tracking-wide text-slate-500"
+      class="grid border-b border-[var(--table-border)] bg-[var(--table-header-bg)] text-left text-xs-ui font-semibold uppercase tracking-wide text-[var(--text-tertiary)]"
       style={{ 'grid-template-columns': props.gridStyle }}
     >
       <For each={props.columnOrder}>
@@ -662,7 +662,7 @@ function DashboardTableHeader(props: {
             <div
               role="columnheader"
               tabIndex={colDef.reorderable ? 0 : undefined}
-              class={`px-3 py-2.5 ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-sky-50' : ''}`}
+              class={`px-3 py-2.5 ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-[var(--bg-selected)]' : ''}`}
               draggable={colDef.reorderable}
               onDragStart={(e: DragEvent) => handleDragStart(colId, colDef, e)}
               onDragOver={(e: DragEvent) => handleDragOver(i(), e)}
@@ -754,7 +754,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const content = () => {
     if (props.loading) {
       return (
-        <div class="px-4 py-8 text-center text-md-ui text-slate-400">
+        <div class="px-4 py-8 text-center text-md-ui text-[var(--text-muted)]">
           {t(keys.dashboard.loading)}
         </div>
       )
@@ -762,7 +762,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
     if (props.hasError) {
       return (
-        <div class="px-4 py-8 text-center text-md-ui text-red-500">
+        <div class="px-4 py-8 text-center text-md-ui text-[var(--status-danger-text)]">
           {t(keys.dashboard.error.loadProcesses)}
         </div>
       )
@@ -805,9 +805,9 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   return (
-    <section class="overflow-hidden rounded-lg border border-slate-200 bg-white/80 shadow-sm">
-      <header class="border-b border-slate-200 bg-slate-50/80 px-4 py-3">
-        <h2 class="text-sm-ui font-bold text-slate-800">{t(keys.dashboard.table.title)}</h2>
+    <section class="overflow-hidden rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--card-shadow)]">
+      <header class="border-b border-[var(--border-default)] bg-[var(--bg-surface-subtle)] px-4 py-2.5">
+        <h2 class="text-sm-ui font-semibold text-[var(--text-primary)]">{t(keys.dashboard.table.title)}</h2>
       </header>
       {content()}
     </section>

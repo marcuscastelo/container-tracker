@@ -307,13 +307,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   return (
-    <div class="relative min-h-screen overflow-x-hidden bg-slate-50/80">
+    <div class="relative min-h-screen overflow-x-hidden bg-[var(--bg-page)]">
       {/* Wallpaper watermark — decorative only, does not affect layout */}
       <img
         src={BRANDING.wallpaper}
         alt=""
         aria-hidden="true"
-        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.3]"
+        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.08]"
       />
       <div class="relative z-10">
         <AppHeader
@@ -326,9 +326,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onSubmit={handleProcessSubmit}
         />
 
-        <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
-          <div class="mb-4 flex items-center gap-3">
-            <h1 class="shrink-0 text-lg-ui font-semibold text-slate-900">
+        <main class="mx-auto max-w-7xl px-4 py-5 lg:px-6">
+          <div class="mb-5 flex items-center gap-4">
+            <h1 class="shrink-0 text-lg-ui font-semibold text-[var(--text-primary)]">
               {t(keys.dashboard.header.title)}
             </h1>
             <div class="min-w-0 flex-1 flex justify-center">{props.searchSlot}</div>

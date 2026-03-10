@@ -15,6 +15,210 @@
   --font-size-md-ui: 13px;
   --font-size-lg-ui: 15px;
   --font-size-xl-ui: 22px;
+
+  /* ── Maritime Enterprise Color Palette ────────────────────────── */
+  /* Primary Brand - Deep Navy / Maritime Blue */
+  --color-navy-950: #0a0e1a;
+  --color-navy-900: #0f1629;
+  --color-navy-800: #151d35;
+  --color-navy-700: #1e2745;
+  --color-navy-600: #283456;
+  --color-navy-500: #3d4f6f;
+  --color-navy-400: #5a6d8a;
+  --color-navy-300: #8494ad;
+  --color-navy-200: #b3bfcf;
+  --color-navy-100: #dce2eb;
+  --color-navy-50: #f1f4f8;
+
+  /* Steel Blue - Secondary operational */
+  --color-steel-600: #3b5998;
+  --color-steel-500: #4a6fb5;
+  --color-steel-400: #6b8fd0;
+  --color-steel-300: #95b1e3;
+  --color-steel-200: #c5d4f0;
+
+  /* Teal Accent - Action/Interactive */
+  --color-teal-600: #0d9488;
+  --color-teal-500: #14b8a6;
+  --color-teal-400: #2dd4bf;
+  --color-teal-300: #5eead4;
+
+  /* Semantic Alert Colors */
+  --color-danger-700: #b91c1c;
+  --color-danger-600: #dc2626;
+  --color-danger-500: #ef4444;
+  --color-danger-400: #f87171;
+  --color-danger-100: #fee2e2;
+  --color-danger-50: #fef2f2;
+
+  --color-warning-700: #b45309;
+  --color-warning-600: #d97706;
+  --color-warning-500: #f59e0b;
+  --color-warning-400: #fbbf24;
+  --color-warning-100: #fef3c7;
+  --color-warning-50: #fffbeb;
+
+  --color-success-700: #047857;
+  --color-success-600: #059669;
+  --color-success-500: #10b981;
+  --color-success-400: #34d399;
+  --color-success-100: #d1fae5;
+  --color-success-50: #ecfdf5;
+
+  --color-info-700: #0369a1;
+  --color-info-600: #0284c7;
+  --color-info-500: #0ea5e9;
+  --color-info-400: #38bdf8;
+  --color-info-100: #e0f2fe;
+  --color-info-50: #f0f9ff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Light Theme - Maritime Operations Day Mode
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  /* Backgrounds */
+  --bg-page: #f5f7fa;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #ffffff;
+  --bg-surface-subtle: #f9fafb;
+  --bg-muted: #f1f4f8;
+  --bg-inset: #e8ecf1;
+
+  /* Text */
+  --text-primary: #0f1629;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  --text-inverted: #ffffff;
+
+  /* Borders */
+  --border-default: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --border-strong: #cbd5e1;
+
+  /* Header/Nav */
+  --bg-header: #0f1629;
+  --text-header: #ffffff;
+  --text-header-muted: #8494ad;
+  --border-header: #1e2745;
+
+  /* Primary Actions */
+  --accent-primary: #0ea5e9;
+  --accent-primary-hover: #0284c7;
+  --accent-primary-text: #ffffff;
+
+  /* Interactive States */
+  --bg-hover: #f1f5f9;
+  --bg-active: #e2e8f0;
+  --bg-selected: #e0f2fe;
+  --border-focus: #0ea5e9;
+
+  /* Status Colors */
+  --status-danger-bg: #fef2f2;
+  --status-danger-border: #fecaca;
+  --status-danger-text: #b91c1c;
+  --status-danger-icon: #dc2626;
+
+  --status-warning-bg: #fffbeb;
+  --status-warning-border: #fde68a;
+  --status-warning-text: #92400e;
+  --status-warning-icon: #d97706;
+
+  --status-success-bg: #ecfdf5;
+  --status-success-border: #a7f3d0;
+  --status-success-text: #047857;
+  --status-success-icon: #059669;
+
+  --status-info-bg: #f0f9ff;
+  --status-info-border: #bae6fd;
+  --status-info-text: #0369a1;
+  --status-info-icon: #0284c7;
+
+  /* Table */
+  --table-header-bg: #f8fafc;
+  --table-row-hover: #f5f7fa;
+  --table-row-zebra: #fafbfc;
+  --table-border: #e2e8f0;
+
+  /* Cards */
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dark Theme - Maritime Operations Night Mode
+   ═══════════════════════════════════════════════════════════════════ */
+.dark {
+  /* Backgrounds */
+  --bg-page: #0a0e1a;
+  --bg-surface: #0f1629;
+  --bg-surface-raised: #151d35;
+  --bg-surface-subtle: #1e2745;
+  --bg-muted: #151d35;
+  --bg-inset: #0a0e1a;
+
+  /* Text */
+  --text-primary: #f1f4f8;
+  --text-secondary: #b3bfcf;
+  --text-tertiary: #8494ad;
+  --text-muted: #5a6d8a;
+  --text-inverted: #0f1629;
+
+  /* Borders */
+  --border-default: #283456;
+  --border-subtle: #1e2745;
+  --border-strong: #3d4f6f;
+
+  /* Header/Nav */
+  --bg-header: #0f1629;
+  --text-header: #ffffff;
+  --text-header-muted: #8494ad;
+  --border-header: #283456;
+
+  /* Primary Actions */
+  --accent-primary: #38bdf8;
+  --accent-primary-hover: #0ea5e9;
+  --accent-primary-text: #0f1629;
+
+  /* Interactive States */
+  --bg-hover: #1e2745;
+  --bg-active: #283456;
+  --bg-selected: #0c4a6e;
+  --border-focus: #38bdf8;
+
+  /* Status Colors - Enhanced for dark mode */
+  --status-danger-bg: rgba(220, 38, 38, 0.15);
+  --status-danger-border: rgba(248, 113, 113, 0.3);
+  --status-danger-text: #f87171;
+  --status-danger-icon: #f87171;
+
+  --status-warning-bg: rgba(217, 119, 6, 0.15);
+  --status-warning-border: rgba(251, 191, 36, 0.3);
+  --status-warning-text: #fbbf24;
+  --status-warning-icon: #fbbf24;
+
+  --status-success-bg: rgba(5, 150, 105, 0.15);
+  --status-success-border: rgba(52, 211, 153, 0.3);
+  --status-success-text: #34d399;
+  --status-success-icon: #34d399;
+
+  --status-info-bg: rgba(2, 132, 199, 0.15);
+  --status-info-border: rgba(56, 189, 248, 0.3);
+  --status-info-text: #38bdf8;
+  --status-info-icon: #38bdf8;
+
+  /* Table */
+  --table-header-bg: #151d35;
+  --table-row-hover: #1e2745;
+  --table-row-zebra: rgba(30, 39, 69, 0.5);
+  --table-border: #283456;
+
+  /* Cards */
+  --card-bg: #151d35;
+  --card-border: #283456;
+  --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
 }
 
 /* https://base-ui-docs-solid.vercel.app/solid/overview/quick-start */

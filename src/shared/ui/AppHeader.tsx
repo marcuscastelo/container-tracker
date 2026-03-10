@@ -19,8 +19,8 @@ function NavLink(props: {
     <A
       href={props.href}
       end={props.end}
-      class="relative px-3 py-2.5 text-md-ui font-medium text-slate-400 transition-colors hover:text-white"
-      activeClass="!text-white after:content-[''] after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-sky-300"
+      class="relative px-3 py-2 text-sm-ui font-medium text-[var(--text-header-muted)] transition-colors hover:text-[var(--text-header)]"
+      activeClass="!text-[var(--text-header)] after:content-[''] after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-full after:bg-[var(--accent-primary)]"
     >
       {props.children}
     </A>
@@ -29,8 +29,8 @@ function NavLink(props: {
 
 function AlertCountBadge(props: { count: number; label: string }): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-xs-ui font-bold tabular-nums text-white">
-      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <span class="inline-flex items-center gap-1.5 rounded-md bg-[var(--status-danger-bg)] px-2.5 py-1 text-xs-ui font-semibold tabular-nums text-[var(--status-danger-text)] ring-1 ring-inset ring-[var(--status-danger-border)]">
+      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -47,22 +47,22 @@ export function AppHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <header class="border-b border-[#1e2145] bg-[#2c2f59]">
-      <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
+    <header class="border-b border-[var(--border-header)] bg-[var(--bg-header)]">
+      <div class="mx-auto flex h-12 max-w-7xl items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <div class="flex items-center gap-8">
-          <A href="/" class="flex items-center gap-2.5 text-white">
+        <div class="flex items-center gap-6">
+          <A href="/" class="flex items-center gap-2.5 text-[var(--text-header)] transition-opacity hover:opacity-90">
             <img
               src={BRANDING.logoPrimary}
               alt=""
               aria-hidden="true"
-              class="h-8 w-auto object-contain"
+              class="h-7 w-auto object-contain"
             />
-            <span class="text-md-ui font-bold tracking-tight">{t(keys.header.brand)}</span>
+            <span class="text-sm-ui font-semibold tracking-tight">{t(keys.header.brand)}</span>
           </A>
 
           {/* Navigation — border-bottom active indicator */}
-          <nav class="hidden items-center gap-1.5 md:flex">
+          <nav class="hidden items-center gap-0.5 md:flex">
             <NavLink href="/" end>
               {t(keys.header.nav.dashboard)}
             </NavLink>
@@ -71,7 +71,7 @@ export function AppHeader(props: Props): JSX.Element {
         </div>
 
         {/* Actions */}
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
           <Show when={props.alertCount != null && props.alertCount > 0}>
             <AlertCountBadge
               count={props.alertCount ?? 0}
@@ -83,7 +83,7 @@ export function AppHeader(props: Props): JSX.Element {
             type="button"
             onClick={() => props.onCreateProcess?.()}
             aria-label={t(keys.header.createProcess)}
-            class="inline-flex items-center gap-1.5 rounded bg-sky-500 px-2.5 py-1 text-sm-ui font-semibold text-white transition-colors hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-1 focus:ring-offset-[#2c2f59]"
+            class="inline-flex items-center gap-1.5 rounded-md bg-[var(--accent-primary)] px-3 py-1.5 text-sm-ui font-semibold text-[var(--accent-primary-text)] shadow-sm transition-colors hover:bg-[var(--accent-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-1 focus:ring-offset-[var(--bg-header)]"
           >
             <svg
               class="h-3.5 w-3.5"

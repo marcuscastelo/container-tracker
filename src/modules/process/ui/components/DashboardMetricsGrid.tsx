@@ -67,7 +67,7 @@ function computeSeveritySubtitle(key: string): string | undefined {
 
 function CategorySummaryChip(props: { value: number; label: string }): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium text-slate-600">
+    <span class="inline-flex items-center gap-0.5 rounded-md bg-[var(--bg-muted)] px-2 py-0.5 text-micro font-medium text-[var(--text-secondary)] ring-1 ring-inset ring-[var(--border-default)]">
       <span class="font-bold tabular-nums">{props.value}</span>
       {props.label}
     </span>
@@ -194,25 +194,25 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     return [
       {
         key: 'danger',
-        dotClass: 'bg-red-500',
-        valueClass: 'text-red-700',
-        labelClass: 'text-red-600',
+        dotClass: 'bg-[var(--status-danger-icon)]',
+        valueClass: 'text-[var(--status-danger-text)]',
+        labelClass: 'text-[var(--status-danger-text)]',
         value: summary.bySeverity.danger,
         label: t(keys.dashboard.triageSummary.critical),
       },
       {
         key: 'warning',
-        dotClass: 'bg-yellow-400',
-        valueClass: 'text-yellow-700',
-        labelClass: 'text-yellow-600',
+        dotClass: 'bg-[var(--status-warning-icon)]',
+        valueClass: 'text-[var(--status-warning-text)]',
+        labelClass: 'text-[var(--status-warning-text)]',
         value: summary.bySeverity.warning,
         label: t(keys.dashboard.triageSummary.warning),
       },
       {
         key: 'info',
-        dotClass: 'bg-blue-400',
-        valueClass: 'text-blue-700',
-        labelClass: 'text-blue-600',
+        dotClass: 'bg-[var(--status-info-icon)]',
+        valueClass: 'text-[var(--status-info-text)]',
+        labelClass: 'text-[var(--status-info-text)]',
         value: summary.bySeverity.info,
         label: t(keys.dashboard.alertIndicators.severity.info),
       },
@@ -222,7 +222,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   const renderBody = (currentState: GridState): JSX.Element => {
     if (currentState === 'loading') {
       return (
-        <div class="px-4 py-8 text-center text-md-ui text-slate-400">
+        <div class="px-4 py-8 text-center text-md-ui text-[var(--text-muted)]">
           {t(keys.dashboard.alertIndicators.loading)}
         </div>
       )
@@ -230,7 +230,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
     if (currentState === 'error') {
       return (
-        <div class="px-4 py-8 text-center text-md-ui text-red-500">
+        <div class="px-4 py-8 text-center text-md-ui text-[var(--status-danger-text)]">
           {t(keys.dashboard.alertIndicators.error)}
         </div>
       )
@@ -241,19 +241,21 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     return (
       <div class={currentState === 'empty' ? 'px-4 py-2' : 'px-4 py-3'}>
         {/* Phase 10: Compact Triage Summary Bar */}
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="flex items-center gap-1.5">
-            <span class="text-xl-ui font-bold tabular-nums text-slate-900">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xl-ui font-bold tabular-nums text-[var(--text-primary)]">
               {summary.totalActiveAlerts}
             </span>
-            <span class="text-sm-ui font-medium text-slate-500">
+            <span class="text-sm-ui font-medium text-[var(--text-tertiary)]">
               {t(keys.dashboard.alertIndicators.total)}
             </span>
           </div>
 
+          <div class="h-4 w-px bg-[var(--border-default)]" />
+
           <For each={severitySummaryItems()}>
             {(item) => (
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-1.5">
                 <span class={`h-2 w-2 rounded-full ${item.dotClass}`} />
                 <span class={`text-md-ui font-bold tabular-nums ${item.valueClass}`}>
                   {item.value}
@@ -264,7 +266,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
           </For>
 
           {/* Phase 12: Category chips in dashboard */}
-          <div class="ml-auto flex items-center gap-1.5">
+          <div class="ml-auto flex items-center gap-2">
             <For each={visibleCategoryCards()}>
               {(card) => <CategorySummaryChip value={card.value} label={card.label} />}
             </For>
@@ -272,7 +274,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
         </div>
 
         <Show when={currentState === 'empty'}>
-          <p class="mt-2 text-center text-md-ui text-slate-500">
+          <p class="mt-2 text-center text-md-ui text-[var(--text-tertiary)]">
             {t(keys.dashboard.alertIndicators.empty)}
           </p>
         </Show>
@@ -282,10 +284,10 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
   return (
     <section
-      class={`overflow-hidden rounded border border-slate-200 bg-white ${state() === 'empty' ? 'mb-2' : 'mb-3'}`}
+      class={`overflow-hidden rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--card-shadow)] ${state() === 'empty' ? 'mb-3' : 'mb-4'}`}
     >
-      <header class="border-b border-slate-200 px-4 py-3">
-        <h2 class="text-md-ui font-semibold text-slate-900">
+      <header class="border-b border-[var(--border-default)] bg-[var(--bg-surface-subtle)] px-4 py-2.5">
+        <h2 class="text-sm-ui font-semibold text-[var(--text-primary)]">
           {t(keys.dashboard.alertIndicators.title)}
         </h2>
       </header>
