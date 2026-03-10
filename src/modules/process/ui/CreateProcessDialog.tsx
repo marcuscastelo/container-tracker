@@ -4,6 +4,11 @@ import { createEffect, createMemo, createSignal } from 'solid-js'
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import { CreateProcessDialogView } from '~/modules/process/ui/CreateProcessDialog.view'
 import {
+  MAX_CONTAINERS_PER_PASTE,
+  mergeBulkPastedContainers,
+  parseContainerBulkPaste,
+} from '~/modules/process/ui/validation/containerBulkPaste.validation'
+import {
   dropContainerScopedField,
   listContainerScopedEntries,
   retainContainerScopedFields,
@@ -104,6 +109,15 @@ type CreateContainerBlurHandlerParams = {
   readonly validationTracker: ContainerValidationTracker
 }
 
+type CreateContainerPasteHandlerParams = {
+  readonly getContainers: Accessor<readonly ContainerInput[]>
+  readonly setContainers: SetStoreFunction<ContainerInput[]>
+  readonly markTouched: (fieldKey: string) => void
+  readonly setServerErrors: Setter<Record<string, FieldError>>
+  readonly validationTracker: ContainerValidationTracker
+  readonly pasteLimitMessage: Accessor<string>
+}
+
 type ContainerValidationTracker = {
   readonly start: (containerId: string) => number
   readonly isCurrent: (containerId: string, ticket: number) => boolean
@@ -141,6 +155,7 @@ type BuildDialogFormParams = {
   readonly onDestinationInput: (value: string) => void
   readonly containers: readonly ContainerInput[]
   readonly onUpdateContainer: (id: string, value: string) => void
+  readonly onContainerPaste: (container: ContainerInput, event: ClipboardEvent) => void
   readonly onContainerBlur: (container: ContainerInput) => void
   readonly onRemoveContainer: (id: string) => void
   readonly onAddContainer: () => void
@@ -202,6 +217,7 @@ type CreateDialogFormMemoParams = {
   readonly state: DialogState
   readonly carrierOptions: Accessor<readonly { readonly value: Carrier; readonly label: string }[]>
   readonly onUpdateContainer: (id: string, value: string) => void
+  readonly onContainerPaste: (container: ContainerInput, event: ClipboardEvent) => void
   readonly onContainerBlur: (container: ContainerInput) => void
   readonly onRemoveContainer: (id: string) => void
   readonly onAddContainer: () => void
@@ -526,6 +542,85 @@ function findContainerById(
   return containers.find((container) => container.id === containerId)
 }
 
+function applyBulkPasteToContainers(params: {
+  readonly containers: readonly ContainerInput[]
+  readonly targetContainerId: string
+  readonly pastedValues: readonly string[]
+}): { readonly nextContainers: ContainerInput[]; readonly appliedValues: string[] } {
+  const currentContainers = cloneContainers(params.containers)
+  const targetIndex = currentContainers.findIndex(
+    (container) => container.id === params.targetContainerId,
+  )
+  if (targetIndex < 0) {
+    return {
+      nextContainers: currentContainers,
+      appliedValues: [],
+    }
+  }
+
+  const mergeResult = mergeBulkPastedContainers({
+    existingContainerNumbers: currentContainers.map((container) => container.containerNumber),
+    targetIndex,
+    pastedValues: params.pastedValues,
+  })
+  if (mergeResult.appliedValues.length === 0) {
+    return {
+      nextContainers: currentContainers,
+      appliedValues: [],
+    }
+  }
+
+  const targetContainer = currentContainers[targetIndex]
+  if (!targetContainer) {
+    return {
+      nextContainers: currentContainers,
+      appliedValues: [],
+    }
+  }
+
+  const extraCount = mergeResult.appliedValues.length - 1
+  const nextContainers: ContainerInput[] = []
+
+  for (let index = 0; index < targetIndex; index += 1) {
+    const container = currentContainers[index]
+    if (!container) continue
+    nextContainers.push({
+      id: container.id,
+      containerNumber: mergeResult.nextContainerNumbers[index] ?? container.containerNumber,
+    })
+  }
+
+  nextContainers.push({
+    id: targetContainer.id,
+    containerNumber:
+      mergeResult.nextContainerNumbers[targetIndex] ?? mergeResult.appliedValues[0] ?? '',
+  })
+
+  for (let extraIndex = 0; extraIndex < extraCount; extraIndex += 1) {
+    const pastedNumber = mergeResult.appliedValues[extraIndex + 1]
+    if (!pastedNumber) continue
+    nextContainers.push({
+      id: generateId(),
+      containerNumber: pastedNumber,
+    })
+  }
+
+  for (let index = targetIndex + 1; index < currentContainers.length; index += 1) {
+    const container = currentContainers[index]
+    if (!container) continue
+    const shiftedIndex = index + extraCount
+    nextContainers.push({
+      id: container.id,
+      containerNumber: mergeResult.nextContainerNumbers[shiftedIndex] ?? container.containerNumber,
+    })
+  }
+
+  return {
+    nextContainers,
+    appliedValues: [...mergeResult.appliedValues],
+  }
+}
+
 function createContainerValidationTracker(): ContainerValidationTracker {
   const ticketsByContainerId = new Map<string, number>()
 
@@ -746,6 +841,41 @@ function createContainerBlurHandler(
   }
 }
 
+function createContainerPasteHandler(
+  params: CreateContainerPasteHandlerParams,
+): (container: ContainerInput, event: ClipboardEvent) => void {
+  return (container, event) => {
+    const pastedText = event.clipboardData?.getData('text') ?? ''
+    const parsed = parseContainerBulkPaste(pastedText)
+
+    if (parsed.type === 'limit-exceeded') {
+      event.preventDefault()
+      params.validationTracker.clear(container.id)
+      params.markTouched(toContainerFieldKey(container.id))
+      params.setServerErrors((previous) => ({
+        ...previous,
+        [toContainerFieldKey(container.id)]: { message: params.pasteLimitMessage() },
+      }))
+      return
+    }
+
+    if (parsed.type !== 'multiple') return
+
+    event.preventDefault()
+
+    const { nextContainers, appliedValues } = applyBulkPasteToContainers({
+      containers: params.getContainers(),
+      targetContainerId: container.id,
+      pastedValues: parsed.values,
+    })
+    if (appliedValues.length === 0) return
+
+    params.validationTracker.clear(container.id)
+    clearContainerServerError(params.setServerErrors, container.id)
+    params.setContainers(nextContainers)
+  }
+}
+
 function createSubmitHandler(params: CreateSubmitHandlerParams): (event: Event) => void {
   return (event) => {
     event.preventDefault()
@@ -808,6 +938,7 @@ function buildDialogForm(params: BuildDialogFormParams) {
     containerSection: {
       containers: params.containers,
       onUpdateContainer: params.onUpdateContainer,
+      onContainerPaste: params.onContainerPaste,
       onContainerBlur: params.onContainerBlur,
       onRemoveContainer: params.onRemoveContainer,
       onAddContainer: params.onAddContainer,
@@ -871,6 +1002,7 @@ function createDialogFormMemo(
       onDestinationInput: params.state.setDestination,
       containers: params.state.containers,
       onUpdateContainer: params.onUpdateContainer,
+      onContainerPaste: params.onContainerPaste,
       onContainerBlur: params.onContainerBlur,
       onRemoveContainer: params.onRemoveContainer,
       onAddContainer: params.onAddContainer,
@@ -974,6 +1106,18 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     validationTracker: containerValidationTracker,
   })
 
+  const onContainerPaste = createContainerPasteHandler({
+    getContainers: () => state.containers,
+    setContainers: state.setContainers,
+    markTouched,
+    setServerErrors: state.setServerErrors,
+    validationTracker: containerValidationTracker,
+    pasteLimitMessage: () =>
+      t(keys.createProcess.validation.pasteLimitExceeded, {
+        max: MAX_CONTAINERS_PER_PASTE,
+      }),
+  })
+
   const handleClose = () => {
     containerValidationTracker.reset()
     resetDialogState(asDialogStateSetters(state))
@@ -1042,6 +1186,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     state,
     carrierOptions,
     onUpdateContainer: updateContainer,
+    onContainerPaste,
     onContainerBlur,
     onRemoveContainer: removeContainer,
     onAddContainer: addContainer,

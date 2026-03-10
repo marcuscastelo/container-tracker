@@ -442,7 +442,8 @@
     "carrierUnknown": "Desconhecido",
     "validation": {
       "containerNumberRequired": "Número do container é obrigatório.",
-      "duplicateContainer": "Número de container duplicado"
+      "duplicateContainer": "Número de container duplicado",
+      "pasteLimitExceeded": "Você colou mais de {{max}} containers. Divida a lista em partes menores."
     },
     "action": {
       "update": "Atualizar Processo",

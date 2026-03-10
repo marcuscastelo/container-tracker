@@ -7,6 +7,7 @@ type InputProps = {
   readonly value: string
   readonly onInput: (value: string) => void
   readonly onBlur?: () => void
+  readonly onPaste?: (event: ClipboardEvent) => void
   readonly placeholder?: string
   readonly helperText?: string
   readonly error?: string
@@ -22,6 +23,7 @@ export function FormInput(props: InputProps): JSX.Element {
     'value',
     'onInput',
     'onBlur',
+    'onPaste',
     'placeholder',
     'helperText',
     'error',
@@ -49,6 +51,7 @@ export function FormInput(props: InputProps): JSX.Element {
         value={local.value}
         onInput={(e) => local.onInput(e.currentTarget.value)}
         onBlur={() => local.onBlur?.()}
+        onPaste={(event) => local.onPaste?.(event)}
         placeholder={local.placeholder}
         disabled={local.disabled}
         required={local.required}
