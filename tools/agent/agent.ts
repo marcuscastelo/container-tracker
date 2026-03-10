@@ -184,6 +184,12 @@ const runtimeConfigSchema = z.object({
   MAERSK_HEADLESS: z.boolean().default(true),
   MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
+  AGENT_UPDATE_MANIFEST_CHANNEL: z
+    .string()
+    .trim()
+    .min(1)
+    .default('stable')
+    .transform((value) => value.toLowerCase()),
 })
 
 type RuntimeConfig = z.infer<typeof runtimeConfigSchema>
@@ -201,6 +207,12 @@ const bootstrapConfigSchema = z.object({
   MAERSK_HEADLESS: z.boolean().default(true),
   MAERSK_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
   MAERSK_USER_DATA_DIR: z.string().min(1).optional(),
+  AGENT_UPDATE_MANIFEST_CHANNEL: z
+    .string()
+    .trim()
+    .min(1)
+    .default('stable')
+    .transform((value) => value.toLowerCase()),
 })
 
 type BootstrapConfig = z.infer<typeof bootstrapConfigSchema>
@@ -339,6 +351,7 @@ function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
     MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
     MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
     MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
+    AGENT_UPDATE_MANIFEST_CHANNEL: getEnvValue('AGENT_UPDATE_MANIFEST_CHANNEL', loaded.values),
   })
 
   if (!parsed.success) {
@@ -376,6 +389,7 @@ function parseBootstrapConfigFromFile(filePath: string): {
     MAERSK_HEADLESS: parseBooleanFlag(getEnvValue('MAERSK_HEADLESS', loaded.values), true),
     MAERSK_TIMEOUT_MS: getEnvValue('MAERSK_TIMEOUT_MS', loaded.values),
     MAERSK_USER_DATA_DIR: getEnvValue('MAERSK_USER_DATA_DIR', loaded.values),
+    AGENT_UPDATE_MANIFEST_CHANNEL: getEnvValue('AGENT_UPDATE_MANIFEST_CHANNEL', loaded.values),
   })
 
   if (!parsed.success) {
@@ -482,6 +496,7 @@ function toRuntimeConfig(command: {
     MAERSK_HEADLESS: command.enrollResponse.providers.maerskHeadless,
     MAERSK_TIMEOUT_MS: command.enrollResponse.providers.maerskTimeoutMs,
     MAERSK_USER_DATA_DIR: command.enrollResponse.providers.maerskUserDataDir,
+    AGENT_UPDATE_MANIFEST_CHANNEL: command.bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
   })
 }
 
@@ -498,6 +513,7 @@ function serializeRuntimeConfig(config: RuntimeConfig): string {
     `MAERSK_HEADLESS=${config.MAERSK_HEADLESS ? 'true' : 'false'}`,
     `MAERSK_TIMEOUT_MS=${config.MAERSK_TIMEOUT_MS}`,
     `MAERSK_USER_DATA_DIR=${config.MAERSK_USER_DATA_DIR ?? ''}`,
+    `AGENT_UPDATE_MANIFEST_CHANNEL=${config.AGENT_UPDATE_MANIFEST_CHANNEL}`,
   ]
 
   if (config.SUPABASE_URL) {
@@ -522,6 +538,7 @@ function serializeConsumedBootstrap(bootstrapConfig: BootstrapConfig): string {
     `MAERSK_HEADLESS=${bootstrapConfig.MAERSK_HEADLESS ? 'true' : 'false'}`,
     `MAERSK_TIMEOUT_MS=${bootstrapConfig.MAERSK_TIMEOUT_MS}`,
     `MAERSK_USER_DATA_DIR=${bootstrapConfig.MAERSK_USER_DATA_DIR ?? ''}`,
+    `AGENT_UPDATE_MANIFEST_CHANNEL=${bootstrapConfig.AGENT_UPDATE_MANIFEST_CHANNEL}`,
     '',
   ].join('\n')
 }
@@ -739,6 +756,7 @@ async function sendHeartbeat(command: {
       agent_version: command.agentVersion,
       current_version: command.agentVersion,
       desired_version: command.state.desiredVersion,
+      update_channel: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
       update_ready_version: command.state.updateReadyVersion,
       restart_requested_at: command.state.restartRequestedAt,
       realtime_state: command.state.realtimeState,
