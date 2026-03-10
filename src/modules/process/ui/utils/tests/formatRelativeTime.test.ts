@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
+import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
 describe('formatRelativeTime', () => {
   const now = new Date('2026-02-23T12:00:00.000Z')
@@ -39,5 +40,11 @@ describe('formatRelativeTime', () => {
 
   it('returns empty string for invalid date', () => {
     expect(formatRelativeTime('not-a-date', now)).toBe('')
+  })
+
+  it('uses DEFAULT_LOCALE when locale is omitted', () => {
+    const target = '2026-02-23T11:45:00.000Z'
+
+    expect(formatRelativeTime(target, now)).toBe(formatRelativeTime(target, now, DEFAULT_LOCALE))
   })
 })

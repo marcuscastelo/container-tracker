@@ -1,34 +1,19 @@
 import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
 import { createRoot, createSignal, onMount } from 'solid-js'
+import {
+  resolveFallbackLanguage,
+  resolveInitialLanguage,
+} from '~/shared/localization/languageSelection'
 import { loadProjectResources } from '~/shared/localization/resources'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import { referenceLocale } from '~/shared/localization/translationTypes'
-
-// --- Constants ---
-
-const DEFAULT_LOCALE = 'pt-BR'
 
 // --- Utilities ---
 
 function getStoredLang(): string | null {
   if (typeof window === 'undefined') return null
   return localStorage.getItem('locale') ?? null
-}
-
-function getInitialLanguage(
-  availableLocales: readonly string[],
-  storedLang: string | null,
-): string {
-  if (storedLang && availableLocales.includes(storedLang)) return storedLang
-  if (availableLocales.includes(i18next.language)) return i18next.language
-  return availableLocales[0] ?? DEFAULT_LOCALE
-}
-
-function getFallbackLanguage(availableLocales: readonly string[]): string {
-  return availableLocales.includes(DEFAULT_LOCALE)
-    ? DEFAULT_LOCALE
-    : (availableLocales[0] ?? DEFAULT_LOCALE)
 }
 
 function persistLocale(lng: string): void {
@@ -46,8 +31,8 @@ function persistLocale(lng: string): void {
 const localeRoot = createRoot(() => {
   const { resources, availableLocales } = loadProjectResources()
   const storedLang = getStoredLang()
-  const initialLng = getInitialLanguage(availableLocales, storedLang)
-  const fallbackLng = getFallbackLanguage(availableLocales)
+  const initialLng = resolveInitialLanguage(availableLocales, storedLang, i18next.language)
+  const fallbackLng = resolveFallbackLanguage(availableLocales)
 
   const initOptions: InitOptions = {
     resources,
