@@ -65,16 +65,13 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   })
 
   // ── Route-change reset ─────────────────────────────────────────────────────
+  // resource.mutate(undefined) on null key is handled internally by useShipmentScreenResource.
   createEffect(() => {
     const currentKey = resource.processResourceKey()
     if (currentKey === null) {
       refresh.resetRefreshState()
       selection.setSelectedContainerId('')
-      resource.mutate(undefined)
-      return
     }
-
-    // reset is handled internally by processResourceKey change in each controller
   })
 
   // ── Derived alerts ─────────────────────────────────────────────────────────
@@ -112,7 +109,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
         <>
           <ShipmentRefreshStatusView
             refreshError={refresh.refreshError}
-            onDismissRefreshError={() => refresh.refreshError() && refresh.resetRefreshState()}
+            onDismissRefreshError={refresh.clearRefreshError}
           />
           <ShipmentAlertsView
             alertActionError={alertActions.alertActionError}

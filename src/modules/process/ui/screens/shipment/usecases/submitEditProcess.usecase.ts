@@ -20,7 +20,6 @@ export async function submitEditProcess(
 ): Promise<SubmitEditProcessResult> {
   try {
     const input = toCreateProcessInput(formData)
-
     try {
       await updateProcessRequest(processId, input)
       return { kind: 'updated' }
@@ -33,10 +32,6 @@ export async function submitEditProcess(
     }
   } catch (err) {
     console.error('Failed to update process:', err)
-    const conflict = parseExistingProcessConflictError(err)
-    if (conflict) {
-      return { kind: 'conflict', error: conflict }
-    }
     return { kind: 'error', message: toReadableErrorMessage(err) }
   }
 }

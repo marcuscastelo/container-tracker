@@ -17,7 +17,7 @@ import { navigateToProcess } from '~/shared/ui/navigation/app-navigation'
 type UseShipmentDialogsControllerCommand = {
   readonly processId: Accessor<string>
   readonly navigate: ReturnType<typeof useNavigate>
-  readonly refetchShipment: () => void
+  readonly refetchShipment: () => unknown
 }
 
 type ShipmentDialogsControllerResult = {

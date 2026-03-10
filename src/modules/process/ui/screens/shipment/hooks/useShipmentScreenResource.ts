@@ -13,7 +13,7 @@ type ShipmentScreenResourceResult = {
   readonly shipment: Resource<ShipmentDetailVM | null | undefined>
   readonly loading: Accessor<boolean>
   readonly error: Accessor<unknown>
-  readonly refetch: () => void
+  readonly refetch: () => unknown
   readonly mutate: (value: ShipmentDetailVM | undefined) => void
   readonly processResourceKey: Accessor<readonly [string, string] | null>
   readonly reconcileTrackingView: () => Promise<void>
@@ -84,7 +84,7 @@ export function useShipmentScreenResource(
     shipment,
     loading: () => shipment.loading,
     error: () => shipment.error,
-    refetch: () => refetch(),
+    refetch: () => refetch() as unknown,
     mutate,
     processResourceKey,
     reconcileTrackingView,

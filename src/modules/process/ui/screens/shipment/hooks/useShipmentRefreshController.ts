@@ -10,7 +10,6 @@ import { useTranslation } from '~/shared/localization/i18n'
 
 type UseShipmentRefreshControllerCommand = {
   readonly shipment: Resource<ShipmentDetailVM | null | undefined>
-  readonly isRefreshingExternal?: Accessor<boolean>
   readonly reconcileTrackingView: () => Promise<void>
 }
 
@@ -21,6 +20,7 @@ type ShipmentRefreshControllerResult = {
   readonly refreshHint: Accessor<string | null>
   readonly syncNow: Accessor<Date>
   readonly triggerRefresh: () => Promise<void>
+  readonly clearRefreshError: () => void
   readonly resetRefreshState: () => void
   readonly cleanupRealtime: () => void
 }
@@ -117,6 +117,11 @@ export function useShipmentRefreshController(
     }
   }
 
+  const clearRefreshError = () => {
+    setRefreshError(null)
+    setRefreshHint(null)
+  }
+
   return {
     isRefreshing,
     refreshRetry,
@@ -124,6 +129,7 @@ export function useShipmentRefreshController(
     refreshHint,
     syncNow,
     triggerRefresh,
+    clearRefreshError,
     resetRefreshState,
     cleanupRealtime,
   }
