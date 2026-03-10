@@ -120,10 +120,17 @@ github_get_all() {
 
   printf '['
   while true; do
+    echo "Fetching page $page of ${endpoint}..." >&2
     local url="https://api.github.com/repos/${REPO}/${endpoint}?per_page=${per_page}&page=${page}"
     local resp
     resp=$(curl -fsS -u "${GITHUB_API_USER}:${GITHUB_API_PASS}" -H 'Accept: application/vnd.github+json' "$url") || true
+    echo "$resp" | jq empty >/dev/null 2>&1 || break
+    echo "Received $(echo "$resp" | jq 'length') items on page $page." >&2
 
+    length=$(echo "$resp" | jq 'length')
+    if [[ "$length" -eq 0 ]]; then
+      break
+    fi
     # if response is empty or an empty array, stop
     if [[ -z "$resp" || "$resp" == "[]" ]]; then
       break
