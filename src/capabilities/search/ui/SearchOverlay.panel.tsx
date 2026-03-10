@@ -435,7 +435,6 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                   >
                     <path d="M12 19V5" />
                     <path d="m5 12 7-7 7 7" />
-                    <path d="M12 5v14" />
                     <path d="m5 12 7 7 7-7" />
                   </svg>
                 </kbd>

@@ -488,7 +488,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
           when={dominantSeverity() !== 'none'}
           fallback={
             <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
-              <Check class="w-3.5 h-3.5" />
+              <Check class="w-3.5 h-3.5" aria-hidden="true" />
             </span>
           }
         >

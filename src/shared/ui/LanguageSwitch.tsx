@@ -3,6 +3,7 @@ import type { JSX } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
+import { FlagIcon } from '~/shared/ui/icons/FlagIcons'
 
 type LanguageOptionProps = {
   readonly language: string
@@ -17,7 +18,7 @@ function LanguageOption(props: LanguageOptionProps): JSX.Element {
         class="flex w-full items-center gap-2 px-3 py-2 text-sm-ui text-slate-700 hover:bg-slate-50"
         onClick={() => props.onSelect(props.language)}
       >
-        <Globe class="w-4 h-4 shrink-0 text-slate-500" />
+        <FlagIcon locale={props.language} class="w-4 h-4 shrink-0" />
         <span class="truncate">{props.language}</span>
       </button>
     </li>

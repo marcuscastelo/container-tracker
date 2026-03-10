@@ -25,9 +25,11 @@ import path from 'node:path'
 // - Tags block (E0020–E007F)
 // - Common decorative Unicode symbols used as visual icons
 //
-// Arrows (→ ← ↔) used in comments/JSDoc are excluded by default since they are
-// documentation conventions, not visual UI elements. The scan only flags arrows
-// when they appear inside JSX or string literals used in rendering.
+// Pure comment lines are skipped by the scanner (see isCommentLine), so arrows
+// used inside comments/JSDoc are not flagged. Arrows or decorative symbols that
+// appear in code (including JSX or string literals) will be detected by this
+// script and should be replaced with an appropriate SVG icon when used as a
+// visual element.
 const EMOJI_PATTERN = new RegExp(
   [
     // Standard emoji blocks
