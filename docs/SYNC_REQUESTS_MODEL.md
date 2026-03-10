@@ -38,6 +38,27 @@ LEASED
 
 Sources: `supabase/migrations/20260225_01_agent_sync_mvp.sql:59-98`, `src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts:73-118`.
 
+## Operational Retention Policy (Phase 1)
+
+`sync_requests` now has database-level auto-pruning for terminal rows only.
+
+- retention window: 14 days
+- temporal basis: `created_at`
+- eligible statuses: `DONE`, `FAILED`
+- non-eligible statuses: `PENDING`, `LEASED`
+- schedule: daily at `03:30 UTC` via `pg_cron`
+
+Implementation details:
+
+- SQL function: `public.prune_sync_requests() -> integer`
+- index for prune path: partial index on `created_at` for terminal statuses
+
+Future evolution (not implemented in this phase):
+
+- evaluate additional terminal statuses like `LEASE_EXPIRED` and `CANCELLED` if/when added to the enum
+
+Sources: `supabase/migrations/20260310_02_operational_tables_auto_prune.sql`.
+
 ## Where jobs are created
 
 ### Confirmed birth points
