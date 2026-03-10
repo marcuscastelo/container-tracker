@@ -15,7 +15,7 @@ export const BRANDING = {
   logoPrimary: '/branding/logo.png',
 
   /** Logo mark (icon-only) — for favicon, compact spaces */
-  logoMark: '/branding/logo.png',
+  logoMark: '/branding/favicon.ico',
 
   /** Original uploaded logo (jpg) */
   logoOriginal: '/branding/logo.png',

@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
@@ -113,22 +114,14 @@ function RefreshIcon(props: { readonly spinning: boolean; readonly title: string
     <Show
       when={props.spinning}
       fallback={
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <title>{props.title}</title>
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 4v6h6M20 20v-6h-6"
-          />
-        </svg>
+        <span class="h-4 w-4" title={props.title} aria-hidden="true">
+          <RefreshCw class="h-4 w-4" />
+        </span>
       }
     >
-      <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <title>{props.title}</title>
-        <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.2" />
-        <path d="M22 12a10 10 0 00-10-10" stroke-width="2" stroke-linecap="round" />
-      </svg>
+      <span class="h-4 w-4" title={props.title} aria-hidden="true">
+        <RefreshCw class="h-4 w-4 animate-spin" />
+      </span>
     </Show>
   )
 }

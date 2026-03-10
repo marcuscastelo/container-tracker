@@ -1,5 +1,6 @@
+import { Construction, Hourglass, Repeat, Ship, TriangleAlert, Truck } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { Show } from 'solid-js'
+import { Match, Show, Switch } from 'solid-js'
 import type {
   GapMarker,
   PortRiskMarker,
@@ -85,9 +86,7 @@ export function VoyageBlockHeader(props: {
     <div class="rounded-t border-b border-slate-200/40 bg-slate-50/50 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
-        <span class="text-xs shrink-0 opacity-70" aria-hidden="true">
-          🚢
-        </span>
+        <Ship class="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
         <span class="text-sm-ui font-bold text-slate-800 tracking-tight">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
@@ -134,23 +133,21 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
     }
   }
 
-  const icon = () => {
-    switch (props.block.kind) {
-      case 'pre-carriage':
-        return '🚚'
-      case 'transshipment-terminal':
-        return '🔁'
-      default:
-        return '🏗'
-    }
-  }
+  const Icon = () => (
+    <Switch fallback={<Construction class="w-4 h-4 shrink-0" aria-hidden="true" />}>
+      <Match when={props.block.kind === 'pre-carriage'}>
+        <Truck class="w-4 h-4 shrink-0" aria-hidden="true" />
+      </Match>
+      <Match when={props.block.kind === 'transshipment-terminal'}>
+        <Repeat class="w-4 h-4 shrink-0" aria-hidden="true" />
+      </Match>
+    </Switch>
+  )
 
   return (
     <div class="rounded-t border-b border-slate-100 bg-slate-50/30 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
-        <span class="text-sm shrink-0" aria-hidden="true">
-          {icon()}
-        </span>
+        <Icon />
         <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
       </div>
       <Show when={props.block.location}>
@@ -172,9 +169,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   return (
     <div class="rounded-md border-l-4 border-amber-400 bg-amber-50/80 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
-        <span class="text-sm" aria-hidden="true">
-          🔁
-        </span>
+        <Repeat class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>
@@ -227,7 +222,8 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
         <div class="h-px w-px" />
       </div>
       <span class="inline-flex items-center gap-1 rounded-full bg-slate-50/80 px-2 py-0.5 text-micro italic text-slate-400 ring-1 ring-slate-100/80">
-        ⏳ {label()}
+        <Hourglass class="w-3 h-3 shrink-0" aria-hidden="true" />
+        {label()}
       </span>
     </div>
   )
@@ -267,7 +263,12 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
     }
   }
 
-  const icon = () => (props.marker.severity === 'danger' ? '⚠' : '⏳')
+  const Icon = () =>
+    props.marker.severity === 'danger' ? (
+      <TriangleAlert class="w-3 h-3 shrink-0" aria-hidden="true" />
+    ) : (
+      <Hourglass class="w-3 h-3 shrink-0" aria-hidden="true" />
+    )
 
   return (
     <div class="flex items-center gap-1.5 py-1 pl-3">
@@ -278,9 +279,7 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
       <div
         class={`flex items-center gap-1 rounded border-l-[3px] px-1.5 py-0.5 ${severityClasses()}`}
       >
-        <span class="text-micro" aria-hidden="true">
-          {icon()}
-        </span>
+        <Icon />
         <p class="text-micro font-medium">{label()}</p>
       </div>
     </div>

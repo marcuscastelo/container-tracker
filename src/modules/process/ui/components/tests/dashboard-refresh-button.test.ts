@@ -3,7 +3,7 @@ import {
   DASHBOARD_REFRESH_COOLDOWN_MS,
   isDashboardRefreshBlocked,
   toDashboardRefreshCooldownUntilMs,
-} from '~/modules/process/ui/components/DashboardRefreshButton'
+} from '~/modules/process/ui/utils/dashboard-refresh-button'
 
 describe('DashboardRefreshButton cooldown rules', () => {
   it('builds cooldown end timestamp from click start timestamp', () => {

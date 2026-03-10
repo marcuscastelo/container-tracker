@@ -1,44 +1,9 @@
+import { Globe } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
-
-// Small mapping of language code to a representative country code for flags.
-// This is a best-effort fallback when the locale doesn't include a region subtag.
-const languageFallbackCountry: Record<string, string> = {
-  en: 'GB',
-  pt: 'PT',
-  es: 'ES',
-  fr: 'FR',
-  de: 'DE',
-  it: 'IT',
-  nl: 'NL',
-  ja: 'JP',
-  zh: 'CN',
-  ru: 'RU',
-}
-
-function countryCodeToFlagEmoji(code: string): string {
-  // Expect code like 'PT' or 'US'
-  if (!code || code.length !== 2) return ''
-  const A = 0x1f1e6
-  const a = 'A'.codePointAt(0) ?? 65
-  const chars = code.toUpperCase().split('')
-  return String.fromCodePoint(...chars.map((c) => A + (c.codePointAt(0) ?? a) - a))
-}
-
-function localeToFlag(locale: string): string {
-  // If locale includes region like en-US or pt_BR, extract region
-  const parts = locale.replace('_', '-').split('-')
-  if (parts.length >= 2) {
-    return countryCodeToFlagEmoji(parts[1].slice(0, 2))
-  }
-  // fallback to language->country mapping
-  const fallback = languageFallbackCountry[parts[0]]
-  if (fallback) return countryCodeToFlagEmoji(fallback)
-  // last resort: show uppercased locale code letters (not an emoji)
-  return parts[0].toUpperCase()
-}
+import { FlagIcon } from '~/shared/ui/icons/FlagIcons'
 
 type LanguageOptionProps = {
   readonly language: string
@@ -53,7 +18,7 @@ function LanguageOption(props: LanguageOptionProps): JSX.Element {
         class="flex w-full items-center gap-2 px-3 py-2 text-sm-ui text-slate-700 hover:bg-slate-50"
         onClick={() => props.onSelect(props.language)}
       >
-        <span class="text-lg">{localeToFlag(props.language)}</span>
+        <FlagIcon locale={props.language} class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="truncate">{props.language}</span>
       </button>
     </li>
@@ -61,7 +26,7 @@ function LanguageOption(props: LanguageOptionProps): JSX.Element {
 }
 
 export function LanguageSwitch(): JSX.Element {
-  const { t, keys, locale, setLocale, availableLocales } = useTranslation()
+  const { t, keys, setLocale, availableLocales } = useTranslation()
   const [open, setOpen] = createSignal(false)
   const handleSelect = (lng: string) => {
     setLocale(lng).catch(() => {
@@ -84,9 +49,7 @@ export function LanguageSwitch(): JSX.Element {
         aria-haspopup="listbox"
         aria-expanded={open()}
       >
-        <span class="text-sm" aria-hidden>
-          {localeToFlag(locale())}
-        </span>
+        <Globe class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="sr-only">{t(keys.languageSwitch.label)}</span>
       </button>
 

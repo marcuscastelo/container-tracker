@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { Match, Switch } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -19,32 +20,12 @@ type SyncCellProps = {
 
 /** Refresh icon – two curved arrows (idle). */
 function RefreshIcon(): JSX.Element {
-  return (
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M4 4v6h6M20 20v-6h-6"
-      />
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M20.49 9A9 9 0 0 0 5.64 5.64L4 4m0 16l1.64-1.64A9 9 0 0 0 20.49 9"
-      />
-    </svg>
-  )
+  return <RefreshCw class="h-4 w-4" aria-hidden="true" />
 }
 
 /** Spinner icon (syncing). */
 function SpinnerIcon(): JSX.Element {
-  return (
-    <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
-      <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 00-9-9v2a7 7 0 017 7h2z" />
-    </svg>
-  )
+  return <RefreshCw class="h-4 w-4 animate-spin" aria-hidden="true" />
 }
 
 /** Check icon (success_recent). */
@@ -72,28 +53,7 @@ function WarningIcon(): JSX.Element {
 
 /** Muted refresh icon (disabled). */
 function MutedRefreshIcon(): JSX.Element {
-  return (
-    <svg
-      class="h-4 w-4 opacity-35"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M4 4v6h6M20 20v-6h-6"
-      />
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M20.49 9A9 9 0 0 0 5.64 5.64L4 4m0 16l1.64-1.64A9 9 0 0 0 20.49 9"
-      />
-    </svg>
-  )
+  return <RefreshCw class="h-4 w-4 opacity-35" aria-hidden="true" />
 }
 
 function SyncCellIcon(props: { readonly state: SyncCellState }): JSX.Element {
