@@ -318,7 +318,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       <div class="overflow-hidden px-3 py-2">
         <A
           href={processHref()}
-          class="text-md-ui font-semibold text-slate-900 hover:text-blue-700 hover:underline whitespace-nowrap truncate block"
+          class="text-md-ui font-semibold text-slate-900 hover:text-sky-700 whitespace-nowrap truncate block"
           onClick={handleProcessLinkClick}
           onPointerEnter={triggerProcessIntent}
           onFocusIn={triggerProcessIntent}

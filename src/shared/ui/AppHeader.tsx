@@ -48,26 +48,24 @@ export function AppHeader(props: Props): JSX.Element {
 
   return (
     <header class="border-b border-[#1e2145] bg-[#2c2f59]">
-      <div class="mx-auto flex h-11 max-w-7xl items-center justify-between px-4 lg:px-6">
+      <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
         {/* Brand */}
-        <div class="flex items-center gap-6">
-          <A href="/" class="flex items-center gap-2 text-white">
+        <div class="flex items-center gap-8">
+          <A href="/" class="flex items-center gap-2.5 text-white">
             <img
               src={BRANDING.logoPrimary}
               alt=""
               aria-hidden="true"
-              class="h-7 w-auto object-contain"
+              class="h-8 w-auto object-contain"
             />
-            <span class="text-sm-ui font-bold tracking-tight">{t(keys.header.brand)}</span>
+            <span class="text-md-ui font-bold tracking-tight">{t(keys.header.brand)}</span>
           </A>
 
           {/* Navigation — border-bottom active indicator */}
-          <nav class="hidden items-center gap-0.5 md:flex">
+          <nav class="hidden items-center gap-1.5 md:flex">
             <NavLink href="/" end>
               {t(keys.header.nav.dashboard)}
             </NavLink>
-            <NavLink href="/shipments">{t(keys.header.nav.shipments)}</NavLink>
-            <NavLink href="/containers">{t(keys.header.nav.containers)}</NavLink>
             <NavLink href="/agents">{t(keys.header.nav.agents)}</NavLink>
           </nav>
         </div>
