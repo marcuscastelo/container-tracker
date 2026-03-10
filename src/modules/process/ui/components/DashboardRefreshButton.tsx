@@ -1,31 +1,16 @@
 import { RefreshCw } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, onCleanup } from 'solid-js'
+import {
+  isDashboardRefreshBlocked,
+  toDashboardRefreshCooldownUntilMs,
+} from '~/modules/process/ui/utils/dashboard-refresh-button'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type RefreshVisualState = 'idle' | 'loading' | 'error'
 
 type RefreshButtonProps = {
   readonly onRefresh: () => Promise<void>
-}
-
-export const DASHBOARD_REFRESH_COOLDOWN_MS = 2_000
-
-export function toDashboardRefreshCooldownUntilMs(
-  clickStartedAtMs: number,
-  cooldownMs: number = DASHBOARD_REFRESH_COOLDOWN_MS,
-): number {
-  return clickStartedAtMs + cooldownMs
-}
-
-export function isDashboardRefreshBlocked(command: {
-  readonly isLoading: boolean
-  readonly cooldownUntilMs: number | null
-  readonly nowMs: number
-}): boolean {
-  if (command.isLoading) return true
-  if (command.cooldownUntilMs === null) return false
-  return command.nowMs < command.cooldownUntilMs
 }
 
 function RefreshIcon(props: {
