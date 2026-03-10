@@ -280,7 +280,7 @@ type CellContext = {
 
 function ProcessRefCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
       <A
         href={ctx.processHref}
         class="row-link block truncate text-md-ui font-semibold text-slate-900 hover:text-sky-700"
@@ -297,7 +297,7 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
 
 function ImporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
       <A
         href={ctx.processHref}
         class="row-link block truncate text-xs-ui text-slate-600"
@@ -314,7 +314,7 @@ function ImporterCell(ctx: CellContext): JSX.Element {
 
 function ExporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
       <A
         href={ctx.processHref}
         class="row-link block truncate text-xs-ui text-slate-600"
@@ -332,24 +332,19 @@ function ExporterCell(ctx: CellContext): JSX.Element {
 function RouteCell(ctx: CellContext): JSX.Element {
   const route = () => displayRoute(ctx.process)
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2">
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
       <A
         href={ctx.processHref}
-        class="row-link block"
+        class="row-link block "
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <div class="flex min-w-0 items-center gap-1 text-xs-ui text-slate-500 leading-tight">
+        <div class="flex w-fit mx-auto outline min-w-0 items-center gap-1 text-xs-ui text-slate-500 leading-tight">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
           <span class="truncate font-medium text-slate-600">{route().destination}</span>
-          <Show when={ctx.process.redestinationNumber}>
-            <span class="shrink-0 text-micro text-slate-400">
-              ({ctx.process.redestinationNumber})
-            </span>
-          </Show>
         </div>
       </A>
     </div>
@@ -372,7 +367,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
   )
 
   return (
-    <div class="min-w-0 overflow-hidden px-3 py-2 flex items-center justify-center">
+    <div class="min-w-0 overflow-hidden px-3 py-2 flex items-center justify-center text-center">
       <A
         href={ctx.processHref}
         class="row-link inline-flex max-w-full items-center"

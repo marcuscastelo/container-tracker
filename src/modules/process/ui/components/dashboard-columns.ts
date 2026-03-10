@@ -37,7 +37,7 @@ export type DashboardColumnDef = {
 // Canonical column registry
 // ---------------------------------------------------------------------------
 
-export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
+const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'processRef',
     labelKey: 'process',
@@ -45,7 +45,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
     sortField: 'processNumber',
     reorderable: false,
     pinned: 'start',
-    align: 'left',
+    align: 'center',
   },
   {
     id: 'importer',
@@ -54,7 +54,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
     sortField: 'importerName',
     reorderable: true,
     pinned: false,
-    align: 'left',
+    align: 'center',
   },
   {
     id: 'exporter',
@@ -63,7 +63,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
     sortField: 'exporterName',
     reorderable: true,
     pinned: false,
-    align: 'left',
+    align: 'center',
   },
   {
     id: 'route',
@@ -72,7 +72,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
     sortField: null,
     reorderable: true,
     pinned: false,
-    align: 'left',
+    align: 'center',
   },
   {
     id: 'status',
@@ -113,9 +113,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
 ] as const
 
 /** Default column order (canonical). */
-export const DEFAULT_COLUMN_ORDER: readonly DashboardColumnId[] = DASHBOARD_COLUMNS.map(
-  (col) => col.id,
-)
+const DEFAULT_COLUMN_ORDER: readonly DashboardColumnId[] = DASHBOARD_COLUMNS.map((col) => col.id)
 
 // ---------------------------------------------------------------------------
 // Column reorder logic
