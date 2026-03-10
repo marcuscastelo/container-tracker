@@ -10,6 +10,7 @@ import {
 } from '~/shared/api/sync-requests.realtime.client'
 
 type ProcessSyncContainerStateMap = ReadonlyMap<string, ReadonlyMap<string, ProcessSyncStatus>>
+const REALTIME_RECONCILIATION_DEBOUNCE_MS = 250
 
 function toMutableProcessSyncContainerStateMap(
   input: ProcessSyncContainerStateMap,
@@ -53,9 +54,11 @@ export function toProcessSyncStateFromRealtimeStatus(
   status: string | null | undefined,
 ): ProcessSyncStatus | null {
   if (status === 'PENDING' || status === 'LEASED' || status === 'RUNNING') return 'syncing'
-  if (status === 'DONE') return 'success'
-  if (status === 'FAILED' || status === 'NOT_FOUND') return 'error'
   return null
+}
+
+function isTerminalRealtimeStatus(status: string | null | undefined): boolean {
+  return status === 'DONE' || status === 'FAILED' || status === 'NOT_FOUND'
 }
 
 function toTrackedContainerNumberFromSyncRealtimeEvent(
@@ -112,8 +115,35 @@ function setContainerRealtimeState(command: {
   return next
 }
 
+function clearContainerRealtimeState(command: {
+  readonly stateByProcessId: ProcessSyncContainerStateMap
+  readonly processId: string
+  readonly containerNumber: string
+}): ProcessSyncContainerStateMap {
+  const currentProcessStates = command.stateByProcessId.get(command.processId)
+  if (!currentProcessStates) return command.stateByProcessId
+
+  if (!currentProcessStates.has(command.containerNumber)) {
+    return command.stateByProcessId
+  }
+
+  const next = toMutableProcessSyncContainerStateMap(command.stateByProcessId)
+  const nextProcessStates = next.get(command.processId)
+  if (!nextProcessStates) return command.stateByProcessId
+
+  nextProcessStates.delete(command.containerNumber)
+  if (nextProcessStates.size === 0) {
+    next.delete(command.processId)
+    return next
+  }
+
+  next.set(command.processId, nextProcessStates)
+  return next
+}
+
 export function useProcessSyncRealtime(command: {
   readonly processes: Accessor<readonly ProcessSummaryVM[]>
+  readonly onRealtimeStateChanged?: () => void
 }): Accessor<Readonly<Record<string, ProcessSyncStatus>>> {
   const [stateByProcessId, setStateByProcessId] = createSignal<ProcessSyncContainerStateMap>(
     new Map(),
@@ -123,6 +153,22 @@ export function useProcessSyncRealtime(command: {
   >({})
 
   let activeRealtimeCleanup: (() => void) | null = null
+  let reconciliationTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const clearScheduledReconciliation = (): void => {
+    if (reconciliationTimeoutId === null) return
+    clearTimeout(reconciliationTimeoutId)
+    reconciliationTimeoutId = null
+  }
+
+  const scheduleReconciliation = (): void => {
+    if (!command.onRealtimeStateChanged) return
+    clearScheduledReconciliation()
+    reconciliationTimeoutId = setTimeout(() => {
+      reconciliationTimeoutId = null
+      command.onRealtimeStateChanged?.()
+    }, REALTIME_RECONCILIATION_DEBOUNCE_MS)
+  }
 
   createEffect(() => {
     const processes = command.processes()
@@ -161,19 +207,37 @@ export function useProcessSyncRealtime(command: {
         if (!processId) return
 
         const row = event.row ?? event.oldRow
+        const currentStateByProcessId = stateByProcessId()
         const realtimeState = toProcessSyncStateFromRealtimeStatus(row?.status)
-        if (realtimeState === null) return
+        const nextStateByProcessId = (() => {
+          if (realtimeState === 'syncing') {
+            return setContainerRealtimeState({
+              stateByProcessId: currentStateByProcessId,
+              processId,
+              containerNumber,
+              nextState: realtimeState,
+            })
+          }
 
-        const nextStateByProcessId = setContainerRealtimeState({
-          stateByProcessId: stateByProcessId(),
-          processId,
-          containerNumber,
-          nextState: realtimeState,
-        })
+          if (isTerminalRealtimeStatus(row?.status)) {
+            return clearContainerRealtimeState({
+              stateByProcessId: currentStateByProcessId,
+              processId,
+              containerNumber,
+            })
+          }
+
+          return currentStateByProcessId
+        })()
+
+        if (nextStateByProcessId === currentStateByProcessId) {
+          return
+        }
 
         setStateByProcessId(nextStateByProcessId)
         // Defer update to break potential synchronous cycles
         queueMicrotask(() => setProcessSyncStates(toProcessSyncStateRecord(nextStateByProcessId)))
+        scheduleReconciliation()
       },
     })
 
@@ -187,6 +251,7 @@ export function useProcessSyncRealtime(command: {
   })
 
   onCleanup(() => {
+    clearScheduledReconciliation()
     if (activeRealtimeCleanup) {
       activeRealtimeCleanup()
       activeRealtimeCleanup = null
