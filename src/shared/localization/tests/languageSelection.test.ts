@@ -10,7 +10,7 @@ describe('resolveInitialLanguage', () => {
     expect(resolveInitialLanguage(['en-US', 'pt-BR'], 'en-US', 'pt-BR')).toBe('en-US')
   })
 
-  it('defaults to pt-BR for new browsers when no locale is persisted', () => {
+  it('defaults to DEFAULT_LOCALE for new browsers when no locale is persisted', () => {
     expect(resolveInitialLanguage(['en-US', 'pt-BR', 'pt-PT'], null, 'en-US')).toBe(DEFAULT_LOCALE)
   })
 
