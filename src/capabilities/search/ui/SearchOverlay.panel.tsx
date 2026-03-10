@@ -423,12 +423,40 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
             <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs-ui text-slate-400">
               <div class="flex items-center gap-2">
                 <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">
-                  ↑↓
+                  <svg
+                    class="inline-block w-3 h-3 align-text-bottom"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 19V5" />
+                    <path d="m5 12 7-7 7 7" />
+                    <path d="M12 5v14" />
+                    <path d="m5 12 7 7 7-7" />
+                  </svg>
                 </kbd>
                 <span>{t(keys.search.footer.navigate)}</span>
               </div>
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">↵</kbd>
+                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">
+                  <svg
+                    class="inline-block w-3 h-3 align-text-bottom"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <polyline points="9 10 4 15 9 20" />
+                    <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+                  </svg>
+                </kbd>
                 <span>{t(keys.search.footer.select)}</span>
               </div>
               <div class="flex items-center gap-2">

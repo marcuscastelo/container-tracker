@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { For, Index, Show } from 'solid-js'
 import { AgentRowStatus } from '~/modules/agent/ui/components/AgentRowStatus'
@@ -95,6 +96,21 @@ function EmptyRow(): JSX.Element {
   )
 }
 
+function UpdaterVersionDisplay(props: {
+  readonly updateAvailable: boolean
+  readonly currentVersion: string
+  readonly desiredVersionDisplay: string
+}): JSX.Element {
+  return (
+    <Show when={props.updateAvailable} fallback={props.currentVersion}>
+      <span class="inline-flex items-center gap-0.5">
+        <ArrowRight class="w-3 h-3 inline" aria-hidden="true" />
+        {props.desiredVersionDisplay}
+      </span>
+    </Show>
+  )
+}
+
 function AgentDataRow(props: {
   readonly agent: AgentListItemVM
   readonly onAgentClick: (agentId: string) => void
@@ -162,9 +178,11 @@ function AgentDataRow(props: {
             {props.agent.updaterStateLabel}
           </span>
           <span class="text-micro text-slate-400">
-            {props.agent.updateAvailable
-              ? `→ ${props.agent.desiredVersionDisplay}`
-              : props.agent.currentVersion}
+            <UpdaterVersionDisplay
+              updateAvailable={props.agent.updateAvailable}
+              currentVersion={props.agent.currentVersion}
+              desiredVersionDisplay={props.agent.desiredVersionDisplay}
+            />
           </span>
         </div>
       </td>

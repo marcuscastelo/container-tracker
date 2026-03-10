@@ -158,7 +158,9 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 function EtaChip(props: { label: string }) {
   return (
     <span class="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1 py-px text-micro font-semibold text-blue-700 border border-blue-200">
-      <span aria-hidden="true">🟦</span>
+      <svg class="w-2.5 h-2.5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="3" />
+      </svg>
       {props.label}
     </span>
   )

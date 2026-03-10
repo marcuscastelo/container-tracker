@@ -23,8 +23,9 @@
     "ui:complexity:lint:soft": "node scripts/ui-complexity-report.mjs",
     "ui:complexity:allowlist:check": "node scripts/ui-complexity-allowlist-check.mjs",
     "ui:complexity:ci": "pnpm run ui:complexity:report && pnpm run ui:complexity:allowlist:check",
+    "check:no-emoji": "node scripts/check-no-emoji.mjs",
     "flint": "pnpm run fix && pnpm run lint",
-    "check": "run-p flint type-check test architecture:boundary-scan ui:complexity:ci knip:files",
+    "check": "run-p flint type-check test architecture:boundary-scan ui:complexity:ci knip:files check:no-emoji",
     "maersk:smoke:puppeteer": "node scripts/maersk-puppeteer-smoke.mjs",
     "ai:loop:doctor": "bash scripts/ai/ralph-loop-doctor.sh",
     "ai:loop:start": "bash scripts/ai/ralph-loop-start.sh",
@@ -58,6 +59,7 @@
     "archiver": "^7.0.1",
     "axios": "^1.13.4",
     "i18next": "^25.8.1",
+    "lucide-solid": "^0.577.0",
     "solid-js": "^1.9.5",
     "vinxi": "^0.5.7",
     "zod": "^4.3.6"

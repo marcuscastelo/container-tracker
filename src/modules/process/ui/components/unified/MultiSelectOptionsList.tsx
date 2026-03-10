@@ -1,6 +1,22 @@
+import { Check } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
 import type { FilterControlOption } from '~/modules/process/ui/components/unified/FilterControlOption'
+
+function CheckboxIndicator(props: { readonly checked: boolean }): JSX.Element {
+  return (
+    <span
+      class={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border border-slate-300 ${
+        props.checked ? 'bg-blue-600 text-white' : 'bg-white'
+      }`}
+      aria-hidden="true"
+    >
+      <Show when={props.checked}>
+        <Check class="w-2.5 h-2.5" />
+      </Show>
+    </span>
+  )
+}
 
 export function MultiSelectOptionsList<T extends string>(props: {
   readonly options: readonly FilterControlOption<T>[]
@@ -24,14 +40,7 @@ export function MultiSelectOptionsList<T extends string>(props: {
                 if (e.key === 'Enter' || e.key === ' ') props.onToggle(option.value)
               }}
             >
-              <span
-                class={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border border-slate-300 text-xs-ui ${
-                  props.isSelected(option.value) ? 'bg-blue-600 text-white' : 'bg-white'
-                }`}
-                aria-hidden="true"
-              >
-                {props.isSelected(option.value) ? '✓' : ''}
-              </span>
+              <CheckboxIndicator checked={props.isSelected(option.value)} />
               <span class="min-w-0 flex-1 truncate">{option.label}</span>
               <span class="shrink-0 tabular-nums text-xs-ui text-slate-400">{option.count}</span>
             </button>

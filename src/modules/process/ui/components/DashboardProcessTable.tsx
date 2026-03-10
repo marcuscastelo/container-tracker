@@ -1,4 +1,5 @@
 import { A } from '@solidjs/router'
+import { Check, ChevronDown, ChevronUp, CircleAlert, OctagonX, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import {
@@ -130,11 +131,11 @@ function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
   return ''
 }
 
-function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '⛔'
-  if (severity === 'warning') return '⚠'
-  if (severity === 'info') return 'ℹ'
-  return '✓'
+function toUnifiedAlertIcon(severity: DashboardProcessSeverity): JSX.Element {
+  if (severity === 'danger') return <OctagonX class="w-3 h-3" />
+  if (severity === 'warning') return <TriangleAlert class="w-3 h-3" />
+  if (severity === 'info') return <CircleAlert class="w-3 h-3" />
+  return <Check class="w-3 h-3" />
 }
 
 // ---------------------------------------------------------------------------
@@ -192,15 +193,20 @@ function ArrowIcon(): JSX.Element {
 function SortDirectionIcon(props: {
   readonly direction: DashboardSortDirection | null
 }): JSX.Element {
-  const arrow = () => (props.direction === 'asc' ? '↑' : '↓')
+  const Arrow = () =>
+    props.direction === 'asc' ? (
+      <ChevronUp class="w-3.5 h-3.5" />
+    ) : (
+      <ChevronDown class="w-3.5 h-3.5" />
+    )
 
   return (
     <Show when={props.direction !== null}>
       <span
-        class="inline-flex h-4 w-4 items-center justify-center text-xs-ui leading-none text-slate-600"
+        class="inline-flex h-4 w-4 items-center justify-center text-slate-600"
         aria-hidden="true"
       >
-        {arrow()}
+        <Arrow />
       </span>
     </Show>
   )
@@ -482,7 +488,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
           when={dominantSeverity() !== 'none'}
           fallback={
             <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
-              ✓
+              <Check class="w-3.5 h-3.5" />
             </span>
           }
         >
