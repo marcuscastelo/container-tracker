@@ -17,10 +17,10 @@ function InfoRow(props: InfoRowProps): JSX.Element | null {
   return (
     <Show when={props.value}>
       <div class="flex items-baseline justify-between gap-2 py-0.5">
-        <span class="text-micro font-medium uppercase tracking-wider text-slate-500 shrink-0">
+        <span class="text-micro font-medium uppercase tracking-wider text-slate-400 shrink-0">
           {props.label}
         </span>
-        <span class="text-xs-ui font-medium text-slate-700 text-right truncate">{props.value}</span>
+        <span class="text-xs-ui text-slate-600 text-right truncate">{props.value}</span>
       </div>
     </Show>
   )
@@ -30,8 +30,11 @@ export function ShipmentInfoCard(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <Panel title={t(keys.shipmentView.shipmentInfo.title)}>
-      <div class="divide-y divide-slate-50 px-2.5 py-0.5">
+    <Panel
+      title={t(keys.shipmentView.shipmentInfo.title)}
+      class="bg-slate-50/70 border-slate-200/60 shadow-none opacity-90"
+    >
+      <div class="divide-y divide-slate-100/80 px-2.5 py-0.5">
         <InfoRow
           label={t(keys.shipmentView.shipmentInfo.carrier)}
           value={props.data.carrier?.toUpperCase()}

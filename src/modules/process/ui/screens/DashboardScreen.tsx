@@ -307,7 +307,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   return (
-    <div class="relative min-h-screen bg-slate-50/80">
+    <div class="relative min-h-screen overflow-x-hidden bg-slate-50/80">
       {/* Wallpaper watermark — decorative only, does not affect layout */}
       <img
         src={BRANDING.wallpaper}
@@ -327,16 +327,15 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         />
 
         <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
-          <section class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h1 class="text-lg-ui font-semibold text-slate-900">
+          <div class="mb-4 flex items-center gap-3">
+            <h1 class="shrink-0 text-lg-ui font-semibold text-slate-900">
               {t(keys.dashboard.header.title)}
             </h1>
-            <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
-          </section>
-
-          <Show when={props.searchSlot}>
-            <div class="mb-4 flex justify-center">{props.searchSlot}</div>
-          </Show>
+            <div class="min-w-0 flex-1 flex justify-center">{props.searchSlot}</div>
+            <div class="shrink-0">
+              <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
+            </div>
+          </div>
 
           <Show when={createError()}>
             <ExistingProcessError

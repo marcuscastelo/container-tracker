@@ -224,8 +224,8 @@
         "selectedExpected": "Previsto",
         "selectedExpectedDelayed": "Atrasado",
         "processEtaTitle": "ETA (processo)",
-        "noEta": "ETA —",
-        "incomplete": "incompleto"
+        "noEta": "ETA indisponível",
+        "incomplete": "parcial"
       }
     },
     "actions": {

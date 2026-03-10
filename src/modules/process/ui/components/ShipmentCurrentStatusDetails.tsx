@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo } from 'solid-js'
+import { createMemo, Show } from 'solid-js'
 import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import {
@@ -18,8 +18,8 @@ type Props = {
 
 function StatusRow(props: { readonly label: string; readonly children: JSX.Element }): JSX.Element {
   return (
-    <div class="grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-4 items-start">
-      <dt class="whitespace-nowrap text-micro font-medium uppercase tracking-wider text-slate-500 sm:w-40 sm:flex-shrink-0">
+    <div class="grid grid-cols-1 gap-y-0.5 sm:grid-cols-2 sm:gap-x-4 items-baseline">
+      <dt class="whitespace-nowrap text-micro font-medium uppercase tracking-wider text-slate-400 sm:w-40 sm:flex-shrink-0">
         {props.label}
       </dt>
       <dd class="text-sm-ui text-slate-700">{props.children}</dd>
@@ -56,39 +56,43 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
   )
 
   return (
-    <div class="flex flex-col gap-2 px-2.5 py-2">
-      <dl class="flex flex-col gap-2">
-        <StatusRow label={t(keys.shipmentView.currentStatus.container)}>
-          <span class="font-semibold tracking-wide text-slate-800 break-words">
-            {props.container.number}
+    <div class="flex flex-col gap-0 px-2.5 py-2">
+      {/* Container identity + status — top anchor */}
+      <div class="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2">
+        <span class="text-sm-ui font-bold tracking-wide text-slate-800">
+          {props.container.number}
+        </span>
+        <StatusBadge
+          variant={props.container.status}
+          label={t(trackingStatusToLabelKey(keys, props.container.statusCode))}
+        />
+      </div>
+      <dl class="flex flex-col gap-1.5">
+        <StatusRow label={t(keys.shipmentView.currentStatus.eta)}>
+          <Show
+            when={props.container.etaChipVm.date}
+            fallback={<span class="text-sm-ui font-medium text-slate-400 italic">{unknown()}</span>}
+          >
+            {(date) => (
+              <span class="text-sm-ui font-bold tabular-nums text-slate-800">{date()}</span>
+            )}
+          </Show>
+        </StatusRow>
+
+        <StatusRow label={t(keys.shipmentView.currentStatus.currentLocation)}>
+          <span class="font-medium text-slate-700 break-words">
+            {currentLocation() ?? unknown()}
           </span>
         </StatusRow>
 
-        <StatusRow label={t(keys.shipmentView.currentStatus.status)}>
-          <div class="flex items-start">
-            <StatusBadge
-              variant={props.container.status}
-              label={t(trackingStatusToLabelKey(keys, props.container.statusCode))}
-            />
-          </div>
-        </StatusRow>
-
         <StatusRow label={t(keys.shipmentView.currentStatus.currentVessel)}>
-          <span class="font-medium break-words">
+          <span class="text-slate-600 break-words">
             {hideCurrentVessel() ? vesselNotApplicable() : (currentVessel() ?? unknown())}
           </span>
         </StatusRow>
 
-        <StatusRow label={t(keys.shipmentView.currentStatus.currentLocation)}>
-          <span class="break-words">{currentLocation() ?? unknown()}</span>
-        </StatusRow>
-
-        <StatusRow label={t(keys.shipmentView.currentStatus.eta)}>
-          <span class="font-bold tabular-nums">{props.container.etaChipVm.date ?? unknown()}</span>
-        </StatusRow>
-
         <StatusRow label={t(keys.shipmentView.currentStatus.lastUpdate)}>
-          <span class="text-slate-500">{syncLabel() ?? unknown()}</span>
+          <span class="text-slate-400 text-micro">{syncLabel() ?? unknown()}</span>
         </StatusRow>
       </dl>
     </div>

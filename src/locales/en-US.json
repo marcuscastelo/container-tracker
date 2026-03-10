@@ -213,8 +213,8 @@
         "selectedExpected": "Expected",
         "selectedExpectedDelayed": "Delayed",
         "processEtaTitle": "ETA (process)",
-        "noEta": "ETA —",
-        "incomplete": "incomplete"
+        "noEta": "ETA unavailable",
+        "incomplete": "partial"
       }
     },
     "actions": {

@@ -82,13 +82,13 @@ export function VoyageBlockHeader(props: {
   }
 
   return (
-    <div class="rounded-t border-b border-slate-200/50 bg-gradient-to-r from-slate-50/80 to-white px-2.5 py-2">
+    <div class="rounded-t border-b border-slate-200/40 bg-slate-50/50 px-2.5 py-2">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
-        <span class="text-sm shrink-0" aria-hidden="true">
+        <span class="text-xs shrink-0 opacity-70" aria-hidden="true">
           🚢
         </span>
-        <span class="text-md-ui font-semibold text-slate-800 tracking-tight">
+        <span class="text-sm-ui font-bold text-slate-800 tracking-tight">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
         <Show when={props.isCurrent}>
@@ -302,11 +302,11 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () => {
     if (props.isCurrent) {
-      return 'rounded-lg border border-blue-200 bg-blue-50/30 shadow-[0_1px_3px_rgba(59,130,246,0.08)] ring-1 ring-blue-100/60'
+      return 'rounded-lg border border-blue-200/80 bg-blue-50/25 shadow-[0_1px_4px_rgba(59,130,246,0.12)] ring-1 ring-blue-100/50'
     }
     return props.variant === 'voyage'
-      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
-      : 'rounded-lg border border-slate-100 bg-white'
+      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+      : 'rounded-lg border border-slate-100/80 bg-slate-50/30'
   }
 
   return <div class={baseClass()}>{props.children}</div>
