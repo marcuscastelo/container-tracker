@@ -86,6 +86,14 @@ describe('aggregateOperationalSummary', () => {
     expect(result.process_status).toBe('AWAITING_DATA')
   })
 
+  it('returns UNKNOWN when all containers are UNKNOWN and there is no tracking evidence', () => {
+    const summaries = [makeSummary({ status: 'UNKNOWN' }), makeSummary({ status: 'UNKNOWN' })]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('UNKNOWN')
+  })
+
   it('returns IN_TRANSIT when observations exist and at least one container is in transit phase', () => {
     const summaries = [
       makeSummary({

@@ -296,8 +296,9 @@ export function aggregateOperationalSummary(
     return resolveSummaryLifecycleBucket(summary, status)
   })
   const hasTrackingData = hasAnyTrackingObservation(summaries)
+  const allUnknownStatuses = statuses.length > 0 && statuses.every((status) => status === 'UNKNOWN')
   const processStatus =
-    containerCount > 0 && !hasTrackingData
+    containerCount > 0 && !hasTrackingData && !allUnknownStatuses
       ? 'AWAITING_DATA'
       : deriveProcessStatusFromContainers(statuses)
 

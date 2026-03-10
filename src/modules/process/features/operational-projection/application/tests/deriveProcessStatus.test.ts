@@ -30,6 +30,10 @@ describe('deriveProcessStatusFromContainers', () => {
     expect(deriveProcessStatusFromContainers(['UNKNOWN', 'IN_PROGRESS'])).toBe('BOOKED')
   })
 
+  it('returns UNKNOWN when all containers are UNKNOWN', () => {
+    expect(deriveProcessStatusFromContainers(['UNKNOWN', 'UNKNOWN'])).toBe('UNKNOWN')
+  })
+
   it('returns DELIVERED when all are completed', () => {
     expect(deriveProcessStatusFromContainers(['DELIVERED', 'EMPTY_RETURNED'])).toBe('DELIVERED')
   })

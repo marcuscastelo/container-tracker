@@ -348,6 +348,40 @@ describe('process controllers', () => {
     ])
   })
 
+  it('keeps process derived_status as UNKNOWN when all containers are UNKNOWN / never synced', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const getContainersSyncMetadata = vi.fn<GetContainersSyncMetadataMock>(async (command) =>
+      command.containerNumbers.map((containerNumber) => ({
+        containerNumber,
+        carrier: null,
+        lastSuccessAt: null,
+        lastAttemptAt: null,
+        isSyncing: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      })),
+    )
+
+    const controllers = createControllers(
+      'Santos',
+      getContainerSummaryMock,
+      getContainersSyncMetadata,
+    )
+
+    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.containers.every((container) => container.status === 'UNKNOWN')).toBe(true)
+    expect(body.containersSync.every((sync) => sync.lastSuccessAt === null)).toBe(true)
+    expect(body.process_operational?.derived_status).toBe('UNKNOWN')
+  })
+
   it('does not infer POD code from free-text destination names', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
     const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(

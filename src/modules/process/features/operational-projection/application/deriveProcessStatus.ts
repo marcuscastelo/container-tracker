@@ -57,6 +57,7 @@ export function deriveProcessStatusFromContainers(
   statuses: readonly OperationalStatus[],
 ): ProcessAggregatedStatus {
   if (statuses.length === 0) return 'UNKNOWN'
+  if (statuses.every((status) => status === 'UNKNOWN')) return 'UNKNOWN'
 
   const allFinal = statuses.every(isFinalDelivery)
   if (allFinal) return 'DELIVERED'
@@ -75,7 +76,8 @@ export function deriveProcessStatusFromContainers(
   }
 
   const allPreShipment = statuses.every(isPreShipment)
-  if (allPreShipment) {
+  const hasPreShipmentEvidence = statuses.some((status) => status !== 'UNKNOWN')
+  if (allPreShipment && hasPreShipmentEvidence) {
     return 'BOOKED'
   }
 
