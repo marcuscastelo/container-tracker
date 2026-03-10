@@ -102,6 +102,7 @@ if [[ -z "$GITHUB_API_USER" || -z "$GITHUB_API_PASS" ]]; then
 fi
 
 github_get() {
+  # Single-page GET (keeps backwards compat for callers that expect a raw single response)
   local endpoint="$1"
   curl -fsS \
     -u "${GITHUB_API_USER}:${GITHUB_API_PASS}" \
@@ -109,18 +110,62 @@ github_get() {
     "https://api.github.com/repos/${REPO}/${endpoint}"
 }
 
+github_get_all() {
+  # Fetch all pages for an endpoint using per_page=100 paging and concatenate into a single JSON array.
+  # Usage: github_get_all "pulls/${PR_NUMBER}/comments"
+  local endpoint="$1"
+  local page=1
+  local per_page=100
+  local first=true
+
+  printf '['
+  while true; do
+    echo "Fetching page $page of ${endpoint}..." >&2
+    local url="https://api.github.com/repos/${REPO}/${endpoint}?per_page=${per_page}&page=${page}"
+    local resp
+    resp=$(curl -fsS -u "${GITHUB_API_USER}:${GITHUB_API_PASS}" -H 'Accept: application/vnd.github+json' "$url") || true
+    echo "$resp" | jq empty >/dev/null 2>&1 || break
+    echo "Received $(echo "$resp" | jq 'length') items on page $page." >&2
+
+    length=$(echo "$resp" | jq 'length')
+    if [[ "$length" -eq 0 ]]; then
+      break
+    fi
+    # if response is empty or an empty array, stop
+    if [[ -z "$resp" || "$resp" == "[]" ]]; then
+      break
+    fi
+
+    if [[ "$first" == true ]]; then
+      # print full array for the first page
+      printf '%s' "$resp"
+      first=false
+    else
+      # strip surrounding [ and ] from subsequent pages and append elements
+      local inner
+      inner=$(printf '%s' "$resp" | sed -e 's/^\[//' -e 's/\]$//')
+      if [[ -n "$inner" ]]; then
+        printf ',%s' "$inner"
+      fi
+    fi
+
+    ((page++))
+  done
+  printf ']'
+}
+
 if [[ "$KIND" == "comments" ]]; then
-  github_get "pulls/${PR_NUMBER}/comments"
+  github_get_all "pulls/${PR_NUMBER}/comments"
   exit 0
 fi
 
 if [[ "$KIND" == "reviews" ]]; then
-  github_get "pulls/${PR_NUMBER}/reviews"
+  github_get_all "pulls/${PR_NUMBER}/reviews"
   exit 0
 fi
 
 if [[ "$KIND" == "issue-comments" ]]; then
-  github_get "issues/${PR_NUMBER}/comments"
+  github_get_all "issues/${PR_NUMBER}/comments"
   exit 0
 fi
 
@@ -128,9 +173,9 @@ printf '{\n'
 printf '  "repo": "%s",\n' "$REPO"
 printf '  "pr_number": %s,\n' "$PR_NUMBER"
 printf '  "comments": '
-github_get "pulls/${PR_NUMBER}/comments"
+github_get_all "pulls/${PR_NUMBER}/comments"
 printf ',\n  "reviews": '
-github_get "pulls/${PR_NUMBER}/reviews"
+github_get_all "pulls/${PR_NUMBER}/reviews"
 printf ',\n  "issue_comments": '
-github_get "issues/${PR_NUMBER}/comments"
+github_get_all "issues/${PR_NUMBER}/comments"
 printf '\n}\n'

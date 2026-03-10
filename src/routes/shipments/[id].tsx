@@ -1,7 +1,7 @@
 import { useParams } from '@solidjs/router'
-import { ShipmentView } from '~/modules/process/ui/ShipmentView'
+import { ShipmentPage } from '~/modules/process/ui/screens/shipment/ShipmentPage'
 
-export default function ShipmentPage() {
+export default function ShipmentRoute() {
   const params = useParams<{ id: string }>()
-  return <ShipmentView params={params} />
+  return <ShipmentPage params={params} />
 }
