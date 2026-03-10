@@ -336,14 +336,22 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
         return jsonResponse({ error: 'Process ID is required' }, 400)
       }
 
-      const result = await processUseCases.findProcessById({ processId })
+      const result = await processUseCases.findProcessByIdWithContainers({ processId })
       if (!result.process) {
         return jsonResponse({ error: 'Process not found' }, 404)
       }
 
+      const processReference = result.process.process.reference
+      const deletedContainerCount = result.process.containers.length
+
       await processUseCases.deleteProcess({ processId })
 
-      return jsonResponse({ success: true, deleted: processId })
+      const deletedAtIso = new Date().toISOString()
+      console.info(
+        `[process] PROCESS_DELETED process_id=${processId} reference=${processReference ?? 'null'} container_count=${deletedContainerCount} timestamp=${deletedAtIso}`,
+      )
+
+      return new Response(null, { status: 204 })
     } catch (err) {
       console.error('DELETE /api/processes/[id] error:', err)
       return mapErrorToResponse(err)

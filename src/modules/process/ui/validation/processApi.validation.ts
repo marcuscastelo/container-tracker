@@ -285,6 +285,20 @@ export async function updateProcessRequest(id: string, input: CreateProcessInput
   )
 }
 
+export async function deleteProcessRequest(processId: string): Promise<void> {
+  const response = await fetch(`/api/processes/${encodeURIComponent(processId)}`, {
+    method: 'DELETE',
+  })
+
+  if (response.ok) return
+
+  const body = await response.json().catch(() => ({}))
+  const parsed = z.object({ error: z.string().optional() }).safeParse(body)
+  const message =
+    parsed.success && parsed.data.error ? parsed.data.error : 'Failed to delete process'
+  throw new Error(message)
+}
+
 async function runTrackingAlertActionRequest(
   alertId: string,
   action: 'acknowledge' | 'unacknowledge',

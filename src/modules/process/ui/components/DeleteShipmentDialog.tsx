@@ -1,10 +1,17 @@
+import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import { DeleteShipmentConfirmationInput } from '~/modules/process/ui/components/DeleteShipmentConfirmationInput'
 import { DeleteShipmentSummary } from '~/modules/process/ui/components/DeleteShipmentSummary'
 import { DeleteShipmentWarning } from '~/modules/process/ui/components/DeleteShipmentWarning'
+import { clearPrefetchedProcessDetailById } from '~/modules/process/ui/fetchProcess'
+import {
+  clearDashboardPrefetchCache,
+  deleteProcessRequest,
+} from '~/modules/process/ui/validation/processApi.validation'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
+import { buildDashboardHref } from '~/shared/ui/navigation/app-navigation'
 
 type Props = {
   readonly open: boolean
@@ -116,6 +123,7 @@ function ActionButtons(props: ActionButtonsProps): JSX.Element {
 
 export function DeleteShipmentDialog(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const navigate = useNavigate()
 
   const k = keys.shipmentView.deleteShipment
 
@@ -139,15 +147,11 @@ export function DeleteShipmentDialog(props: Props): JSX.Element {
     setError(false)
 
     try {
-      // TODO: <IMPLEMENT_DELETE>
-      // call DELETE /api/processes/:id
-      await Promise.resolve() // placeholder — will be replaced by actual API call
-
-      // TODO: <IMPLEMENT_DELETE>
-      // navigate('/dashboard')
+      await deleteProcessRequest(props.processId)
+      clearPrefetchedProcessDetailById(props.processId)
+      clearDashboardPrefetchCache()
+      void navigate(buildDashboardHref(), { replace: true })
     } catch (_error: unknown) {
-      // TODO: <IMPLEMENT_DELETE>
-      // error handling
       setError(true)
     } finally {
       setIsDeleting(false)
