@@ -7,7 +7,6 @@
   "files": {
     "includes": [
       "**",
-      "!marucs-src",
       "!node_modules",
       "!src/sections/datepicker",
       "!.vercel",
@@ -341,7 +340,7 @@
       }
     },
     {
-      "includes": ["src/lib/**", "src/shared/**", "src/routes/api/**", "marucs-src/**"],
+      "includes": ["src/lib/**", "src/shared/**", "src/routes/api/**"],
       "linter": { "rules": { "suspicious": { "noExplicitAny": "off" } } }
     },
     {

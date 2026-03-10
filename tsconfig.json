@@ -19,5 +19,5 @@
       "@tools/*": ["./tools/*"]
     }
   },
-  "exclude": ["marucs-src/**/*", "tools/ralph-loop/**/*", ".ralph-loop/**/*"]
+  "exclude": ["tools/ralph-loop/**/*", ".ralph-loop/**/*"]
 }

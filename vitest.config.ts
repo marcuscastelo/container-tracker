@@ -4,8 +4,6 @@ import { configDefaults, defineConfig } from 'vitest/config'
 
 // biome-ignore lint/style/noDefaultExport: Needed for Vitest config
 export default defineConfig({
-  // Use a resolve plugin so we can dynamically prefer files under `marucs-src/`
-  // when present, but fall back to `src/` for files that only live there.
   plugins: [
     {
       name: 'alias-tilde-fallback',
@@ -22,7 +20,7 @@ export default defineConfig({
 
         if (source.startsWith('~')) {
           after = source.startsWith('~/') ? source.slice(2) : source.slice(1)
-          roots = ['marucs-src', 'src']
+          roots = ['src']
         } else if (source.startsWith('@tools/')) {
           after = source.slice('@tools/'.length)
           roots = ['tools']
