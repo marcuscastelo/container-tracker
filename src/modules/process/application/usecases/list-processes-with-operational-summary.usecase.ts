@@ -134,6 +134,20 @@ function shouldPreferAlertByTriggeredAt(
   return candidate.triggered_at > current.triggered_at
 }
 
+function hasAnyTrackingObservation(summaries: readonly ContainerTrackingSummary[]): boolean {
+  return summaries.some((summary) => summary.timeline.observations.length > 0)
+}
+
+function shouldUseNotSyncedStatus(command: {
+  readonly containerCount: number
+  readonly processStatus: ProcessOperationalSummary['process_status']
+  readonly syncStatus: ProcessSyncSummaryReadModel['lastSyncStatus']
+}): boolean {
+  if (command.containerCount === 0) return false
+  if (command.processStatus !== 'AWAITING_DATA') return false
+  return command.syncStatus === 'UNKNOWN'
+}
+
 function deriveProcessSyncSummary(command: {
   readonly containers: ProcessWithContainers['containers']
   readonly syncByContainerNumber: ReadonlyMap<string, ContainerSyncMetadata>
@@ -230,7 +244,11 @@ export function aggregateOperationalSummary(
   const statuses: OperationalStatus[] = summaries.map((summary) =>
     toOperationalStatus(summary.status),
   )
-  const processStatus = deriveProcessStatusFromContainers(statuses)
+  const hasTrackingData = hasAnyTrackingObservation(summaries)
+  const processStatus =
+    containerCount > 0 && !hasTrackingData
+      ? 'AWAITING_DATA'
+      : deriveProcessStatusFromContainers(statuses)
 
   // --- ETA ---
   // Select earliest future ETA among containers
@@ -381,7 +399,15 @@ export function createListProcessesWithOperationalSummaryUseCase(
           syncByContainerNumber,
         })
 
-        return { pwc, summary, sync }
+        const normalizedSummary = shouldUseNotSyncedStatus({
+          containerCount: containers.length,
+          processStatus: summary.process_status,
+          syncStatus: sync.lastSyncStatus,
+        })
+          ? { ...summary, process_status: 'NOT_SYNCED' as const }
+          : summary
+
+        return { pwc, summary: normalizedSummary, sync }
       }),
     )
 

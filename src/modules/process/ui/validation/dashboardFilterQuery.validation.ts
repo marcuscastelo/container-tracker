@@ -1,13 +1,13 @@
 import {
+  type ProcessStatusCode,
+  parseProcessStatusCode,
+} from '~/modules/process/ui/process-status-color'
+import {
   DASHBOARD_DEFAULT_FILTER_SELECTION,
   type DashboardFilterSelection,
   type DashboardSeverityFilterValue,
   hasActiveDashboardFilters,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
-import {
-  TRACKING_STATUS_CODES,
-  type TrackingStatusCode,
-} from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 
 const FILTER_PROVIDER_QUERY_KEY = 'provider'
 const FILTER_STATUS_QUERY_KEY = 'status'
@@ -34,18 +34,14 @@ function toUniqueNonBlankValues(values: readonly string[]): readonly string[] {
   return [...uniqueValues]
 }
 
-function parseTrackingStatusCode(value: string): TrackingStatusCode | null {
-  return TRACKING_STATUS_CODES.find((statusCode) => statusCode === value) ?? null
-}
-
-function parseDashboardFilterStatuses(values: readonly string[]): readonly TrackingStatusCode[] {
-  const uniqueStatuses = new Set<TrackingStatusCode>()
+function parseDashboardFilterStatuses(values: readonly string[]): readonly ProcessStatusCode[] {
+  const uniqueStatuses = new Set<ProcessStatusCode>()
 
   for (const value of values) {
     const nonBlankValue = toOptionalNonBlankString(value)
     if (nonBlankValue === null) continue
 
-    const statusCode = parseTrackingStatusCode(nonBlankValue)
+    const statusCode = parseProcessStatusCode(nonBlankValue)
     if (statusCode === null) continue
 
     uniqueStatuses.add(statusCode)

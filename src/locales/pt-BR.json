@@ -439,7 +439,10 @@
   },
   "tracking": {
     "status": {
-      "UNKNOWN": "Aguardando dados",
+      "UNKNOWN": "Desconhecido",
+      "BOOKED": "Reservado",
+      "AWAITING_DATA": "Aguardando dados",
+      "NOT_SYNCED": "Não sincronizado",
       "IN_PROGRESS": "Em Andamento",
       "LOADED": "Carregado",
       "IN_TRANSIT": "Em Trânsito",
@@ -447,8 +450,7 @@
       "DISCHARGED": "Descarregado",
       "AVAILABLE_FOR_PICKUP": "Disponível para Retirada",
       "DELIVERED": "Entregue",
-      "EMPTY_RETURNED": "Vazio Devolvido",
-      "PARTIALLY_DELIVERED": "Parcialmente Entregue"
+      "EMPTY_RETURNED": "Vazio Devolvido"
     },
     "observationType": {
       "GATE_IN": "Entrada no Terminal",

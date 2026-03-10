@@ -4,6 +4,10 @@ import {
   normalizeContainerNumber,
   toContainerSyncVM,
 } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
+import {
+  processStatusToVariant,
+  toProcessStatusCode,
+} from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
@@ -12,12 +16,10 @@ import {
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
-import type { StatusVariant } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
-function processAggregatedStatusToVariant(status: ProcessAggregatedStatus): StatusVariant {
-  if (status === 'PARTIALLY_DELIVERED') return 'partial'
-  return trackingStatusToVariant(toTrackingStatusCode(status))
+function processAggregatedStatusToVariant(status: ProcessAggregatedStatus) {
+  return processStatusToVariant(toProcessStatusCode(status))
 }
 
 type ContainerOperational = NonNullable<ProcessDetailResponse['containers'][number]['operational']>
@@ -29,8 +31,27 @@ type TimelineResponseItem = NonNullable<
 >[number]
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
-  if (status === 'PARTIALLY_DELIVERED') return status
-  return toTrackingStatusCode(status)
+  const normalizedStatus = toProcessStatusCode(status)
+
+  switch (normalizedStatus) {
+    case 'UNKNOWN':
+    case 'BOOKED':
+    case 'IN_TRANSIT':
+    case 'DISCHARGED':
+    case 'DELIVERED':
+    case 'AWAITING_DATA':
+    case 'NOT_SYNCED':
+      return normalizedStatus
+    case 'IN_PROGRESS':
+      return 'BOOKED'
+    case 'LOADED':
+    case 'ARRIVED_AT_POD':
+      return 'IN_TRANSIT'
+    case 'AVAILABLE_FOR_PICKUP':
+      return 'DISCHARGED'
+    case 'EMPTY_RETURNED':
+      return 'DELIVERED'
+  }
 }
 
 function toTimelineSeriesHistory(
@@ -242,11 +263,7 @@ export function toShipmentDetailVM(
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),
-    // canonical container-level status code (UNKNOWN if not a container status)
-    statusCode: toTrackingStatusCode(processAggregatedStatus),
-    // expose the raw process-level aggregated status when applicable
-    aggregatedStatus:
-      processAggregatedStatus === 'PARTIALLY_DELIVERED' ? 'PARTIALLY_DELIVERED' : null,
+    statusCode: toProcessStatusCode(processAggregatedStatus),
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,

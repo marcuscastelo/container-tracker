@@ -1,22 +1,22 @@
 import type { JSX } from 'solid-js'
 import { For, Show } from 'solid-js'
 import { ActiveFilterChip } from '~/modules/process/ui/components/unified/ActiveFilterChip'
-import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { processStatusToLabelKey } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
+import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type {
   DashboardImporterFilterValue,
   DashboardSeverityFilterValue,
 } from '~/modules/process/ui/viewmodels/dashboard-filter.service'
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {
   readonly selectedSeverity: string | null
   readonly selectedProviders: readonly string[]
-  readonly selectedStatuses: readonly TrackingStatusCode[]
+  readonly selectedStatuses: readonly ProcessStatusCode[]
   readonly selectedImporterChipLabel: string | null
   readonly onSeveritySelect: (severity: DashboardSeverityFilterValue | null) => void
   readonly onProviderToggle: (provider: string) => void
-  readonly onStatusToggle: (status: TrackingStatusCode) => void
+  readonly onStatusToggle: (status: ProcessStatusCode) => void
   readonly onImporterSelect: (importer: DashboardImporterFilterValue | null) => void
 }
 
@@ -62,9 +62,9 @@ export function ActiveFiltersPanel(props: Props): JSX.Element {
       <For each={props.selectedStatuses}>
         {(status) => (
           <ActiveFilterChip
-            label={`${t(keys.dashboard.filters.status.label)}: ${t(trackingStatusToLabelKey(keys, status))}`}
+            label={`${t(keys.dashboard.filters.status.label)}: ${t(processStatusToLabelKey(keys, status))}`}
             ariaLabel={t(keys.dashboard.filters.removeChip, {
-              filter: `${t(keys.dashboard.filters.status.label)}: ${t(trackingStatusToLabelKey(keys, status))}`,
+              filter: `${t(keys.dashboard.filters.status.label)}: ${t(processStatusToLabelKey(keys, status))}`,
             })}
             onRemove={() => props.onStatusToggle(status)}
           />

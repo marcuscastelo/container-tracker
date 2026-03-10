@@ -9,12 +9,14 @@ export type OperationalStatus =
   | 'DELIVERED'
   | 'EMPTY_RETURNED'
 
-/**
- * Process-level aggregated status — includes PARTIALLY_DELIVERED
- * which is not a valid container status but represents a mixed state
- * across containers in a process.
- */
-export type ProcessAggregatedStatus = OperationalStatus | 'PARTIALLY_DELIVERED'
+export type ProcessAggregatedStatus =
+  | 'UNKNOWN'
+  | 'BOOKED'
+  | 'IN_TRANSIT'
+  | 'DISCHARGED'
+  | 'DELIVERED'
+  | 'AWAITING_DATA'
+  | 'NOT_SYNCED'
 
 const OPERATIONAL_STATUSES: readonly OperationalStatus[] = [
   'UNKNOWN',
@@ -30,8 +32,6 @@ const OPERATIONAL_STATUSES: readonly OperationalStatus[] = [
 
 export type OperationalAlertSeverity = 'info' | 'warning' | 'danger'
 
-const operationalStatusDominance: readonly OperationalStatus[] = OPERATIONAL_STATUSES
-
 function isOperationalStatus(value: string): value is OperationalStatus {
   return OPERATIONAL_STATUSES.some((status) => status === value)
 }
@@ -39,11 +39,6 @@ function isOperationalStatus(value: string): value is OperationalStatus {
 export function toOperationalStatus(status: string | null | undefined): OperationalStatus {
   if (!status) return 'UNKNOWN'
   return isOperationalStatus(status) ? status : 'UNKNOWN'
-}
-
-export function operationalStatusDominanceIndex(status: OperationalStatus): number {
-  const idx = operationalStatusDominance.indexOf(status)
-  return idx >= 0 ? idx : 0
 }
 
 export function toOperationalAlertSeverity(

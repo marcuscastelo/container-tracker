@@ -2,7 +2,7 @@ import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
 // sync header helpers removed — not used in the simplified header
-import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { processStatusToLabelKey } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
@@ -285,7 +285,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
         <div class="flex items-center gap-1.5 shrink-0">
           <StatusBadge
             variant={p.props.data.status}
-            label={t(trackingStatusToLabelKey(keys, p.props.data.statusCode))}
+            label={t(processStatusToLabelKey(keys, p.props.data.statusCode))}
           />
           <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
             {p.props.data.carrier ?? '—'}

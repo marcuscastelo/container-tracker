@@ -71,7 +71,7 @@ describe('toProcessSummaryVMs', () => {
     ]
 
     const result = toProcessSummaryVMs(example)
-    expect(result[0].status).toBe('in-transit')
+    expect(result[0].status).toBe('blue-500')
     expect(result[0].statusCode).toBe('IN_TRANSIT')
     expect(result[0].statusRank).toBeGreaterThan(0)
     expect(result[0].eta).toBe('2025-06-01T00:00:00Z')
@@ -87,7 +87,7 @@ describe('toProcessSummaryVMs', () => {
 
   it('defaults to unknown status when process_status is absent', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p3' })])
-    expect(result[0].status).toBe('unknown')
+    expect(result[0].status).toBe('slate-400')
     expect(result[0].statusCode).toBe('UNKNOWN')
     expect(result[0].statusRank).toBe(0)
     expect(result[0].eta).toBeNull()
@@ -120,9 +120,24 @@ describe('toProcessSummaryVMs', () => {
 
   it('maps DELIVERED status correctly', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p4', process_status: 'DELIVERED' })])
-    expect(result[0].status).toBe('delivered')
+    expect(result[0].status).toBe('green-600')
     expect(result[0].statusCode).toBe('DELIVERED')
     expect(result[0].statusRank).toBeGreaterThan(0)
+  })
+
+  it('maps process-only meta statuses', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({ id: 'p-booked', process_status: 'BOOKED' }),
+      makeSource({ id: 'p-awaiting', process_status: 'AWAITING_DATA' }),
+      makeSource({ id: 'p-sync', process_status: 'NOT_SYNCED' }),
+    ])
+
+    expect(result[0].status).toBe('slate-400')
+    expect(result[0].statusCode).toBe('BOOKED')
+    expect(result[1].status).toBe('amber-600')
+    expect(result[1].statusCode).toBe('AWAITING_DATA')
+    expect(result[2].status).toBe('amber-700')
+    expect(result[2].statusCode).toBe('NOT_SYNCED')
   })
 
   it('maps invalid eta string to etaMsOrNull = null', () => {

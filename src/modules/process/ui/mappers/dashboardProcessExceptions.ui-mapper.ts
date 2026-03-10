@@ -1,7 +1,7 @@
 import {
-  toTrackingStatusCode,
-  trackingStatusToVariant,
-} from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+  processStatusToVariant,
+  toProcessStatusCode,
+} from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type {
   DashboardProcessExceptionSeverity,
   DashboardProcessExceptionVM,
@@ -20,7 +20,7 @@ export function toDashboardProcessExceptionVMs(
   source: DashboardOperationalSummaryResponse,
 ): readonly DashboardProcessExceptionVM[] {
   return source.process_exceptions.map((process) => {
-    const statusCode = toTrackingStatusCode(process.derived_status)
+    const statusCode = toProcessStatusCode(process.derived_status)
 
     return {
       processId: process.process_id,
@@ -28,7 +28,7 @@ export function toDashboardProcessExceptionVMs(
       origin: process.origin,
       destination: process.destination,
       statusCode,
-      status: trackingStatusToVariant(statusCode),
+      status: processStatusToVariant(statusCode),
       etaCurrent: process.eta_current,
       dominantSeverity: toDashboardProcessExceptionSeverity(process.dominant_severity),
       activeAlertCount: process.active_alert_count,

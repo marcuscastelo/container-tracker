@@ -57,7 +57,32 @@ describe('aggregateOperationalSummary', () => {
 
     const result = aggregateOperationalSummary('p1', null, null, 3, summaries)
 
-    expect(result.process_status).toBe('IN_PROGRESS')
+    expect(result.process_status).toBe('AWAITING_DATA')
+  })
+
+  it('returns AWAITING_DATA when containers exist but no observations were ingested', () => {
+    const summaries = [makeSummary({ status: 'UNKNOWN' }), makeSummary({ status: 'IN_PROGRESS' })]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('AWAITING_DATA')
+  })
+
+  it('returns IN_TRANSIT when observations exist and at least one container is in transit phase', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_PROGRESS',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'LOADED',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
   })
 
   it('selects earliest future ETA among containers', () => {
