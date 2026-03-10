@@ -1,7 +1,7 @@
 import {
+  processStatusToVariant,
   toProcessStatusCode,
-  trackingStatusToVariant,
-} from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+} from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type {
   DashboardProcessExceptionSeverity,
   DashboardProcessExceptionVM,
@@ -28,7 +28,7 @@ export function toDashboardProcessExceptionVMs(
       origin: process.origin,
       destination: process.destination,
       statusCode,
-      status: trackingStatusToVariant(statusCode),
+      status: processStatusToVariant(statusCode),
       etaCurrent: process.eta_current,
       dominantSeverity: toDashboardProcessExceptionSeverity(process.dominant_severity),
       activeAlertCount: process.active_alert_count,

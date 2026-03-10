@@ -1,8 +1,8 @@
 import {
+  processStatusToRank,
+  processStatusToVariant,
   toProcessStatusCode,
-  trackingStatusToRank,
-  trackingStatusToVariant,
-} from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+} from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
 export type ProcessListItemSource = {
@@ -68,7 +68,7 @@ export function toProcessSummaryVMs(
     const rawStatus = process.process_status ?? null
     const eta = process.eta ?? null
     const statusCode = toProcessStatusCode(rawStatus)
-    const statusRank = trackingStatusToRank(statusCode)
+    const statusRank = processStatusToRank(statusCode)
 
     return {
       id: process.id,
@@ -82,7 +82,7 @@ export function toProcessSummaryVMs(
       containerNumbers: process.containers.map((container) =>
         normalizeContainerNumber(container.container_number),
       ),
-      status: trackingStatusToVariant(statusCode),
+      status: processStatusToVariant(statusCode),
       statusCode,
       statusRank,
       eta,

@@ -5,7 +5,7 @@ import type { FilterControlOption } from '~/modules/process/ui/components/unifie
 import { ImporterChipDropdown } from '~/modules/process/ui/components/unified/ImporterChipDropdown'
 import { MultiSelectChipDropdown } from '~/modules/process/ui/components/unified/MultiSelectChipDropdown'
 import { SingleSelectChipDropdown } from '~/modules/process/ui/components/unified/SingleSelectChipDropdown'
-import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { processStatusToLabelKey } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type {
   DashboardImporterFilterOption,
@@ -68,7 +68,7 @@ export function UnifiedDashboardFilters(props: Props): JSX.Element {
   const statusOptions = (): readonly FilterControlOption<ProcessStatusCode>[] =>
     props.statuses.map((status) => ({
       value: status.value,
-      label: t(trackingStatusToLabelKey(keys, status.value)),
+      label: t(processStatusToLabelKey(keys, status.value)),
       count: status.count,
     }))
 

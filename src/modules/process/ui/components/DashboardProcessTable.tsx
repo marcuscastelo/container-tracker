@@ -14,7 +14,7 @@ import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
-import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { processStatusToLabelKey } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import {
   hasDashboardRowSelectedText,
   isInteractiveDashboardRowTarget,
@@ -363,7 +363,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
       >
         <StatusBadge
           variant={ctx.process.status}
-          label={ctx.t(trackingStatusToLabelKey(ctx.keys, ctx.process.statusCode))}
+          label={ctx.t(processStatusToLabelKey(ctx.keys, ctx.process.statusCode))}
         />
       </A>
     </div>
