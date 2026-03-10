@@ -70,6 +70,8 @@ export const AlertResponseDtoSchema = z.discriminatedUnion('message_key', [
     message_key: z.literal('alerts.noMovementDetected'),
     message_params: z
       .object({
+        threshold_days: z.number(),
+        days_without_movement: z.number(),
         days: z.number(),
         lastEventDate: z.string(),
       })

@@ -227,6 +227,52 @@ describe('normalizeMscSnapshot', () => {
     })
   })
 
+  it('maps MSC terminal labels to canonical DELIVERY and EMPTY_RETURN', () => {
+    const payload = {
+      Data: {
+        CurrentDate: '12/02/2026',
+        BillOfLadings: [
+          {
+            ContainersInfo: [
+              {
+                ContainerNumber: 'CXDU2058677',
+                Events: [
+                  {
+                    Date: '10/02/2026',
+                    Description: 'Import to consignee',
+                    UnLocationCode: 'BRIOA',
+                    Location: 'ITAPOA, BR',
+                    Detail: ['LADEN'],
+                  },
+                  {
+                    Date: '12/02/2026',
+                    Description: 'Empty received at CY',
+                    UnLocationCode: 'BRNVT',
+                    Location: 'NAVEGANTES, BR',
+                    Detail: ['EMPTY'],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }
+
+    const drafts = normalizeMscSnapshot(makeSnapshot(payload, '2026-02-12T10:00:00.000Z'))
+    expect(drafts).toHaveLength(2)
+
+    expect(drafts[0]?.type).toBe('DELIVERY')
+    expect(drafts[0]?.carrier_label).toBe('Import to consignee')
+    expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+    expect(drafts[0]?.is_empty).toBe(false)
+
+    expect(drafts[1]?.type).toBe('EMPTY_RETURN')
+    expect(drafts[1]?.carrier_label).toBe('Empty received at CY')
+    expect(drafts[1]?.event_time_type).toBe('ACTUAL')
+    expect(drafts[1]?.is_empty).toBe(true)
+  })
+
   it('preserves raw carrier_label text without trimming', () => {
     const payload = {
       Data: {

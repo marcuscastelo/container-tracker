@@ -7,6 +7,7 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
@@ -216,13 +217,15 @@ describe('getContainerSummary', () => {
           severity: 'warning',
           message_key: 'alerts.noMovementDetected',
           message_params: {
+            threshold_days: 5,
+            days_without_movement: 7,
             days: 7,
             lastEventDate: '2026-03-05',
           },
           detected_at: '2026-03-05T10:00:00.000Z',
           triggered_at: '2026-03-05T10:00:00.000Z',
           source_observation_fingerprints: ['fp-1'],
-          alert_fingerprint: null,
+          alert_fingerprint: computeNoMovementAlertFingerprint('container-1', 5, '2026-03-05'),
           retroactive: false,
           provider: null,
           acked_at: null,
