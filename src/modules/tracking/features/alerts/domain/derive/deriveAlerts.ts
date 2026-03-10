@@ -299,11 +299,6 @@ export function deriveAlerts(
           // late-arriving ACTUAL observations change the latest movement
           // within the same day.
           const cycleAnchorObservationFingerprint = lastActualEvent.fingerprint
-          const cycleAnchorKey =
-            typeof cycleAnchorObservationFingerprint === 'string' &&
-            cycleAnchorObservationFingerprint.length > 0
-              ? cycleAnchorObservationFingerprint
-              : lastActualEvent.event_time
 
           // Compute the legacy date-based cycle anchor first (used for the
           // persisted fingerprint) and retain the observation fingerprint for
