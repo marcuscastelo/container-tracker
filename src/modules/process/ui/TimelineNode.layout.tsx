@@ -48,11 +48,11 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
       })}
     >
       {/* Minimal status dot — no vertical line; outer rail handles continuity */}
-      <div class="flex shrink-0 items-center pt-[5px]">
+      <div class="flex shrink-0 items-center pt-1.25">
         <div
           class={clsx('shrink-0 rounded-full', props.dotClass, {
             'h-1.5 w-1.5 border border-dashed border-slate-300': props.isExpected,
-            'h-[5px] w-[5px]': !props.isExpected,
+            'h-1.25 w-1.25': !props.isExpected,
           })}
         />
       </div>
