@@ -101,6 +101,10 @@ describe('toShipmentDetailVM', () => {
       ],
       process_operational: {
         derived_status: 'IN_TRANSIT',
+        status_microbadge: {
+          status: 'DISCHARGED',
+          count: 1,
+        },
         eta_max: null,
         coverage: {
           total: 1,
@@ -133,6 +137,10 @@ describe('toShipmentDetailVM', () => {
     const result = toShipmentDetailVM(example)
     expect(result.status).toBe('blue-500')
     expect(result.statusCode).toBe('IN_TRANSIT')
+    expect(result.statusMicrobadge).toEqual({
+      statusCode: 'DISCHARGED',
+      count: 1,
+    })
     expect(result.alerts.length).toBe(1)
     expect(result.alerts[0].type).toBe('transshipment')
     expect(result.alerts[0].severity).toBe('warning')

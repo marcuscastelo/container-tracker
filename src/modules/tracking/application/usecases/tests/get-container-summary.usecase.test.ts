@@ -122,6 +122,7 @@ function createDeps(
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),
       unacknowledge: vi.fn(async () => undefined),
+      autoResolveMany: vi.fn(async () => undefined),
     },
     syncMetadataRepository: {
       listByContainerNumbers: vi.fn(async () => []),

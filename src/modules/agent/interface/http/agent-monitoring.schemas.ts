@@ -148,6 +148,7 @@ export const AgentHeartbeatBodySchema = z.object({
   agent_version: z.string().trim().min(1).optional(),
   current_version: z.string().trim().min(1).optional(),
   desired_version: z.string().trim().min(1).nullable().optional(),
+  update_channel: z.string().trim().min(1).optional(),
   update_ready_version: z.string().trim().min(1).nullable().optional(),
   restart_requested_at: z.string().datetime({ offset: true }).nullable().optional(),
   boot_status: AgentBootStatusSchema.optional(),

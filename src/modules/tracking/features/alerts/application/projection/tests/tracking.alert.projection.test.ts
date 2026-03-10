@@ -33,6 +33,9 @@ describe('toTrackingAlertProjection', () => {
       },
       triggeredAtIso: '2026-02-03T10:00:00.000Z',
       ackedAtIso: null,
+      lifecycleState: 'ACTIVE',
+      resolvedAtIso: null,
+      resolvedReason: null,
       category: 'fact',
       retroactive: false,
     })
@@ -57,6 +60,9 @@ describe('toTrackingAlertProjection', () => {
     expect(result.type).toBe('info')
     expect(result.severity).toBe('info')
     expect(result.ackedAtIso).toBe('2026-02-04T10:00:00.000Z')
+    expect(result.lifecycleState).toBe('ACKED')
+    expect(result.resolvedAtIso).toBeNull()
+    expect(result.resolvedReason).toBeNull()
     expect(result.category).toBe('monitoring')
     expect(result.messageKey).toBe('alerts.dataInconsistent')
     expect(result.messageParams).toEqual({})

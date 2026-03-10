@@ -4,7 +4,7 @@ import type { SnapshotRepository } from '~/modules/tracking/application/ports/tr
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import {
-  deriveAlerts,
+  deriveAlertTransitions,
   deriveTransshipment,
 } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type {
@@ -105,12 +105,36 @@ export async function processSnapshot(
   // Step 7: Derive Alerts
   // Fact alerts dedupe by historical fingerprint, so derivation must see full history.
   const existingAlerts = await deps.trackingAlertRepository.findByContainerId(containerId)
-  const newAlertDescriptors: readonly NewTrackingAlert[] = deriveAlerts(
-    timeline,
-    status,
-    existingAlerts,
-    isBackfill,
-  )
+  const alertTransitions = deriveAlertTransitions(timeline, status, existingAlerts, isBackfill)
+  const newAlertDescriptors: readonly NewTrackingAlert[] = alertTransitions.newAlerts
+
+  if (alertTransitions.monitoringAutoResolutions.length > 0) {
+    const reasonByAlertId = new Map(
+      alertTransitions.monitoringAutoResolutions.map(
+        (entry) => [entry.alertId, entry.reason] as const,
+      ),
+    )
+    const idsByReason = new Map<string, string[]>()
+    for (const [alertId, reason] of reasonByAlertId) {
+      const existing = idsByReason.get(reason)
+      if (existing) {
+        existing.push(alertId)
+      } else {
+        idsByReason.set(reason, [alertId])
+      }
+    }
+
+    const resolvedAt = new Date().toISOString()
+    for (const [reason, alertIds] of idsByReason) {
+      if (reason === 'condition_cleared' || reason === 'terminal_state') {
+        await deps.trackingAlertRepository.autoResolveMany({
+          alertIds,
+          resolvedAt,
+          reason,
+        })
+      }
+    }
+  }
 
   // Step 8: Persist new alerts
   let newAlerts: readonly TrackingAlert[] = []

@@ -40,11 +40,14 @@ const AlertResponseBaseSchema = z.object({
   category: z.string(),
   type: z.string(),
   severity: z.string(),
+  lifecycle_state: z.enum(['ACTIVE', 'ACKED', 'AUTO_RESOLVED']).optional(),
   detected_at: z.string(),
   triggered_at: z.string(),
   retroactive: z.boolean(),
   provider: z.string().nullable(),
   acked_at: z.string().nullable(),
+  resolved_at: z.string().nullable().optional(),
+  resolved_reason: z.enum(['condition_cleared', 'terminal_state']).nullable().optional(),
 })
 
 export const AlertResponseDtoSchema = z.discriminatedUnion('message_key', [

@@ -2,6 +2,7 @@ import type {
   TrackingAlert,
   TrackingAlertMessageContract,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 type TrackingAlertProjectionSourceBase = {
   readonly id: string
@@ -10,6 +11,9 @@ type TrackingAlertProjectionSourceBase = {
   readonly severity: string
   readonly triggered_at: string
   readonly acked_at: string | null
+  readonly lifecycle_state?: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
+  readonly resolved_at?: string | null
+  readonly resolved_reason?: 'condition_cleared' | 'terminal_state' | null
   readonly category: string
   readonly retroactive: boolean
 }
@@ -33,6 +37,9 @@ export type TrackingAlertProjection = {
   readonly messageParams: Record<string, string | number>
   readonly triggeredAtIso: string
   readonly ackedAtIso: string | null
+  readonly lifecycleState: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
+  readonly resolvedAtIso: string | null
+  readonly resolvedReason: 'condition_cleared' | 'terminal_state' | null
   readonly category: 'fact' | 'monitoring'
   readonly retroactive: boolean
 }
@@ -75,6 +82,7 @@ function toProjectionMessageParams(
 export function toTrackingAlertProjection(
   alert: TrackingAlertProjectionSource,
 ): TrackingAlertProjection {
+  const lifecycleState = resolveAlertLifecycleState(alert)
   return {
     id: alert.id,
     containerNumber: alert.container_number,
@@ -84,6 +92,9 @@ export function toTrackingAlertProjection(
     messageParams: toProjectionMessageParams(alert.message_params),
     triggeredAtIso: alert.triggered_at,
     ackedAtIso: alert.acked_at,
+    lifecycleState,
+    resolvedAtIso: alert.resolved_at ?? null,
+    resolvedReason: alert.resolved_reason ?? null,
     category: alert.category === 'fact' ? 'fact' : 'monitoring',
     retroactive: alert.retroactive,
   }

@@ -24,10 +24,28 @@ function makeSummary(
     status?: OperationalStatus
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
+    operational?: {
+      etaEventTimeIso?: string | null
+      etaApplicable?: boolean
+      lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
+    }
   } = {},
 ) {
+  const etaEventTimeIso = overrides.operational?.etaEventTimeIso
+  const operational = overrides.operational
+    ? {
+        eta:
+          typeof etaEventTimeIso === 'string' && etaEventTimeIso.length > 0
+            ? { eventTimeIso: etaEventTimeIso }
+            : null,
+        etaApplicable: overrides.operational.etaApplicable,
+        lifecycleBucket: overrides.operational.lifecycleBucket,
+      }
+    : undefined
+
   return {
     status: overrides.status ?? 'UNKNOWN',
+    operational,
     alerts: overrides.alerts ?? [],
     timeline: {
       observations: overrides.observations ?? [],
@@ -68,6 +86,17 @@ describe('aggregateOperationalSummary', () => {
     expect(result.process_status).toBe('AWAITING_DATA')
   })
 
+  it('returns UNKNOWN when all containers are UNKNOWN and there is no tracking evidence', () => {
+    const summaries = [makeSummary({ status: 'UNKNOWN' }), makeSummary({ status: 'UNKNOWN' })]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('UNKNOWN')
+    expect(result.status_microbadge).toBeNull()
+    expect(result.has_status_dispersion).toBe(false)
+    expect(result.status_counts.UNKNOWN).toBe(2)
+  })
+
   it('returns IN_TRANSIT when observations exist and at least one container is in transit phase', () => {
     const summaries = [
       makeSummary({
@@ -85,6 +114,93 @@ describe('aggregateOperationalSummary', () => {
     expect(result.process_status).toBe('IN_TRANSIT')
   })
 
+  it('derives ARRIVED_AT_POD microbadge when process primary status is IN_TRANSIT', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'ARRIVED_AT_POD',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.status_microbadge).toEqual({
+      status: 'ARRIVED_AT_POD',
+      count: 1,
+    })
+  })
+
+  it('derives DISCHARGED microbadge count from process status distribution', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'DISCHARGED',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'DISCHARGED',
+        observations: [{ event_time: '2026-03-03T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 3, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.status_microbadge).toEqual({
+      status: 'DISCHARGED',
+      count: 2,
+    })
+    expect(result.status_counts.DISCHARGED).toBe(2)
+  })
+
+  it('derives DELIVERED microbadge when process primary status remains DISCHARGED', () => {
+    const summaries = [
+      makeSummary({
+        status: 'DISCHARGED',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'DELIVERED',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('DISCHARGED')
+    expect(result.status_microbadge).toEqual({
+      status: 'DELIVERED',
+      count: 1,
+    })
+  })
+
+  it('keeps microbadge null for homogeneous status distributions', () => {
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-01T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'IN_TRANSIT',
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.status_microbadge).toBeNull()
+    expect(result.has_status_dispersion).toBe(false)
+  })
+
   it('selects earliest future ETA among containers', () => {
     const futureDate1 = new Date(Date.now() + 86400000).toISOString() // tomorrow
     const futureDate2 = new Date(Date.now() + 172800000).toISOString() // day after tomorrow
@@ -92,9 +208,21 @@ describe('aggregateOperationalSummary', () => {
 
     const summaries = [
       makeSummary({
+        status: 'IN_TRANSIT',
+        operational: {
+          etaEventTimeIso: futureDate2,
+          etaApplicable: true,
+          lifecycleBucket: 'pre_arrival',
+        },
         observations: [{ event_time: pastDate }, { event_time: futureDate2 }],
       }),
       makeSummary({
+        status: 'IN_TRANSIT',
+        operational: {
+          etaEventTimeIso: futureDate1,
+          etaApplicable: true,
+          lifecycleBucket: 'pre_arrival',
+        },
         observations: [{ event_time: futureDate1 }],
       }),
     ]
@@ -107,7 +235,17 @@ describe('aggregateOperationalSummary', () => {
   it('returns null ETA when no future events', () => {
     const pastDate = new Date(Date.now() - 86400000).toISOString()
 
-    const summaries = [makeSummary({ observations: [{ event_time: pastDate }] })]
+    const summaries = [
+      makeSummary({
+        status: 'IN_TRANSIT',
+        operational: {
+          etaEventTimeIso: pastDate,
+          etaApplicable: true,
+          lifecycleBucket: 'pre_arrival',
+        },
+        observations: [{ event_time: pastDate }],
+      }),
+    ]
 
     const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
 

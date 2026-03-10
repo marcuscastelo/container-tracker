@@ -529,9 +529,12 @@ export type Database = {
           created_at: string
           detected_at: string
           id: string
+          lifecycle_state: string
           message_key: string
           message_params: Json
           provider: string | null
+          resolved_at: string | null
+          resolved_reason: string | null
           retroactive: boolean
           severity: string
           source_observation_fingerprints: Json
@@ -548,9 +551,12 @@ export type Database = {
           created_at?: string
           detected_at: string
           id?: string
+          lifecycle_state?: string
           message_key: string
           message_params?: Json
           provider?: string | null
+          resolved_at?: string | null
+          resolved_reason?: string | null
           retroactive: boolean
           severity: string
           source_observation_fingerprints: Json
@@ -567,9 +573,12 @@ export type Database = {
           created_at?: string
           detected_at?: string
           id?: string
+          lifecycle_state?: string
           message_key?: string
           message_params?: Json
           provider?: string | null
+          resolved_at?: string | null
+          resolved_reason?: string | null
           retroactive?: boolean
           severity?: string
           source_observation_fingerprints?: Json

@@ -5,6 +5,7 @@ import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import {
   alertRowToDomain,
   alertToInsertRow,
@@ -208,19 +209,20 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const existingFingerprintKeys = new Set<string>()
-    const fingerprints = Array.from(
+    const factFingerprints = Array.from(
       new Set(
         dedupedAlerts
+          .filter((alert) => alert.category !== 'monitoring')
           .map((alert) => alert.alert_fingerprint)
           .filter((fingerprint): fingerprint is string => fingerprint !== null),
       ),
     )
-    if (containerIds.length > 0 && fingerprints.length > 0) {
+    if (containerIds.length > 0 && factFingerprints.length > 0) {
       const existingFingerprintRowsResult = await supabase
         .from(TABLE)
         .select('container_id, alert_fingerprint')
         .in('container_id', containerIds)
-        .in('alert_fingerprint', fingerprints)
+        .in('alert_fingerprint', factFingerprints)
 
       const existingFingerprintRows =
         unwrapSupabaseResultOrThrow(existingFingerprintRowsResult, {
@@ -245,6 +247,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         .eq('category', 'monitoring')
         .eq('type', 'NO_MOVEMENT')
         .eq('message_key', 'alerts.noMovementDetected')
+        .eq('lifecycle_state', 'ACTIVE')
 
       const existingNoMovementRows =
         unwrapSupabaseResultOrThrow(existingNoMovementRowsResult, {
@@ -261,7 +264,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const alertsToInsert = dedupedAlerts.filter((alert) => {
-      if (alert.alert_fingerprint !== null) {
+      if (alert.category !== 'monitoring' && alert.alert_fingerprint !== null) {
         const fingerprintKey = `${alert.container_id}|${alert.alert_fingerprint}`
         if (
           incomingFingerprintKeys.has(fingerprintKey) &&
@@ -306,7 +309,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .from(TABLE)
       .select('*')
       .eq('container_id', containerId)
-      .is('acked_at', null)
+      .eq('lifecycle_state', 'ACTIVE')
       .order('triggered_at', { ascending: false })
       .order('id', { ascending: false })
 
@@ -323,7 +326,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       .from(TABLE)
       .select('type')
       .eq('container_id', containerId)
-      .is('acked_at', null)
+      .eq('lifecycle_state', 'ACTIVE')
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveTypesByContainerId',
@@ -384,7 +387,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     const alertsResult = await supabase
       .from(TABLE)
       .select('*')
-      .is('acked_at', null)
+      .eq('lifecycle_state', 'ACTIVE')
       .order('triggered_at', { ascending: false })
       .order('id', { ascending: false })
 
@@ -453,7 +456,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         type: domainAlert.type,
         generated_at: domainAlert.triggered_at,
         fingerprint: domainAlert.alert_fingerprint,
-        is_active: domainAlert.acked_at === null,
+        is_active: resolveAlertLifecycleState(domainAlert) === 'ACTIVE',
         retroactive: domainAlert.retroactive,
       })
     }
@@ -472,21 +475,53 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     const result = await supabase
       .from(TABLE)
       .update({
+        lifecycle_state: 'ACKED',
         acked_at: ackedAt,
         acked_by: metadata.ackedBy,
         acked_source: metadata.ackedSource,
+        resolved_at: null,
+        resolved_reason: null,
       })
       .eq('id', alertId)
-      .is('acked_at', null)
+      .eq('lifecycle_state', 'ACTIVE')
     unwrapSupabaseSingleOrNull(result, { operation: 'acknowledge', table: TABLE })
   },
 
   async unacknowledge(alertId: string): Promise<void> {
     const result = await supabase
       .from(TABLE)
-      .update({ acked_at: null, acked_by: null, acked_source: null })
+      .update({
+        lifecycle_state: 'ACTIVE',
+        acked_at: null,
+        acked_by: null,
+        acked_source: null,
+        resolved_at: null,
+        resolved_reason: null,
+      })
       .eq('id', alertId)
-      .not('acked_at', 'is', 'null')
+      .eq('lifecycle_state', 'ACKED')
     unwrapSupabaseSingleOrNull(result, { operation: 'unacknowledge', table: TABLE })
+  },
+
+  async autoResolveMany(command): Promise<void> {
+    if (command.alertIds.length === 0) return
+
+    const uniqueAlertIds = Array.from(new Set(command.alertIds))
+
+    const result = await supabase
+      .from(TABLE)
+      .update({
+        lifecycle_state: 'AUTO_RESOLVED',
+        resolved_at: command.resolvedAt,
+        resolved_reason: command.reason,
+        acked_at: null,
+        acked_by: null,
+        acked_source: null,
+      })
+      .in('id', uniqueAlertIds)
+      .eq('category', 'monitoring')
+      .eq('lifecycle_state', 'ACTIVE')
+
+    unwrapSupabaseResultOrThrow(result, { operation: 'autoResolveMany', table: TABLE })
   },
 }

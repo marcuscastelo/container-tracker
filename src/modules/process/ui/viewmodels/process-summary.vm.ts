@@ -1,4 +1,5 @@
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
+import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type ProcessSyncStatus = 'idle' | 'syncing' | 'success' | 'error'
@@ -15,6 +16,7 @@ export type ProcessSummaryVM = {
   readonly containerNumbers: readonly string[]
   readonly status: StatusVariant
   readonly statusCode: ProcessStatusCode
+  readonly statusMicrobadge: ProcessStatusMicrobadgeVM | null
   readonly statusRank: number
   readonly eta: string | null
   readonly etaMsOrNull: number | null

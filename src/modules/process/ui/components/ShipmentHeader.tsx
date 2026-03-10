@@ -2,12 +2,12 @@ import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
 import { ArrowIcon } from '~/modules/process/ui/components/Icons'
+import { ProcessStatusBadges } from '~/modules/process/ui/components/ProcessStatusBadges'
+import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
 // sync header helpers removed — not used in the simplified header
-import { processStatusToLabelKey } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
-import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   data: ShipmentDetailVM
@@ -288,6 +288,16 @@ export function ShipmentHeader(props: Props): JSX.Element {
     onOpenDelete: () => void
   }) {
     const { t, keys } = useTranslation()
+    const statusBadges = () =>
+      toProcessStatusBadgesDisplay({
+        source: {
+          status: p.props.data.status,
+          statusCode: p.props.data.statusCode,
+          statusMicrobadge: p.props.data.statusMicrobadge,
+        },
+        t,
+        keys,
+      })
 
     return (
       <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
@@ -312,9 +322,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
         </div>
 
         <div class="flex items-center gap-1.5 shrink-0">
-          <StatusBadge
-            variant={p.props.data.status}
-            label={t(processStatusToLabelKey(keys, p.props.data.statusCode))}
+          <ProcessStatusBadges
+            primary={statusBadges().primary}
+            microbadge={statusBadges().microbadge}
           />
           <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
             {p.props.data.carrier ?? '—'}

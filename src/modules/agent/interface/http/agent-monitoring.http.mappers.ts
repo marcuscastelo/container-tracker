@@ -72,6 +72,7 @@ export function toHeartbeatCommand(command: {
     version: command.payload.agent_version,
     currentVersion: command.payload.current_version ?? command.payload.agent_version,
     desiredVersion: command.payload.desired_version,
+    updateChannel: command.payload.update_channel,
     updaterState: command.payload.update_state,
     updaterLastCheckedAt: command.payload.updater_last_checked_at,
     updaterLastError: command.payload.updater_last_error,

@@ -3,6 +3,7 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
 /**
@@ -12,7 +13,7 @@ export type TrackingAlertRepository = {
   /** Persist new alerts. Returns the alerts with generated ids. */
   insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]>
 
-  /** Fetch active (non-acked) alerts for a container. */
+  /** Fetch active alerts for a container. */
   findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]>
 
   /** Fetch all alerts for a container (active + acknowledged). */
@@ -44,4 +45,11 @@ export type TrackingAlertRepository = {
 
   /** Mark an acknowledged alert as active again by id. */
   unacknowledge(alertId: string): Promise<void>
+
+  /** Auto-resolve active monitoring alerts by ids. */
+  autoResolveMany(command: {
+    readonly alertIds: readonly string[]
+    readonly resolvedAt: string
+    readonly reason: TrackingAlertResolvedReason
+  }): Promise<void>
 }

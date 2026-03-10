@@ -1,7 +1,10 @@
 import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { ProcessWithContainers } from '~/modules/process/application/process.readmodels'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
-import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
+import {
+  deriveProcessStatusDispersion,
+  deriveProcessStatusFromContainers,
+} from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
 import {
   type OperationalStatus,
   toOperationalAlertSeverity,
@@ -15,6 +18,13 @@ import type { ProcessOperationalSummary } from '~/modules/process/features/opera
  */
 type ContainerTrackingSummary = {
   readonly status: string
+  readonly operational?: {
+    readonly eta: {
+      readonly eventTimeIso: string
+    } | null
+    readonly etaApplicable?: boolean
+    readonly lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
+  }
   readonly alerts: readonly {
     readonly severity: string
     readonly type: string
@@ -134,6 +144,46 @@ function shouldPreferAlertByTriggeredAt(
   return candidate.triggered_at > current.triggered_at
 }
 
+function toLifecycleBucketFromStatus(
+  status: OperationalStatus,
+): 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery' {
+  if (status === 'DELIVERED' || status === 'EMPTY_RETURNED') return 'final_delivery'
+  if (status === 'ARRIVED_AT_POD' || status === 'DISCHARGED' || status === 'AVAILABLE_FOR_PICKUP') {
+    return 'post_arrival_pre_delivery'
+  }
+  return 'pre_arrival'
+}
+
+function resolveSummaryLifecycleBucket(
+  summary: ContainerTrackingSummary,
+  status: OperationalStatus,
+): 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery' {
+  const bucket = summary.operational?.lifecycleBucket
+  if (bucket === 'pre_arrival') return bucket
+  if (bucket === 'post_arrival_pre_delivery') return bucket
+  if (bucket === 'final_delivery') return bucket
+  return toLifecycleBucketFromStatus(status)
+}
+
+function resolveEtaApplicable(
+  summary: ContainerTrackingSummary,
+  bucket: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery',
+): boolean {
+  if (summary.operational?.etaApplicable !== undefined) {
+    return summary.operational.etaApplicable
+  }
+  return bucket === 'pre_arrival'
+}
+
+function deriveProcessLifecycleBucket(
+  lifecycleBuckets: readonly ('pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery')[],
+): 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery' {
+  if (lifecycleBuckets.length === 0) return 'pre_arrival'
+  if (lifecycleBuckets.every((bucket) => bucket === 'final_delivery')) return 'final_delivery'
+  if (lifecycleBuckets.some((bucket) => bucket === 'pre_arrival')) return 'pre_arrival'
+  return 'post_arrival_pre_delivery'
+}
+
 function hasAnyTrackingObservation(summaries: readonly ContainerTrackingSummary[]): boolean {
   return summaries.some((summary) => summary.timeline.observations.length > 0)
 }
@@ -244,25 +294,53 @@ export function aggregateOperationalSummary(
   const statuses: OperationalStatus[] = summaries.map((summary) =>
     toOperationalStatus(summary.status),
   )
+  const lifecycleBuckets = summaries.map((summary, index) => {
+    const status = statuses[index] ?? 'UNKNOWN'
+    return resolveSummaryLifecycleBucket(summary, status)
+  })
   const hasTrackingData = hasAnyTrackingObservation(summaries)
-  const processStatus =
-    containerCount > 0 && !hasTrackingData
+  const allUnknownStatuses = statuses.length > 0 && statuses.every((status) => status === 'UNKNOWN')
+  const primaryProcessStatus =
+    containerCount > 0 && !hasTrackingData && !allUnknownStatuses
       ? 'AWAITING_DATA'
       : deriveProcessStatusFromContainers(statuses)
+  const processStatusDispersion = deriveProcessStatusDispersion({
+    statuses,
+    primaryStatus: primaryProcessStatus,
+  })
 
   // --- ETA ---
-  // Select earliest future ETA among containers
+  // Select earliest future ETA among ETA-eligible containers.
   const nowIso = now ?? new Date().toISOString()
   let eta: string | null = null
-  for (const s of summaries) {
-    for (const obs of s.timeline.observations) {
-      if (obs.event_time && obs.event_time > nowIso) {
-        if (eta === null || obs.event_time < eta) {
-          eta = obs.event_time
-        }
+  let etaEligibleTotal = 0
+  let etaWithValue = 0
+  for (let index = 0; index < summaries.length; index += 1) {
+    const summary = summaries[index]
+    const bucket = lifecycleBuckets[index] ?? 'pre_arrival'
+    const etaApplicable = resolveEtaApplicable(summary, bucket)
+    if (!etaApplicable) continue
+
+    etaEligibleTotal += 1
+    const etaIso = summary.operational?.eta?.eventTimeIso ?? null
+    if (etaIso === null) continue
+    etaWithValue += 1
+
+    if (etaIso > nowIso) {
+      if (eta === null || etaIso < eta) {
+        eta = etaIso
       }
     }
   }
+
+  // --- Lifecycle bucket + completion ---
+  const processLifecycleBucket = deriveProcessLifecycleBucket(lifecycleBuckets)
+
+  const finalDeliveryComplete =
+    statuses.length > 0 &&
+    statuses.every((status) => status === 'DELIVERED' || status === 'EMPTY_RETURNED')
+  const fullLogisticsComplete =
+    statuses.length > 0 && statuses.every((status) => status === 'EMPTY_RETURNED')
 
   // --- Alerts ---
   const allActiveAlerts: Array<{
@@ -325,8 +403,20 @@ export function aggregateOperationalSummary(
     reference,
     carrier,
     container_count: containerCount,
-    process_status: processStatus,
+    process_status: primaryProcessStatus,
+    highest_container_status: processStatusDispersion.highest_container_status,
+    status_counts: processStatusDispersion.status_counts,
+    status_microbadge: processStatusDispersion.status_microbadge,
+    has_status_dispersion: processStatusDispersion.has_status_dispersion,
+    lifecycle_bucket: processLifecycleBucket,
+    final_delivery_complete: finalDeliveryComplete,
+    full_logistics_complete: fullLogisticsComplete,
     eta,
+    eta_coverage: {
+      total: containerCount,
+      eligible_total: etaEligibleTotal,
+      with_eta: etaWithValue,
+    },
     alerts_count: alertsCount,
     highest_alert_severity: highestAlertSeverity,
     dominant_alert_created_at: dominantAlertCreatedAt,
@@ -378,6 +468,11 @@ export function createListProcessesWithOperationalSummaryUseCase(
               // Return a minimal fallback summary
               const fallback: ContainerTrackingSummary = {
                 status: 'UNKNOWN',
+                operational: {
+                  eta: null,
+                  etaApplicable: true,
+                  lifecycleBucket: 'pre_arrival',
+                },
                 alerts: [],
                 timeline: { observations: [] },
               }
@@ -404,7 +499,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
           processStatus: summary.process_status,
           syncStatus: sync.lastSyncStatus,
         })
-          ? { ...summary, process_status: 'NOT_SYNCED' as const }
+          ? { ...summary, process_status: 'NOT_SYNCED' as const, status_microbadge: null }
           : summary
 
         return { pwc, summary: normalizedSummary, sync }
