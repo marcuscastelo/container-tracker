@@ -1,6 +1,15 @@
 import { A } from '@solidjs/router'
 import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { createMemo, createSignal, For, Show } from 'solid-js'
+import {
+  buildGridTemplate,
+  type DashboardColumnDef,
+  type DashboardColumnId,
+  getColumnDef,
+  moveColumn,
+  readColumnOrderFromLocalStorage,
+  writeColumnOrderToLocalStorage,
+} from '~/modules/process/ui/components/dashboard-columns'
 import { ProcessSyncButton } from '~/modules/process/ui/components/ProcessSyncButton'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import {
@@ -22,6 +31,10 @@ import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
 type Props = {
@@ -41,6 +54,8 @@ type Props = {
 type RowProps = {
   readonly process: ProcessSummaryVM
   readonly index: number
+  readonly columnOrder: readonly DashboardColumnId[]
+  readonly gridStyle: string
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
   readonly onProcessIntent: (processId: string) => void
@@ -53,6 +68,8 @@ type TableRowsProps = {
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
   readonly onProcessIntent: (processId: string) => void
+  readonly columnOrder: readonly DashboardColumnId[]
+  readonly onColumnReorder: (columnId: DashboardColumnId, targetIndex: number) => void
 }
 
 type SortHeaderProps = {
@@ -63,10 +80,93 @@ type SortHeaderProps = {
   readonly align?: 'left' | 'center' | 'right'
 }
 
+// ---------------------------------------------------------------------------
+// Severity helpers
+// ---------------------------------------------------------------------------
+
+/** Severity weight for default priority ordering (lower = higher priority). */
+const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
+  danger: 0,
+  warning: 1,
+  info: 2,
+  success: 3,
+  none: 4,
+}
+
+function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
+  const highestSeverity = process.highestAlertSeverity
+  if (highestSeverity === 'danger') return 'danger'
+  if (highestSeverity === 'warning') return 'warning'
+  if (highestSeverity === 'info') return 'info'
+  if (process.alertsCount > 0) return 'info'
+  return 'none'
+}
+
+function toDominantAlertLabel(
+  process: ProcessSummaryVM,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string {
+  if (process.alertsCount === 0) return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
+  if (process.hasTransshipment) return t(keys.dashboard.table.dominantAlertLabel.transshipment)
+  return t(keys.dashboard.table.dominantAlertLabel.alertsPresent, { count: process.alertsCount })
+}
+
+function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
+  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
+  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
+  if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
+  if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
+  return 'border-slate-200 bg-slate-50 text-slate-500'
+}
+
+function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
+  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_#ef4444]'
+  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_#fbbf24]'
+  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_#93c5fd]'
+  return ''
+}
+
+function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
+  if (severity === 'danger') return '⛔'
+  if (severity === 'warning') return '⚠'
+  if (severity === 'info') return 'ℹ'
+  return '✓'
+}
+
+// ---------------------------------------------------------------------------
+// Display helpers
+// ---------------------------------------------------------------------------
+
+function displayProcessRef(process: ProcessSummaryVM): string {
+  if (process.reference) return process.reference
+  return `<${process.id.slice(0, 8)}>`
+}
+
+function displayRoute(process: ProcessSummaryVM): { origin: string; destination: string } {
+  return {
+    origin: process.origin?.display_name ?? '—',
+    destination: process.destination?.display_name ?? '—',
+  }
+}
+
+function displayEta(eta: string | null): string {
+  if (!eta) return '—'
+  return formatDateForLocale(eta)
+}
+
+function displayTruncatedText(value: string | null): string {
+  return value ?? '—'
+}
+
+// ---------------------------------------------------------------------------
+// Arrow icon (route)
+// ---------------------------------------------------------------------------
+
 function ArrowIcon(): JSX.Element {
   return (
     <svg
-      class="h-3 w-3 text-slate-300"
+      class="h-3 w-3 shrink-0 text-slate-300"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -81,6 +181,10 @@ function ArrowIcon(): JSX.Element {
     </svg>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Sort UI
+// ---------------------------------------------------------------------------
 
 function SortDirectionIcon(props: {
   readonly direction: DashboardSortDirection | null
@@ -121,82 +225,9 @@ function SortHeaderButton(props: SortHeaderProps): JSX.Element {
   )
 }
 
-function displayProcessRef(process: ProcessSummaryVM): string {
-  if (process.reference) return process.reference
-  return `<${process.id.slice(0, 8)}>`
-}
-
-function displayRoute(process: ProcessSummaryVM): {
-  origin: string
-  destination: string
-} {
-  return {
-    origin: process.origin?.display_name ?? '—',
-    destination: process.destination?.display_name ?? '—',
-  }
-}
-
-function displayEta(eta: string | null): string {
-  if (!eta) return '—'
-  return formatDateForLocale(eta)
-}
-
-function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
-  const highestSeverity = process.highestAlertSeverity
-  if (highestSeverity === 'danger') return 'danger'
-  if (highestSeverity === 'warning') return 'warning'
-  if (highestSeverity === 'info') return 'info'
-  if (process.alertsCount > 0) return 'info'
-  return 'none'
-}
-
-function toDominantAlertLabel(
-  process: ProcessSummaryVM,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-  keys: ReturnType<typeof useTranslation>['keys'],
-): string {
-  if (process.alertsCount === 0) return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
-  if (process.hasTransshipment) return t(keys.dashboard.table.dominantAlertLabel.transshipment)
-  return t(keys.dashboard.table.dominantAlertLabel.alertsPresent, { count: process.alertsCount })
-}
-
-function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
-  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
-  if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
-  if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
-  return 'border-slate-200 bg-slate-50 text-slate-500'
-}
-
-function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  // Use inset box-shadow instead of border-l-4 so the stripe is purely visual
-  // and does NOT participate in the box model. border-l-4 would reduce the grid
-  // container's content area by 4px, causing the fixed-width tracks to overflow
-  // and produce a horizontal scrollbar.
-  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_#ef4444]'
-  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_#fbbf24]'
-  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_#93c5fd]'
-  return ''
-}
-
-/** Shared grid definition — single source of truth for header + rows */
-const GRID_COLS = 'grid grid-cols-[130px_1fr_185px_110px_70px_80px] divide-x divide-slate-200/50'
-
-/** Severity weight for default priority ordering (lower = higher priority). */
-const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
-  danger: 0,
-  warning: 1,
-  info: 2,
-  success: 3,
-  none: 4,
-}
-
-function toUnifiedAlertIcon(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '⛔'
-  if (severity === 'warning') return '⚠'
-  if (severity === 'info') return 'ℹ'
-  return '✓'
-}
+// ---------------------------------------------------------------------------
+// Alert age
+// ---------------------------------------------------------------------------
 
 function formatDashboardAlertAge(params: {
   readonly triggeredAtIso: string | null
@@ -216,7 +247,6 @@ function formatDashboardAlertAge(params: {
   else if (hours < 24) label = params.t(params.keys.dashboard.table.age.hours, { count: hours })
   else label = params.t(params.keys.dashboard.table.age.days, { count: days })
 
-  // Aging color: 0-24h neutral, 1-3d warning, 4+d danger.
   let agingClass: string
   if (days >= 4) agingClass = 'text-red-500'
   else if (days >= 1) agingClass = 'text-amber-500'
@@ -225,27 +255,175 @@ function formatDashboardAlertAge(params: {
   return { label, agingClass }
 }
 
-function DashboardProcessRow(props: RowProps): JSX.Element {
-  const { t, keys } = useTranslation()
-  const route = () => displayRoute(props.process)
-  const processHref = () => buildProcessHref(props.process.id)
+// ---------------------------------------------------------------------------
+// Cell renderers — one per column, each receives the full row context
+// ---------------------------------------------------------------------------
 
-  const dominantSeverity = () => toDominantSeverity(props.process)
-  const dominantAlertLabel = () => toDominantAlertLabel(props.process, t, keys)
+type CellContext = {
+  readonly process: ProcessSummaryVM
+  readonly processHref: string
+  readonly handleProcessLinkClick: (event: MouseEvent) => void
+  readonly triggerProcessIntent: () => void
+  readonly t: ReturnType<typeof useTranslation>['t']
+  readonly keys: ReturnType<typeof useTranslation>['keys']
+  readonly onProcessSync: (processId: string) => Promise<void>
+}
+
+function ProcessRefCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2">
+      <A
+        href={ctx.processHref}
+        class="row-link block truncate text-md-ui font-semibold text-slate-900 hover:text-sky-700"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        {displayProcessRef(ctx.process)}
+      </A>
+    </div>
+  )
+}
+
+function ImporterCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2">
+      <A
+        href={ctx.processHref}
+        class="row-link block truncate text-xs-ui text-slate-600"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        {displayTruncatedText(ctx.process.importerName)}
+      </A>
+    </div>
+  )
+}
+
+function ExporterCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2">
+      <A
+        href={ctx.processHref}
+        class="row-link block truncate text-xs-ui text-slate-600"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        {displayTruncatedText(ctx.process.exporterName)}
+      </A>
+    </div>
+  )
+}
+
+function RouteCell(ctx: CellContext): JSX.Element {
+  const route = () => displayRoute(ctx.process)
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2">
+      <A
+        href={ctx.processHref}
+        class="row-link block"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        <div class="flex min-w-0 items-center gap-1 text-xs-ui text-slate-500 leading-tight">
+          <span class="truncate">{route().origin}</span>
+          <ArrowIcon />
+          <span class="truncate font-medium text-slate-600">{route().destination}</span>
+          <Show when={ctx.process.redestinationNumber}>
+            <span class="shrink-0 text-micro text-slate-400">
+              ({ctx.process.redestinationNumber})
+            </span>
+          </Show>
+        </div>
+      </A>
+    </div>
+  )
+}
+
+function StatusCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2 flex items-center justify-center">
+      <A
+        href={ctx.processHref}
+        class="row-link inline-flex items-center"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        <StatusBadge
+          variant={ctx.process.status}
+          label={ctx.t(trackingStatusToLabelKey(ctx.keys, ctx.process.statusCode))}
+        />
+      </A>
+    </div>
+  )
+}
+
+function EtaCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
+      <A
+        href={ctx.processHref}
+        class="row-link block"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        <Show when={ctx.process.eta} fallback={<span class="text-xs-ui text-slate-300">—</span>}>
+          <span
+            class={`text-md-ui font-bold tabular-nums ${ctx.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
+          >
+            {displayEta(ctx.process.eta)}
+          </span>
+        </Show>
+      </A>
+    </div>
+  )
+}
+
+function SyncCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
+      <ProcessSyncButton
+        processId={ctx.process.id}
+        status={ctx.process.syncStatus}
+        lastSyncAt={ctx.process.lastSyncAt}
+        onSync={ctx.onProcessSync}
+      />
+    </div>
+  )
+}
+
+function AlertsCell(ctx: CellContext): JSX.Element {
+  const dominantSeverity = () => toDominantSeverity(ctx.process)
+  const dominantAlertLabel = () => toDominantAlertLabel(ctx.process, ctx.t, ctx.keys)
 
   const severityLabel = () => {
-    if (dominantSeverity() === 'danger') return t(keys.dashboard.alertIndicators.severity.danger)
-    if (dominantSeverity() === 'warning') return t(keys.dashboard.alertIndicators.severity.warning)
-    if (dominantSeverity() === 'info') return t(keys.dashboard.alertIndicators.severity.info)
-    if (dominantSeverity() === 'success') return t(keys.dashboard.alertIndicators.severity.success)
-    return t(keys.dashboard.table.dominantAlertLabel.noAlerts)
+    if (dominantSeverity() === 'danger')
+      return ctx.t(ctx.keys.dashboard.alertIndicators.severity.danger)
+    if (dominantSeverity() === 'warning')
+      return ctx.t(ctx.keys.dashboard.alertIndicators.severity.warning)
+    if (dominantSeverity() === 'info')
+      return ctx.t(ctx.keys.dashboard.alertIndicators.severity.info)
+    if (dominantSeverity() === 'success')
+      return ctx.t(ctx.keys.dashboard.alertIndicators.severity.success)
+    return ctx.t(ctx.keys.dashboard.table.dominantAlertLabel.noAlerts)
   }
 
   const alertAge = () =>
     formatDashboardAlertAge({
-      triggeredAtIso: props.process.dominantAlertCreatedAt,
-      t,
-      keys,
+      triggeredAtIso: ctx.process.dominantAlertCreatedAt,
+      t: ctx.t,
+      keys: ctx.keys,
     })
 
   const alertTooltip = (): string | undefined => {
@@ -253,14 +431,70 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     const parts: string[] = [dominantAlertLabel()]
     const age = alertAge()
     if (age) parts.push(`· ${age.label}`)
-    const extra = props.process.alertsCount - 1
+    const extra = ctx.process.alertsCount - 1
     if (extra > 0) {
-      parts.push(t(keys.dashboard.table.alertTooltip.additionalAlerts, { count: extra }))
+      parts.push(ctx.t(ctx.keys.dashboard.table.alertTooltip.additionalAlerts, { count: extra }))
     }
     return parts.join('\n')
   }
 
+  return (
+    <div class="min-w-0 overflow-hidden px-3 py-2 text-center">
+      <A
+        href={ctx.processHref}
+        class="row-link block"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        <Show
+          when={dominantSeverity() !== 'none'}
+          fallback={
+            <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
+              ✓
+            </span>
+          }
+        >
+          <span
+            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
+            title={alertTooltip()}
+          >
+            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
+            {ctx.process.alertsCount}
+            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
+          </span>
+        </Show>
+      </A>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Cell dispatcher
+// ---------------------------------------------------------------------------
+
+const CELL_RENDERERS: Record<DashboardColumnId, (ctx: CellContext) => JSX.Element> = {
+  processRef: ProcessRefCell,
+  importer: ImporterCell,
+  exporter: ExporterCell,
+  route: RouteCell,
+  status: StatusCell,
+  eta: EtaCell,
+  sync: SyncCell,
+  alerts: AlertsCell,
+}
+
+// ---------------------------------------------------------------------------
+// Row
+// ---------------------------------------------------------------------------
+
+function DashboardProcessRow(props: RowProps): JSX.Element {
+  const { t, keys } = useTranslation()
+  const processHref = () => buildProcessHref(props.process.id)
+  const dominantSeverity = () => toDominantSeverity(props.process)
   const zebraClass = () => (props.index % 2 === 1 ? 'bg-gray-50/60' : 'bg-white/60')
+
   const triggerProcessIntent = () => {
     props.onProcessIntent(props.process.id)
   }
@@ -281,7 +515,6 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       hasSelectedText: hasDashboardRowSelectedText(),
     })
     if (!shouldNavigate) return
-
     event.preventDefault()
     openProcess()
   }
@@ -301,147 +534,167 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       interactiveTarget: isInteractiveDashboardRowTarget(event.target),
     })
     if (!shouldNavigate) return
-
     event.preventDefault()
     openProcess()
   }
+
+  const cellContext = (): CellContext => ({
+    process: props.process,
+    processHref: processHref(),
+    handleProcessLinkClick,
+    triggerProcessIntent,
+    t,
+    keys,
+    onProcessSync: props.onProcessSync,
+  })
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: Row-level delegated navigation must coexist with internal interactive controls, which prevents using a single semantic <button>/<a> wrapper.
     <div
       role="button"
       tabIndex={0}
-      class={`${GRID_COLS} group items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 cursor-pointer ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      class={`grid items-center border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 cursor-pointer ${zebraClass()} ${getSeverityBorderClass(dominantSeverity())}`}
+      style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
       onPointerEnter={triggerProcessIntent}
       onFocusIn={triggerProcessIntent}
       onPointerDown={triggerProcessIntent}
     >
-      {/* Process — visual anchor */}
-      <div class="overflow-hidden px-3 py-2">
-        <A
-          href={processHref()}
-          class="row-link text-md-ui font-semibold text-slate-900 hover:text-sky-700 whitespace-nowrap truncate block"
-          onClick={handleProcessLinkClick}
-          onPointerEnter={triggerProcessIntent}
-          onFocusIn={triggerProcessIntent}
-          onPointerDown={triggerProcessIntent}
-        >
-          {displayProcessRef(props.process)}
-        </A>
-      </div>
-      {/* Route — secondary */}
-      <div class="overflow-hidden px-3 py-2">
-        <A
-          href={processHref()}
-          class="row-link block"
-          onClick={handleProcessLinkClick}
-          onPointerEnter={triggerProcessIntent}
-          onFocusIn={triggerProcessIntent}
-          onPointerDown={triggerProcessIntent}
-        >
-          <div class="flex items-center gap-1 text-xs-ui text-slate-500 leading-tight">
-            <span class="truncate">{route().origin}</span>
-            <ArrowIcon />
-            <span class="truncate font-medium text-slate-600">{route().destination}</span>
-            <Show when={props.process.redestinationNumber}>
-              <span class="text-micro text-slate-400">({props.process.redestinationNumber})</span>
-            </Show>
-          </div>
-        </A>
-      </div>
-      {/* Status */}
-      <div class="px-3 py-2 flex items-center justify-center">
-        <A
-          href={processHref()}
-          class="row-link inline-flex items-center"
-          onClick={handleProcessLinkClick}
-          onPointerEnter={triggerProcessIntent}
-          onFocusIn={triggerProcessIntent}
-          onPointerDown={triggerProcessIntent}
-        >
-          <StatusBadge
-            variant={props.process.status}
-            label={t(trackingStatusToLabelKey(keys, props.process.statusCode))}
-          />
-        </A>
-      </div>
-      {/* ETA — emphasis by exception */}
-      <div class="px-3 py-2 text-center">
-        <A
-          href={processHref()}
-          class="row-link block"
-          onClick={handleProcessLinkClick}
-          onPointerEnter={triggerProcessIntent}
-          onFocusIn={triggerProcessIntent}
-          onPointerDown={triggerProcessIntent}
-        >
-          <Show
-            when={props.process.eta}
-            fallback={<span class="text-xs-ui text-slate-300">—</span>}
-          >
-            <span
-              class={`text-md-ui font-bold tabular-nums ${props.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
-            >
-              {displayEta(props.process.eta)}
-            </span>
-          </Show>
-        </A>
-      </div>
-      {/* Sync */}
-      <div class="px-3 py-2 text-center">
-        <ProcessSyncButton
-          processId={props.process.id}
-          status={props.process.syncStatus}
-          lastSyncAt={props.process.lastSyncAt}
-          onSync={props.onProcessSync}
-        />
-      </div>
-      {/* Alerts — compact icon + count with tooltip */}
-      <div class="px-3 py-2 text-center">
-        <A
-          href={processHref()}
-          class="row-link block"
-          onClick={handleProcessLinkClick}
-          onPointerEnter={triggerProcessIntent}
-          onFocusIn={triggerProcessIntent}
-          onPointerDown={triggerProcessIntent}
-        >
-          <Show
-            when={dominantSeverity() !== 'none'}
-            fallback={
-              <span
-                class="text-xs-ui text-emerald-400"
-                role="img"
-                aria-label={dominantAlertLabel()}
-              >
-                ✓
-              </span>
-            }
-          >
-            <span
-              class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
-              title={alertTooltip()}
-            >
-              <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
-              {props.process.alertsCount}
-              <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-            </span>
-          </Show>
-        </A>
-      </div>
+      <For each={props.columnOrder}>
+        {(colId) => {
+          const renderer = CELL_RENDERERS[colId]
+          return renderer(cellContext())
+        }}
+      </For>
     </div>
   )
 }
 
-function DashboardProcessRows(props: TableRowsProps): JSX.Element {
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
+function DashboardTableHeader(props: {
+  readonly columnOrder: readonly DashboardColumnId[]
+  readonly gridStyle: string
+  readonly sortSelection: DashboardSortSelection
+  readonly onSortToggle: (field: DashboardSortField) => void
+  readonly onColumnReorder: (columnId: DashboardColumnId, targetIndex: number) => void
+}): JSX.Element {
   const { t, keys } = useTranslation()
 
-  const processSortDirection = () =>
-    getActiveDashboardSortDirection(props.sortSelection, 'processNumber')
-  const statusSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'status')
-  const etaSortDirection = () => getActiveDashboardSortDirection(props.sortSelection, 'eta')
+  const [draggedColumn, setDraggedColumn] = createSignal<DashboardColumnId | null>(null)
+  const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null)
+
+  const columnLabelKeys: Record<string, string> = {
+    process: keys.dashboard.table.col.process,
+    importerName: keys.dashboard.table.col.importerName,
+    exporterName: keys.dashboard.table.col.exporterName,
+    route: keys.dashboard.table.col.route,
+    status: keys.dashboard.table.col.status,
+    eta: keys.dashboard.table.col.eta,
+    sync: keys.dashboard.table.col.sync,
+    alerts: keys.dashboard.table.col.alerts,
+  }
+
+  const resolveLabel = (colDef: DashboardColumnDef): string => {
+    const keyPath = columnLabelKeys[colDef.labelKey]
+    return keyPath ? t(keyPath) : colDef.labelKey
+  }
+
+  const handleDragStart = (colId: DashboardColumnId, colDef: DashboardColumnDef, e: DragEvent) => {
+    if (!colDef.reorderable) {
+      e.preventDefault()
+      return
+    }
+    setDraggedColumn(colId)
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', colId)
+    }
+  }
+
+  const handleDragOver = (index: number, e: DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
+    }
+    setDragOverIndex(index)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (targetIndex: number, e: DragEvent) => {
+    e.preventDefault()
+    const columnId = draggedColumn()
+    setDraggedColumn(null)
+    setDragOverIndex(null)
+
+    if (!columnId) return
+    props.onColumnReorder(columnId, targetIndex)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedColumn(null)
+    setDragOverIndex(null)
+  }
+
+  return (
+    <div
+      class="grid border-b border-slate-200 bg-white/80 text-left text-xs-ui font-semibold uppercase tracking-wide text-slate-500"
+      style={{ 'grid-template-columns': props.gridStyle }}
+    >
+      <For each={props.columnOrder}>
+        {(colId, i) => {
+          const colDef = getColumnDef(colId)
+          const isDragTarget = () => dragOverIndex() === i()
+          const alignClass = () => {
+            if (colDef.align === 'center') return 'text-center'
+            if (colDef.align === 'right') return 'text-right'
+            return ''
+          }
+
+          return (
+            // biome-ignore lint/a11y/useSemanticElements: CSS grid layout precludes semantic <th>
+            <div
+              role="columnheader"
+              tabIndex={colDef.reorderable ? 0 : undefined}
+              class={`px-3 py-2.5 ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-sky-50' : ''}`}
+              draggable={colDef.reorderable}
+              onDragStart={(e: DragEvent) => handleDragStart(colId, colDef, e)}
+              onDragOver={(e: DragEvent) => handleDragOver(i(), e)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e: DragEvent) => handleDrop(i(), e)}
+              onDragEnd={handleDragEnd}
+            >
+              <Show when={colDef.sortField} fallback={<span>{resolveLabel(colDef)}</span>}>
+                {(sortField) => (
+                  <SortHeaderButton
+                    field={sortField()}
+                    label={resolveLabel(colDef)}
+                    direction={getActiveDashboardSortDirection(props.sortSelection, sortField())}
+                    onToggle={props.onSortToggle}
+                    align={colDef.align}
+                  />
+                )}
+              </Show>
+            </div>
+          )
+        }}
+      </For>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Table body (rows + header)
+// ---------------------------------------------------------------------------
+
+function DashboardProcessRows(props: TableRowsProps): JSX.Element {
+  const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
 
   /** Default priority ordering: severity desc → alert count desc → preserve API order. */
   const prioritySorted = (): readonly ProcessSummaryVM[] => {
@@ -453,51 +706,23 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
     })
   }
 
-  const tableHeader = (
-    <div
-      class={`${GRID_COLS} bg-white/80 border-b border-slate-200 text-left text-xs-ui font-semibold uppercase tracking-wide text-slate-500`}
-    >
-      <div class="px-3 py-2.5">
-        <SortHeaderButton
-          field="processNumber"
-          label={t(keys.dashboard.table.col.process)}
-          direction={processSortDirection()}
-          onToggle={props.onSortToggle}
-        />
-      </div>
-      <div class="px-3 py-2.5">{t(keys.dashboard.table.col.route)}</div>
-      <div class="px-3 py-2.5 text-center">
-        <SortHeaderButton
-          field="status"
-          label={t(keys.dashboard.table.col.status)}
-          direction={statusSortDirection()}
-          onToggle={props.onSortToggle}
-          align="center"
-        />
-      </div>
-      <div class="px-3 py-2.5 text-center">
-        <SortHeaderButton
-          field="eta"
-          label={t(keys.dashboard.table.col.eta)}
-          direction={etaSortDirection()}
-          onToggle={props.onSortToggle}
-          align="center"
-        />
-      </div>
-      <div class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.sync)}</div>
-      <div class="px-3 py-2.5 text-center">{t(keys.dashboard.table.col.alerts)}</div>
-    </div>
-  )
-
   return (
     <div class="overflow-x-hidden">
-      {tableHeader}
+      <DashboardTableHeader
+        columnOrder={props.columnOrder}
+        gridStyle={gridStyle()}
+        sortSelection={props.sortSelection}
+        onSortToggle={props.onSortToggle}
+        onColumnReorder={props.onColumnReorder}
+      />
       <div>
         <For each={prioritySorted()}>
           {(process, i) => (
             <DashboardProcessRow
               process={process}
               index={i()}
+              columnOrder={props.columnOrder}
+              gridStyle={gridStyle()}
               onProcessSync={props.onProcessSync}
               onOpenProcess={props.onOpenProcess}
               onProcessIntent={props.onProcessIntent}
@@ -509,8 +734,22 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
 export function DashboardProcessTable(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const [columnOrder, setColumnOrder] = createSignal<readonly DashboardColumnId[]>(
+    readColumnOrderFromLocalStorage(),
+  )
+
+  const handleColumnReorder = (columnId: DashboardColumnId, targetIndex: number) => {
+    const result = moveColumn(columnOrder(), columnId, targetIndex)
+    if (!result) return
+    setColumnOrder(result)
+    writeColumnOrderToLocalStorage(result)
+  }
 
   const content = () => {
     if (props.loading) {
@@ -559,6 +798,8 @@ export function DashboardProcessTable(props: Props): JSX.Element {
         onProcessSync={props.onProcessSync}
         onOpenProcess={props.onOpenProcess}
         onProcessIntent={props.onProcessIntent}
+        columnOrder={columnOrder()}
+        onColumnReorder={handleColumnReorder}
       />
     )
   }
