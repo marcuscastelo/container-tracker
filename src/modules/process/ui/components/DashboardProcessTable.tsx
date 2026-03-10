@@ -10,11 +10,11 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
+import { toDashboardStatusCellDisplay } from '~/modules/process/ui/components/dashboard-status-cell.presenter'
 import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
-import { processStatusToLabelKey } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import {
   hasDashboardRowSelectedText,
   isInteractiveDashboardRowTarget,
@@ -351,20 +351,42 @@ function RouteCell(ctx: CellContext): JSX.Element {
 }
 
 function StatusCell(ctx: CellContext): JSX.Element {
+  // compute display data once per render to avoid recomputing translations and
+  // microbadge mapping multiple times during JSX evaluation
+  const display = createMemo(() =>
+    toDashboardStatusCellDisplay({
+      source: {
+        status: ctx.process.status,
+        statusCode: ctx.process.statusCode,
+        statusMicrobadge: ctx.process.statusMicrobadge,
+      },
+      t: ctx.t,
+      keys: ctx.keys,
+    }),
+  )
+
   return (
     <div class="min-w-0 overflow-hidden px-3 py-2 flex items-center justify-center">
       <A
         href={ctx.processHref}
-        class="row-link inline-flex items-center"
+        class="row-link inline-flex max-w-full items-center"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <StatusBadge
-          variant={ctx.process.status}
-          label={ctx.t(processStatusToLabelKey(ctx.keys, ctx.process.statusCode))}
-        />
+        <div class="inline-flex max-w-full flex-col items-start leading-tight">
+          <StatusBadge variant={display().primary.variant} label={display().primary.label} />
+          <Show when={display().subtitle}>
+            {(subtitle) => (
+              <span
+                class={`mt-1 max-w-full truncate whitespace-nowrap text-xs-ui font-medium ${subtitle().textClass}`}
+              >
+                {subtitle().label}
+              </span>
+            )}
+          </Show>
+        </div>
       </A>
     </div>
   )

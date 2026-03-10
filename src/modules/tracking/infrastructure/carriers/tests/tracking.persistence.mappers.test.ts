@@ -181,9 +181,12 @@ describe('alertRowToDomain', () => {
     alert_fingerprint: 'TRANSSHIPMENT:fp-1,fp-2',
     retroactive: false,
     provider: 'maersk',
+    lifecycle_state: 'ACTIVE',
     acked_at: null,
     acked_by: null,
     acked_source: null,
+    resolved_at: null,
+    resolved_reason: null,
     created_at: '2026-01-15T12:00:00.000Z',
   }
 

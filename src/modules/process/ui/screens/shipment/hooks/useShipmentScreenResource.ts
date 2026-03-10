@@ -74,6 +74,7 @@ export function useShipmentScreenResource(
       ...current,
       status: latest.status,
       statusCode: latest.statusCode,
+      statusMicrobadge: latest.statusMicrobadge,
       eta: latest.eta,
       containers: latest.containers,
       alerts: latest.alerts,

@@ -8,7 +8,10 @@ import type {
 } from '~/modules/process/application/process.records'
 import type { ProcessSyncSummaryReadModel } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
-import { deriveProcessStatusFromContainers } from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
+import {
+  deriveProcessStatusDispersion,
+  deriveProcessStatusFromContainers,
+} from '~/modules/process/features/operational-projection/application/deriveProcessStatus'
 import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
@@ -113,6 +116,17 @@ type ContainerWithTrackingResponse = {
   timeline: ReturnType<typeof toTimelineItemResponse>[]
 }
 
+function resolveTrackingAlertLifecycleStateFromReadModel(
+  alert: Pick<TrackingAlertDisplayReadModel, 'lifecycle_state' | 'acked_at' | 'resolved_at'>,
+): 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED' {
+  if (alert.lifecycle_state === 'ACTIVE') return 'ACTIVE'
+  if (alert.lifecycle_state === 'ACKED') return 'ACKED'
+  if (alert.lifecycle_state === 'AUTO_RESOLVED') return 'AUTO_RESOLVED'
+  if (alert.acked_at !== null) return 'ACKED'
+  if (alert.resolved_at !== null && alert.resolved_at !== undefined) return 'AUTO_RESOLVED'
+  return 'ACTIVE'
+}
+
 function toContainerResponse(c: ProcessContainerRecord) {
   return {
     id: String(c.id),
@@ -157,7 +171,19 @@ export function toProcessResponseWithSummary(
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
     process_status: summary.process_status,
+    highest_container_status: summary.highest_container_status,
+    status_counts: summary.status_counts,
+    status_microbadge: summary.status_microbadge,
+    has_status_dispersion: summary.has_status_dispersion,
+    lifecycle_bucket: summary.lifecycle_bucket,
+    final_delivery_complete: summary.final_delivery_complete,
+    full_logistics_complete: summary.full_logistics_complete,
     eta: summary.eta,
+    eta_coverage: {
+      total: summary.eta_coverage.total,
+      eligible_total: summary.eta_coverage.eligible_total,
+      with_eta: summary.eta_coverage.with_eta,
+    },
     alerts_count: summary.alerts_count,
     highest_alert_severity: summary.highest_alert_severity,
     dominant_alert_created_at: summary.dominant_alert_created_at,
@@ -193,6 +219,7 @@ function toObservationResponse(obs: TrackingObservationRecord) {
 }
 
 function toTrackingAlertResponse(a: TrackingAlertDisplayReadModel) {
+  const lifecycleState = resolveTrackingAlertLifecycleStateFromReadModel(a)
   return {
     id: a.id,
     container_number: a.container_number,
@@ -204,7 +231,10 @@ function toTrackingAlertResponse(a: TrackingAlertDisplayReadModel) {
     triggered_at: a.triggered_at,
     retroactive: a.retroactive,
     provider: a.provider,
+    lifecycle_state: lifecycleState,
     acked_at: a.acked_at,
+    resolved_at: a.resolved_at ?? null,
+    resolved_reason: a.resolved_reason ?? null,
   }
 }
 
@@ -316,20 +346,56 @@ function toContainerOperationalResponse(summary: TrackingOperationalSummary) {
   return {
     status: summary.status,
     eta: toOperationalEtaResponse(summary.eta),
+    // normalize lifecycle bucket first so eta applicability uses the same fallback
+    // logic everywhere (legacy read models may lack lifecycleBucket)
+    lifecycle_bucket: (() => {
+      const bucket = summary.lifecycleBucket ?? 'pre_arrival'
+      return bucket
+    })(),
+    eta_applicable: (() => {
+      const bucket = summary.lifecycleBucket ?? 'pre_arrival'
+      return summary.etaApplicable ?? bucket === 'pre_arrival'
+    })(),
     transshipment: toOperationalTransshipmentResponse(summary.transshipment),
     data_issue: summary.dataIssue,
   }
 }
 
+function deriveProcessLifecycleBucket(
+  lifecycleBuckets: readonly ('pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery')[],
+): 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery' {
+  if (lifecycleBuckets.length === 0) return 'pre_arrival'
+  if (lifecycleBuckets.every((bucket) => bucket === 'final_delivery')) return 'final_delivery'
+  if (lifecycleBuckets.some((bucket) => bucket === 'pre_arrival')) return 'pre_arrival'
+  return 'post_arrival_pre_delivery'
+}
+
 function toProcessOperationalResponse(summaries: readonly TrackingOperationalSummary[]) {
   const total = summaries.length
-  const processStatus = deriveProcessStatusFromContainers(
-    summaries.map((summary) => toOperationalStatus(summary.status)),
+  const statuses = summaries.map((summary) => toOperationalStatus(summary.status))
+  const processStatus = deriveProcessStatusFromContainers(statuses)
+  const processStatusDispersion = deriveProcessStatusDispersion({
+    statuses,
+    primaryStatus: processStatus,
+  })
+  const lifecycleBuckets = summaries.map((summary) => summary.lifecycleBucket ?? 'pre_arrival')
+  const processLifecycleBucket = deriveProcessLifecycleBucket(lifecycleBuckets)
+
+  const finalDeliveryComplete =
+    statuses.length > 0 &&
+    statuses.every((status) => status === 'DELIVERED' || status === 'EMPTY_RETURNED')
+  const fullLogisticsComplete =
+    statuses.length > 0 && statuses.every((status) => status === 'EMPTY_RETURNED')
+
+  const etaEligibleSummaries = summaries.filter(
+    (summary) => (summary.etaApplicable ?? summary.lifecycleBucket === 'pre_arrival') === true,
   )
-  const etaCandidates = summaries
+  const etaCandidates = etaEligibleSummaries
     .map((summary) => summary.eta)
     .filter((eta): eta is NonNullable<TrackingOperationalSummary['eta']> => eta !== null)
-  const withEta = etaCandidates.length
+  const withEta = etaEligibleSummaries
+    .map((summary) => summary.eta)
+    .filter((eta): eta is NonNullable<TrackingOperationalSummary['eta']> => eta !== null).length
 
   let etaMax: NonNullable<TrackingOperationalSummary['eta']> | null = null
   for (const eta of etaCandidates) {
@@ -340,9 +406,17 @@ function toProcessOperationalResponse(summaries: readonly TrackingOperationalSum
 
   return {
     derived_status: processStatus,
+    highest_container_status: processStatusDispersion.highest_container_status,
+    status_counts: processStatusDispersion.status_counts,
+    status_microbadge: processStatusDispersion.status_microbadge,
+    has_status_dispersion: processStatusDispersion.has_status_dispersion,
+    lifecycle_bucket: processLifecycleBucket,
+    final_delivery_complete: finalDeliveryComplete,
+    full_logistics_complete: fullLogisticsComplete,
     eta_max: toOperationalEtaResponse(etaMax),
     coverage: {
       total,
+      eligible_total: etaEligibleSummaries.length,
       with_eta: withEta,
     },
   }

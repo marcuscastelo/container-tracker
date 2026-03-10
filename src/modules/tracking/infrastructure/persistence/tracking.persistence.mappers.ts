@@ -13,8 +13,10 @@ import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snap
 import type {
   NewTrackingAlert,
   TrackingAlert,
+  TrackingAlertLifecycleState,
   TrackingAlertMessageContract,
   TrackingAlertMessageKey,
+  TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   NewObservation,
@@ -172,6 +174,37 @@ const ALERT_ACK_SOURCE_MAP: Record<string, AlertAckSource> = {
   dashboard: 'dashboard',
   process_view: 'process_view',
   api: 'api',
+}
+
+const ALERT_LIFECYCLE_STATE_MAP: Record<string, TrackingAlertLifecycleState> = {
+  ACTIVE: 'ACTIVE',
+  ACKED: 'ACKED',
+  AUTO_RESOLVED: 'AUTO_RESOLVED',
+}
+function requireAlertLifecycleState(value: unknown, field: string): TrackingAlertLifecycleState {
+  const s = requireString(value, field)
+  const mapped = ALERT_LIFECYCLE_STATE_MAP[s]
+  if (mapped === undefined) {
+    throw new Error(`tracking persistence mapper: ${field} is not a valid lifecycle state: ${s}`)
+  }
+  return mapped
+}
+
+const ALERT_RESOLVED_REASON_MAP: Record<string, TrackingAlertResolvedReason> = {
+  condition_cleared: 'condition_cleared',
+  terminal_state: 'terminal_state',
+}
+function optionalAlertResolvedReason(
+  value: unknown,
+  field: string,
+): TrackingAlertResolvedReason | null {
+  if (value === null || value === undefined) return null
+  const s = requireString(value, field)
+  const mapped = ALERT_RESOLVED_REASON_MAP[s]
+  if (mapped === undefined) {
+    throw new Error(`tracking persistence mapper: ${field} is not a valid resolved reason: ${s}`)
+  }
+  return mapped
 }
 
 const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
@@ -411,6 +444,19 @@ export function snapshotToInsertRow(snapshot: NewSnapshot): InsertTrackingSnapsh
 // Alert mappers
 // ---------------------------------------------------------------------------
 
+function deriveAlertLifecycleStateFromTimestamps(command: {
+  readonly lifecycleState: TrackingAlertRow['lifecycle_state'] | NewTrackingAlert['lifecycle_state']
+  readonly ackedAtIso: string | null
+  readonly resolvedAtIso: string | null
+}): 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED' {
+  if (command.lifecycleState === 'ACTIVE') return 'ACTIVE'
+  if (command.lifecycleState === 'ACKED') return 'ACKED'
+  if (command.lifecycleState === 'AUTO_RESOLVED') return 'AUTO_RESOLVED'
+  if (command.ackedAtIso !== null) return 'ACKED'
+  if (command.resolvedAtIso !== null) return 'AUTO_RESOLVED'
+  return 'ACTIVE'
+}
+
 export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
   let fingerprints: string[] = []
   if (Array.isArray(row.source_observation_fingerprints)) {
@@ -423,8 +469,19 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     row.message_params,
     'alert.message',
   )
+  const ackedAtIso = normalizeAlertIso(row.acked_at)
+  const resolvedAtIso = normalizeAlertIso(row.resolved_at)
+  const lifecycleState = deriveAlertLifecycleStateFromTimestamps({
+    lifecycleState:
+      row.lifecycle_state === null || row.lifecycle_state === undefined
+        ? undefined
+        : requireAlertLifecycleState(row.lifecycle_state, 'alert.lifecycle_state'),
+    ackedAtIso,
+    resolvedAtIso,
+  })
 
   return {
+    lifecycle_state: lifecycleState,
     id: requireString(row.id, 'alert.id'),
     container_id: requireString(row.container_id, 'alert.container_id'),
     category: requireAlertCategory(row.category, 'alert.category'),
@@ -437,14 +494,23 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     alert_fingerprint: row.alert_fingerprint ?? null,
     retroactive: row.retroactive,
     provider: optionalProvider(row.provider, 'alert.provider'),
-    acked_at: normalizeAlertIso(row.acked_at),
+    acked_at: ackedAtIso,
     acked_by: row.acked_by ?? null,
     acked_source: optionalAlertAckSource(row.acked_source, 'alert.acked_source'),
+    resolved_at: resolvedAtIso,
+    resolved_reason: optionalAlertResolvedReason(row.resolved_reason, 'alert.resolved_reason'),
   }
 }
 
 export function alertToInsertRow(alert: NewTrackingAlert): InsertTrackingAlertRow {
+  const lifecycleState = deriveAlertLifecycleStateFromTimestamps({
+    lifecycleState: alert.lifecycle_state,
+    ackedAtIso: alert.acked_at,
+    resolvedAtIso: alert.resolved_at ?? null,
+  })
+
   return {
+    lifecycle_state: lifecycleState,
     container_id: alert.container_id,
     category: alert.category,
     type: alert.type,
@@ -460,5 +526,7 @@ export function alertToInsertRow(alert: NewTrackingAlert): InsertTrackingAlertRo
     acked_at: alert.acked_at,
     acked_by: alert.acked_by,
     acked_source: alert.acked_source,
+    resolved_at: alert.resolved_at ?? null,
+    resolved_reason: alert.resolved_reason ?? null,
   }
 }

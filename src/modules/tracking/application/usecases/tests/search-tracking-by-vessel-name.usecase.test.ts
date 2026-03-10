@@ -66,6 +66,7 @@ function createDeps(
       listActiveAlertReadModel: vi.fn(async () => []),
       acknowledge: vi.fn(async () => undefined),
       unacknowledge: vi.fn(async () => undefined),
+      autoResolveMany: vi.fn(async () => undefined),
     },
     syncMetadataRepository: {
       listByContainerNumbers: vi.fn(async () => []),

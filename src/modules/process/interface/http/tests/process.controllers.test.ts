@@ -182,6 +182,8 @@ describe('process controllers', () => {
     const containerOneSummary: TrackingOperationalSummary = {
       status: 'IN_TRANSIT',
       eta: null,
+      etaApplicable: true,
+      lifecycleBucket: 'pre_arrival',
       transshipment: {
         hasTransshipment: false,
         count: 0,
@@ -245,7 +247,10 @@ describe('process controllers', () => {
         triggered_at: '2026-03-01T10:00:00.000Z',
         retroactive: false,
         provider: 'maersk',
+        lifecycle_state: 'ACTIVE',
         acked_at: null,
+        resolved_at: null,
+        resolved_reason: null,
       },
     ])
   })
@@ -261,6 +266,8 @@ describe('process controllers', () => {
         locationCode: 'BRSSZ',
         locationDisplay: 'Santos',
       },
+      etaApplicable: true,
+      lifecycleBucket: 'pre_arrival',
       transshipment: {
         hasTransshipment: true,
         count: 1,
@@ -296,6 +303,60 @@ describe('process controllers', () => {
     expect(body.process_operational?.coverage.total).toBe(2)
     expect(body.process_operational?.coverage.with_eta).toBe(1)
     expect(body.containersSync).toHaveLength(2)
+  })
+
+  it('returns process detail with derived microbadge fields when containers are in dispersed lifecycle phases', async () => {
+    const inTransitSummary: TrackingOperationalSummary = {
+      status: 'IN_TRANSIT',
+      eta: null,
+      etaApplicable: true,
+      lifecycleBucket: 'pre_arrival',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    }
+    const dischargedSummary: TrackingOperationalSummary = {
+      status: 'DISCHARGED',
+      eta: null,
+      etaApplicable: false,
+      lifecycleBucket: 'post_arrival_pre_delivery',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    }
+
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        if (containerId === 'container-2') {
+          return createSummary(containerId, containerNumber, dischargedSummary)
+        }
+
+        return createSummary(containerId, containerNumber, inTransitSummary)
+      },
+    )
+
+    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.process_operational?.derived_status).toBe('IN_TRANSIT')
+    expect(body.process_operational?.highest_container_status).toBe('DISCHARGED')
+    expect(body.process_operational?.has_status_dispersion).toBe(true)
+    expect(body.process_operational?.status_counts).toMatchObject({
+      IN_TRANSIT: 1,
+      DISCHARGED: 1,
+    })
+    expect(body.process_operational?.status_microbadge).toEqual({
+      status: 'DISCHARGED',
+      count: 1,
+    })
   })
 
   it('falls back to deterministic empty sync metadata when sync metadata lookup fails', async () => {
@@ -339,6 +400,40 @@ describe('process controllers', () => {
         lastErrorAt: null,
       },
     ])
+  })
+
+  it('keeps process derived_status as UNKNOWN when all containers are UNKNOWN / never synced', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) => {
+        return createSummary(containerId, containerNumber, summary)
+      },
+    )
+    const getContainersSyncMetadata = vi.fn<GetContainersSyncMetadataMock>(async (command) =>
+      command.containerNumbers.map((containerNumber) => ({
+        containerNumber,
+        carrier: null,
+        lastSuccessAt: null,
+        lastAttemptAt: null,
+        isSyncing: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      })),
+    )
+
+    const controllers = createControllers(
+      'Santos',
+      getContainerSummaryMock,
+      getContainersSyncMetadata,
+    )
+
+    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.containers.every((container) => container.status === 'UNKNOWN')).toBe(true)
+    expect(body.containersSync.every((sync) => sync.lastSuccessAt === null)).toBe(true)
+    expect(body.process_operational?.derived_status).toBe('UNKNOWN')
   })
 
   it('does not infer POD code from free-text destination names', async () => {

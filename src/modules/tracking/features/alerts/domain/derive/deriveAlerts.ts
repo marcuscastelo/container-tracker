@@ -6,7 +6,9 @@ import {
 import type {
   NewTrackingAlert,
   TrackingAlert,
+  TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
@@ -21,6 +23,16 @@ type TransshipmentPair = {
   readonly port: string
   readonly vesselFrom: string
   readonly vesselTo: string
+}
+
+export type MonitoringAutoResolution = {
+  readonly alertId: string
+  readonly reason: TrackingAlertResolvedReason
+}
+
+export type DerivedAlertTransitions = {
+  readonly newAlerts: readonly NewTrackingAlert[]
+  readonly monitoringAutoResolutions: readonly MonitoringAutoResolution[]
 }
 
 const TERMINAL_STATUSES: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
@@ -81,6 +93,10 @@ function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
     if (hasSameCycleAnchorObservation) return true
   }
   return false
+}
+
+function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
+  return alert.category === 'monitoring' && resolveAlertLifecycleState(alert) === 'ACTIVE'
 }
 
 /**
@@ -186,14 +202,15 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  *
  * @see docs/ALERT_POLICY.md
  */
-export function deriveAlerts(
+export function deriveAlertTransitions(
   timeline: Timeline,
   status: ContainerStatus,
   existingAlerts: readonly TrackingAlert[],
   isBackfill: boolean = false,
   now: Date = new Date(),
-): NewTrackingAlert[] {
+): DerivedAlertTransitions {
   const alerts: NewTrackingAlert[] = []
+  const monitoringAutoResolutions: MonitoringAutoResolution[] = []
   const nowIso = now.toISOString()
 
   // Build deduplication set for FACT alerts.
@@ -220,6 +237,7 @@ export function deriveAlerts(
       const detectedAt = pair.loadObs.event_time ?? nowIso
 
       alerts.push({
+        lifecycle_state: 'ACTIVE',
         container_id: timeline.container_id,
         category: 'fact',
         type: 'TRANSSHIPMENT',
@@ -239,6 +257,8 @@ export function deriveAlerts(
         acked_at: null,
         acked_by: null,
         acked_source: null,
+        resolved_at: null,
+        resolved_reason: null,
       })
     }
   }
@@ -257,6 +277,7 @@ export function deriveAlerts(
       const locationText = resolveObservationLocationDisplay(firstHold)
 
       alerts.push({
+        lifecycle_state: 'ACTIVE',
         container_id: timeline.container_id,
         category: 'fact',
         type: 'CUSTOMS_HOLD',
@@ -274,6 +295,8 @@ export function deriveAlerts(
         acked_at: null,
         acked_by: null,
         acked_source: null,
+        resolved_at: null,
+        resolved_reason: null,
       })
     }
   }
@@ -281,6 +304,13 @@ export function deriveAlerts(
   // === MONITORING ALERTS (never retroactive) ===
   if (!isBackfill) {
     const isTerminal = TERMINAL_STATUSES.includes(status)
+    const activeMonitoringAlerts = existingAlerts.filter(isMonitoringActiveAlert)
+
+    const activeNoMovementAlertIds = activeMonitoringAlerts
+      .filter((alert) => alert.type === 'NO_MOVEMENT')
+      .map((alert) => alert.id)
+
+    let hasNoMovementCondition = false
     if (!isTerminal) {
       // 3. No movement breakpoint escalation
       const lastActualEvent = toLatestActualEventWithTime(timeline)
@@ -292,6 +322,7 @@ export function deriveAlerts(
         const highestCrossedBreakpoint = toHighestCrossedNoMovementBreakpoint(daysWithoutMovement)
 
         if (highestCrossedBreakpoint !== null) {
+          hasNoMovementCondition = true
           // Use a stable movement identity as cycle anchor. Prefer the
           // observation fingerprint (strong identity) and fall back to the
           // full event_time timestamp when fingerprint is absent. Using
@@ -325,6 +356,7 @@ export function deriveAlerts(
 
           if (!alreadyEmittedForCycle) {
             alerts.push({
+              lifecycle_state: 'ACTIVE',
               container_id: timeline.container_id,
               category: 'monitoring',
               type: 'NO_MOVEMENT',
@@ -346,12 +378,36 @@ export function deriveAlerts(
               acked_at: null,
               acked_by: null,
               acked_source: null,
+              resolved_at: null,
+              resolved_reason: null,
             })
           }
         }
       }
     }
+
+    if (activeNoMovementAlertIds.length > 0 && (isTerminal || !hasNoMovementCondition)) {
+      const reason: TrackingAlertResolvedReason = isTerminal
+        ? 'terminal_state'
+        : 'condition_cleared'
+      for (const alertId of activeNoMovementAlertIds) {
+        monitoringAutoResolutions.push({ alertId, reason })
+      }
+    }
   }
 
-  return alerts
+  return {
+    newAlerts: alerts,
+    monitoringAutoResolutions,
+  }
+}
+
+export function deriveAlerts(
+  timeline: Timeline,
+  status: ContainerStatus,
+  existingAlerts: readonly TrackingAlert[],
+  isBackfill: boolean = false,
+  now: Date = new Date(),
+): readonly NewTrackingAlert[] {
+  return deriveAlertTransitions(timeline, status, existingAlerts, isBackfill, now).newAlerts
 }

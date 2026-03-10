@@ -2,6 +2,34 @@ import { z } from 'zod'
 import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
+const ProcessStatusMicrobadgeStatusSchema = z.enum([
+  'UNKNOWN',
+  'IN_PROGRESS',
+  'LOADED',
+  'IN_TRANSIT',
+  'ARRIVED_AT_POD',
+  'DISCHARGED',
+  'AVAILABLE_FOR_PICKUP',
+  'DELIVERED',
+  'EMPTY_RETURNED',
+])
+
+const ProcessStatusCountsSchema = z.object({
+  UNKNOWN: z.number().int().nonnegative(),
+  IN_PROGRESS: z.number().int().nonnegative(),
+  LOADED: z.number().int().nonnegative(),
+  IN_TRANSIT: z.number().int().nonnegative(),
+  ARRIVED_AT_POD: z.number().int().nonnegative(),
+  DISCHARGED: z.number().int().nonnegative(),
+  AVAILABLE_FOR_PICKUP: z.number().int().nonnegative(),
+  DELIVERED: z.number().int().nonnegative(),
+  EMPTY_RETURNED: z.number().int().nonnegative(),
+})
+
+const ProcessStatusMicrobadgeSchema = z.object({
+  status: ProcessStatusMicrobadgeStatusSchema,
+  count: z.number().int().positive(),
+})
 
 export const ProcessResponseSchema = z.object({
   id: z.string(),
@@ -30,8 +58,24 @@ export const ProcessResponseSchema = z.object({
   ),
   /** Derived process status (from tracking pipeline aggregation) */
   process_status: z.string().optional(),
+  highest_container_status: ProcessStatusMicrobadgeStatusSchema.nullish(),
+  status_counts: ProcessStatusCountsSchema.optional(),
+  status_microbadge: ProcessStatusMicrobadgeSchema.nullish(),
+  has_status_dispersion: z.boolean().optional(),
+  lifecycle_bucket: z
+    .enum(['pre_arrival', 'post_arrival_pre_delivery', 'final_delivery'])
+    .optional(),
+  final_delivery_complete: z.boolean().optional(),
+  full_logistics_complete: z.boolean().optional(),
   /** Earliest future ETA across containers */
   eta: z.string().nullish(),
+  eta_coverage: z
+    .object({
+      total: z.number(),
+      eligible_total: z.number(),
+      with_eta: z.number(),
+    })
+    .optional(),
   /** Total active alerts across containers */
   alerts_count: z.number().optional(),
   /** Highest alert severity across containers */
@@ -102,17 +146,31 @@ const OperationalTransshipmentResponseSchema = z.object({
 const ContainerOperationalResponseSchema = z.object({
   status: z.string(),
   eta: OperationalEtaResponseSchema.nullable(),
+  eta_applicable: z.boolean().optional(),
+  lifecycle_bucket: z
+    .enum(['pre_arrival', 'post_arrival_pre_delivery', 'final_delivery'])
+    .optional(),
   transshipment: OperationalTransshipmentResponseSchema,
   data_issue: z.boolean().optional(),
 })
 
 const ProcessOperationalResponseSchema = z.object({
   derived_status: z.string(),
+  highest_container_status: ProcessStatusMicrobadgeStatusSchema.nullish(),
+  status_counts: ProcessStatusCountsSchema.optional(),
+  status_microbadge: ProcessStatusMicrobadgeSchema.nullish(),
+  has_status_dispersion: z.boolean().optional(),
   eta_max: OperationalEtaResponseSchema.nullable(),
   coverage: z.object({
     total: z.number(),
+    eligible_total: z.number().optional(),
     with_eta: z.number(),
   }),
+  lifecycle_bucket: z
+    .enum(['pre_arrival', 'post_arrival_pre_delivery', 'final_delivery'])
+    .optional(),
+  final_delivery_complete: z.boolean().optional(),
+  full_logistics_complete: z.boolean().optional(),
 })
 
 const TrackingSeriesLabelSchema = z.enum([

@@ -12,6 +12,7 @@ import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   NewObservation,
   Observation,
@@ -98,7 +99,8 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
 
   async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
     return this.alerts.filter(
-      (alert) => alert.container_id === containerId && alert.acked_at === null,
+      (alert) =>
+        alert.container_id === containerId && resolveAlertLifecycleState(alert) === 'ACTIVE',
     )
   }
 
@@ -115,7 +117,10 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
     return new Set(
       this.alerts
-        .filter((alert) => alert.container_id === containerId && alert.acked_at === null)
+        .filter(
+          (alert) =>
+            alert.container_id === containerId && resolveAlertLifecycleState(alert) === 'ACTIVE',
+        )
         .map((alert) => alert.type),
     )
   }
@@ -132,7 +137,9 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
       readonly ackedSource: TrackingAlertAckSource | null
     },
   ): Promise<void> {
-    const index = this.alerts.findIndex((alert) => alert.id === alertId && alert.acked_at === null)
+    const index = this.alerts.findIndex(
+      (alert) => alert.id === alertId && resolveAlertLifecycleState(alert) === 'ACTIVE',
+    )
     if (index < 0) {
       return
     }
@@ -144,14 +151,19 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
 
     this.alerts[index] = {
       ...current,
+      lifecycle_state: 'ACKED',
       acked_at: ackedAt,
       acked_by: metadata.ackedBy,
       acked_source: metadata.ackedSource,
+      resolved_at: null,
+      resolved_reason: null,
     }
   }
 
   async unacknowledge(alertId: string): Promise<void> {
-    const index = this.alerts.findIndex((alert) => alert.id === alertId && alert.acked_at !== null)
+    const index = this.alerts.findIndex(
+      (alert) => alert.id === alertId && resolveAlertLifecycleState(alert) === 'ACKED',
+    )
     if (index < 0) {
       return
     }
@@ -163,9 +175,35 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
 
     this.alerts[index] = {
       ...current,
+      lifecycle_state: 'ACTIVE',
       acked_at: null,
       acked_by: null,
       acked_source: null,
+      resolved_at: null,
+      resolved_reason: null,
+    }
+  }
+
+  async autoResolveMany(command: {
+    readonly alertIds: readonly string[]
+    readonly resolvedAt: string
+    readonly reason: 'condition_cleared' | 'terminal_state'
+  }): Promise<void> {
+    for (const alertId of command.alertIds) {
+      const index = this.alerts.findIndex((alert) => alert.id === alertId)
+      if (index < 0) continue
+      const current = this.alerts[index]
+      if (current === undefined) continue
+      if (resolveAlertLifecycleState(current) !== 'ACTIVE') continue
+      this.alerts[index] = {
+        ...current,
+        lifecycle_state: 'AUTO_RESOLVED',
+        resolved_at: command.resolvedAt,
+        resolved_reason: command.reason,
+        acked_at: null,
+        acked_by: null,
+        acked_source: null,
+      }
     }
   }
 }

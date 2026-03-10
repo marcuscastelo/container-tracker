@@ -477,6 +477,28 @@
       "DELIVERED": "Entregue",
       "EMPTY_RETURNED": "Vazio Devolvido"
     },
+    "statusMicrobadge": {
+      "ARRIVED_AT_POD": {
+        "one": "{{count}} no POD",
+        "other": "{{count}} no POD"
+      },
+      "DISCHARGED": {
+        "one": "{{count}} descarregado",
+        "other": "{{count}} descarregados"
+      },
+      "AVAILABLE_FOR_PICKUP": {
+        "one": "{{count}} disponível para retirada",
+        "other": "{{count}} disponíveis para retirada"
+      },
+      "DELIVERED": {
+        "one": "{{count}} entregue",
+        "other": "{{count}} entregues"
+      },
+      "EMPTY_RETURNED": {
+        "one": "{{count}} vazio devolvido",
+        "other": "{{count}} vazios devolvidos"
+      }
+    },
     "observationType": {
       "GATE_IN": "Entrada no Terminal",
       "GATE_OUT": "Saída do Terminal",

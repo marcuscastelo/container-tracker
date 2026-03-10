@@ -9,11 +9,14 @@ type TrackingAlertDisplaySourceBase = {
   readonly category: TrackingAlert['category']
   readonly type: TrackingAlert['type']
   readonly severity: TrackingAlert['severity']
+  readonly lifecycle_state?: TrackingAlert['lifecycle_state']
   readonly detected_at: string
   readonly triggered_at: string
   readonly retroactive: boolean
   readonly provider: TrackingAlert['provider']
   readonly acked_at: string | null
+  readonly resolved_at?: string | null
+  readonly resolved_reason?: TrackingAlert['resolved_reason']
 }
 
 export type TrackingAlertDisplaySource = TrackingAlertDisplaySourceBase &

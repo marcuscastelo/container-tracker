@@ -4,7 +4,6 @@ import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import { useTranslation } from '~/shared/localization/i18n'
 import { CopyButton } from '~/shared/ui/CopyButton'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
@@ -42,18 +41,6 @@ type ContainerSelectorItemLabels = {
   readonly failed: (relative: string) => string
 }
 
-/** Status codes for which ETA is no longer meaningful */
-const COMPLETED_STATUS_CODES: ReadonlySet<TrackingStatusCode> = new Set([
-  'DELIVERED',
-  'EMPTY_RETURNED',
-  'DISCHARGED',
-  'AVAILABLE_FOR_PICKUP',
-])
-
-function isContainerCompleted(statusCode: TrackingStatusCode): boolean {
-  return COMPLETED_STATUS_CODES.has(statusCode)
-}
-
 function ContainerSelectorItem(props: {
   readonly container: ContainerDetailVM
   readonly selected: boolean
@@ -63,8 +50,7 @@ function ContainerSelectorItem(props: {
   readonly syncNow: Date
   readonly locale: string
 }): JSX.Element {
-  const completed = () => isContainerCompleted(props.container.statusCode)
-  const showEtaChip = () => !completed()
+  const showEtaChip = () => props.container.etaApplicable
   const syncLabel = () =>
     toContainerSyncLabel(
       props.container.sync,

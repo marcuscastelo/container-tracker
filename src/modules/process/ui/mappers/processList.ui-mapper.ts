@@ -3,6 +3,7 @@ import {
   processStatusToVariant,
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
+import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
 export type ProcessListItemSource = {
@@ -25,6 +26,10 @@ export type ProcessListItemSource = {
     carrier_code?: string | null
   }>
   process_status?: string | null
+  status_microbadge?: {
+    status?: string | null
+    count?: number | null
+  } | null
   eta?: string | null
   alerts_count?: number
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
@@ -84,6 +89,7 @@ export function toProcessSummaryVMs(
       ),
       status: processStatusToVariant(statusCode),
       statusCode,
+      statusMicrobadge: toProcessStatusMicrobadgeVM(process.status_microbadge),
       statusRank,
       eta,
       etaMsOrNull: toTimestampOrNull(eta),

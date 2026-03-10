@@ -6,6 +6,7 @@ import {
 } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 
 type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+export type TrackingLifecycleBucket = 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
 
 export type TrackingOperationalEta = {
   readonly eventTimeIso: string
@@ -42,6 +43,8 @@ export type TrackingObservationForOperationalSummary = {
 export type TrackingOperationalSummary = {
   readonly status: string
   readonly eta: TrackingOperationalEta | null
+  readonly etaApplicable?: boolean
+  readonly lifecycleBucket?: TrackingLifecycleBucket
   readonly transshipment: TrackingOperationalTransshipment
   readonly dataIssue: boolean
 }
@@ -294,12 +297,27 @@ function normalizeTransshipment(
   }
 }
 
+function toTrackingLifecycleBucket(status: string): TrackingLifecycleBucket {
+  if (status === 'DELIVERED' || status === 'EMPTY_RETURNED') return 'final_delivery'
+  if (status === 'ARRIVED_AT_POD' || status === 'DISCHARGED' || status === 'AVAILABLE_FOR_PICKUP') {
+    return 'post_arrival_pre_delivery'
+  }
+  return 'pre_arrival'
+}
+
+function isEtaApplicable(bucket: TrackingLifecycleBucket): boolean {
+  return bucket === 'pre_arrival'
+}
+
 export function createTrackingOperationalSummaryFallback(
   dataIssue: boolean = false,
 ): TrackingOperationalSummary {
+  const lifecycleBucket = toTrackingLifecycleBucket('UNKNOWN')
   return {
     status: 'UNKNOWN',
     eta: null,
+    etaApplicable: isEtaApplicable(lifecycleBucket),
+    lifecycleBucket,
     transshipment: {
       hasTransshipment: false,
       count: 0,
@@ -312,9 +330,16 @@ export function createTrackingOperationalSummaryFallback(
 export function deriveTrackingOperationalSummary(
   args: DeriveTrackingOperationalSummaryArgs,
 ): TrackingOperationalSummary {
+  const lifecycleBucket = toTrackingLifecycleBucket(args.status)
+  const etaApplicable = isEtaApplicable(lifecycleBucket)
+
   return {
     status: args.status,
-    eta: deriveEtaFromSeries(args.observations, args.podLocationCode, args.now),
+    eta: etaApplicable
+      ? deriveEtaFromSeries(args.observations, args.podLocationCode, args.now)
+      : null,
+    etaApplicable,
+    lifecycleBucket,
     transshipment: normalizeTransshipment(args.observations, args.transshipment),
     dataIssue: args.dataIssue ?? false,
   }
