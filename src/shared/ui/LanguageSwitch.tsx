@@ -18,7 +18,7 @@ function LanguageOption(props: LanguageOptionProps): JSX.Element {
         class="flex w-full items-center gap-2 px-3 py-2 text-sm-ui text-slate-700 hover:bg-slate-50"
         onClick={() => props.onSelect(props.language)}
       >
-        <FlagIcon locale={props.language} class="w-4 h-4 shrink-0" />
+        <FlagIcon locale={props.language} class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="truncate">{props.language}</span>
       </button>
     </li>
