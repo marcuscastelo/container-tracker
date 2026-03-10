@@ -1,7 +1,7 @@
 import { useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
-import { ShipmentAlertsView } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertsView'
+import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
 import { ShipmentDialogsHost } from '~/modules/process/ui/screens/shipment/components/ShipmentDialogsHost'
 import { ShipmentRefreshStatusView } from '~/modules/process/ui/screens/shipment/components/ShipmentRefreshStatusView'
@@ -33,7 +33,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   const preloadRoute = usePreloadRoute()
 
   // props.processId is already an Accessor<string>; no extra createMemo indirection required
-  const processId = props.processId
+  const processId = () => props.processId()
 
   // ── Resource ───────────────────────────────────────────────────────────────
   const resource = useShipmentScreenResource({
@@ -112,7 +112,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
             refreshError={refresh.refreshError}
             onDismissRefreshError={refresh.clearRefreshError}
           />
-          <ShipmentAlertsView
+          <ShipmentAlertActionFeedback
             alertActionError={alertActions.alertActionError}
             onDismissAlertActionError={alertActions.clearAlertActionError}
           />
