@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, onCleanup } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -32,29 +33,9 @@ function RefreshIcon(props: {
   readonly title: string
   readonly error: boolean
 }): JSX.Element {
-  const iconClass = () => {
-    const baseClass = props.spinning ? 'h-4 w-4 animate-spin' : 'h-4 w-4'
-    if (props.error) return `${baseClass} text-red-200`
-    return baseClass
-  }
-
-  return (
-    <svg
-      class={iconClass()}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <title>{props.title}</title>
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M4 4v6h6M20 20v-6h-6"
-      />
-    </svg>
-  )
+  const base = props.spinning ? 'h-4 w-4 animate-spin' : 'h-4 w-4'
+  const cls = props.error ? `${base} text-red-200` : base
+  return <RefreshCw class={cls} title={props.title} aria-hidden="true" />
 }
 
 export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
