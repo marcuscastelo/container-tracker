@@ -1,5 +1,8 @@
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
-import { computeAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
+import {
+  computeAlertFingerprint,
+  computeNoMovementAlertFingerprint,
+} from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type {
   NewTrackingAlert,
   TrackingAlert,
@@ -21,6 +24,7 @@ type TransshipmentPair = {
 }
 
 const TERMINAL_STATUSES: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
+const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
 
 function resolveObservationLocationDisplay(observation: Observation | null | undefined): string {
   const locationDisplay = observation?.location_display?.trim() ?? ''
@@ -30,6 +34,53 @@ function resolveObservationLocationDisplay(observation: Observation | null | und
   if (locationCode.length > 0) return locationCode
 
   return 'unknown location'
+}
+
+function toLatestActualEventWithTime(timeline: Timeline): Observation | undefined {
+  return [...timeline.observations]
+    .filter(
+      (observation) => observation.event_time !== null && observation.event_time_type === 'ACTUAL',
+    )
+    .sort((a, b) => (b.event_time ?? '').localeCompare(a.event_time ?? ''))[0]
+}
+
+function toHighestCrossedNoMovementBreakpoint(daysWithoutMovement: number): number | null {
+  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
+    (thresholdDays) => daysWithoutMovement >= thresholdDays,
+  )
+  if (eligible.length === 0) return null
+  return eligible[eligible.length - 1] ?? null
+}
+
+function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
+  const normalizedCandidate = Math.floor(rawThresholdDays)
+  const breakpoint = toHighestCrossedNoMovementBreakpoint(normalizedCandidate)
+  if (breakpoint !== null) return breakpoint
+  return normalizedCandidate
+}
+
+function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
+  existingAlerts: readonly TrackingAlert[],
+  thresholdDays: number,
+  cycleAnchorDate: string,
+  cycleAnchorObservationFingerprint: string,
+): boolean {
+  for (const alert of existingAlerts) {
+    if (alert.category !== 'monitoring') continue
+    if (alert.type !== 'NO_MOVEMENT') continue
+    if (alert.message_key !== 'alerts.noMovementDetected') continue
+    const emittedThresholdDays = normalizeNoMovementThresholdDays(
+      alert.message_params.threshold_days,
+    )
+    if (emittedThresholdDays !== thresholdDays) continue
+    if (alert.message_params.lastEventDate === cycleAnchorDate) return true
+
+    const hasSameCycleAnchorObservation = alert.source_observation_fingerprints.includes(
+      cycleAnchorObservationFingerprint,
+    )
+    if (hasSameCycleAnchorObservation) return true
+  }
+  return false
 }
 
 /**
@@ -119,9 +170,12 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  *   - Deduplication: by alert_fingerprint (type + evidence)
  *
  * MONITORING alerts:
- *   - NO_MOVEMENT: if daysSinceLastEvent > threshold (default 7 days)
+ *   - NO_MOVEMENT: breakpoint escalation at 5 / 10 / 20 / 30 days since latest ACTUAL event
+ *     - Emits only the highest crossed breakpoint
+ *     - Acknowledgment does not allow re-emission of the same breakpoint in the same cycle
+ *     - Cycle resets when a new ACTUAL event becomes the latest movement anchor
  *   - ETA_MISSING: no ETA-related data available
- *   - Deduplication: by TYPE across full alert history (ACK does not reset idempotency)
+ *   - Deduplication: deterministic fingerprint for episode-aware monitoring alerts
  *
  * @param timeline - Derived timeline
  * @param status - Current derived status
@@ -130,7 +184,7 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
  * @param now - Current time (injectable for testing)
  * @returns Array of new alert descriptors to persist
  *
- * @see docs/master-consolidated-0209.md §4.5
+ * @see docs/ALERT_POLICY.md
  */
 export function deriveAlerts(
   timeline: Timeline,
@@ -142,17 +196,13 @@ export function deriveAlerts(
   const alerts: NewTrackingAlert[] = []
   const nowIso = now.toISOString()
 
-  // Build deduplication sets
-  // - FACT alerts: deduplicate by fingerprint across full history (ACK must not reset idempotency)
-  // - MONITORING alerts: deduplicate by type across full history (ACK must not reset idempotency)
+  // Build deduplication set for FACT alerts.
+  // Monitoring alerts with breakpoint semantics are handled with dedicated cycle-aware checks.
   const existingFactFingerprints = new Set(
     existingAlerts
       .filter((a) => a.category === 'fact' && a.alert_fingerprint !== null)
       .map((a) => a.alert_fingerprint)
       .filter((fp): fp is string => fp !== null),
-  )
-  const existingMonitoringTypes = new Set(
-    existingAlerts.filter((a) => a.category === 'monitoring').map((a) => a.type),
   )
 
   // === FACT-BASED ALERTS ===
@@ -230,45 +280,59 @@ export function deriveAlerts(
 
   // === MONITORING ALERTS (never retroactive) ===
   if (!isBackfill) {
-    // 3. No movement detection
-    const NO_MOVEMENT_THRESHOLD_DAYS = 7
-    const lastEventWithTime = [...timeline.observations]
-      .filter((o) => o.event_time !== null)
-      .sort((a, b) => (b.event_time ?? '').localeCompare(a.event_time ?? ''))[0]
+    const isTerminal = TERMINAL_STATUSES.includes(status)
+    if (!isTerminal) {
+      // 3. No movement breakpoint escalation
+      const lastActualEvent = toLatestActualEventWithTime(timeline)
 
-    if (lastEventWithTime?.event_time) {
-      const lastEventDate = new Date(lastEventWithTime.event_time)
-      const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
-
-      // Only alert if container is not in a terminal state
-      const isTerminal = TERMINAL_STATUSES.includes(status)
-
-      if (
-        daysSinceLastEvent > NO_MOVEMENT_THRESHOLD_DAYS &&
-        !isTerminal &&
-        !existingMonitoringTypes.has('NO_MOVEMENT')
-      ) {
+      if (lastActualEvent?.event_time) {
+        const lastEventDate = new Date(lastActualEvent.event_time)
+        const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
         const daysWithoutMovement = Math.floor(daysSinceLastEvent)
-        alerts.push({
-          container_id: timeline.container_id,
-          category: 'monitoring',
-          type: 'NO_MOVEMENT',
-          severity: 'warning',
-          message_key: 'alerts.noMovementDetected',
-          message_params: {
-            days: daysWithoutMovement,
-            lastEventDate: lastEventWithTime.event_time.slice(0, 10),
-          },
-          detected_at: nowIso,
-          triggered_at: nowIso,
-          source_observation_fingerprints: [lastEventWithTime.fingerprint],
-          alert_fingerprint: null, // Monitoring alerts don't use fingerprint dedup
-          retroactive: false,
-          provider: null,
-          acked_at: null,
-          acked_by: null,
-          acked_source: null,
-        })
+        const highestCrossedBreakpoint = toHighestCrossedNoMovementBreakpoint(daysWithoutMovement)
+
+        if (highestCrossedBreakpoint !== null) {
+          const cycleAnchorDate = lastActualEvent.event_time.slice(0, 10)
+          const cycleAnchorObservationFingerprint = lastActualEvent.fingerprint
+          const monitoringFingerprint = computeNoMovementAlertFingerprint(
+            timeline.container_id,
+            highestCrossedBreakpoint,
+            cycleAnchorDate,
+          )
+
+          const alreadyEmittedForCycle = hasNoMovementBreakpointBeenEmittedForCurrentCycle(
+            existingAlerts,
+            highestCrossedBreakpoint,
+            cycleAnchorDate,
+            cycleAnchorObservationFingerprint,
+          )
+
+          if (!alreadyEmittedForCycle) {
+            alerts.push({
+              container_id: timeline.container_id,
+              category: 'monitoring',
+              type: 'NO_MOVEMENT',
+              severity: 'warning',
+              message_key: 'alerts.noMovementDetected',
+              message_params: {
+                threshold_days: highestCrossedBreakpoint,
+                days_without_movement: daysWithoutMovement,
+                // Keep `days` for compatibility with current UI translation keys.
+                days: daysWithoutMovement,
+                lastEventDate: cycleAnchorDate,
+              },
+              detected_at: nowIso,
+              triggered_at: nowIso,
+              source_observation_fingerprints: [cycleAnchorObservationFingerprint],
+              alert_fingerprint: monitoringFingerprint,
+              retroactive: false,
+              provider: null,
+              acked_at: null,
+              acked_by: null,
+              acked_source: null,
+            })
+          }
+        }
       }
     }
   }

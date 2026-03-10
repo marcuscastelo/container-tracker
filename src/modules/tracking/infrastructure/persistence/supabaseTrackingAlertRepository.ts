@@ -17,16 +17,255 @@ import {
 
 const TABLE = 'tracking_alerts' as const
 const CONTAINERS_TABLE = 'containers' as const
+const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
+
+type NoMovementRow = {
+  readonly container_id: string
+  readonly category: string
+  readonly type: string
+  readonly message_key: string
+  readonly message_params: unknown
+  readonly source_observation_fingerprints: unknown
+}
 
 // NOTE: enum validation and normalization for alert rows is implemented in
 // `alertRowToDomain` (tracking.persistence.mappers). We prefer reusing that
 // centralized mapper to avoid duplication of enum logic here.
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function toFiniteNumberOrNull(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  return value
+}
+
+function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
+  const normalizedCandidate = Math.floor(rawThresholdDays)
+  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
+    (thresholdDays) => normalizedCandidate >= thresholdDays,
+  )
+  if (eligible.length === 0) return normalizedCandidate
+  return eligible[eligible.length - 1] ?? normalizedCandidate
+}
+
+function toNoMovementThresholdDaysFromParams(messageParams: unknown): number | null {
+  if (!isRecord(messageParams)) return null
+
+  const days = toFiniteNumberOrNull(messageParams.days)
+  const rawThresholdDays = toFiniteNumberOrNull(messageParams.threshold_days) ?? days
+  if (rawThresholdDays === null) return null
+
+  return normalizeNoMovementThresholdDays(rawThresholdDays)
+}
+
+function toNoMovementDateDedupKeyFromParams(
+  containerId: string,
+  messageParams: unknown,
+  normalizedThresholdDays: number,
+): string | null {
+  if (!isRecord(messageParams)) return null
+
+  const lastEventDateValue = messageParams.lastEventDate
+  if (typeof lastEventDateValue !== 'string') return null
+  const lastEventDate = lastEventDateValue.trim()
+  if (lastEventDate.length === 0) return null
+
+  return `${containerId}|date:${lastEventDate}|threshold:${normalizedThresholdDays}`
+}
+
+function toNoMovementSourceDedupKeys(
+  containerId: string,
+  normalizedThresholdDays: number,
+  sourceObservationFingerprints: unknown,
+): readonly string[] {
+  if (!Array.isArray(sourceObservationFingerprints)) return []
+
+  const keys: string[] = []
+  for (const value of sourceObservationFingerprints) {
+    if (typeof value !== 'string') continue
+    const fingerprint = value.trim()
+    if (fingerprint.length === 0) continue
+    keys.push(`${containerId}|source:${fingerprint}|threshold:${normalizedThresholdDays}`)
+  }
+
+  return Array.from(new Set(keys))
+}
+
+function toNoMovementDedupKeysFromAlert(alert: NewTrackingAlert): readonly string[] {
+  if (alert.category !== 'monitoring') return []
+  if (alert.type !== 'NO_MOVEMENT') return []
+  if (alert.message_key !== 'alerts.noMovementDetected') return []
+
+  const normalizedThresholdDays = toNoMovementThresholdDaysFromParams(alert.message_params)
+  if (normalizedThresholdDays === null) return []
+
+  const dedupKeys: string[] = []
+  const byDate = toNoMovementDateDedupKeyFromParams(
+    alert.container_id,
+    alert.message_params,
+    normalizedThresholdDays,
+  )
+  if (byDate !== null) dedupKeys.push(byDate)
+
+  dedupKeys.push(
+    ...toNoMovementSourceDedupKeys(
+      alert.container_id,
+      normalizedThresholdDays,
+      alert.source_observation_fingerprints,
+    ),
+  )
+
+  return dedupKeys
+}
+
+function toNoMovementDedupKeysFromRow(row: NoMovementRow): readonly string[] {
+  if (row.category !== 'monitoring') return []
+  if (row.type !== 'NO_MOVEMENT') return []
+  if (row.message_key !== 'alerts.noMovementDetected') return []
+
+  const normalizedThresholdDays = toNoMovementThresholdDaysFromParams(row.message_params)
+  if (normalizedThresholdDays === null) return []
+
+  const dedupKeys: string[] = []
+  const byDate = toNoMovementDateDedupKeyFromParams(
+    row.container_id,
+    row.message_params,
+    normalizedThresholdDays,
+  )
+  if (byDate !== null) dedupKeys.push(byDate)
+
+  dedupKeys.push(
+    ...toNoMovementSourceDedupKeys(
+      row.container_id,
+      normalizedThresholdDays,
+      row.source_observation_fingerprints,
+    ),
+  )
+
+  return dedupKeys
+}
+
 export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     if (alerts.length === 0) return []
 
-    const rows = alerts.map(alertToInsertRow)
+    // Deduplicate inside the same batch before hitting the DB.
+    const seenFingerprintKeysInBatch = new Set<string>()
+    const seenNoMovementKeysInBatch = new Set<string>()
+    const dedupedAlerts: NewTrackingAlert[] = []
+    for (const alert of alerts) {
+      const fingerprint = alert.alert_fingerprint
+      if (fingerprint !== null) {
+        const fingerprintKey = `${alert.container_id}|${fingerprint}`
+        if (seenFingerprintKeysInBatch.has(fingerprintKey)) continue
+        seenFingerprintKeysInBatch.add(fingerprintKey)
+      }
+
+      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
+      if (noMovementKeys.length > 0) {
+        const alreadySeen = noMovementKeys.some((key) => seenNoMovementKeysInBatch.has(key))
+        if (alreadySeen) continue
+        for (const key of noMovementKeys) {
+          seenNoMovementKeysInBatch.add(key)
+        }
+      }
+
+      dedupedAlerts.push(alert)
+    }
+
+    if (dedupedAlerts.length === 0) return []
+
+    const containerIds = Array.from(new Set(dedupedAlerts.map((alert) => alert.container_id)))
+    const incomingFingerprintKeys = new Set<string>()
+    const incomingNoMovementKeys = new Set<string>()
+
+    for (const alert of dedupedAlerts) {
+      if (alert.alert_fingerprint !== null) {
+        incomingFingerprintKeys.add(`${alert.container_id}|${alert.alert_fingerprint}`)
+      }
+      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
+      for (const key of noMovementKeys) {
+        incomingNoMovementKeys.add(key)
+      }
+    }
+
+    const existingFingerprintKeys = new Set<string>()
+    const fingerprints = Array.from(
+      new Set(
+        dedupedAlerts
+          .map((alert) => alert.alert_fingerprint)
+          .filter((fingerprint): fingerprint is string => fingerprint !== null),
+      ),
+    )
+    if (containerIds.length > 0 && fingerprints.length > 0) {
+      const existingFingerprintRowsResult = await supabase
+        .from(TABLE)
+        .select('container_id, alert_fingerprint')
+        .in('container_id', containerIds)
+        .in('alert_fingerprint', fingerprints)
+
+      const existingFingerprintRows =
+        unwrapSupabaseResultOrThrow(existingFingerprintRowsResult, {
+          operation: 'insertMany.findExistingFingerprints',
+          table: TABLE,
+        }) ?? []
+
+      for (const row of existingFingerprintRows) {
+        if (row.alert_fingerprint === null) continue
+        existingFingerprintKeys.add(`${row.container_id}|${row.alert_fingerprint}`)
+      }
+    }
+
+    const existingNoMovementKeys = new Set<string>()
+    if (containerIds.length > 0 && incomingNoMovementKeys.size > 0) {
+      const existingNoMovementRowsResult = await supabase
+        .from(TABLE)
+        .select(
+          'container_id, category, type, message_key, message_params, source_observation_fingerprints',
+        )
+        .in('container_id', containerIds)
+        .eq('category', 'monitoring')
+        .eq('type', 'NO_MOVEMENT')
+        .eq('message_key', 'alerts.noMovementDetected')
+
+      const existingNoMovementRows =
+        unwrapSupabaseResultOrThrow(existingNoMovementRowsResult, {
+          operation: 'insertMany.findExistingNoMovement',
+          table: TABLE,
+        }) ?? []
+
+      for (const row of existingNoMovementRows) {
+        const dedupKeys = toNoMovementDedupKeysFromRow(row)
+        for (const key of dedupKeys) {
+          existingNoMovementKeys.add(key)
+        }
+      }
+    }
+
+    const alertsToInsert = dedupedAlerts.filter((alert) => {
+      if (alert.alert_fingerprint !== null) {
+        const fingerprintKey = `${alert.container_id}|${alert.alert_fingerprint}`
+        if (
+          incomingFingerprintKeys.has(fingerprintKey) &&
+          existingFingerprintKeys.has(fingerprintKey)
+        ) {
+          return false
+        }
+      }
+
+      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
+      if (noMovementKeys.some((key) => existingNoMovementKeys.has(key))) {
+        return false
+      }
+
+      return true
+    })
+
+    if (alertsToInsert.length === 0) return []
+
+    const rows = alertsToInsert.map(alertToInsertRow)
 
     const result = await supabase.from(TABLE).insert(rows).select('*')
     const data = unwrapSupabaseResultOrThrow(result, {

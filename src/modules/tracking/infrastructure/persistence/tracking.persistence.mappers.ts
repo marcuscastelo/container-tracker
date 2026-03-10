@@ -173,6 +173,9 @@ const ALERT_ACK_SOURCE_MAP: Record<string, AlertAckSource> = {
   process_view: 'process_view',
   api: 'api',
 }
+
+const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
+
 function optionalAlertAckSource(value: unknown, field: string): AlertAckSource | null {
   if (value === null || value === undefined) return null
   const s = requireString(value, field)
@@ -207,6 +210,20 @@ function requireFiniteNumber(value: unknown, field: string): number {
     throw new Error(`tracking persistence mapper: ${field} is required but got ${String(value)}`)
   }
   return value
+}
+
+function optionalFiniteNumber(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  return value
+}
+
+function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
+  const normalizedCandidate = Math.floor(rawThresholdDays)
+  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
+    (thresholdDays) => normalizedCandidate >= thresholdDays,
+  )
+  if (eligible.length === 0) return normalizedCandidate
+  return eligible[eligible.length - 1] ?? normalizedCandidate
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -280,10 +297,17 @@ function requireAlertMessageContract(
   }
 
   if (messageKey === 'alerts.noMovementDetected') {
+    const days = requireFiniteNumber(params.days, `${field}.days`)
+    const thresholdCandidate = optionalFiniteNumber(params.threshold_days) ?? days
+    const thresholdDays = normalizeNoMovementThresholdDays(thresholdCandidate)
+    const daysWithoutMovement = optionalFiniteNumber(params.days_without_movement) ?? days
+
     return {
       message_key: messageKey,
       message_params: {
-        days: requireFiniteNumber(params.days, `${field}.days`),
+        threshold_days: thresholdDays,
+        days_without_movement: daysWithoutMovement,
+        days,
         lastEventDate: requireString(params.lastEventDate, `${field}.lastEventDate`),
       },
     }

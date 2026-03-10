@@ -243,6 +243,50 @@ describe('alertRowToDomain', () => {
     })
     expect(result.source_observation_fingerprints).toEqual([])
   })
+
+  it('should map NO_MOVEMENT message metadata fields', () => {
+    const result = alertRowToDomain({
+      ...validRow,
+      category: 'monitoring',
+      type: 'NO_MOVEMENT',
+      message_key: 'alerts.noMovementDetected',
+      message_params: {
+        threshold_days: 10,
+        days_without_movement: 12,
+        days: 12,
+        lastEventDate: '2026-01-03',
+      },
+    })
+
+    expect(result.message_key).toBe('alerts.noMovementDetected')
+    expect(result.message_params).toEqual({
+      threshold_days: 10,
+      days_without_movement: 12,
+      days: 12,
+      lastEventDate: '2026-01-03',
+    })
+  })
+
+  it('should fallback NO_MOVEMENT metadata when reading legacy message params', () => {
+    const result = alertRowToDomain({
+      ...validRow,
+      category: 'monitoring',
+      type: 'NO_MOVEMENT',
+      message_key: 'alerts.noMovementDetected',
+      message_params: {
+        days: 9,
+        lastEventDate: '2026-01-04',
+      },
+    })
+
+    expect(result.message_key).toBe('alerts.noMovementDetected')
+    expect(result.message_params).toEqual({
+      threshold_days: 5,
+      days_without_movement: 9,
+      days: 9,
+      lastEventDate: '2026-01-04',
+    })
+  })
 })
 
 describe('alertToInsertRow', () => {
