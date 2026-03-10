@@ -231,7 +231,7 @@ function ProcessEtaSummary(props: {
         class="inline-flex items-center gap-1 text-micro text-slate-500"
       >
         <span class="font-medium">{props.processEtaTitle}:</span>
-        <span data-testid="process-eta-date" class="text-xs-ui font-bold text-slate-800">
+        <span data-testid="process-eta-date" class="text-xs-ui font-bold text-slate-700">
           {props.processEtaSecondaryVm.date ?? props.noEta}
         </span>
         <span data-testid="process-eta-coverage" class="tabular-nums text-slate-400">
@@ -240,7 +240,7 @@ function ProcessEtaSummary(props: {
         <Show when={props.processEtaSecondaryVm.incomplete}>
           <span
             data-testid="process-eta-incomplete"
-            class="rounded bg-slate-100/80 px-1 py-px text-micro font-medium text-slate-400"
+            class="rounded bg-amber-50 px-1 py-px text-micro font-medium text-amber-600 ring-1 ring-amber-200/60"
           >
             {props.incomplete}
           </span>
@@ -369,7 +369,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
   // in the dedicated ContainersPanel section below the header, eliminating duplication.
 
   return (
-    <section class="mb-2 rounded-lg border border-slate-200 bg-white px-3 py-2 sm:px-4 sm:py-2.5">
+    <section class="mb-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] sm:px-4 sm:py-3">
       <ShipmentHeaderRow1
         props={props}
         showUnknown={showUnknownCarrierDialog()}

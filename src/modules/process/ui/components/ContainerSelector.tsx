@@ -85,10 +85,10 @@ function ContainerSelectorItem(props: {
   return (
     <div
       data-testid={`container-card-${props.container.id}`}
-      class={`flex items-center gap-1 rounded border px-2 py-1 text-sm-ui font-medium transition-all cursor-pointer ${
+      class={`flex items-center gap-1 rounded-md border px-2 py-1.5 text-sm-ui font-medium transition-all cursor-pointer ${
         props.selected
-          ? 'border-slate-600 bg-slate-700 text-white shadow-sm ring-2 ring-slate-400/30'
-          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-gray-100 hover:shadow-sm active:bg-slate-100'
+          ? 'border-slate-600 bg-slate-700 text-white shadow-md ring-2 ring-slate-500/25'
+          : 'border-slate-200/80 bg-white text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:bg-slate-100'
       }`}
     >
       <button
@@ -145,7 +145,7 @@ function ContainerSelectorItem(props: {
         </div>
         <div
           data-testid={`container-sync-chip-${props.container.id}`}
-          class={`text-micro leading-none ${props.selected ? 'text-slate-200' : 'text-slate-400'}`}
+          class={`text-micro leading-none ${props.selected ? 'text-slate-300' : 'text-slate-400'}`}
         >
           {syncLabel()}
         </div>
@@ -183,7 +183,7 @@ export function ContainerSelector(props: {
   }
 
   return (
-    <div class="flex flex-wrap gap-1 px-2.5 py-1">
+    <div class="flex flex-wrap gap-1.5 px-2.5 py-2">
       <For each={props.containers}>
         {(container) => (
           <ContainerSelectorItem

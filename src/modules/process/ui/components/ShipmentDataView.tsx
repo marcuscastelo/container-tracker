@@ -46,7 +46,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
       />
 
       {/* Alertas Operacionais — global ao shipment, sempre visíveis no topo */}
-      <div class="mb-2">
+      <div class="mb-3">
         <ErrorBoundary
           fallback={(err) => {
             console.error('Alerts panel render failure:', err)
@@ -68,8 +68,8 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         </ErrorBoundary>
       </div>
 
-      <div class="grid gap-2 lg:grid-cols-3">
-        <div class="space-y-3 lg:col-span-2">
+      <div class="grid gap-3 lg:grid-cols-3">
+        <div class="space-y-4 lg:col-span-2">
           <section id="shipment-containers" class="scroll-mt-[120px]">
             <ContainersPanel
               containers={props.data.containers}
@@ -105,7 +105,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             </ErrorBoundary>
           </section>
         </div>
-        <div class="space-y-2">
+        <div class="space-y-3">
           <ShipmentInfoCard data={props.data} />
         </div>
       </div>
