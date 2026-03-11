@@ -5,13 +5,15 @@ import { z } from 'zod'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
-import { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
+import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
@@ -460,10 +462,44 @@ export default function TrackingScenariosPage(): JSX.Element {
       return { processId: result.processId, refresh: refreshToken() }
     },
     async (source) => {
-      const allProcesses = await fetchDashboardProcessSummaries(undefined, {
-        preferPrefetched: false,
+      // Fetch a single process detail and map to a dashboard summary to avoid
+      // loading the entire dashboard list for the preview.
+      const detail = await fetchProcess(source.processId, DEFAULT_LOCALE, {
+        mode: 'network-only',
+        dedupeInFlight: false,
       })
-      return allProcesses.find((process) => process.id === source.processId) ?? null
+
+      if (!detail) return null
+
+      const containerNumbers = detail.containers.map((c) => c.number.trim().toUpperCase())
+      const hasTransshipment = detail.containers.some((c) => c.transshipment?.hasTransshipment)
+
+      return {
+        id: detail.id,
+        reference: detail.reference ?? null,
+        origin: { display_name: detail.origin },
+        destination: { display_name: detail.destination },
+        importerId: null,
+        importerName: detail.importer_name ?? null,
+        exporterName: detail.exporter_name ?? null,
+        containerCount: detail.containers.length,
+        containerNumbers,
+        status: detail.status,
+        statusCode: detail.statusCode,
+        statusMicrobadge: detail.statusMicrobadge ?? null,
+        statusRank: processStatusToRank(detail.statusCode),
+        eta: detail.eta ?? null,
+        etaMsOrNull: detail.eta ? Date.parse(detail.eta) : null,
+        carrier: detail.carrier ?? null,
+        alertsCount: detail.alerts.length,
+        highestAlertSeverity: null,
+        dominantAlertCreatedAt: null,
+        redestinationNumber: detail.redestination_number ?? null,
+        hasTransshipment,
+        lastEventAt: null,
+        syncStatus: 'idle' as const,
+        lastSyncAt: null,
+      } as ProcessSummaryVM
     },
   )
 
