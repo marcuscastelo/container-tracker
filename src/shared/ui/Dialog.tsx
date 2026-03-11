@@ -9,7 +9,7 @@ type Props = {
   readonly title: string
   readonly description?: string
   readonly children: JSX.Element
-  readonly maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  readonly maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
 }
 
 const maxWidthClasses = {
@@ -18,6 +18,7 @@ const maxWidthClasses = {
   lg: 'max-w-lg',
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
 }
 
 type HeaderProps = {

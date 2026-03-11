@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
+import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
   type NonMappedIndicatorVariant,
@@ -7,6 +8,7 @@ import {
 } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { TimelineNodeLayout } from '~/modules/process/ui/TimelineNode.layout'
 import { timelineEventIcon } from '~/modules/process/ui/timeline/timelineEventIcon'
+import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
@@ -123,16 +125,19 @@ export function TimelineNode(props: {
   readonly isLast: boolean
   readonly carrier?: string | null
   readonly containerNumber?: string | null
+  readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlighted?: boolean
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
+  const [showObservationInspector, setShowObservationInspector] = createSignal(false)
 
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
   const hasPredictionHistory = () =>
     Boolean(props.event.seriesHistory && props.event.seriesHistory.classified.length > 1)
+  const hasObservation = () => Boolean(props.observation)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -230,10 +235,18 @@ export function TimelineNode(props: {
         showPredictionHistoryButton={hasPredictionHistory()}
         onOpenPredictionHistory={() => setShowPredictionHistory(true)}
         predictionHistoryLabel={t(keys.shipmentView.timeline.viewPredictionHistory)}
+        showObservationButton={hasObservation()}
+        onOpenObservation={() => setShowObservationInspector(true)}
+        observationLabel={t(keys.shipmentView.timeline.viewObservation)}
         expiredExpectedLabel={t(keys.shipmentView.timeline.expiredExpected)}
         expiredExpectedTooltip={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
         expectedLabel={t(keys.shipmentView.timeline.expected)}
         predictedTooltip={t(keys.shipmentView.timeline.predictedTooltip)}
+        emptyContainerBadgeLabel={
+          props.observation?.isEmpty === true
+            ? t(keys.shipmentView.timeline.emptyContainerBadge)
+            : undefined
+        }
         location={props.event.location}
         dateLabel={
           <DateLabel
@@ -261,6 +274,16 @@ export function TimelineNode(props: {
             activityLabel={labelPresentation().label}
             isOpen={showPredictionHistory()}
             onClose={() => setShowPredictionHistory(false)}
+          />
+        )}
+      </Show>
+
+      <Show when={props.observation}>
+        {(observation) => (
+          <ObservationInspector
+            observation={observation()}
+            isOpen={showObservationInspector()}
+            onClose={() => setShowObservationInspector(false)}
           />
         )}
       </Show>

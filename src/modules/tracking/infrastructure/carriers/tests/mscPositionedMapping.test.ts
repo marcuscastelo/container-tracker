@@ -18,7 +18,9 @@ function makeSnapshot(payload: unknown, fetchedAt: string = '2026-02-05T00:00:00
 
 function findPositionedDraftType(snapshot: Snapshot): string | undefined {
   const drafts = normalizeMscSnapshot(snapshot)
-  const positioned = drafts.find((draft) => draft.carrier_label === 'Full Transshipment Positioned In')
+  const positioned = drafts.find(
+    (draft) => draft.carrier_label === 'Full Transshipment Positioned In',
+  )
   return positioned?.type
 }
 

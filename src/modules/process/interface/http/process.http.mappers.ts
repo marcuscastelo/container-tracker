@@ -101,6 +101,7 @@ type TrackingObservationRecord = {
   readonly is_empty: boolean | null
   readonly confidence: string
   readonly provider: string
+  readonly created_from_snapshot_id?: string
   readonly retroactive?: boolean
   readonly created_at: string
 }
@@ -213,6 +214,7 @@ function toObservationResponse(obs: TrackingObservationRecord) {
     is_empty: obs.is_empty,
     confidence: obs.confidence,
     provider: obs.provider,
+    created_from_snapshot_id: obs.created_from_snapshot_id,
     retroactive: obs.retroactive,
     created_at: obs.created_at,
   }
