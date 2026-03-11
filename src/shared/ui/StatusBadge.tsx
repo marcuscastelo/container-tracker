@@ -33,105 +33,58 @@ type Props = {
   readonly hideIcon?: boolean
 }
 
-const statusConfig: Record<
-  StatusVariant,
-  { icon: StatusIconKind; bgClass: string; textClass: string }
-> = {
-  'slate-400': {
-    icon: 'circle-outline',
-    bgClass: 'bg-slate-50',
-    textClass: 'text-slate-500',
-  },
-  'slate-500': {
-    icon: 'circle-outline',
-    bgClass: 'bg-slate-100',
-    textClass: 'text-slate-600',
-  },
-  'indigo-500': {
-    icon: 'circle-filled',
-    bgClass: 'bg-indigo-50',
-    textClass: 'text-indigo-700',
-  },
-  'blue-500': {
-    icon: 'circle-filled',
-    bgClass: 'bg-blue-50',
-    textClass: 'text-blue-700',
-  },
-  'amber-500': {
-    icon: 'circle-filled',
-    bgClass: 'bg-amber-50',
-    textClass: 'text-amber-700',
-  },
-  'amber-600': {
-    icon: 'circle-filled',
-    bgClass: 'bg-amber-100',
-    textClass: 'text-amber-800',
-  },
-  'amber-700': {
-    icon: 'circle-filled',
-    bgClass: 'bg-amber-200',
-    textClass: 'text-amber-900',
-  },
-  'orange-500': {
-    icon: 'circle-filled',
-    bgClass: 'bg-orange-50',
-    textClass: 'text-orange-700',
-  },
-  'green-600': {
-    icon: 'check',
-    bgClass: 'bg-green-50',
-    textClass: 'text-green-700',
-  },
-  'emerald-600': {
-    icon: 'check',
-    bgClass: 'bg-emerald-50',
-    textClass: 'text-emerald-700',
-  },
-  'in-transit': {
-    icon: 'circle-filled',
-    bgClass: 'bg-blue-50',
-    textClass: 'text-blue-700',
-  },
-  delayed: {
-    icon: 'circle-filled',
-    bgClass: 'bg-red-50',
-    textClass: 'text-red-700',
-  },
-  loaded: {
-    icon: 'circle-filled',
-    bgClass: 'bg-indigo-50',
-    textClass: 'text-indigo-700',
-  },
-  customs: {
-    icon: 'circle-filled',
-    bgClass: 'bg-amber-50',
-    textClass: 'text-amber-700',
-  },
-  released: {
-    icon: 'circle-filled',
-    bgClass: 'bg-orange-50',
-    textClass: 'text-orange-700',
-  },
-  delivered: {
-    icon: 'check',
-    bgClass: 'bg-green-50',
-    textClass: 'text-green-700',
-  },
-  partial: {
-    icon: 'partial',
-    bgClass: 'bg-amber-100',
-    textClass: 'text-amber-800',
-  },
-  pending: {
-    icon: 'circle-outline',
-    bgClass: 'bg-slate-100',
-    textClass: 'text-slate-600',
-  },
-  unknown: {
-    icon: 'dash',
-    bgClass: 'bg-slate-50',
-    textClass: 'text-slate-500',
-  },
+const statusConfig: Record<StatusVariant, { icon: StatusIconKind }> = {
+  'slate-400': { icon: 'circle-outline' },
+  'slate-500': { icon: 'circle-outline' },
+  'indigo-500': { icon: 'circle-filled' },
+  'blue-500': { icon: 'circle-filled' },
+  'amber-500': { icon: 'circle-filled' },
+  'amber-600': { icon: 'circle-filled' },
+  'amber-700': { icon: 'circle-filled' },
+  'orange-500': { icon: 'circle-filled' },
+  'green-600': { icon: 'check' },
+  'emerald-600': { icon: 'check' },
+  'in-transit': { icon: 'circle-filled' },
+  delayed: { icon: 'circle-filled' },
+  loaded: { icon: 'circle-filled' },
+  customs: { icon: 'circle-filled' },
+  released: { icon: 'circle-filled' },
+  delivered: { icon: 'check' },
+  partial: { icon: 'partial' },
+  pending: { icon: 'circle-outline' },
+  unknown: { icon: 'dash' },
+}
+
+function toStatusColorClasses(variant: StatusVariant): string {
+  if (variant === 'blue-500' || variant === 'indigo-500' || variant === 'in-transit') {
+    return 'border-[color:var(--color-status-in-transit-border)] bg-[color:var(--color-status-in-transit-bg)] text-[color:var(--color-status-in-transit-fg)]'
+  }
+
+  // VariantGroups
+  const dischargedVariants: StatusVariant[] = [
+    'orange-500',
+    'amber-500',
+    'amber-600',
+    'amber-700',
+    'customs',
+    'loaded',
+    'partial',
+  ]
+  const clearedVariants: StatusVariant[] = ['green-600', 'emerald-600', 'delivered', 'released']
+
+  if (dischargedVariants.includes(variant)) {
+    return 'border-[color:var(--color-status-discharged-border)] bg-[color:var(--color-status-discharged-bg)] text-[color:var(--color-status-discharged-fg)]'
+  }
+
+  if (clearedVariants.includes(variant)) {
+    return 'border-[color:var(--color-status-cleared-border)] bg-[color:var(--color-status-cleared-bg)] text-[color:var(--color-status-cleared-fg)]'
+  }
+
+  if (variant === 'delayed') {
+    return 'border-[color:var(--color-status-delayed-border)] bg-[color:var(--color-status-delayed-bg)] text-[color:var(--color-status-delayed-fg)]'
+  }
+
+  return 'border-slate-200 bg-slate-100 text-slate-600'
 }
 
 function StatusIcon(props: {
@@ -163,21 +116,24 @@ function StatusIcon(props: {
 export function StatusBadge(props: Props): JSX.Element {
   const config = createMemo(() => statusConfig[props.variant] ?? statusConfig.unknown)
 
-  const bgClass = createMemo(() => (props.neutral ? 'bg-slate-50' : config().bgClass))
-  const textClass = createMemo(() => (props.neutral ? 'text-slate-600' : config().textClass))
+  const colorClass = createMemo(() =>
+    props.neutral
+      ? 'border-slate-200 bg-slate-100 text-slate-600'
+      : toStatusColorClasses(props.variant),
+  )
   const iconColorClass = createMemo(() => (props.neutral ? 'text-slate-400' : ''))
   const wrapperClass = createMemo(() => {
     if (props.size === 'micro') {
-      return 'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro font-semibold leading-none whitespace-nowrap ring-1 ring-inset ring-current/15'
+      return 'dashboard-status-chip text-micro'
     }
 
-    return 'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs-ui font-semibold leading-none tracking-wide whitespace-nowrap ring-1 ring-inset ring-current/15'
+    return 'dashboard-status-chip text-xs-ui'
   })
   const iconSize = createMemo(() => (props.size === 'micro' ? 'w-2.5 h-2.5' : 'w-3 h-3'))
   const labelClass = createMemo(() => (props.size === 'micro' ? 'truncate max-w-[11rem]' : ''))
 
   return (
-    <span class={`${wrapperClass()} ${bgClass()} ${textClass()}`}>
+    <span class={`${wrapperClass()} ${colorClass()}`}>
       <Show when={props.hideIcon !== true}>
         <span class={`inline-flex items-center ${iconColorClass()}`} aria-hidden="true">
           <StatusIcon kind={config().icon} class={iconSize()} />

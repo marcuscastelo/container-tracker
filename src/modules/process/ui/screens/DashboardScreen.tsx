@@ -172,7 +172,7 @@ function withoutProcessLocalSyncState(
 
 // eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
-  const { locale, t, keys } = useTranslation()
+  const { locale } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
@@ -525,6 +525,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         <AppHeader
           onCreateProcess={handleCreateProcess}
           alertCount={globalAlerts()?.totalActiveAlerts ?? 0}
+          searchSlot={props.searchSlot}
+          syncSlot={<DashboardRefreshButton onRefresh={handleDashboardRefresh} />}
         />
         <CreateProcessDialog
           open={isCreateDialogOpen()}
@@ -532,17 +534,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onSubmit={handleProcessSubmit}
         />
 
-        <main class="mx-auto max-w-7xl px-4 py-4 lg:px-6">
-          <div class="mb-4 flex items-center gap-3">
-            <h1 class="shrink-0 text-lg-ui font-semibold text-slate-900">
-              {t(keys.dashboard.header.title)}
-            </h1>
-            <div class="min-w-0 flex-1 flex justify-center">{props.searchSlot}</div>
-            <div class="shrink-0">
-              <DashboardRefreshButton onRefresh={handleDashboardRefresh} />
-            </div>
-          </div>
-
+        <main class="dashboard-main">
           <Show when={createError()}>
             <ExistingProcessError
               message={getCreateErrorMessage(createError())}
