@@ -94,7 +94,9 @@ export function VoyageBlockHeader(props: {
       </Show>
       <Show when={route()}>
         {(routeStr) => (
-          <p class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-slate-500'}`}>
+          <p
+            class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-slate-500'}`}
+          >
             {routeStr()}
           </p>
         )}
