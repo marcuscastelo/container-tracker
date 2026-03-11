@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
@@ -12,6 +13,7 @@ import {
 import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
+import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 
@@ -460,13 +462,17 @@ export default function TrackingScenariosPage(): JSX.Element {
       return { processId: result.processId, refresh: refreshToken() }
     },
     async (source) => {
-      // Fetch the single process detail and map to the dashboard summary VM to
-      // avoid loading the entire dashboard list (performance & load).
+      // Fetch a single process detail and map to a dashboard summary to avoid
+      // loading the entire dashboard list for the preview.
       const shipment = await fetchProcess(source.processId, DEFAULT_LOCALE, {
         mode: 'network-only',
         dedupeInFlight: false,
       })
+
       if (!shipment) return null
+
+      const containerNumbers = shipment.containers.map((c) => c.number.trim().toUpperCase())
+      const hasTransshipment = shipment.containers.some((c) => c.transshipment?.hasTransshipment)
 
       // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
       // Dashboard preview can render without fetching the full list.
@@ -480,7 +486,7 @@ export default function TrackingScenariosPage(): JSX.Element {
         null,
       )
 
-      const summary = {
+      return {
         id: shipment.id,
         reference: shipment.reference ?? null,
         origin: { display_name: shipment.origin },
@@ -489,27 +495,23 @@ export default function TrackingScenariosPage(): JSX.Element {
         importerName: shipment.importer_name ?? null,
         exporterName: shipment.exporter_name ?? null,
         containerCount: shipment.containers.length,
-        containerNumbers: shipment.containers.map((c) => c.number),
+        containerNumbers,
         status: shipment.status,
         statusCode: shipment.statusCode,
         statusMicrobadge: shipment.statusMicrobadge ?? null,
-        statusRank: 0,
+        statusRank: processStatusToRank(shipment.statusCode),
         eta: shipment.eta ?? null,
         etaMsOrNull: shipment.eta ? Date.parse(shipment.eta) : null,
         carrier: shipment.carrier ?? null,
         alertsCount: shipment.alerts.length,
-        highestAlertSeverity: highestSeverity ?? null,
+        highestAlertSeverity: highestSeverity,
         dominantAlertCreatedAt: null,
         redestinationNumber: shipment.redestination_number ?? null,
-        hasTransshipment: shipment.containers.some(
-          (c) => c.transshipment?.hasTransshipment ?? false,
-        ),
+        hasTransshipment,
         lastEventAt: null,
         syncStatus: 'idle' as const,
         lastSyncAt: null,
-      }
-
-      return summary
+      } satisfies ProcessSummaryVM
     },
   )
 
@@ -594,7 +596,7 @@ export default function TrackingScenariosPage(): JSX.Element {
       }
     >
       <div class="min-h-screen bg-slate-100">
-        <main class="mx-auto max-w-[1400px] space-y-4 px-3 py-4 sm:px-4 lg:px-6">
+        <main class="mx-auto max-w-350 space-y-4 px-3 py-4 sm:px-4 lg:px-6">
           <header class="rounded-xl border border-slate-200 bg-white p-4">
             <h1 class="text-lg-ui font-semibold text-slate-900">Tracking Scenario Lab</h1>
             <p class="mt-1 text-xs-ui text-slate-600">

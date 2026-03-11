@@ -26,7 +26,9 @@ const LoadScenarioResponseSchema = z.object({
 })
 
 function isScenarioLabEnabled(): boolean {
-  return serverEnv.NODE_ENV?.toLowerCase() === 'development'
+  const nodeEnv = serverEnv.NODE_ENV?.toLowerCase()
+  // Allow explicit opt-in via env flag or only enable in local development
+  return serverEnv.SCENARIO_LAB_ENABLED === true || nodeEnv === 'development'
 }
 
 export async function POST({ request }: { request: Request }): Promise<Response> {
