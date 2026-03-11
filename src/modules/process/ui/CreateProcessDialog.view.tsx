@@ -98,7 +98,7 @@ function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element 
 
   return (
     <section class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex flex-col items-center justify-between gap-3">
         <div>
           <h3 class="text-sm-ui font-semibold text-slate-700">
             {t(keys.createProcess.smartPaste.title)}
@@ -107,13 +107,15 @@ function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element 
             {t(keys.createProcess.smartPaste.description)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => props.onOpen()}
-          class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-100"
-        >
-          {t(keys.createProcess.smartPaste.action.open)}
-        </button>
+        <div class="flex w-full ">
+          <button
+            type="button"
+            onClick={() => props.onOpen()}
+            class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-100"
+          >
+            {t(keys.createProcess.smartPaste.action.open)}
+          </button>
+        </div>
       </div>
     </section>
   )
