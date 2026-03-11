@@ -12,6 +12,8 @@
     },
     "createProcess": "Criar Processo",
     "alertsBadge": "{{count}} Alertas",
+    "alertsLabel": "Alertas",
+    "alertsActiveTooltip": "{{count}} alertas ativos",
     "theme": {
       "light": "Claro",
       "dark": "Escuro",
