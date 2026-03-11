@@ -42,9 +42,9 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
     <Show
       when={props.actualDateIso}
       fallback={
-          <Show when={props.expectedDateIso}>
-            {(expectedDateIso) => (
-              <div class="flex flex-col items-end" title={props.toTooltip(expectedDateIso())}>
+        <Show when={props.expectedDateIso}>
+          {(expectedDateIso) => (
+            <div class="flex flex-col items-end" title={props.toTooltip(expectedDateIso())}>
               <span class="tabular-nums text-sm-ui font-medium text-foreground">
                 {formatDateForLocale(expectedDateIso(), props.locale)}
               </span>
