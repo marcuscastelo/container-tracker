@@ -24,6 +24,16 @@ function NavLink(props: {
   readonly end?: boolean
 }): JSX.Element {
   const location = useLocation()
+  const pathname = location.pathname
+  const startsWith = () => pathname.startsWith(props.href)
+  const equals = () => pathname === props.href
+
+  const isActive = () => (props.end ? equals() : equals() || startsWith())
+
+  const activeClass =
+    'text-primary before:absolute before:inset-x-0 before:-bottom-1 before:h-0.5 before:rounded before:bg-primary'
+  const mutedClass = 'text-text-muted'
+
   return (
     <A
       href={props.href}
@@ -31,12 +41,8 @@ function NavLink(props: {
       class={clsx(
         'relative px-1 py-2 text-sm-ui font-medium transition-colors hover:text-primary',
         {
-          'text-primary before:absolute before:inset-x-0 before:-bottom-1 before:h-0.5 before:rounded before:bg-primary':
-            location.pathname === props.href ||
-            (!props.end && location.pathname.startsWith(props.href)),
-          'text-text-muted':
-            location.pathname !== props.href &&
-            !(props.end && location.pathname.startsWith(props.href)),
+          [activeClass]: isActive(),
+          [mutedClass]: !isActive() && !(props.end && startsWith),
         },
       )}
     >
