@@ -9,7 +9,6 @@ import type {
   VoyageBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
 import { useTranslation } from '~/shared/localization/i18n'
-import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // ---------------------------------------------------------------------------
 // Phase 20 — Voyage Block Header ("Identity Card")
@@ -19,67 +18,57 @@ export function VoyageBlockHeader(props: {
   readonly block: VoyageBlock
   readonly isCurrent?: boolean
 }): JSX.Element {
-  const { t, keys, locale } = useTranslation()
+  const { t, keys } = useTranslation()
 
   const route = () => {
     const b = props.block
-    // For current leg: only show route when both origin AND destination are known
-    // (destination is null when voyage is ongoing; we show destinationLine instead)
-    if (!b.origin && !b.destination) return null
-    if (props.isCurrent && !b.destination) return null
+    let origin = b.origin
+    let destination = b.destination
+
+    if (!origin) {
+      for (const ev of b.events) {
+        if (ev.location && (ev.type === 'LOAD' || ev.type === 'DEPARTURE')) {
+          origin = ev.location
+          break
+        }
+      }
+    }
+
+    if (!destination) {
+      for (let i = b.events.length - 1; i >= 0; i--) {
+        const ev = b.events[i]
+        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED' && ev.location) {
+          destination = ev.location
+          break
+        }
+      }
+    }
+
+    if (!destination) {
+      for (let i = b.events.length - 1; i >= 0; i--) {
+        const ev = b.events[i]
+        if (ev.type === 'DISCHARGE' && ev.eventTimeType === 'EXPECTED' && ev.location) {
+          destination = ev.location
+          break
+        }
+      }
+    }
+
+    if (!destination) {
+      for (let i = b.events.length - 1; i >= 0; i--) {
+        const ev = b.events[i]
+        if (ev.location && (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')) {
+          destination = ev.location
+          break
+        }
+      }
+    }
+
+    if (!origin && !destination) return null
     return t(keys.shipmentView.timeline.blocks.voyageRoute, {
-      origin: b.origin ?? '?',
-      destination: b.destination ?? '?',
+      origin: origin ?? '?',
+      destination: destination ?? '?',
     })
-  }
-
-  /** Destination line for the current leg: "→ Santos · ETA 13/03" */
-  const destinationLine = () => {
-    if (!props.isCurrent) return null
-    const events = props.block.events
-
-    // Prefer confirmed destination (when DISCHARGE ACTUAL exists)
-    let dest = props.block.destination
-    let etaIso: string | null = null
-
-    if (!dest) {
-      // Fall back: pick destination from the last EXPECTED ARRIVAL event
-      for (let i = events.length - 1; i >= 0; i--) {
-        const ev = events[i]
-        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED') {
-          dest = ev.location ?? null
-          etaIso = ev.eventTimeIso
-          break
-        }
-      }
-    }
-
-    if (!dest) return null
-
-    // If ETA not found yet, prefer EXPECTED ARRIVAL or EXPECTED DISCHARGE events only.
-    // Avoid picking unrelated EXPECTED events (e.g., DEPARTURE) as ETA when destination
-    // is already known from actuals.
-    if (!etaIso) {
-      for (let i = events.length - 1; i >= 0; i--) {
-        const ev = events[i]
-        if (
-          ev.eventTimeType === 'EXPECTED' &&
-          ev.eventTimeIso &&
-          (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')
-        ) {
-          etaIso = ev.eventTimeIso
-          break
-        }
-      }
-    }
-
-    if (etaIso) {
-      return t(keys.shipmentView.timeline.blocks.destinationEta, {
-        destination: dest,
-        eta: formatDateForLocale(etaIso, locale()),
-      })
-    }
-    return t(keys.shipmentView.timeline.blocks.destinationNoEta, { destination: dest })
   }
 
   return (
@@ -104,10 +93,11 @@ export function VoyageBlockHeader(props: {
         )}
       </Show>
       <Show when={route()}>
-        {(routeStr) => <p class="mt-0.5 text-micro text-slate-500">{routeStr()}</p>}
-      </Show>
-      <Show when={destinationLine()}>
-        {(line) => <p class="mt-0.5 text-micro font-semibold text-blue-600">{line()}</p>}
+        {(routeStr) => (
+          <p class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-slate-500'}`}>
+            {routeStr()}
+          </p>
+        )}
       </Show>
     </div>
   )
