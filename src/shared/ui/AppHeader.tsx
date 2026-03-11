@@ -145,7 +145,6 @@ function ThemeToggleButton(): JSX.Element {
   const [theme, setTheme] = createSignal<UiTheme>(getTheme())
 
   const isDark = () => theme() === 'dark'
-  const currentLabel = () => (isDark() ? t(keys.header.theme.dark) : t(keys.header.theme.light))
   const actionLabel = () =>
     isDark() ? t(keys.header.theme.switchToLight) : t(keys.header.theme.switchToDark)
 
@@ -164,7 +163,6 @@ function ThemeToggleButton(): JSX.Element {
       <Show when={isDark()} fallback={<Moon class="h-4 w-4 shrink-0" aria-hidden="true" />}>
         <Sun class="h-4 w-4 shrink-0" aria-hidden="true" />
       </Show>
-      <span class="hidden sm:inline">{currentLabel()}</span>
     </button>
   )
 }
