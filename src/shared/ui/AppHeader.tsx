@@ -187,7 +187,7 @@ function HeaderActions(props: {
         onCreateProcess={props.onCreateProcess}
       />
 
-      <Show when={props.alertCount != null}>
+      <Show when={props.alertCount != null && props.alertCount > 0}>
         <AlertCountBadge label={props.alertLabel} />
       </Show>
 
