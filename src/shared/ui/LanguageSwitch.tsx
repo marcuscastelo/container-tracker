@@ -14,7 +14,7 @@ function LanguageOption(props: LanguageOptionProps): JSX.Element {
     <li>
       <button
         type="button"
-        class="flex w-full items-center gap-2 px-3 py-2 text-sm-ui text-slate-700 hover:bg-slate-50"
+        class="flex w-full items-center gap-2 px-3 py-2 text-sm-ui text-foreground hover:bg-surface-muted"
         onClick={() => props.onSelect(props.language)}
       >
         <FlagIcon locale={props.language} class="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -39,7 +39,7 @@ export function LanguageSwitch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="dashboard-btn-outline px-2.5"
+        class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         aria-haspopup="listbox"
         aria-expanded={open()}
       >

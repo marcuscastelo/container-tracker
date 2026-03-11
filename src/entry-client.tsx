@@ -1,10 +1,13 @@
 // @refresh reload
 import '~/shared/localization/i18n'
 import { mount, StartClient } from '@solidjs/start/client'
+import { initializeTheme } from '~/lib/theme'
 import { env } from '~/shared/config/env'
 
 // Load env on the client bundle as well so the app has consistent config
 void env
+
+initializeTheme()
 
 // TODO: Remove global error handlers once we have better visibility into client-side issues and confidence they won't fail silently. See
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/31

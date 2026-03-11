@@ -39,7 +39,7 @@ function SortHeader(props: {
 
   return (
     <th
-      class={`cursor-pointer select-none px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-700 ${props.class ?? ''}`}
+      class={`cursor-pointer select-none px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted transition-colors hover:text-foreground ${props.class ?? ''}`}
       onClick={() => props.onSort(props.field)}
     >
       <span class="inline-flex items-center gap-1">
@@ -57,11 +57,11 @@ function SortHeader(props: {
 function SkeletonRow(): JSX.Element {
   const cells = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
   return (
-    <tr class="border-b border-slate-100">
+    <tr class="border-b border-border/60">
       <Index each={cells}>
         {() => (
           <td class="px-2.5 py-2.5">
-            <div class="h-4 w-full animate-pulse rounded bg-slate-100" />
+            <div class="h-4 w-full animate-pulse rounded bg-surface-muted" />
           </td>
         )}
       </Index>
@@ -73,11 +73,11 @@ function ErrorRow(props: { readonly onRetry: () => void }): JSX.Element {
   return (
     <tr>
       <td colspan="11" class="px-4 py-8 text-center">
-        <p class="text-sm-ui text-red-600">Failed to load agents</p>
+        <p class="text-sm-ui text-tone-danger-fg">Failed to load agents</p>
         <button
           type="button"
           onClick={() => props.onRetry()}
-          class="mt-2 text-sm-ui font-medium text-slate-700 underline hover:text-slate-900"
+          class="mt-2 text-sm-ui font-medium text-control-foreground underline hover:text-control-foreground-strong"
         >
           Retry
         </button>
@@ -89,7 +89,7 @@ function ErrorRow(props: { readonly onRetry: () => void }): JSX.Element {
 function EmptyRow(): JSX.Element {
   return (
     <tr>
-      <td colspan="11" class="px-4 py-8 text-center text-sm-ui text-slate-500">
+      <td colspan="11" class="px-4 py-8 text-center text-sm-ui text-text-muted">
         No agents match current filters
       </td>
     </tr>
@@ -116,14 +116,14 @@ function AgentDataRow(props: {
   readonly onAgentClick: (agentId: string) => void
 }): JSX.Element {
   const rowBg = () => {
-    if (props.agent.statusTone === 'danger') return 'bg-red-50/40'
-    if (props.agent.statusTone === 'warning') return 'bg-amber-50/30'
+    if (props.agent.statusTone === 'danger') return 'bg-tone-danger-bg/35'
+    if (props.agent.statusTone === 'warning') return 'bg-tone-warning-bg/25'
     return ''
   }
 
   return (
     <tr
-      class={`cursor-pointer transition-colors hover:bg-slate-50 ${rowBg()}`}
+      class={`cursor-pointer transition-colors hover:bg-surface-muted ${rowBg()}`}
       onClick={() => props.onAgentClick(props.agent.agentId)}
       tabIndex={0}
       onKeyDown={(e) => {
@@ -141,43 +141,43 @@ function AgentDataRow(props: {
         />
       </td>
       <td
-        class="max-w-35 truncate px-2.5 py-2 text-sm-ui text-slate-700"
+        class="max-w-35 truncate px-2.5 py-2 text-sm-ui text-foreground"
         title={props.agent.tenantName}
       >
         {props.agent.tenantName}
       </td>
-      <td class="px-2.5 py-2 text-micro font-mono text-slate-500" title={props.agent.agentId}>
+      <td class="px-2.5 py-2 text-micro font-mono text-text-muted" title={props.agent.agentId}>
         {props.agent.agentId}
       </td>
       <td
-        class="max-w-50 truncate px-2.5 py-2 text-micro font-mono text-slate-500"
+        class="max-w-50 truncate px-2.5 py-2 text-micro font-mono text-text-muted"
         title={props.agent.hostname}
       >
         {props.agent.hostname}
       </td>
-      <td class="px-2.5 py-2 text-micro text-slate-400">{props.agent.version}</td>
-      <td class="px-2.5 py-2 text-micro text-slate-500" title={props.agent.lastSeenDisplay}>
+      <td class="px-2.5 py-2 text-micro text-text-muted">{props.agent.version}</td>
+      <td class="px-2.5 py-2 text-micro text-text-muted" title={props.agent.lastSeenDisplay}>
         {props.agent.lastSeenRelative}
       </td>
-      <td class="px-2.5 py-2 text-right text-sm-ui tabular-nums text-slate-700">
+      <td class="px-2.5 py-2 text-right text-sm-ui tabular-nums text-foreground">
         {props.agent.activeJobs}
       </td>
       <td
-        class={`px-2.5 py-2 text-right text-sm-ui tabular-nums ${props.agent.failuresLastHour > 0 ? 'font-semibold text-red-600' : 'text-slate-700'}`}
+        class={`px-2.5 py-2 text-right text-sm-ui tabular-nums ${props.agent.failuresLastHour > 0 ? 'font-semibold text-tone-danger-fg' : 'text-foreground'}`}
       >
         {props.agent.failuresLastHour}
       </td>
-      <td class="px-2.5 py-2 text-right text-micro tabular-nums text-slate-500">
+      <td class="px-2.5 py-2 text-right text-micro tabular-nums text-text-muted">
         {props.agent.queueLagDisplay}
       </td>
-      <td class="px-2.5 py-2 text-micro text-slate-500">
+      <td class="px-2.5 py-2 text-micro text-text-muted">
         <div class="flex flex-col">
           <span
-            class={`${props.agent.updateAvailable ? 'font-semibold text-amber-700' : 'text-slate-600'}`}
+            class={`${props.agent.updateAvailable ? 'font-semibold text-tone-warning-fg' : 'text-text-muted'}`}
           >
             {props.agent.updaterStateLabel}
           </span>
-          <span class="text-micro text-slate-400">
+          <span class="text-micro text-text-muted">
             <UpdaterVersionDisplay
               updateAvailable={props.agent.updateAvailable}
               currentVersion={props.agent.currentVersion}
@@ -187,7 +187,7 @@ function AgentDataRow(props: {
         </div>
       </td>
       <td
-        class="max-w-40 truncate px-2.5 py-2 text-micro text-slate-400"
+        class="max-w-40 truncate px-2.5 py-2 text-micro text-text-muted"
         title={props.agent.capabilitiesDisplay}
       >
         {props.agent.capabilitiesDisplay}
@@ -225,9 +225,9 @@ export function AgentsTable(props: Props): JSX.Element {
   }
 
   return (
-    <div class="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white md:block">
-      <table class="min-w-full divide-y divide-slate-100">
-        <thead class="bg-slate-50/80">
+    <div class="hidden overflow-x-auto rounded-lg border border-border bg-surface md:block">
+      <table class="min-w-full divide-y divide-border">
+        <thead class="bg-surface-muted">
           <tr>
             <SortHeader
               label="Status"
@@ -243,13 +243,13 @@ export function AgentsTable(props: Props): JSX.Element {
               currentAsc={props.sortAsc}
               onSort={props.onSortChange}
             />
-            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500">
+            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted">
               Agent
             </th>
-            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500">
+            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted">
               Hostname
             </th>
-            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500">
+            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted">
               Ver
             </th>
             <SortHeader
@@ -283,15 +283,15 @@ export function AgentsTable(props: Props): JSX.Element {
               onSort={props.onSortChange}
               class="text-right"
             />
-            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500">
+            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted">
               Update
             </th>
-            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-slate-500">
+            <th class="px-2.5 py-2 text-left text-xs-ui font-semibold uppercase tracking-wider text-text-muted">
               Providers
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-50">{bodyRows()}</tbody>
+        <tbody class="divide-y divide-border/50">{bodyRows()}</tbody>
       </table>
     </div>
   )

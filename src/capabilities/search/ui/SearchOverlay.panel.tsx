@@ -23,7 +23,7 @@ type SearchOverlayPanelProps = {
 function SearchIcon(): JSX.Element {
   return (
     <svg
-      class="h-4 w-4 text-slate-400"
+      class="h-4 w-4 text-control-foreground"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -60,7 +60,7 @@ function MatchSourceIcon(props: {
                   when={props.source === 'vessel'}
                   fallback={
                     <svg
-                      class={`${className} text-cyan-500`}
+                      class={`${className} text-tone-info-strong`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -76,7 +76,7 @@ function MatchSourceIcon(props: {
                   }
                 >
                   <svg
-                    class={`${className} text-indigo-500`}
+                    class={`${className} text-tone-info-fg`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -93,7 +93,7 @@ function MatchSourceIcon(props: {
               }
             >
               <svg
-                class={`${className} text-slate-500`}
+                class={`${className} text-text-muted`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -110,7 +110,7 @@ function MatchSourceIcon(props: {
           }
         >
           <svg
-            class={`${className} text-blue-500`}
+            class={`${className} text-tone-info-fg`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -127,7 +127,7 @@ function MatchSourceIcon(props: {
       }
     >
       <svg
-        class={`${className} text-emerald-500`}
+        class={`${className} text-tone-success-fg`}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -202,8 +202,10 @@ function SearchResultRow(props: SearchResultRowProps): JSX.Element {
       data-search-index={props.index}
       onClick={() => props.onSelectResult(props.item)}
       onMouseEnter={() => props.onHoverIndex(props.index)}
-      class={`w-full border-b border-slate-100 px-4 py-3 text-left transition-colors last:border-b-0 ${
-        isActive() ? 'bg-blue-50 text-blue-900' : 'bg-white text-slate-700 hover:bg-slate-50'
+      class={`w-full border-b border-control-border px-4 py-3 text-left transition-colors last:border-b-0 ${
+        isActive()
+          ? 'bg-control-selected-bg text-control-selected-foreground'
+          : 'bg-control-popover text-control-popover-foreground hover:bg-control-bg-hover'
       }`}
     >
       <div class="flex items-start justify-between gap-3">
@@ -214,43 +216,43 @@ function SearchResultRow(props: SearchResultRowProps): JSX.Element {
               {formatNullableText(props.item.processReference, props.item.processId)}
             </span>
           </div>
-          <div class="mt-1 text-xs-ui text-slate-500">
+          <div class="mt-1 text-xs-ui text-text-muted">
             {props.labels.processId}: {props.item.processId}
           </div>
         </div>
 
-        <span class="rounded bg-slate-100 px-2 py-0.5 text-xs-ui font-medium text-slate-600">
+        <span class="rounded bg-control-bg-hover px-2 py-0.5 text-xs-ui font-medium text-control-foreground">
           {props.matchSourceLabel}
         </span>
       </div>
 
-      <div class="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs-ui text-slate-600 sm:grid-cols-2">
+      <div class="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs-ui text-control-popover-foreground sm:grid-cols-2">
         <div class="truncate">
-          <span class="font-medium text-slate-500">{props.labels.importerName}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.importerName}:</span>{' '}
           {formatNullableText(props.item.importerName, props.fallbackText)}
         </div>
         <div class="truncate">
-          <span class="font-medium text-slate-500">{props.labels.containers}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.containers}:</span>{' '}
           {formatContainers(props.item.containers, props.fallbackText)}
         </div>
         <div class="truncate">
-          <span class="font-medium text-slate-500">{props.labels.carrier}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.carrier}:</span>{' '}
           {formatNullableText(props.item.carrier, props.fallbackText)}
         </div>
         <div class="truncate">
-          <span class="font-medium text-slate-500">{props.labels.vesselName}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.vesselName}:</span>{' '}
           {formatNullableText(props.item.vesselName, props.fallbackText)}
         </div>
         <div class="truncate">
-          <span class="font-medium text-slate-500">{props.labels.bl}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.bl}:</span>{' '}
           {formatNullableText(props.item.bl, props.fallbackText)}
         </div>
         <div class="truncate">
-          <span class="font-medium text-slate-500">{props.labels.derivedStatus}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.derivedStatus}:</span>{' '}
           {formatNullableText(props.item.derivedStatus, props.fallbackText)}
         </div>
         <div class="truncate sm:col-span-2">
-          <span class="font-medium text-slate-500">{props.labels.eta}:</span>{' '}
+          <span class="font-medium text-text-muted">{props.labels.eta}:</span>{' '}
           {formatEta(props.item.eta, props.fallbackText)}
         </div>
       </div>
@@ -299,12 +301,14 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
       <button
         type="button"
         onClick={() => props.onOpen()}
-        class="group flex w-full items-center gap-2 rounded-md border border-border bg-surface-muted px-3 text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+        class="group flex w-full items-center gap-2 rounded-md border border-control-border bg-control-bg px-3 text-left transition-colors hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         style={{ height: 'var(--dashboard-search-height)' }}
       >
         <SearchIcon />
-        <span class="flex-1 truncate text-sm-ui text-slate-500">{t(keys.search.placeholder)}</span>
-        <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-micro font-semibold text-slate-400 sm:inline-flex">
+        <span class="flex-1 truncate text-sm-ui text-control-foreground">
+          {t(keys.search.placeholder)}
+        </span>
+        <kbd class="hidden items-center gap-0.5 rounded border border-control-border bg-control-bg-hover px-1.5 py-0.5 text-micro font-semibold text-control-foreground sm:inline-flex">
           <span class="text-micro">{t(keys.search.footer.modifier)}</span>
           <span>K</span>
         </kbd>
@@ -317,7 +321,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
         >
           {/* biome-ignore lint/a11y/useSemanticElements: backdrop overlay uses div as a click-away target, not a true interactive button */}
           <div
-            class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            class="absolute inset-0 bg-ring/60 backdrop-blur-sm"
             onClick={() => props.onClose()}
             onKeyDown={(event) => {
               if (event.key === 'Escape') props.onClose()
@@ -328,13 +332,13 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
           />
 
           <div
-            class="relative z-10 w-full max-w-4xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+            class="relative z-10 w-full max-w-4xl overflow-hidden rounded-xl border border-control-border bg-control-popover shadow-2xl"
             style={{ animation: 'search-modal-in 150ms ease-out' }}
             role="dialog"
             aria-modal="true"
             aria-label={t(keys.search.placeholder)}
           >
-            <div class="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+            <div class="flex items-center gap-3 border-b border-control-border px-4 py-3">
               <SearchIcon />
               <input
                 ref={(element) => props.setInputRef(element)}
@@ -343,7 +347,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                 onInput={(event) => props.onQueryInput(event.currentTarget.value)}
                 onKeyDown={(event) => props.onInputKeyDown(event)}
                 placeholder={t(keys.search.placeholder)}
-                class="flex-1 bg-transparent text-sm-ui text-slate-900 placeholder-slate-400 outline-none"
+                class="flex-1 bg-transparent text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder outline-none"
                 autocomplete="off"
                 spellcheck={false}
               />
@@ -354,7 +358,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                     props.onQueryInput('')
                     props.focusInput()
                   }}
-                  class="rounded p-0.5 text-slate-400 hover:text-slate-600"
+                  class="rounded p-0.5 text-control-foreground hover:text-control-foreground-strong"
                   aria-label={t(keys.search.clear)}
                 >
                   <svg
@@ -373,30 +377,30 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                   </svg>
                 </button>
               </Show>
-              <kbd class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs-ui text-slate-400">
+              <kbd class="rounded border border-control-border bg-control-bg-hover px-1.5 py-0.5 text-xs-ui text-control-foreground">
                 Esc
               </kbd>
             </div>
 
             <div class="max-h-[65vh] overflow-y-auto">
               <Show when={props.state === 'loading' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-sm-ui text-slate-400" />
+                <div class="px-4 py-6 text-center text-sm-ui text-text-muted" />
               </Show>
 
               <Show when={props.state === 'error' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-sm-ui text-red-500">
+                <div class="px-4 py-6 text-center text-sm-ui text-tone-danger-fg">
                   {t(keys.search.error)}
                 </div>
               </Show>
 
               <Show when={props.state === 'empty' && shouldShowResultsState()}>
-                <div class="px-4 py-6 text-center text-sm-ui text-slate-400">
+                <div class="px-4 py-6 text-center text-sm-ui text-text-muted">
                   {t(keys.search.noResults)}
                 </div>
               </Show>
 
               <Show when={showShortQueryHint() && props.state !== 'loading'}>
-                <div class="px-4 py-6 text-center text-sm-ui text-slate-400">
+                <div class="px-4 py-6 text-center text-sm-ui text-text-muted">
                   {t(keys.search.hint, { count: props.minimumQueryLength })}
                 </div>
               </Show>
@@ -421,9 +425,9 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
               </Show>
             </div>
 
-            <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs-ui text-slate-400">
+            <div class="flex items-center justify-between border-t border-control-border bg-control-bg-hover px-4 py-2 text-xs-ui text-control-foreground">
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">
+                <kbd class="rounded border border-control-border bg-control-bg px-1 py-0.5 text-xs-ui text-control-popover-foreground">
                   <svg
                     class="inline-block w-3 h-3 align-text-center"
                     fill="none"
@@ -442,7 +446,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                 <span>{t(keys.search.footer.navigate)}</span>
               </div>
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">
+                <kbd class="rounded border border-control-border bg-control-bg px-1 py-0.5 text-xs-ui text-control-popover-foreground">
                   <svg
                     class="inline-block w-3 h-3 align-text-bottom"
                     fill="none"
@@ -460,7 +464,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                 <span>{t(keys.search.footer.select)}</span>
               </div>
               <div class="flex items-center gap-2">
-                <kbd class="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs-ui">
+                <kbd class="rounded border border-control-border bg-control-bg px-1 py-0.5 text-xs-ui text-control-popover-foreground">
                   esc
                 </kbd>
                 <span>{t(keys.search.footer.close)}</span>

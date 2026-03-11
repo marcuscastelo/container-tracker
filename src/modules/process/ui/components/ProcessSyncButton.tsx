@@ -46,12 +46,15 @@ function toSyncStateLabel(
 
 function toButtonClasses(status: SyncStatus): string {
   const base =
-    'inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60'
+    'inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60'
 
-  if (status === 'syncing') return `${base} border-blue-200 bg-blue-50 text-blue-700`
-  if (status === 'success') return `${base} border-emerald-200 bg-emerald-50 text-emerald-700`
-  if (status === 'error') return `${base} border-red-200 bg-red-50 text-red-700`
-  return `${base} border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50`
+  if (status === 'syncing')
+    return `${base} border-tone-info-border bg-tone-info-bg text-tone-info-fg`
+  if (status === 'success')
+    return `${base} border-tone-success-border bg-tone-success-bg text-tone-success-fg`
+  if (status === 'error')
+    return `${base} border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg`
+  return `${base} border-control-border bg-control-bg text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong`
 }
 
 function SyncIcon(props: { readonly status: SyncStatus }): JSX.Element {

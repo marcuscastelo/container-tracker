@@ -15,13 +15,13 @@ function Metric(props: {
   const valueColor = () => {
     switch (props.tone) {
       case 'success':
-        return 'text-emerald-700'
+        return 'text-tone-success-fg'
       case 'warning':
-        return 'text-amber-700'
+        return 'text-tone-warning-fg'
       case 'danger':
-        return 'text-red-700'
+        return 'text-tone-danger-fg'
       default:
-        return 'text-slate-900'
+        return 'text-foreground'
     }
   }
 
@@ -30,7 +30,7 @@ function Metric(props: {
       <span class={`text-xl-ui font-bold tabular-nums leading-tight ${valueColor()}`}>
         {props.value}
       </span>
-      <span class="text-micro font-medium text-slate-500">{props.label}</span>
+      <span class="text-micro font-medium text-text-muted">{props.label}</span>
     </div>
   )
 }
@@ -38,41 +38,41 @@ function Metric(props: {
 function SkeletonMetric(): JSX.Element {
   return (
     <div class="flex flex-col items-center gap-1 px-3 py-2">
-      <div class="h-6 w-8 animate-pulse rounded bg-slate-200" />
-      <div class="h-3 w-14 animate-pulse rounded bg-slate-100" />
+      <div class="h-6 w-8 animate-pulse rounded bg-surface-muted" />
+      <div class="h-3 w-14 animate-pulse rounded bg-surface-muted" />
     </div>
   )
 }
 
 export function AgentFleetSummary(props: Props): JSX.Element {
   return (
-    <div class="mb-4 flex flex-wrap items-stretch justify-center gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+    <div class="mb-4 flex flex-wrap items-stretch justify-center gap-px overflow-hidden rounded-lg border border-border bg-surface-muted">
       <Show
         when={!props.loading && props.summary}
         fallback={
           <>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <SkeletonMetric />
             </div>
           </>
@@ -80,40 +80,40 @@ export function AgentFleetSummary(props: Props): JSX.Element {
       >
         {(summary) => (
           <>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric label="Total" value={summary().totalAgents} />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric label="Connected" value={summary().connected} tone="success" />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric
                 label="Degraded"
                 value={summary().degraded}
                 tone={summary().degraded > 0 ? 'warning' : 'default'}
               />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric
                 label="Disconnected"
                 value={summary().disconnected}
                 tone={summary().disconnected > 0 ? 'danger' : 'default'}
               />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric label="Active Jobs" value={summary().totalActiveJobs} />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric
                 label="Failures/1h"
                 value={summary().failuresLastHour}
                 tone={summary().failuresLastHour > 0 ? 'danger' : 'default'}
               />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric label="Max Lag" value={summary().maxQueueLagDisplay} />
             </div>
-            <div class="bg-white">
+            <div class="bg-surface">
               <Metric label="Tenants" value={summary().tenantCount} />
             </div>
           </>

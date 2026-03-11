@@ -9,10 +9,10 @@ type Props = {
 }
 
 const toneBg: Record<AgentStatusTone, string> = {
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-red-500',
-  neutral: 'bg-slate-400',
+  success: 'bg-tone-success-strong',
+  warning: 'bg-tone-warning-strong',
+  danger: 'bg-tone-danger-strong',
+  neutral: 'bg-text-muted',
 }
 
 const freshnessPulse: Record<string, boolean> = {

@@ -58,7 +58,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
   })
 
   return (
-    <div class="relative mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-md-ui text-red-700">
+    <div class="relative mb-4 rounded-lg border border-tone-danger-border bg-tone-danger-bg px-4 py-3 text-md-ui text-tone-danger-fg">
       <div class="flex items-start justify-between">
         <div class="pr-8">{message()}</div>
 
@@ -67,7 +67,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
           <button
             type="button"
             aria-label={t(keys.createProcess.action.dismiss)}
-            class="rounded-md p-1 text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-200"
+            class="rounded-md p-1 text-tone-danger-fg hover:bg-tone-danger-border/40 focus:outline-none focus:ring-2 focus:ring-tone-danger-strong/40"
             onClick={() => {
               try {
                 props.onAcknowledge?.()
@@ -97,7 +97,7 @@ export function ExistingProcessError(props: Props): JSX.Element {
         <div class="mt-2">
           <A
             href={props.existing?.link ?? `/shipments/${props.existing?.processId ?? ''}`}
-            class="font-medium text-slate-900 hover:underline"
+            class="font-medium text-foreground hover:underline"
             onClick={() => {
               try {
                 props.onAcknowledge?.()

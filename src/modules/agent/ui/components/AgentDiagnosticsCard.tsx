@@ -9,9 +9,9 @@ type Props = {
 
 export function AgentDiagnosticsCard(props: Props): JSX.Element {
   return (
-    <section class="rounded-lg border border-slate-200 bg-white">
-      <header class="border-b border-slate-100 px-3 py-2">
-        <h2 class="text-micro font-semibold uppercase tracking-wider text-slate-400">
+    <section class="rounded-lg border border-border bg-surface">
+      <header class="border-b border-border/60 px-3 py-2">
+        <h2 class="text-micro font-semibold uppercase tracking-wider text-text-muted">
           Diagnostics
         </h2>
       </header>
@@ -19,18 +19,18 @@ export function AgentDiagnosticsCard(props: Props): JSX.Element {
         {/* Last error */}
         <Show when={props.vm.lastError}>
           {(error) => (
-            <div class="mb-2 rounded border border-red-200 bg-red-50 px-2.5 py-2">
-              <span class="text-xs-ui font-semibold text-red-700">Last Error</span>
-              <p class="mt-0.5 break-all text-micro text-red-600">{error()}</p>
+            <div class="mb-2 rounded border border-tone-danger-border bg-tone-danger-bg px-2.5 py-2">
+              <span class="text-xs-ui font-semibold text-tone-danger-fg">Last Error</span>
+              <p class="mt-0.5 break-all text-micro text-tone-danger-fg">{error()}</p>
             </div>
           )}
         </Show>
 
         <Show when={props.vm.lastUpdateError}>
           {(error) => (
-            <div class="mb-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-2">
-              <span class="text-xs-ui font-semibold text-amber-700">Last Update Error</span>
-              <p class="mt-0.5 break-all text-micro text-amber-700">{error()}</p>
+            <div class="mb-2 rounded border border-tone-warning-border bg-tone-warning-bg px-2.5 py-2">
+              <span class="text-xs-ui font-semibold text-tone-warning-fg">Last Update Error</span>
+              <p class="mt-0.5 break-all text-micro text-tone-warning-fg">{error()}</p>
             </div>
           )}
         </Show>
@@ -40,7 +40,7 @@ export function AgentDiagnosticsCard(props: Props): JSX.Element {
           when={props.vm.diagnosticFlags.length > 0}
           fallback={
             <Show when={!props.vm.lastError}>
-              <p class="text-sm-ui text-slate-400">No diagnostic issues detected</p>
+              <p class="text-sm-ui text-text-muted">No diagnostic issues detected</p>
             </Show>
           }
         >

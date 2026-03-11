@@ -46,8 +46,8 @@ type HeaderIconButtonProps = {
 function HeaderIconButton(props: HeaderIconButtonProps): JSX.Element {
   const className = () =>
     props.variant === 'danger'
-      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600 transition-colors hover:bg-red-100'
-      : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700'
+      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg transition-colors hover:bg-tone-danger-bg'
+      : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground'
 
   return (
     <button type="button" title={props.title} onClick={() => props.onClick()} class={className()}>
@@ -64,22 +64,22 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
       <button
         type="button"
         aria-label={props.message}
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-xs-ui font-medium text-blue-600 transition-transform hover:cursor-pointer hover:scale-110 hover:bg-slate-200"
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-surface-muted text-xs-ui font-medium text-primary transition-transform hover:cursor-pointer hover:scale-110 hover:bg-surface-muted"
         onClick={() => setOpen((current) => !current)}
       >
         i
       </button>
       <Show when={open()}>
         <div
-          class="absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm-ui text-slate-700 shadow-lg"
+          class="absolute right-0 z-10 mt-2 w-64 rounded border border-border bg-surface p-3 text-sm-ui text-foreground shadow-lg"
           role="dialog"
           aria-hidden="false"
         >
-          <p class="text-xs-ui text-slate-700">{props.message}</p>
+          <p class="text-xs-ui text-foreground">{props.message}</p>
           <div class="mt-2 text-right">
             <button
               type="button"
-              class="rounded bg-blue-50 px-2 py-1 text-sm-ui font-medium text-blue-700 outline hover:bg-blue-100"
+              class="rounded bg-secondary px-2 py-1 text-sm-ui font-medium text-secondary-foreground outline hover:bg-surface-muted"
               onClick={() => {
                 props.onOpenReference()
                 setOpen(false)
@@ -104,14 +104,14 @@ function UnknownCarrierActions(props: {
     <div class="flex justify-end gap-3">
       <button
         type="button"
-        class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 hover:bg-slate-100"
+        class="rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
         onClick={() => props.onCancel()}
       >
         {props.cancelLabel}
       </button>
       <button
         type="button"
-        class="rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white hover:bg-slate-800"
+        class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover"
         onClick={() => props.onEdit()}
       >
         {props.editLabel}
@@ -153,7 +153,7 @@ function HeaderActions(props: {
       <button
         type="button"
         onClick={() => props.onRefresh()}
-        class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300/80 bg-white px-2.5 text-sm-ui font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+        class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm-ui font-semibold text-foreground transition-colors hover:bg-surface-muted"
         title={props.refreshLabel}
       >
         <RefreshCw class={`h-3.5 w-3.5 ${props.isRefreshing ? 'animate-spin' : ''}`} />
@@ -194,12 +194,12 @@ function HeaderMeta(props: {
   readonly statusLabel: string
 }): JSX.Element {
   return (
-    <div class="flex flex-wrap items-center gap-2 text-sm-ui text-slate-600">
-      <span class="inline-flex items-center gap-1 font-medium uppercase tracking-wide text-slate-600">
+    <div class="flex flex-wrap items-center gap-2 text-sm-ui text-text-muted">
+      <span class="inline-flex items-center gap-1 font-medium uppercase tracking-wide text-text-muted">
         {props.route}
       </span>
       <StatusBadge variant={props.statusVariant} label={props.statusLabel} />
-      <span class="text-slate-500">{props.carrierLabel}</span>
+      <span class="text-text-muted">{props.carrierLabel}</span>
     </div>
   )
 }
@@ -242,10 +242,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
   }
 
   return (
-    <section class="rounded-xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] sm:px-5">
+    <section class="rounded-xl border border-border bg-surface px-4 py-4 shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] sm:px-5">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0 space-y-2">
-          <h1 class="flex min-w-0 items-center gap-2 text-xl-ui font-semibold leading-tight text-slate-900">
+          <h1 class="flex min-w-0 items-center gap-2 text-xl-ui font-semibold leading-tight text-foreground">
             <span class="truncate">{props.data.processRef}</span>
             <Show when={!props.data.reference}>
               <InternalIdHint
@@ -278,7 +278,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
 
           <Show when={props.isRefreshing ? props.refreshRetry : null}>
             {(refreshRetry) => (
-              <span class="text-micro text-slate-500">
+              <span class="text-micro text-text-muted">
                 {t(keys.shipmentView.refreshRetry, {
                   current: refreshRetry().current,
                   total: refreshRetry().total,
@@ -288,7 +288,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
           </Show>
 
           <Show when={props.isRefreshing ? null : props.refreshHint}>
-            {(refreshHint) => <span class="text-micro text-slate-500">{refreshHint()}</span>}
+            {(refreshHint) => <span class="text-micro text-text-muted">{refreshHint()}</span>}
           </Show>
         </div>
       </div>

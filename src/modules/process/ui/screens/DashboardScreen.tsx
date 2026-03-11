@@ -513,7 +513,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   return (
-    <div class="relative min-h-screen overflow-x-hidden bg-slate-50/80">
+    <div class="relative min-h-screen overflow-x-hidden bg-background">
       {/* Wallpaper watermark — decorative only, does not affect layout */}
       <img
         src={BRANDING.wallpaper}
@@ -534,7 +534,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onSubmit={handleProcessSubmit}
         />
 
-        <main class="dashboard-main">
+        <main class="relative mx-auto max-w-[var(--dashboard-container-max-width)] px-[var(--dashboard-container-px)] py-[var(--dashboard-container-py)]">
           <Show when={createError()}>
             <ExistingProcessError
               message={getCreateErrorMessage(createError())}

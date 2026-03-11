@@ -31,7 +31,7 @@ export function AgentFiltersBar(props: Props): JSX.Element {
       {/* Search */}
       <div class="relative min-w-45 max-w-xs flex-1">
         <svg
-          class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+          class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-control-foreground"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -49,12 +49,12 @@ export function AgentFiltersBar(props: Props): JSX.Element {
           placeholder="Search tenant, host, id…"
           value={props.searchText}
           onInput={(e) => props.onSearchChange(e.currentTarget.value)}
-          class="w-full rounded border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm-ui text-slate-700 placeholder:text-slate-400 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
+          class="w-full rounded border border-control-border bg-control-bg py-1.5 pl-8 pr-3 text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
         />
       </div>
 
       {/* Status segmented filter */}
-      <div class="flex rounded border border-slate-200 bg-white">
+      <div class="flex rounded border border-control-border bg-control-bg">
         <For each={STATUS_OPTIONS}>
           {(opt) => (
             <button
@@ -62,8 +62,8 @@ export function AgentFiltersBar(props: Props): JSX.Element {
               onClick={() => props.onStatusFilterChange(opt.value)}
               class={`px-2.5 py-1.5 text-xs-ui font-medium transition-colors first:rounded-l last:rounded-r ${
                 props.statusFilter === opt.value
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-control-foreground hover:bg-control-bg-hover hover:text-control-foreground-strong'
               }`}
             >
               {opt.label}
@@ -76,19 +76,19 @@ export function AgentFiltersBar(props: Props): JSX.Element {
       <select
         value={props.capabilityFilter}
         onChange={(e) => props.onCapabilityFilterChange(e.currentTarget.value)}
-        class="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-sm-ui text-slate-700 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
+        class="rounded border border-control-border bg-control-bg px-2.5 py-1.5 text-sm-ui text-control-popover-foreground focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
       >
         <option value="">All Providers</option>
         <For each={props.availableCapabilities}>{(cap) => <option value={cap}>{cap}</option>}</For>
       </select>
 
       {/* Only problematic toggle */}
-      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs-ui font-medium text-slate-600 transition-colors hover:bg-slate-50">
+      <label class="inline-flex cursor-pointer items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1.5 text-xs-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong">
         <input
           type="checkbox"
           checked={props.onlyProblematic}
           onChange={(e) => props.onOnlyProblematicChange(e.currentTarget.checked)}
-          class="h-3.5 w-3.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+          class="h-3.5 w-3.5 rounded border-control-border text-primary focus:ring-ring/40"
         />
         Only problematic
       </label>
