@@ -1,6 +1,6 @@
-import { SearchOverlay } from '~/capabilities/search/ui/SearchOverlay'
+import { GlobalSearchOverlay } from '~/capabilities/search/ui/GlobalSearchOverlay'
 import { Dashboard } from '~/modules/process/ui/screens/DashboardScreen'
 
 export default function IndexPage() {
-  return <Dashboard searchSlot={<SearchOverlay />} />
+  return <Dashboard searchSlot={<GlobalSearchOverlay />} />
 }

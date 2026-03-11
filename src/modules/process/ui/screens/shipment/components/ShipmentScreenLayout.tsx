@@ -15,6 +15,7 @@ type ShipmentScreenLayoutProps = {
   readonly activeAlerts: Accessor<readonly AlertDisplayVM[]>
   readonly onOpenCreateProcess: () => void
   readonly onDashboardIntent: () => void
+  readonly searchSlot?: JSX.Element
   readonly banners: JSX.Element
   readonly dialogs: JSX.Element
   readonly content: JSX.Element
@@ -44,6 +45,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         <AppHeader
           onCreateProcess={props.onOpenCreateProcess}
           alertCount={props.activeAlerts().length}
+          searchSlot={props.searchSlot}
         />
 
         {props.banners}
