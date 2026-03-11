@@ -32,7 +32,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
   }
 
   return (
-    <div class="relative min-h-screen bg-slate-50">
+    <div class="relative min-h-screen bg-background">
       {/* Wallpaper watermark — decorative only, does not affect layout */}
       <img
         src={BRANDING.wallpaper}
@@ -49,7 +49,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         {props.banners}
         {props.dialogs}
 
-        <main class="dashboard-main pt-6">
+        <main class="relative mx-auto max-w-[var(--dashboard-container-max-width)] px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
           <A
             href="/"
             class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-slate-500 transition-colors hover:text-slate-700"

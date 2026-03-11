@@ -11,7 +11,13 @@
       "agents": "Agents"
     },
     "createProcess": "Create Process",
-    "alertsBadge": "{{count}} Alerts"
+    "alertsBadge": "{{count}} Alerts",
+    "theme": {
+      "light": "Light",
+      "dark": "Dark",
+      "switchToLight": "Switch to light theme",
+      "switchToDark": "Switch to dark theme"
+    }
   },
   "dashboard": {
     "header": {

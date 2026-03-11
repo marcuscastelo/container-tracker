@@ -114,7 +114,7 @@ function SyncCellIcon(props: { readonly state: SyncCellState }): JSX.Element {
 
 function toButtonClasses(state: SyncCellState): string {
   const base =
-    'dashboard-sync-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
+    'inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
   if (state === 'syncing') return `${base} border-blue-200 bg-blue-50 text-blue-700 cursor-default`
   if (state === 'success_recent')
@@ -156,7 +156,7 @@ export function SyncCell(props: SyncCellProps): JSX.Element {
   }
 
   return (
-    <div class="dashboard-table-cell flex min-w-0 items-center justify-center">
+    <div class="flex min-w-0 items-center justify-center px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <button
         type="button"
         onClick={handleClick}

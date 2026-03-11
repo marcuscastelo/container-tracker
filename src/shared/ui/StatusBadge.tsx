@@ -84,7 +84,7 @@ function toStatusColorClasses(variant: StatusVariant): string {
     return 'border-[color:var(--color-status-delayed-border)] bg-[color:var(--color-status-delayed-bg)] text-[color:var(--color-status-delayed-fg)]'
   }
 
-  return 'border-slate-200 bg-slate-100 text-slate-600'
+  return 'border-border bg-surface-muted text-text-muted'
 }
 
 function StatusIcon(props: {
@@ -118,16 +118,19 @@ export function StatusBadge(props: Props): JSX.Element {
 
   const colorClass = createMemo(() =>
     props.neutral
-      ? 'border-slate-200 bg-slate-100 text-slate-600'
+      ? 'border-border bg-surface-muted text-text-muted'
       : toStatusColorClasses(props.variant),
   )
-  const iconColorClass = createMemo(() => (props.neutral ? 'text-slate-400' : ''))
+  const iconColorClass = createMemo(() => (props.neutral ? 'text-text-muted' : ''))
   const wrapperClass = createMemo(() => {
+    const base =
+      'inline-flex items-center gap-1.5 rounded-full border px-[var(--dashboard-status-chip-px)] py-[var(--dashboard-status-chip-py)] font-medium leading-none tracking-normal'
+
     if (props.size === 'micro') {
-      return 'dashboard-status-chip text-micro'
+      return `${base} text-micro`
     }
 
-    return 'dashboard-status-chip text-xs-ui'
+    return `${base} text-xs-ui`
   })
   const iconSize = createMemo(() => (props.size === 'micro' ? 'w-2.5 h-2.5' : 'w-3 h-3'))
   const labelClass = createMemo(() => (props.size === 'micro' ? 'truncate max-w-[11rem]' : ''))

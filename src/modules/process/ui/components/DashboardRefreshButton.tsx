@@ -114,7 +114,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       disabled={isBlocked()}
       aria-busy={isLoading()}
       title={buttonTitle()}
-      class="dashboard-btn-outline disabled:cursor-not-allowed disabled:opacity-60"
+      class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-muted disabled:text-text-muted/50 disabled:opacity-100"
     >
       <RefreshIcon
         spinning={visualState() === 'loading'}

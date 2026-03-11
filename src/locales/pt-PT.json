@@ -11,7 +11,13 @@
       "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
-    "alertsBadge": "{{count}} Alertas"
+    "alertsBadge": "{{count}} Alertas",
+    "theme": {
+      "light": "Claro",
+      "dark": "Escuro",
+      "switchToLight": "Mudar para tema claro",
+      "switchToDark": "Mudar para tema escuro"
+    }
   },
   "app": {
     "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique a consola para mais detalhes."

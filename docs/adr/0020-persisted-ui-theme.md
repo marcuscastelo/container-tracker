@@ -1,6 +1,6 @@
 # ADR — Persisted UI Theme (Light/Dark) with Semantic Tokens
 
-Status: Proposed  
+Status: Accepted  
 Date: 2026-03-11  
 Owner: UI Architecture
 
@@ -224,3 +224,34 @@ Tradeoffs:
 - root class becomes a global styling dependency
 
 Both are acceptable.
+
+---
+
+# Implementation Snapshot (2026-03-11)
+
+Implemented in:
+
+- `src/lib/theme.ts`
+- `src/entry-client.tsx`
+- `src/shared/ui/theme.css`
+- `src/shared/ui/AppHeader.tsx`
+- `src/shared/ui/LanguageSwitch.tsx`
+- `src/modules/process/ui/components/DashboardRefreshButton.tsx`
+- `src/modules/process/ui/components/SyncCell.tsx`
+- `src/modules/process/ui/components/DashboardProcessTable.tsx`
+- `src/modules/process/ui/components/DashboardMetricsGrid.tsx`
+- `src/modules/process/ui/screens/DashboardScreen.tsx`
+- `src/modules/process/ui/screens/shipment/components/ShipmentScreenLayout.tsx`
+
+Locale updates for theme labels:
+
+- `src/locales/en-US.json`
+- `src/locales/pt-BR.json`
+- `src/locales/pt-PT.json`
+
+Result:
+
+- Theme persists with `localStorage["theme"]`
+- Root class switching via `html.dark`
+- No `@layer components` in theme stylesheet
+- No `.dashboard-*` CSS component classes in TSX/CSS

@@ -67,7 +67,7 @@ function computeSeveritySubtitle(key: string): string | undefined {
 
 function CategorySummaryChip(props: { value: number; label: string }): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-micro font-medium text-slate-600">
+    <span class="inline-flex items-center gap-0.5 rounded bg-surface-muted px-1.5 py-0.5 text-micro font-medium text-text-muted">
       <span class="font-bold tabular-nums">{props.value}</span>
       {props.label}
     </span>
@@ -222,7 +222,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   const renderBody = (currentState: GridState): JSX.Element => {
     if (currentState === 'loading') {
       return (
-        <div class="py-12 text-center text-md-ui text-slate-400">
+        <div class="py-12 text-center text-md-ui text-text-muted">
           {t(keys.dashboard.alertIndicators.loading)}
         </div>
       )
@@ -242,10 +242,10 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
       <div>
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1.5">
-            <span class="text-xl-ui font-semibold tabular-nums text-slate-900">
+            <span class="text-xl-ui font-semibold tabular-nums text-foreground">
               {summary.totalActiveAlerts}
             </span>
-            <span class="text-sm-ui font-medium text-slate-500">
+            <span class="text-sm-ui font-medium text-text-muted">
               {t(keys.dashboard.alertIndicators.total)}
             </span>
           </div>
@@ -270,7 +270,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
         </div>
 
         <Show when={currentState === 'empty'}>
-          <p class="mt-2 text-center text-md-ui text-slate-500">
+          <p class="mt-2 text-center text-md-ui text-text-muted">
             {t(keys.dashboard.alertIndicators.empty)}
           </p>
         </Show>
@@ -279,11 +279,15 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   }
 
   return (
-    <section class={`dashboard-alerts-shell ${state() === 'empty' ? 'mb-4' : 'mb-6'}`}>
-      <header class="dashboard-alerts-header">
-        <h2 class="dashboard-table-panel-title">{t(keys.dashboard.alertIndicators.title)}</h2>
+    <section
+      class={`overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)] ${state() === 'empty' ? 'mb-4' : 'mb-6'}`}
+    >
+      <header class="border-b border-border px-6 py-4">
+        <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
+          {t(keys.dashboard.alertIndicators.title)}
+        </h2>
       </header>
-      <div class="dashboard-alerts-body">{renderBody(state())}</div>
+      <div class="px-6 py-4">{renderBody(state())}</div>
     </section>
   )
 }
