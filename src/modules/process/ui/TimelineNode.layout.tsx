@@ -81,7 +81,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 <button
                   type="button"
                   onClick={() => props.onOpenPredictionHistory()}
-                  class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-blue-50 hover:text-blue-500"
+                  class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-blue-50 hover:text-blue-500"
                   title={props.predictionHistoryLabel}
                   aria-label={props.predictionHistoryLabel}
                 >
@@ -100,7 +100,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
               <Show when={props.nonMappedBadgeLabel}>
                 {(nonMappedBadgeLabel) => (
                   <span
-                    class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-micro font-medium leading-none text-slate-500"
+                    class="inline-flex items-center rounded border border-border bg-surface-muted px-1 py-px text-micro font-medium leading-none text-text-muted"
                     title={nonMappedBadgeLabel()}
                   >
                     {nonMappedBadgeLabel()}
@@ -128,7 +128,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
             <Show when={showLocation()}>
               {(location) => (
-                <p class="mt-0.5 text-xs-ui leading-tight text-slate-600">{location()}</p>
+                <p class="mt-0.5 text-xs-ui leading-tight text-text-muted">{location()}</p>
               )}
             </Show>
           </div>

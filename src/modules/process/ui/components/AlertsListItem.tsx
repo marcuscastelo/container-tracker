@@ -45,7 +45,7 @@ function toSeverityBadgeClasses(
   mode: AlertsListMode,
 ): string {
   if (mode === 'archived') {
-    return 'border-slate-200 bg-slate-100 text-slate-500'
+    return 'border-border bg-surface-muted text-text-muted'
   }
   if (severity === 'danger') return 'border-red-200 bg-red-50 text-red-700'
   if (severity === 'warning') return 'border-yellow-200 bg-yellow-50 text-yellow-700'
@@ -81,7 +81,8 @@ function toSeverityLabel(
 }
 
 function toAlertCardClasses(severity: AlertDisplayVM['severity'], mode: AlertsListMode): string {
-  if (mode === 'archived') return 'border-slate-200 bg-slate-100/80 border-l-slate-300 border-l-2'
+  if (mode === 'archived')
+    return 'border-border bg-surface-muted/80 border-l-border-strong border-l-2'
   if (severity === 'danger') return 'border-red-200 bg-red-50/85 border-l-red-500 border-l-4'
   if (severity === 'warning') return 'border-amber-200 bg-amber-50/85 border-l-amber-400 border-l-4'
   return 'border-blue-100 bg-blue-50/70 border-l-blue-300 border-l-4'
@@ -93,8 +94,8 @@ function AlertCategoryChip(props: {
   t: ReturnType<typeof useTranslation>['t']
   keys: ReturnType<typeof useTranslation>['keys']
 }): JSX.Element {
-  const bg = () => (props.mode === 'archived' ? 'bg-slate-200' : 'bg-slate-100')
-  const textColor = 'text-slate-500'
+  const bg = () => (props.mode === 'archived' ? 'bg-surface-muted' : 'bg-secondary')
+  const textColor = 'text-text-muted'
 
   return (
     <span
@@ -146,16 +147,16 @@ export function AlertItem(props: {
             {toSeverityLabel(props.alert.severity, t, keys)}
           </span>
           <AlertCategoryChip type={props.alert.type} mode={props.mode} t={t} keys={keys} />
-          <span class="text-micro font-medium tabular-nums text-slate-500">
+          <span class="text-micro font-medium tabular-nums text-text-muted">
             {formatAlertAge(actionDateIso(), t, keys)}
           </span>
         </div>
-        <p class="mt-0.5 text-sm-ui font-medium leading-tight text-slate-700">
+        <p class="mt-0.5 text-sm-ui font-medium leading-tight text-foreground">
           {translatedMessage()}
         </p>
-        <p class="mt-0.5 text-xs-ui text-slate-600">
+        <p class="mt-0.5 text-xs-ui text-text-muted">
           {t(keys.alerts.containerLabel)}:{' '}
-          <span class="font-semibold text-slate-700">{props.alert.containerNumber}</span>
+          <span class="font-semibold text-foreground">{props.alert.containerNumber}</span>
         </p>
       </div>
       <Show when={props.mode === 'active'}>
@@ -163,7 +164,7 @@ export function AlertItem(props: {
           type="button"
           disabled={isBusy()}
           data-testid={`alert-ack-button-${props.alert.id}`}
-          class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-slate-400 transition hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+          class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-text-muted transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label={t(keys.shipmentView.alerts.action.acknowledgeAria)}
           title={t(keys.shipmentView.alerts.action.acknowledge)}
           onClick={() => props.onAcknowledge(props.alert.id)}
@@ -192,7 +193,7 @@ export function AlertItem(props: {
           type="button"
           disabled={isBusy()}
           data-testid={`alert-unack-button-${props.alert.id}`}
-          class="inline-flex h-6 items-center justify-center rounded border border-slate-300 bg-white px-2 text-micro font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          class="inline-flex h-6 items-center justify-center rounded border border-border bg-surface px-2 text-micro font-semibold uppercase tracking-wide text-text-muted transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
           aria-label={t(keys.shipmentView.alerts.action.unacknowledgeAria)}
           onClick={() => props.onUnacknowledge(props.alert.id)}
         >

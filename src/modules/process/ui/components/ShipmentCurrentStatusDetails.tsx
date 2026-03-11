@@ -24,8 +24,8 @@ type StatusFieldProps = {
 function StatusField(props: StatusFieldProps): JSX.Element {
   return (
     <div class="space-y-0.5">
-      <p class="text-xs-ui font-medium text-slate-500">{props.label}</p>
-      <div class="text-sm-ui font-semibold text-slate-800">{props.value}</div>
+      <p class="text-xs-ui font-medium text-text-muted">{props.label}</p>
+      <div class="text-sm-ui font-semibold text-foreground">{props.value}</div>
     </div>
   )
 }
@@ -60,8 +60,8 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
 
   return (
     <div class="space-y-4">
-      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span class="text-sm-ui font-semibold tracking-wide text-slate-900">
+      <div class="flex items-center gap-2 border-b border-border/70 pb-3">
+        <span class="text-sm-ui font-semibold tracking-wide text-foreground">
           {props.container.number}
         </span>
         <StatusBadge
@@ -75,7 +75,7 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
         value={
           <Show
             when={props.container.etaChipVm.date}
-            fallback={<span class="font-medium text-slate-400">{unknown()}</span>}
+            fallback={<span class="font-medium text-text-muted">{unknown()}</span>}
           >
             {(date) => <span class="tabular-nums">{date()}</span>}
           </Show>
@@ -98,7 +98,7 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
 
       <StatusField
         label={t(keys.shipmentView.currentStatus.lastUpdate)}
-        value={<span class="font-medium text-slate-600">{syncLabel() ?? unknown()}</span>}
+        value={<span class="font-medium text-text-muted">{syncLabel() ?? unknown()}</span>}
       />
     </div>
   )

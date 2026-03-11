@@ -72,11 +72,11 @@ export function VoyageBlockHeader(props: {
   }
 
   return (
-    <div class="rounded-t-xl border-b border-slate-200/70 bg-slate-50 px-3 py-2.5">
+    <div class="rounded-t-xl border-b border-border/70 bg-surface-muted px-3 py-2.5">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
         <Ship class="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
-        <span class="text-sm-ui font-bold text-slate-800 tracking-tight">
+        <span class="text-sm-ui font-bold text-foreground tracking-tight">
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
         <Show when={props.isCurrent}>
@@ -87,7 +87,7 @@ export function VoyageBlockHeader(props: {
       </div>
       <Show when={props.block.voyage}>
         {(voyage) => (
-          <p class="mt-0.5 text-micro font-medium text-slate-500">
+          <p class="mt-0.5 text-micro font-medium text-text-muted">
             {t(keys.shipmentView.timeline.blocks.voyage)} {voyage()}
           </p>
         )}
@@ -95,7 +95,7 @@ export function VoyageBlockHeader(props: {
       <Show when={route()}>
         {(routeStr) => (
           <p
-            class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-slate-500'}`}
+            class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-text-muted'}`}
           >
             {routeStr()}
           </p>
@@ -137,13 +137,13 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   )
 
   return (
-    <div class="rounded-t-xl border-b border-slate-100 bg-slate-50/60 px-3 py-2.5">
+    <div class="rounded-t-xl border-b border-border/70 bg-surface-muted/70 px-3 py-2.5">
       <div class="flex items-center gap-1.5">
         <Icon />
-        <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
+        <span class="text-sm-ui font-semibold text-foreground tracking-tight">{title()}</span>
       </div>
       <Show when={props.block.location}>
-        {(loc) => <p class="mt-0.5 text-micro text-slate-500">{loc()}</p>}
+        {(loc) => <p class="mt-0.5 text-micro text-text-muted">{loc()}</p>}
       </Show>
     </div>
   )
@@ -210,7 +210,7 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
 
   return (
     <div class="py-1 pl-12">
-      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-micro italic text-slate-500 ring-1 ring-slate-200/80">
+      <span class="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-micro italic text-text-muted ring-1 ring-border/80">
         <Hourglass class="w-3 h-3 shrink-0" aria-hidden="true" />
         {label()}
       </span>
@@ -248,7 +248,7 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
       case 'warning':
         return 'border-amber-400 bg-amber-50/60 text-amber-800'
       default:
-        return 'border-slate-300 bg-slate-50 text-slate-600'
+        return 'border-border bg-surface-muted text-text-muted'
     }
   }
 
@@ -289,8 +289,8 @@ export function BlockCard(props: {
       return 'rounded-xl border border-blue-200 bg-blue-50/30 shadow-[0_1px_4px_rgba(59,130,246,0.14)] ring-1 ring-blue-100/60'
     }
     return props.variant === 'voyage'
-      ? 'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
-      : 'rounded-xl border border-slate-200/70 bg-slate-50/40'
+      ? 'rounded-xl border border-border bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
+      : 'rounded-xl border border-border/70 bg-surface-muted/40'
   }
 
   return <div class={baseClass()}>{props.children}</div>
@@ -300,7 +300,7 @@ export function BlockCard(props: {
  * Micro-separator between event rows inside a block (Phase 24).
  */
 export function EventSeparator(): JSX.Element {
-  return <div class="ml-12 border-t border-slate-100" />
+  return <div class="ml-12 border-t border-border/60" />
 }
 
 // ---------------------------------------------------------------------------
@@ -327,17 +327,17 @@ export function RailDot(props: { readonly variant: RailDotVariant }): JSX.Elemen
       case 'current-voyage':
         return 'h-3 w-3 bg-blue-500 ring-2 ring-blue-200 shadow-[0_0_4px_rgba(59,130,246,0.4)]'
       case 'voyage':
-        return 'h-2.5 w-2.5 bg-blue-400 ring-2 ring-white'
+        return 'h-2.5 w-2.5 bg-blue-400 ring-2 ring-surface'
       case 'terminal':
-        return 'h-2 w-2 bg-slate-400 ring-2 ring-white'
+        return 'h-2 w-2 bg-muted-foreground ring-2 ring-surface'
       case 'transshipment':
-        return 'h-3 w-3 bg-amber-400 ring-2 ring-white'
+        return 'h-3 w-3 bg-amber-400 ring-2 ring-surface'
       case 'gap':
-        return 'h-1.5 w-1.5 bg-slate-300 ring-1 ring-white'
+        return 'h-1.5 w-1.5 bg-border-strong ring-1 ring-surface'
       case 'risk':
-        return 'h-2 w-2 bg-amber-400 ring-1 ring-white'
+        return 'h-2 w-2 bg-amber-400 ring-1 ring-surface'
       case 'event':
-        return 'h-2 w-2 bg-emerald-400 ring-1 ring-white'
+        return 'h-2 w-2 bg-emerald-400 ring-1 ring-surface'
     }
   }
 

@@ -60,11 +60,11 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
 
         <PredictionHistoryTable classified={props.seriesHistory.classified} locale={locale()} />
 
-        <div class="flex justify-end border-t border-slate-200 pt-3">
+        <div class="flex justify-end border-t border-border pt-3">
           <button
             type="button"
             onClick={() => props.onClose()}
-            class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            class="rounded-md border border-border bg-surface px-4 py-2 text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted"
           >
             {t(keys.shipmentView.timeline.predictionHistory.close)}
           </button>

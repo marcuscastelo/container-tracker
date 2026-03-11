@@ -36,12 +36,12 @@ function MetaRow(props: {
   readonly value: string
 }): JSX.Element {
   return (
-    <div class="flex items-center gap-1.5 text-xs-ui text-slate-600">
-      <span class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-slate-400">
+    <div class="flex items-center gap-1.5 text-xs-ui text-text-muted">
+      <span class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-text-muted">
         {props.icon}
       </span>
-      <span class="font-medium text-slate-500">{props.label}:</span>
-      <span class="truncate text-slate-700">{props.value}</span>
+      <span class="font-medium text-text-muted">{props.label}:</span>
+      <span class="truncate text-foreground">{props.value}</span>
     </div>
   )
 }
@@ -82,10 +82,10 @@ function ContainerSelectorItem(props: {
 
   const cardClass = () => {
     if (props.selected) {
-      return 'border-[color:var(--color-primary)] bg-blue-50/60 shadow-[0_1px_2px_rgba(44,47,89,0.18)] ring-1 ring-blue-100'
+      return 'border-primary bg-secondary shadow-[0_1px_2px_rgba(44,47,89,0.18)] ring-1 ring-border'
     }
 
-    return 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+    return 'border-border bg-surface hover:border-border-strong hover:bg-surface-muted'
   }
 
   return (
@@ -96,7 +96,7 @@ function ContainerSelectorItem(props: {
       class={`w-full rounded-lg border p-3 text-left transition-colors ${cardClass()}`}
     >
       <div class="flex items-start justify-between gap-2">
-        <span class="truncate text-sm-ui font-semibold tracking-wide text-slate-900">
+        <span class="truncate text-sm-ui font-semibold tracking-wide text-foreground">
           {props.container.number}
         </span>
         <StatusBadge variant={props.container.status} label={props.statusLabel} />

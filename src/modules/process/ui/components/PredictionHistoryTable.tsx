@@ -44,12 +44,12 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
   const deltaPrefix = () => (props.deltaDays !== null && props.deltaDays > 0 ? '+' : '')
 
   return (
-    <tr class="hover:bg-slate-50">
-      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-slate-900">
+    <tr class="hover:bg-surface-muted">
+      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-foreground">
         <span
           class={clsx(
             'inline-flex items-center rounded px-2 py-0.5 text-xs-ui font-medium',
-            isActual() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600',
+            isActual() ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-muted text-text-muted',
           )}
         >
           {isActual()
@@ -57,15 +57,15 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
             : t(keys.shipmentView.timeline.expected)}
         </span>
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-slate-600">
+      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-text-muted">
         {props.observation.event_time
           ? formatDateForLocale(props.observation.event_time, props.locale)
           : '—'}
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-slate-600">
+      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-text-muted">
         {formatDateForLocale(props.observation.created_at, props.locale)}
       </td>
-      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-slate-600">
+      <td class="whitespace-nowrap px-4 py-3 text-sm-ui text-text-muted">
         <Show when={hasDelta()} fallback="—">
           <span
             class={clsx(
@@ -110,42 +110,42 @@ export function PredictionHistoryTable(props: Props): JSX.Element {
 
   return (
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-slate-200">
-        <thead class="bg-slate-50">
+      <table class="min-w-full divide-y divide-border">
+        <thead class="bg-surface-muted">
           <tr>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
             >
               {t(keys.shipmentView.timeline.predictionHistory.eventType)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
             >
               {t(keys.shipmentView.timeline.predictionHistory.eventTime)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
             >
               {t(keys.shipmentView.timeline.predictionHistory.observedAt)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
             >
               {t(keys.shipmentView.timeline.predictionHistory.delta)}
             </th>
             <th
               scope="col"
-              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-slate-500"
+              class="px-4 py-3 text-left text-xs-ui font-medium uppercase tracking-wider text-text-muted"
             >
               {t(keys.shipmentView.timeline.predictionHistory.status)}
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-200 bg-white">
+        <tbody class="divide-y divide-border bg-surface">
           <For each={rows()}>
             {(row) => (
               <PredictionHistoryRow
