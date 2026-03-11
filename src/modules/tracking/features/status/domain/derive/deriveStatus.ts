@@ -19,6 +19,15 @@ const OBSERVATION_TO_STATUS: Partial<Record<ObservationType, ContainerStatus>> =
   CUSTOMS_RELEASE: 'DISCHARGED',
 }
 
+const LIFECYCLE_CONTINUATION_TYPES_AFTER_EMPTY_GATE_OUT: readonly ObservationType[] = [
+  'GATE_IN',
+  'GATE_OUT',
+  'LOAD',
+  'DEPARTURE',
+  'ARRIVAL',
+  'DISCHARGE',
+]
+
 /**
  * Derive the current status of a container from its timeline.
  *
@@ -107,9 +116,43 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
     finalLocation !== null &&
     actualObservations.some((o) => o.type === 'ARRIVAL' && o.location_code === finalLocation)
 
+  const hasTerminalEmptyGateOut = () => {
+    let lastEmptyGateOutIndex = -1
+    for (let i = actualObservations.length - 1; i >= 0; i--) {
+      const observation = actualObservations[i]
+      if (observation?.type === 'GATE_OUT' && observation.is_empty === true) {
+        lastEmptyGateOutIndex = i
+        break
+      }
+    }
+
+    if (lastEmptyGateOutIndex === -1) return false
+
+    const hasActualDischargeBeforeGateOut = actualObservations
+      .slice(0, lastEmptyGateOutIndex)
+      .some((observation) => observation.type === 'DISCHARGE')
+    if (!hasActualDischargeBeforeGateOut) return false
+
+    const laterActualObservations = actualObservations.slice(lastEmptyGateOutIndex + 1)
+
+    // Explicit guard: fallback must never override a later canonical terminal fact.
+    const hasCanonicalTerminalAfterGateOut = laterActualObservations.some(
+      (observation) => observation.type === 'DELIVERY' || observation.type === 'EMPTY_RETURN',
+    )
+    if (hasCanonicalTerminalAfterGateOut) return false
+
+    const hasLifecycleContinuationAfterGateOut = laterActualObservations.some((observation) =>
+      LIFECYCLE_CONTINUATION_TYPES_AFTER_EMPTY_GATE_OUT.includes(observation.type),
+    )
+    if (hasLifecycleContinuationAfterGateOut) return false
+
+    return true
+  }
+
   // Follow the explicit dominance order requested by the product rules.
   // EMPTY_RETURN should take precedence over DELIVERY when present
   if (hasActualOfType('EMPTY_RETURN')) return 'EMPTY_RETURNED'
+  if (hasTerminalEmptyGateOut()) return 'EMPTY_RETURNED'
   if (hasActualOfType('DELIVERY')) return 'DELIVERED'
   if (hasActualDischargeAtFinal()) return 'DISCHARGED'
   if (hasActualArrivalAtFinal()) return 'ARRIVED_AT_POD'
