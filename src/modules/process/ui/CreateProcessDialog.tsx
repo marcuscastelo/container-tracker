@@ -15,6 +15,12 @@ import {
   toContainerFieldKey,
 } from '~/modules/process/ui/validation/containerFormState.validation'
 import {
+  type CreateProcessCloseGuardFormSnapshot,
+  createDefaultCreateProcessCloseGuardFormSnapshot,
+  isCreateProcessCloseGuardFormDirty,
+  isSmartPasteCloseGuardDirty,
+} from '~/modules/process/ui/validation/createProcessCloseGuard.validation'
+import {
   type ParsedProcessDraft,
   type ParsedUnmappedField,
   parseTrelloSmartPaste,
@@ -208,6 +214,8 @@ type SmartPasteConflictView = {
   readonly importedValue: string
 }
 
+type CloseGuardTarget = 'form' | 'smartPaste'
+
 type SmartPasteViewModel = {
   readonly enabled: boolean
   readonly open: boolean
@@ -235,11 +243,15 @@ type CreateSmartPasteControllerParams = {
   readonly state: DialogState
   readonly t: TranslationApi['t']
   readonly keys: TranslationApi['keys']
+  readonly onCloseRequest: () => void
 }
 
 type SmartPasteController = {
   readonly smartPaste: Accessor<SmartPasteViewModel>
   readonly overwriteConfirmOpen: Accessor<boolean>
+  readonly open: Accessor<boolean>
+  readonly hasUnsavedDraft: Accessor<boolean>
+  readonly forceClose: () => void
   readonly reset: () => void
 }
 
@@ -1055,6 +1067,59 @@ function buildSubmitDataFromState(
   })
 }
 
+function toCloseGuardContainerNumbers(containers: readonly ContainerInput[]): readonly string[] {
+  if (containers.length === 0) {
+    return ['']
+  }
+
+  return containers.map((container) => container.containerNumber)
+}
+
+function toCloseGuardFormSnapshotFromState(
+  state: DialogState,
+): CreateProcessCloseGuardFormSnapshot {
+  return {
+    reference: state.reference(),
+    origin: state.origin(),
+    destination: state.destination(),
+    containers: toCloseGuardContainerNumbers(state.containers),
+    carrier: state.carrier(),
+    billOfLading: state.billOfLading(),
+    bookingNumber: state.bookingNumber(),
+    importerName: state.importerName(),
+    exporterName: state.exporterName(),
+    referenceImporter: state.referenceImporter(),
+    product: state.product(),
+    redestinationNumber: state.redestinationNumber(),
+  }
+}
+
+function toCloseGuardFormSnapshotFromInitialData(
+  initialData: CreateProcessDialogFormData | null | undefined,
+): CreateProcessCloseGuardFormSnapshot {
+  if (!initialData) {
+    return createDefaultCreateProcessCloseGuardFormSnapshot()
+  }
+
+  return {
+    reference: initialData.reference || '',
+    origin: initialData.origin || '',
+    destination: initialData.destination || '',
+    containers:
+      initialData.containers.length > 0
+        ? initialData.containers.map((container) => container.containerNumber)
+        : [''],
+    carrier: initialData.carrier || '',
+    billOfLading: initialData.billOfLading || '',
+    bookingNumber: initialData.bookingNumber || '',
+    importerName: initialData.importerName || '',
+    exporterName: initialData.exporterName || '',
+    referenceImporter: initialData.referenceImporter || '',
+    product: initialData.product || '',
+    redestinationNumber: initialData.redestinationNumber || '',
+  }
+}
+
 function toSmartPasteFormSnapshot(state: DialogState): SmartPasteFormSnapshot {
   return {
     reference: state.reference(),
@@ -1237,6 +1302,13 @@ function createSmartPasteController(
   const [smartPasteApplyErrorMessage, setSmartPasteApplyErrorMessage] = createSignal('')
 
   const smartPasteEnabled = createMemo(() => params.mode() !== 'edit')
+  const smartPasteDialogOpen = createMemo(() => params.open() && smartPasteOpen())
+  const hasUnsavedDraft = createMemo(() =>
+    isSmartPasteCloseGuardDirty({
+      rawText: smartPasteRawText(),
+      hasParsed: smartPasteParsed() !== null,
+    }),
+  )
   const smartPasteFieldLabels = createMemo<Record<SmartPasteScalarField, string>>(() => ({
     reference: params.t(params.keys.createProcess.field.reference),
     importerName: params.t(params.keys.createProcess.field.importerName),
@@ -1250,13 +1322,17 @@ function createSmartPasteController(
     bookingNumber: params.t(params.keys.createProcess.field.bookingNumber),
   }))
 
-  const reset = () => {
+  const forceClose = () => {
     setSmartPasteOpen(false)
     setSmartPasteRawText('')
     setSmartPasteParsed(null)
     setSmartPastePendingPlan(null)
     setOverwriteConfirmOpen(false)
     setSmartPasteApplyErrorMessage('')
+  }
+
+  const reset = () => {
+    forceClose()
   }
 
   const applySmartPasteResult = (plan: SmartPasteApplyPlan, overwriteConflicts: boolean) => {
@@ -1279,11 +1355,9 @@ function createSmartPasteController(
     setSmartPasteApplyErrorMessage('')
   }
 
-  const handleClose = () => {
-    setSmartPasteOpen(false)
-    setSmartPastePendingPlan(null)
-    setOverwriteConfirmOpen(false)
-    setSmartPasteApplyErrorMessage('')
+  const handleCloseRequest = () => {
+    if (!smartPasteDialogOpen()) return
+    params.onCloseRequest()
   }
 
   const handleAnalyze = () => {
@@ -1318,7 +1392,7 @@ function createSmartPasteController(
     }
 
     applySmartPasteResult(plan, false)
-    handleClose()
+    forceClose()
   }
 
   const handleConfirmOverwrite = () => {
@@ -1326,7 +1400,7 @@ function createSmartPasteController(
     if (!pendingPlan) return
 
     applySmartPasteResult(pendingPlan, true)
-    handleClose()
+    forceClose()
   }
 
   const handleCancelOverwrite = () => {
@@ -1359,7 +1433,7 @@ function createSmartPasteController(
 
   const smartPaste = createMemo<SmartPasteViewModel>(() => ({
     enabled: smartPasteEnabled(),
-    open: params.open() && smartPasteOpen(),
+    open: smartPasteDialogOpen(),
     rawText: smartPasteRawText(),
     hasParsed: smartPasteParsed() !== null,
     hasContainersDetected: (smartPasteParsed()?.fields.containers.length ?? 0) > 0,
@@ -1370,7 +1444,7 @@ function createSmartPasteController(
     conflicts: smartPasteConflicts(),
     applyErrorMessage: smartPasteApplyErrorMessage(),
     onOpen: handleOpen,
-    onClose: handleClose,
+    onClose: handleCloseRequest,
     onTextInput: (value) => setSmartPasteRawText(value),
     onAnalyze: handleAnalyze,
     onApply: handleApply,
@@ -1381,6 +1455,9 @@ function createSmartPasteController(
   return {
     smartPaste,
     overwriteConfirmOpen,
+    open: smartPasteDialogOpen,
+    hasUnsavedDraft,
+    forceClose,
     reset,
   }
 }
@@ -1391,6 +1468,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const state = createDialogState()
   const formFieldSetters = asFormFieldSetters(state)
   const containerValidationTracker = createContainerValidationTracker()
+  const [closeGuardTarget, setCloseGuardTarget] = createSignal<CloseGuardTarget | null>(null)
 
   const initialContainerNumbersSet = createMemo(
     () =>
@@ -1410,14 +1488,90 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     })
   })
 
+  createEffect(() => {
+    if (!props.open) {
+      setCloseGuardTarget(null)
+    }
+  })
+
+  const mode = createMemo(() => props.mode ?? 'create')
   const carrierOptions = createMemo(() => buildCarrierOptions(t(keys.createProcess.carrierUnknown)))
+  const formCloseBaseline = createMemo<CreateProcessCloseGuardFormSnapshot>(() => {
+    if (mode() === 'edit') {
+      return toCloseGuardFormSnapshotFromInitialData(props.initialData)
+    }
+
+    return createDefaultCreateProcessCloseGuardFormSnapshot()
+  })
+  const isFormDirty = createMemo(() =>
+    isCreateProcessCloseGuardFormDirty({
+      baseline: formCloseBaseline(),
+      current: toCloseGuardFormSnapshotFromState(state),
+    }),
+  )
+
   const smartPasteController = createSmartPasteController({
     open: () => props.open,
-    mode: () => props.mode,
+    mode,
     state,
     t,
     keys,
+    onCloseRequest: () => handleSmartPasteCloseRequest(),
   })
+
+  function closeDialogForce(): void {
+    containerValidationTracker.reset()
+    resetDialogState(asDialogStateSetters(state))
+    smartPasteController.reset()
+    setCloseGuardTarget(null)
+    props.onClose()
+  }
+
+  function handleCloseGuardCancel(): void {
+    setCloseGuardTarget(null)
+  }
+
+  function handleSmartPasteCloseRequest(): void {
+    if (closeGuardTarget() !== null) return
+    if (smartPasteController.overwriteConfirmOpen()) return
+    if (!smartPasteController.open()) return
+
+    if (!smartPasteController.hasUnsavedDraft()) {
+      smartPasteController.forceClose()
+      return
+    }
+
+    setCloseGuardTarget('smartPaste')
+  }
+
+  function handleCloseRequest(): void {
+    if (closeGuardTarget() !== null) return
+
+    if (smartPasteController.open()) {
+      handleSmartPasteCloseRequest()
+      return
+    }
+
+    if (!isFormDirty()) {
+      closeDialogForce()
+      return
+    }
+
+    setCloseGuardTarget('form')
+  }
+
+  function handleCloseGuardConfirm(): void {
+    const target = closeGuardTarget()
+    if (!target) return
+
+    if (target === 'smartPaste') {
+      smartPasteController.forceClose()
+      setCloseGuardTarget(null)
+      return
+    }
+
+    closeDialogForce()
+  }
 
   const markTouched = (fieldKey: string) => {
     state.setTouched((previous) => ({ ...previous, [fieldKey]: true }))
@@ -1488,13 +1642,6 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       }),
   })
 
-  const handleClose = () => {
-    containerValidationTracker.reset()
-    resetDialogState(asDialogStateSetters(state))
-    smartPasteController.reset()
-    props.onClose()
-  }
-
   const duplicateList = createMemo(() =>
     findDuplicateStrings(buildContainerNumbers(state.containers)),
   )
@@ -1543,7 +1690,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     setServerErrors: state.setServerErrors,
     onReady: (data) => {
       props.onSubmit?.(data)
-      handleClose()
+      closeDialogForce()
     },
   })
 
@@ -1571,14 +1718,20 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   return (
     <CreateProcessDialogView
       open={props.open}
-      mode={props.mode}
-      onClose={handleClose}
+      mode={mode()}
+      onClose={handleCloseRequest}
       onSubmit={handleSubmit}
       form={form()}
       submitDisabled={isSubmitDisabled()}
       submitTooltip={submitTooltip()}
       smartPaste={smartPasteController.smartPaste()}
       overwriteConfirmOpen={props.open && smartPasteController.overwriteConfirmOpen()}
+      closeGuard={{
+        open: props.open && closeGuardTarget() !== null,
+        target: closeGuardTarget(),
+        onCancel: handleCloseGuardCancel,
+        onConfirm: handleCloseGuardConfirm,
+      }}
     />
   )
 }

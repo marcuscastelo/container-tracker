@@ -460,6 +460,15 @@
       "existingProcessSame": "O container {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele",
       "confirmLoseProgress": "Você perderá o progresso do formulário. Deseja continuar?"
     },
+    "closeGuard": {
+      "title": "Alterações não salvas",
+      "formDescription": "Fechar agora vai descartar as edições do formulário que ainda não foram salvas.",
+      "smartPasteDescription": "Fechar agora vai descartar o texto e a análise do Smart Paste que ainda não foram aplicados.",
+      "action": {
+        "keepEditing": "Continuar editando",
+        "discardAndClose": "Descartar e fechar"
+      }
+    },
     "smartPaste": {
       "title": "Smart Paste",
       "description": "Cole o conteúdo de um card do Trello para pré-preencher o formulário.",

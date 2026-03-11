@@ -449,6 +449,15 @@
       "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it",
       "confirmLoseProgress": "You will lose form progress. Continue?"
     },
+    "closeGuard": {
+      "title": "Unsaved changes",
+      "formDescription": "Closing now will discard your form edits that have not been saved yet.",
+      "smartPasteDescription": "Closing now will discard your Smart Paste text and analysis that have not been applied.",
+      "action": {
+        "keepEditing": "Keep editing",
+        "discardAndClose": "Discard and close"
+      }
+    },
     "smartPaste": {
       "title": "Smart Paste",
       "description": "Paste Trello card content to prefill the form.",

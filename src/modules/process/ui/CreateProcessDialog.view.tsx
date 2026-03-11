@@ -59,6 +59,14 @@ type Props = {
   readonly submitTooltip: string
   readonly smartPaste: SmartPasteProps
   readonly overwriteConfirmOpen: boolean
+  readonly closeGuard: CloseGuardProps
+}
+
+type CloseGuardProps = {
+  readonly open: boolean
+  readonly target: 'form' | 'smartPaste' | null
+  readonly onCancel: () => void
+  readonly onConfirm: () => void
 }
 
 type SmartPasteDetectedField = {
@@ -370,6 +378,41 @@ function SmartPasteOverwriteConfirmDialog(props: {
             {t(keys.createProcess.smartPaste.action.replaceAndApply)}
           </button>
         </div>
+      </div>
+    </Dialog>
+  )
+}
+
+function CloseGuardDialog(props: CloseGuardProps): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <Dialog
+      open={props.open}
+      onClose={() => props.onCancel()}
+      title={t(keys.createProcess.closeGuard.title)}
+      description={t(
+        props.target === 'smartPaste'
+          ? keys.createProcess.closeGuard.smartPasteDescription
+          : keys.createProcess.closeGuard.formDescription,
+      )}
+      maxWidth="md"
+    >
+      <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <button
+          type="button"
+          onClick={() => props.onCancel()}
+          class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+        >
+          {t(keys.createProcess.closeGuard.action.keepEditing)}
+        </button>
+        <button
+          type="button"
+          onClick={() => props.onConfirm()}
+          class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800"
+        >
+          {t(keys.createProcess.closeGuard.action.discardAndClose)}
+        </button>
       </div>
     </Dialog>
   )
@@ -734,6 +777,8 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
           onConfirm={props.smartPaste.onConfirmOverwrite}
         />
       </Show>
+
+      <CloseGuardDialog {...props.closeGuard} />
     </>
   )
 }
