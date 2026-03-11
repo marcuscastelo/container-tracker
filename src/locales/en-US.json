@@ -449,6 +449,45 @@
       "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it",
       "confirmLoseProgress": "You will lose form progress. Continue?"
     },
+    "smartPaste": {
+      "title": "Smart Paste",
+      "description": "Paste Trello card content to prefill the form.",
+      "dialogTitle": "Import from Trello",
+      "dialogDescription": "Paste the card content and review detected data before applying.",
+      "pasteLabel": "Trello card content",
+      "pastePlaceholder": "Paste the Trello card title and description here",
+      "preview": {
+        "detectedTitle": "Detected data",
+        "containersTitle": "Detected containers",
+        "unmappedTitle": "Detected but not applied",
+        "warningTitle": "Warnings",
+        "requiredTitle": "Still required fields",
+        "requiredCarrier": "Carrier must still be entered manually.",
+        "requiredContainersMissing": "No valid container detected.",
+        "requiredContainersFound": "{{count}} container(s) found."
+      },
+      "warning": {
+        "carrierNotDetected": "Carrier not detected.",
+        "noValidContainerFound": "No valid container found.",
+        "unmappedFieldDetected": "Field {{label}} detected but not applied."
+      },
+      "overwrite": {
+        "title": "Fields already filled",
+        "description": "Some fields already have values. Replace them with imported data?",
+        "currentValue": "Current",
+        "importedValue": "Imported"
+      },
+      "error": {
+        "noContainers": "No valid container was detected in the pasted content."
+      },
+      "action": {
+        "open": "Import from Trello",
+        "analyze": "Analyze",
+        "apply": "Apply to form",
+        "keepCurrent": "Keep current",
+        "replaceAndApply": "Replace and apply"
+      }
+    },
     "error": {
       "failed": "Failed to create process"
     }

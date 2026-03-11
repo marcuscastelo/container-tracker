@@ -57,6 +57,320 @@ type Props = {
   readonly form: FormSectionsProps
   readonly submitDisabled: boolean
   readonly submitTooltip: string
+  readonly smartPaste: SmartPasteProps
+  readonly overwriteConfirmOpen: boolean
+}
+
+type SmartPasteDetectedField = {
+  readonly label: string
+  readonly value: string
+}
+
+type SmartPasteConflictView = {
+  readonly fieldLabel: string
+  readonly currentValue: string
+  readonly importedValue: string
+}
+
+type SmartPasteProps = {
+  readonly enabled: boolean
+  readonly open: boolean
+  readonly rawText: string
+  readonly hasParsed: boolean
+  readonly hasContainersDetected: boolean
+  readonly detectedFields: readonly SmartPasteDetectedField[]
+  readonly detectedContainers: readonly string[]
+  readonly unmappedFields: readonly { readonly label: string; readonly value: string }[]
+  readonly warnings: readonly string[]
+  readonly conflicts: readonly SmartPasteConflictView[]
+  readonly applyErrorMessage: string
+  readonly onOpen: () => void
+  readonly onClose: () => void
+  readonly onTextInput: (value: string) => void
+  readonly onAnalyze: () => void
+  readonly onApply: () => void
+  readonly onCancelOverwrite: () => void
+  readonly onConfirmOverwrite: () => void
+}
+
+function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <section class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm-ui font-semibold text-slate-700">
+            {t(keys.createProcess.smartPaste.title)}
+          </h3>
+          <p class="mt-1 text-xs-ui text-slate-500">
+            {t(keys.createProcess.smartPaste.description)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => props.onOpen()}
+          class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-100"
+        >
+          {t(keys.createProcess.smartPaste.action.open)}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function SmartPasteDetectedSection(props: {
+  readonly detectedFields: readonly SmartPasteDetectedField[]
+  readonly detectedContainers: readonly string[]
+}): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <section class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
+      <h4 class="text-sm-ui font-semibold text-slate-700">
+        {t(keys.createProcess.smartPaste.preview.detectedTitle)}
+      </h4>
+
+      <dl class="space-y-2">
+        <For each={props.detectedFields}>
+          {(field) => (
+            <div>
+              <dt class="text-xs-ui font-semibold uppercase tracking-wide text-slate-500">
+                {field.label}
+              </dt>
+              <dd class="text-sm-ui text-slate-700">{field.value}</dd>
+            </div>
+          )}
+        </For>
+      </dl>
+
+      <div>
+        <p class="text-xs-ui font-semibold uppercase tracking-wide text-slate-500">
+          {t(keys.createProcess.smartPaste.preview.containersTitle)}
+        </p>
+        <ul class="mt-1 space-y-1">
+          <For each={props.detectedContainers}>
+            {(container) => <li class="text-sm-ui text-slate-700">{container}</li>}
+          </For>
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+function SmartPasteUnmappedSection(props: {
+  readonly unmappedFields: readonly { readonly label: string; readonly value: string }[]
+}): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <section class="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4">
+      <h4 class="text-sm-ui font-semibold text-amber-900">
+        {t(keys.createProcess.smartPaste.preview.unmappedTitle)}
+      </h4>
+      <ul class="space-y-1">
+        <For each={props.unmappedFields}>
+          {(field) => (
+            <li class="text-sm-ui text-amber-900">
+              <span class="font-semibold">{field.label}:</span> {field.value || '-'}
+            </li>
+          )}
+        </For>
+      </ul>
+    </section>
+  )
+}
+
+function SmartPasteWarningsSection(props: { readonly warnings: readonly string[] }): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <section class="space-y-2 rounded-md border border-red-200 bg-red-50 p-4">
+      <h4 class="text-sm-ui font-semibold text-red-900">
+        {t(keys.createProcess.smartPaste.preview.warningTitle)}
+      </h4>
+      <ul class="space-y-1">
+        <For each={props.warnings}>
+          {(warning) => <li class="text-sm-ui text-red-800">{warning}</li>}
+        </For>
+      </ul>
+    </section>
+  )
+}
+
+function SmartPasteRequiredFieldsSection(props: {
+  readonly hasContainersDetected: boolean
+  readonly detectedContainers: readonly string[]
+}): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <section class="space-y-2 rounded-md border border-slate-200 bg-white p-4">
+      <h4 class="text-sm-ui font-semibold text-slate-700">
+        {t(keys.createProcess.smartPaste.preview.requiredTitle)}
+      </h4>
+      <ul class="space-y-1 text-sm-ui text-slate-700">
+        <li>{t(keys.createProcess.smartPaste.preview.requiredCarrier)}</li>
+        <Show
+          when={props.hasContainersDetected}
+          fallback={<li>{t(keys.createProcess.smartPaste.preview.requiredContainersMissing)}</li>}
+        >
+          <li>
+            {t(keys.createProcess.smartPaste.preview.requiredContainersFound, {
+              count: props.detectedContainers.length,
+            })}
+          </li>
+        </Show>
+      </ul>
+    </section>
+  )
+}
+
+function SmartPasteDialog(props: SmartPasteProps): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <Dialog
+      open={props.open}
+      onClose={() => props.onClose()}
+      title={t(keys.createProcess.smartPaste.dialogTitle)}
+      description={t(keys.createProcess.smartPaste.dialogDescription)}
+      maxWidth="xl"
+    >
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label for="smart-paste-input" class="block text-sm-ui font-medium text-slate-700">
+            {t(keys.createProcess.smartPaste.pasteLabel)}
+          </label>
+          <textarea
+            id="smart-paste-input"
+            value={props.rawText}
+            onInput={(event) => props.onTextInput(event.currentTarget.value)}
+            class="min-h-48 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm-ui shadow-sm transition-colors placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+            placeholder={t(keys.createProcess.smartPaste.pastePlaceholder)}
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => props.onClose()}
+            class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            {t(keys.createProcess.action.cancel)}
+          </button>
+          <button
+            type="button"
+            onClick={() => props.onAnalyze()}
+            disabled={props.rawText.trim().length === 0}
+            class={`inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors ${
+              props.rawText.trim().length === 0
+                ? 'cursor-not-allowed opacity-50'
+                : 'hover:bg-slate-800'
+            }`}
+          >
+            {t(keys.createProcess.smartPaste.action.analyze)}
+          </button>
+        </div>
+
+        <Show when={props.hasParsed}>
+          <div class="space-y-3 border-t border-slate-200 pt-4">
+            <SmartPasteDetectedSection
+              detectedFields={props.detectedFields}
+              detectedContainers={props.detectedContainers}
+            />
+            <Show when={props.unmappedFields.length > 0}>
+              <SmartPasteUnmappedSection unmappedFields={props.unmappedFields} />
+            </Show>
+            <SmartPasteRequiredFieldsSection
+              hasContainersDetected={props.hasContainersDetected}
+              detectedContainers={props.detectedContainers}
+            />
+            <Show when={props.warnings.length > 0}>
+              <SmartPasteWarningsSection warnings={props.warnings} />
+            </Show>
+            <Show when={props.applyErrorMessage.length > 0}>
+              <p class="text-sm-ui text-red-700" role="alert">
+                {props.applyErrorMessage}
+              </p>
+            </Show>
+
+            <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                onClick={() => props.onClose()}
+                class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+              >
+                {t(keys.createProcess.action.cancel)}
+              </button>
+              <button
+                type="button"
+                onClick={() => props.onApply()}
+                class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800"
+              >
+                {t(keys.createProcess.smartPaste.action.apply)}
+              </button>
+            </div>
+          </div>
+        </Show>
+      </div>
+    </Dialog>
+  )
+}
+
+function SmartPasteOverwriteConfirmDialog(props: {
+  readonly open: boolean
+  readonly conflicts: readonly SmartPasteConflictView[]
+  readonly onCancel: () => void
+  readonly onConfirm: () => void
+}): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <Dialog
+      open={props.open}
+      onClose={() => props.onCancel()}
+      title={t(keys.createProcess.smartPaste.overwrite.title)}
+      description={t(keys.createProcess.smartPaste.overwrite.description)}
+      maxWidth="lg"
+    >
+      <div class="space-y-4">
+        <ul class="space-y-3">
+          <For each={props.conflicts}>
+            {(conflict) => (
+              <li class="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p class="text-sm-ui font-semibold text-slate-700">{conflict.fieldLabel}</p>
+                <p class="mt-1 text-xs-ui text-slate-500">
+                  {t(keys.createProcess.smartPaste.overwrite.currentValue)}: {conflict.currentValue}
+                </p>
+                <p class="text-xs-ui text-slate-500">
+                  {t(keys.createProcess.smartPaste.overwrite.importedValue)}:{' '}
+                  {conflict.importedValue}
+                </p>
+              </li>
+            )}
+          </For>
+        </ul>
+
+        <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+          <button
+            type="button"
+            onClick={() => props.onCancel()}
+            class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            {t(keys.createProcess.smartPaste.action.keepCurrent)}
+          </button>
+          <button
+            type="button"
+            onClick={() => props.onConfirm()}
+            class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800"
+          >
+            {t(keys.createProcess.smartPaste.action.replaceAndApply)}
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  )
 }
 
 function IdentificationSection(
@@ -335,70 +649,89 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <Dialog
-      open={props.open}
-      onClose={() => props.onClose()}
-      title={t(props.mode === 'edit' ? keys.createProcess.titleEdit : keys.createProcess.title)}
-      description={t(keys.createProcess.description)}
-      maxWidth="xl"
-    >
-      <form onSubmit={(event) => props.onSubmit(event)} class="space-y-8">
-        <IdentificationSection
-          reference={props.form.reference}
-          onReferenceInput={props.form.onReferenceInput}
-          importerName={props.form.importerName}
-          onImporterNameInput={props.form.onImporterNameInput}
-          exporterName={props.form.exporterName}
-          onExporterNameInput={props.form.onExporterNameInput}
-          referenceImporter={props.form.referenceImporter}
-          onReferenceImporterInput={props.form.onReferenceImporterInput}
-          product={props.form.product}
-          onProductInput={props.form.onProductInput}
-          redestinationNumber={props.form.redestinationNumber}
-          onRedestinationNumberInput={props.form.onRedestinationNumberInput}
-          origin={props.form.origin}
-          onOriginInput={props.form.onOriginInput}
-          destination={props.form.destination}
-          onDestinationInput={props.form.onDestinationInput}
-        />
+    <>
+      <Dialog
+        open={props.open}
+        onClose={() => props.onClose()}
+        title={t(props.mode === 'edit' ? keys.createProcess.titleEdit : keys.createProcess.title)}
+        description={t(keys.createProcess.description)}
+        maxWidth="xl"
+      >
+        <form onSubmit={(event) => props.onSubmit(event)} class="space-y-8">
+          <Show when={props.smartPaste.enabled}>
+            <SmartPasteTrigger onOpen={props.smartPaste.onOpen} />
+          </Show>
 
-        <RouteSection
-          origin={props.form.origin}
-          onOriginInput={props.form.onOriginInput}
-          destination={props.form.destination}
-          onDestinationInput={props.form.onDestinationInput}
-        />
+          <IdentificationSection
+            reference={props.form.reference}
+            onReferenceInput={props.form.onReferenceInput}
+            importerName={props.form.importerName}
+            onImporterNameInput={props.form.onImporterNameInput}
+            exporterName={props.form.exporterName}
+            onExporterNameInput={props.form.onExporterNameInput}
+            referenceImporter={props.form.referenceImporter}
+            onReferenceImporterInput={props.form.onReferenceImporterInput}
+            product={props.form.product}
+            onProductInput={props.form.onProductInput}
+            redestinationNumber={props.form.redestinationNumber}
+            onRedestinationNumberInput={props.form.onRedestinationNumberInput}
+            origin={props.form.origin}
+            onOriginInput={props.form.onOriginInput}
+            destination={props.form.destination}
+            onDestinationInput={props.form.onDestinationInput}
+          />
 
-        <ContainersSection
-          containers={props.form.containerSection.containers}
-          onUpdateContainer={props.form.containerSection.onUpdateContainer}
-          onContainerPaste={props.form.containerSection.onContainerPaste}
-          onContainerBlur={props.form.containerSection.onContainerBlur}
-          onRemoveContainer={props.form.containerSection.onRemoveContainer}
-          onAddContainer={props.form.containerSection.onAddContainer}
-          getContainerError={props.form.containerSection.getContainerError}
-          getDuplicateError={props.form.containerSection.getDuplicateError}
-          getContainerLink={props.form.containerSection.getContainerLink}
-          onOpenContainerLink={props.form.containerSection.onOpenContainerLink}
-        />
+          <RouteSection
+            origin={props.form.origin}
+            onOriginInput={props.form.onOriginInput}
+            destination={props.form.destination}
+            onDestinationInput={props.form.onDestinationInput}
+          />
 
-        <SourceSection
-          carrier={props.form.sourceSection.carrier}
-          onCarrierInput={props.form.sourceSection.onCarrierInput}
-          carrierOptions={props.form.sourceSection.carrierOptions}
-          billOfLading={props.form.sourceSection.billOfLading}
-          onBillOfLadingInput={props.form.sourceSection.onBillOfLadingInput}
-          bookingNumber={props.form.sourceSection.bookingNumber}
-          onBookingNumberInput={props.form.sourceSection.onBookingNumberInput}
-        />
+          <ContainersSection
+            containers={props.form.containerSection.containers}
+            onUpdateContainer={props.form.containerSection.onUpdateContainer}
+            onContainerPaste={props.form.containerSection.onContainerPaste}
+            onContainerBlur={props.form.containerSection.onContainerBlur}
+            onRemoveContainer={props.form.containerSection.onRemoveContainer}
+            onAddContainer={props.form.containerSection.onAddContainer}
+            getContainerError={props.form.containerSection.getContainerError}
+            getDuplicateError={props.form.containerSection.getDuplicateError}
+            getContainerLink={props.form.containerSection.getContainerLink}
+            onOpenContainerLink={props.form.containerSection.onOpenContainerLink}
+          />
 
-        <ActionsSection
-          mode={props.mode}
-          onClose={props.onClose}
-          submitDisabled={props.submitDisabled}
-          submitTooltip={props.submitTooltip}
+          <SourceSection
+            carrier={props.form.sourceSection.carrier}
+            onCarrierInput={props.form.sourceSection.onCarrierInput}
+            carrierOptions={props.form.sourceSection.carrierOptions}
+            billOfLading={props.form.sourceSection.billOfLading}
+            onBillOfLadingInput={props.form.sourceSection.onBillOfLadingInput}
+            bookingNumber={props.form.sourceSection.bookingNumber}
+            onBookingNumberInput={props.form.sourceSection.onBookingNumberInput}
+          />
+
+          <ActionsSection
+            mode={props.mode}
+            onClose={props.onClose}
+            submitDisabled={props.submitDisabled}
+            submitTooltip={props.submitTooltip}
+          />
+        </form>
+      </Dialog>
+
+      <Show when={props.smartPaste.enabled}>
+        <SmartPasteDialog {...props.smartPaste} />
+      </Show>
+
+      <Show when={props.smartPaste.enabled}>
+        <SmartPasteOverwriteConfirmDialog
+          open={props.overwriteConfirmOpen}
+          conflicts={props.smartPaste.conflicts}
+          onCancel={props.smartPaste.onCancelOverwrite}
+          onConfirm={props.smartPaste.onConfirmOverwrite}
         />
-      </form>
-    </Dialog>
+      </Show>
+    </>
   )
 }

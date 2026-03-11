@@ -14,10 +14,25 @@ import {
   retainContainerScopedFields,
   toContainerFieldKey,
 } from '~/modules/process/ui/validation/containerFormState.validation'
+import {
+  type ParsedProcessDraft,
+  type ParsedUnmappedField,
+  parseTrelloSmartPaste,
+} from '~/modules/process/ui/validation/trelloSmartPaste.validation'
+import {
+  applySmartPasteApplyPlan,
+  buildSmartPasteApplyPlan,
+  type SmartPasteApplyPlan,
+  type SmartPasteFieldConflict,
+  type SmartPasteFormSnapshot,
+  type SmartPasteScalarField,
+} from '~/modules/process/ui/validation/trelloSmartPasteApply.validation'
 import { useTranslation } from '~/shared/localization/i18n'
 import { navigateToAppHref } from '~/shared/ui/navigation/app-navigation'
 import { findDuplicateStrings } from '~/shared/utils/findDuplicateStrings'
 import { isRecord } from '~/shared/utils/typeGuards'
+
+type TranslationApi = ReturnType<typeof useTranslation>
 
 type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
 
@@ -180,6 +195,52 @@ type CreateContainerFeedbackHandlersParams = {
   readonly duplicateContainerMessage: Accessor<string>
   readonly confirmLoseProgressMessage: Accessor<string>
   readonly navigateToAppLink: (href: string) => void
+}
+
+type SmartPasteDetectedField = {
+  readonly label: string
+  readonly value: string
+}
+
+type SmartPasteConflictView = {
+  readonly fieldLabel: string
+  readonly currentValue: string
+  readonly importedValue: string
+}
+
+type SmartPasteViewModel = {
+  readonly enabled: boolean
+  readonly open: boolean
+  readonly rawText: string
+  readonly hasParsed: boolean
+  readonly hasContainersDetected: boolean
+  readonly detectedFields: readonly SmartPasteDetectedField[]
+  readonly detectedContainers: readonly string[]
+  readonly unmappedFields: readonly ParsedUnmappedField[]
+  readonly warnings: readonly string[]
+  readonly conflicts: readonly SmartPasteConflictView[]
+  readonly applyErrorMessage: string
+  readonly onOpen: () => void
+  readonly onClose: () => void
+  readonly onTextInput: (value: string) => void
+  readonly onAnalyze: () => void
+  readonly onApply: () => void
+  readonly onCancelOverwrite: () => void
+  readonly onConfirmOverwrite: () => void
+}
+
+type CreateSmartPasteControllerParams = {
+  readonly open: Accessor<boolean>
+  readonly mode: Accessor<Props['mode']>
+  readonly state: DialogState
+  readonly t: TranslationApi['t']
+  readonly keys: TranslationApi['keys']
+}
+
+type SmartPasteController = {
+  readonly smartPaste: Accessor<SmartPasteViewModel>
+  readonly overwriteConfirmOpen: Accessor<boolean>
+  readonly reset: () => void
 }
 
 type DialogState = {
@@ -994,6 +1055,133 @@ function buildSubmitDataFromState(
   })
 }
 
+function toSmartPasteFormSnapshot(state: DialogState): SmartPasteFormSnapshot {
+  return {
+    reference: state.reference(),
+    importerName: state.importerName(),
+    exporterName: state.exporterName(),
+    product: state.product(),
+    referenceImporter: state.referenceImporter(),
+    redestinationNumber: state.redestinationNumber(),
+    origin: state.origin(),
+    destination: state.destination(),
+    billOfLading: state.billOfLading(),
+    bookingNumber: state.bookingNumber(),
+    containers: state.containers.map((container) => container.containerNumber),
+  }
+}
+
+function toContainerInputs(
+  currentContainers: readonly ContainerInput[],
+  nextContainerNumbers: readonly string[],
+): ContainerInput[] {
+  if (nextContainerNumbers.length === 0) {
+    return [createEmptyContainer()]
+  }
+
+  return nextContainerNumbers.map((containerNumber, index) => ({
+    id: currentContainers[index]?.id ?? generateId(),
+    containerNumber,
+  }))
+}
+
+function applySmartPasteSnapshotToState(params: {
+  readonly next: SmartPasteFormSnapshot
+  readonly state: DialogState
+}): void {
+  params.state.setReference(params.next.reference)
+  params.state.setImporterName(params.next.importerName)
+  params.state.setExporterName(params.next.exporterName)
+  params.state.setProduct(params.next.product)
+  params.state.setReferenceImporter(params.next.referenceImporter)
+  params.state.setRedestinationNumber(params.next.redestinationNumber)
+  params.state.setOrigin(params.next.origin)
+  params.state.setDestination(params.next.destination)
+  params.state.setBillOfLading(params.next.billOfLading)
+  params.state.setBookingNumber(params.next.bookingNumber)
+  params.state.setContainers(toContainerInputs(params.state.containers, params.next.containers))
+  params.state.setTouched({})
+  params.state.setServerErrors({})
+}
+
+function toSmartPasteFieldLabel(
+  field: SmartPasteScalarField,
+  labels: Record<SmartPasteScalarField, string>,
+): string {
+  return labels[field]
+}
+
+function toSmartPasteDetectedFields(params: {
+  readonly parsed: ParsedProcessDraft | null
+  readonly labels: Record<SmartPasteScalarField, string>
+}): readonly SmartPasteDetectedField[] {
+  const parsed = params.parsed
+  if (!parsed) return []
+
+  const fields = parsed.fields
+  const detected: SmartPasteDetectedField[] = []
+
+  const maybePush = (field: SmartPasteScalarField, value: string | undefined) => {
+    if (!value || value.trim().length === 0) return
+    detected.push({
+      label: toSmartPasteFieldLabel(field, params.labels),
+      value,
+    })
+  }
+
+  maybePush('reference', fields.reference)
+  maybePush('importerName', fields.importerName)
+  maybePush('exporterName', fields.exporterName)
+  maybePush('product', fields.product)
+  maybePush('origin', fields.origin)
+  maybePush('billOfLading', fields.billOfLading)
+  maybePush('redestinationNumber', fields.redestinationNumber)
+  maybePush('referenceImporter', fields.referenceImporter)
+  maybePush('destination', fields.destination)
+  maybePush('bookingNumber', fields.bookingNumber)
+
+  return detected
+}
+
+function toSmartPasteWarningMessages(params: {
+  readonly parsed: ParsedProcessDraft | null
+  readonly carrierNotDetected: string
+  readonly noContainerFound: string
+  readonly unmappedFieldDetected: (label: string) => string
+}): readonly string[] {
+  const warnings = params.parsed?.warnings ?? []
+  const messages: string[] = []
+
+  for (const warning of warnings) {
+    if (warning === 'carrier_not_detected') {
+      messages.push(params.carrierNotDetected)
+      continue
+    }
+    if (warning === 'no_valid_container_found') {
+      messages.push(params.noContainerFound)
+      continue
+    }
+
+    if (warning.startsWith('unmapped_field:')) {
+      const label = warning.slice('unmapped_field:'.length)
+      messages.push(params.unmappedFieldDetected(label))
+    }
+  }
+
+  return messages
+}
+
+function toSmartPasteConflictViews(params: {
+  readonly conflicts: readonly SmartPasteFieldConflict[]
+  readonly labels: Record<SmartPasteScalarField, string>
+}): readonly SmartPasteConflictView[] {
+  return params.conflicts.map((conflict) => ({
+    fieldLabel: toSmartPasteFieldLabel(conflict.field, params.labels),
+    currentValue: conflict.currentValue,
+    importedValue: conflict.importedValue,
+  }))
+}
+
 function createDialogFormMemo(
   params: CreateDialogFormMemoParams,
 ): Accessor<ReturnType<typeof buildDialogForm>> {
@@ -1037,6 +1225,166 @@ function createDialogFormMemo(
   return form
 }
 
+function createSmartPasteController(
+  params: CreateSmartPasteControllerParams,
+): SmartPasteController {
+  const [smartPasteOpen, setSmartPasteOpen] = createSignal(false)
+  const [smartPasteRawText, setSmartPasteRawText] = createSignal('')
+  const [smartPasteParsed, setSmartPasteParsed] = createSignal<ParsedProcessDraft | null>(null)
+  const [smartPastePendingPlan, setSmartPastePendingPlan] =
+    createSignal<SmartPasteApplyPlan | null>(null)
+  const [overwriteConfirmOpen, setOverwriteConfirmOpen] = createSignal(false)
+  const [smartPasteApplyErrorMessage, setSmartPasteApplyErrorMessage] = createSignal('')
+
+  const smartPasteEnabled = createMemo(() => params.mode() !== 'edit')
+  const smartPasteFieldLabels = createMemo<Record<SmartPasteScalarField, string>>(() => ({
+    reference: params.t(params.keys.createProcess.field.reference),
+    importerName: params.t(params.keys.createProcess.field.importerName),
+    exporterName: params.t(params.keys.createProcess.field.exporterName),
+    product: params.t(params.keys.createProcess.field.product),
+    referenceImporter: params.t(params.keys.createProcess.field.referenceImporter),
+    redestinationNumber: params.t(params.keys.createProcess.field.redestinationNumber),
+    origin: params.t(params.keys.createProcess.field.origin),
+    destination: params.t(params.keys.createProcess.field.destination),
+    billOfLading: params.t(params.keys.createProcess.field.billOfLading),
+    bookingNumber: params.t(params.keys.createProcess.field.bookingNumber),
+  }))
+
+  const reset = () => {
+    setSmartPasteOpen(false)
+    setSmartPasteRawText('')
+    setSmartPasteParsed(null)
+    setSmartPastePendingPlan(null)
+    setOverwriteConfirmOpen(false)
+    setSmartPasteApplyErrorMessage('')
+  }
+
+  const applySmartPasteResult = (plan: SmartPasteApplyPlan, overwriteConflicts: boolean) => {
+    const current = toSmartPasteFormSnapshot(params.state)
+    const next = applySmartPasteApplyPlan({
+      current,
+      plan,
+      overwriteConflicts,
+    })
+    applySmartPasteSnapshotToState({
+      next,
+      state: params.state,
+    })
+  }
+
+  const handleOpen = () => {
+    if (!params.open()) return
+    if (!smartPasteEnabled()) return
+    setSmartPasteOpen(true)
+    setSmartPasteApplyErrorMessage('')
+  }
+
+  const handleClose = () => {
+    setSmartPasteOpen(false)
+    setSmartPastePendingPlan(null)
+    setOverwriteConfirmOpen(false)
+    setSmartPasteApplyErrorMessage('')
+  }
+
+  const handleAnalyze = () => {
+    const parsed = parseTrelloSmartPaste(smartPasteRawText())
+    setSmartPasteParsed(parsed)
+    setSmartPastePendingPlan(null)
+    setOverwriteConfirmOpen(false)
+    setSmartPasteApplyErrorMessage('')
+  }
+
+  const handleApply = () => {
+    const parsed = smartPasteParsed()
+    if (!parsed) return
+
+    if (parsed.fields.containers.length === 0) {
+      setSmartPasteApplyErrorMessage(
+        params.t(params.keys.createProcess.smartPaste.error.noContainers),
+      )
+      return
+    }
+
+    const plan = buildSmartPasteApplyPlan({
+      current: toSmartPasteFormSnapshot(params.state),
+      draft: parsed,
+    })
+
+    if (plan.conflicts.length > 0) {
+      setSmartPastePendingPlan(plan)
+      setOverwriteConfirmOpen(true)
+      setSmartPasteApplyErrorMessage('')
+      return
+    }
+
+    applySmartPasteResult(plan, false)
+    handleClose()
+  }
+
+  const handleConfirmOverwrite = () => {
+    const pendingPlan = smartPastePendingPlan()
+    if (!pendingPlan) return
+
+    applySmartPasteResult(pendingPlan, true)
+    handleClose()
+  }
+
+  const handleCancelOverwrite = () => {
+    setOverwriteConfirmOpen(false)
+  }
+
+  const smartPasteDetectedFields = createMemo(() =>
+    toSmartPasteDetectedFields({
+      parsed: smartPasteParsed(),
+      labels: smartPasteFieldLabels(),
+    }),
+  )
+  const smartPasteWarnings = createMemo(() =>
+    toSmartPasteWarningMessages({
+      parsed: smartPasteParsed(),
+      carrierNotDetected: params.t(params.keys.createProcess.smartPaste.warning.carrierNotDetected),
+      noContainerFound: params.t(
+        params.keys.createProcess.smartPaste.warning.noValidContainerFound,
+      ),
+      unmappedFieldDetected: (label) =>
+        params.t(params.keys.createProcess.smartPaste.warning.unmappedFieldDetected, { label }),
+    }),
+  )
+  const smartPasteConflicts = createMemo(() =>
+    toSmartPasteConflictViews({
+      conflicts: smartPastePendingPlan()?.conflicts ?? [],
+      labels: smartPasteFieldLabels(),
+    }),
+  )
+
+  const smartPaste = createMemo<SmartPasteViewModel>(() => ({
+    enabled: smartPasteEnabled(),
+    open: params.open() && smartPasteOpen(),
+    rawText: smartPasteRawText(),
+    hasParsed: smartPasteParsed() !== null,
+    hasContainersDetected: (smartPasteParsed()?.fields.containers.length ?? 0) > 0,
+    detectedFields: smartPasteDetectedFields(),
+    detectedContainers: smartPasteParsed()?.fields.containers ?? [],
+    unmappedFields: smartPasteParsed()?.unmappedFields ?? [],
+    warnings: smartPasteWarnings(),
+    conflicts: smartPasteConflicts(),
+    applyErrorMessage: smartPasteApplyErrorMessage(),
+    onOpen: handleOpen,
+    onClose: handleClose,
+    onTextInput: (value) => setSmartPasteRawText(value),
+    onAnalyze: handleAnalyze,
+    onApply: handleApply,
+    onCancelOverwrite: handleCancelOverwrite,
+    onConfirmOverwrite: handleConfirmOverwrite,
+  }))
+
+  return {
+    smartPaste,
+    overwriteConfirmOpen,
+    reset,
+  }
+}
+
 export function CreateProcessDialog(props: Props): JSX.Element {
   const navigate = useNavigate()
   const { t, keys } = useTranslation()
@@ -1063,6 +1411,13 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   })
 
   const carrierOptions = createMemo(() => buildCarrierOptions(t(keys.createProcess.carrierUnknown)))
+  const smartPasteController = createSmartPasteController({
+    open: () => props.open,
+    mode: () => props.mode,
+    state,
+    t,
+    keys,
+  })
 
   const markTouched = (fieldKey: string) => {
     state.setTouched((previous) => ({ ...previous, [fieldKey]: true }))
@@ -1136,6 +1491,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   const handleClose = () => {
     containerValidationTracker.reset()
     resetDialogState(asDialogStateSetters(state))
+    smartPasteController.reset()
     props.onClose()
   }
 
@@ -1221,6 +1577,8 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       form={form()}
       submitDisabled={isSubmitDisabled()}
       submitTooltip={submitTooltip()}
+      smartPaste={smartPasteController.smartPaste()}
+      overwriteConfirmOpen={props.open && smartPasteController.overwriteConfirmOpen()}
     />
   )
 }
