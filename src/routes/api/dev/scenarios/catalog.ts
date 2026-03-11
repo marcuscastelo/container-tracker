@@ -38,7 +38,8 @@ const CatalogResponseSchema = z.object({
 })
 
 function isScenarioLabEnabled(): boolean {
-  return serverEnv.NODE_ENV?.toLowerCase() !== 'production'
+  const nodeEnv = serverEnv.NODE_ENV?.toLowerCase()
+  return nodeEnv === 'development'
 }
 
 export async function GET(): Promise<Response> {

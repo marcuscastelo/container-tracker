@@ -9,7 +9,7 @@ import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
-import { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
+import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
@@ -460,10 +460,56 @@ export default function TrackingScenariosPage(): JSX.Element {
       return { processId: result.processId, refresh: refreshToken() }
     },
     async (source) => {
-      const allProcesses = await fetchDashboardProcessSummaries(undefined, {
-        preferPrefetched: false,
+      // Fetch the single process detail and map to the dashboard summary VM to
+      // avoid loading the entire dashboard list (performance & load).
+      const shipment = await fetchProcess(source.processId, DEFAULT_LOCALE, {
+        mode: 'network-only',
+        dedupeInFlight: false,
       })
-      return allProcesses.find((process) => process.id === source.processId) ?? null
+      if (!shipment) return null
+
+      // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
+      // Dashboard preview can render without fetching the full list.
+      const highestSeverity = shipment.alerts.reduce<'danger' | 'warning' | 'info' | null>(
+        (acc, a) => {
+          if (acc === 'danger') return 'danger'
+          if (a.severity === 'danger') return 'danger'
+          if (a.severity === 'warning') return acc === 'info' || acc === null ? 'warning' : acc
+          return acc === null ? 'info' : acc
+        },
+        null,
+      )
+
+      const summary = {
+        id: shipment.id,
+        reference: shipment.reference ?? null,
+        origin: { display_name: shipment.origin },
+        destination: { display_name: shipment.destination },
+        importerId: null,
+        importerName: shipment.importer_name ?? null,
+        exporterName: shipment.exporter_name ?? null,
+        containerCount: shipment.containers.length,
+        containerNumbers: shipment.containers.map((c) => c.number),
+        status: shipment.status,
+        statusCode: shipment.statusCode,
+        statusMicrobadge: shipment.statusMicrobadge ?? null,
+        statusRank: 0,
+        eta: shipment.eta ?? null,
+        etaMsOrNull: shipment.eta ? Date.parse(shipment.eta) : null,
+        carrier: shipment.carrier ?? null,
+        alertsCount: shipment.alerts.length,
+        highestAlertSeverity: highestSeverity ?? null,
+        dominantAlertCreatedAt: null,
+        redestinationNumber: shipment.redestination_number ?? null,
+        hasTransshipment: shipment.containers.some(
+          (c) => c.transshipment?.hasTransshipment ?? false,
+        ),
+        lastEventAt: null,
+        syncStatus: 'idle' as const,
+        lastSyncAt: null,
+      }
+
+      return summary
     },
   )
 

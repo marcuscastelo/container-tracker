@@ -13,8 +13,24 @@ import type {
 } from '~/modules/tracking/dev/scenario-lab/scenario.types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 
-const PAST_BASE_MS = Date.UTC(2026, 0, 1, 0, 0, 0)
-const FUTURE_BASE_MS = Date.UTC(2026, 4, 1, 0, 0, 0)
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+function getBaseUtcMidnightMs(offsetDaysFromToday: number): number {
+  const now = new Date()
+  const todayUtcMidnightMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    0,
+    0,
+    0,
+  )
+
+  return todayUtcMidnightMs + offsetDaysFromToday * ONE_DAY_MS
+}
+
+const PAST_BASE_MS = getBaseUtcMidnightMs(-60)
+const FUTURE_BASE_MS = getBaseUtcMidnightMs(60)
 
 function atFromBase(baseMs: number, day: number, hour: number, minute: number = 0): string {
   const millis = baseMs + ((day * 24 + hour) * 60 + minute) * 60 * 1000
