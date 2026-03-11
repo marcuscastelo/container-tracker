@@ -121,7 +121,7 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
         title={buttonTitle()}
         error={visualState() === 'error'}
       />
-      <span class="hidden sm:inline">{buttonLabel()}</span>
+      <span class="hidden min-[1280px]:inline">{buttonLabel()}</span>
     </button>
   )
 }
