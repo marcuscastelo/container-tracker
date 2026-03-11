@@ -4,9 +4,10 @@ import { ShipmentScreen } from '~/modules/process/ui/screens/shipment/ShipmentSc
 
 type ShipmentPageProps = {
   readonly params: { readonly id: string }
+  readonly searchSlot?: JSX.Element
 }
 
 export function ShipmentPage(props: ShipmentPageProps): JSX.Element {
   const processId = createMemo(() => props.params.id)
-  return <ShipmentScreen processId={processId} />
+  return <ShipmentScreen processId={processId} searchSlot={props.searchSlot} />
 }

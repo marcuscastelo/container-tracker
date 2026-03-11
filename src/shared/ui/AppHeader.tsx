@@ -134,7 +134,7 @@ function HeaderSearch(props: { readonly searchSlot?: JSX.Element }): JSX.Element
   return (
     <Show when={props.searchSlot}>
       {(searchSlot) => (
-        <div class="mx-auto w-full min-w-[220px] max-w-[var(--dashboard-search-width)] [&_[data-slot='input']]:h-[var(--dashboard-search-height)] [&_[data-slot='input']]:min-h-[var(--dashboard-search-height)] [&_button]:h-[var(--dashboard-search-height)] [&_button]:min-h-[var(--dashboard-search-height)]">
+        <div class="mx-auto w-full min-w-[220px] max-w-[var(--dashboard-search-width)] [&>[data-search-trigger='true']]:h-[var(--dashboard-search-height)] [&>[data-search-trigger='true']]:min-h-[var(--dashboard-search-height)] [&_[data-slot='input']]:h-[var(--dashboard-search-height)] [&_[data-slot='input']]:min-h-[var(--dashboard-search-height)]">
           {searchSlot()}
         </div>
       )}
