@@ -92,10 +92,33 @@ UI (process/ui) is responsible for:
 - Label mapping
 - Locale date formatting
 - Rendering decisions
+- Timeline-first composition in shipment view
+- Keeping supporting metadata in sidebar panels
+- Preserving operational timeline block grouping exposed by backend read models
 
 ---
 
-## 5. Read Model Rules
+## 5. Operational UI Philosophy (Canonical)
+
+Shipment/process detail must follow a timeline-first layout:
+
+- Main column: container selector + timeline (primary artifact)
+- Sidebar: shipment information, current status, supporting metadata
+
+Rules:
+
+- Chronological flow is primary for operator comprehension.
+- Supporting cards/panels must not break timeline flow between timeline sections.
+- UI should be dense and operational, with clear hierarchy (not cosmetic minimalism).
+- Grouped timeline blocks (pre-carriage, vessel/voyage, transshipment, post-carriage/delivery) must be preserved when provided by canonical read models.
+
+Reference:
+
+- `docs/UI_PHILOSOPHY.md`
+
+---
+
+## 6. Read Model Rules
 
 Read models:
 
@@ -106,7 +129,7 @@ Read models:
 
 ---
 
-## 6. Dependency Rules
+## 7. Dependency Rules
 
 Allowed:
 
@@ -123,7 +146,7 @@ Forbidden:
 
 ---
 
-## 7. Shared Kernel Policy
+## 8. Shared Kernel Policy
 
 Shared types must be minimal and stable.
 
@@ -146,7 +169,7 @@ Architecture principle:
 
 ---
 
-## 8. ViewModel vs UI State vs UI Service
+## 9. ViewModel vs UI State vs UI Service
 
 Use strict separation in UI files:
 
@@ -163,7 +186,7 @@ Rules:
 
 ---
 
-## 9. Naming Rules
+## 10. Naming Rules
 
 File names must match responsibility:
 
@@ -175,7 +198,7 @@ File names must match responsibility:
 
 ---
 
-## 10. LLM Anti-Patterns
+## 11. LLM Anti-Patterns
 
 LLMs must NOT:
 
@@ -183,6 +206,7 @@ LLMs must NOT:
 - derive domain truth in UI (status, timeline, alerts)
 - convert DTOs into internal application contracts
 - simplify timeline/event-series logic
+- flatten grouped operational timeline blocks by reinterpreting raw events in UI
 - hide ACTUAL conflicts or uncertainty
 - move domain rules into capabilities
 - create shared kernel implicitly without explicit ownership/policy

@@ -1,3 +1,7 @@
+Canonical companion references:
+- Architecture/UI guardrails: `docs/UI_PHILOSOPHY.md`
+- Domain-truth ownership: `docs/adr/0007-domain-truth-ownership.md`
+
 Create a professional enterprise dashboard UI for an internal logistics tracking system called:
 
 "Castro Aduaneira — Container Tracker"
@@ -24,7 +28,7 @@ Clean but dense operational interface
 
 Focus on clarity, scanning speed, and anomaly detection
 
-Minimal visual noise but high information density
+Visually disciplined (low noise), never visually sparse; keep high information density
 
 Light theme (white / very light gray background)
 
@@ -186,6 +190,8 @@ Date
 Vessel name (when applicable)
 
 Visual grouping by voyage.
+
+Preserve grouped operational blocks instead of flattening into a generic flat list.
 
 Example:
 

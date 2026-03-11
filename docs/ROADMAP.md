@@ -7,7 +7,8 @@ Prioridade definida por:
 1️⃣ Impacto operacional para o usuário  
 2️⃣ Risco de inconsistência de domínio  
 3️⃣ Redução de atrito de uso  
-4️⃣ Dívida técnica que pode bloquear evolução
+4️⃣ Dívida técnica que pode bloquear evolução  
+5️⃣ Aderência ao padrão canônico de UI operacional (`docs/UI_PHILOSOPHY.md`)
 
 ---
 
@@ -147,6 +148,13 @@ Causa provável:
 
 Depois de corrigir bugs.
 
+Direção canônica desta faixa:
+
+- timeline-first no shipment/process detail
+- densidade operacional com hierarquia clara (não minimalismo cosmético)
+- metadados de suporte em sidebar sem quebrar fluxo cronológico
+- preservação de blocos operacionais agrupados na timeline
+
 ---
 
 ## P1.1 — Tabela operacional refinada
@@ -239,21 +247,47 @@ que são fixas.
 
 ---
 
-## P1.6 — Alertas não sticky no shipment
+## P1.6 — Painéis de suporte no shipment sem quebrar cronologia
 
-Alertas devem:
+No shipment/process detail:
 
 ```
-rolar com página
+status + shipment info + alerts = painéis de suporte (sidebar)
+timeline = artefato primário
 ```
 
 Motivo:
 
-shipment page é **contexto investigativo**, não dashboard.
+shipment page é **contexto investigativo timeline-first**, não dashboard.
+
+Critério:
+
+cards de suporte não devem interromper seções cronológicas da timeline.
 
 ---
 
-## P1.7 — Tray icon customizado no agent (Windows)
+## P1.7 — Blocos operacionais agrupados na timeline do shipment
+
+Preservar no rendering do shipment:
+
+```
+pre-carriage
+vessel/voyage block
+transshipment block
+post-carriage/delivery block
+```
+
+Com:
+
+```
+child events + interval markers
+```
+
+Sem achatar para lista genérica quando o read model expõe agrupamentos.
+
+---
+
+## P1.8 — Tray icon customizado no agent (Windows)
 
 UX pequena mas importante para cliente.
 

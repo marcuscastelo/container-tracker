@@ -120,6 +120,19 @@ As regras só foram ativadas após estado verde.
 
 ---
 
+### 9. Implicação para UI operacional
+
+Com boundaries explícitos:
+
+* UI de shipment/process consome read models e permanece presentation-only.
+* Timeline-first layout e agrupamentos operacionais devem ser renderizados a partir de contratos canônicos, sem re-derivação na UI.
+
+Referência de composição visual/operacional:
+
+* `docs/UI_PHILOSOPHY.md`
+
+---
+
 ## Consequências
 
 ### Positivas

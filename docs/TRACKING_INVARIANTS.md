@@ -71,3 +71,22 @@ The system must never:
 - Rewrite historical event_time
 
 Corrections are additive, not destructive.
+
+---
+
+## 7. UI Consumption Constraint
+
+UI must consume tracking derivations as canonical truth.
+
+UI may:
+
+- render timeline/status/alerts
+- format and organize display for operator readability
+
+UI must not:
+
+- re-derive timeline/status/alerts
+- reinterpret ACTUAL vs EXPECTED
+- suppress conflicts to simplify presentation
+
+Shipment view layout should remain timeline-first with supporting metadata in sidebar so chronological flow stays primary.
