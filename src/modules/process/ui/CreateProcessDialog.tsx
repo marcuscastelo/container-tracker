@@ -1235,7 +1235,6 @@ function toSmartPasteWarningMessages(params: {
   readonly parsed: ParsedProcessDraft | null
   readonly carrierNotDetected: string
   readonly noContainerFound: string
-  readonly unmappedFieldDetected: (label: string) => string
 }): readonly string[] {
   const warnings = params.parsed?.warnings ?? []
   const messages: string[] = []
@@ -1247,12 +1246,6 @@ function toSmartPasteWarningMessages(params: {
     }
     if (warning === 'no_valid_container_found') {
       messages.push(params.noContainerFound)
-      continue
-    }
-
-    if (warning.startsWith('unmapped_field:')) {
-      const label = warning.slice('unmapped_field:'.length)
-      messages.push(params.unmappedFieldDetected(label))
     }
   }
 
@@ -1447,8 +1440,6 @@ function createSmartPasteController(
       noContainerFound: params.t(
         params.keys.createProcess.smartPaste.warning.noValidContainerFound,
       ),
-      unmappedFieldDetected: (label) =>
-        params.t(params.keys.createProcess.smartPaste.warning.unmappedFieldDetected, { label }),
     }),
   )
   const smartPasteConflicts = createMemo(() =>

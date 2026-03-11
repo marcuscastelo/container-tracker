@@ -310,7 +310,6 @@ function parseLineFields(lines: readonly string[]): ParsedLineFields {
 }
 
 function buildWarnings(params: {
-  readonly unmappedFields: readonly ParsedUnmappedField[]
   readonly hasCarrier: boolean
   readonly containers: readonly string[]
 }): readonly string[] {
@@ -322,10 +321,6 @@ function buildWarnings(params: {
 
   if (params.containers.length === 0) {
     warnings.push('no_valid_container_found')
-  }
-
-  for (const field of params.unmappedFields) {
-    warnings.push(`unmapped_field:${field.label}`)
   }
 
   return dedupeStrings(warnings)
@@ -360,7 +355,6 @@ export function parseTrelloSmartPaste(rawInput: string): ParsedProcessDraft {
     fields,
     unmappedFields: lineFields.unmappedFields,
     warnings: buildWarnings({
-      unmappedFields: lineFields.unmappedFields,
       hasCarrier: Boolean(fields.carrier && fields.carrier.trim().length > 0),
       containers: mergedContainers,
     }),

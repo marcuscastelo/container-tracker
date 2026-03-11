@@ -37,8 +37,8 @@ REDESTINAÇÃO: 129495`)
     ])
 
     expect(parsed.warnings).toContain('carrier_not_detected')
-    expect(parsed.warnings).toContain('unmapped_field:NAVIO')
-    expect(parsed.warnings).toContain('unmapped_field:PREVISÃO')
+    expect(parsed.warnings).not.toContain('unmapped_field:NAVIO')
+    expect(parsed.warnings).not.toContain('unmapped_field:PREVISÃO')
   })
 
   it('accepts label variations and container separators in CTNR line', () => {
