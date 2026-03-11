@@ -499,7 +499,7 @@ export default function TrackingScenariosPage(): JSX.Element {
         lastEventAt: null,
         syncStatus: 'idle' as const,
         lastSyncAt: null,
-      } as ProcessSummaryVM
+      } satisfies ProcessSummaryVM
     },
   )
 
@@ -584,7 +584,7 @@ export default function TrackingScenariosPage(): JSX.Element {
       }
     >
       <div class="min-h-screen bg-slate-100">
-        <main class="mx-auto max-w-[1400px] space-y-4 px-3 py-4 sm:px-4 lg:px-6">
+        <main class="mx-auto max-w-350 space-y-4 px-3 py-4 sm:px-4 lg:px-6">
           <header class="rounded-xl border border-slate-200 bg-white p-4">
             <h1 class="text-lg-ui font-semibold text-slate-900">Tracking Scenario Lab</h1>
             <p class="mt-1 text-xs-ui text-slate-600">
