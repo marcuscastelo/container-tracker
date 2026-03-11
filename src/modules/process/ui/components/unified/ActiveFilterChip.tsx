@@ -8,7 +8,7 @@ export function ActiveFilterChip(props: {
   return (
     <button
       type="button"
-      class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-sm-ui text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-200"
+      class="inline-flex items-center gap-1 rounded-full border border-control-border bg-control-bg-hover px-2 py-0.5 text-sm-ui text-control-foreground transition-colors hover:border-control-border-hover hover:bg-control-selected-bg hover:text-control-foreground-strong"
       aria-label={props.ariaLabel}
       onClick={() => props.onRemove()}
     >

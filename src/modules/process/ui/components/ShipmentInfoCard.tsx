@@ -17,8 +17,8 @@ function InfoFieldRow(props: InfoField): JSX.Element | null {
   return (
     <Show when={props.value}>
       <div class="space-y-1">
-        <p class="text-xs-ui font-medium text-slate-500">{props.label}</p>
-        <p class="text-sm-ui font-semibold text-slate-800">{props.value}</p>
+        <p class="text-xs-ui font-medium text-text-muted">{props.label}</p>
+        <p class="text-sm-ui font-semibold text-foreground">{props.value}</p>
       </div>
     </Show>
   )

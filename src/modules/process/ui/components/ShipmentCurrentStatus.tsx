@@ -22,7 +22,7 @@ export function ShipmentCurrentStatus(props: Props): JSX.Element {
       <Show
         when={props.selectedContainer}
         fallback={
-          <p class="py-3 text-center text-xs-ui text-slate-400">
+          <p class="py-3 text-center text-xs-ui text-text-muted">
             {t(keys.shipmentView.currentStatus.noContainer)}
           </p>
         }

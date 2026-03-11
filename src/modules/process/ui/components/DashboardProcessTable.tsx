@@ -116,17 +116,20 @@ function toDominantAlertLabel(
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
-  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
-  if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
-  if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
-  return 'border-slate-200 bg-slate-50 text-slate-500'
+  if (severity === 'danger')
+    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
+  if (severity === 'warning')
+    return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+  if (severity === 'info') return 'border-tone-info-border bg-tone-info-bg text-tone-info-fg'
+  if (severity === 'success')
+    return 'border-tone-success-border bg-tone-success-bg text-tone-success-fg'
+  return 'border-border bg-surface-muted text-text-muted'
 }
 
 function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_#ef4444]'
-  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_#fbbf24]'
-  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_#93c5fd]'
+  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-danger-strong)]'
+  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-warning-strong)]'
+  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-info-strong)]'
   return ''
 }
 
@@ -169,7 +172,7 @@ function displayTruncatedText(value: string | null): string {
 function ArrowIcon(): JSX.Element {
   return (
     <svg
-      class="h-3.5 w-3.5 shrink-0 text-slate-400"
+      class="h-3.5 w-3.5 shrink-0 text-text-muted"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -202,7 +205,7 @@ function SortDirectionIcon(props: {
   return (
     <Show when={props.direction !== null}>
       <span
-        class="inline-flex h-4 w-4 items-center justify-center text-slate-500"
+        class="inline-flex h-4 w-4 items-center justify-center text-text-muted"
         aria-hidden="true"
       >
         <Arrow />
@@ -258,9 +261,9 @@ function formatDashboardAlertAge(params: {
   else label = params.t(params.keys.dashboard.table.age.days, { count: days })
 
   let agingClass: string
-  if (days >= 4) agingClass = 'text-red-500'
-  else if (days >= 1) agingClass = 'text-amber-500'
-  else agingClass = 'text-slate-400'
+  if (days >= 4) agingClass = 'text-tone-danger-fg'
+  else if (days >= 1) agingClass = 'text-tone-warning-fg'
+  else agingClass = 'text-text-muted'
 
   return { label, agingClass }
 }
@@ -281,10 +284,10 @@ type CellContext = {
 
 function ProcessRefCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="dashboard-table-cell min-w-0 overflow-hidden">
+    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <A
         href={ctx.processHref}
-        class="row-link dashboard-cell-primary block truncate hover:text-[color:var(--color-primary-hover)]"
+        class="row-link block truncate text-sm-ui font-semibold leading-tight tracking-[-0.01em] text-primary hover:text-primary-hover"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
@@ -298,10 +301,10 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
 
 function ImporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="dashboard-table-cell min-w-0 overflow-hidden">
+    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <A
         href={ctx.processHref}
-        class="row-link dashboard-cell-body block truncate"
+        class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
@@ -315,10 +318,10 @@ function ImporterCell(ctx: CellContext): JSX.Element {
 
 function ExporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="dashboard-table-cell min-w-0 overflow-hidden">
+    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <A
         href={ctx.processHref}
-        class="row-link dashboard-cell-body block truncate"
+        class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
         onPointerEnter={ctx.triggerProcessIntent}
         onFocusIn={ctx.triggerProcessIntent}
@@ -333,7 +336,7 @@ function ExporterCell(ctx: CellContext): JSX.Element {
 function RouteCell(ctx: CellContext): JSX.Element {
   const route = () => displayRoute(ctx.process)
   return (
-    <div class="dashboard-table-cell min-w-0 overflow-hidden">
+    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <A
         href={ctx.processHref}
         class="row-link block"
@@ -342,12 +345,12 @@ function RouteCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <div class="dashboard-cell-support flex min-w-0 items-center gap-1.5">
+        <div class="flex min-w-0 items-center gap-1.5 text-xs-ui leading-tight text-text-muted">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
-          <span class="dashboard-cell-body truncate font-medium">{route().destination}</span>
+          <span class="truncate text-sm-ui font-medium text-foreground">{route().destination}</span>
           <Show when={ctx.process.redestinationNumber}>
-            <span class="shrink-0 text-micro text-slate-400">
+            <span class="shrink-0 text-micro text-text-muted">
               ({ctx.process.redestinationNumber})
             </span>
           </Show>
@@ -373,7 +376,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
   )
 
   return (
-    <div class="dashboard-table-cell flex min-w-0 items-center justify-center overflow-hidden">
+    <div class="flex min-w-0 items-center justify-center overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <A
         href={ctx.processHref}
         class="row-link inline-flex max-w-full items-center"
@@ -401,7 +404,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
 
 function EtaCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="dashboard-table-cell min-w-0 overflow-hidden text-center">
+    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)] text-center">
       <A
         href={ctx.processHref}
         class="row-link block"
@@ -410,9 +413,12 @@ function EtaCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        <Show when={ctx.process.eta} fallback={<span class="dashboard-cell-support">—</span>}>
+        <Show
+          when={ctx.process.eta}
+          fallback={<span class="text-xs-ui leading-tight text-text-muted">—</span>}
+        >
           <span
-            class={`text-sm-ui font-semibold tabular-nums ${ctx.process.status === 'delayed' ? 'text-red-600' : 'text-slate-900'}`}
+            class={`text-sm-ui font-semibold tabular-nums ${ctx.process.status === 'delayed' ? 'text-tone-danger-fg' : 'text-foreground'}`}
           >
             {displayEta(ctx.process.eta)}
           </span>
@@ -476,7 +482,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
   }
 
   return (
-    <div class="dashboard-table-cell min-w-0 overflow-hidden text-center">
+    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)] text-center">
       <A
         href={ctx.processHref}
         class="row-link flex justify-center"
@@ -488,7 +494,11 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         <Show
           when={dominantSeverity() !== 'none'}
           fallback={
-            <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
+            <span
+              class="text-xs-ui text-tone-success-strong"
+              role="img"
+              aria-label={dominantAlertLabel()}
+            >
               <Check class="w-3.5 h-3.5" aria-hidden="true" />
             </span>
           }
@@ -589,7 +599,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <div
       role="button"
       tabIndex={0}
-      class={`dashboard-table-row grid cursor-pointer items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 ${getSeverityBorderClass(dominantSeverity())}`}
+      class={`grid min-h-[var(--dashboard-table-row-height)] cursor-pointer items-center border-b border-border/50 bg-surface transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 last:border-b-0 ${getSeverityBorderClass(dominantSeverity())}`}
       style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
@@ -679,7 +689,10 @@ function DashboardTableHeader(props: {
   }
 
   return (
-    <div class="dashboard-table-header grid" style={{ 'grid-template-columns': props.gridStyle }}>
+    <div
+      class="grid min-h-[var(--dashboard-table-header-height)] border-b border-border bg-surface-muted text-left text-sm-ui font-semibold leading-tight tracking-[0.01em] text-text-muted"
+      style={{ 'grid-template-columns': props.gridStyle }}
+    >
       <For each={props.columnOrder}>
         {(colId, i) => {
           const colDef = getColumnDef(colId)
@@ -695,7 +708,7 @@ function DashboardTableHeader(props: {
             <div
               role="columnheader"
               tabIndex={colDef.reorderable ? 0 : undefined}
-              class={`dashboard-table-header-cell ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-sky-50' : ''}`}
+              class={`min-h-[var(--dashboard-table-header-height)] px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)] ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-surface' : ''}`}
               draggable={colDef.reorderable}
               onDragStart={(e: DragEvent) => handleDragStart(colId, colDef, e)}
               onDragOver={(e: DragEvent) => handleDragOver(i(), e)}
@@ -786,7 +799,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const content = () => {
     if (props.loading) {
       return (
-        <div class="px-6 py-12 text-center text-md-ui text-slate-400">
+        <div class="px-6 py-12 text-center text-md-ui text-text-muted">
           {t(keys.dashboard.loading)}
         </div>
       )
@@ -794,7 +807,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
     if (props.hasError) {
       return (
-        <div class="px-6 py-12 text-center text-md-ui text-red-500">
+        <div class="px-6 py-12 text-center text-md-ui text-tone-danger-fg">
           {t(keys.dashboard.error.loadProcesses)}
         </div>
       )
@@ -837,9 +850,11 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   return (
-    <section class="dashboard-table-shell">
-      <header class="dashboard-table-panel-header">
-        <h2 class="dashboard-table-panel-title">{t(keys.dashboard.table.title)}</h2>
+    <section class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
+      <header class="border-b border-border bg-surface-muted px-6 py-4">
+        <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
+          {t(keys.dashboard.table.title)}
+        </h2>
       </header>
       {content()}
     </section>

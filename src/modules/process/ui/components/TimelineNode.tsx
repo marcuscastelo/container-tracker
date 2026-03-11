@@ -45,10 +45,10 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
         <Show when={props.expectedDateIso}>
           {(expectedDateIso) => (
             <div class="flex flex-col items-end" title={props.toTooltip(expectedDateIso())}>
-              <span class="tabular-nums text-sm-ui font-medium text-slate-700">
+              <span class="tabular-nums text-sm-ui font-medium text-foreground">
                 {formatDateForLocale(expectedDateIso(), props.locale)}
               </span>
-              <span class="text-micro text-slate-500 leading-tight mt-0.5">
+              <span class="mt-0.5 text-micro leading-tight text-text-muted">
                 {props.expectedLabel}
               </span>
             </div>
@@ -58,7 +58,7 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
     >
       {(actualDateIso) => (
         <p
-          class="text-micro tabular-nums text-slate-500"
+          class="text-micro tabular-nums text-text-muted"
           title={props.toTooltip(actualDateIso() ?? undefined)}
         >
           <span class="sr-only">{props.actualLabel}</span>
@@ -97,7 +97,7 @@ function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
           target="_blank"
           rel="noopener noreferrer"
           title={props.label}
-          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-slate-300 hover:text-slate-500"
+          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-text-muted hover:text-foreground"
           onClick={(event) => {
             event.preventDefault()
             void copyAndOpenCarrierLink(href(), props.containerNumber)
@@ -143,27 +143,27 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-          line: 'bg-emerald-200',
-          text: 'font-semibold text-slate-900',
+          dot: 'border-tone-success-border bg-tone-success-bg text-tone-success-fg',
+          line: 'bg-tone-success-border',
+          text: 'font-semibold text-foreground',
         }
       case 'current':
         return {
-          dot: 'border-blue-200 bg-blue-50 text-blue-700',
-          line: 'bg-blue-200',
-          text: 'font-semibold text-slate-900',
+          dot: 'border-tone-info-border bg-tone-info-bg text-tone-info-fg',
+          line: 'bg-tone-info-border',
+          text: 'font-semibold text-foreground',
         }
       case 'delayed':
         return {
-          dot: 'border-red-200 bg-red-50 text-red-700',
-          line: 'bg-slate-200',
-          text: 'font-semibold text-red-700',
+          dot: 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg',
+          line: 'bg-border',
+          text: 'font-semibold text-tone-danger-fg',
         }
       default:
         return {
-          dot: 'border-slate-200 bg-white text-slate-500',
-          line: 'bg-slate-200',
-          text: 'font-medium text-slate-700',
+          dot: 'border-border bg-surface text-text-muted',
+          line: 'bg-border',
+          text: 'font-medium text-foreground',
         }
     }
   })

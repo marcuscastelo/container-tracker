@@ -39,7 +39,7 @@ function DeleteErrorBanner(props: ErrorBannerProps): JSX.Element {
   return (
     <div
       role="alert"
-      class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm-ui text-red-700"
+      class="rounded-md border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-sm-ui text-tone-danger-fg"
     >
       <p class="font-semibold">{props.title}</p>
       <p>{props.message}</p>
@@ -51,9 +51,9 @@ type WarningIconProps = { readonly title: string }
 
 function WarningIcon(props: WarningIconProps): JSX.Element {
   return (
-    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-tone-danger-bg">
       <svg
-        class="h-6 w-6 text-red-600"
+        class="h-6 w-6 text-tone-danger-fg"
         fill="none"
         viewBox="0 0 24 24"
         stroke-width="1.5"
@@ -83,10 +83,10 @@ type ActionButtonsProps = {
 
 function ActionButtons(props: ActionButtonsProps): JSX.Element {
   return (
-    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+    <div class="flex justify-end gap-3 border-t border-border px-6 py-4">
       <button
         type="button"
-        class="rounded-md px-4 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
+        class="rounded-md px-4 py-2 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong disabled:opacity-50"
         onClick={() => props.onCancel()}
         disabled={props.isDeleting}
       >
@@ -94,7 +94,7 @@ function ActionButtons(props: ActionButtonsProps): JSX.Element {
       </button>
       <button
         type="button"
-        class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm-ui font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        class="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm-ui font-semibold text-destructive-foreground shadow-sm transition-colors hover:bg-tone-danger-strong focus:outline-none focus:ring-2 focus:ring-tone-danger-strong/40 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={() => props.onConfirm()}
         disabled={props.isDisabled || props.isDeleting}
         aria-busy={props.isDeleting}

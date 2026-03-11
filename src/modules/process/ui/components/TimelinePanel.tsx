@@ -89,7 +89,7 @@ export function TimelinePanel(props: Props): JSX.Element {
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-3 text-center text-xs-ui text-slate-400">
+            <p class="py-3 text-center text-xs-ui text-text-muted">
               {t(keys.shipmentView.noEvents)}
             </p>
           }
@@ -116,10 +116,10 @@ type ContainerContextHeaderProps = {
 function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <div class="mb-2 space-y-1.5 border-b border-slate-100 pb-2">
+    <div class="mb-2 space-y-1.5 border-b border-border/70 pb-2">
       {/* Container identity + status */}
       <div class="flex items-center gap-1.5">
-        <span class="text-xs-ui font-semibold tracking-wide text-slate-700">
+        <span class="text-xs-ui font-semibold tracking-wide text-foreground">
           {props.container.number}
         </span>
         <StatusBadge
@@ -131,10 +131,10 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.currentVessel}>
         {(vessel) => (
           <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
+            <span class="text-micro font-medium uppercase tracking-wider text-text-muted">
               {t(keys.shipmentView.timeline.vessel)}
             </span>
-            <span class="text-micro font-semibold text-slate-600">{vessel()}</span>
+            <span class="text-micro font-semibold text-foreground">{vessel()}</span>
           </div>
         )}
       </Show>
@@ -142,10 +142,10 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.portsRoute}>
         {(route) => (
           <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
+            <span class="text-micro font-medium uppercase tracking-wider text-text-muted">
               {t(keys.shipmentView.transshipment.title)}
             </span>
-            <span class="text-micro font-medium tabular-nums text-slate-500">{route()}</span>
+            <span class="text-micro font-medium tabular-nums text-text-muted">{route()}</span>
           </div>
         )}
       </Show>

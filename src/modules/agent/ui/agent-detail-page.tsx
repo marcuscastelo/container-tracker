@@ -39,12 +39,12 @@ function DetailSkeleton(): JSX.Element {
     <div class="grid gap-4 lg:grid-cols-2">
       <Index each={new Array(6)}>
         {() => (
-          <div class="rounded-lg border border-slate-200 bg-white p-4">
-            <div class="mb-3 h-3 w-24 animate-pulse rounded bg-slate-200" />
+          <div class="rounded-lg border border-border bg-surface p-4">
+            <div class="mb-3 h-3 w-24 animate-pulse rounded bg-surface-muted" />
             <div class="space-y-2">
-              <div class="h-4 w-full animate-pulse rounded bg-slate-100" />
-              <div class="h-4 w-3/4 animate-pulse rounded bg-slate-100" />
-              <div class="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+              <div class="h-4 w-full animate-pulse rounded bg-surface-muted" />
+              <div class="h-4 w-3/4 animate-pulse rounded bg-surface-muted" />
+              <div class="h-4 w-1/2 animate-pulse rounded bg-surface-muted" />
             </div>
           </div>
         )}
@@ -56,9 +56,9 @@ function DetailSkeleton(): JSX.Element {
 function DetailError(props: { readonly onRetry: () => void }): JSX.Element {
   return (
     <div class="flex flex-col items-center justify-center py-16 text-center">
-      <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+      <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-tone-danger-bg">
         <svg
-          class="h-6 w-6 text-red-500"
+          class="h-6 w-6 text-tone-danger-strong"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -72,11 +72,11 @@ function DetailError(props: { readonly onRetry: () => void }): JSX.Element {
           />
         </svg>
       </div>
-      <p class="text-sm-ui text-red-600">Failed to load agent details</p>
+      <p class="text-sm-ui text-tone-danger-fg">Failed to load agent details</p>
       <button
         type="button"
         onClick={() => props.onRetry()}
-        class="mt-3 text-sm-ui font-medium text-slate-700 underline hover:text-slate-900"
+        class="mt-3 text-sm-ui font-medium text-control-foreground underline hover:text-control-foreground-strong"
       >
         Retry
       </button>
@@ -87,8 +87,8 @@ function DetailError(props: { readonly onRetry: () => void }): JSX.Element {
 function AgentNotFound(): JSX.Element {
   return (
     <div class="flex flex-col items-center justify-center py-16 text-center">
-      <p class="text-md-ui text-slate-600">Agent not found</p>
-      <A href="/agents" class="mt-3 text-sm-ui font-medium text-sky-600 hover:text-sky-500">
+      <p class="text-md-ui text-text-muted">Agent not found</p>
+      <A href="/agents" class="mt-3 text-sm-ui font-medium text-primary hover:text-primary-hover">
         Back to agents
       </A>
     </div>
@@ -111,7 +111,7 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => props.onBack()}
-          class="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          class="inline-flex items-center gap-1 rounded border border-control-border bg-control-bg px-2 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
             class="h-3.5 w-3.5"
@@ -133,9 +133,9 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <Show when={props.vm()}>
           {(currentVM) => (
             <div class="flex items-center gap-2">
-              <h1 class="text-lg-ui font-semibold text-slate-900">{currentVM().hostname}</h1>
+              <h1 class="text-lg-ui font-semibold text-foreground">{currentVM().hostname}</h1>
               <AgentStatusBadge label={currentVM().status} tone={currentVM().statusTone} />
-              <span class="text-sm-ui text-slate-500">{currentVM().tenantName}</span>
+              <span class="text-sm-ui text-text-muted">{currentVM().tenantName}</span>
             </div>
           )}
         </Show>
@@ -145,24 +145,24 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         <button
           type="button"
           onClick={() => void props.onRequestUpdate()}
-          class="inline-flex items-center rounded border border-sky-200 bg-sky-50 px-2.5 py-1 text-sm-ui font-medium text-sky-700 transition-colors hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200"
+          class="inline-flex items-center rounded border border-tone-info-border bg-tone-info-bg px-2.5 py-1 text-sm-ui font-medium text-tone-info-fg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-info-border/50"
         >
           Request update
         </button>
         <button
           type="button"
           onClick={() => void props.onRequestRestart()}
-          class="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-2.5 py-1 text-sm-ui font-medium text-amber-700 transition-colors hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200"
+          class="inline-flex items-center rounded border border-tone-warning-border bg-tone-warning-bg px-2.5 py-1 text-sm-ui font-medium text-tone-warning-fg transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-tone-warning-border/50"
         >
           Request restart
         </button>
-        <span class="text-micro text-slate-400">
+        <span class="text-micro text-text-muted">
           Updated {formatRefreshTime(props.lastRefreshed())}
         </span>
         <button
           type="button"
           onClick={() => props.onRefresh()}
-          class="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          class="inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
             class="h-3.5 w-3.5"
@@ -308,7 +308,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
   }
 
   return (
-    <div class="relative min-h-screen bg-slate-50/80">
+    <div class="relative min-h-screen bg-dashboard-canvas">
       <div class="relative z-10">
         <AppHeader />
 
@@ -324,7 +324,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
 
           <Show when={actionMessage()}>
             {(message) => (
-              <div class="mb-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm-ui text-emerald-700">
+              <div class="mb-3 rounded border border-tone-success-border bg-tone-success-bg px-3 py-2 text-sm-ui text-tone-success-fg">
                 {message()}
               </div>
             )}
@@ -332,7 +332,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
 
           <Show when={actionError()}>
             {(message) => (
-              <div class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm-ui text-red-700">
+              <div class="mb-3 rounded border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-sm-ui text-tone-danger-fg">
                 {message()}
               </div>
             )}

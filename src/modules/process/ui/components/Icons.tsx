@@ -12,7 +12,7 @@ export function ChevronLeftIcon(): JSX.Element {
 export function ArrowIcon(): JSX.Element {
   return (
     <svg
-      class="h-4 w-4 text-slate-400"
+      class="h-4 w-4 text-text-muted"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -32,15 +32,15 @@ export function AlertIcon(props: { readonly type: AlertDisplayVM['type'] }): JSX
   const colorClass = () => {
     switch (props.type) {
       case 'delay':
-        return 'text-red-500'
+        return 'text-tone-danger-strong'
       case 'customs':
-        return 'text-amber-500'
+        return 'text-tone-warning-strong'
       case 'missing-eta':
-        return 'text-amber-500'
+        return 'text-tone-warning-strong'
       case 'transshipment':
-        return 'text-orange-500'
+        return 'text-tone-warning-strong'
       default:
-        return 'text-blue-500'
+        return 'text-tone-info-strong'
     }
   }
 

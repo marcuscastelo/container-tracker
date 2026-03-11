@@ -24,7 +24,10 @@ export function DeleteShipmentConfirmationInput(props: Props): JSX.Element {
 
   return (
     <div class="space-y-1.5">
-      <label for="delete-confirm-input" class="block text-sm-ui font-medium text-slate-700">
+      <label
+        for="delete-confirm-input"
+        class="block text-sm-ui font-medium text-control-foreground"
+      >
         {t(k.confirmationLabel)}
       </label>
       <input
@@ -35,7 +38,7 @@ export function DeleteShipmentConfirmationInput(props: Props): JSX.Element {
         value={props.value}
         onInput={(e) => props.onInput(e.currentTarget.value)}
         placeholder={t(k.confirmationPlaceholder, { reference: props.expectedReference })}
-        class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm-ui text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+        class="w-full rounded-md border border-control-border bg-control-bg px-3 py-2 text-sm-ui text-control-popover-foreground placeholder:text-control-placeholder focus:border-tone-danger-strong focus:outline-none focus:ring-1 focus:ring-tone-danger-strong/40"
         aria-describedby="delete-confirm-hint"
       />
       {/* Hint for assistive technologies: mirror the placeholder text so screen readers have explicit guidance. */}

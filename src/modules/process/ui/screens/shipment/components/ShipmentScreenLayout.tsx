@@ -32,7 +32,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
   }
 
   return (
-    <div class="relative min-h-screen bg-slate-50">
+    <div class="relative min-h-screen bg-background">
       {/* Wallpaper watermark — decorative only, does not affect layout */}
       <img
         src={BRANDING.wallpaper}
@@ -49,10 +49,10 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         {props.banners}
         {props.dialogs}
 
-        <main class="dashboard-main pt-6">
+        <main class="relative mx-auto max-w-[var(--dashboard-container-max-width)] px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
           <A
             href="/"
-            class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-slate-500 transition-colors hover:text-slate-700"
+            class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-text-muted transition-colors hover:text-foreground"
             onPointerEnter={triggerDashboardIntent}
             onFocusIn={triggerDashboardIntent}
             onPointerDown={triggerDashboardIntent}
@@ -62,17 +62,17 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
           </A>
 
           <Show when={props.shipmentLoading()}>
-            <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-              <p class="text-slate-500">{t(keys.shipmentView.loading)}</p>
+            <div class="rounded-lg border border-border bg-surface p-12 text-center">
+              <p class="text-text-muted">{t(keys.shipmentView.loading)}</p>
             </div>
           </Show>
 
           <Show when={shouldShowLoadError()}>
-            <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-              <p class="text-red-500">{t(keys.shipmentView.loadError)}</p>
+            <div class="rounded-lg border border-border bg-surface p-12 text-center">
+              <p class="text-tone-danger-fg">{t(keys.shipmentView.loadError)}</p>
               <A
                 href="/"
-                class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900"
+                class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}
                 onPointerDown={triggerDashboardIntent}
@@ -83,11 +83,11 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
           </Show>
 
           <Show when={shouldShowNotFound()}>
-            <div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-              <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
+            <div class="rounded-lg border border-border bg-surface p-12 text-center">
+              <p class="text-tone-danger-fg">{t(keys.shipmentView.notFound)}</p>
               <A
                 href="/"
-                class="mt-4 inline-block text-sm-ui text-slate-600 hover:text-slate-900"
+                class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}
                 onPointerDown={triggerDashboardIntent}

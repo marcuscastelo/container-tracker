@@ -12,7 +12,8 @@ export const BRANDING = {
   displayTitle: 'Castro Aduaneira — Container Tracker',
 
   /** Primary logo (horizontal / full) — for header / navbar */
-  logoPrimary: '/branding/logo-light.png',
+  logoPrimaryLight: '/branding/logo-light.png',
+  logoPrimaryDark: '/branding/logo-dark.png',
 
   /** Logo mark (icon-only) — for favicon, compact spaces */
   logoMark: '/branding/favicon.ico',

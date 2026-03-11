@@ -11,10 +11,10 @@ type Props = {
 
 function LiveIndicator(): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs-ui font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-tone-success-bg px-2.5 py-0.5 text-xs-ui font-semibold text-tone-success-fg ring-1 ring-inset ring-tone-success-border/40">
       <span class="relative flex h-2 w-2">
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-        <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-tone-success-strong opacity-75" />
+        <span class="relative inline-flex h-2 w-2 rounded-full bg-tone-success-strong" />
       </span>
       Live
     </span>
@@ -26,21 +26,21 @@ export function AgentPageHeader(props: Props): JSX.Element {
     <section class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div class="flex flex-col gap-0.5">
         <div class="flex items-center gap-3">
-          <h1 class="text-lg-ui font-semibold text-slate-900">{props.title}</h1>
+          <h1 class="text-lg-ui font-semibold text-foreground">{props.title}</h1>
           <Show when={props.isLive}>
             <LiveIndicator />
           </Show>
         </div>
         <Show when={props.subtitle}>
-          <p class="text-sm-ui text-slate-500">{props.subtitle}</p>
+          <p class="text-sm-ui text-text-muted">{props.subtitle}</p>
         </Show>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-micro text-slate-400">Updated {props.lastRefreshed}</span>
+        <span class="text-micro text-text-muted">Updated {props.lastRefreshed}</span>
         <button
           type="button"
           onClick={() => props.onRefresh()}
-          class="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-white px-2.5 py-1 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          class="inline-flex items-center gap-1.5 rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <svg
             class="h-3.5 w-3.5"

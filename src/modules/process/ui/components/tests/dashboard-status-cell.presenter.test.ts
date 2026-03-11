@@ -60,7 +60,7 @@ describe('dashboard-status-cell.presenter', () => {
 
     expect(display.subtitle).toEqual({
       label: '4 descarregados',
-      textClass: 'text-orange-700',
+      textClass: 'text-tone-warning-fg',
     })
   })
 
@@ -80,7 +80,7 @@ describe('dashboard-status-cell.presenter', () => {
 
     expect(display.subtitle).toEqual({
       label: '1 entregue',
-      textClass: 'text-green-700',
+      textClass: 'text-tone-success-fg',
     })
   })
 

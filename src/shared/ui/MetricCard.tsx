@@ -15,34 +15,34 @@ const variantStyles: Record<
   { iconBg: string; iconText: string; labelClass: string; valueClass: string }
 > = {
   default: {
-    iconBg: 'bg-slate-50',
-    iconText: 'text-slate-500',
-    labelClass: 'text-slate-500',
-    valueClass: 'text-slate-900',
+    iconBg: 'bg-control-bg-hover',
+    iconText: 'text-control-foreground',
+    labelClass: 'text-text-muted',
+    valueClass: 'text-foreground',
   },
   warning: {
-    iconBg: 'bg-amber-50',
-    iconText: 'text-amber-500',
-    labelClass: 'text-amber-600',
-    valueClass: 'text-amber-700',
+    iconBg: 'bg-tone-warning-bg',
+    iconText: 'text-tone-warning-fg',
+    labelClass: 'text-tone-warning-fg',
+    valueClass: 'text-tone-warning-fg',
   },
   info: {
-    iconBg: 'bg-blue-50',
-    iconText: 'text-blue-500',
-    labelClass: 'text-blue-600',
-    valueClass: 'text-blue-700',
+    iconBg: 'bg-tone-info-bg',
+    iconText: 'text-tone-info-fg',
+    labelClass: 'text-tone-info-fg',
+    valueClass: 'text-tone-info-fg',
   },
   danger: {
-    iconBg: 'bg-red-50',
-    iconText: 'text-red-500',
-    labelClass: 'text-red-600',
-    valueClass: 'text-red-700',
+    iconBg: 'bg-tone-danger-bg',
+    iconText: 'text-tone-danger-fg',
+    labelClass: 'text-tone-danger-fg',
+    valueClass: 'text-tone-danger-fg',
   },
   success: {
-    iconBg: 'bg-emerald-50',
-    iconText: 'text-emerald-500',
-    labelClass: 'text-emerald-600',
-    valueClass: 'text-emerald-700',
+    iconBg: 'bg-tone-success-bg',
+    iconText: 'text-tone-success-fg',
+    labelClass: 'text-tone-success-fg',
+    valueClass: 'text-tone-success-fg',
   },
 }
 
@@ -50,7 +50,7 @@ export function MetricCard(props: Props): JSX.Element {
   const styles = () => variantStyles[props.variant ?? 'default']
 
   return (
-    <div class="flex items-center gap-3 rounded border border-slate-200 bg-white px-3 py-2.5">
+    <div class="flex items-center gap-3 rounded border border-border bg-surface px-3 py-2.5">
       <div
         class={`flex h-8 w-8 shrink-0 items-center justify-center rounded ${styles().iconBg} ${styles().iconText}`}
       >
@@ -64,7 +64,7 @@ export function MetricCard(props: Props): JSX.Element {
           {props.label}
         </span>
         <Show when={props.subtitle}>
-          {(subtitle) => <span class="text-xs-ui mt-0.5 text-slate-400">{subtitle()}</span>}
+          {(subtitle) => <span class="text-xs-ui mt-0.5 text-text-muted">{subtitle()}</span>}
         </Show>
       </div>
     </div>
