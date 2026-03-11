@@ -26,7 +26,9 @@ const LoadScenarioResponseSchema = z.object({
 })
 
 function isScenarioLabEnabled(): boolean {
-  return serverEnv.NODE_ENV?.toLowerCase() !== 'production'
+  const nodeEnv = serverEnv.NODE_ENV?.toLowerCase()
+  // Allow explicit opt-in via env flag or only enable in local development
+  return serverEnv.SCENARIO_LAB_ENABLED === true || nodeEnv === 'development'
 }
 
 export async function POST({ request }: { request: Request }): Promise<Response> {
@@ -50,12 +52,20 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     LoadScenarioResponseSchema.parse(payload)
     return jsonResponse(payload, 200)
   } catch (error) {
+    // Treat schema mismatches and unexpected errors as server errors to avoid
+    // leaking internal validation details as 4xx client errors.
+    if (error instanceof z.ZodError) {
+      console.error('Failed to validate load scenario response', error)
+      return jsonResponse({ error: 'Failed to load scenario' }, 500)
+    }
+
     const message = error instanceof Error ? error.message : 'Failed to load scenario'
 
     if (message.startsWith('Scenario not found')) {
       return jsonResponse({ error: message }, 404)
     }
 
-    return jsonResponse({ error: message }, 400)
+    console.error('Unexpected error while loading scenario', error)
+    return jsonResponse({ error: 'Failed to load scenario' }, 500)
   }
 }
