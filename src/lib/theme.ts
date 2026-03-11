@@ -1,8 +1,13 @@
+import { createSignal } from 'solid-js'
+
 export type UiTheme = 'light' | 'dark'
 
-export const THEME_STORAGE_KEY = 'theme'
+const THEME_STORAGE_KEY = 'theme'
 
 const DEFAULT_THEME: UiTheme = 'light'
+
+// TODO: Remove signal from lib/theme, and instead use a proper solidjs folder / file dedicated to theme reactivity
+const [themeChangeCounter, setThemeChangeCounter] = createSignal(0)
 
 function isUiTheme(value: string | null): value is UiTheme {
   return value === 'light' || value === 'dark'
@@ -37,7 +42,7 @@ function persistTheme(theme: UiTheme): void {
   }
 }
 
-export function applyTheme(theme: UiTheme): void {
+function applyTheme(theme: UiTheme): void {
   if (typeof document === 'undefined') {
     return
   }
@@ -46,6 +51,7 @@ export function applyTheme(theme: UiTheme): void {
 }
 
 export function getTheme(): UiTheme {
+  void themeChangeCounter() // subscribe to changes so we get the latest theme if it was changed in another tab/window
   if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
     return 'dark'
   }
@@ -53,9 +59,10 @@ export function getTheme(): UiTheme {
   return readStoredTheme()
 }
 
-export function setTheme(theme: UiTheme): UiTheme {
+function setTheme(theme: UiTheme): UiTheme {
   applyTheme(theme)
   persistTheme(theme)
+  setThemeChangeCounter(themeChangeCounter() + 1)
   return theme
 }
 

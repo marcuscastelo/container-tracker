@@ -57,6 +57,8 @@ function AlertCountBadge(props: { label: string }): JSX.Element {
 }
 
 function HeaderBrand(): JSX.Element {
+  const logoSrc = () =>
+    getTheme() === 'dark' ? BRANDING.logoPrimaryDark : BRANDING.logoPrimaryLight
   return (
     <A
       href="/"
@@ -64,7 +66,7 @@ function HeaderBrand(): JSX.Element {
       aria-label={BRANDING.displayTitle}
     >
       <img
-        src={BRANDING.logoPrimary}
+        src={logoSrc()}
         alt={BRANDING.companyName}
         class="block h-10 w-auto shrink-0 object-contain"
       />
