@@ -46,12 +46,12 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
 const MSC_TRANSHIPMENT_POSITIONED_IN_KEY = 'full transshipment positioned in'
 
 type MscEventForSemanticMapping = {
-  readonly Description: string | null | undefined
-  readonly Detail: readonly string[] | null | undefined
-  readonly UnLocationCode: string | null | undefined
-  readonly Location: string | null | undefined
+  readonly Description?: string | null | undefined
+  readonly Detail?: readonly string[] | null | undefined
+  readonly UnLocationCode?: string | null | undefined
+  readonly Location?: string | null | undefined
   readonly Vessel?: {
-    readonly IMO: string | null | undefined
+    readonly IMO?: string | null | undefined
   } | null
 }
 
