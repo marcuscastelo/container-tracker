@@ -202,7 +202,7 @@ function SearchResultRow(props: SearchResultRowProps): JSX.Element {
       data-search-index={props.index}
       onClick={() => props.onSelectResult(props.item)}
       onMouseEnter={() => props.onHoverIndex(props.index)}
-      class={`flex w-full flex-col border-b border-control-border px-4 py-3 text-left transition-colors last:border-b-0 ${
+      class={`flex h-auto w-full flex-col border-b border-control-border px-4 py-3 text-left transition-colors last:border-b-0 ${
         isActive()
           ? 'bg-control-selected-bg text-control-selected-foreground'
           : 'bg-control-popover text-control-popover-foreground hover:bg-control-bg-hover'
