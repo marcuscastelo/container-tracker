@@ -17,7 +17,7 @@ type DashboardStatusSubtitleDisplay = {
   readonly textClass: string
 }
 
-export type DashboardStatusCellDisplay = {
+type DashboardStatusCellDisplay = {
   readonly primary: {
     readonly label: string
     readonly variant: StatusVariant

@@ -143,27 +143,27 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'bg-emerald-500 ring-1 ring-emerald-200',
-          line: 'bg-emerald-300',
-          text: 'font-medium text-slate-800',
+          dot: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          line: 'bg-emerald-200',
+          text: 'font-semibold text-slate-900',
         }
       case 'current':
         return {
-          dot: 'bg-blue-500 ring-2 ring-blue-100',
-          line: 'bg-slate-200',
-          text: 'font-medium text-slate-800',
+          dot: 'border-blue-200 bg-blue-50 text-blue-700',
+          line: 'bg-blue-200',
+          text: 'font-semibold text-slate-900',
         }
       case 'delayed':
         return {
-          dot: 'bg-red-400 ring-2 ring-red-50',
+          dot: 'border-red-200 bg-red-50 text-red-700',
           line: 'bg-slate-200',
-          text: 'font-medium text-red-600',
+          text: 'font-semibold text-red-700',
         }
       default:
         return {
-          dot: 'border border-slate-300 bg-white',
+          dot: 'border-slate-200 bg-white text-slate-500',
           line: 'bg-slate-200',
-          text: 'text-slate-500',
+          text: 'font-medium text-slate-700',
         }
     }
   })
@@ -206,7 +206,7 @@ export function TimelineNode(props: {
   const eventIcon = createMemo<JSX.Element | null>(() => {
     const Icon = timelineEventIcon(props.event.type)
     if (!Icon) return null
-    return <Icon class={`h-4 w-4 shrink-0 ${styles().text}`} aria-hidden="true" />
+    return <Icon class="h-4 w-4 shrink-0" aria-hidden="true" />
   })
 
   return (

@@ -9,7 +9,6 @@ import type {
   VoyageBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
 import { useTranslation } from '~/shared/localization/i18n'
-import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // ---------------------------------------------------------------------------
 // Phase 20 — Voyage Block Header ("Identity Card")
@@ -19,71 +18,61 @@ export function VoyageBlockHeader(props: {
   readonly block: VoyageBlock
   readonly isCurrent?: boolean
 }): JSX.Element {
-  const { t, keys, locale } = useTranslation()
+  const { t, keys } = useTranslation()
 
   const route = () => {
     const b = props.block
-    // For current leg: only show route when both origin AND destination are known
-    // (destination is null when voyage is ongoing; we show destinationLine instead)
-    if (!b.origin && !b.destination) return null
-    if (props.isCurrent && !b.destination) return null
+    let origin = b.origin
+    let destination = b.destination
+
+    if (!origin) {
+      for (const ev of b.events) {
+        if (ev.location && (ev.type === 'LOAD' || ev.type === 'DEPARTURE')) {
+          origin = ev.location
+          break
+        }
+      }
+    }
+
+    if (!destination) {
+      for (let i = b.events.length - 1; i >= 0; i--) {
+        const ev = b.events[i]
+        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED' && ev.location) {
+          destination = ev.location
+          break
+        }
+      }
+    }
+
+    if (!destination) {
+      for (let i = b.events.length - 1; i >= 0; i--) {
+        const ev = b.events[i]
+        if (ev.type === 'DISCHARGE' && ev.eventTimeType === 'EXPECTED' && ev.location) {
+          destination = ev.location
+          break
+        }
+      }
+    }
+
+    if (!destination) {
+      for (let i = b.events.length - 1; i >= 0; i--) {
+        const ev = b.events[i]
+        if (ev.location && (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')) {
+          destination = ev.location
+          break
+        }
+      }
+    }
+
+    if (!origin && !destination) return null
     return t(keys.shipmentView.timeline.blocks.voyageRoute, {
-      origin: b.origin ?? '?',
-      destination: b.destination ?? '?',
+      origin: origin ?? '?',
+      destination: destination ?? '?',
     })
   }
 
-  /** Destination line for the current leg: "→ Santos · ETA 13/03" */
-  const destinationLine = () => {
-    if (!props.isCurrent) return null
-    const events = props.block.events
-
-    // Prefer confirmed destination (when DISCHARGE ACTUAL exists)
-    let dest = props.block.destination
-    let etaIso: string | null = null
-
-    if (!dest) {
-      // Fall back: pick destination from the last EXPECTED ARRIVAL event
-      for (let i = events.length - 1; i >= 0; i--) {
-        const ev = events[i]
-        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED') {
-          dest = ev.location ?? null
-          etaIso = ev.eventTimeIso
-          break
-        }
-      }
-    }
-
-    if (!dest) return null
-
-    // If ETA not found yet, prefer EXPECTED ARRIVAL or EXPECTED DISCHARGE events only.
-    // Avoid picking unrelated EXPECTED events (e.g., DEPARTURE) as ETA when destination
-    // is already known from actuals.
-    if (!etaIso) {
-      for (let i = events.length - 1; i >= 0; i--) {
-        const ev = events[i]
-        if (
-          ev.eventTimeType === 'EXPECTED' &&
-          ev.eventTimeIso &&
-          (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')
-        ) {
-          etaIso = ev.eventTimeIso
-          break
-        }
-      }
-    }
-
-    if (etaIso) {
-      return t(keys.shipmentView.timeline.blocks.destinationEta, {
-        destination: dest,
-        eta: formatDateForLocale(etaIso, locale()),
-      })
-    }
-    return t(keys.shipmentView.timeline.blocks.destinationNoEta, { destination: dest })
-  }
-
   return (
-    <div class="rounded-t border-b border-slate-200/40 bg-slate-50/50 px-2.5 py-2">
+    <div class="rounded-t-xl border-b border-slate-200/70 bg-slate-50 px-3 py-2.5">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
         <Ship class="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
@@ -104,10 +93,13 @@ export function VoyageBlockHeader(props: {
         )}
       </Show>
       <Show when={route()}>
-        {(routeStr) => <p class="mt-0.5 text-micro text-slate-500">{routeStr()}</p>}
-      </Show>
-      <Show when={destinationLine()}>
-        {(line) => <p class="mt-0.5 text-micro font-semibold text-blue-600">{line()}</p>}
+        {(routeStr) => (
+          <p
+            class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-slate-500'}`}
+          >
+            {routeStr()}
+          </p>
+        )}
       </Show>
     </div>
   )
@@ -145,7 +137,7 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   )
 
   return (
-    <div class="rounded-t border-b border-slate-100 bg-slate-50/30 px-2.5 py-2">
+    <div class="rounded-t-xl border-b border-slate-100 bg-slate-50/60 px-3 py-2.5">
       <div class="flex items-center gap-1.5">
         <Icon />
         <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
@@ -167,7 +159,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
 
   return (
-    <div class="rounded-md border-l-4 border-amber-400 bg-amber-50/80 px-2.5 py-2">
+    <div class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2.5 shadow-[0_1px_2px_rgba(180,83,9,0.12)]">
       <div class="flex items-center gap-1.5">
         <Repeat class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
@@ -185,7 +177,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
           </Show>
         }
       >
-        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/60 px-2 py-0.5 text-micro">
+        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-micro">
           <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
             {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
               from: props.block.fromVessel ?? '?',
@@ -217,11 +209,8 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
   }
 
   return (
-    <div class="flex items-center py-1.5 pl-3">
-      <div class="flex w-3 shrink-0 flex-col items-center">
-        <div class="h-px w-px" />
-      </div>
-      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50/80 px-2 py-0.5 text-micro italic text-slate-400 ring-1 ring-slate-100/80">
+    <div class="py-1 pl-12">
+      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-micro italic text-slate-500 ring-1 ring-slate-200/80">
         <Hourglass class="w-3 h-3 shrink-0" aria-hidden="true" />
         {label()}
       </span>
@@ -271,13 +260,9 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
     )
 
   return (
-    <div class="flex items-center gap-1.5 py-1 pl-3">
-      {/* Timeline spine continuation */}
-      <div class="flex w-3 shrink-0 flex-col items-center">
-        <div class="h-px w-px" />
-      </div>
+    <div class="py-1 pl-12">
       <div
-        class={`flex items-center gap-1 rounded border-l-[3px] px-1.5 py-0.5 ${severityClasses()}`}
+        class={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${severityClasses()}`}
       >
         <Icon />
         <p class="text-micro font-medium">{label()}</p>
@@ -301,11 +286,11 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () => {
     if (props.isCurrent) {
-      return 'rounded-lg border border-blue-200/80 bg-blue-50/25 shadow-[0_1px_4px_rgba(59,130,246,0.12)] ring-1 ring-blue-100/50'
+      return 'rounded-xl border border-blue-200 bg-blue-50/30 shadow-[0_1px_4px_rgba(59,130,246,0.14)] ring-1 ring-blue-100/60'
     }
     return props.variant === 'voyage'
-      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
-      : 'rounded-lg border border-slate-100/80 bg-slate-50/30'
+      ? 'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
+      : 'rounded-xl border border-slate-200/70 bg-slate-50/40'
   }
 
   return <div class={baseClass()}>{props.children}</div>
@@ -315,7 +300,7 @@ export function BlockCard(props: {
  * Micro-separator between event rows inside a block (Phase 24).
  */
 export function EventSeparator(): JSX.Element {
-  return <div class="ml-3 border-t border-slate-50" />
+  return <div class="ml-12 border-t border-slate-100" />
 }
 
 // ---------------------------------------------------------------------------

@@ -194,7 +194,8 @@
       "booking": "Booking",
       "importer": "Importer",
       "exporter": "Exporter",
-      "product": "Product"
+      "product": "Product",
+      "redestinationNumber": "Redestination"
     },
     "operational": {
       "chips": {
@@ -229,7 +230,8 @@
     },
     "containers": {
       "title": "Containers",
-      "selectionHint": "Select a container to view its timeline."
+      "selectionHint": "Select a container to view its timeline.",
+      "internalReference": "Internal Ref"
     },
     "currentStatus": {
       "title": "Current Status",

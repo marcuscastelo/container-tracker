@@ -222,7 +222,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   const renderBody = (currentState: GridState): JSX.Element => {
     if (currentState === 'loading') {
       return (
-        <div class="px-4 py-8 text-center text-md-ui text-slate-400">
+        <div class="py-12 text-center text-md-ui text-slate-400">
           {t(keys.dashboard.alertIndicators.loading)}
         </div>
       )
@@ -230,7 +230,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
     if (currentState === 'error') {
       return (
-        <div class="px-4 py-8 text-center text-md-ui text-red-500">
+        <div class="py-12 text-center text-md-ui text-red-500">
           {t(keys.dashboard.alertIndicators.error)}
         </div>
       )
@@ -239,11 +239,10 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     const summary = safeSummary()
 
     return (
-      <div class={currentState === 'empty' ? 'px-4 py-2' : 'px-4 py-3'}>
-        {/* Phase 10: Compact Triage Summary Bar */}
+      <div>
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-1.5">
-            <span class="text-xl-ui font-bold tabular-nums text-slate-900">
+            <span class="text-xl-ui font-semibold tabular-nums text-slate-900">
               {summary.totalActiveAlerts}
             </span>
             <span class="text-sm-ui font-medium text-slate-500">
@@ -255,7 +254,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
             {(item) => (
               <div class="flex items-center gap-1">
                 <span class={`h-2 w-2 rounded-full ${item.dotClass}`} />
-                <span class={`text-md-ui font-bold tabular-nums ${item.valueClass}`}>
+                <span class={`text-md-ui font-semibold tabular-nums ${item.valueClass}`}>
                   {item.value}
                 </span>
                 <span class={`text-sm-ui font-medium ${item.labelClass}`}>{item.label}</span>
@@ -263,7 +262,6 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
             )}
           </For>
 
-          {/* Phase 12: Category chips in dashboard */}
           <div class="ml-auto flex items-center gap-1.5">
             <For each={visibleCategoryCards()}>
               {(card) => <CategorySummaryChip value={card.value} label={card.label} />}
@@ -281,15 +279,11 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
   }
 
   return (
-    <section
-      class={`overflow-hidden rounded border border-slate-200 bg-white ${state() === 'empty' ? 'mb-2' : 'mb-3'}`}
-    >
-      <header class="border-b border-slate-200 px-4 py-3">
-        <h2 class="text-md-ui font-semibold text-slate-900">
-          {t(keys.dashboard.alertIndicators.title)}
-        </h2>
+    <section class={`dashboard-alerts-shell ${state() === 'empty' ? 'mb-4' : 'mb-6'}`}>
+      <header class="dashboard-alerts-header">
+        <h2 class="dashboard-table-panel-title">{t(keys.dashboard.alertIndicators.title)}</h2>
       </header>
-      {renderBody(state())}
+      <div class="dashboard-alerts-body">{renderBody(state())}</div>
     </section>
   )
 }

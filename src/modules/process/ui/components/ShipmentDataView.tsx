@@ -33,14 +33,12 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <>
+    <div class="space-y-4">
       <ShipmentHeader
         data={props.data}
-        syncNow={props.syncNow}
         isRefreshing={props.isRefreshing}
         refreshRetry={props.refreshRetry}
         refreshHint={props.refreshHint}
-        activeAlertCount={props.activeAlerts.length}
         onTriggerRefresh={props.onTriggerRefresh}
         onOpenEdit={props.onOpenEdit}
       />
@@ -68,20 +66,13 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         </ErrorBoundary>
       </div>
 
-      <div class="grid gap-3 lg:grid-cols-3">
-        <div class="space-y-4 lg:col-span-2">
+      <div class="grid gap-4 xl:grid-cols-[minmax(0,_1fr)_320px]">
+        <div class="space-y-4">
           <section id="shipment-containers" class="scroll-mt-[120px]">
             <ContainersPanel
               containers={props.data.containers}
               selectedId={props.selectedContainerId}
               onSelect={props.onSelectContainer}
-              syncNow={props.syncNow}
-            />
-          </section>
-
-          <section id="shipment-current-status" class="scroll-mt-[120px]">
-            <ShipmentCurrentStatus
-              selectedContainer={props.selectedContainer}
               syncNow={props.syncNow}
             />
           </section>
@@ -105,10 +96,16 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             </ErrorBoundary>
           </section>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-4">
           <ShipmentInfoCard data={props.data} />
+          <section id="shipment-current-status" class="scroll-mt-[120px]">
+            <ShipmentCurrentStatus
+              selectedContainer={props.selectedContainer}
+              syncNow={props.syncNow}
+            />
+          </section>
         </div>
       </div>
-    </>
+    </div>
   )
 }

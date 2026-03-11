@@ -12,8 +12,6 @@ import {
   EventSeparator,
   GapMarkerRow,
   PortRiskMarkerRow,
-  RailDot,
-  type RailDotVariant,
   TerminalBlockHeader,
   TransshipmentBlockCard,
   VoyageBlockHeader,
@@ -76,7 +74,7 @@ export function TimelinePanel(props: Props): JSX.Element {
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 
   return (
-    <Panel title={t(keys.shipmentView.timeline.title)} bodyClass="px-2.5 py-1">
+    <Panel title={t(keys.shipmentView.timeline.title)} class="rounded-xl" bodyClass="px-3 py-3">
       <div>
         {/* Phase 6 — Timeline Header: Selected Container Context */}
         <Show when={props.selectedContainer}>
@@ -118,7 +116,7 @@ type ContainerContextHeaderProps = {
 function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
+    <div class="mb-2 space-y-1.5 border-b border-slate-100 pb-2">
       {/* Container identity + status */}
       <div class="flex items-center gap-1.5">
         <span class="text-xs-ui font-semibold tracking-wide text-slate-700">
@@ -226,7 +224,7 @@ function BlockChildren(props: {
   let eventIdx = 0
 
   return (
-    <div class="px-0.5 pb-1">
+    <div class="px-2.5 py-2">
       <For each={props.children}>
         {(child) => {
           switch (child.type) {
@@ -260,27 +258,6 @@ function BlockChildren(props: {
       </For>
     </div>
   )
-}
-
-function railDotVariant(group: BlockGroup, isCurrent: boolean): RailDotVariant {
-  if (isCurrent && group.kind === 'voyage') return 'current-voyage'
-  switch (group.kind) {
-    case 'voyage':
-      return 'voyage'
-    case 'terminal':
-      return 'terminal'
-    case 'transshipment':
-      return 'transshipment'
-    case 'standalone':
-      switch (group.item.type) {
-        case 'gap-marker':
-          return 'gap'
-        case 'port-risk-marker':
-          return 'risk'
-        default:
-          return 'event'
-      }
-  }
 }
 
 function TimelineBlockList(props: {
@@ -351,22 +328,11 @@ function TimelineBlockList(props: {
   }
 
   return (
-    <div class="relative mt-1 pl-5">
-      {/* Continuous vertical rail — spans the full block list height */}
-      <div
-        class="absolute inset-y-0 w-px bg-slate-200"
-        style={{ left: '8px' }}
-        aria-hidden="true"
-      />
+    <div class="mt-1 space-y-2.5">
       <For each={groups()}>
         {(group, index) => {
           const isCurrent = createMemo(() => index() === currentVoyageIdx())
-          return (
-            <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
-              <RailDot variant={railDotVariant(group, isCurrent())} />
-              {renderGroupContent(group, isCurrent())}
-            </div>
-          )
+          return <div>{renderGroupContent(group, isCurrent())}</div>
         }}
       </For>
     </div>

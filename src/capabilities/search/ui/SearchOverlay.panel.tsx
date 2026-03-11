@@ -23,7 +23,7 @@ type SearchOverlayPanelProps = {
 function SearchIcon(): JSX.Element {
   return (
     <svg
-      class="h-5 w-5 text-slate-400"
+      class="h-4 w-4 text-slate-400"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -299,11 +299,12 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
       <button
         type="button"
         onClick={() => props.onOpen()}
-        class="group flex w-full max-w-4xl items-center gap-2.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        class="group flex w-full items-center gap-2 rounded-md border border-border bg-surface-muted px-3 text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+        style={{ height: 'var(--dashboard-search-height)' }}
       >
         <SearchIcon />
-        <span class="flex-1 text-md-ui text-slate-400">{t(keys.search.placeholder)}</span>
-        <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-micro font-semibold text-slate-400 sm:inline-flex">
+        <span class="flex-1 truncate text-sm-ui text-slate-500">{t(keys.search.placeholder)}</span>
+        <kbd class="hidden items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-micro font-semibold text-slate-400 sm:inline-flex">
           <span class="text-micro">{t(keys.search.footer.modifier)}</span>
           <span>K</span>
         </kbd>

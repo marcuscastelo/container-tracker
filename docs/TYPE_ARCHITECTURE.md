@@ -39,7 +39,7 @@ ViewModel
 * **Application**: orquestração (use cases), comandos, resultados, contratos de repository.
 * **Infrastructure**: detalhes técnicos (DB/Supabase, APIs externas, email, logging), implementação de repositories.
 * **Interface (HTTP)**: controllers, schemas Zod de request, mappers HTTP, response models, tratamento de erro HTTP.
-* **UI**: componentes, view models, mapeamento de DTO → VM, form validation de UX.
+* **UI**: componentes, view models, mapeamento de DTO → VM, form validation de UX, composição timeline-first da tela de shipment.
 
 ---
 
@@ -146,6 +146,11 @@ Recebem/retornam:
 * `Response DTO → ViewModel`
 
 **Nunca** recebem Entity/Row.
+
+Para shipment/process view:
+
+* VMs de timeline devem consumir blocos operacionais já derivados em read model/DTO.
+* UI mapper não pode introduzir derivação semântica (ex.: detectar transshipment, reconciliar ACTUAL/EXPECTED).
 
 ### 6.3 HTTP mappers
 
@@ -421,6 +426,12 @@ Correção:
 * **UI Service/Utility**: comportamento puro sobre VM (`sort`, `filter`, `group`, `compare`).
 * **UI Mapper**: transformação de Response DTO para VM.
 
+Para shipment/process screen:
+
+* layout canônico: timeline-first (coluna principal) + sidebar de metadados de suporte.
+* cronologia é artefato primário; cards de suporte não devem interromper o fluxo cronológico.
+* agrupamentos operacionais da timeline devem ser preservados quando presentes no contrato de leitura.
+
 ---
 
 ## 19) Naming Rules
@@ -441,6 +452,7 @@ LLMs must NOT:
 * derivar status/timeline/alerts na UI
 * transformar DTO HTTP em contrato interno de aplicação
 * simplificar semântica de séries ACTUAL/EXPECTED
+* achatar timeline operacional agrupada em lista genérica quando o read model já fornece blocos semânticos
 * esconder conflitos de ACTUAL ou incerteza operacional
 * mover regra de domínio para capability
 * criar shared kernel implícito

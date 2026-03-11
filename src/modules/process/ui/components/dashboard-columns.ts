@@ -37,11 +37,11 @@ export type DashboardColumnDef = {
 // Canonical column registry
 // ---------------------------------------------------------------------------
 
-export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
+const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'processRef',
     labelKey: 'process',
-    width: '170px',
+    width: '176px',
     sortField: 'processNumber',
     reorderable: false,
     pinned: 'start',
@@ -50,7 +50,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'importer',
     labelKey: 'importerName',
-    width: '180px',
+    width: '192px',
     sortField: 'importerName',
     reorderable: true,
     pinned: false,
@@ -59,7 +59,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'exporter',
     labelKey: 'exporterName',
-    width: '180px',
+    width: '192px',
     sortField: 'exporterName',
     reorderable: true,
     pinned: false,
@@ -68,7 +68,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'route',
     labelKey: 'route',
-    width: 'minmax(100px,1fr)',
+    width: 'minmax(220px,1fr)',
     sortField: null,
     reorderable: true,
     pinned: false,
@@ -77,7 +77,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'status',
     labelKey: 'status',
-    width: '181px',
+    width: '176px',
     sortField: 'status',
     reorderable: true,
     pinned: false,
@@ -86,7 +86,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'eta',
     labelKey: 'eta',
-    width: '100px',
+    width: '112px',
     sortField: 'eta',
     reorderable: true,
     pinned: false,
@@ -95,7 +95,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'sync',
     labelKey: 'sync',
-    width: '56px',
+    width: '64px',
     sortField: null,
     reorderable: false,
     pinned: false,
@@ -104,7 +104,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'alerts',
     labelKey: 'alerts',
-    width: '80px',
+    width: '72px',
     sortField: 'alerts',
     reorderable: false,
     pinned: 'end',
@@ -113,9 +113,7 @@ export const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
 ] as const
 
 /** Default column order (canonical). */
-export const DEFAULT_COLUMN_ORDER: readonly DashboardColumnId[] = DASHBOARD_COLUMNS.map(
-  (col) => col.id,
-)
+const DEFAULT_COLUMN_ORDER: readonly DashboardColumnId[] = DASHBOARD_COLUMNS.map((col) => col.id)
 
 // ---------------------------------------------------------------------------
 // Column reorder logic
