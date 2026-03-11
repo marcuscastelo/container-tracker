@@ -29,10 +29,16 @@ function NavLink(props: {
   )
 }
 
-function AlertCountBadge(props: { count: number; label: string }): JSX.Element {
+function AlertCountBadge(props: { label: string }): JSX.Element {
   return (
-    <span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs-ui font-semibold tabular-nums text-red-700">
-      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <span class="dashboard-navbar-alert-badge">
+      <svg
+        class="dashboard-navbar-alert-icon"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -40,22 +46,16 @@ function AlertCountBadge(props: { count: number; label: string }): JSX.Element {
           d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
         />
       </svg>
-      <span class="sm:hidden">{props.count}</span>
-      <span class="hidden sm:inline">{props.label}</span>
+      <span>{props.label}</span>
     </span>
   )
 }
 
 function HeaderBrand(): JSX.Element {
   return (
-    <A href="/" class="dashboard-navbar-brand">
-      <img
-        src={BRANDING.logoPrimary}
-        alt=""
-        aria-hidden="true"
-        class="h-8 w-auto object-contain md:h-10"
-      />
-      <span class="hidden min-w-0 flex-col md:flex">
+    <A href="/" class="dashboard-navbar-brand" aria-label={BRANDING.displayTitle}>
+      <img src={BRANDING.logoPrimary} alt={BRANDING.companyName} class="dashboard-navbar-logo" />
+      <span class="dashboard-navbar-brand-copy">
         <span class="dashboard-navbar-brand-title">{BRANDING.productName}</span>
         <span class="dashboard-navbar-brand-subtitle">{BRANDING.companyName}</span>
       </span>
@@ -68,7 +68,7 @@ function HeaderNavigation(props: {
   readonly agentsLabel: string
 }): JSX.Element {
   return (
-    <nav class="dashboard-navbar-nav">
+    <nav class="dashboard-navbar-nav" aria-label="Primary">
       <NavLink href="/" end>
         {props.dashboardLabel}
       </NavLink>
@@ -80,11 +80,7 @@ function HeaderNavigation(props: {
 function HeaderSearch(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   return (
     <Show when={props.searchSlot}>
-      {(searchSlot) => (
-        <div class="dashboard-navbar-search order-3 basis-full max-w-none md:order-none md:basis-auto md:max-w-[var(--dashboard-search-width)]">
-          {searchSlot()}
-        </div>
-      )}
+      {(searchSlot) => <div class="dashboard-navbar-search">{searchSlot()}</div>}
     </Show>
   )
 }
@@ -129,19 +125,23 @@ function HeaderActions(props: {
   readonly alertLabel: string
 }): JSX.Element {
   return (
-    <div class="dashboard-navbar-actions ml-auto">
-      <Show when={props.syncSlot}>{(syncSlot) => <div>{syncSlot()}</div>}</Show>
+    <div class="dashboard-navbar-right">
+      <Show when={props.syncSlot}>
+        {(syncSlot) => <div class="dashboard-navbar-control">{syncSlot()}</div>}
+      </Show>
 
       <CreateProcessButton
         label={props.createProcessLabel}
         onCreateProcess={props.onCreateProcess}
       />
 
-      <Show when={props.alertCount != null && props.alertCount > 0}>
-        <AlertCountBadge count={props.alertCount ?? 0} label={props.alertLabel} />
+      <Show when={props.alertCount != null}>
+        <AlertCountBadge label={props.alertLabel} />
       </Show>
 
-      <LanguageSwitch />
+      <div class="dashboard-navbar-control">
+        <LanguageSwitch />
+      </div>
     </div>
   )
 }
@@ -152,14 +152,20 @@ export function AppHeader(props: Props): JSX.Element {
   return (
     <header class="dashboard-navbar">
       <div class="dashboard-navbar-inner">
-        <div class="flex min-w-0 items-center gap-8">
+        <div class="dashboard-navbar-left">
           <HeaderBrand />
-          <HeaderNavigation
-            dashboardLabel={t(keys.header.nav.dashboard)}
-            agentsLabel={t(keys.header.nav.agents)}
-          />
+          <div class="dashboard-navbar-left-nav">
+            <HeaderNavigation
+              dashboardLabel={t(keys.header.nav.dashboard)}
+              agentsLabel={t(keys.header.nav.agents)}
+            />
+          </div>
         </div>
-        <HeaderSearch searchSlot={props.searchSlot} />
+
+        <div class="dashboard-navbar-center">
+          <HeaderSearch searchSlot={props.searchSlot} />
+        </div>
+
         <HeaderActions
           syncSlot={props.syncSlot}
           createProcessLabel={t(keys.header.createProcess)}
