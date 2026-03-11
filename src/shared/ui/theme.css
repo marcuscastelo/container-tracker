@@ -189,7 +189,7 @@
     gap: var(--dashboard-navbar-right-gap);
   }
 
-  .dashboard-navbar-right > * {
+  .dashboard-navbar-right>* {
     flex: 0 0 auto;
   }
 
@@ -231,10 +231,17 @@
     flex: 0 0 auto;
   }
 
-  .dashboard-btn-outline:hover {
+  .dashboard-btn-outline:not(:disabled):hover {
     border-color: var(--color-border-strong);
     background: var(--color-surface-muted);
     color: var(--color-primary);
+  }
+
+  .dashboard-btn-outline:disabled {
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+    color: #94a3b8;
   }
 
   .dashboard-btn-primary {
@@ -479,7 +486,6 @@
   }
 
   .dashboard-alerts-shell {
-    margin-bottom: 24px;
     overflow: hidden;
     border-radius: 12px;
     border: 1px solid var(--color-border);
