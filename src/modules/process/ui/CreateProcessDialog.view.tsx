@@ -768,11 +768,11 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
         </form>
       </Dialog>
 
-      <Show when={props.smartPaste.enabled}>
+      <Show when={props.smartPaste.enabled && props.smartPaste.open && !props.overwriteConfirmOpen}>
         <SmartPasteDialog {...props.smartPaste} />
       </Show>
 
-      <Show when={props.smartPaste.enabled}>
+      <Show when={props.overwriteConfirmOpen}>
         <SmartPasteOverwriteConfirmDialog
           open={props.overwriteConfirmOpen}
           conflicts={props.smartPaste.conflicts}

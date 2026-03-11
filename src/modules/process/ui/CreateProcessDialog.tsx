@@ -1410,6 +1410,8 @@ function createSmartPasteController(
     if (plan.conflicts.length > 0) {
       setSmartPastePendingPlan(plan)
       setOverwriteConfirmOpen(true)
+      // Hide the Smart Paste dialog while showing the overwrite confirmation
+      setSmartPasteOpen(false)
       setSmartPasteApplyErrorMessage('')
       return
     }
@@ -1428,6 +1430,8 @@ function createSmartPasteController(
 
   const handleCancelOverwrite = () => {
     setOverwriteConfirmOpen(false)
+    // Re-open the Smart Paste dialog so the user can continue editing
+    setSmartPasteOpen(true)
   }
 
   const smartPasteDetectedFields = createMemo(() =>

@@ -1,4 +1,6 @@
-const CONTAINER_REGEX = /[A-Za-z]{4}\s*[0-9]{7}/g
+// Require non-alphanumeric boundaries to avoid matching container-like substrings
+// inside longer tokens (e.g. ABCD12345678 -> should not match ABCD1234567)
+const CONTAINER_REGEX = /(?<![A-Za-z0-9])[A-Za-z]{4}\s*[0-9]{7}(?![A-Za-z0-9])/g
 const LABEL_LINE_REGEX = /^\s*([A-Za-zÀ-ÿ0-9 ._/-]+?)\s*:\s*(.*?)\s*$/
 const TITLE_SEGMENT_SPLIT_REGEX = /\s+-\s+/
 const DIACRITICS_REGEX = /[\u0300-\u036f]/g
