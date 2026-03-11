@@ -468,6 +468,54 @@
       "existingProcessSame": "O contentor {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele",
       "confirmLoseProgress": "Perderá o progresso do formulário. Deseja continuar?"
     },
+    "closeGuard": {
+      "title": "Alterações por guardar",
+      "formDescription": "Se fechar agora, as edições do formulário que ainda não foram guardadas serão descartadas.",
+      "smartPasteDescription": "Se fechar agora, o texto e a análise do Smart Paste que ainda não foram aplicados serão descartados.",
+      "action": {
+        "keepEditing": "Continuar a editar",
+        "discardAndClose": "Descartar e fechar"
+      }
+    },
+    "smartPaste": {
+      "title": "Smart Paste",
+      "description": "Cole o conteúdo de um cartão do Trello para pré-preencher o formulário.",
+      "dialogTitle": "Importar do Trello",
+      "dialogDescription": "Cole o conteúdo do cartão e reveja os dados detetados antes de aplicar.",
+      "pasteLabel": "Conteúdo do cartão do Trello",
+      "pastePlaceholder": "Cole aqui o título e a descrição do cartão do Trello",
+      "preview": {
+        "detectedTitle": "Dados detetados",
+        "containersTitle": "Contentores detetados",
+        "unmappedTitle": "Campos detetados não aplicados",
+        "warningTitle": "Avisos",
+        "requiredTitle": "Campos ainda obrigatórios",
+        "requiredCarrier": "Carrier (Armador) ainda precisa de ser indicado manualmente.",
+        "requiredContainersMissing": "Nenhum contentor válido detetado.",
+        "requiredContainersFound": "{{count}} contentor(es) encontrado(s)."
+      },
+      "warning": {
+        "carrierNotDetected": "Carrier não detetado.",
+        "noValidContainerFound": "Nenhum contentor válido encontrado.",
+        "unmappedFieldDetected": "Campo {{label}} detetado, mas não aplicado."
+      },
+      "overwrite": {
+        "title": "Campos já preenchidos",
+        "description": "Alguns campos já têm valor. Deseja substituir pelos dados importados?",
+        "currentValue": "Atual",
+        "importedValue": "Importado"
+      },
+      "error": {
+        "noContainers": "Nenhum contentor válido foi detetado no conteúdo colado."
+      },
+      "action": {
+        "open": "Importar do Trello",
+        "analyze": "Analisar",
+        "apply": "Aplicar ao formulário",
+        "keepCurrent": "Manter atuais",
+        "replaceAndApply": "Substituir e aplicar"
+      }
+    },
     "error": {
       "failed": "Falha ao criar processo"
     }
