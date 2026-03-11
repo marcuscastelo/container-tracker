@@ -189,7 +189,7 @@
     gap: var(--dashboard-navbar-right-gap);
   }
 
-  .dashboard-navbar-right>* {
+  .dashboard-navbar-right > * {
     flex: 0 0 auto;
   }
 

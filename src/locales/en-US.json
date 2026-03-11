@@ -229,7 +229,8 @@
     },
     "containers": {
       "title": "Containers",
-      "selectionHint": "Select a container to view its timeline."
+      "selectionHint": "Select a container to view its timeline.",
+      "internalReference": "Internal Ref"
     },
     "currentStatus": {
       "title": "Current Status",

@@ -49,10 +49,10 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         {props.banners}
         {props.dialogs}
 
-        <main class="mx-auto max-w-7xl px-2 py-3 sm:px-4 lg:px-8">
+        <main class="dashboard-main pt-6">
           <A
             href="/"
-            class="mb-2 inline-flex items-center gap-1 text-micro text-slate-400 hover:text-slate-600"
+            class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-slate-500 transition-colors hover:text-slate-700"
             onPointerEnter={triggerDashboardIntent}
             onFocusIn={triggerDashboardIntent}
             onPointerDown={triggerDashboardIntent}

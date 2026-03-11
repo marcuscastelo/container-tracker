@@ -240,7 +240,8 @@
     },
     "containers": {
       "title": "Contentores",
-      "selectionHint": "Selecione um contentor para ver a sua linha temporal."
+      "selectionHint": "Selecione um contentor para ver a sua linha temporal.",
+      "internalReference": "Ref. interna"
     },
     "currentStatus": {
       "title": "Estado Atual",

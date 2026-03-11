@@ -519,7 +519,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         src={BRANDING.wallpaper}
         alt=""
         aria-hidden="true"
-        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.3]"
+        class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
       />
       <div class="relative z-10">
         <AppHeader

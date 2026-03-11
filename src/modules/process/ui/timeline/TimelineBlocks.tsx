@@ -83,7 +83,7 @@ export function VoyageBlockHeader(props: {
   }
 
   return (
-    <div class="rounded-t border-b border-slate-200/40 bg-slate-50/50 px-2.5 py-2">
+    <div class="rounded-t-xl border-b border-slate-200/70 bg-slate-50 px-3 py-2.5">
       <div class="flex items-center gap-1.5">
         {/* Ship icon */}
         <Ship class="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
@@ -145,7 +145,7 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
   )
 
   return (
-    <div class="rounded-t border-b border-slate-100 bg-slate-50/30 px-2.5 py-2">
+    <div class="rounded-t-xl border-b border-slate-100 bg-slate-50/60 px-3 py-2.5">
       <div class="flex items-center gap-1.5">
         <Icon />
         <span class="text-sm-ui font-semibold text-slate-600 tracking-tight">{title()}</span>
@@ -167,7 +167,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
 
   return (
-    <div class="rounded-md border-l-4 border-amber-400 bg-amber-50/80 px-2.5 py-2">
+    <div class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2.5 shadow-[0_1px_2px_rgba(180,83,9,0.12)]">
       <div class="flex items-center gap-1.5">
         <Repeat class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
@@ -185,7 +185,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
           </Show>
         }
       >
-        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/60 px-2 py-0.5 text-micro">
+        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-micro">
           <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
             {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
               from: props.block.fromVessel ?? '?',
@@ -217,11 +217,8 @@ export function GapMarkerRow(props: { readonly marker: GapMarker }): JSX.Element
   }
 
   return (
-    <div class="flex items-center py-1.5 pl-3">
-      <div class="flex w-3 shrink-0 flex-col items-center">
-        <div class="h-px w-px" />
-      </div>
-      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50/80 px-2 py-0.5 text-micro italic text-slate-400 ring-1 ring-slate-100/80">
+    <div class="py-1 pl-12">
+      <span class="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5 text-micro italic text-slate-500 ring-1 ring-slate-200/80">
         <Hourglass class="w-3 h-3 shrink-0" aria-hidden="true" />
         {label()}
       </span>
@@ -271,13 +268,9 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
     )
 
   return (
-    <div class="flex items-center gap-1.5 py-1 pl-3">
-      {/* Timeline spine continuation */}
-      <div class="flex w-3 shrink-0 flex-col items-center">
-        <div class="h-px w-px" />
-      </div>
+    <div class="py-1 pl-12">
       <div
-        class={`flex items-center gap-1 rounded border-l-[3px] px-1.5 py-0.5 ${severityClasses()}`}
+        class={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${severityClasses()}`}
       >
         <Icon />
         <p class="text-micro font-medium">{label()}</p>
@@ -301,11 +294,11 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () => {
     if (props.isCurrent) {
-      return 'rounded-lg border border-blue-200/80 bg-blue-50/25 shadow-[0_1px_4px_rgba(59,130,246,0.12)] ring-1 ring-blue-100/50'
+      return 'rounded-xl border border-blue-200 bg-blue-50/30 shadow-[0_1px_4px_rgba(59,130,246,0.14)] ring-1 ring-blue-100/60'
     }
     return props.variant === 'voyage'
-      ? 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
-      : 'rounded-lg border border-slate-100/80 bg-slate-50/30'
+      ? 'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
+      : 'rounded-xl border border-slate-200/70 bg-slate-50/40'
   }
 
   return <div class={baseClass()}>{props.children}</div>
@@ -315,7 +308,7 @@ export function BlockCard(props: {
  * Micro-separator between event rows inside a block (Phase 24).
  */
 export function EventSeparator(): JSX.Element {
-  return <div class="ml-3 border-t border-slate-50" />
+  return <div class="ml-12 border-t border-slate-100" />
 }
 
 // ---------------------------------------------------------------------------
