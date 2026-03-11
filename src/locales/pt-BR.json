@@ -205,7 +205,8 @@
       "booking": "Booking",
       "importer": "Importador",
       "exporter": "Exportador",
-      "product": "Produto"
+      "product": "Produto",
+      "redestinationNumber": "Redestinação"
     },
     "operational": {
       "chips": {

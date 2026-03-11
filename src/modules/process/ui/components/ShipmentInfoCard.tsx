@@ -48,6 +48,10 @@ export function ShipmentInfoCard(props: Props): JSX.Element {
       label: t(keys.shipmentView.shipmentInfo.product),
       value: props.data.product,
     },
+    {
+      label: t(keys.shipmentView.shipmentInfo.redestinationNumber),
+      value: props.data.redestination_number,
+    },
   ]
 
   return (
