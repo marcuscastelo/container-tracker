@@ -3,26 +3,18 @@
     "home": "Home"
   },
   "header": {
-    "brand": "Castro Aduaneira — Container Tracker",
     "nav": {
       "dashboard": "Dashboard",
-      "shipments": "Shipments",
-      "containers": "Containers",
       "agents": "Agents"
     },
     "createProcess": "Create Process",
     "alertsBadge": "{{count}} Alerts",
     "theme": {
-      "light": "Light",
-      "dark": "Dark",
       "switchToLight": "Switch to light theme",
       "switchToDark": "Switch to dark theme"
     }
   },
   "dashboard": {
-    "header": {
-      "title": "Dashboard"
-    },
     "actions": {
       "sync": "Sync",
       "syncing": "Syncing...",
@@ -41,7 +33,6 @@
         "success": "Resolved"
       },
       "subtitle": {
-        "total": "open now",
         "severity": {
           "danger": "act now",
           "warning": "needs triage"
@@ -55,14 +46,7 @@
         "data": "Data"
       }
     },
-    "metrics": {
-      "activeShipments": "Active Shipments",
-      "inTransit": "In Transit",
-      "delays": "Delays",
-      "arrivalsToday": "Arrivals Today"
-    },
     "filters": {
-      "title": "Filters",
       "selectedCount": "{{count}} selected",
       "provider": {
         "label": "Provider",
@@ -93,26 +77,18 @@
       "removeChip": "Remove {{filter}}"
     },
     "triageSummary": {
-      "alerts": "Alerts",
       "critical": "Critical",
-      "warning": "Warning",
-      "lastUpdate": "Last update"
+      "warning": "Warning"
     },
     "table": {
       "title": "Processes",
       "col": {
         "process": "Process",
-        "carrier": "Carrier",
         "importerName": "Importer",
         "exporterName": "Exporter",
-        "createdAt": "Created",
         "route": "Route",
-        "containers": "Containers",
         "status": "Status",
         "eta": "ETA",
-        "dominantSeverity": "Dominant Severity",
-        "dominantAlert": "Dominant Alert",
-        "activeAlerts": "Active Alerts",
         "alerts": "Alerts",
         "sync": "Sync"
       },
@@ -121,25 +97,13 @@
         "alertsPresent": "{{count}} alert(s)",
         "noAlerts": "No alert"
       },
-      "chipOverflow": "+{{count}}",
       "age": {
         "now": "now",
-        "minutes": "{{count}}m ago",
         "hours": "{{count}}h ago",
-        "days": "{{count}}d ago",
-        "missing": "—"
+        "days": "{{count}}d ago"
       },
       "alertTooltip": {
         "additionalAlerts": "+{{count}} additional alert(s)"
-      },
-      "filters": {
-        "title": "Filters",
-        "all": "All",
-        "danger": "Critical",
-        "warning": "Warning"
-      },
-      "severity": {
-        "none": "No alert"
       },
       "sync": {
         "idle": "Sync process",
@@ -149,10 +113,8 @@
         "error": "Sync failed",
         "failed": "Sync failed",
         "disabled": "Sync unavailable",
-        "unknown": "No previous sync",
         "lastSyncAt": "{{state}} · Last sync: {{timestamp}}"
-      },
-      "routeRedestination": "Redestination"
+      }
     },
     "loading": "Loading...",
     "error": {
@@ -166,38 +128,19 @@
         "title": "No shipments match these filters",
         "description": "Adjust or clear filters to see matching shipments.",
         "action": "Clear filters"
-      },
-      "noExceptions": {
-        "title": "No active operational exceptions.",
-        "description": "All processes are running normally.",
-        "action": "View all processes"
       }
     }
   },
   "shipmentView": {
     "backToList": "Back to Shipments",
     "backToDashboard": "Back to Dashboard",
-    "header": "Process",
     "carrier": "Carrier",
-    "status": "Status",
     "eta": "ETA",
     "etaMissing": "Unavailable",
-    "summaryStrip": {
-      "status": "Status",
-      "carrier": "Carrier",
-      "eta": "ETA",
-      "containers": "Containers",
-      "alerts": "Alerts",
-      "lastUpdate": "Last update",
-      "noAlerts": "No alerts",
-      "unknown": "Unavailable"
-    },
     "shipmentInfo": {
       "title": "Shipment Info",
       "carrier": "Carrier",
-      "vessel": "Vessel",
       "bl": "BL",
-      "booking": "Booking",
       "importer": "Importer",
       "exporter": "Exporter",
       "product": "Product",
@@ -209,40 +152,23 @@
         "etaExpected": "ETA",
         "etaDelayedSuffix": "delayed",
         "etaMissing": "Unavailable",
-        "ts": "INT {{count}}",
         "dataIssue": "Data"
       },
-      "milestone": {
-        "arrival": "Arrival",
-        "discharge": "Discharge",
-        "delivery": "Delivery",
-        "unknown": "Event"
-      },
       "header": {
-        "selectedEtaTitle": "ETA (container)",
-        "selectedActual": "Confirmed",
-        "selectedExpected": "Expected",
-        "selectedExpectedDelayed": "Delayed",
-        "processEtaTitle": "ETA (process)",
-        "noEta": "ETA unavailable",
-        "incomplete": "partial"
+        "selectedExpectedDelayed": "Delayed"
       }
     },
     "actions": {
       "refresh": "Refresh",
-      "refreshing": "Refreshing…",
       "edit": "Edit",
       "delete": "Delete shipment"
     },
     "containers": {
       "title": "Containers",
-      "selectionHint": "Select a container to view its timeline.",
       "internalReference": "Internal Ref"
     },
     "currentStatus": {
       "title": "Current Status",
-      "container": "Container",
-      "status": "Status",
       "currentVessel": "Current vessel",
       "currentLocation": "Current location",
       "eta": "ETA",
@@ -250,10 +176,6 @@
       "noContainer": "Select a container to view its status.",
       "unknown": "—",
       "vesselNotApplicable": "Already discharged"
-    },
-    "containerSummary": {
-      "moreContainers": "+{{count}} containers in this process",
-      "alertCount": "{{count}} alert(s)"
     },
     "timeline": {
       "title": "Container Timeline",
@@ -276,12 +198,8 @@
         "postCarriage": "Post-carriage / Delivery",
         "transshipmentTerminal": "Transshipment Terminal",
         "transshipment": "Transshipment",
-        "transshipmentPort": "Transshipment — {{port}}",
-        "vesselChange": "Vessel change",
         "vesselChangeDetail": "{{from}} → {{to}}",
         "currentLeg": "Current",
-        "destinationEta": "→ {{destination}} · ETA {{eta}}",
-        "destinationNoEta": "→ {{destination}}",
         "gapTransit": "{{days}} days in transit",
         "gapGeneric": "Gap: {{days}} days without new events",
         "portRiskClosed": "At port for {{days}} days",
@@ -295,12 +213,6 @@
         "observedAt": "Observed At",
         "delta": "Change",
         "status": "Status",
-        "confirmed": "Confirmed",
-        "expired": "Expired",
-        "active": "Active",
-        "redundant": "Redundant",
-        "superseded": "Superseded",
-        "conflicting": "Conflicting",
         "days": "days",
         "close": "Close",
         "conflictWarning": "Multiple confirmed events detected",
@@ -308,15 +220,12 @@
       }
     },
     "alerts": {
-      "title": "Alerts",
       "sectionTitle": "Operational Alerts",
-      "empty": "No alerts for this shipment.",
       "activeEmpty": "No active alerts for this shipment.",
       "category": {
         "eta": "eta",
         "movement": "movement",
         "customs": "customs",
-        "status": "status",
         "data": "data"
       },
       "archived": {
@@ -344,9 +253,7 @@
       }
     },
     "transshipment": {
-      "title": "Intermediate ports",
-      "route": "Intermediate route",
-      "count": "{{count}} intermediate ports"
+      "title": "Intermediate ports"
     },
     "loading": "Loading...",
     "loadError": "Failed to load process details",
@@ -354,15 +261,12 @@
     "noEvents": "No events recorded yet",
     "internalIdMessage": "This process is shown with an internal ID because no reference was provided. You can add a custom reference to make it easier to identify.",
     "internalIdCTA": "Add reference",
-    "refreshSyncing": "syncing...",
     "refreshRecentlyUpdatedSeconds": "Already updated {{count}}s ago",
     "refreshRecentlyUpdatedMinutes": "Already updated {{count}} min ago",
     "refreshRetry": "retry {{current}}/{{total}}",
     "refreshSyncTimeout": "Refresh sync is still pending after {{total}} retries. Try again shortly.",
     "refreshSyncFailed": "Refresh finished with {{failedCount}} failed request(s). First error: {{firstError}}",
     "sync": {
-      "headerSyncingPrefix": "Syncing:",
-      "headerUpdatedPrefix": "Updated:",
       "syncing": "syncing…",
       "updated": "updated {{relative}}",
       "updatedUnknownTime": "updated",
@@ -373,30 +277,7 @@
     "refreshCarrierUnknownTitle": "Cannot refresh — unknown carrier",
     "refreshCarrierUnknownMessage": "This shipment has no carrier selected, so an automatic refresh cannot be performed. You can edit the process and choose the correct carrier to enable refresh.",
     "refreshCarrierUnknownEditCTA": "Edit process",
-    "refreshCarrierUnknownCancelCTA": "Cancel",
-    "deleteShipment": {
-      "title": "Delete shipment?",
-      "description": "This will permanently delete the shipment and ALL related data.",
-      "warningItems": {
-        "shipment": "the shipment",
-        "containers": "all containers in the shipment",
-        "timeline": "the entire tracking timeline",
-        "carrierEvents": "all carrier events",
-        "alerts": "all alerts generated for the containers"
-      },
-      "cannotUndo": "This action cannot be undone.",
-      "summaryShipment": "Shipment",
-      "summaryContainers": "Containers",
-      "summaryCarrier": "Carrier",
-      "summaryRoute": "Route",
-      "confirmationLabel": "Type the shipment reference to confirm deletion",
-      "confirmationPlaceholder": "Type \"{{reference}}\" to confirm",
-      "cancel": "Cancel",
-      "confirm": "Delete shipment",
-      "deleting": "Deleting…",
-      "errorTitle": "Unable to delete shipment.",
-      "errorMessage": "Please try again."
-    }
+    "refreshCarrierUnknownCancelCTA": "Cancel"
   },
   "createProcess": {
     "description": "Define a new shipment to track one or more containers.",
@@ -454,25 +335,12 @@
       "existingProcessError": "Container {{container}} already exists in the system",
       "existingProcessSame": "Container {{container}} already exists in the current process and therefore it was not possible to create a new process with it",
       "confirmLoseProgress": "You will lose form progress. Continue?"
-    },
-    "error": {
-      "failed": "Failed to create process"
     }
   },
   "tracking": {
     "status": {
-      "UNKNOWN": "Unknown",
-      "BOOKED": "Booked",
-      "AWAITING_DATA": "Awaiting data",
-      "NOT_SYNCED": "Not synced",
-      "IN_PROGRESS": "In Progress",
-      "LOADED": "Loaded",
       "IN_TRANSIT": "In Transit",
-      "ARRIVED_AT_POD": "Arrived at POD",
-      "DISCHARGED": "Discharged",
-      "AVAILABLE_FOR_PICKUP": "Available for Pickup",
-      "DELIVERED": "Delivered",
-      "EMPTY_RETURNED": "Empty Returned"
+      "DISCHARGED": "Discharged"
     },
     "statusMicrobadge": {
       "ARRIVED_AT_POD": {
@@ -483,60 +351,15 @@
         "one": "{{count}} discharged",
         "other": "{{count}} discharged"
       },
-      "AVAILABLE_FOR_PICKUP": {
-        "one": "{{count}} available for pickup",
-        "other": "{{count}} available for pickup"
-      },
       "DELIVERED": {
         "one": "{{count}} delivered",
         "other": "{{count}} delivered"
-      },
-      "EMPTY_RETURNED": {
-        "one": "{{count}} empty returned",
-        "other": "{{count}} empty returned"
       }
-    },
-    "observationType": {
-      "GATE_IN": "Gate In",
-      "GATE_OUT": "Gate Out",
-      "LOAD": "Loaded on Vessel",
-      "DEPARTURE": "Vessel Departed",
-      "ARRIVAL": "Arrived at Port",
-      "DISCHARGE": "Discharged from Vessel",
-      "DELIVERY": "Delivered",
-      "EMPTY_RETURN": "Empty Returned",
-      "CUSTOMS_HOLD": "Customs Hold",
-      "CUSTOMS_RELEASE": "Customs Released",
-      "OTHER": "Other"
-    },
-    "alertType": {
-      "TRANSSHIPMENT": "Transshipment Detected",
-      "CUSTOMS_HOLD": "Customs Hold",
-      "PORT_CHANGE": "Port Change",
-      "NO_MOVEMENT": "No Movement",
-      "ETA_PASSED": "ETA Passed",
-      "ETA_MISSING": "ETA Missing",
-      "DATA_INCONSISTENT": "Data Inconsistency"
-    },
-    "alertCategory": {
-      "fact": "Fact",
-      "monitoring": "Monitoring"
-    },
-    "alertSeverity": {
-      "info": "Info",
-      "warning": "Warning",
-      "danger": "Critical"
     }
   },
   "alerts": {
     "containerLabel": "Container",
-    "transshipmentDetected": "Transshipment detected at {{port}} — Vessel change: {{fromVessel}} → {{toVessel}}",
-    "customsHoldDetected": "Customs hold detected at {{location}}",
-    "noMovementDetected": "No movement detected for {{days}} days (last event: {{lastEventDate}})",
-    "etaMissing": "ETA missing",
-    "etaPassed": "ETA passed without arrival confirmation",
-    "portChange": "Final destination port changed",
-    "dataInconsistent": "Inconsistent tracking data detected"
+    "transshipmentDetected": "Transshipment detected at {{port}} — Vessel change: {{fromVessel}} → {{toVessel}}"
   },
   "about": {
     "page": "About Page"
@@ -548,24 +371,14 @@
   "app": {
     "unexpectedRenderError": "An unexpected error occurred. Check the console for details."
   },
-  "process": {
-    "containerSelector": {
-      "copyContainerNumber": "Copy container number"
-    }
-  },
   "dialog": {
     "close": "Close"
-  },
-  "common": {
-    "copy": "Copy",
-    "copied": "Copied"
   },
   "languageSwitch": {
     "label": "Language"
   },
   "search": {
     "placeholder": "Search process, container, BL, importer...",
-    "loading": "Searching...",
     "error": "Search failed. Try again.",
     "noResults": "No results found",
     "hint": "Type at least {{count}} characters to search",

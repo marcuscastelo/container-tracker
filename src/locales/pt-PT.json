@@ -3,18 +3,13 @@
     "home": "Início"
   },
   "header": {
-    "brand": "Castro Aduaneira — Container Tracker",
     "nav": {
       "dashboard": "Painel",
-      "shipments": "Expedições",
-      "containers": "Contentores",
       "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
     "alertsBadge": "{{count}} Alertas",
     "theme": {
-      "light": "Claro",
-      "dark": "Escuro",
       "switchToLight": "Mudar para tema claro",
       "switchToDark": "Mudar para tema escuro"
     }
@@ -22,18 +17,10 @@
   "app": {
     "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique a consola para mais detalhes."
   },
-  "process": {
-    "containerSelector": {
-      "copyContainerNumber": "Copiar número do contentor"
-    }
-  },
   "dialog": {
     "close": "Fechar"
   },
   "dashboard": {
-    "header": {
-      "title": "Painel"
-    },
     "actions": {
       "sync": "Sincronizar",
       "syncing": "A sincronizar...",
@@ -52,7 +39,6 @@
         "success": "Resolvido"
       },
       "subtitle": {
-        "total": "abertos agora",
         "severity": {
           "danger": "agir já",
           "warning": "exige triagem"
@@ -66,14 +52,7 @@
         "data": "Dados"
       }
     },
-    "metrics": {
-      "activeShipments": "Expedições Ativas",
-      "inTransit": "Em Trânsito",
-      "delays": "Atrasos",
-      "arrivalsToday": "Chegadas Hoje"
-    },
     "filters": {
-      "title": "Filtros",
       "selectedCount": "{{count}} selecionados",
       "provider": {
         "label": "Armador",
@@ -104,26 +83,18 @@
       "removeChip": "Remover {{filter}}"
     },
     "triageSummary": {
-      "alerts": "Alertas",
       "critical": "Críticos",
-      "warning": "Atenção",
-      "lastUpdate": "Última atualização"
+      "warning": "Atenção"
     },
     "table": {
       "title": "Processos",
       "col": {
         "process": "Processo",
-        "carrier": "Armador",
         "importerName": "Importador",
         "exporterName": "Exportador",
-        "createdAt": "Criado em",
         "route": "Rota",
-        "containers": "Contentores",
         "status": "Estado",
         "eta": "ETA",
-        "dominantSeverity": "Severidade Dominante",
-        "dominantAlert": "Alerta Dominante",
-        "activeAlerts": "Alertas Ativos",
         "alerts": "Alertas",
         "sync": "Sync"
       },
@@ -132,25 +103,13 @@
         "alertsPresent": "{{count}} alerta(s)",
         "noAlerts": "Sem alerta"
       },
-      "chipOverflow": "+{{count}}",
       "age": {
         "now": "agora",
-        "minutes": "há {{count}}m",
         "hours": "há {{count}}h",
-        "days": "há {{count}}d",
-        "missing": "—"
+        "days": "há {{count}}d"
       },
       "alertTooltip": {
         "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
-      },
-      "filters": {
-        "title": "Filtros",
-        "all": "Todos",
-        "danger": "Crítico",
-        "warning": "Atenção"
-      },
-      "severity": {
-        "none": "Sem alerta"
       },
       "sync": {
         "idle": "Sincronizar processo",
@@ -160,10 +119,8 @@
         "error": "Sincronização com erro",
         "failed": "Sincronização com erro",
         "disabled": "Sincronização indisponível",
-        "unknown": "Sem sincronização anterior",
         "lastSyncAt": "{{state}} · Último sync: {{timestamp}}"
-      },
-      "routeRedestination": "Redestinação"
+      }
     },
     "loading": "A carregar...",
     "error": {
@@ -177,38 +134,19 @@
         "title": "Nenhuma expedição corresponde a estes filtros",
         "description": "Ajuste ou limpe os filtros para ver expedições correspondentes.",
         "action": "Limpar filtros"
-      },
-      "noExceptions": {
-        "title": "Nenhuma exceção operacional ativa.",
-        "description": "Todos os processos estão a funcionar normalmente.",
-        "action": "Ver todos os processos"
       }
     }
   },
   "shipmentView": {
     "backToList": "Voltar para Expedições",
     "backToDashboard": "Voltar para o Painel",
-    "header": "Processo",
     "carrier": "Armador",
-    "status": "Estado",
     "eta": "ETA",
     "etaMissing": "Não disponível",
-    "summaryStrip": {
-      "status": "Estado",
-      "carrier": "Armador",
-      "eta": "ETA",
-      "containers": "Contentores",
-      "alerts": "Alertas",
-      "lastUpdate": "Última atualização",
-      "noAlerts": "Sem alertas",
-      "unknown": "Indisponível"
-    },
     "shipmentInfo": {
       "title": "Informações da Expedição",
       "carrier": "Armador",
-      "vessel": "Navio",
       "bl": "BL",
-      "booking": "Booking",
       "importer": "Importador",
       "exporter": "Exportador",
       "product": "Produto",
@@ -220,40 +158,23 @@
         "etaExpected": "ETA",
         "etaDelayedSuffix": "atrasado",
         "etaMissing": "Indisponível",
-        "ts": "INT {{count}}",
         "dataIssue": "Dados"
       },
-      "milestone": {
-        "arrival": "Chegada",
-        "discharge": "Descarga",
-        "delivery": "Entrega",
-        "unknown": "Evento"
-      },
       "header": {
-        "selectedEtaTitle": "ETA (contentor)",
-        "selectedActual": "Confirmado",
-        "selectedExpected": "Previsto",
-        "selectedExpectedDelayed": "Atrasado",
-        "processEtaTitle": "ETA (processo)",
-        "noEta": "ETA indisponível",
-        "incomplete": "parcial"
+        "selectedExpectedDelayed": "Atrasado"
       }
     },
     "actions": {
       "refresh": "Atualizar",
-      "refreshing": "A atualizar…",
       "edit": "Editar",
       "delete": "Eliminar expedição"
     },
     "containers": {
       "title": "Contentores",
-      "selectionHint": "Selecione um contentor para ver a sua linha temporal.",
       "internalReference": "Ref. interna"
     },
     "currentStatus": {
       "title": "Estado Atual",
-      "container": "Contentor",
-      "status": "Estado",
       "currentVessel": "Navio atual",
       "currentLocation": "Local atual",
       "eta": "ETA",
@@ -261,10 +182,6 @@
       "noContainer": "Selecione um contentor para ver o estado.",
       "unknown": "—",
       "vesselNotApplicable": "Já descarregado"
-    },
-    "containerSummary": {
-      "moreContainers": "+{{count}} contentores neste processo",
-      "alertCount": "{{count}} alerta(s)"
     },
     "timeline": {
       "title": "Linha Temporal do Contentor",
@@ -287,12 +204,8 @@
         "postCarriage": "Pós-transporte / Entrega",
         "transshipmentTerminal": "Terminal de Transbordo",
         "transshipment": "Transbordo",
-        "transshipmentPort": "Transbordo — {{port}}",
-        "vesselChange": "Troca de navio",
         "vesselChangeDetail": "{{from}} → {{to}}",
         "currentLeg": "Atual",
-        "destinationEta": "→ {{destination}} · ETA {{eta}}",
-        "destinationNoEta": "→ {{destination}}",
         "gapTransit": "{{days}} dias em trânsito",
         "gapGeneric": "Intervalo: {{days}} dias sem novos eventos",
         "portRiskClosed": "No porto por {{days}} dias",
@@ -306,12 +219,6 @@
         "observedAt": "Observado em",
         "delta": "Mudança",
         "status": "Estado",
-        "confirmed": "Confirmado",
-        "expired": "Expirado",
-        "active": "Ativo",
-        "redundant": "Redundante",
-        "superseded": "Substituído",
-        "conflicting": "Conflitante",
         "days": "dias",
         "close": "Fechar",
         "conflictWarning": "Múltiplos eventos reais conflituosos detetados",
@@ -319,15 +226,12 @@
       }
     },
     "alerts": {
-      "title": "Alertas",
       "sectionTitle": "Alertas Operacionais",
-      "empty": "Nenhum alerta para esta expedição.",
       "activeEmpty": "Nenhum alerta ativo para esta expedição.",
       "category": {
         "eta": "eta",
         "movement": "movement",
         "customs": "customs",
-        "status": "status",
         "data": "data"
       },
       "archived": {
@@ -355,9 +259,7 @@
       }
     },
     "transshipment": {
-      "title": "Portos intermédios",
-      "route": "Rota intermédia",
-      "count": "{{count}} portos intermédios"
+      "title": "Portos intermédios"
     },
     "loading": "A carregar...",
     "loadError": "Falha ao carregar detalhes do processo",
@@ -365,15 +267,12 @@
     "noEvents": "Nenhum evento registado ainda",
     "internalIdMessage": "Este processo está a ser mostrado com um ID interno porque não foi fornecida uma referência. Pode adicionar uma referência personalizada para facilitar a identificação.",
     "internalIdCTA": "Adicionar referência",
-    "refreshSyncing": "a sincronizar...",
     "refreshRecentlyUpdatedSeconds": "Já atualizado há {{count}}s",
     "refreshRecentlyUpdatedMinutes": "Já atualizado há {{count}} min",
     "refreshRetry": "tentativa {{current}}/{{total}}",
     "refreshSyncTimeout": "A sincronização do refresh continua pendente após {{total}} tentativas. Tente novamente em instantes.",
     "refreshSyncFailed": "Refresh concluído com {{failedCount}} pedido(s) com falha. Primeiro erro: {{firstError}}",
     "sync": {
-      "headerSyncingPrefix": "A sincronizar:",
-      "headerUpdatedPrefix": "Atualizado:",
       "syncing": "a sincronizar…",
       "updated": "atualizado {{relative}}",
       "updatedUnknownTime": "atualizado",
@@ -384,30 +283,7 @@
     "refreshCarrierUnknownTitle": "Não é possível atualizar — armador desconhecido",
     "refreshCarrierUnknownMessage": "Esta expedição não tem um armador selecionado, por isso não é possível executar um refresh automático. Pode editar o processo e escolher o armador correto para habilitar o refresh.",
     "refreshCarrierUnknownEditCTA": "Editar processo",
-    "refreshCarrierUnknownCancelCTA": "Cancelar",
-    "deleteShipment": {
-      "title": "Eliminar expedição?",
-      "description": "Isto eliminará permanentemente a expedição e TODOS os dados relacionados.",
-      "warningItems": {
-        "shipment": "a expedição",
-        "containers": "todos os contentores da expedição",
-        "timeline": "toda a linha temporal de rastreio",
-        "carrierEvents": "todos os eventos do armador",
-        "alerts": "todos os alertas gerados para os contentores"
-      },
-      "cannotUndo": "Esta ação não pode ser revertida.",
-      "summaryShipment": "Expedição",
-      "summaryContainers": "Contentores",
-      "summaryCarrier": "Armador",
-      "summaryRoute": "Rota",
-      "confirmationLabel": "Escreva a referência da expedição para confirmar a eliminação",
-      "confirmationPlaceholder": "Escreva \"{{reference}}\" para confirmar",
-      "cancel": "Cancelar",
-      "confirm": "Eliminar expedição",
-      "deleting": "A eliminar…",
-      "errorTitle": "Não foi possível eliminar a expedição.",
-      "errorMessage": "Por favor, tente novamente."
-    }
+    "refreshCarrierUnknownCancelCTA": "Cancelar"
   },
   "createProcess": {
     "description": "Defina uma nova expedição para rastrear um ou mais contentores.",
@@ -465,25 +341,12 @@
       "existingProcessError": "Contentor {{container}} já existe no sistema",
       "existingProcessSame": "O contentor {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele",
       "confirmLoseProgress": "Perderá o progresso do formulário. Deseja continuar?"
-    },
-    "error": {
-      "failed": "Falha ao criar processo"
     }
   },
   "tracking": {
     "status": {
-      "UNKNOWN": "Desconhecido",
-      "BOOKED": "Reservado",
-      "AWAITING_DATA": "A aguardar dados",
-      "NOT_SYNCED": "Não sincronizado",
-      "IN_PROGRESS": "Em Curso",
-      "LOADED": "Carregado",
       "IN_TRANSIT": "Em Trânsito",
-      "ARRIVED_AT_POD": "Chegou ao Porto",
-      "DISCHARGED": "Descarregado",
-      "AVAILABLE_FOR_PICKUP": "Disponível para Recolha",
-      "DELIVERED": "Entregue",
-      "EMPTY_RETURNED": "Vazio Devolvido"
+      "DISCHARGED": "Descarregado"
     },
     "statusMicrobadge": {
       "ARRIVED_AT_POD": {
@@ -494,60 +357,15 @@
         "one": "{{count}} descarregado",
         "other": "{{count}} descarregados"
       },
-      "AVAILABLE_FOR_PICKUP": {
-        "one": "{{count}} disponível para recolha",
-        "other": "{{count}} disponíveis para recolha"
-      },
       "DELIVERED": {
         "one": "{{count}} entregue",
         "other": "{{count}} entregues"
-      },
-      "EMPTY_RETURNED": {
-        "one": "{{count}} vazio devolvido",
-        "other": "{{count}} vazios devolvidos"
       }
-    },
-    "observationType": {
-      "GATE_IN": "Entrada no Terminal",
-      "GATE_OUT": "Saída do Terminal",
-      "LOAD": "Carregado no Navio",
-      "DEPARTURE": "Navio Partiu",
-      "ARRIVAL": "Chegada ao Porto",
-      "DISCHARGE": "Descarregado do Navio",
-      "DELIVERY": "Entregue",
-      "EMPTY_RETURN": "Vazio Devolvido",
-      "CUSTOMS_HOLD": "Retenção Alfandegária",
-      "CUSTOMS_RELEASE": "Libertação Alfandegária",
-      "OTHER": "Outro"
-    },
-    "alertType": {
-      "TRANSSHIPMENT": "Transbordo Detetado",
-      "CUSTOMS_HOLD": "Retenção Alfandegária",
-      "PORT_CHANGE": "Mudança de Porto",
-      "NO_MOVEMENT": "Sem Movimentação",
-      "ETA_PASSED": "ETA Ultrapassado",
-      "ETA_MISSING": "ETA Ausente",
-      "DATA_INCONSISTENT": "Inconsistência de Dados"
-    },
-    "alertCategory": {
-      "fact": "Facto",
-      "monitoring": "Monitorização"
-    },
-    "alertSeverity": {
-      "info": "Informação",
-      "warning": "Aviso",
-      "danger": "Crítico"
     }
   },
   "alerts": {
     "containerLabel": "Contentor",
-    "transshipmentDetected": "Transbordo detetado em {{port}} — Troca de navio: {{fromVessel}} → {{toVessel}}",
-    "customsHoldDetected": "Retenção alfandegária detetada em {{location}}",
-    "noMovementDetected": "Sem movimentação há {{days}} dias (último evento: {{lastEventDate}})",
-    "etaMissing": "ETA em falta",
-    "etaPassed": "ETA expirado sem confirmação de chegada",
-    "portChange": "Alteração do porto final de destino",
-    "dataInconsistent": "Dados de rastreio inconsistentes detetados"
+    "transshipmentDetected": "Transbordo detetado em {{port}} — Troca de navio: {{fromVessel}} → {{toVessel}}"
   },
   "about": {
     "page": "Sobre"
@@ -556,16 +374,11 @@
     "title": "Não Encontrado",
     "learn": "Visite"
   },
-  "common": {
-    "copy": "Copiar",
-    "copied": "Copiado"
-  },
   "languageSwitch": {
     "label": "Idioma"
   },
   "search": {
     "placeholder": "Pesquisar processo, contentor, BL, importador...",
-    "loading": "A pesquisar...",
     "error": "Falha na pesquisa. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
     "hint": "Escreva pelo menos {{count}} caracteres para pesquisar",
