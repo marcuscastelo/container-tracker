@@ -259,7 +259,7 @@ Evidência por item
 Anexos / Notas
 - Marcações de evidência: ver: `tools/agent/supervisor.ts`, `tools/agent/agent.ts`, e referências a `runUpdateCheck()` no código base (confirmado). Qualquer conflito entre docs e código foi marcado como "divergente".
 
-### Adendo — Arch Linux / AUR-compatible packaging
+### Adendo 2 — Arch Linux / AUR-compatible packaging
 
 Como ambiente operacional real de validação, Linux deve incluir também um alvo **Arch/AUR-compatible**, mesmo sem publicação no AUR oficial.
 
