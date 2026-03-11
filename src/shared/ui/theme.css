@@ -41,9 +41,9 @@
   --dashboard-container-px: 24px;
   --dashboard-container-py: 32px;
   --dashboard-navbar-zone-gap: 20px;
-  --dashboard-navbar-left-gap: 12px;
+  --dashboard-navbar-left-gap: 25px;
   --dashboard-navbar-right-gap: 10px;
-  --dashboard-search-width: 360px;
+  --dashboard-search-width: 960px;
   --dashboard-search-min-width: 320px;
   --dashboard-search-height: 40px;
   --dashboard-control-height: var(--dashboard-search-height);
