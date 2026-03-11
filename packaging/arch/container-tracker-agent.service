@@ -1,0 +1,23 @@
+[Unit]
+Description=Container Tracker Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=container-tracker-agent
+Group=container-tracker-agent
+WorkingDirectory=/usr/lib/container-tracker-agent
+Environment=AGENT_DATA_DIR=/var/lib/container-tracker-agent
+ExecStart=/usr/lib/container-tracker-agent/supervisor.js
+Restart=on-failure
+RestartSec=2
+RestartPreventExitStatus=50
+NoNewPrivileges=true
+StateDirectory=container-tracker-agent
+StateDirectoryMode=0750
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

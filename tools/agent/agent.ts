@@ -27,6 +27,8 @@ import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { readReleaseState, writeReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './runtime/lifecycle-exit-codes.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { writeRuntimeHealth } from './runtime-health.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import type { AgentPathLayout } from './runtime-paths.ts'
@@ -38,8 +40,6 @@ import * as runtimePaths from './runtime-paths.ts'
 import * as supervisorControl from './supervisor-control.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchUpdateManifest, stageReleaseFromManifest } from './updater.core.ts'
-
-const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 
 function unquoteValue(value: string): string {
   if (value.length < 2) return value
@@ -242,7 +242,6 @@ const PLACEHOLDER_BACKEND_HOST = 'your-backend.example.com'
 const PLACEHOLDER_SUPABASE_HOST = 'your-project.supabase.co'
 const PLACEHOLDER_TOKEN_FRAGMENT = 'replace-with-'
 const PLACEHOLDER_TENANT_ID = '00000000-0000-4000-8000-000000000000'
-const EXIT_CODE_RESTART_FOR_UPDATE = 42
 const UPDATE_CHECK_INTERVAL_MS = 60_000
 
 function resolveUrlHost(value: string): string | null {
@@ -307,31 +306,6 @@ type PathLayout = {
   readonly configPath: string
   readonly bootstrapPath: string
   readonly consumedBootstrapPath: string
-}
-
-function resolveDefaultDataDir(): string {
-  const localAppData = normalizeOptionalEnv(process.env.LOCALAPPDATA)
-  if (localAppData) {
-    return path.win32.join(localAppData, DEFAULT_DATA_DIR_NAME)
-  }
-
-  return path.win32.join(os.homedir(), 'AppData', 'Local', DEFAULT_DATA_DIR_NAME)
-}
-
-function resolvePathLayout(): PathLayout {
-  const dataDir = normalizeOptionalEnv(process.env.AGENT_DATA_DIR) ?? resolveDefaultDataDir()
-  const configPath =
-    normalizeOptionalEnv(process.env.DOTENV_PATH) ?? path.win32.join(dataDir, 'config.env')
-  const bootstrapPath =
-    normalizeOptionalEnv(process.env.BOOTSTRAP_DOTENV_PATH) ??
-    path.win32.join(dataDir, 'bootstrap.env')
-
-  return {
-    dataDir,
-    configPath,
-    bootstrapPath,
-    consumedBootstrapPath: `${bootstrapPath}.consumed`,
-  }
 }
 
 function parseRuntimeConfigFromFile(filePath: string): RuntimeConfig | null {
@@ -1399,12 +1373,11 @@ async function runUpdateCheck(command: {
 }
 
 async function main(): Promise<void> {
-  const paths = resolvePathLayout()
   const agentLayout = runtimePaths.resolveAgentPathLayout()
   runtimePaths.ensureAgentPathLayout(agentLayout)
-  const runtimeConfig = await resolveRuntimeConfigWithBootstrap(paths)
+  const runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
   const agentVersion = resolveAgentVersion()
-  const supervisorPaths = resolveSupervisorPaths(paths.dataDir)
+  const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
@@ -1514,7 +1487,7 @@ async function main(): Promise<void> {
         scheduler?.stop()
         realtimeSubscription?.unsubscribe()
         setTimeout(() => {
-          process.exit(EXIT_CODE_RESTART_FOR_UPDATE)
+          process.exit(EXIT_UPDATE_RESTART)
         }, 0)
       }
     },
@@ -1617,5 +1590,5 @@ async function main(): Promise<void> {
 
 void main().catch((error) => {
   console.error(`[agent] fatal startup error: ${toErrorMessage(error)}`)
-  process.exitCode = 1
+  process.exitCode = EXIT_FATAL
 })

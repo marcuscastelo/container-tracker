@@ -1,0 +1,72 @@
+pkgname=container-tracker-agent
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Container Tracker headless Linux agent runtime'
+arch=('x86_64')
+url='https://github.com/marcuscastelo/container-tracker'
+license=('MIT')
+depends=('nodejs' 'systemd')
+makedepends=('pnpm' 'typescript')
+install='container-tracker-agent.install'
+source=(
+  'container-tracker-agent.service'
+  'container-tracker-agent.sysusers'
+  'container-tracker-agent.tmpfiles'
+  'container-tracker-agent.install'
+)
+sha256sums=(
+  'SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP'
+)
+
+_repo_root="${startdir}/../.."
+_deploy_dir="${srcdir}/agent-app"
+
+prepare() {
+  rm -rf "${_deploy_dir}"
+}
+
+build() {
+  cd "${_repo_root}" || exit 1
+
+  pnpm run agent:build
+  pnpm --filter example-with-tailwindcss deploy --prod "${_deploy_dir}"
+}
+
+package() {
+  local install_root="${pkgdir}/usr/lib/container-tracker-agent"
+
+  install -d "${install_root}"
+  cp -a "${_repo_root}/tools/agent/dist/." "${install_root}/"
+  cp -a "${_deploy_dir}/node_modules" "${install_root}/node_modules"
+  install -Dm644 "${_repo_root}/package.json" "${install_root}/package.json"
+  install -Dm644 \
+    "${_repo_root}/tools/agent/installer/bootstrap.env.template" \
+    "${pkgdir}/etc/container-tracker-agent/bootstrap.env.template"
+
+  cat > "${install_root}/supervisor.js" <<'SHIM'
+#!/usr/bin/env node
+import './tools/agent/supervisor.js'
+SHIM
+  chmod 0755 "${install_root}/supervisor.js"
+
+  install -d "${pkgdir}/usr/bin"
+  cat > "${pkgdir}/usr/bin/ct-agent" <<'WRAPPER'
+#!/usr/bin/env bash
+exec /usr/lib/container-tracker-agent/tools/agent/cli/ct-agent.js "$@"
+WRAPPER
+  chmod 0755 "${pkgdir}/usr/bin/ct-agent"
+  chmod 0755 "${install_root}/tools/agent/cli/ct-agent.js"
+
+  install -Dm644 \
+    "${startdir}/container-tracker-agent.service" \
+    "${pkgdir}/usr/lib/systemd/system/container-tracker-agent.service"
+  install -Dm644 \
+    "${startdir}/container-tracker-agent.sysusers" \
+    "${pkgdir}/usr/lib/sysusers.d/container-tracker-agent.conf"
+  install -Dm644 \
+    "${startdir}/container-tracker-agent.tmpfiles" \
+    "${pkgdir}/usr/lib/tmpfiles.d/container-tracker-agent.conf"
+}
