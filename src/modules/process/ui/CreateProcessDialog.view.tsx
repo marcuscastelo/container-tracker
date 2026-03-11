@@ -105,13 +105,13 @@ function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element 
   const { t, keys } = useTranslation()
 
   return (
-    <section class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+    <section class="rounded-lg border border-dashed border-border bg-surface-muted p-4">
       <div class="flex flex-col items-center justify-between gap-3">
         <div>
-          <h3 class="text-sm-ui font-semibold text-slate-700">
+          <h3 class="text-sm-ui font-semibold text-foreground">
             {t(keys.createProcess.smartPaste.title)}
           </h3>
-          <p class="mt-1 text-xs-ui text-slate-500">
+          <p class="mt-1 text-xs-ui text-text-muted">
             {t(keys.createProcess.smartPaste.description)}
           </p>
         </div>
@@ -119,7 +119,7 @@ function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element 
           <button
             type="button"
             onClick={() => props.onOpen()}
-            class="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-100"
+            class="inline-flex items-center rounded-md border border-control-border bg-control-bg px-3 py-1.5 text-sm-ui font-medium text-control-foreground transition-colors hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong"
           >
             {t(keys.createProcess.smartPaste.action.open)}
           </button>
@@ -136,8 +136,8 @@ function SmartPasteDetectedSection(props: {
   const { t, keys } = useTranslation()
 
   return (
-    <section class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
-      <h4 class="text-sm-ui font-semibold text-slate-700">
+    <section class="space-y-3 rounded-md border border-border bg-surface-muted p-4">
+      <h4 class="text-sm-ui font-semibold text-foreground">
         {t(keys.createProcess.smartPaste.preview.detectedTitle)}
       </h4>
 
@@ -145,22 +145,22 @@ function SmartPasteDetectedSection(props: {
         <For each={props.detectedFields}>
           {(field) => (
             <div>
-              <dt class="text-xs-ui font-semibold uppercase tracking-wide text-slate-500">
+              <dt class="text-xs-ui font-semibold uppercase tracking-wide text-text-muted">
                 {field.label}
               </dt>
-              <dd class="text-sm-ui text-slate-700">{field.value}</dd>
+              <dd class="text-sm-ui text-foreground">{field.value}</dd>
             </div>
           )}
         </For>
       </dl>
 
       <div>
-        <p class="text-xs-ui font-semibold uppercase tracking-wide text-slate-500">
+        <p class="text-xs-ui font-semibold uppercase tracking-wide text-text-muted">
           {t(keys.createProcess.smartPaste.preview.containersTitle)}
         </p>
         <ul class="mt-1 space-y-1">
           <For each={props.detectedContainers}>
-            {(container) => <li class="text-sm-ui text-slate-700">{container}</li>}
+            {(container) => <li class="text-sm-ui text-foreground">{container}</li>}
           </For>
         </ul>
       </div>
@@ -174,14 +174,14 @@ function SmartPasteUnmappedSection(props: {
   const { t, keys } = useTranslation()
 
   return (
-    <section class="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4">
-      <h4 class="text-sm-ui font-semibold text-amber-900">
+    <section class="space-y-2 rounded-md border border-tone-warning-border bg-tone-warning-bg p-4">
+      <h4 class="text-sm-ui font-semibold text-tone-warning-strong">
         {t(keys.createProcess.smartPaste.preview.unmappedTitle)}
       </h4>
       <ul class="space-y-1">
         <For each={props.unmappedFields}>
           {(field) => (
-            <li class="text-sm-ui text-amber-900">
+            <li class="text-sm-ui text-tone-warning-fg">
               <span class="font-semibold">{field.label}:</span> {field.value || '-'}
             </li>
           )}
@@ -195,13 +195,13 @@ function SmartPasteWarningsSection(props: { readonly warnings: readonly string[]
   const { t, keys } = useTranslation()
 
   return (
-    <section class="space-y-2 rounded-md border border-red-200 bg-red-50 p-4">
-      <h4 class="text-sm-ui font-semibold text-red-900">
+    <section class="space-y-2 rounded-md border border-tone-danger-border bg-tone-danger-bg p-4">
+      <h4 class="text-sm-ui font-semibold text-tone-danger-strong">
         {t(keys.createProcess.smartPaste.preview.warningTitle)}
       </h4>
       <ul class="space-y-1">
         <For each={props.warnings}>
-          {(warning) => <li class="text-sm-ui text-red-800">{warning}</li>}
+          {(warning) => <li class="text-sm-ui text-tone-danger-fg">{warning}</li>}
         </For>
       </ul>
     </section>
@@ -215,11 +215,11 @@ function SmartPasteRequiredFieldsSection(props: {
   const { t, keys } = useTranslation()
 
   return (
-    <section class="space-y-2 rounded-md border border-slate-200 bg-white p-4">
-      <h4 class="text-sm-ui font-semibold text-slate-700">
+    <section class="space-y-2 rounded-md border border-border bg-surface p-4">
+      <h4 class="text-sm-ui font-semibold text-foreground">
         {t(keys.createProcess.smartPaste.preview.requiredTitle)}
       </h4>
-      <ul class="space-y-1 text-sm-ui text-slate-700">
+      <ul class="space-y-1 text-sm-ui text-foreground">
         <li>{t(keys.createProcess.smartPaste.preview.requiredCarrier)}</li>
         <Show
           when={props.hasContainersDetected}
@@ -249,14 +249,17 @@ function SmartPasteDialog(props: SmartPasteProps): JSX.Element {
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label for="smart-paste-input" class="block text-sm-ui font-medium text-slate-700">
+          <label
+            for="smart-paste-input"
+            class="block text-sm-ui font-medium text-control-foreground"
+          >
             {t(keys.createProcess.smartPaste.pasteLabel)}
           </label>
           <textarea
             id="smart-paste-input"
             value={props.rawText}
             onInput={(event) => props.onTextInput(event.currentTarget.value)}
-            class="min-h-48 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm-ui shadow-sm transition-colors placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+            class="min-h-48 block w-full rounded-md border border-control-border bg-control-bg px-3 py-2 text-sm-ui text-control-popover-foreground shadow-sm transition-colors placeholder:text-control-placeholder focus:border-control-selected-border focus:outline-none focus:ring-2 focus:ring-ring/40"
             placeholder={t(keys.createProcess.smartPaste.pastePlaceholder)}
           />
         </div>
@@ -265,7 +268,7 @@ function SmartPasteDialog(props: SmartPasteProps): JSX.Element {
           <button
             type="button"
             onClick={() => props.onClose()}
-            class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            class="rounded-md px-3 py-2 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong"
           >
             {t(keys.createProcess.action.cancel)}
           </button>
@@ -273,10 +276,10 @@ function SmartPasteDialog(props: SmartPasteProps): JSX.Element {
             type="button"
             onClick={() => props.onAnalyze()}
             disabled={props.rawText.trim().length === 0}
-            class={`inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors ${
+            class={`inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground transition-colors ${
               props.rawText.trim().length === 0
                 ? 'cursor-not-allowed opacity-50'
-                : 'hover:bg-slate-800'
+                : 'hover:bg-primary-hover'
             }`}
           >
             {t(keys.createProcess.smartPaste.action.analyze)}
@@ -284,7 +287,7 @@ function SmartPasteDialog(props: SmartPasteProps): JSX.Element {
         </div>
 
         <Show when={props.hasParsed}>
-          <div class="space-y-3 border-t border-slate-200 pt-4">
+          <div class="space-y-3 border-t border-border pt-4">
             <SmartPasteDetectedSection
               detectedFields={props.detectedFields}
               detectedContainers={props.detectedContainers}
@@ -300,23 +303,23 @@ function SmartPasteDialog(props: SmartPasteProps): JSX.Element {
               <SmartPasteWarningsSection warnings={props.warnings} />
             </Show>
             <Show when={props.applyErrorMessage.length > 0}>
-              <p class="text-sm-ui text-red-700" role="alert">
+              <p class="text-sm-ui text-tone-danger-fg" role="alert">
                 {props.applyErrorMessage}
               </p>
             </Show>
 
-            <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+            <div class="flex items-center justify-end gap-3 border-t border-border pt-4">
               <button
                 type="button"
                 onClick={() => props.onClose()}
-                class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                class="rounded-md px-3 py-2 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong"
               >
                 {t(keys.createProcess.action.cancel)}
               </button>
               <button
                 type="button"
                 onClick={() => props.onApply()}
-                class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800"
+                class="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
               >
                 {t(keys.createProcess.smartPaste.action.apply)}
               </button>
@@ -348,12 +351,12 @@ function SmartPasteOverwriteConfirmDialog(props: {
         <ul class="space-y-3">
           <For each={props.conflicts}>
             {(conflict) => (
-              <li class="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p class="text-sm-ui font-semibold text-slate-700">{conflict.fieldLabel}</p>
-                <p class="mt-1 text-xs-ui text-slate-500">
+              <li class="rounded-md border border-border bg-surface-muted p-3">
+                <p class="text-sm-ui font-semibold text-foreground">{conflict.fieldLabel}</p>
+                <p class="mt-1 text-xs-ui text-text-muted">
                   {t(keys.createProcess.smartPaste.overwrite.currentValue)}: {conflict.currentValue}
                 </p>
-                <p class="text-xs-ui text-slate-500">
+                <p class="text-xs-ui text-text-muted">
                   {t(keys.createProcess.smartPaste.overwrite.importedValue)}:{' '}
                   {conflict.importedValue}
                 </p>
@@ -362,18 +365,18 @@ function SmartPasteOverwriteConfirmDialog(props: {
           </For>
         </ul>
 
-        <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <div class="flex items-center justify-end gap-3 border-t border-border pt-4">
           <button
             type="button"
             onClick={() => props.onCancel()}
-            class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            class="rounded-md px-3 py-2 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong"
           >
             {t(keys.createProcess.smartPaste.action.keepCurrent)}
           </button>
           <button
             type="button"
             onClick={() => props.onConfirm()}
-            class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800"
+            class="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             {t(keys.createProcess.smartPaste.action.replaceAndApply)}
           </button>
@@ -398,18 +401,18 @@ function CloseGuardDialog(props: CloseGuardProps): JSX.Element {
       )}
       maxWidth="md"
     >
-      <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+      <div class="flex items-center justify-end gap-3 border-t border-border pt-4">
         <button
           type="button"
           onClick={() => props.onCancel()}
-          class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          class="rounded-md px-3 py-2 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong"
         >
           {t(keys.createProcess.closeGuard.action.keepEditing)}
         </button>
         <button
           type="button"
           onClick={() => props.onConfirm()}
-          class="inline-flex items-center rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white transition-colors hover:bg-slate-800"
+          class="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           {t(keys.createProcess.closeGuard.action.discardAndClose)}
         </button>

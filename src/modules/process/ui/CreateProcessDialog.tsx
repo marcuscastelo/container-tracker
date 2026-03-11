@@ -216,6 +216,11 @@ type SmartPasteConflictView = {
 
 type CloseGuardTarget = 'form' | 'smartPaste'
 
+type CloseGuardViewModel = {
+  readonly open: boolean
+  readonly target: CloseGuardTarget | null
+}
+
 type SmartPasteViewModel = {
   readonly enabled: boolean
   readonly open: boolean
@@ -253,6 +258,24 @@ type SmartPasteController = {
   readonly hasUnsavedDraft: Accessor<boolean>
   readonly forceClose: () => void
   readonly reset: () => void
+}
+
+type CreateCloseGuardControllerParams = {
+  readonly open: Accessor<boolean>
+  readonly mode: Accessor<'create' | 'edit'>
+  readonly initialData: Accessor<CreateProcessDialogFormData | null | undefined>
+  readonly state: DialogState
+  readonly smartPasteController: SmartPasteController
+  readonly onForceClose: () => void
+}
+
+type CloseGuardController = {
+  readonly closeGuard: Accessor<CloseGuardViewModel>
+  readonly requestDialogClose: () => void
+  readonly requestSmartPasteClose: () => void
+  readonly cancelCloseGuard: () => void
+  readonly confirmCloseGuard: () => void
+  readonly closeDialogForce: () => void
 }
 
 type DialogState = {
@@ -1462,13 +1485,103 @@ function createSmartPasteController(
   }
 }
 
+function createCloseGuardController(
+  params: CreateCloseGuardControllerParams,
+): CloseGuardController {
+  const [closeGuardTarget, setCloseGuardTarget] = createSignal<CloseGuardTarget | null>(null)
+
+  createEffect(() => {
+    if (!params.open()) {
+      setCloseGuardTarget(null)
+    }
+  })
+
+  const formCloseBaseline = createMemo<CreateProcessCloseGuardFormSnapshot>(() => {
+    if (params.mode() === 'edit') {
+      return toCloseGuardFormSnapshotFromInitialData(params.initialData())
+    }
+
+    return createDefaultCreateProcessCloseGuardFormSnapshot()
+  })
+  const isFormDirty = createMemo(() =>
+    isCreateProcessCloseGuardFormDirty({
+      baseline: formCloseBaseline(),
+      current: toCloseGuardFormSnapshotFromState(params.state),
+    }),
+  )
+
+  const closeDialogForce = () => {
+    params.onForceClose()
+    setCloseGuardTarget(null)
+  }
+
+  const cancelCloseGuard = () => {
+    setCloseGuardTarget(null)
+  }
+
+  const requestSmartPasteClose = () => {
+    if (closeGuardTarget() !== null) return
+    if (params.smartPasteController.overwriteConfirmOpen()) return
+    if (!params.smartPasteController.open()) return
+
+    if (!params.smartPasteController.hasUnsavedDraft()) {
+      params.smartPasteController.forceClose()
+      return
+    }
+
+    setCloseGuardTarget('smartPaste')
+  }
+
+  const requestDialogClose = () => {
+    if (closeGuardTarget() !== null) return
+
+    if (params.smartPasteController.open()) {
+      requestSmartPasteClose()
+      return
+    }
+
+    if (!isFormDirty()) {
+      closeDialogForce()
+      return
+    }
+
+    setCloseGuardTarget('form')
+  }
+
+  const confirmCloseGuard = () => {
+    const target = closeGuardTarget()
+    if (!target) return
+
+    if (target === 'smartPaste') {
+      params.smartPasteController.forceClose()
+      setCloseGuardTarget(null)
+      return
+    }
+
+    closeDialogForce()
+  }
+
+  const closeGuard = createMemo<CloseGuardViewModel>(() => ({
+    open: params.open() && closeGuardTarget() !== null,
+    target: closeGuardTarget(),
+  }))
+
+  return {
+    closeGuard,
+    requestDialogClose,
+    requestSmartPasteClose,
+    cancelCloseGuard,
+    confirmCloseGuard,
+    closeDialogForce,
+  }
+}
+
 export function CreateProcessDialog(props: Props): JSX.Element {
   const navigate = useNavigate()
   const { t, keys } = useTranslation()
   const state = createDialogState()
   const formFieldSetters = asFormFieldSetters(state)
   const containerValidationTracker = createContainerValidationTracker()
-  const [closeGuardTarget, setCloseGuardTarget] = createSignal<CloseGuardTarget | null>(null)
 
   const initialContainerNumbersSet = createMemo(
     () =>
@@ -1488,27 +1601,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     })
   })
 
-  createEffect(() => {
-    if (!props.open) {
-      setCloseGuardTarget(null)
-    }
-  })
-
   const mode = createMemo(() => props.mode ?? 'create')
   const carrierOptions = createMemo(() => buildCarrierOptions(t(keys.createProcess.carrierUnknown)))
-  const formCloseBaseline = createMemo<CreateProcessCloseGuardFormSnapshot>(() => {
-    if (mode() === 'edit') {
-      return toCloseGuardFormSnapshotFromInitialData(props.initialData)
-    }
-
-    return createDefaultCreateProcessCloseGuardFormSnapshot()
-  })
-  const isFormDirty = createMemo(() =>
-    isCreateProcessCloseGuardFormDirty({
-      baseline: formCloseBaseline(),
-      current: toCloseGuardFormSnapshotFromState(state),
-    }),
-  )
+  let requestSmartPasteClose = () => {}
 
   const smartPasteController = createSmartPasteController({
     open: () => props.open,
@@ -1516,62 +1611,22 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     state,
     t,
     keys,
-    onCloseRequest: () => handleSmartPasteCloseRequest(),
+    onCloseRequest: () => requestSmartPasteClose(),
   })
-
-  function closeDialogForce(): void {
-    containerValidationTracker.reset()
-    resetDialogState(asDialogStateSetters(state))
-    smartPasteController.reset()
-    setCloseGuardTarget(null)
-    props.onClose()
-  }
-
-  function handleCloseGuardCancel(): void {
-    setCloseGuardTarget(null)
-  }
-
-  function handleSmartPasteCloseRequest(): void {
-    if (closeGuardTarget() !== null) return
-    if (smartPasteController.overwriteConfirmOpen()) return
-    if (!smartPasteController.open()) return
-
-    if (!smartPasteController.hasUnsavedDraft()) {
-      smartPasteController.forceClose()
-      return
-    }
-
-    setCloseGuardTarget('smartPaste')
-  }
-
-  function handleCloseRequest(): void {
-    if (closeGuardTarget() !== null) return
-
-    if (smartPasteController.open()) {
-      handleSmartPasteCloseRequest()
-      return
-    }
-
-    if (!isFormDirty()) {
-      closeDialogForce()
-      return
-    }
-
-    setCloseGuardTarget('form')
-  }
-
-  function handleCloseGuardConfirm(): void {
-    const target = closeGuardTarget()
-    if (!target) return
-
-    if (target === 'smartPaste') {
-      smartPasteController.forceClose()
-      setCloseGuardTarget(null)
-      return
-    }
-
-    closeDialogForce()
-  }
+  const closeGuardController = createCloseGuardController({
+    open: () => props.open,
+    mode,
+    initialData: () => props.initialData,
+    state,
+    smartPasteController,
+    onForceClose: () => {
+      containerValidationTracker.reset()
+      resetDialogState(asDialogStateSetters(state))
+      smartPasteController.reset()
+      props.onClose()
+    },
+  })
+  requestSmartPasteClose = closeGuardController.requestSmartPasteClose
 
   const markTouched = (fieldKey: string) => {
     state.setTouched((previous) => ({ ...previous, [fieldKey]: true }))
@@ -1690,7 +1745,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     setServerErrors: state.setServerErrors,
     onReady: (data) => {
       props.onSubmit?.(data)
-      closeDialogForce()
+      closeGuardController.closeDialogForce()
     },
   })
 
@@ -1719,7 +1774,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
     <CreateProcessDialogView
       open={props.open}
       mode={mode()}
-      onClose={handleCloseRequest}
+      onClose={closeGuardController.requestDialogClose}
       onSubmit={handleSubmit}
       form={form()}
       submitDisabled={isSubmitDisabled()}
@@ -1727,10 +1782,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
       smartPaste={smartPasteController.smartPaste()}
       overwriteConfirmOpen={props.open && smartPasteController.overwriteConfirmOpen()}
       closeGuard={{
-        open: props.open && closeGuardTarget() !== null,
-        target: closeGuardTarget(),
-        onCancel: handleCloseGuardCancel,
-        onConfirm: handleCloseGuardConfirm,
+        ...closeGuardController.closeGuard(),
+        onCancel: closeGuardController.cancelCloseGuard,
+        onConfirm: closeGuardController.confirmCloseGuard,
       }}
     />
   )
