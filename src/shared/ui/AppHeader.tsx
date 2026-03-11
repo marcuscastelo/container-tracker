@@ -53,9 +53,14 @@ function AlertCountBadge(props: {
 }): JSX.Element {
   return (
     <span
-      class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full border border-tone-danger-border bg-tone-danger-bg px-3 text-xs-ui font-semibold text-tone-danger-fg"
+      class={clsx(
+        'inline-flex h-(--dashboard-control-height) min-h-(--dashboard-control-height) items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs-ui font-semibold',
+        {
+          'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg': props.count > 0,
+          'border-border bg-surface text-text-muted': props.count === 0,
+        },
+      )}
       title={props.activeTooltip}
-      aria-label={props.fullLabel}
     >
       <svg
         class="h-3.5 w-3.5 shrink-0"
