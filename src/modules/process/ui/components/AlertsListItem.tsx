@@ -47,9 +47,11 @@ function toSeverityBadgeClasses(
   if (mode === 'archived') {
     return 'border-border bg-surface-muted text-text-muted'
   }
-  if (severity === 'danger') return 'border-red-200 bg-red-50 text-red-700'
-  if (severity === 'warning') return 'border-yellow-200 bg-yellow-50 text-yellow-700'
-  return 'border-blue-200 bg-blue-50 text-blue-700'
+  if (severity === 'danger')
+    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
+  if (severity === 'warning')
+    return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+  return 'border-tone-info-border bg-tone-info-bg text-tone-info-fg'
 }
 
 function formatAlertAge(
@@ -83,9 +85,11 @@ function toSeverityLabel(
 function toAlertCardClasses(severity: AlertDisplayVM['severity'], mode: AlertsListMode): string {
   if (mode === 'archived')
     return 'border-border bg-surface-muted/80 border-l-border-strong border-l-2'
-  if (severity === 'danger') return 'border-red-200 bg-red-50/85 border-l-red-500 border-l-4'
-  if (severity === 'warning') return 'border-amber-200 bg-amber-50/85 border-l-amber-400 border-l-4'
-  return 'border-blue-100 bg-blue-50/70 border-l-blue-300 border-l-4'
+  if (severity === 'danger')
+    return 'border-tone-danger-border bg-tone-danger-bg/85 border-l-tone-danger-strong border-l-4'
+  if (severity === 'warning')
+    return 'border-tone-warning-border bg-tone-warning-bg/85 border-l-tone-warning-strong border-l-4'
+  return 'border-tone-info-border bg-tone-info-bg/75 border-l-tone-info-strong border-l-4'
 }
 
 function AlertCategoryChip(props: {
@@ -164,7 +168,7 @@ export function AlertItem(props: {
           type="button"
           disabled={isBusy()}
           data-testid={`alert-ack-button-${props.alert.id}`}
-          class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-text-muted transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+          class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-text-muted transition hover:border-tone-success-border hover:bg-tone-success-bg hover:text-tone-success-fg disabled:cursor-not-allowed disabled:opacity-60"
           aria-label={t(keys.shipmentView.alerts.action.acknowledgeAria)}
           title={t(keys.shipmentView.alerts.action.acknowledge)}
           onClick={() => props.onAcknowledge(props.alert.id)}

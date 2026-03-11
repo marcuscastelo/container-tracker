@@ -116,17 +116,20 @@ function toDominantAlertLabel(
 }
 
 function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return 'border-red-300 bg-red-100 text-red-800'
-  if (severity === 'warning') return 'border-amber-300 bg-amber-100 text-amber-800'
-  if (severity === 'info') return 'border-blue-200 bg-blue-50 text-blue-700'
-  if (severity === 'success') return 'border-green-200 bg-green-50 text-green-700'
+  if (severity === 'danger')
+    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
+  if (severity === 'warning')
+    return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+  if (severity === 'info') return 'border-tone-info-border bg-tone-info-bg text-tone-info-fg'
+  if (severity === 'success')
+    return 'border-tone-success-border bg-tone-success-bg text-tone-success-fg'
   return 'border-border bg-surface-muted text-text-muted'
 }
 
 function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_#ef4444]'
-  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_#fbbf24]'
-  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_#93c5fd]'
+  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-danger-strong)]'
+  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-warning-strong)]'
+  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-info-strong)]'
   return ''
 }
 
@@ -258,8 +261,8 @@ function formatDashboardAlertAge(params: {
   else label = params.t(params.keys.dashboard.table.age.days, { count: days })
 
   let agingClass: string
-  if (days >= 4) agingClass = 'text-red-500'
-  else if (days >= 1) agingClass = 'text-amber-500'
+  if (days >= 4) agingClass = 'text-tone-danger-fg'
+  else if (days >= 1) agingClass = 'text-tone-warning-fg'
   else agingClass = 'text-text-muted'
 
   return { label, agingClass }
@@ -415,7 +418,7 @@ function EtaCell(ctx: CellContext): JSX.Element {
           fallback={<span class="text-xs-ui leading-tight text-text-muted">—</span>}
         >
           <span
-            class={`text-sm-ui font-semibold tabular-nums ${ctx.process.status === 'delayed' ? 'text-red-600' : 'text-foreground'}`}
+            class={`text-sm-ui font-semibold tabular-nums ${ctx.process.status === 'delayed' ? 'text-tone-danger-fg' : 'text-foreground'}`}
           >
             {displayEta(ctx.process.eta)}
           </span>
@@ -491,7 +494,11 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         <Show
           when={dominantSeverity() !== 'none'}
           fallback={
-            <span class="text-xs-ui text-emerald-400" role="img" aria-label={dominantAlertLabel()}>
+            <span
+              class="text-xs-ui text-tone-success-strong"
+              role="img"
+              aria-label={dominantAlertLabel()}
+            >
               <Check class="w-3.5 h-3.5" aria-hidden="true" />
             </span>
           }
@@ -800,7 +807,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
     if (props.hasError) {
       return (
-        <div class="px-6 py-12 text-center text-md-ui text-red-500">
+        <div class="px-6 py-12 text-center text-md-ui text-tone-danger-fg">
           {t(keys.dashboard.error.loadProcesses)}
         </div>
       )

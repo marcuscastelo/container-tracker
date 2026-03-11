@@ -94,7 +94,7 @@ export function Dialog(props: Props): JSX.Element {
       <Portal>
         <div class="fixed inset-0 z-50 overflow-y-auto">
           <div
-            class="fixed inset-0 bg-black/50 transition-opacity"
+            class="fixed inset-0 bg-ring/50 transition-opacity"
             onClick={() => props.onClose()}
             aria-hidden="true"
           />

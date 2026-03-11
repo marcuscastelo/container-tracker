@@ -20,10 +20,10 @@ export function AlertsPanel(props: Props): JSX.Element {
   return (
     <section id="shipment-alerts" class="space-y-1 scroll-mt-[120px]">
       <Show when={props.activeAlerts.length > 0}>
-        <div class="rounded-lg border border-amber-200 border-t-2 border-t-amber-400 bg-amber-50/30 p-1.5 shadow-sm backdrop-blur">
+        <div class="rounded-lg border border-tone-warning-border border-t-2 border-t-tone-warning-strong bg-tone-warning-bg/35 p-1.5 shadow-sm backdrop-blur">
           <div class="flex items-center gap-1.5 mb-0.5">
             <svg
-              class="h-4 w-4 text-amber-500"
+              class="h-4 w-4 text-tone-warning-strong"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

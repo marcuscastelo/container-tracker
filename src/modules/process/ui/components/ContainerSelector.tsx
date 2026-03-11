@@ -168,7 +168,7 @@ function ContainerSelectorItem(props: {
       </div>
 
       <Show when={props.container.dataIssueChipVm.visible}>
-        <span class="mt-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-micro font-medium text-amber-700">
+        <span class="mt-2 inline-flex rounded-md border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-medium text-tone-warning-fg">
           {props.labels.dataIssue}
         </span>
       </Show>

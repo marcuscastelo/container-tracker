@@ -194,25 +194,25 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
     return [
       {
         key: 'danger',
-        dotClass: 'bg-red-500',
-        valueClass: 'text-red-700',
-        labelClass: 'text-red-600',
+        dotClass: 'bg-tone-danger-strong',
+        valueClass: 'text-tone-danger-fg',
+        labelClass: 'text-tone-danger-fg',
         value: summary.bySeverity.danger,
         label: t(keys.dashboard.triageSummary.critical),
       },
       {
         key: 'warning',
-        dotClass: 'bg-yellow-400',
-        valueClass: 'text-yellow-700',
-        labelClass: 'text-yellow-600',
+        dotClass: 'bg-tone-warning-strong',
+        valueClass: 'text-tone-warning-fg',
+        labelClass: 'text-tone-warning-fg',
         value: summary.bySeverity.warning,
         label: t(keys.dashboard.triageSummary.warning),
       },
       {
         key: 'info',
-        dotClass: 'bg-blue-400',
-        valueClass: 'text-blue-700',
-        labelClass: 'text-blue-600',
+        dotClass: 'bg-tone-info-strong',
+        valueClass: 'text-tone-info-fg',
+        labelClass: 'text-tone-info-fg',
         value: summary.bySeverity.info,
         label: t(keys.dashboard.alertIndicators.severity.info),
       },
@@ -230,7 +230,7 @@ export function DashboardMetricsGrid(props: Props): JSX.Element {
 
     if (currentState === 'error') {
       return (
-        <div class="py-12 text-center text-md-ui text-red-500">
+        <div class="py-12 text-center text-md-ui text-tone-danger-fg">
           {t(keys.dashboard.alertIndicators.error)}
         </div>
       )

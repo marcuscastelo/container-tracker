@@ -76,15 +76,15 @@ export function SingleSelectChipDropdown<T extends string>(props: {
       <summary
         class={`inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border px-2.5 text-md-ui transition-colors select-none ${
           hasSelection()
-            ? 'border-slate-400 bg-slate-50 text-slate-800'
-            : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+            ? 'border-control-selected-border bg-control-selected-bg text-control-selected-foreground'
+            : 'border-control-border bg-control-bg text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong'
         }`}
       >
         <span class="truncate">{chipLabel()}</span>
         <ChevronDownIcon />
       </summary>
 
-      <div class="absolute left-0 top-full z-20 mt-1 min-w-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg">
+      <div class="absolute left-0 top-full z-20 mt-1 min-w-50 overflow-hidden rounded-md border border-control-border bg-control-popover shadow-lg">
         <SingleSelectOptionsList
           allLabel={props.allLabel}
           selectedValue={props.selectedValue}

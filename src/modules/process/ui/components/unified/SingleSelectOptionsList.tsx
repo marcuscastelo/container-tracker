@@ -15,8 +15,8 @@ export function SingleSelectOptionsList<T extends string>(props: {
           type="button"
           class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-md-ui transition-colors ${
             props.selectedValue === null
-              ? 'bg-slate-100 text-slate-800'
-              : 'text-slate-700 hover:bg-slate-50'
+              ? 'bg-control-selected-bg text-control-selected-foreground'
+              : 'text-control-popover-foreground hover:bg-control-bg-hover'
           }`}
           onClick={() => props.onSelect(null)}
           onKeyDown={(e) => {
@@ -33,8 +33,8 @@ export function SingleSelectOptionsList<T extends string>(props: {
               type="button"
               class={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-md-ui transition-colors ${
                 props.selectedValue === option.value
-                  ? 'bg-slate-100 text-slate-800'
-                  : 'text-slate-700 hover:bg-slate-50'
+                  ? 'bg-control-selected-bg text-control-selected-foreground'
+                  : 'text-control-popover-foreground hover:bg-control-bg-hover'
               }`}
               onClick={() => props.onSelect(option.value)}
               onKeyDown={(e) => {
@@ -42,7 +42,7 @@ export function SingleSelectOptionsList<T extends string>(props: {
               }}
             >
               <span class="min-w-0 flex-1 truncate">{option.label}</span>
-              <span class="shrink-0 tabular-nums text-xs-ui text-slate-400">{option.count}</span>
+              <span class="shrink-0 tabular-nums text-xs-ui text-text-muted">{option.count}</span>
             </button>
           </li>
         )}

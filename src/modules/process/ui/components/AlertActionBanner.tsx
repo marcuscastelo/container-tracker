@@ -4,12 +4,12 @@ export function AlertActionBanner(props: { message: string; onDismiss: () => voi
   const { t, keys } = useTranslation()
   return (
     <div class="mx-auto mt-2 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-md-ui text-amber-800">
+      <div class="rounded-md border border-tone-warning-border bg-tone-warning-bg p-3 text-md-ui text-tone-warning-fg">
         <div class="flex items-start justify-between gap-4">
           <div>{props.message}</div>
           <button
             type="button"
-            class="ml-4 text-amber-700 underline"
+            class="ml-4 text-tone-warning-fg underline"
             aria-label={t(keys.shipmentView.alerts.action.dismissActionError)}
             onClick={() => props.onDismiss()}
           >

@@ -116,10 +116,12 @@ function toButtonClasses(state: SyncCellState): string {
   const base =
     'inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
-  if (state === 'syncing') return `${base} border-blue-200 bg-blue-50 text-blue-700 cursor-default`
+  if (state === 'syncing')
+    return `${base} border-tone-info-border bg-tone-info-bg text-tone-info-fg cursor-default`
   if (state === 'success_recent')
-    return `${base} border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default`
-  if (state === 'failed') return `${base} border-red-200 bg-red-50 text-red-700 cursor-default`
+    return `${base} border-tone-success-border bg-tone-success-bg text-tone-success-fg cursor-default`
+  if (state === 'failed')
+    return `${base} border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg cursor-default`
   if (state === 'disabled') return `${base} cursor-not-allowed`
   // idle
   return `${base} cursor-pointer`

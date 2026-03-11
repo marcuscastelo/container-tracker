@@ -143,21 +143,21 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-          line: 'bg-emerald-200',
+          dot: 'border-tone-success-border bg-tone-success-bg text-tone-success-fg',
+          line: 'bg-tone-success-border',
           text: 'font-semibold text-foreground',
         }
       case 'current':
         return {
-          dot: 'border-blue-200 bg-blue-50 text-blue-700',
-          line: 'bg-blue-200',
+          dot: 'border-tone-info-border bg-tone-info-bg text-tone-info-fg',
+          line: 'bg-tone-info-border',
           text: 'font-semibold text-foreground',
         }
       case 'delayed':
         return {
-          dot: 'border-red-200 bg-red-50 text-red-700',
+          dot: 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg',
           line: 'bg-border',
-          text: 'font-semibold text-red-700',
+          text: 'font-semibold text-tone-danger-fg',
         }
       default:
         return {

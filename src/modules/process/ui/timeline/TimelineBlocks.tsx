@@ -80,7 +80,7 @@ export function VoyageBlockHeader(props: {
           {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
         </span>
         <Show when={props.isCurrent}>
-          <span class="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-px text-micro font-bold uppercase tracking-wider text-blue-700 ring-1 ring-blue-200">
+          <span class="inline-flex items-center rounded-full bg-tone-info-bg px-1.5 py-px text-micro font-bold uppercase tracking-wider text-tone-info-fg ring-1 ring-tone-info-border">
             {t(keys.shipmentView.timeline.blocks.currentLeg)}
           </span>
         </Show>
@@ -95,7 +95,7 @@ export function VoyageBlockHeader(props: {
       <Show when={route()}>
         {(routeStr) => (
           <p
-            class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-blue-600' : 'text-text-muted'}`}
+            class={`mt-0.5 text-micro ${props.isCurrent ? 'font-semibold text-tone-info-fg' : 'text-text-muted'}`}
           >
             {routeStr()}
           </p>
@@ -159,26 +159,26 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
   const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
 
   return (
-    <div class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2.5 shadow-[0_1px_2px_rgba(180,83,9,0.12)]">
+    <div class="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
       <div class="flex items-center gap-1.5">
         <Repeat class="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span class="text-sm-ui font-bold text-amber-900 tracking-tight">
+        <span class="text-sm-ui font-bold text-tone-warning-fg tracking-tight">
           {t(keys.shipmentView.timeline.blocks.transshipment)}
         </span>
       </div>
       <Show when={props.block.port}>
-        {(port) => <p class="mt-0.5 text-micro font-medium text-amber-800">{port()}</p>}
+        {(port) => <p class="mt-0.5 text-micro font-medium text-tone-warning-fg">{port()}</p>}
       </Show>
       <Show
         when={hasVesselChange()}
         fallback={
           <Show when={props.block.reason}>
-            {(reason) => <p class="mt-0.5 text-micro text-amber-700">{reason()}</p>}
+            {(reason) => <p class="mt-0.5 text-micro text-tone-warning-fg">{reason()}</p>}
           </Show>
         }
       >
-        <div class="mt-1 flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-micro">
-          <span class="text-amber-900 font-semibold shrink-0" aria-hidden="true">
+        <div class="mt-1 flex items-center gap-1 rounded bg-tone-warning-border/50 px-2 py-0.5 text-micro">
+          <span class="text-tone-warning-fg font-semibold shrink-0" aria-hidden="true">
             {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
               from: props.block.fromVessel ?? '?',
               to: props.block.toVessel ?? '?',
@@ -244,9 +244,9 @@ export function PortRiskMarkerRow(props: { readonly marker: PortRiskMarker }): J
   const severityClasses = () => {
     switch (props.marker.severity) {
       case 'danger':
-        return 'border-amber-500 bg-amber-50 text-amber-900'
+        return 'border-tone-warning-strong bg-tone-warning-bg text-tone-warning-fg'
       case 'warning':
-        return 'border-amber-400 bg-amber-50/60 text-amber-800'
+        return 'border-tone-warning-border bg-tone-warning-bg/70 text-tone-warning-fg'
       default:
         return 'border-border bg-surface-muted text-text-muted'
     }
@@ -286,7 +286,7 @@ export function BlockCard(props: {
 }): JSX.Element {
   const baseClass = () => {
     if (props.isCurrent) {
-      return 'rounded-xl border border-blue-200 bg-blue-50/30 shadow-[0_1px_4px_rgba(59,130,246,0.14)] ring-1 ring-blue-100/60'
+      return 'rounded-xl border border-tone-info-border bg-tone-info-bg/30 shadow-[0_1px_3px_rgb(0_0_0_/8%)] ring-1 ring-tone-info-border/50'
     }
     return props.variant === 'voyage'
       ? 'rounded-xl border border-border bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
@@ -325,19 +325,19 @@ export function RailDot(props: { readonly variant: RailDotVariant }): JSX.Elemen
   const cls = (): string => {
     switch (props.variant) {
       case 'current-voyage':
-        return 'h-3 w-3 bg-blue-500 ring-2 ring-blue-200 shadow-[0_0_4px_rgba(59,130,246,0.4)]'
+        return 'h-3 w-3 bg-tone-info-strong ring-2 ring-tone-info-border shadow-[0_0_4px_rgb(0_0_0_/20%)]'
       case 'voyage':
-        return 'h-2.5 w-2.5 bg-blue-400 ring-2 ring-surface'
+        return 'h-2.5 w-2.5 bg-tone-info-strong ring-2 ring-surface'
       case 'terminal':
         return 'h-2 w-2 bg-muted-foreground ring-2 ring-surface'
       case 'transshipment':
-        return 'h-3 w-3 bg-amber-400 ring-2 ring-surface'
+        return 'h-3 w-3 bg-tone-warning-strong ring-2 ring-surface'
       case 'gap':
         return 'h-1.5 w-1.5 bg-border-strong ring-1 ring-surface'
       case 'risk':
-        return 'h-2 w-2 bg-amber-400 ring-1 ring-surface'
+        return 'h-2 w-2 bg-tone-warning-strong ring-1 ring-surface'
       case 'event':
-        return 'h-2 w-2 bg-emerald-400 ring-1 ring-surface'
+        return 'h-2 w-2 bg-tone-success-strong ring-1 ring-surface'
     }
   }
 

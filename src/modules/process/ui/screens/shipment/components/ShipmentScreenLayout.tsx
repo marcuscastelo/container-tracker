@@ -69,7 +69,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
 
           <Show when={shouldShowLoadError()}>
             <div class="rounded-lg border border-border bg-surface p-12 text-center">
-              <p class="text-red-500">{t(keys.shipmentView.loadError)}</p>
+              <p class="text-tone-danger-fg">{t(keys.shipmentView.loadError)}</p>
               <A
                 href="/"
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
@@ -84,7 +84,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
 
           <Show when={shouldShowNotFound()}>
             <div class="rounded-lg border border-border bg-surface p-12 text-center">
-              <p class="text-red-500">{t(keys.shipmentView.notFound)}</p>
+              <p class="text-tone-danger-fg">{t(keys.shipmentView.notFound)}</p>
               <A
                 href="/"
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"

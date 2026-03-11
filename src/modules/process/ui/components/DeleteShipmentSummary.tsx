@@ -26,25 +26,25 @@ export function DeleteShipmentSummary(props: Props): JSX.Element {
   const k = keys.shipmentView.deleteShipment
 
   return (
-    <div class="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+    <div class="rounded-md border border-border bg-surface-muted px-4 py-3">
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm-ui">
-        <dt class="font-medium text-slate-500">{t(k.summaryShipment)}</dt>
-        <dd class="font-semibold text-slate-900">{props.processRef}</dd>
+        <dt class="font-medium text-text-muted">{t(k.summaryShipment)}</dt>
+        <dd class="font-semibold text-foreground">{props.processRef}</dd>
 
-        <dt class="font-medium text-slate-500">{t(k.summaryContainers)}</dt>
-        <dd class="text-slate-700">{props.containerCount}</dd>
+        <dt class="font-medium text-text-muted">{t(k.summaryContainers)}</dt>
+        <dd class="text-foreground">{props.containerCount}</dd>
 
         <Show when={props.carrier}>
           {(carrier) => (
             <>
-              <dt class="font-medium text-slate-500">{t(k.summaryCarrier)}</dt>
-              <dd class="text-slate-700">{carrier()}</dd>
+              <dt class="font-medium text-text-muted">{t(k.summaryCarrier)}</dt>
+              <dd class="text-foreground">{carrier()}</dd>
             </>
           )}
         </Show>
 
-        <dt class="font-medium text-slate-500">{t(k.summaryRoute)}</dt>
-        <dd class="inline-flex items-center gap-1 text-slate-700">
+        <dt class="font-medium text-text-muted">{t(k.summaryRoute)}</dt>
+        <dd class="inline-flex items-center gap-1 text-foreground">
           {props.origin}
           <ArrowIcon />
           {props.destination}

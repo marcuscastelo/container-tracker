@@ -21,16 +21,16 @@ export function seriesLabelToKey(keys: TranslationKeys, label: SeriesLabel): str
 export function seriesLabelToClass(label: SeriesLabel): string {
   switch (label) {
     case 'ACTIVE':
-      return 'bg-blue-100 text-blue-700'
+      return 'bg-tone-info-bg text-tone-info-fg'
     case 'EXPIRED':
-      return 'bg-amber-100 text-amber-700'
+      return 'bg-tone-warning-bg text-tone-warning-fg'
     case 'REDUNDANT_AFTER_ACTUAL':
-      return 'bg-slate-100 text-slate-500'
+      return 'bg-surface-muted text-text-muted'
     case 'SUPERSEDED_EXPECTED':
-      return 'bg-slate-100 text-slate-600'
+      return 'bg-surface-muted text-text-muted'
     case 'CONFIRMED':
-      return 'bg-emerald-100 text-emerald-700'
+      return 'bg-tone-success-bg text-tone-success-fg'
     case 'CONFLICTING_ACTUAL':
-      return 'bg-red-100 text-red-700'
+      return 'bg-tone-danger-bg text-tone-danger-fg'
   }
 }

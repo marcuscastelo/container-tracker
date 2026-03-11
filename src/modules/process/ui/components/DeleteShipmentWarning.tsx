@@ -14,9 +14,9 @@ export function DeleteShipmentWarning(): JSX.Element {
 
   return (
     <div class="space-y-3">
-      <p class="text-sm-ui text-slate-700">{t(k.description)}</p>
+      <p class="text-sm-ui text-foreground">{t(k.description)}</p>
 
-      <ul class="list-disc space-y-1 pl-5 text-sm-ui text-slate-700" aria-label={t(k.description)}>
+      <ul class="list-disc space-y-1 pl-5 text-sm-ui text-foreground" aria-label={t(k.description)}>
         <li>{t(k.warningItems.shipment)}</li>
         <li>{t(k.warningItems.containers)}</li>
         <li>{t(k.warningItems.timeline)}</li>
@@ -24,8 +24,8 @@ export function DeleteShipmentWarning(): JSX.Element {
         <li>{t(k.warningItems.alerts)}</li>
       </ul>
 
-      <div class="rounded-md border border-red-200 bg-red-50 px-3 py-2">
-        <p class="text-sm-ui font-semibold text-red-700">{t(k.cannotUndo)}</p>
+      <div class="rounded-md border border-tone-danger-border bg-tone-danger-bg px-3 py-2">
+        <p class="text-sm-ui font-semibold text-tone-danger-fg">{t(k.cannotUndo)}</p>
       </div>
     </div>
   )

@@ -123,19 +123,19 @@ export function ImporterChipDropdown(props: {
       <summary
         class={`inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border px-2.5 text-md-ui transition-colors select-none ${
           hasSelection()
-            ? 'border-slate-400 bg-slate-50 text-slate-800'
-            : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+            ? 'border-control-selected-border bg-control-selected-bg text-control-selected-foreground'
+            : 'border-control-border bg-control-bg text-control-foreground hover:border-control-border-hover hover:bg-control-bg-hover hover:text-control-foreground-strong'
         }`}
       >
         <span class="truncate">{chipLabel()}</span>
         <ChevronDownIcon />
       </summary>
 
-      <div class="absolute left-0 top-full z-20 mt-1 min-w-60 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg">
-        <div class="border-b border-slate-100 px-2 py-2">
+      <div class="absolute left-0 top-full z-20 mt-1 min-w-60 overflow-hidden rounded-md border border-control-border bg-control-popover shadow-lg">
+        <div class="border-b border-control-border px-2 py-2">
           <input
             type="search"
-            class="w-full rounded border border-slate-200 px-2 py-1.5 text-md-ui text-slate-700 outline-none transition-colors focus:border-blue-400"
+            class="w-full rounded border border-control-border bg-control-bg px-2 py-1.5 text-md-ui text-control-popover-foreground outline-none transition-colors placeholder:text-control-placeholder focus:border-control-selected-border focus-visible:ring-2 focus-visible:ring-ring/40"
             placeholder={props.searchPlaceholder}
             value={searchValue()}
             onInput={(event) => setSearchValue(event.currentTarget.value)}
@@ -143,10 +143,10 @@ export function ImporterChipDropdown(props: {
         </div>
         <Switch>
           <Match when={props.options.length === 0}>
-            <p class="px-3 py-2 text-md-ui text-slate-500">{props.emptyLabel}</p>
+            <p class="px-3 py-2 text-md-ui text-text-muted">{props.emptyLabel}</p>
           </Match>
           <Match when={filteredOptions().length === 0}>
-            <p class="px-3 py-2 text-md-ui text-slate-500">{props.noMatchesLabel}</p>
+            <p class="px-3 py-2 text-md-ui text-text-muted">{props.noMatchesLabel}</p>
           </Match>
           <Match when={true}>
             <ImporterOptionsList

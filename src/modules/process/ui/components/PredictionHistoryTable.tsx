@@ -49,7 +49,9 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
         <span
           class={clsx(
             'inline-flex items-center rounded px-2 py-0.5 text-xs-ui font-medium',
-            isActual() ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-muted text-text-muted',
+            isActual()
+              ? 'bg-tone-success-bg text-tone-success-fg'
+              : 'bg-surface-muted text-text-muted',
           )}
         >
           {isActual()
@@ -70,7 +72,7 @@ function PredictionHistoryRow(props: RowProps): JSX.Element {
           <span
             class={clsx(
               'inline-flex items-center',
-              (props.deltaDays ?? 0) > 0 ? 'text-red-600' : 'text-green-600',
+              (props.deltaDays ?? 0) > 0 ? 'text-tone-danger-fg' : 'text-tone-success-fg',
             )}
           >
             {deltaPrefix()}

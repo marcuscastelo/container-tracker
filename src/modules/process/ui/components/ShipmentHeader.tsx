@@ -46,7 +46,7 @@ type HeaderIconButtonProps = {
 function HeaderIconButton(props: HeaderIconButtonProps): JSX.Element {
   const className = () =>
     props.variant === 'danger'
-      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-600 transition-colors hover:bg-red-100'
+      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg transition-colors hover:bg-tone-danger-bg'
       : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground'
 
   return (

@@ -36,7 +36,7 @@ function NavLink(props: {
 
 function AlertCountBadge(props: { label: string }): JSX.Element {
   return (
-    <span class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full bg-red-100 px-3 text-xs-ui font-semibold text-red-700">
+    <span class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center gap-1.5 whitespace-nowrap rounded-full border border-tone-danger-border bg-tone-danger-bg px-3 text-xs-ui font-semibold text-tone-danger-fg">
       <svg
         class="h-3.5 w-3.5 shrink-0"
         fill="none"

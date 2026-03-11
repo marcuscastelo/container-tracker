@@ -22,7 +22,7 @@ function RefreshIcon(props: {
     props.spinning
       ? 'h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)] animate-spin'
       : 'h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)]'
-  const cls = () => (props.error ? `${base()} text-red-200` : base())
+  const cls = () => (props.error ? `${base()} text-tone-danger-fg` : base())
   return <RefreshCw class={cls()} strokeWidth={1.75} aria-hidden="true" />
 }
 

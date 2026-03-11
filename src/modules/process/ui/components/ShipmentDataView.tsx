@@ -49,7 +49,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
           fallback={(err) => {
             console.error('Alerts panel render failure:', err)
             return (
-              <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs-ui text-amber-800">
+              <div class="rounded-lg border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs-ui text-tone-warning-fg">
                 {t(keys.app.unexpectedRenderError)}
               </div>
             )
@@ -82,7 +82,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
               fallback={(err) => {
                 console.error('Timeline panel render failure:', err)
                 return (
-                  <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs-ui text-red-700">
+                  <div class="rounded-lg border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-xs-ui text-tone-danger-fg">
                     {t(keys.app.unexpectedRenderError)}
                   </div>
                 )
