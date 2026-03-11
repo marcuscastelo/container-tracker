@@ -144,6 +144,7 @@ The following must **never exist in `shared/`**:
 - Status derivation
 - Alert derivation
 - Event interpretation logic
+- Shipment timeline semantic block derivation (voyage/transshipment/pre/post-carriage)
 
 Examples of forbidden shared code:
 
@@ -257,6 +258,7 @@ Never move code to `shared/` if it contains:
 - container lifecycle rules
 - tracking timeline logic
 - alert logic
+- shipment timeline semantic grouping logic
 
 When uncertain:
 

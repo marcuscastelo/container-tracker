@@ -52,9 +52,9 @@ export async function POST({ request }: { request: Request }): Promise<Response>
     LoadScenarioResponseSchema.parse(payload)
     return jsonResponse(payload, 200)
   } catch (error) {
-    // Treat schema mismatches and unexpected errors as server errors to avoid
-    // leaking internal validation details as 4xx client errors.
+    // Distinguish schema/validation failures and unexpected errors (500)
     if (error instanceof z.ZodError) {
+      // Internal mismatch between seeder and response schema - log and hide details
       console.error('Failed to validate load scenario response', error)
       return jsonResponse({ error: 'Failed to load scenario' }, 500)
     }

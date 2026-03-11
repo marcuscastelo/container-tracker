@@ -41,40 +41,47 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
   return (
     <div
-      class={clsx('flex items-start gap-1.5 sm:gap-2 rounded-sm px-1 py-0.5', {
+      class={clsx('flex items-stretch gap-3 rounded-md px-1 py-1', {
         'opacity-70': isFuture(),
-        'opacity-35': props.isExpiredExpected,
+        'opacity-45': props.isExpiredExpected,
         'bg-amber-50/60': props.highlighted && !props.isExpected,
       })}
     >
-      {/* Minimal status dot — no vertical line; outer rail handles continuity */}
-      <div class="flex shrink-0 items-center pt-1.25">
+      <div class="flex w-10 shrink-0 flex-col items-center">
         <div
-          class={clsx('shrink-0 rounded-full', props.dotClass, {
-            'h-1.5 w-1.5 border border-dashed border-slate-300': props.isExpected,
-            'h-1.25 w-1.25': !props.isExpected,
-          })}
-        />
+          class={clsx(
+            'flex h-10 w-10 items-center justify-center rounded-full border shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
+            props.dotClass,
+          )}
+        >
+          <Show
+            when={props.eventIcon}
+            fallback={<span class="h-2.5 w-2.5 rounded-full bg-current" aria-hidden="true" />}
+          >
+            {(eventIcon) => eventIcon()}
+          </Show>
+        </div>
+
+        <Show when={!props.isLast}>
+          <div class={clsx('mt-1 w-px flex-1 rounded-full', props.lineClass)} />
+        </Show>
       </div>
 
-      {/* Content */}
-      <div class="min-w-0 flex-1 pb-0.5">
-        <div class="flex items-start justify-between gap-1.5">
+      <div class="min-w-0 flex-1 pb-1">
+        <div class="flex items-start justify-between gap-2.5">
           <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1">
-              <Show when={props.eventIcon}>{(eventIcon) => eventIcon()}</Show>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <p class={`text-sm-ui leading-tight ${props.textClass}`}>{props.label}</p>
 
               <Show when={showInlineEta() && props.etaChipLabel}>
                 {(etaChipLabel) => <EtaChip label={etaChipLabel()} />}
               </Show>
 
-              <p class={`text-sm-ui leading-tight ${props.textClass}`}>{props.label}</p>
-
               <Show when={props.showPredictionHistoryButton}>
                 <button
                   type="button"
                   onClick={() => props.onOpenPredictionHistory()}
-                  class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-blue-50 hover:text-blue-500"
+                  class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-blue-50 hover:text-blue-500"
                   title={props.predictionHistoryLabel}
                   aria-label={props.predictionHistoryLabel}
                 >
@@ -103,7 +110,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
               <Show when={props.isExpiredExpected}>
                 <span
-                  class="inline-flex items-center rounded bg-amber-50 px-1 py-px text-micro font-medium text-amber-600"
+                  class="inline-flex items-center rounded bg-amber-50 px-1 py-px text-micro font-medium text-amber-700"
                   title={props.expiredExpectedTooltip}
                 >
                   {props.expiredExpectedLabel}
@@ -113,7 +120,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
             <Show when={showEtaBelow() && props.etaChipLabel}>
               {(etaChipLabel) => (
-                <div class="mt-px">
+                <div class="mt-1">
                   <EtaChip label={etaChipLabel()} />
                 </div>
               )}
@@ -121,7 +128,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
             <Show when={showLocation()}>
               {(location) => (
-                <p class="mt-px text-micro leading-tight text-gray-500 truncate">{location()}</p>
+                <p class="mt-0.5 text-xs-ui leading-tight text-slate-600">{location()}</p>
               )}
             </Show>
           </div>
@@ -140,8 +147,8 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
 function EtaChip(props: { label: string }) {
   return (
-    <span class="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1 py-px text-micro font-semibold text-blue-700 border border-blue-200">
-      <svg class="w-2.5 h-2.5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+    <span class="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1 py-px text-micro font-semibold text-blue-700">
+      <svg class="h-2.5 w-2.5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="2" y="2" width="20" height="20" rx="3" />
       </svg>
       {props.label}

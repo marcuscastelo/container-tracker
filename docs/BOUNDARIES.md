@@ -72,11 +72,21 @@ UI layer:
 - Formats dates
 - Applies i18n
 - Handles interaction state
+- Composes shipment view as timeline-first
+- Places supporting metadata/status in sidebar panels
+- Preserves grouped operational timeline blocks from canonical read models
 
 UI must not:
 
 - Reimplement domain derivation
 - Override safe-first rules
+- Reclassify ACTUAL/EXPECTED semantics
+- Flatten semantically grouped timeline blocks by recomputing meaning in UI
+- Break chronological flow by injecting supporting cards between timeline sections
+
+Reference:
+
+- `docs/UI_PHILOSOPHY.md`
 
 ---
 

@@ -180,6 +180,9 @@ UI may:
 - format labels
 - manage interaction state
 - render conflict indicators
+- compose shipment view as timeline-first
+- render supporting metadata/status in sidebar panels
+- preserve grouped operational timeline blocks exposed by canonical read models
 
 UI must not:
 
@@ -189,8 +192,10 @@ UI must not:
 - derive alerts
 - reinterpret ACTUAL vs EXPECTED
 - detect event conflicts
+- flatten semantically grouped timeline blocks by recomputing event meaning
 
 UI may display uncertainty but must not compute it.
+Supporting cards must not interrupt chronological timeline flow.
 
 ---
 
@@ -250,6 +255,18 @@ timelineBlockModel.ts
 ```
 
 Violation: UI deriving event meaning.
+
+---
+
+### UI flattening grouped operational timeline semantics
+
+```
+ShipmentTimeline.tsx
+→ takes raw event list
+→ rebuilds voyage/transshipment blocks in UI
+```
+
+Violation: UI re-deriving tracking semantics that belong to canonical projections.
 
 ---
 

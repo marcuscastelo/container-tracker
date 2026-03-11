@@ -16,13 +16,16 @@ type Props = {
   readonly syncNow: Date
 }
 
-function StatusRow(props: { readonly label: string; readonly children: JSX.Element }): JSX.Element {
+type StatusFieldProps = {
+  readonly label: string
+  readonly value: JSX.Element
+}
+
+function StatusField(props: StatusFieldProps): JSX.Element {
   return (
-    <div class="grid grid-cols-1 gap-y-0.5 sm:grid-cols-2 sm:gap-x-4 items-baseline">
-      <dt class="whitespace-nowrap text-micro font-medium uppercase tracking-wider text-slate-400 sm:w-40 sm:flex-shrink-0">
-        {props.label}
-      </dt>
-      <dd class="text-sm-ui text-slate-700">{props.children}</dd>
+    <div class="space-y-0.5">
+      <p class="text-xs-ui font-medium text-slate-500">{props.label}</p>
+      <div class="text-sm-ui font-semibold text-slate-800">{props.value}</div>
     </div>
   )
 }
@@ -56,10 +59,9 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
   )
 
   return (
-    <div class="flex flex-col gap-0 px-2.5 py-2">
-      {/* Container identity + status — top anchor */}
-      <div class="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2">
-        <span class="text-sm-ui font-bold tracking-wide text-slate-800">
+    <div class="space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <span class="text-sm-ui font-semibold tracking-wide text-slate-900">
           {props.container.number}
         </span>
         <StatusBadge
@@ -67,34 +69,37 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
           label={t(trackingStatusToLabelKey(keys, props.container.statusCode))}
         />
       </div>
-      <dl class="flex flex-col gap-1.5">
-        <StatusRow label={t(keys.shipmentView.currentStatus.eta)}>
+
+      <StatusField
+        label={t(keys.shipmentView.currentStatus.eta)}
+        value={
           <Show
             when={props.container.etaChipVm.date}
-            fallback={<span class="text-sm-ui font-medium text-slate-400 italic">{unknown()}</span>}
+            fallback={<span class="font-medium text-slate-400">{unknown()}</span>}
           >
-            {(date) => (
-              <span class="text-sm-ui font-bold tabular-nums text-slate-800">{date()}</span>
-            )}
+            {(date) => <span class="tabular-nums">{date()}</span>}
           </Show>
-        </StatusRow>
+        }
+      />
 
-        <StatusRow label={t(keys.shipmentView.currentStatus.currentLocation)}>
-          <span class="font-medium text-slate-700 break-words">
-            {currentLocation() ?? unknown()}
-          </span>
-        </StatusRow>
+      <StatusField
+        label={t(keys.shipmentView.currentStatus.currentLocation)}
+        value={<span>{currentLocation() ?? unknown()}</span>}
+      />
 
-        <StatusRow label={t(keys.shipmentView.currentStatus.currentVessel)}>
-          <span class="text-slate-600 break-words">
+      <StatusField
+        label={t(keys.shipmentView.currentStatus.currentVessel)}
+        value={
+          <span>
             {hideCurrentVessel() ? vesselNotApplicable() : (currentVessel() ?? unknown())}
           </span>
-        </StatusRow>
+        }
+      />
 
-        <StatusRow label={t(keys.shipmentView.currentStatus.lastUpdate)}>
-          <span class="text-slate-400 text-micro">{syncLabel() ?? unknown()}</span>
-        </StatusRow>
-      </dl>
+      <StatusField
+        label={t(keys.shipmentView.currentStatus.lastUpdate)}
+        value={<span class="font-medium text-slate-600">{syncLabel() ?? unknown()}</span>}
+      />
     </div>
   )
 }

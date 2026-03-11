@@ -1,7 +1,6 @@
 import { Globe } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createSignal, For, Show } from 'solid-js'
-import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { FlagIcon } from '~/shared/ui/icons/FlagIcons'
 
@@ -40,12 +39,7 @@ export function LanguageSwitch(): JSX.Element {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="inline-flex items-center gap-1 rounded bg-[color:var(--brand-color-primary)] px-2 py-1 text-sm-ui font-medium text-slate-300 hover:bg-[color:var(--brand-color-primary-hover)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--brand-color-primary-offset)]"
-        style={{
-          '--brand-color-primary': BRANDING.colorPrimary,
-          '--brand-color-primary-hover': '#383b6e',
-          '--brand-color-primary-offset': BRANDING.colorPrimary,
-        }}
+        class="dashboard-btn-outline px-2.5"
         aria-haspopup="listbox"
         aria-expanded={open()}
       >
@@ -55,7 +49,7 @@ export function LanguageSwitch(): JSX.Element {
 
       <Show when={open()}>
         <ul
-          class="absolute right-0 mt-2 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
+          class="absolute right-0 z-20 mt-2 w-36 rounded-md border border-border bg-surface shadow-lg"
           onMouseLeave={() => setOpen(false)}
         >
           <For each={availableLocales}>

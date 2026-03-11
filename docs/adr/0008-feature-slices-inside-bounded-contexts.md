@@ -279,6 +279,16 @@ infrastructure
 
 These rules are enforced by ESLint.
 
+UI composition guidance remains canonicalized outside feature slices:
+
+- shipment/process detail is timeline-first
+- supporting metadata/status lives in sidebar panels
+- grouped operational timeline blocks should be preserved when supplied by read models
+
+Reference:
+
+- `docs/UI_PHILOSOPHY.md`
+
 ---
 
 # Cross-Feature Interaction

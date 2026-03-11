@@ -82,3 +82,13 @@ Alerts must prioritize:
 - Auditability
 - Deterministic behavior
 - No silent suppression of data
+
+---
+
+## 7. UI Consumption Note
+
+Alert semantics remain backend-derived (fact/monitoring and severity rules).
+
+In shipment view, alerts are supporting operational metadata and should be rendered in supporting panels/sidebar, without interrupting the primary chronological timeline flow.
+
+UI may change visual treatment, but must not recalculate alert semantics.

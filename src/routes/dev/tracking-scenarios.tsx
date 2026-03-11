@@ -464,37 +464,49 @@ export default function TrackingScenariosPage(): JSX.Element {
     async (source) => {
       // Fetch a single process detail and map to a dashboard summary to avoid
       // loading the entire dashboard list for the preview.
-      const detail = await fetchProcess(source.processId, DEFAULT_LOCALE, {
+      const shipment = await fetchProcess(source.processId, DEFAULT_LOCALE, {
         mode: 'network-only',
         dedupeInFlight: false,
       })
 
-      if (!detail) return null
+      if (!shipment) return null
 
-      const containerNumbers = detail.containers.map((c) => c.number.trim().toUpperCase())
-      const hasTransshipment = detail.containers.some((c) => c.transshipment?.hasTransshipment)
+      const containerNumbers = shipment.containers.map((c) => c.number.trim().toUpperCase())
+      const hasTransshipment = shipment.containers.some((c) => c.transshipment?.hasTransshipment)
+
+      // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
+      // Dashboard preview can render without fetching the full list.
+      const highestSeverity = shipment.alerts.reduce<'danger' | 'warning' | 'info' | null>(
+        (acc, a) => {
+          if (acc === 'danger') return 'danger'
+          if (a.severity === 'danger') return 'danger'
+          if (a.severity === 'warning') return acc === 'info' || acc === null ? 'warning' : acc
+          return acc === null ? 'info' : acc
+        },
+        null,
+      )
 
       return {
-        id: detail.id,
-        reference: detail.reference ?? null,
-        origin: { display_name: detail.origin },
-        destination: { display_name: detail.destination },
+        id: shipment.id,
+        reference: shipment.reference ?? null,
+        origin: { display_name: shipment.origin },
+        destination: { display_name: shipment.destination },
         importerId: null,
-        importerName: detail.importer_name ?? null,
-        exporterName: detail.exporter_name ?? null,
-        containerCount: detail.containers.length,
+        importerName: shipment.importer_name ?? null,
+        exporterName: shipment.exporter_name ?? null,
+        containerCount: shipment.containers.length,
         containerNumbers,
-        status: detail.status,
-        statusCode: detail.statusCode,
-        statusMicrobadge: detail.statusMicrobadge ?? null,
-        statusRank: processStatusToRank(detail.statusCode),
-        eta: detail.eta ?? null,
-        etaMsOrNull: detail.eta ? Date.parse(detail.eta) : null,
-        carrier: detail.carrier ?? null,
-        alertsCount: detail.alerts.length,
-        highestAlertSeverity: null,
+        status: shipment.status,
+        statusCode: shipment.statusCode,
+        statusMicrobadge: shipment.statusMicrobadge ?? null,
+        statusRank: processStatusToRank(shipment.statusCode),
+        eta: shipment.eta ?? null,
+        etaMsOrNull: shipment.eta ? Date.parse(shipment.eta) : null,
+        carrier: shipment.carrier ?? null,
+        alertsCount: shipment.alerts.length,
+        highestAlertSeverity: highestSeverity,
         dominantAlertCreatedAt: null,
-        redestinationNumber: detail.redestination_number ?? null,
+        redestinationNumber: shipment.redestination_number ?? null,
         hasTransshipment,
         lastEventAt: null,
         syncStatus: 'idle' as const,
