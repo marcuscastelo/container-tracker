@@ -1,6 +1,6 @@
 import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
-import { createRoot, createSignal, onMount } from 'solid-js'
+import { createRoot, createSignal } from 'solid-js'
 import {
   resolveFallbackLanguage,
   resolveInitialLanguage,
@@ -28,7 +28,54 @@ function persistLocale(lng: string): void {
 
 // --- i18n Root ---
 
-const localeRoot = createRoot(() => {
+type I18nRuntime = {
+  readonly locale: () => string
+  readonly availableLocales: readonly string[]
+  readonly dispose: () => void
+}
+
+const I18N_RUNTIME_KEY = '__ctI18nRuntime'
+
+function isI18nRuntime(value: unknown): value is I18nRuntime {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const localeAccessor = Reflect.get(value, 'locale')
+  if (typeof localeAccessor !== 'function') {
+    return false
+  }
+
+  const availableLocales = Reflect.get(value, 'availableLocales')
+  if (
+    !Array.isArray(availableLocales) ||
+    !availableLocales.every((localeEntry) => typeof localeEntry === 'string')
+  ) {
+    return false
+  }
+
+  const dispose = Reflect.get(value, 'dispose')
+  if (typeof dispose !== 'function') {
+    return false
+  }
+
+  return true
+}
+
+function readI18nRuntime(): I18nRuntime | null {
+  const runtime = Reflect.get(window, I18N_RUNTIME_KEY)
+  return isI18nRuntime(runtime) ? runtime : null
+}
+
+function writeI18nRuntime(runtime: I18nRuntime): void {
+  Reflect.set(window, I18N_RUNTIME_KEY, runtime)
+}
+
+function clearI18nRuntime(): void {
+  Reflect.deleteProperty(window, I18N_RUNTIME_KEY)
+}
+
+function createI18nRuntime(): I18nRuntime {
   const { resources, availableLocales } = loadProjectResources()
   const storedLang = getStoredLang()
   const initialLng = resolveInitialLanguage(availableLocales, storedLang, i18next.language)
@@ -41,17 +88,70 @@ const localeRoot = createRoot(() => {
     interpolation: { escapeValue: false },
   }
 
-  const [locale, setLocale] = createSignal(initialLng)
+  return createRoot((disposeRoot) => {
+    const [locale, setLocale] = createSignal(initialLng)
+    const isBrowser = typeof window !== 'undefined'
 
-  onMount(() => {
-    console.debug('Initializing i18next with options', initOptions)
-    console.debug('Available locales:', availableLocales)
-    i18next.init(initOptions)
-    i18next.on('languageChanged', (lng) => setLocale(lng))
+    const handleLanguageChanged = (lng: string) => {
+      setLocale(lng)
+    }
+
+    if (isBrowser && !i18next.isInitialized) {
+      console.debug('Initializing i18next with options', initOptions)
+      console.debug('Available locales:', availableLocales)
+      void i18next.init(initOptions)
+    }
+
+    if (isBrowser && i18next.language) {
+      setLocale(i18next.language)
+    }
+
+    if (isBrowser) {
+      i18next.on('languageChanged', handleLanguageChanged)
+    }
+
+    let disposed = false
+
+    return {
+      locale,
+      availableLocales,
+      dispose: () => {
+        if (disposed) return
+        disposed = true
+        if (isBrowser) {
+          i18next.off('languageChanged', handleLanguageChanged)
+        }
+        disposeRoot()
+      },
+    }
   })
+}
 
-  return { locale, availableLocales }
-})
+function resolveI18nRuntime(): I18nRuntime {
+  if (typeof window === 'undefined') {
+    return createI18nRuntime()
+  }
+
+  const existingRuntime = readI18nRuntime()
+  if (existingRuntime) {
+    existingRuntime.dispose()
+  }
+
+  const runtime = createI18nRuntime()
+  writeI18nRuntime(runtime)
+  return runtime
+}
+
+const localeRoot = resolveI18nRuntime()
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    localeRoot.dispose()
+    if (typeof window !== 'undefined' && readI18nRuntime() === localeRoot) {
+      clearI18nRuntime()
+    }
+  })
+}
 
 // --- API ---
 
