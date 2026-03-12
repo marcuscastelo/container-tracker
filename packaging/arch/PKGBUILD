@@ -53,6 +53,9 @@ build() {
 
   run_pnpm run agent:build
   run_pnpm --filter example-with-tailwindcss deploy --legacy --prod "${deploy_dir}"
+  node "${_repo_root}/scripts/agent/sync-runtime-pnpm-deps.mjs" \
+    "${_repo_root}/node_modules" \
+    "${deploy_dir}/node_modules"
 }
 
 package() {
