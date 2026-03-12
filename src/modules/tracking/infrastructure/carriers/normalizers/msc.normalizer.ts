@@ -18,7 +18,8 @@ import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
  *   - "Export Loaded on Vessel" → LOAD
  *   - "Full Transshipment Loaded" → LOAD
  *   - "Full Transshipment Discharged" → DISCHARGE
- *   - "Full Transshipment Positioned In" → contextual (LOAD on vessel change, ARRIVAL fallback)
+ *   - "Full Transshipment Positioned In" → OTHER (terminal movement; explicit semantic type added later)
+ *   - "Full Transshipment Positioned Out" → OTHER (terminal movement; explicit semantic type added later)
  *   - "Import Discharged from Vessel" → DISCHARGE
  *   - "Delivered" → DELIVERY
  *
@@ -30,6 +31,8 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'export loaded on vessel': 'LOAD',
   'full transshipment loaded': 'LOAD',
   'full transshipment discharged': 'DISCHARGE',
+  'full transshipment positioned in': 'OTHER',
+  'full transshipment positioned out': 'OTHER',
   'import discharged from vessel': 'DISCHARGE',
   'import to consignee': 'DELIVERY',
   delivered: 'DELIVERY',
@@ -43,121 +46,10 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'devolucao de conteiner vazio': 'EMPTY_RETURN',
 }
 
-const MSC_TRANSHIPMENT_POSITIONED_IN_KEY = 'full transshipment positioned in'
-
-type MscEventForSemanticMapping = {
-  readonly Description?: string | null | undefined
-  readonly Detail?: readonly string[] | null | undefined
-  readonly UnLocationCode?: string | null | undefined
-  readonly Location?: string | null | undefined
-  readonly Vessel?: {
-    readonly IMO?: string | null | undefined
-  } | null
-}
-
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
   const key = toLookupMapKey(description)
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
-}
-
-function toEventDescriptionKey(description: string | null | undefined): string {
-  if (!description) return ''
-  return toLookupMapKey(description)
-}
-
-function toEventLocationKey(event: MscEventForSemanticMapping): string {
-  const locationCandidate = event.UnLocationCode ?? event.Location ?? ''
-  return toLookupMapKey(locationCandidate)
-}
-
-function toVesselSignature(event: MscEventForSemanticMapping): string | null {
-  const detail = event.Detail ?? []
-  const vesselName = detail[0]?.trim() ?? ''
-  const voyage = detail[1]?.trim() ?? ''
-  const imo = event.Vessel?.IMO?.trim() ?? ''
-
-  const vesselUpper = vesselName.toUpperCase()
-  const voyageUpper = voyage.toUpperCase()
-  const imoUpper = imo.toUpperCase()
-
-  const isPlaceholder = vesselUpper === '' || vesselUpper === 'EMPTY' || vesselUpper === 'LADEN'
-  if (isPlaceholder && voyageUpper === '' && imoUpper === '') return null
-
-  if (vesselUpper === '' && voyageUpper === '' && imoUpper === '') return null
-  return `${vesselUpper}|${voyageUpper}|${imoUpper}`
-}
-
-function isTransshipmentDescription(description: string | null | undefined): boolean {
-  const key = toEventDescriptionKey(description)
-  return key.includes('transshipment')
-}
-
-function findNearestComparableTransshipmentVesselSignature(
-  events: readonly MscEventForSemanticMapping[],
-  currentIndex: number,
-): string | null {
-  const currentEvent = events[currentIndex]
-  if (!currentEvent) return null
-
-  const currentLocationKey = toEventLocationKey(currentEvent)
-
-  for (let offset = 1; offset < events.length; offset++) {
-    const leftIndex = currentIndex - offset
-    if (leftIndex >= 0) {
-      const leftEvent = events[leftIndex]
-      if (leftEvent) {
-        const sameLocation =
-          currentLocationKey === '' || toEventLocationKey(leftEvent) === currentLocationKey
-        if (sameLocation && isTransshipmentDescription(leftEvent.Description)) {
-          const signature = toVesselSignature(leftEvent)
-          if (signature) return signature
-        }
-      }
-    }
-
-    const rightIndex = currentIndex + offset
-    if (rightIndex < events.length) {
-      const rightEvent = events[rightIndex]
-      if (rightEvent) {
-        const sameLocation =
-          currentLocationKey === '' || toEventLocationKey(rightEvent) === currentLocationKey
-        if (sameLocation && isTransshipmentDescription(rightEvent.Description)) {
-          const signature = toVesselSignature(rightEvent)
-          if (signature) return signature
-        }
-      }
-    }
-  }
-
-  return null
-}
-
-/**
- * Contextual mapping for ambiguous MSC transshipment labels.
- *
- * Evidence source for vessel_change (explicit):
- * - current event vessel signature from Detail[0]/Detail[1]/Vessel.IMO
- * - nearest transshipment event in the same location from the same snapshot container stream
- */
-function mapMscEventType(
-  event: MscEventForSemanticMapping,
-  events: readonly MscEventForSemanticMapping[],
-  eventIndex: number,
-): ObservationType {
-  const baseType = mapMscDescription(event.Description)
-  if (baseType !== 'OTHER') return baseType
-
-  const descriptionKey = toEventDescriptionKey(event.Description)
-  if (descriptionKey !== MSC_TRANSHIPMENT_POSITIONED_IN_KEY) return baseType
-
-  const currentSignature = toVesselSignature(event)
-  if (!currentSignature) return 'ARRIVAL'
-
-  const nearbySignature = findNearestComparableTransshipmentVesselSignature(events, eventIndex)
-  if (!nearbySignature) return 'ARRIVAL'
-
-  return nearbySignature !== currentSignature ? 'LOAD' : 'ARRIVAL'
 }
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
@@ -288,8 +180,8 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       const events = containerInfo.Events ?? []
 
       // Process historical/confirmed events from Events array
-      for (const [eventIndex, event] of events.entries()) {
-        const type = mapMscEventType(event, events, eventIndex)
+      for (const event of events) {
+        const type = mapMscDescription(event.Description)
         const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
         const eventTime = parsedDate ? parsedDate.toISOString() : null
         const locationCode = event.UnLocationCode ?? null
