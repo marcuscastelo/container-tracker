@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apply PR Suggestions"
+  short_description: "Implementa feedback técnico de PR com rigor"
+  default_prompt: "Use $apply-pr-suggestions para coletar feedback do PR, aplicar só o que é tecnicamente válido e fechar com checks verdes e commit assinado."
