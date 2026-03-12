@@ -299,6 +299,23 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function CarrierCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+      <A
+        href={ctx.processHref}
+        class="row-link block truncate text-sm-ui leading-tight text-foreground"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        {displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)}
+      </A>
+    </div>
+  )
+}
+
 function ImporterCell(ctx: CellContext): JSX.Element {
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
@@ -311,23 +328,6 @@ function ImporterCell(ctx: CellContext): JSX.Element {
         onPointerDown={ctx.triggerProcessIntent}
       >
         {displayTruncatedText(ctx.process.importerName)}
-      </A>
-    </div>
-  )
-}
-
-function CarrierCell(ctx: CellContext): JSX.Element {
-  return (
-    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
-      <A
-        href={ctx.processHref}
-        class="row-link block truncate text-sm-ui leading-tight text-foreground"
-        onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
-      >
-        {displayTruncatedText(ctx.process.carrier)}
       </A>
     </div>
   )
