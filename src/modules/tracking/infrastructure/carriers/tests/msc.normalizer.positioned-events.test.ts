@@ -19,7 +19,7 @@ describe('MSC positioned transshipment mapping', () => {
   it.each([
     'Full Transshipment Positioned In',
     'Full Transshipment Positioned Out',
-  ])('maps "%s" to OTHER with null vessel and voyage', (description) => {
+  ])('maps "%s" to TERMINAL_MOVE with null vessel and voyage', (description) => {
     const payload = {
       Data: {
         CurrentDate: '05/02/2026',
@@ -49,7 +49,7 @@ describe('MSC positioned transshipment mapping', () => {
     expect(drafts).toHaveLength(1)
 
     const positioned = drafts[0]
-    expect(positioned?.type).toBe('OTHER')
+    expect(positioned?.type).toBe('TERMINAL_MOVE')
     expect(positioned?.carrier_label).toBe(description)
     expect(positioned?.vessel_name).toBeNull()
     expect(positioned?.voyage).toBeNull()

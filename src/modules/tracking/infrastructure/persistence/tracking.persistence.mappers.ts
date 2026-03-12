@@ -72,6 +72,7 @@ const OBSERVATION_TYPE_MAP: Record<string, ObservationType> = {
   CUSTOMS_RELEASE: 'CUSTOMS_RELEASE',
   DELIVERY: 'DELIVERY',
   EMPTY_RETURN: 'EMPTY_RETURN',
+  TERMINAL_MOVE: 'TERMINAL_MOVE',
   OTHER: 'OTHER',
 }
 function requireObservationType(value: unknown, field: string): ObservationType {

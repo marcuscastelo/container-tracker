@@ -18,8 +18,8 @@ import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
  *   - "Export Loaded on Vessel" → LOAD
  *   - "Full Transshipment Loaded" → LOAD
  *   - "Full Transshipment Discharged" → DISCHARGE
- *   - "Full Transshipment Positioned In" → OTHER (terminal movement; explicit semantic type added later)
- *   - "Full Transshipment Positioned Out" → OTHER (terminal movement; explicit semantic type added later)
+ *   - "Full Transshipment Positioned In" → TERMINAL_MOVE
+ *   - "Full Transshipment Positioned Out" → TERMINAL_MOVE
  *   - "Import Discharged from Vessel" → DISCHARGE
  *   - "Delivered" → DELIVERY
  *
@@ -31,8 +31,8 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'export loaded on vessel': 'LOAD',
   'full transshipment loaded': 'LOAD',
   'full transshipment discharged': 'DISCHARGE',
-  'full transshipment positioned in': 'OTHER',
-  'full transshipment positioned out': 'OTHER',
+  'full transshipment positioned in': 'TERMINAL_MOVE',
+  'full transshipment positioned out': 'TERMINAL_MOVE',
   'import discharged from vessel': 'DISCHARGE',
   'import to consignee': 'DELIVERY',
   delivered: 'DELIVERY',
