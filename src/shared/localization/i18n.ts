@@ -97,8 +97,10 @@ function createI18nRuntime(): I18nRuntime {
     }
 
     if (isBrowser && !i18next.isInitialized) {
-      console.debug('Initializing i18next with options', initOptions)
-      console.debug('Available locales:', availableLocales)
+      if (import.meta.env?.DEV) {
+        console.debug('Initializing i18next with options', initOptions)
+        console.debug('Available locales:', availableLocales)
+      }
       void i18next.init(initOptions)
     }
 
