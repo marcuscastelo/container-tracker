@@ -120,6 +120,15 @@ A UI de shipment vive atualmente no módulo `process/ui`.
 Isso é aceitável **enquanto** ela não introduzir semântica nem orquestração cross-BC.
 Se virar composição cross-BC (dashboard), deve ser promovida para `src/capabilities/*`.
 
+Direção canônica de composição:
+- timeline-first no shipment/process detail
+- metadados/status/alertas como painéis de suporte (sidebar)
+- preservação de blocos operacionais agrupados da timeline quando fornecidos no read model
+- sem re-derivação de semântica tracking no frontend
+
+Referência:
+- `docs/UI_PHILOSOPHY.md`
+
 ---
 
 ## 3) `tracking` — internal capabilities

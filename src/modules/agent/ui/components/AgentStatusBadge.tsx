@@ -9,24 +9,24 @@ type Props = {
 
 const toneStyles: Record<AgentStatusTone, { dot: string; bg: string; text: string }> = {
   success: {
-    dot: 'bg-emerald-500',
-    bg: 'bg-emerald-50 ring-emerald-500/20',
-    text: 'text-emerald-700',
+    dot: 'bg-tone-success-strong',
+    bg: 'bg-tone-success-bg ring-tone-success-border/30',
+    text: 'text-tone-success-fg',
   },
   warning: {
-    dot: 'bg-amber-500',
-    bg: 'bg-amber-50 ring-amber-500/20',
-    text: 'text-amber-700',
+    dot: 'bg-tone-warning-strong',
+    bg: 'bg-tone-warning-bg ring-tone-warning-border/30',
+    text: 'text-tone-warning-fg',
   },
   danger: {
-    dot: 'bg-red-500',
-    bg: 'bg-red-50 ring-red-500/20',
-    text: 'text-red-700',
+    dot: 'bg-tone-danger-strong',
+    bg: 'bg-tone-danger-bg ring-tone-danger-border/30',
+    text: 'text-tone-danger-fg',
   },
   neutral: {
-    dot: 'bg-slate-400',
-    bg: 'bg-slate-50 ring-slate-400/20',
-    text: 'text-slate-600',
+    dot: 'bg-text-muted',
+    bg: 'bg-surface-muted ring-border/40',
+    text: 'text-text-muted',
   },
 }
 

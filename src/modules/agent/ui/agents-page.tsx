@@ -125,7 +125,7 @@ export function AgentsPage(): JSX.Element {
   }
 
   return (
-    <div class="relative min-h-screen bg-slate-50/80">
+    <div class="relative min-h-screen bg-dashboard-canvas">
       <div class="relative z-10">
         <AppHeader />
 

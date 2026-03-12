@@ -9,6 +9,7 @@ It is NOT responsible for:
 - Event series specification (see TRACKING_EVENT_SERIES.md)
 - Tracking invariants (see TRACKING_INVARIANTS.md)
 - Alert behavior specification (see ALERT_POLICY.md)
+- Detailed UI composition and visual language (see UI_PHILOSOPHY.md)
 
 This document defines:
 
@@ -37,7 +38,9 @@ The system prioritizes:
 - Determinism
 - Auditability
 - Transparency of uncertainty
-- Exception visibility over cosmetic cleanliness
+- Exception visibility over visual minimalism
+- Timeline-first operational comprehension
+- High information density with clear hierarchy
 
 ---
 
@@ -206,6 +209,8 @@ ALERT_POLICY.md
 4. Conflicts are exposed, not hidden.
 5. UI must not redefine domain truth.
 6. Uncertainty must be visible.
+7. Shipment view is timeline-first; supporting metadata stays in sidebar panels.
+8. Operational grouping in timeline remains explicit when provided by canonical read models.
 
 ---
 
@@ -232,6 +237,7 @@ For full specification:
 - Tracking invariants → TRACKING_INVARIANTS.md
 - Event series model → TRACKING_EVENT_SERIES.md
 - Alert policy → ALERT_POLICY.md
+- UI philosophy → UI_PHILOSOPHY.md
 
 ---
 

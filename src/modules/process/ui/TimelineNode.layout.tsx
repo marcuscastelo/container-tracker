@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { EyeIcon } from 'lucide-solid'
 import { createMemo, type JSX, Show } from 'solid-js'
 
 type Props = {
@@ -19,11 +20,15 @@ type Props = {
   readonly showPredictionHistoryButton: boolean
   readonly onOpenPredictionHistory: () => void
   readonly predictionHistoryLabel: string
+  readonly showObservationButton?: boolean
+  readonly onOpenObservation?: () => void
+  readonly observationLabel?: string
 
   readonly expiredExpectedLabel: string
   readonly expiredExpectedTooltip: string
   readonly expectedLabel?: string
   readonly predictedTooltip?: string
+  readonly emptyContainerBadgeLabel?: string
 
   readonly etaChipLabel?: string | null
   readonly location?: string | null
@@ -41,40 +46,47 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
   return (
     <div
-      class={clsx('flex items-start gap-1.5 sm:gap-2 rounded-sm px-1 py-0.5', {
+      class={clsx('flex items-stretch gap-3 rounded-md px-1 py-1', {
         'opacity-70': isFuture(),
-        'opacity-35': props.isExpiredExpected,
-        'bg-amber-50/60': props.highlighted && !props.isExpected,
+        'opacity-45': props.isExpiredExpected,
+        'bg-tone-warning-bg/60': props.highlighted && !props.isExpected,
       })}
     >
-      {/* Minimal status dot — no vertical line; outer rail handles continuity */}
-      <div class="flex shrink-0 items-center pt-1.25">
+      <div class="flex w-10 shrink-0 flex-col items-center">
         <div
-          class={clsx('shrink-0 rounded-full', props.dotClass, {
-            'h-1.5 w-1.5 border border-dashed border-slate-300': props.isExpected,
-            'h-1.25 w-1.25': !props.isExpected,
-          })}
-        />
+          class={clsx(
+            'flex h-10 w-10 items-center justify-center rounded-full border shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
+            props.dotClass,
+          )}
+        >
+          <Show
+            when={props.eventIcon}
+            fallback={<span class="h-2.5 w-2.5 rounded-full bg-current" aria-hidden="true" />}
+          >
+            {(eventIcon) => eventIcon()}
+          </Show>
+        </div>
+
+        <Show when={!props.isLast}>
+          <div class={clsx('mt-1 w-px flex-1 rounded-full', props.lineClass)} />
+        </Show>
       </div>
 
-      {/* Content */}
-      <div class="min-w-0 flex-1 pb-0.5">
-        <div class="flex items-start justify-between gap-1.5">
+      <div class="min-w-0 flex-1 pb-1">
+        <div class="flex items-start justify-between gap-2.5">
           <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1">
-              <Show when={props.eventIcon}>{(eventIcon) => eventIcon()}</Show>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <p class={`text-sm-ui leading-tight ${props.textClass}`}>{props.label}</p>
 
               <Show when={showInlineEta() && props.etaChipLabel}>
                 {(etaChipLabel) => <EtaChip label={etaChipLabel()} />}
               </Show>
 
-              <p class={`text-sm-ui leading-tight ${props.textClass}`}>{props.label}</p>
-
               <Show when={props.showPredictionHistoryButton}>
                 <button
                   type="button"
                   onClick={() => props.onOpenPredictionHistory()}
-                  class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-blue-50 hover:text-blue-500"
+                  class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-tone-info-bg hover:text-tone-info-strong"
                   title={props.predictionHistoryLabel}
                   aria-label={props.predictionHistoryLabel}
                 >
@@ -93,7 +105,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
               <Show when={props.nonMappedBadgeLabel}>
                 {(nonMappedBadgeLabel) => (
                   <span
-                    class="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1 py-px text-micro font-medium leading-none text-slate-500"
+                    class="inline-flex items-center rounded border border-border bg-surface-muted px-1 py-px text-micro font-medium leading-none text-text-muted"
                     title={nonMappedBadgeLabel()}
                   >
                     {nonMappedBadgeLabel()}
@@ -101,19 +113,39 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 )}
               </Show>
 
+              <Show when={props.emptyContainerBadgeLabel}>
+                {(emptyContainerBadgeLabel) => (
+                  <span class="inline-flex items-center rounded border border-tone-warning-border bg-tone-warning-bg px-1 py-px text-micro font-medium leading-none text-tone-warning-fg">
+                    {emptyContainerBadgeLabel()}
+                  </span>
+                )}
+              </Show>
+
               <Show when={props.isExpiredExpected}>
                 <span
-                  class="inline-flex items-center rounded bg-amber-50 px-1 py-px text-micro font-medium text-amber-600"
+                  class="inline-flex items-center rounded bg-tone-warning-bg px-1 py-px text-micro font-medium text-tone-warning-fg"
                   title={props.expiredExpectedTooltip}
                 >
                   {props.expiredExpectedLabel}
                 </span>
               </Show>
+
+              <Show when={props.showObservationButton}>
+                <button
+                  type="button"
+                  onClick={() => props.onOpenObservation?.()}
+                  class="inline-flex items-center  rounded border border-border bg-surface px-1 py-px text-micro font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground text-xs"
+                >
+                  <span title={props.observationLabel}>
+                    <EyeIcon width={12} height={12} class="ml-0.5" aria-hidden="true" />
+                  </span>
+                </button>
+              </Show>
             </div>
 
             <Show when={showEtaBelow() && props.etaChipLabel}>
               {(etaChipLabel) => (
-                <div class="mt-px">
+                <div class="mt-1">
                   <EtaChip label={etaChipLabel()} />
                 </div>
               )}
@@ -121,7 +153,7 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
             <Show when={showLocation()}>
               {(location) => (
-                <p class="mt-px text-micro leading-tight text-gray-500 truncate">{location()}</p>
+                <p class="mt-0.5 text-xs-ui leading-tight text-text-muted">{location()}</p>
               )}
             </Show>
           </div>
@@ -140,8 +172,8 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
 
 function EtaChip(props: { label: string }) {
   return (
-    <span class="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1 py-px text-micro font-semibold text-blue-700 border border-blue-200">
-      <svg class="w-2.5 h-2.5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+    <span class="inline-flex items-center gap-0.5 rounded border border-tone-info-border bg-tone-info-bg px-1 py-px text-micro font-semibold text-tone-info-fg">
+      <svg class="h-2.5 w-2.5 shrink-0 fill-current" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="2" y="2" width="20" height="20" rx="3" />
       </svg>
       {props.label}

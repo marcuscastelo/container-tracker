@@ -20,8 +20,11 @@
     "./release-state.ts",
     "./runtime-health.ts",
     "./runtime-paths.ts",
+    "./runtime/paths.ts",
+    "./runtime/lifecycle-exit-codes.ts",
     "./pending-activity.ts",
     "./supervisor-control.ts",
+    "./cli/ct-agent.ts",
     "./build-release.ts",
     "./bundle-release.ts"
   ]

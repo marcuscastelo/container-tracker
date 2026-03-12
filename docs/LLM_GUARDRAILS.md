@@ -32,6 +32,8 @@ If the answer is unclear, stop and classify the change before coding.
 
 - Rendering and interaction state
 - Formatting/i18n
+- Timeline-first shipment composition
+- Sidebar panels for supporting metadata/status
 - No domain truth derivation
 
 ---
@@ -54,8 +56,13 @@ LLMs must NOT:
 - move domain rules into capabilities
 - use DTOs as internal application contracts
 - simplify ACTUAL/EXPECTED timeline semantics
+- flatten grouped operational timeline blocks by re-deriving semantics in UI
 - hide conflicts, ambiguity, or uncertainty states
 - create shared kernel implicitly without explicit policy/ownership
+
+UI composition reference:
+
+- `docs/UI_PHILOSOPHY.md`
 
 ---
 

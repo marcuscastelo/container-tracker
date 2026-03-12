@@ -32,3 +32,13 @@ Operational rule:
 
 - Surface failures locally (alerts/timeline sections) whenever possible.
 - Preserve page shell and user context; avoid full-page blank/error fallback for local failures.
+
+## 5) Shipment View Composition Baseline
+
+- Shipment/process detail remains timeline-first.
+- Supporting metadata (shipment info, current status, alerts) should live in sidebar/supporting panels.
+- Supporting panels must not break chronological timeline flow.
+- Grouped operational timeline blocks should be preserved when present in the read model.
+
+Reference:
+- `docs/UI_PHILOSOPHY.md`

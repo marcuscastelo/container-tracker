@@ -1,27 +1,22 @@
 import { RefreshCw } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createSignal, Show } from 'solid-js'
+import { createMemo, createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
-import { ArrowIcon } from '~/modules/process/ui/components/Icons'
-import { ProcessStatusBadges } from '~/modules/process/ui/components/ProcessStatusBadges'
 import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
-// sync header helpers removed — not used in the simplified header
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
+import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   data: ShipmentDetailVM
-  syncNow: Date
   isRefreshing: boolean
   refreshRetry: {
     readonly current: number
     readonly total: number
   } | null
   refreshHint: string | null
-  activeAlertCount: number
   onTriggerRefresh: () => void
-  // when called with 'reference' or 'carrier', the parent should focus that field when opening the edit dialog
   onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
 }
 
@@ -41,24 +36,24 @@ type UnknownCarrierDialogProps = {
   readonly onEditCarrier: () => void
 }
 
-type RefreshButtonProps = {
-  readonly isRefreshing: boolean
+type HeaderIconButtonProps = {
   readonly title: string
-  readonly label: string
-  readonly refreshingLabel: string
-  readonly carrier: string | null | undefined
-  readonly onTriggerRefresh: () => void
-  readonly onUnknownCarrier: () => void
+  readonly variant: 'default' | 'danger'
+  readonly onClick: () => void
+  readonly children: JSX.Element
 }
 
-type EditButtonProps = {
-  readonly title: string
-  readonly onClick: () => void
-}
+function HeaderIconButton(props: HeaderIconButtonProps): JSX.Element {
+  const className = () =>
+    props.variant === 'danger'
+      ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg transition-colors hover:bg-tone-danger-bg'
+      : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground'
 
-type DeleteButtonProps = {
-  readonly title: string
-  readonly onClick: () => void
+  return (
+    <button type="button" title={props.title} onClick={() => props.onClick()} class={className()}>
+      {props.children}
+    </button>
+  )
 }
 
 function InternalIdHint(props: InternalIdHintProps): JSX.Element {
@@ -69,86 +64,33 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
       <button
         type="button"
         aria-label={props.message}
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-xs-ui font-medium text-blue-600 transition-transform hover:cursor-pointer hover:scale-110 hover:bg-slate-200"
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-surface-muted text-xs-ui font-medium text-primary transition-transform hover:cursor-pointer hover:scale-110 hover:bg-surface-muted"
         onClick={() => setOpen((current) => !current)}
       >
         i
       </button>
       <Show when={open()}>
-        <InternalIdPopover
-          message={props.message}
-          ctaLabel={props.ctaLabel}
-          onOpenReference={() => {
-            props.onOpenReference()
-            setOpen(false)
-          }}
-        />
+        <div
+          class="absolute right-0 z-10 mt-2 w-64 rounded border border-border bg-surface p-3 text-sm-ui text-foreground shadow-lg"
+          role="dialog"
+          aria-hidden="false"
+        >
+          <p class="text-xs-ui text-foreground">{props.message}</p>
+          <div class="mt-2 text-right">
+            <button
+              type="button"
+              class="rounded bg-secondary px-2 py-1 text-sm-ui font-medium text-secondary-foreground outline hover:bg-surface-muted"
+              onClick={() => {
+                props.onOpenReference()
+                setOpen(false)
+              }}
+            >
+              {props.ctaLabel}
+            </button>
+          </div>
+        </div>
       </Show>
     </span>
-  )
-}
-
-function InternalIdPopover(props: InternalIdHintProps): JSX.Element {
-  return (
-    <div
-      class="absolute right-0 z-10 mt-2 w-64 rounded border border-slate-200 bg-white p-3 text-sm-ui text-slate-700 shadow-lg"
-      role="dialog"
-      aria-hidden="false"
-    >
-      <p class="text-xs-ui text-slate-700">{props.message}</p>
-      <div class="mt-2 text-right">
-        <button
-          type="button"
-          class="rounded bg-blue-50 px-2 py-1 text-sm-ui font-medium text-blue-700 outline hover:bg-blue-100"
-          onClick={() => props.onOpenReference()}
-        >
-          {props.ctaLabel}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function RefreshIcon(props: { readonly spinning: boolean; readonly title: string }): JSX.Element {
-  return (
-    <Show
-      when={props.spinning}
-      fallback={
-        <span class="h-4 w-4" title={props.title} aria-hidden="true">
-          <RefreshCw class="h-4 w-4" />
-        </span>
-      }
-    >
-      <span class="h-4 w-4" title={props.title} aria-hidden="true">
-        <RefreshCw class="h-4 w-4 animate-spin" />
-      </span>
-    </Show>
-  )
-}
-
-function RefreshButton(props: RefreshButtonProps): JSX.Element {
-  const handleClick = () => {
-    if (props.carrier === 'unknown') {
-      props.onUnknownCarrier()
-      return
-    }
-    props.onTriggerRefresh()
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      class={`inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm-ui font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 h-8 justify-center ${
-        props.isRefreshing ? 'opacity-80 pointer-events-none' : ''
-      }`}
-      title={props.title}
-      aria-busy={props.isRefreshing}
-      disabled={props.isRefreshing}
-    >
-      <RefreshIcon spinning={props.isRefreshing} title={props.title} />
-      <span>{props.isRefreshing ? props.refreshingLabel : props.label}</span>
-    </button>
   )
 }
 
@@ -162,14 +104,14 @@ function UnknownCarrierActions(props: {
     <div class="flex justify-end gap-3">
       <button
         type="button"
-        class="rounded-md px-3 py-2 text-sm-ui font-medium text-slate-600 hover:bg-slate-100"
+        class="rounded-md px-3 py-2 text-sm-ui font-medium text-text-muted hover:bg-surface-muted"
         onClick={() => props.onCancel()}
       >
         {props.cancelLabel}
       </button>
       <button
         type="button"
-        class="rounded-md bg-slate-900 px-3 py-2 text-sm-ui font-medium text-white hover:bg-slate-800"
+        class="rounded-md bg-primary px-3 py-2 text-sm-ui font-medium text-primary-foreground hover:bg-primary-hover"
         onClick={() => props.onEdit()}
       >
         {props.editLabel}
@@ -196,227 +138,173 @@ function UnknownCarrierDialog(props: UnknownCarrierDialogProps): JSX.Element {
   )
 }
 
-function EditButton(props: EditButtonProps): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={() => props.onClick()}
-      class="rounded-md p-2 text-slate-500 hover:bg-slate-100"
-      title={props.title}
-    >
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <title>{props.title}</title>
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M15.232 5.232l3.536 3.536M4 20l7.5-1.5L20 9l-7.5-7.5L4 20z"
-        />
-      </svg>
-    </button>
-  )
-}
-
-function DeleteButton(props: DeleteButtonProps): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={() => props.onClick()}
-      class="rounded-md p-2 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
-      title={props.title}
-    >
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <title>{props.title}</title>
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-        />
-      </svg>
-    </button>
-  )
-}
-
-function ProcessEtaSummary(props: {
-  readonly processEtaSecondaryVm: ShipmentDetailVM['processEtaSecondaryVm']
-  readonly processEtaTitle: string
-  readonly noEta: string
-  readonly incomplete: string
+function HeaderActions(props: {
+  readonly etaLabel: string
+  readonly isRefreshing: boolean
+  readonly onRefresh: () => void
+  readonly refreshLabel: string
+  readonly editTitle: string
+  readonly deleteTitle: string
+  readonly onEdit: () => void
+  readonly onDelete: () => void
 }): JSX.Element {
   return (
-    <Show when={props.processEtaSecondaryVm.visible}>
-      <div
-        data-testid="process-eta-summary"
-        class="inline-flex items-center gap-1 text-micro text-slate-500"
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => props.onRefresh()}
+        class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-sm-ui font-semibold text-foreground transition-colors hover:bg-surface-muted"
+        title={props.refreshLabel}
       >
-        <span class="font-medium">{props.processEtaTitle}:</span>
-        <span data-testid="process-eta-date" class="text-xs-ui font-bold text-slate-700">
-          {props.processEtaSecondaryVm.date ?? props.noEta}
-        </span>
-        <span data-testid="process-eta-coverage" class="tabular-nums text-slate-400">
-          ({props.processEtaSecondaryVm.withEta}/{props.processEtaSecondaryVm.total})
-        </span>
-        <Show when={props.processEtaSecondaryVm.incomplete}>
-          <span
-            data-testid="process-eta-incomplete"
-            class="rounded bg-amber-50 px-1 py-px text-micro font-medium text-amber-600 ring-1 ring-amber-200/60"
-          >
-            {props.incomplete}
-          </span>
-        </Show>
-      </div>
-    </Show>
+        <RefreshCw class={`h-3.5 w-3.5 ${props.isRefreshing ? 'animate-spin' : ''}`} />
+        <span>{props.etaLabel}</span>
+      </button>
+
+      <HeaderIconButton title={props.editTitle} variant="default" onClick={props.onEdit}>
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <title>{props.editTitle}</title>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15.232 5.232l3.536 3.536M4 20l7.5-1.5L20 9l-7.5-7.5L4 20z"
+          />
+        </svg>
+      </HeaderIconButton>
+
+      <HeaderIconButton title={props.deleteTitle} variant="danger" onClick={props.onDelete}>
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <title>{props.deleteTitle}</title>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          />
+        </svg>
+      </HeaderIconButton>
+    </div>
+  )
+}
+
+function HeaderMeta(props: {
+  readonly route: string
+  readonly carrierLabel: string
+  readonly statusVariant: ShipmentDetailVM['status']
+  readonly statusLabel: string
+}): JSX.Element {
+  return (
+    <div class="flex flex-wrap items-center gap-2 text-sm-ui text-text-muted">
+      <span class="inline-flex items-center gap-1 font-medium uppercase tracking-wide text-text-muted">
+        {props.route}
+      </span>
+      <StatusBadge variant={props.statusVariant} label={props.statusLabel} />
+      <span class="text-text-muted">{props.carrierLabel}</span>
+    </div>
   )
 }
 
 export function ShipmentHeader(props: Props): JSX.Element {
+  const { t, keys } = useTranslation()
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
 
-  function ShipmentHeaderRow1(p: {
-    props: Props
-    showUnknown: boolean
-    setShowUnknown: (v: boolean) => void
-    onOpenDelete: () => void
-  }) {
-    const { t, keys } = useTranslation()
-    const statusBadges = () =>
+  const statusBadge = createMemo(
+    () =>
       toProcessStatusBadgesDisplay({
         source: {
-          status: p.props.data.status,
-          statusCode: p.props.data.statusCode,
-          statusMicrobadge: p.props.data.statusMicrobadge,
+          status: props.data.status,
+          statusCode: props.data.statusCode,
+          statusMicrobadge: props.data.statusMicrobadge,
         },
         t,
         keys,
-      })
+      }).primary,
+  )
 
-    return (
-      <div class="flex flex-wrap items-center justify-between gap-1.5 sm:gap-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <h1 class="flex items-center gap-2 text-lg-ui font-bold text-slate-900 leading-tight min-w-0">
-            <span class="truncate min-w-0">
-              {t(keys.shipmentView.header)} {p.props.data.processRef}
-            </span>
-            <Show when={!p.props.data.reference}>
+  const routeLabel = createMemo(
+    () => `${props.data.origin} ${String.fromCharCode(8594)} ${props.data.destination}`,
+  )
+  const carrierLabel = createMemo(
+    () => `${t(keys.shipmentView.carrier)}: ${props.data.carrier ?? String.fromCharCode(8212)}`,
+  )
+  const etaLabel = createMemo(() => {
+    const value = props.data.eta ?? t(keys.shipmentView.etaMissing)
+    return `${t(keys.shipmentView.eta)}: ${value}`
+  })
+
+  const handleRefresh = () => {
+    if (props.data.carrier === 'unknown') {
+      setShowUnknownCarrierDialog(true)
+      return
+    }
+    props.onTriggerRefresh()
+  }
+
+  return (
+    <section class="rounded-xl border border-border bg-surface px-4 py-4 shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] sm:px-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0 space-y-2">
+          <h1 class="flex min-w-0 items-center gap-2 text-xl-ui font-semibold leading-tight text-foreground">
+            <span class="truncate">{props.data.processRef}</span>
+            <Show when={!props.data.reference}>
               <InternalIdHint
                 message={t(keys.shipmentView.internalIdMessage)}
                 ctaLabel={t(keys.shipmentView.internalIdCTA)}
-                onOpenReference={() => p.props.onOpenEdit('reference')}
+                onOpenReference={() => props.onOpenEdit('reference')}
               />
             </Show>
           </h1>
-          <span class="hidden text-xs-ui text-slate-500 sm:inline-flex sm:items-center sm:gap-0.5">
-            {p.props.data.origin}
-            <ArrowIcon />
-            {p.props.data.destination}
-          </span>
-        </div>
 
-        <div class="flex items-center gap-1.5 shrink-0">
-          <ProcessStatusBadges
-            primary={statusBadges().primary}
-            microbadge={statusBadges().microbadge}
+          <HeaderMeta
+            route={routeLabel()}
+            statusVariant={statusBadge().variant}
+            statusLabel={statusBadge().label}
+            carrierLabel={carrierLabel()}
           />
-          <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
-            {p.props.data.carrier ?? '—'}
-          </span>
-
-          <div class="flex items-center gap-0.5 border-l border-slate-200 pl-1.5 ml-0.5">
-            <RefreshButton
-              isRefreshing={p.props.isRefreshing}
-              carrier={p.props.data.carrier}
-              title={t(keys.shipmentView.actions.refresh)}
-              label={t(keys.shipmentView.actions.refresh)}
-              refreshingLabel={t(keys.shipmentView.actions.refreshing)}
-              onTriggerRefresh={p.props.onTriggerRefresh}
-              onUnknownCarrier={() => p.setShowUnknown(true)}
-            />
-            <Show when={p.props.isRefreshing ? p.props.refreshRetry : null}>
-              {(refreshRetry) => (
-                <span class="text-micro text-slate-500">
-                  {t(keys.shipmentView.refreshRetry, {
-                    current: refreshRetry().current,
-                    total: refreshRetry().total,
-                  })}
-                </span>
-              )}
-            </Show>
-            <Show when={p.props.isRefreshing ? null : p.props.refreshHint}>
-              {(refreshHint) => <span class="text-micro text-slate-500">{refreshHint()}</span>}
-            </Show>
-
-            <UnknownCarrierDialog
-              open={p.showUnknown}
-              onClose={() => p.setShowUnknown(false)}
-              title={t(keys.shipmentView.refreshCarrierUnknownTitle)}
-              description={t(keys.shipmentView.refreshCarrierUnknownMessage)}
-              cancelLabel={t(keys.shipmentView.refreshCarrierUnknownCancelCTA)}
-              editLabel={t(keys.shipmentView.refreshCarrierUnknownEditCTA)}
-              onEditCarrier={() => {
-                p.setShowUnknown(false)
-                p.props.onOpenEdit('carrier')
-              }}
-            />
-
-            <EditButton
-              title={t(keys.shipmentView.actions.edit)}
-              onClick={() => p.props.onOpenEdit()}
-            />
-
-            <span class="mx-0.5 h-4 w-px bg-slate-200" aria-hidden="true" />
-
-            <DeleteButton
-              title={t(keys.shipmentView.actions.delete)}
-              onClick={() => p.onOpenDelete()}
-            />
-          </div>
         </div>
-      </div>
-    )
-  }
 
-  function ShipmentHeaderRow2(p: { props: Props }) {
-    const { t, keys } = useTranslation()
+        <div class="flex shrink-0 flex-col items-end gap-1.5">
+          <HeaderActions
+            etaLabel={etaLabel()}
+            isRefreshing={props.isRefreshing}
+            onRefresh={handleRefresh}
+            refreshLabel={t(keys.shipmentView.actions.refresh)}
+            editTitle={t(keys.shipmentView.actions.edit)}
+            deleteTitle={t(keys.shipmentView.actions.delete)}
+            onEdit={() => props.onOpenEdit()}
+            onDelete={() => setShowDeleteDialog(true)}
+          />
 
-    return (
-      <div class="mt-1.5 flex items-center gap-2 flex-wrap">
-        <ProcessEtaSummary
-          processEtaSecondaryVm={p.props.data.processEtaSecondaryVm}
-          processEtaTitle={t(keys.shipmentView.operational.header.processEtaTitle)}
-          noEta={t(keys.shipmentView.operational.header.noEta)}
-          incomplete={t(keys.shipmentView.operational.header.incomplete)}
-        />
-        <div class="inline-flex items-center gap-2 text-micro text-slate-500">
-          <span>
-            <span class="font-medium">{t(keys.shipmentView.containers.title)}:</span>{' '}
-            <span class="text-slate-500">{p.props.data.containers.length}</span>
-          </span>
-          <Show when={p.props.activeAlertCount > 0}>
-            <span>
-              <span class="font-medium">{t(keys.shipmentView.alerts.title)}:</span>{' '}
-              <span class="text-slate-500">{p.props.activeAlertCount}</span>
-            </span>
+          <Show when={props.isRefreshing ? props.refreshRetry : null}>
+            {(refreshRetry) => (
+              <span class="text-micro text-text-muted">
+                {t(keys.shipmentView.refreshRetry, {
+                  current: refreshRetry().current,
+                  total: refreshRetry().total,
+                })}
+              </span>
+            )}
+          </Show>
+
+          <Show when={props.isRefreshing ? null : props.refreshHint}>
+            {(refreshHint) => <span class="text-micro text-text-muted">{refreshHint()}</span>}
           </Show>
         </div>
       </div>
-    )
-  }
 
-  // NOTE: ShipmentHeaderContainerSummary (Row3) removed — container info is now consolidated
-  // in the dedicated ContainersPanel section below the header, eliminating duplication.
-
-  return (
-    <section class="mb-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] sm:px-4 sm:py-3">
-      <ShipmentHeaderRow1
-        props={props}
-        showUnknown={showUnknownCarrierDialog()}
-        setShowUnknown={(v: boolean) => setShowUnknownCarrierDialog(v)}
-        onOpenDelete={() => setShowDeleteDialog(true)}
+      <UnknownCarrierDialog
+        open={showUnknownCarrierDialog()}
+        onClose={() => setShowUnknownCarrierDialog(false)}
+        title={t(keys.shipmentView.refreshCarrierUnknownTitle)}
+        description={t(keys.shipmentView.refreshCarrierUnknownMessage)}
+        cancelLabel={t(keys.shipmentView.refreshCarrierUnknownCancelCTA)}
+        editLabel={t(keys.shipmentView.refreshCarrierUnknownEditCTA)}
+        onEditCarrier={() => {
+          setShowUnknownCarrierDialog(false)
+          props.onOpenEdit('carrier')
+        }}
       />
-
-      <ShipmentHeaderRow2 props={props} />
 
       <DeleteShipmentDialog
         open={showDeleteDialog()}

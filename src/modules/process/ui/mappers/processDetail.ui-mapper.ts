@@ -14,7 +14,10 @@ import {
   toTrackingStatusCode,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type {
+  ContainerObservationVM,
+  ShipmentDetailVM,
+} from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
@@ -30,6 +33,9 @@ type OperationalTransshipment = ContainerOperational['transshipment']
 
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
+>[number]
+type ObservationResponseItem = NonNullable<
+  ProcessDetailResponse['containers'][number]['observations']
 >[number]
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
@@ -86,6 +92,27 @@ function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
     vesselName: item.vessel_name,
     voyage: item.voyage,
     seriesHistory: toTimelineSeriesHistory(item.series_history),
+  }
+}
+
+function toContainerObservationVm(item: ObservationResponseItem): ContainerObservationVM {
+  return {
+    id: item.id,
+    type: item.type,
+    eventTime: item.event_time,
+    eventTimeType: item.event_time_type,
+    locationCode: item.location_code,
+    locationDisplay: item.location_display,
+    vesselName: item.vessel_name,
+    voyage: item.voyage,
+    isEmpty: item.is_empty,
+    provider: item.provider,
+    carrierLabel: item.carrier_label ?? null,
+    confidence: item.confidence,
+    retroactive: item.retroactive ?? false,
+    fingerprint: item.fingerprint,
+    createdAt: item.created_at,
+    createdFromSnapshotId: item.created_from_snapshot_id ?? null,
   }
 }
 
@@ -205,6 +232,7 @@ export function toShipmentDetailVM(
   )
 
   const containers = data.containers.map((container) => {
+    const observations = (container.observations ?? []).map(toContainerObservationVm)
     const timeline = (container.timeline ?? []).map(toTimelineItem)
 
     if (timeline.length === 0) {
@@ -245,6 +273,7 @@ export function toShipmentDetailVM(
         visible: container.operational?.data_issue === true,
       },
       transshipment,
+      observations,
       timeline,
     }
   })

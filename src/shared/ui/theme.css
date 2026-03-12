@@ -1,0 +1,199 @@
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+
+  --font-size-micro: 10px;
+  --font-size-xs-ui: 12px;
+  --font-size-sm-ui: 14px;
+  --font-size-md-ui: 14px;
+  --font-size-lg-ui: 18px;
+  --font-size-xl-ui: 24px;
+
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0a;
+  --color-primary: #1e2a5e;
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: #2a3a7e;
+  --color-secondary: #f3f4f6;
+  --color-secondary-foreground: #0a0a0a;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #f3f4f6;
+  --color-accent-foreground: #0a0a0a;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fef2f2;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+  --color-input: #f3f3f5;
+  --color-ring: #3f3f3f;
+
+  --color-surface: #ffffff;
+  --color-surface-muted: #f9fafb;
+  --color-surface-elevated: #ffffff;
+  --color-text-muted: #4b5563;
+  --color-dashboard-canvas: #f9fafb;
+
+  --color-control-bg: #ffffff;
+  --color-control-bg-hover: #f9fafb;
+  --color-control-border: #d1d5db;
+  --color-control-border-hover: #9ca3af;
+  --color-control-foreground: #4b5563;
+  --color-control-foreground-strong: #111827;
+  --color-control-selected-bg: #eff6ff;
+  --color-control-selected-border: #93c5fd;
+  --color-control-selected-foreground: #1d4ed8;
+  --color-control-popover: #ffffff;
+  --color-control-popover-foreground: #111827;
+  --color-control-placeholder: #9ca3af;
+
+  --color-tone-info-bg: #eff6ff;
+  --color-tone-info-fg: #1d4ed8;
+  --color-tone-info-border: #bfdbfe;
+  --color-tone-info-strong: #2563eb;
+
+  --color-tone-warning-bg: #fffbeb;
+  --color-tone-warning-fg: #a16207;
+  --color-tone-warning-border: #fde68a;
+  --color-tone-warning-strong: #d97706;
+
+  --color-tone-danger-bg: #fef2f2;
+  --color-tone-danger-fg: #b91c1c;
+  --color-tone-danger-border: #fecaca;
+  --color-tone-danger-strong: #ef4444;
+
+  --color-tone-success-bg: #ecfdf5;
+  --color-tone-success-fg: #047857;
+  --color-tone-success-border: #a7f3d0;
+  --color-tone-success-strong: #10b981;
+
+  --color-status-in-transit-bg: #dbeafe;
+  --color-status-in-transit-fg: #1d4ed8;
+  --color-status-in-transit-border: #bfdbfe;
+
+  --color-status-discharged-bg: #ffedd5;
+  --color-status-discharged-fg: #c2410c;
+  --color-status-discharged-border: #fed7aa;
+
+  --color-status-cleared-bg: #dcfce7;
+  --color-status-cleared-fg: #15803d;
+  --color-status-cleared-border: #bbf7d0;
+
+  --color-status-delayed-bg: #fee2e2;
+  --color-status-delayed-fg: #b91c1c;
+  --color-status-delayed-border: #fecaca;
+
+  --navbar-height: 72px;
+  --dashboard-container-max-width: 1400px;
+  --dashboard-container-px: 24px;
+  --dashboard-container-py: 32px;
+  --dashboard-control-height: 40px;
+  --dashboard-control-radius: 8px;
+  --dashboard-search-width: 960px;
+  --dashboard-search-min-width: 320px;
+  --dashboard-search-height: 40px;
+  --dashboard-alert-bg: #fee2e2;
+  --dashboard-alert-fg: #b91c1c;
+  --dashboard-table-header-height: 40px;
+  --dashboard-table-row-height: 48px;
+  --dashboard-table-cell-px: 8px;
+  --dashboard-table-cell-py: 8px;
+  --dashboard-sync-icon-size: 16px;
+  --dashboard-sync-button-size: 32px;
+  --dashboard-status-chip-radius: 9999px;
+  --dashboard-status-chip-px: 10px;
+  --dashboard-status-chip-py: 4px;
+}
+
+html.dark {
+  --color-background: #0a0a0a;
+  --color-foreground: #ededed;
+  --color-card: #141414;
+  --color-card-foreground: #ededed;
+  --color-popover: #1a1a1a;
+  --color-popover-foreground: #ededed;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #0a0a0a;
+  --color-primary-hover: #e5e5e5;
+  --color-secondary: #1f1f1f;
+  --color-secondary-foreground: #ededed;
+  --color-muted: #1f1f1f;
+  --color-muted-foreground: #a1a1a1;
+  --color-accent: #1f1f1f;
+  --color-accent-foreground: #ededed;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fef2f2;
+  --color-border: #262626;
+  --color-border-strong: #3f3f3f;
+  --color-input: #1f1f1f;
+  --color-ring: #3f3f3f;
+
+  --color-surface: #141414;
+  --color-surface-muted: #1f1f1f;
+  --color-surface-elevated: #1a1a1a;
+  --color-text-muted: #a1a1a1;
+  --color-dashboard-canvas: #0a0a0a;
+
+  --color-control-bg: #141414;
+  --color-control-bg-hover: #1f1f1f;
+  --color-control-border: #3f3f3f;
+  --color-control-border-hover: #525252;
+  --color-control-foreground: #a1a1a1;
+  --color-control-foreground-strong: #ededed;
+  --color-control-selected-bg: #172554;
+  --color-control-selected-border: #1d4ed8;
+  --color-control-selected-foreground: #bfdbfe;
+  --color-control-popover: #141414;
+  --color-control-popover-foreground: #ededed;
+  --color-control-placeholder: #737373;
+
+  --color-tone-info-bg: #172554;
+  --color-tone-info-fg: #bfdbfe;
+  --color-tone-info-border: #1d4ed8;
+  --color-tone-info-strong: #60a5fa;
+
+  --color-tone-warning-bg: #422006;
+  --color-tone-warning-fg: #fcd34d;
+  --color-tone-warning-border: #a16207;
+  --color-tone-warning-strong: #f59e0b;
+
+  --color-tone-danger-bg: #450a0a;
+  --color-tone-danger-fg: #fecaca;
+  --color-tone-danger-border: #b91c1c;
+  --color-tone-danger-strong: #f87171;
+
+  --color-tone-success-bg: #052e16;
+  --color-tone-success-fg: #86efac;
+  --color-tone-success-border: #15803d;
+  --color-tone-success-strong: #34d399;
+
+  --dashboard-alert-bg: #3f1d1d;
+  --dashboard-alert-fg: #fecaca;
+
+  --color-status-in-transit-bg: #1e3a8a;
+  --color-status-in-transit-fg: #bfdbfe;
+  --color-status-in-transit-border: #1d4ed8;
+
+  --color-status-discharged-bg: #7c2d12;
+  --color-status-discharged-fg: #fdba74;
+  --color-status-discharged-border: #c2410c;
+
+  --color-status-cleared-bg: #14532d;
+  --color-status-cleared-fg: #86efac;
+  --color-status-cleared-border: #15803d;
+
+  --color-status-delayed-bg: #7f1d1d;
+  --color-status-delayed-fg: #fca5a5;
+  --color-status-delayed-border: #b91c1c;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}

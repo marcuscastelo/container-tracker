@@ -14,11 +14,15 @@ export function ShipmentCurrentStatus(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <Panel title={t(keys.shipmentView.currentStatus.title)}>
+    <Panel
+      title={t(keys.shipmentView.currentStatus.title)}
+      class="rounded-xl"
+      bodyClass="px-5 py-4"
+    >
       <Show
         when={props.selectedContainer}
         fallback={
-          <p class="px-2.5 py-3 text-center text-xs-ui text-slate-400">
+          <p class="py-3 text-center text-xs-ui text-text-muted">
             {t(keys.shipmentView.currentStatus.noContainer)}
           </p>
         }

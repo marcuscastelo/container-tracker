@@ -97,10 +97,15 @@ Series may contain:
 UI may display:
 - Prediction history modal
 - Expired expected badge
+- Timeline-first shipment view where chronology is primary
+- Grouped operational timeline blocks (for example voyage/transshipment segments)
+- Supporting shipment metadata and current status in sidebar panels
 
 Tracking ensures:
 - Only one primary event per series
 - Conflicting ACTUALs are detected
+
+UI must consume these results and must not re-derive series semantics.
 
 ---
 
@@ -122,6 +127,18 @@ Severity:
 - success
 
 Alerts are derived from observations.
+
+---
+
+## 6. Operational UI Consumption Contract
+
+Shipment/process detail is timeline-first:
+
+- Main column: container selector + timeline
+- Sidebar: shipment info + current status + supporting metadata
+
+Timeline rendering should preserve operational grouping and history visibility.
+UI may polish presentation, but must not flatten away semantic grouping provided by canonical read models.
 
 ---
 

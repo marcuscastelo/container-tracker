@@ -9,7 +9,7 @@ type Props = {
   readonly title: string
   readonly description?: string
   readonly children: JSX.Element
-  readonly maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  readonly maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
 }
 
 const maxWidthClasses = {
@@ -18,6 +18,7 @@ const maxWidthClasses = {
   lg: 'max-w-lg',
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
 }
 
 type HeaderProps = {
@@ -29,20 +30,20 @@ type HeaderProps = {
 
 function DialogHeader(props: HeaderProps): JSX.Element {
   return (
-    <div class="border-b border-slate-200 px-6 py-4">
+    <div class="border-b border-border px-6 py-4">
       <div class="flex items-start justify-between">
         <div>
-          <h2 id="dialog-title" class="text-lg-ui font-semibold text-slate-900">
+          <h2 id="dialog-title" class="text-lg-ui font-semibold text-foreground">
             {props.title}
           </h2>
           <Show when={props.description}>
-            {(description) => <p class="mt-1 text-md-ui text-slate-500">{description()}</p>}
+            {(description) => <p class="mt-1 text-md-ui text-text-muted">{description()}</p>}
           </Show>
         </div>
         <button
           type="button"
           onClick={() => props.onClose()}
-          class="-m-2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-500"
+          class="-m-2 rounded-md p-2 text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
           aria-label={props.closeLabel}
         >
           <svg
@@ -94,13 +95,13 @@ export function Dialog(props: Props): JSX.Element {
       <Portal>
         <div class="fixed inset-0 z-50 overflow-y-auto">
           <div
-            class="fixed inset-0 bg-slate-900/50 transition-opacity"
+            class="fixed inset-0 bg-ring/50 transition-opacity"
             onClick={() => props.onClose()}
             aria-hidden="true"
           />
           <div class="flex min-h-full items-start justify-center p-4 pt-16 sm:pt-24">
             <div
-              class={`relative w-full ${widthClass()} transform rounded-lg bg-white shadow-xl transition-all`}
+              class={`relative w-full ${widthClass()} transform rounded-lg border border-border bg-popover text-popover-foreground shadow-xl transition-all`}
               role="dialog"
               aria-modal="true"
               aria-labelledby="dialog-title"

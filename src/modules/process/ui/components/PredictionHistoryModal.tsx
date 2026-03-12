@@ -16,10 +16,10 @@ function ConflictWarning(): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <div class="rounded-md border border-red-200 bg-red-50 p-3">
+    <div class="rounded-md border border-tone-danger-border bg-tone-danger-bg p-3">
       <div class="flex items-start">
         <svg
-          class="mr-2 mt-0.5 h-5 w-5 shrink-0 text-red-600"
+          class="mr-2 mt-0.5 h-5 w-5 shrink-0 text-tone-danger-fg"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -33,10 +33,10 @@ function ConflictWarning(): JSX.Element {
           />
         </svg>
         <div>
-          <p class="text-sm-ui font-medium text-red-800">
+          <p class="text-sm-ui font-medium text-tone-danger-fg">
             {t(keys.shipmentView.timeline.predictionHistory.conflictWarning)}
           </p>
-          <p class="mt-1 text-sm-ui text-red-700">
+          <p class="mt-1 text-sm-ui text-tone-danger-fg">
             {t(keys.shipmentView.timeline.predictionHistory.conflictHelper)}
           </p>
         </div>
@@ -60,11 +60,11 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
 
         <PredictionHistoryTable classified={props.seriesHistory.classified} locale={locale()} />
 
-        <div class="flex justify-end border-t border-slate-200 pt-3">
+        <div class="flex justify-end border-t border-border pt-3">
           <button
             type="button"
             onClick={() => props.onClose()}
-            class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm-ui font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            class="rounded-md border border-border bg-surface px-4 py-2 text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted"
           >
             {t(keys.shipmentView.timeline.predictionHistory.close)}
           </button>

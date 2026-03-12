@@ -7,17 +7,17 @@ type Props = {
 }
 
 const severityDot: Record<AgentStatusTone, string> = {
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-red-500',
-  neutral: 'bg-slate-400',
+  success: 'bg-tone-success-strong',
+  warning: 'bg-tone-warning-strong',
+  danger: 'bg-tone-danger-strong',
+  neutral: 'bg-text-muted',
 }
 
 const severityBorder: Record<AgentStatusTone, string> = {
-  success: 'border-emerald-200',
-  warning: 'border-amber-200',
-  danger: 'border-red-200',
-  neutral: 'border-slate-200',
+  success: 'border-tone-success-border/60',
+  warning: 'border-tone-warning-border/60',
+  danger: 'border-tone-danger-border/60',
+  neutral: 'border-border/60',
 }
 
 function ActivityRow(props: { readonly activity: AgentActivityVM }): JSX.Element {
@@ -31,12 +31,15 @@ function ActivityRow(props: { readonly activity: AgentActivityVM }): JSX.Element
       />
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline justify-between gap-2">
-          <span class="text-xs-ui font-semibold text-slate-700">{props.activity.typeLabel}</span>
-          <span class="shrink-0 text-micro text-slate-400" title={props.activity.occurredAtDisplay}>
+          <span class="text-xs-ui font-semibold text-foreground">{props.activity.typeLabel}</span>
+          <span
+            class="shrink-0 text-micro text-text-muted"
+            title={props.activity.occurredAtDisplay}
+          >
             {props.activity.occurredAtRelative}
           </span>
         </div>
-        <p class="text-micro text-slate-500">{props.activity.message}</p>
+        <p class="text-micro text-text-muted">{props.activity.message}</p>
       </div>
     </div>
   )
@@ -44,12 +47,14 @@ function ActivityRow(props: { readonly activity: AgentActivityVM }): JSX.Element
 
 export function AgentRecentActivityCard(props: Props): JSX.Element {
   return (
-    <section class="rounded-lg border border-slate-200 bg-white">
-      <header class="border-b border-slate-100 px-3 py-2">
-        <h2 class="text-micro font-semibold uppercase tracking-wider text-slate-400">
+    <section class="rounded-lg border border-border bg-surface">
+      <header class="border-b border-border/60 px-3 py-2">
+        <h2 class="text-micro font-semibold uppercase tracking-wider text-text-muted">
           Recent Agent Activity
         </h2>
-        <p class="text-micro text-slate-400">Operational events — not shipment tracking timeline</p>
+        <p class="text-micro text-text-muted">
+          Operational events — not shipment tracking timeline
+        </p>
       </header>
       <div class="max-h-90 overflow-y-auto">
         <Show when={props.activities.length === 0}>
@@ -64,5 +69,5 @@ export function AgentRecentActivityCard(props: Props): JSX.Element {
 }
 
 function EmptyActivityState(): JSX.Element {
-  return <div class="px-3 py-4 text-center text-sm-ui text-slate-400">No recent activity</div>
+  return <div class="px-3 py-4 text-center text-sm-ui text-text-muted">No recent activity</div>
 }

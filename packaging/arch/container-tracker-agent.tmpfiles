@@ -1,0 +1,3 @@
+d /var/lib/container-tracker-agent 0750 container-tracker-agent container-tracker-agent -
+d /var/lib/container-tracker-agent/logs 0750 container-tracker-agent container-tracker-agent -
+d /etc/container-tracker-agent 0755 root root -

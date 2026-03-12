@@ -117,6 +117,7 @@ const ObservationResponseSchema = z.object({
   is_empty: z.boolean().nullable(),
   confidence: z.string(),
   provider: z.string(),
+  created_from_snapshot_id: z.string().optional(),
   retroactive: z.boolean().optional(),
   created_at: z.string(),
 })

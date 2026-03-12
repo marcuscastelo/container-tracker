@@ -33,14 +33,12 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <>
+    <div class="space-y-4">
       <ShipmentHeader
         data={props.data}
-        syncNow={props.syncNow}
         isRefreshing={props.isRefreshing}
         refreshRetry={props.refreshRetry}
         refreshHint={props.refreshHint}
-        activeAlertCount={props.activeAlerts.length}
         onTriggerRefresh={props.onTriggerRefresh}
         onOpenEdit={props.onOpenEdit}
       />
@@ -51,7 +49,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
           fallback={(err) => {
             console.error('Alerts panel render failure:', err)
             return (
-              <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs-ui text-amber-800">
+              <div class="rounded-lg border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs-ui text-tone-warning-fg">
                 {t(keys.app.unexpectedRenderError)}
               </div>
             )
@@ -68,8 +66,8 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         </ErrorBoundary>
       </div>
 
-      <div class="grid gap-3 lg:grid-cols-3">
-        <div class="space-y-4 lg:col-span-2">
+      <div class="grid gap-4 xl:grid-cols-[minmax(0,_1fr)_320px]">
+        <div class="space-y-4">
           <section id="shipment-containers" class="scroll-mt-[120px]">
             <ContainersPanel
               containers={props.data.containers}
@@ -79,19 +77,12 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             />
           </section>
 
-          <section id="shipment-current-status" class="scroll-mt-[120px]">
-            <ShipmentCurrentStatus
-              selectedContainer={props.selectedContainer}
-              syncNow={props.syncNow}
-            />
-          </section>
-
           <section id="shipment-timeline" class="scroll-mt-[120px]">
             <ErrorBoundary
               fallback={(err) => {
                 console.error('Timeline panel render failure:', err)
                 return (
-                  <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs-ui text-red-700">
+                  <div class="rounded-lg border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-xs-ui text-tone-danger-fg">
                     {t(keys.app.unexpectedRenderError)}
                   </div>
                 )
@@ -105,10 +96,16 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             </ErrorBoundary>
           </section>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-4">
           <ShipmentInfoCard data={props.data} />
+          <section id="shipment-current-status" class="scroll-mt-[120px]">
+            <ShipmentCurrentStatus
+              selectedContainer={props.selectedContainer}
+              syncNow={props.syncNow}
+            />
+          </section>
         </div>
       </div>
-    </>
+    </div>
   )
 }

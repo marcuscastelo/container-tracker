@@ -43,6 +43,7 @@ const serverEnvSchema = z.object({
     .optional(),
   AGENT_UPDATE_MANIFEST_CHANNEL: z.string().min(1).default('stable'),
   NODE_ENV: z.string().optional(),
+  SCENARIO_LAB_ENABLED: z.boolean().optional(),
 })
 
 const getServerEnvVars = (): unknown => {
@@ -88,6 +89,7 @@ const getServerEnvVars = (): unknown => {
     AGENT_UPDATE_MANIFEST_CHANNEL:
       normalizeOptionalEnv(process.env.AGENT_UPDATE_MANIFEST_CHANNEL) ?? 'stable',
     NODE_ENV: process.env.NODE_ENV,
+    SCENARIO_LAB_ENABLED: parseBooleanEnv(process.env.SCENARIO_LAB_ENABLED, false),
   }
 }
 

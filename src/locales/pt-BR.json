@@ -11,7 +11,15 @@
       "agents": "Agentes"
     },
     "createProcess": "Criar Processo",
-    "alertsBadge": "{{count}} Alertas"
+    "alertsBadge": "{{count}} Alertas",
+    "alertsLabel": "Alertas",
+    "alertsActiveTooltip": "{{count}} alertas ativos",
+    "theme": {
+      "light": "Claro",
+      "dark": "Escuro",
+      "switchToLight": "Alternar para tema claro",
+      "switchToDark": "Alternar para tema escuro"
+    }
   },
   "app": {
     "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes."
@@ -205,7 +213,8 @@
       "booking": "Booking",
       "importer": "Importador",
       "exporter": "Exportador",
-      "product": "Produto"
+      "product": "Produto",
+      "redestinationNumber": "Redestinação"
     },
     "operational": {
       "chips": {
@@ -240,7 +249,8 @@
     },
     "containers": {
       "title": "Containers",
-      "selectionHint": "Selecione um container para ver sua timeline."
+      "selectionHint": "Selecione um container para ver sua timeline.",
+      "internalReference": "Ref. interna"
     },
     "currentStatus": {
       "title": "Status Atual",
@@ -271,6 +281,39 @@
       "unknownEvent": "Evento desconhecido",
       "nonMappedIndicator": "Não mapeado",
       "viewPredictionHistory": "Ver histórico de previsões",
+      "viewObservation": "Ver observation",
+      "emptyContainerBadge": "Container vazio",
+      "observationInspector": {
+        "title": "Observation — {{type}}",
+        "close": "Fechar",
+        "fields": {
+          "type": "type",
+          "eventTime": "event_time",
+          "eventTimeType": "event_time_type",
+          "locationCode": "location_code",
+          "locationDisplay": "location_display",
+          "vesselName": "vessel_name",
+          "voyage": "voyage",
+          "condition": "Condição",
+          "isEmpty": "is_empty",
+          "provider": "provider",
+          "carrierLabel": "carrier_label",
+          "confidence": "confidence",
+          "retroactive": "retroactive",
+          "fingerprint": "fingerprint",
+          "createdAt": "created_at",
+          "createdFromSnapshotId": "created_from_snapshot_id"
+        },
+        "values": {
+          "empty": "Vazio",
+          "notEmpty": "Não vazio",
+          "unknown": "Não informado",
+          "true": "true",
+          "false": "false",
+          "null": "null",
+          "unavailable": "—"
+        }
+      },
       "blocks": {
         "voyage": "Viagem",
         "voyageRoute": "{{origin}} → {{destination}}",
@@ -457,6 +500,54 @@
       "existingProcessError": "Container {{container}} já existe no sistema",
       "existingProcessSame": "O container {{container}} já existe no processo atual e por isso não foi possível criar um processo novo com ele",
       "confirmLoseProgress": "Você perderá o progresso do formulário. Deseja continuar?"
+    },
+    "closeGuard": {
+      "title": "Alterações não salvas",
+      "formDescription": "Fechar agora vai descartar as edições do formulário que ainda não foram salvas.",
+      "smartPasteDescription": "Fechar agora vai descartar o texto e a análise do Smart Paste que ainda não foram aplicados.",
+      "action": {
+        "keepEditing": "Continuar editando",
+        "discardAndClose": "Descartar e fechar"
+      }
+    },
+    "smartPaste": {
+      "title": "Smart Paste",
+      "description": "Cole o conteúdo de um card do Trello para pré-preencher o formulário.",
+      "dialogTitle": "Importar do Trello",
+      "dialogDescription": "Cole o conteúdo do card e analise os dados detectados antes de aplicar.",
+      "pasteLabel": "Conteúdo do card do Trello",
+      "pastePlaceholder": "Cole aqui o título e a descrição do card do Trello",
+      "preview": {
+        "detectedTitle": "Dados detectados",
+        "containersTitle": "Containers detectados",
+        "unmappedTitle": "Campos detectados não aplicados",
+        "warningTitle": "Avisos",
+        "requiredTitle": "Campos ainda obrigatórios",
+        "requiredCarrier": "Carrier (Armador) ainda precisa ser informado manualmente.",
+        "requiredContainersMissing": "Nenhum container válido detectado.",
+        "requiredContainersFound": "{{count}} container(es) encontrado(s)."
+      },
+      "warning": {
+        "carrierNotDetected": "Carrier não detectado.",
+        "noValidContainerFound": "Nenhum container válido encontrado.",
+        "unmappedFieldDetected": "Campo {{label}} detectado, mas não aplicado."
+      },
+      "overwrite": {
+        "title": "Campos já preenchidos",
+        "description": "Alguns campos já possuem valor. Deseja substituir pelos dados importados?",
+        "currentValue": "Atual",
+        "importedValue": "Importado"
+      },
+      "error": {
+        "noContainers": "Nenhum container válido foi detectado no conteúdo colado."
+      },
+      "action": {
+        "open": "Importar do Trello",
+        "analyze": "Analisar",
+        "apply": "Aplicar ao formulário",
+        "keepCurrent": "Manter atuais",
+        "replaceAndApply": "Substituir e aplicar"
+      }
     },
     "error": {
       "failed": "Falha ao criar processo"

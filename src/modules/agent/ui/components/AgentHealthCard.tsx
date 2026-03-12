@@ -10,7 +10,7 @@ type Props = {
 function Row(props: { readonly label: string; readonly children: JSX.Element }): JSX.Element {
   return (
     <div class="flex items-center justify-between gap-2 py-1">
-      <span class="shrink-0 text-xs-ui font-medium text-slate-500">{props.label}</span>
+      <span class="shrink-0 text-xs-ui font-medium text-text-muted">{props.label}</span>
       {props.children}
     </div>
   )
@@ -19,22 +19,22 @@ function Row(props: { readonly label: string; readonly children: JSX.Element }):
 export function AgentHealthCard(props: Props): JSX.Element {
   const heartbeatColor = createMemo(() => {
     const map: Record<string, string> = {
-      fresh: 'text-emerald-700',
-      recent: 'text-slate-700',
-      stale: 'text-amber-700',
-      offline: 'text-red-700',
+      fresh: 'text-tone-success-fg',
+      recent: 'text-foreground',
+      stale: 'text-tone-warning-fg',
+      offline: 'text-tone-danger-fg',
     }
-    return map[props.vm.freshness] ?? 'text-red-700'
+    return map[props.vm.freshness] ?? 'text-tone-danger-fg'
   })
 
   return (
-    <section class="rounded-lg border border-slate-200 bg-white">
-      <header class="border-b border-slate-100 px-3 py-2">
-        <h2 class="text-micro font-semibold uppercase tracking-wider text-slate-400">
+    <section class="rounded-lg border border-border bg-surface">
+      <header class="border-b border-border/60 px-3 py-2">
+        <h2 class="text-micro font-semibold uppercase tracking-wider text-text-muted">
           Health &amp; Status
         </h2>
       </header>
-      <div class="divide-y divide-slate-50 px-3">
+      <div class="divide-y divide-border/40 px-3">
         <Row label="Status">
           <AgentStatusBadge label={props.vm.status} tone={props.vm.statusTone} />
         </Row>
@@ -47,20 +47,20 @@ export function AgentHealthCard(props: Props): JSX.Element {
           <AgentStatusBadge label={props.vm.realtimeLabel} tone={props.vm.realtimeTone} />
         </Row>
         <Row label="Boot">
-          <span class="text-sm-ui text-slate-700">{props.vm.bootStatusLabel}</span>
+          <span class="text-sm-ui text-foreground">{props.vm.bootStatusLabel}</span>
         </Row>
         <Row label="Lease Health">
           <AgentStatusBadge label={props.vm.leaseHealthLabel} tone={props.vm.leaseHealthTone} />
         </Row>
         <Row label="Processing">
-          <span class="text-sm-ui text-slate-700">{props.vm.processingStateLabel}</span>
+          <span class="text-sm-ui text-foreground">{props.vm.processingStateLabel}</span>
         </Row>
         <Row label="Restart Required">
           <span
             class={
               props.vm.restartRequired
-                ? 'text-sm-ui font-semibold text-amber-700'
-                : 'text-sm-ui text-slate-700'
+                ? 'text-sm-ui font-semibold text-tone-warning-fg'
+                : 'text-sm-ui text-foreground'
             }
           >
             {props.vm.restartRequired ? 'Yes' : 'No'}

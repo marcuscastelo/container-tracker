@@ -1,9 +1,14 @@
+// biome-ignore-all lint/style/noRestrictedImports: Runtime shim keeps direct relative imports for release bundles.
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-// biome-ignore lint/style/noRestrictedImports: Runtime path resolver needs direct relative imports in release bundles.
-import { resolvePlatformAdapter } from './platform/platform.adapter.ts'
+import {
+  resolveAgentConfigDir as resolveCanonicalAgentConfigDir,
+  resolveAgentDataDir as resolveCanonicalAgentDataDir,
+  resolveLogsDir as resolveCanonicalLogsDir,
+  resolveReleaseStatePath as resolveCanonicalReleaseStatePath,
+} from './runtime/paths.ts'
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
   if (typeof value !== 'string') {
@@ -15,13 +20,23 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
 }
 
 export function resolveDataDir(): string {
-  const dataDirFromEnv = normalizeOptionalEnv(process.env.AGENT_DATA_DIR)
-  if (dataDirFromEnv) {
-    return dataDirFromEnv
-  }
+  return resolveCanonicalAgentDataDir()
+}
 
-  const adapter = resolvePlatformAdapter()
-  return adapter.resolvePaths({ env: process.env }).dataDir
+export function resolveAgentConfigDir(): string {
+  return resolveCanonicalAgentConfigDir()
+}
+
+export function resolveAgentDataDir(): string {
+  return resolveCanonicalAgentDataDir()
+}
+
+export function resolveLogsDir(): string {
+  return resolveCanonicalLogsDir()
+}
+
+export function resolveReleaseStatePath(): string {
+  return resolveCanonicalReleaseStatePath()
 }
 
 export function resolveReleasesDir(dataDir: string): string {

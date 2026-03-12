@@ -12,8 +12,6 @@ import {
   EventSeparator,
   GapMarkerRow,
   PortRiskMarkerRow,
-  RailDot,
-  type RailDotVariant,
   TerminalBlockHeader,
   TransshipmentBlockCard,
   VoyageBlockHeader,
@@ -24,7 +22,10 @@ import {
 } from '~/modules/process/ui/timeline/timelineBlockModel'
 import { deriveCurrentVesselFromTimeline } from '~/modules/process/ui/utils/current-tracking-context'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
-import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type {
+  ContainerDetailVM,
+  ContainerObservationVM,
+} from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
@@ -67,16 +68,28 @@ function derivePortsRoute(container: ContainerDetailVM | null): string | null {
   return ports.map((p) => p.code).join(' \u2192 ')
 }
 
+function buildObservationsById(
+  container: ContainerDetailVM | null,
+): ReadonlyMap<string, ContainerObservationVM> {
+  if (!container) return new Map<string, ContainerObservationVM>()
+  const observationsById = new Map<string, ContainerObservationVM>()
+  for (const observation of container.observations) {
+    observationsById.set(observation.id, observation)
+  }
+  return observationsById
+}
+
 export function TimelinePanel(props: Props): JSX.Element {
   const timeline = () => props.selectedContainer?.timeline ?? []
   const { t, keys } = useTranslation()
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
   const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(timeline()))
   const portsRoute = createMemo(() => derivePortsRoute(props.selectedContainer))
+  const observationsById = createMemo(() => buildObservationsById(props.selectedContainer))
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 
   return (
-    <Panel title={t(keys.shipmentView.timeline.title)} bodyClass="px-2.5 py-1">
+    <Panel title={t(keys.shipmentView.timeline.title)} class="rounded-xl" bodyClass="px-3 py-3">
       <div>
         {/* Phase 6 — Timeline Header: Selected Container Context */}
         <Show when={props.selectedContainer}>
@@ -91,7 +104,7 @@ export function TimelinePanel(props: Props): JSX.Element {
         <Show
           when={timeline().length > 0}
           fallback={
-            <p class="py-3 text-center text-xs-ui text-slate-400">
+            <p class="py-3 text-center text-xs-ui text-text-muted">
               {t(keys.shipmentView.noEvents)}
             </p>
           }
@@ -102,6 +115,7 @@ export function TimelinePanel(props: Props): JSX.Element {
             containerNumber={props.selectedContainer?.number}
             nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
             highlightedTypes={highlightedTypes()}
+            observationById={observationsById()}
           />
         </Show>
       </div>
@@ -118,10 +132,10 @@ type ContainerContextHeaderProps = {
 function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <div class="mb-1.5 space-y-1 border-b border-slate-100 pb-1.5">
+    <div class="mb-2 space-y-1.5 border-b border-border/70 pb-2">
       {/* Container identity + status */}
       <div class="flex items-center gap-1.5">
-        <span class="text-xs-ui font-semibold tracking-wide text-slate-700">
+        <span class="text-xs-ui font-semibold tracking-wide text-foreground">
           {props.container.number}
         </span>
         <StatusBadge
@@ -133,10 +147,10 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.currentVessel}>
         {(vessel) => (
           <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
+            <span class="text-micro font-medium uppercase tracking-wider text-text-muted">
               {t(keys.shipmentView.timeline.vessel)}
             </span>
-            <span class="text-micro font-semibold text-slate-600">{vessel()}</span>
+            <span class="text-micro font-semibold text-foreground">{vessel()}</span>
           </div>
         )}
       </Show>
@@ -144,10 +158,10 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
       <Show when={props.portsRoute}>
         {(route) => (
           <div class="flex items-center gap-1">
-            <span class="text-micro font-medium uppercase tracking-wider text-slate-500">
+            <span class="text-micro font-medium uppercase tracking-wider text-text-muted">
               {t(keys.shipmentView.transshipment.title)}
             </span>
-            <span class="text-micro font-medium tabular-nums text-slate-500">{route()}</span>
+            <span class="text-micro font-medium tabular-nums text-text-muted">{route()}</span>
           </div>
         )}
       </Show>
@@ -222,11 +236,12 @@ function BlockChildren(props: {
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlightedTypes: ReadonlySet<string>
+  readonly observationById: ReadonlyMap<string, ContainerObservationVM>
 }): JSX.Element {
   let eventIdx = 0
 
   return (
-    <div class="px-0.5 pb-1">
+    <div class="px-2.5 py-2">
       <For each={props.children}>
         {(child) => {
           switch (child.type) {
@@ -243,6 +258,7 @@ function BlockChildren(props: {
                     isLast={child.isLast}
                     carrier={props.carrier}
                     containerNumber={props.containerNumber}
+                    observation={props.observationById.get(child.event.id)}
                     nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
                     highlighted={props.highlightedTypes.has(child.event.type)}
                   />
@@ -262,33 +278,13 @@ function BlockChildren(props: {
   )
 }
 
-function railDotVariant(group: BlockGroup, isCurrent: boolean): RailDotVariant {
-  if (isCurrent && group.kind === 'voyage') return 'current-voyage'
-  switch (group.kind) {
-    case 'voyage':
-      return 'voyage'
-    case 'terminal':
-      return 'terminal'
-    case 'transshipment':
-      return 'transshipment'
-    case 'standalone':
-      switch (group.item.type) {
-        case 'gap-marker':
-          return 'gap'
-        case 'port-risk-marker':
-          return 'risk'
-        default:
-          return 'event'
-      }
-  }
-}
-
 function TimelineBlockList(props: {
   readonly renderList: readonly TimelineRenderItem[]
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlightedTypes: ReadonlySet<string>
+  readonly observationById: ReadonlyMap<string, ContainerObservationVM>
 }): JSX.Element {
   const groups = createMemo(() => groupRenderItems(props.renderList))
   const currentVoyageIdx = createMemo(() =>
@@ -305,6 +301,7 @@ function TimelineBlockList(props: {
               children={group.children}
               carrier={props.carrier}
               containerNumber={props.containerNumber}
+              observationById={props.observationById}
               nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
               highlightedTypes={props.highlightedTypes}
             />
@@ -318,6 +315,7 @@ function TimelineBlockList(props: {
               children={group.children}
               carrier={props.carrier}
               containerNumber={props.containerNumber}
+              observationById={props.observationById}
               nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
               highlightedTypes={props.highlightedTypes}
             />
@@ -334,6 +332,7 @@ function TimelineBlockList(props: {
                 isLast={group.item.isLast}
                 carrier={props.carrier}
                 containerNumber={props.containerNumber}
+                observation={props.observationById.get(group.item.event.id)}
                 nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
                 highlighted={props.highlightedTypes.has(group.item.event.type)}
               />
@@ -351,22 +350,11 @@ function TimelineBlockList(props: {
   }
 
   return (
-    <div class="relative mt-1 pl-5">
-      {/* Continuous vertical rail — spans the full block list height */}
-      <div
-        class="absolute inset-y-0 w-px bg-slate-200"
-        style={{ left: '8px' }}
-        aria-hidden="true"
-      />
+    <div class="mt-1 space-y-2.5">
       <For each={groups()}>
         {(group, index) => {
           const isCurrent = createMemo(() => index() === currentVoyageIdx())
-          return (
-            <div class={`relative ${index() < groups().length - 1 ? 'pb-2' : ''}`}>
-              <RailDot variant={railDotVariant(group, isCurrent())} />
-              {renderGroupContent(group, isCurrent())}
-            </div>
-          )
+          return <div>{renderGroupContent(group, isCurrent())}</div>
         }}
       </For>
     </div>

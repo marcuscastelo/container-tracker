@@ -14,10 +14,10 @@ type Props = {
 export function ContainersPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   return (
-    <Panel title={`${t(keys.shipmentView.containers.title)} (${props.containers.length})`}>
-      <p class="px-2.5 pt-1.5 text-micro text-slate-400">
-        {t(keys.shipmentView.containers.selectionHint)}
-      </p>
+    <Panel
+      title={`${t(keys.shipmentView.containers.title)} (${props.containers.length})`}
+      class="rounded-xl"
+    >
       <ContainerSelector
         containers={props.containers}
         selectedId={props.selectedId}

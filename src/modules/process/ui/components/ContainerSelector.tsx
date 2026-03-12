@@ -5,40 +5,45 @@ import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingS
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
-import { CopyButton } from '~/shared/ui/CopyButton'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
-
-function etaChipClass(tone: ContainerDetailVM['etaChipVm']['tone'], selected: boolean): string {
-  if (selected) {
-    return 'bg-slate-600/60 text-slate-100'
-  }
-
-  switch (tone) {
-    case 'positive':
-      return 'bg-emerald-50 text-emerald-700'
-    case 'informative':
-      return 'bg-blue-50 text-blue-700'
-    case 'warning':
-      return 'bg-amber-50 text-amber-700'
-    default:
-      return 'bg-slate-50 text-slate-500'
-  }
-}
 
 type ContainerSelectorItemLabels = {
   readonly etaArrived: string
   readonly etaExpectedPrefix: string
   readonly etaDelayed: string
   readonly etaMissing: string
-  readonly ts: (count: number) => string
   readonly dataIssue: string
-  readonly copyContainerNumber: string
   readonly syncing: string
   readonly never: string
   readonly updatedUnknownTime: string
   readonly failedUnknownTime: string
   readonly updated: (relative: string) => string
   readonly failed: (relative: string) => string
+  readonly etaLabel: string
+  readonly internalReferenceLabel: string
+  readonly lastUpdateLabel: string
+  readonly unknown: string
+}
+
+function toContainerReference(container: ContainerDetailVM): string {
+  if (!container.id) return '—'
+  return `REF-${container.id.slice(0, 8).toUpperCase()}`
+}
+
+function MetaRow(props: {
+  readonly icon: JSX.Element
+  readonly label: string
+  readonly value: string
+}): JSX.Element {
+  return (
+    <div class="flex items-center gap-1.5 text-xs-ui text-text-muted">
+      <span class="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-text-muted">
+        {props.icon}
+      </span>
+      <span class="font-medium text-text-muted">{props.label}:</span>
+      <span class="truncate text-foreground">{props.value}</span>
+    </div>
+  )
 }
 
 function ContainerSelectorItem(props: {
@@ -50,7 +55,14 @@ function ContainerSelectorItem(props: {
   readonly syncNow: Date
   readonly locale: string
 }): JSX.Element {
-  const showEtaChip = () => props.container.etaApplicable
+  const etaValue = () =>
+    toContainerEtaChipLabel(props.container.etaChipVm, {
+      arrived: props.labels.etaArrived,
+      expectedPrefix: props.labels.etaExpectedPrefix,
+      delayed: props.labels.etaDelayed,
+      missing: props.labels.etaMissing,
+    })
+
   const syncLabel = () =>
     toContainerSyncLabel(
       props.container.sync,
@@ -68,80 +80,99 @@ function ContainerSelectorItem(props: {
       },
     )
 
+  const cardClass = () => {
+    if (props.selected) {
+      return 'border-primary bg-secondary shadow-[0_1px_2px_rgba(44,47,89,0.18)] ring-1 ring-border'
+    }
+
+    return 'border-border bg-surface hover:border-border-strong hover:bg-surface-muted'
+  }
+
   return (
-    <div
+    <button
+      type="button"
       data-testid={`container-card-${props.container.id}`}
-      class={`flex items-center gap-1 rounded-md border px-2 py-1.5 text-sm-ui font-medium transition-all cursor-pointer ${
-        props.selected
-          ? 'border-slate-600 bg-slate-700 text-white shadow-md ring-2 ring-slate-500/25'
-          : 'border-slate-200/80 bg-white text-slate-700 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:bg-slate-100'
-      }`}
+      onClick={() => props.onSelect(props.container.id)}
+      class={`w-full rounded-lg border p-3 text-left transition-colors ${cardClass()}`}
     >
-      <button
-        type="button"
-        onClick={() => props.onSelect(props.container.id)}
-        class="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
-      >
-        {/* Row 1: Container number + status badge */}
-        <div class="flex items-center gap-1">
-          <span class="font-semibold tracking-wide text-xs-ui leading-tight">
-            {props.container.number}
-          </span>
-          <StatusBadge variant={props.container.status} label={props.statusLabel} />
-        </div>
-        {/* Row 2: ETA / TS / Data chips */}
-        <div class="flex items-center gap-1">
-          <Show when={showEtaChip()}>
-            <span
-              data-testid={`container-eta-chip-${props.container.id}`}
-              class={`inline-flex rounded px-1 py-px text-micro font-medium leading-none ${etaChipClass(
-                props.container.etaChipVm.tone,
-                props.selected,
-              )}`}
+      <div class="flex items-start justify-between gap-2">
+        <span class="truncate text-sm-ui font-semibold tracking-wide text-foreground">
+          {props.container.number}
+        </span>
+        <StatusBadge variant={props.container.status} label={props.statusLabel} />
+      </div>
+
+      <div class="mt-2.5 space-y-1.5">
+        <MetaRow
+          icon={
+            <svg
+              class="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
             >
-              {toContainerEtaChipLabel(props.container.etaChipVm, {
-                arrived: props.labels.etaArrived,
-                expectedPrefix: props.labels.etaExpectedPrefix,
-                delayed: props.labels.etaDelayed,
-                missing: props.labels.etaMissing,
-              })}
-            </span>
-          </Show>
-          <Show when={props.container.tsChipVm.visible}>
-            <span
-              data-testid={`container-int-chip-${props.container.id}`}
-              class={`inline-flex rounded px-1 py-px text-micro font-medium leading-none ${
-                props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-slate-100 text-slate-500'
-              }`}
-              title={props.container.tsChipVm.portsTooltip ?? undefined}
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10m-12 9h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z"
+              />
+            </svg>
+          }
+          label={props.labels.etaLabel}
+          value={etaValue()}
+        />
+
+        <MetaRow
+          icon={
+            <svg
+              class="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
             >
-              {props.labels.ts(props.container.tsChipVm.count)}
-            </span>
-          </Show>
-          <Show when={props.container.dataIssueChipVm.visible}>
-            <span
-              data-testid={`container-data-chip-${props.container.id}`}
-              class={`inline-flex rounded px-1 py-px text-micro font-medium leading-none ${
-                props.selected ? 'bg-slate-600/60 text-slate-200' : 'bg-amber-50 text-amber-600'
-              }`}
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 7h16M4 12h8m-8 5h16"
+              />
+            </svg>
+          }
+          label={props.labels.internalReferenceLabel}
+          value={toContainerReference(props.container)}
+        />
+
+        <MetaRow
+          icon={
+            <svg
+              class="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
             >
-              {props.labels.dataIssue}
-            </span>
-          </Show>
-        </div>
-        <div
-          data-testid={`container-sync-chip-${props.container.id}`}
-          class={`text-micro leading-none ${props.selected ? 'text-slate-300' : 'text-slate-400'}`}
-        >
-          {syncLabel()}
-        </div>
-      </button>
-      <CopyButton
-        text={props.container.number}
-        title={props.labels.copyContainerNumber}
-        class="inline-flex shrink-0"
-      />
-    </div>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          }
+          label={props.labels.lastUpdateLabel}
+          value={syncLabel() ?? props.labels.unknown}
+        />
+      </div>
+
+      <Show when={props.container.dataIssueChipVm.visible}>
+        <span class="mt-2 inline-flex rounded-md border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-medium text-tone-warning-fg">
+          {props.labels.dataIssue}
+        </span>
+      </Show>
+    </button>
   )
 }
 
@@ -157,19 +188,21 @@ export function ContainerSelector(props: {
     etaExpectedPrefix: t(keys.shipmentView.operational.chips.etaExpected),
     etaDelayed: t(keys.shipmentView.operational.header.selectedExpectedDelayed),
     etaMissing: t(keys.shipmentView.operational.chips.etaMissing),
-    ts: (count: number) => t(keys.shipmentView.operational.chips.ts, { count }),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
-    copyContainerNumber: t(keys.process.containerSelector.copyContainerNumber),
     syncing: t(keys.shipmentView.sync.syncing),
     never: t(keys.shipmentView.sync.never),
     updatedUnknownTime: t(keys.shipmentView.sync.updatedUnknownTime),
     failedUnknownTime: t(keys.shipmentView.sync.failedUnknownTime),
     updated: (relative: string) => t(keys.shipmentView.sync.updated, { relative }),
     failed: (relative: string) => t(keys.shipmentView.sync.failed, { relative }),
+    etaLabel: t(keys.shipmentView.currentStatus.eta),
+    internalReferenceLabel: t(keys.shipmentView.containers.internalReference),
+    lastUpdateLabel: t(keys.shipmentView.currentStatus.lastUpdate),
+    unknown: t(keys.shipmentView.currentStatus.unknown),
   }
 
   return (
-    <div class="flex flex-wrap gap-1.5 px-2.5 py-2">
+    <div class="space-y-2.5 px-3 py-3">
       <For each={props.containers}>
         {(container) => (
           <ContainerSelectorItem

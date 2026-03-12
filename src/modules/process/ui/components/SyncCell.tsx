@@ -20,19 +20,37 @@ type SyncCellProps = {
 
 /** Refresh icon – two curved arrows (idle). */
 function RefreshIcon(): JSX.Element {
-  return <RefreshCw class="h-4 w-4" aria-hidden="true" />
+  return (
+    <RefreshCw
+      class="h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)]"
+      strokeWidth={1.75}
+      aria-hidden="true"
+    />
+  )
 }
 
 /** Spinner icon (syncing). */
 function SpinnerIcon(): JSX.Element {
-  return <RefreshCw class="h-4 w-4 animate-spin" aria-hidden="true" />
+  return (
+    <RefreshCw
+      class="h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)] animate-spin"
+      strokeWidth={1.75}
+      aria-hidden="true"
+    />
+  )
 }
 
 /** Check icon (success_recent). */
 function CheckIcon(): JSX.Element {
   return (
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7" />
+    <svg
+      class="h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)]"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
     </svg>
   )
 }
@@ -40,7 +58,13 @@ function CheckIcon(): JSX.Element {
 /** Warning icon (failed). */
 function WarningIcon(): JSX.Element {
   return (
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      class="h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)]"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -53,7 +77,13 @@ function WarningIcon(): JSX.Element {
 
 /** Muted refresh icon (disabled). */
 function MutedRefreshIcon(): JSX.Element {
-  return <RefreshCw class="h-4 w-4 opacity-35" aria-hidden="true" />
+  return (
+    <RefreshCw
+      class="h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)] opacity-35"
+      strokeWidth={1.75}
+      aria-hidden="true"
+    />
+  )
 }
 
 function SyncCellIcon(props: { readonly state: SyncCellState }): JSX.Element {
@@ -84,16 +114,17 @@ function SyncCellIcon(props: { readonly state: SyncCellState }): JSX.Element {
 
 function toButtonClasses(state: SyncCellState): string {
   const base =
-    'inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300'
+    'inline-flex h-[var(--dashboard-sync-button-size)] w-[var(--dashboard-sync-button-size)] items-center justify-center rounded-md border border-border bg-surface text-text-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
-  if (state === 'syncing') return `${base} border-blue-200 bg-blue-50 text-blue-700 cursor-default`
+  if (state === 'syncing')
+    return `${base} border-tone-info-border bg-tone-info-bg text-tone-info-fg cursor-default`
   if (state === 'success_recent')
-    return `${base} border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default`
-  if (state === 'failed') return `${base} border-red-200 bg-red-50 text-red-700 cursor-default`
-  if (state === 'disabled')
-    return `${base} border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed`
+    return `${base} border-tone-success-border bg-tone-success-bg text-tone-success-fg cursor-default`
+  if (state === 'failed')
+    return `${base} border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg cursor-default`
+  if (state === 'disabled') return `${base} cursor-not-allowed`
   // idle
-  return `${base} border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 cursor-pointer`
+  return `${base} cursor-pointer`
 }
 
 function toAriaLabel(
@@ -127,7 +158,7 @@ export function SyncCell(props: SyncCellProps): JSX.Element {
   }
 
   return (
-    <div class="flex min-w-0 items-center justify-center px-1 py-2">
+    <div class="flex min-w-0 items-center justify-center px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
       <button
         type="button"
         onClick={handleClick}

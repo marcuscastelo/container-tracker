@@ -20,6 +20,8 @@ Before implementing anything non-trivial, consult:
 - Event series semantics: `docs/TRACKING_EVENT_SERIES.md`
 - Alert policy: `docs/ALERT_POLICY.md`
 - High-level architecture: `docs/ARCHITECTURE.md`
+- UI philosophy: `docs/UI_PHILOSOPHY.md`
+- UI design prompt baseline: `docs/UI_DESIGN_PROMPT.md`
 - Roadmap: `docs/ROADMAP.md`
 
 If any canonical file is missing/renamed, stop and ask for the correct path.
@@ -103,12 +105,17 @@ UI may:
 - apply i18n
 - render uncertainty states
 - manage interaction state
+- compose shipment view as timeline-first
+- render supporting metadata/status in sidebar panels
+- preserve grouped operational timeline blocks provided by canonical read models
 
 UI must not:
 - derive domain truth (status/timeline/alerts)
 - classify/reconcile tracking series
 - mutate facts
 - import `modules/*/domain` for semantic derivation
+- flatten semantically grouped timeline data into generic lists by recomputing meaning in UI
+- place supporting cards between timeline sections in ways that break chronological flow
 
 ---
 

@@ -18,9 +18,12 @@ function RefreshIcon(props: {
   readonly title: string
   readonly error: boolean
 }): JSX.Element {
-  const base = () => (props.spinning ? 'h-4 w-4 animate-spin' : 'h-4 w-4')
-  const cls = () => (props.error ? `${base()} text-red-200` : base())
-  return <RefreshCw class={cls()} aria-hidden="true" />
+  const base = () =>
+    props.spinning
+      ? 'h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)] animate-spin'
+      : 'h-[var(--dashboard-sync-icon-size)] w-[var(--dashboard-sync-icon-size)]'
+  const cls = () => (props.error ? `${base()} text-tone-danger-fg` : base())
+  return <RefreshCw class={cls()} strokeWidth={1.75} aria-hidden="true" />
 }
 
 export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
@@ -111,14 +114,14 @@ export function DashboardRefreshButton(props: RefreshButtonProps): JSX.Element {
       disabled={isBlocked()}
       aria-busy={isLoading()}
       title={buttonTitle()}
-      class="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm-ui font-medium text-white transition-colors hover:bg-blue-700 hover:border-blue-700 disabled:bg-blue-400 disabled:border-blue-400 disabled:cursor-not-allowed"
+      class="inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-muted disabled:text-text-muted/50 disabled:opacity-100"
     >
       <RefreshIcon
         spinning={visualState() === 'loading'}
         title={buttonTitle()}
         error={visualState() === 'error'}
       />
-      <span>{buttonLabel()}</span>
+      <span class="hidden min-[1280px]:inline">{buttonLabel()}</span>
     </button>
   )
 }

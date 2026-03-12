@@ -82,6 +82,23 @@ Rules:
 
 A screen is the main unit of UI orchestration.
 
+### Shipment screen canonical composition
+
+Shipment/process detail follows a timeline-first structure:
+
+- primary column: container selector + timeline
+- supporting sidebar: shipment info + current status + alerts/supporting metadata
+
+Composition rules:
+
+- chronology is primary for operator reading flow
+- supporting panels must not interrupt timeline sections
+- grouped operational timeline blocks (pre-carriage, voyage/vessel, transshipment, post-carriage/delivery) should be preserved when provided by canonical read models
+
+Reference:
+
+- `docs/UI_PHILOSOPHY.md`
+
 #### View
 A presentational subtree or visual section of a screen.
 
@@ -263,6 +280,7 @@ UI may:
 - handle selection state
 - format labels and dates
 - coordinate UI refresh flows
+- preserve timeline-first flow and grouped operational blocks from canonical read models
 
 UI must not:
 
@@ -272,6 +290,7 @@ UI must not:
 - derive canonical alerts
 - reinterpret ACTUAL vs EXPECTED
 - hide domain conflicts
+- flatten grouped operational timeline semantics by recomputing them in UI
 
 This remains governed by ADR-0007. :contentReference[oaicite:9]{index=9} :contentReference[oaicite:10]{index=10}
 

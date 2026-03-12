@@ -11,6 +11,8 @@ import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { readReleaseState, writeReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
+import { EXIT_FATAL, EXIT_OK } from './runtime/lifecycle-exit-codes.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import type { AgentPathLayout } from './runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
@@ -319,12 +321,12 @@ async function runUpdater(): Promise<void> {
 async function main(): Promise<void> {
   try {
     await runUpdater()
-    process.exit(0)
+    process.exit(EXIT_OK)
   } catch (error) {
     const layout = resolveAgentPathLayout()
     ensureAgentPathLayout(layout)
     appendLogLine(layout, `[updater] failed: ${toErrorMessage(error)}`)
-    process.exit(1)
+    process.exit(EXIT_FATAL)
   }
 }
 

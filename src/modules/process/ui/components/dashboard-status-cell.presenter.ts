@@ -17,7 +17,7 @@ type DashboardStatusSubtitleDisplay = {
   readonly textClass: string
 }
 
-export type DashboardStatusCellDisplay = {
+type DashboardStatusCellDisplay = {
   readonly primary: {
     readonly label: string
     readonly variant: StatusVariant
@@ -27,12 +27,12 @@ export type DashboardStatusCellDisplay = {
 
 function toSubtitleTextClass(variant: StatusVariant): string {
   if (variant === 'amber-500' || variant === 'amber-600' || variant === 'amber-700') {
-    return 'text-amber-700'
+    return 'text-tone-warning-fg'
   }
-  if (variant === 'orange-500') return 'text-orange-700'
-  if (variant === 'green-600' || variant === 'emerald-600') return 'text-green-700'
-  if (variant === 'blue-500' || variant === 'indigo-500') return 'text-blue-700'
-  return 'text-slate-500'
+  if (variant === 'orange-500') return 'text-tone-warning-fg'
+  if (variant === 'green-600' || variant === 'emerald-600') return 'text-tone-success-fg'
+  if (variant === 'blue-500' || variant === 'indigo-500') return 'text-tone-info-fg'
+  return 'text-text-muted'
 }
 
 export function toDashboardStatusCellDisplay(command: {

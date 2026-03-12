@@ -1,5 +1,5 @@
 import { useNavigate, usePreloadRoute } from '@solidjs/router'
-import type { Accessor } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
@@ -25,6 +25,7 @@ import { prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'
 
 type ShipmentScreenProps = {
   readonly processId: Accessor<string>
+  readonly searchSlot?: JSX.Element
 }
 
 export function ShipmentScreen(props: ShipmentScreenProps) {
@@ -106,6 +107,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       activeAlerts={activeAlerts}
       onOpenCreateProcess={dialogs.openCreateDialog}
       onDashboardIntent={handleDashboardIntent}
+      searchSlot={props.searchSlot}
       banners={
         <>
           <ShipmentRefreshStatusView

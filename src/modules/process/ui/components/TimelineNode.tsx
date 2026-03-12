@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
+import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
   type NonMappedIndicatorVariant,
@@ -7,6 +8,7 @@ import {
 } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { TimelineNodeLayout } from '~/modules/process/ui/TimelineNode.layout'
 import { timelineEventIcon } from '~/modules/process/ui/timeline/timelineEventIcon'
+import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
@@ -45,10 +47,10 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
         <Show when={props.expectedDateIso}>
           {(expectedDateIso) => (
             <div class="flex flex-col items-end" title={props.toTooltip(expectedDateIso())}>
-              <span class="tabular-nums text-sm-ui font-medium text-slate-700">
+              <span class="tabular-nums text-sm-ui font-medium text-foreground">
                 {formatDateForLocale(expectedDateIso(), props.locale)}
               </span>
-              <span class="text-micro text-slate-500 leading-tight mt-0.5">
+              <span class="mt-0.5 text-micro leading-tight text-text-muted">
                 {props.expectedLabel}
               </span>
             </div>
@@ -58,7 +60,7 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
     >
       {(actualDateIso) => (
         <p
-          class="text-micro tabular-nums text-slate-500"
+          class="text-micro tabular-nums text-text-muted"
           title={props.toTooltip(actualDateIso() ?? undefined)}
         >
           <span class="sr-only">{props.actualLabel}</span>
@@ -97,7 +99,7 @@ function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
           target="_blank"
           rel="noopener noreferrer"
           title={props.label}
-          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-slate-300 hover:text-slate-500"
+          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-text-muted hover:text-foreground"
           onClick={(event) => {
             event.preventDefault()
             void copyAndOpenCarrierLink(href(), props.containerNumber)
@@ -123,16 +125,19 @@ export function TimelineNode(props: {
   readonly isLast: boolean
   readonly carrier?: string | null
   readonly containerNumber?: string | null
+  readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlighted?: boolean
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
+  const [showObservationInspector, setShowObservationInspector] = createSignal(false)
 
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
   const hasPredictionHistory = () =>
     Boolean(props.event.seriesHistory && props.event.seriesHistory.classified.length > 1)
+  const hasObservation = () => Boolean(props.observation)
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -143,27 +148,27 @@ export function TimelineNode(props: {
     switch (status()) {
       case 'completed':
         return {
-          dot: 'bg-emerald-500 ring-1 ring-emerald-200',
-          line: 'bg-emerald-300',
-          text: 'font-medium text-slate-800',
+          dot: 'border-tone-success-border bg-tone-success-bg text-tone-success-fg',
+          line: 'bg-tone-success-border',
+          text: 'font-semibold text-foreground',
         }
       case 'current':
         return {
-          dot: 'bg-blue-500 ring-2 ring-blue-100',
-          line: 'bg-slate-200',
-          text: 'font-medium text-slate-800',
+          dot: 'border-tone-info-border bg-tone-info-bg text-tone-info-fg',
+          line: 'bg-tone-info-border',
+          text: 'font-semibold text-foreground',
         }
       case 'delayed':
         return {
-          dot: 'bg-red-400 ring-2 ring-red-50',
-          line: 'bg-slate-200',
-          text: 'font-medium text-red-600',
+          dot: 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg',
+          line: 'bg-border',
+          text: 'font-semibold text-tone-danger-fg',
         }
       default:
         return {
-          dot: 'border border-slate-300 bg-white',
-          line: 'bg-slate-200',
-          text: 'text-slate-500',
+          dot: 'border-border bg-surface text-text-muted',
+          line: 'bg-border',
+          text: 'font-medium text-foreground',
         }
     }
   })
@@ -206,7 +211,7 @@ export function TimelineNode(props: {
   const eventIcon = createMemo<JSX.Element | null>(() => {
     const Icon = timelineEventIcon(props.event.type)
     if (!Icon) return null
-    return <Icon class={`h-4 w-4 shrink-0 ${styles().text}`} aria-hidden="true" />
+    return <Icon class="h-4 w-4 shrink-0" aria-hidden="true" />
   })
 
   return (
@@ -230,10 +235,18 @@ export function TimelineNode(props: {
         showPredictionHistoryButton={hasPredictionHistory()}
         onOpenPredictionHistory={() => setShowPredictionHistory(true)}
         predictionHistoryLabel={t(keys.shipmentView.timeline.viewPredictionHistory)}
+        showObservationButton={hasObservation()}
+        onOpenObservation={() => setShowObservationInspector(true)}
+        observationLabel={t(keys.shipmentView.timeline.viewObservation)}
         expiredExpectedLabel={t(keys.shipmentView.timeline.expiredExpected)}
         expiredExpectedTooltip={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
         expectedLabel={t(keys.shipmentView.timeline.expected)}
         predictedTooltip={t(keys.shipmentView.timeline.predictedTooltip)}
+        emptyContainerBadgeLabel={
+          props.observation?.isEmpty === true
+            ? t(keys.shipmentView.timeline.emptyContainerBadge)
+            : undefined
+        }
         location={props.event.location}
         dateLabel={
           <DateLabel
@@ -261,6 +274,16 @@ export function TimelineNode(props: {
             activityLabel={labelPresentation().label}
             isOpen={showPredictionHistory()}
             onClose={() => setShowPredictionHistory(false)}
+          />
+        )}
+      </Show>
+
+      <Show when={props.observation}>
+        {(observation) => (
+          <ObservationInspector
+            observation={observation()}
+            isOpen={showObservationInspector()}
+            onClose={() => setShowObservationInspector(false)}
           />
         )}
       </Show>

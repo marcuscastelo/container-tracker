@@ -123,4 +123,13 @@ Tracking does NOT:
 - Format dates
 - Perform i18n
 
-UI decides presentation.
+UI decides presentation with boundary constraints:
+
+- UI may format and visually group provided read-model data.
+- UI must not recalculate primary selection or series classification.
+- Shipment view should keep chronology as primary (timeline-first) and keep supporting metadata in sidebar panels.
+- When timeline read models expose operational grouping (for example voyage/transshipment blocks), UI should preserve that grouping instead of flattening into a generic event list.
+
+Reference:
+
+- `docs/UI_PHILOSOPHY.md`
