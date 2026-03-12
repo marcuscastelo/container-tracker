@@ -22,6 +22,50 @@ function getActualObservations(timeline: Timeline) {
   return timeline.observations.filter((observation) => observation.event_time_type === 'ACTUAL')
 }
 
+function getFinalLocation(
+  actualObservations: ReturnType<typeof getActualObservations>,
+): string | null {
+  let fallbackLocation: string | null = null
+
+  for (let i = actualObservations.length - 1; i >= 0; i--) {
+    const observation = actualObservations[i]
+    if (!observation?.location_code) continue
+
+    if (
+      observation.type === 'DISCHARGE' ||
+      observation.type === 'ARRIVAL' ||
+      observation.type === 'DELIVERY'
+    ) {
+      return observation.location_code
+    }
+
+    if (!fallbackLocation) {
+      fallbackLocation = observation.location_code
+    }
+  }
+
+  return fallbackLocation
+}
+
+function findLastArrivalOrDischargeIndexAtFinalLocation(
+  actualObservations: ReturnType<typeof getActualObservations>,
+): number {
+  const finalLocation = getFinalLocation(actualObservations)
+  if (finalLocation === null) return -1
+
+  for (let i = actualObservations.length - 1; i >= 0; i--) {
+    const observation = actualObservations[i]
+    if (
+      observation?.location_code === finalLocation &&
+      (observation.type === 'ARRIVAL' || observation.type === 'DISCHARGE')
+    ) {
+      return i
+    }
+  }
+
+  return -1
+}
+
 export function collectTransshipmentSemanticViolations(
   timeline: Timeline,
   status: ContainerStatus,
@@ -43,41 +87,38 @@ export function collectTransshipmentSemanticViolations(
     })
   }
 
-  const latestLoadWithVessel = [...actualObservations]
-    .reverse()
-    .find((observation) => observation.type === 'LOAD' && observation.vessel_name)
-
-  if (latestLoadWithVessel) {
-    violations.push({
-      code: 'onboard_vessel_with_arrival_like_status',
-      status,
-      latest_actual_type: latestLoadWithVessel.type,
-      latest_actual_vessel_name: latestLoadWithVessel.vessel_name,
+  const lastArrivalOrDischargeAtFinalIndex =
+    findLastArrivalOrDischargeIndexAtFinalLocation(actualObservations)
+  if (lastArrivalOrDischargeAtFinalIndex !== -1) {
+    const observationsAfterCandidate = actualObservations.slice(
+      lastArrivalOrDischargeAtFinalIndex + 1,
+    )
+    const loadsAfterCandidate = observationsAfterCandidate.filter((observation) => {
+      return observation.type === 'LOAD'
     })
-  }
 
-  const hasArrivalOrDischarge = actualObservations.some((observation) => {
-    return observation.type === 'ARRIVAL' || observation.type === 'DISCHARGE'
-  })
-  const hasLoadAfterArrivalOrDischarge = (() => {
-    for (let i = 0; i < actualObservations.length; i++) {
-      const observation = actualObservations[i]
-      if (observation.type !== 'ARRIVAL' && observation.type !== 'DISCHARGE') continue
-      const hasLaterLoad = actualObservations
-        .slice(i + 1)
-        .some((laterObservation) => laterObservation.type === 'LOAD')
-      if (hasLaterLoad) return true
+    if (loadsAfterCandidate.length > 0) {
+      const latestLoadAfterCandidate = loadsAfterCandidate[loadsAfterCandidate.length - 1]
+
+      violations.push({
+        code: 'post_transshipment_load_ignored',
+        status,
+        latest_actual_type: latestActual?.type ?? null,
+        latest_actual_vessel_name: latestActual?.vessel_name ?? null,
+      })
+
+      if (
+        typeof latestLoadAfterCandidate?.vessel_name === 'string' &&
+        latestLoadAfterCandidate.vessel_name.trim().length > 0
+      ) {
+        violations.push({
+          code: 'onboard_vessel_with_arrival_like_status',
+          status,
+          latest_actual_type: latestLoadAfterCandidate.type,
+          latest_actual_vessel_name: latestLoadAfterCandidate.vessel_name,
+        })
+      }
     }
-    return false
-  })()
-
-  if (hasArrivalOrDischarge && hasLoadAfterArrivalOrDischarge) {
-    violations.push({
-      code: 'post_transshipment_load_ignored',
-      status,
-      latest_actual_type: latestActual?.type ?? null,
-      latest_actual_vessel_name: latestActual?.vessel_name ?? null,
-    })
   }
 
   return violations

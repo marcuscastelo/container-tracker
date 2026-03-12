@@ -5,12 +5,17 @@ import {
 } from '~/modules/tracking/infrastructure/carriers/tests/helpers/observationSemanticAudit'
 
 describe('observation semantic audit helpers', () => {
-  it('detects invalid vessel placeholders', () => {
+  it.each([
+    'LADEN',
+    ' LADEN ',
+    'EMPTY',
+    ' EMPTY ',
+  ])('detects invalid vessel placeholders (%s)', (invalidVesselName) => {
     const violations = collectObservationSemanticViolations([
       {
         type: 'LOAD',
         carrier_label: 'Export Loaded on Vessel',
-        vessel_name: 'LADEN',
+        vessel_name: invalidVesselName,
       },
     ])
 

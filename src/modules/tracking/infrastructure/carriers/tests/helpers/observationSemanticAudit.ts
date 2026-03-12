@@ -28,8 +28,13 @@ export function collectObservationSemanticViolations(
   for (const observation of observations) {
     const carrierLabel = observation.carrier_label ?? null
     const vesselName = observation.vessel_name ?? null
+    const normalizedVesselName =
+      typeof vesselName === 'string' ? vesselName.trim().toUpperCase() : null
 
-    if (typeof vesselName === 'string' && INVALID_VESSEL_NAMES.has(vesselName.toUpperCase())) {
+    if (
+      typeof normalizedVesselName === 'string' &&
+      INVALID_VESSEL_NAMES.has(normalizedVesselName)
+    ) {
       violations.push({
         code: 'invalid_vessel_name',
         type: observation.type,

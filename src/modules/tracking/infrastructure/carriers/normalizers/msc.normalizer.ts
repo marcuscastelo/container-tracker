@@ -71,7 +71,13 @@ function sanitizeVesselName(vesselName: string | null): string | null {
   const trimmed = vesselName.trim()
   if (trimmed.length === 0) return null
   if (INVALID_VESSEL_VALUES.has(trimmed.toUpperCase())) return null
-  return vesselName
+  return trimmed
+}
+
+function normalizeDetailValue(detailValue: string | null | undefined): string | null {
+  if (typeof detailValue !== 'string') return null
+  const trimmed = detailValue.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 function supportsVesselAndVoyage(type: ObservationType): boolean {
@@ -96,8 +102,8 @@ function parseMscDetail(
   detail: readonly string[] | null | undefined,
   vessel: MscVesselInfo | undefined,
 ): ParsedMscDetail {
-  const first = detail && detail.length > 0 ? (detail[0] ?? null) : null
-  const second = detail && detail.length > 1 ? (detail[1] ?? null) : null
+  const first = normalizeDetailValue(detail && detail.length > 0 ? (detail[0] ?? null) : null)
+  const second = normalizeDetailValue(detail && detail.length > 1 ? (detail[1] ?? null) : null)
   const loadState = parseLoadState(first)
 
   const isVesselContext = supportsVesselAndVoyage(type) || hasImo(vessel)

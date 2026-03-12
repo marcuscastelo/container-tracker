@@ -77,8 +77,58 @@ describe('CMA-CGM transshipment semantic audit helper', () => {
 
     expect(violations.map((violation) => violation.code)).toEqual([
       'latest_actual_load_with_arrival_like_status',
-      'onboard_vessel_with_arrival_like_status',
       'post_transshipment_load_ignored',
+      'onboard_vessel_with_arrival_like_status',
     ])
+  })
+
+  it('does not flag a completed journey where ARRIVAL is the final movement', () => {
+    const timeline = deriveTimeline(
+      CONTAINER_ID,
+      CONTAINER_NUMBER,
+      [
+        {
+          id: 'obs-a',
+          fingerprint: 'fp-a',
+          container_id: CONTAINER_ID,
+          container_number: CONTAINER_NUMBER,
+          type: 'LOAD',
+          event_time: '2026-01-10T09:00:00.000Z',
+          event_time_type: 'ACTUAL',
+          location_code: 'TZTGT',
+          location_display: 'TANGA, TZ',
+          vessel_name: 'ALPHA KIRAWIRA',
+          voyage: '428V8S',
+          is_empty: null,
+          confidence: 'high',
+          provider: 'cmacgm',
+          created_from_snapshot_id: SNAPSHOT_ID,
+          carrier_label: 'Loaded on board',
+          created_at: '2026-01-10T09:00:00.000Z',
+        },
+        {
+          id: 'obs-b',
+          fingerprint: 'fp-b',
+          container_id: CONTAINER_ID,
+          container_number: CONTAINER_NUMBER,
+          type: 'ARRIVAL',
+          event_time: '2026-02-01T06:00:00.000Z',
+          event_time_type: 'ACTUAL',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS, BR',
+          vessel_name: 'ALPHA KIRAWIRA',
+          voyage: '428V8S',
+          is_empty: null,
+          confidence: 'high',
+          provider: 'cmacgm',
+          created_from_snapshot_id: SNAPSHOT_ID,
+          carrier_label: 'Vessel Arrival',
+          created_at: '2026-02-01T06:00:00.000Z',
+        },
+      ],
+      new Date('2026-03-12T12:00:00.000Z'),
+    )
+
+    expect(collectTransshipmentSemanticViolations(timeline, 'ARRIVED_AT_POD')).toEqual([])
   })
 })

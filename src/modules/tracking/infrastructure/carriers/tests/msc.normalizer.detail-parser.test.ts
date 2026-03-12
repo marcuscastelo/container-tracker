@@ -31,7 +31,7 @@ describe('MSC detail contextual parser', () => {
                     Description: 'Export Loaded on Vessel',
                     UnLocationCode: 'PKKHI',
                     Location: 'KARACHI, PK',
-                    Detail: ['MSC IRIS', 'QS551R'],
+                    Detail: ['  MSC IRIS  ', '  QS551R  '],
                   },
                 ],
               },
@@ -49,6 +49,37 @@ describe('MSC detail contextual parser', () => {
     expect(draft?.type).toBe('LOAD')
     expect(draft?.vessel_name).toBe('MSC IRIS')
     expect(draft?.voyage).toBe('QS551R')
+  })
+
+  it('normalizes blank voyage detail to null', () => {
+    const payload = {
+      Data: {
+        CurrentDate: '12/03/2026',
+        BillOfLadings: [
+          {
+            ContainersInfo: [
+              {
+                ContainerNumber: 'MSDU1652364',
+                Events: [
+                  {
+                    Date: '02/01/2026',
+                    Description: 'Export Loaded on Vessel',
+                    UnLocationCode: 'PKKHI',
+                    Location: 'KARACHI, PK',
+                    Detail: ['MSC IRIS', '   '],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      IsSuccess: true,
+    }
+
+    const drafts = normalizeMscSnapshot(makeSnapshot(payload))
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0]?.voyage).toBeNull()
   })
 
   it('parses load-state context for TERMINAL_MOVE events', () => {
