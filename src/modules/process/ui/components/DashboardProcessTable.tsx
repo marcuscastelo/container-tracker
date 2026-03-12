@@ -316,6 +316,23 @@ function ImporterCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function CarrierCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+      <A
+        href={ctx.processHref}
+        class="row-link block truncate text-sm-ui leading-tight text-foreground"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        {displayTruncatedText(ctx.process.carrier)}
+      </A>
+    </div>
+  )
+}
+
 function ExporterCell(ctx: CellContext): JSX.Element {
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
@@ -523,6 +540,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
 
 const CELL_RENDERERS: Record<DashboardColumnId, (ctx: CellContext) => JSX.Element> = {
   processRef: ProcessRefCell,
+  carrier: CarrierCell,
   importer: ImporterCell,
   exporter: ExporterCell,
   route: RouteCell,
@@ -635,6 +653,7 @@ function DashboardTableHeader(props: {
 
   const columnLabelKeys: Record<string, string> = {
     process: keys.dashboard.table.col.process,
+    carrier: keys.dashboard.table.col.carrier,
     importerName: keys.dashboard.table.col.importerName,
     exporterName: keys.dashboard.table.col.exporterName,
     route: keys.dashboard.table.col.route,
