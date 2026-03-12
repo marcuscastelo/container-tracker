@@ -22,7 +22,7 @@ export const BRANDING = {
   logoOriginal: '/branding/logo.png',
 
   /** Wallpaper background used in shipment views */
-  wallpaper: '/branding/wallpaper.jpeg',
+  wallpaper: '/branding/wallpaper.jpg',
 
   /** Brand primary color extracted from logo */
   colorPrimary: '#2c2f59',
