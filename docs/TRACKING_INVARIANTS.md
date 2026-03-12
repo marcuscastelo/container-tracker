@@ -26,6 +26,43 @@ Observations:
 
 New data appends new observations.
 
+## 2.1 Carrier Normalizer Invariants (MSC Hardening)
+
+Carrier normalization must preserve semantic correctness before derivations.
+
+For MSC feeds:
+
+- `Full Transshipment Positioned In/Out` normalize to `TERMINAL_MOVE` (never `ARRIVAL`).
+- `TERMINAL_MOVE` is operational-only and status-neutral by default.
+- `vessel_name`/`voyage` extraction is limited to vessel-like events:
+  - `LOAD`
+  - `DISCHARGE`
+  - `ARRIVAL`
+  - `DEPARTURE`
+- Placeholder values `LADEN` and `EMPTY` are never accepted as vessel names.
+- `raw_event.normalizer_version` is technical draft metadata for traceability and does not change persisted domain contracts.
+
+Representative MSC description mapping (`MSC_DESCRIPTION_MAP`):
+
+| MSC event label | Canonical observation type |
+|---|---|
+| Full Transshipment Loaded | LOAD |
+| Full Transshipment Discharged | DISCHARGE |
+| Full Transshipment Positioned In | TERMINAL_MOVE |
+| Full Transshipment Positioned Out | TERMINAL_MOVE |
+
+Normalized transshipment example:
+
+```text
+LOAD
+DISCHARGE
+TERMINAL_MOVE
+TERMINAL_MOVE
+LOAD
+```
+
+`TERMINAL_MOVE` observations remain operational facts and do not, alone, imply status progression.
+
 ---
 
 ## 3. Status is Derived

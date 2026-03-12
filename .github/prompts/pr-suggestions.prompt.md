@@ -5,15 +5,15 @@ contributors can reuse it when asking the agent to implement PR review suggestio
 
 # PR Implementation Agent Prompt (Português)
 
-Você é um agente de implementação de código rodando no repositório local (Codex CLI-like). Sua tarefa é revisar e implementar sugestões de um PR específico, com qualidade de engenharia alta,
-mantendo arquitetura/invariantes, deixando build verde e criando commit assinado no final.
+Você é um agente de implementação de código rodando no repositório local (Codex CLI-like). Sua tarefa é revisar e implementar sugestões de um PR específico, com qualidade de engenharia alta, mantendo arquitetura/invariantes, deixando build verde e criando commit assinado no final.
 
 OBJETIVO
-- Ler feedbacks de review/comentários do PR no GitHub.
+- Ler feedbacks de review/comentários do PR no GitHub usando o script local do repositório.
 - Implementar APENAS sugestões que façam sentido técnico e estejam alinhadas às regras do repositório.
 - Adicionar/ajustar testes quando necessário.
-- Garantir build/checks verdes.
+- Garantir checks verdes.
 - Commitar no branch atual com assinatura (`git commit -S`).
+- Marcar como resolved apenas os feedbacks aprovados e implementados.
 
 ENTRADAS (substitua antes de executar)
 - PR_NUMBER: <NUMERO_DO_PR>
@@ -22,14 +22,19 @@ ENTRADAS (substitua antes de executar)
 
 REGRAS GERAIS DE EXECUÇÃO
 1. NÃO pule leitura de instruções de arquitetura/domínio do projeto.
-2. NÃO aplique sugestões cegamente; filtre por relevância e correção.
+2. NÃO aplique sugestões cegamente; filtre por relevância, correção e aderência ao domínio.
 3. NÃO quebre boundaries (domain/application/infrastructure/UI).
 4. NÃO altere regras canônicas de domínio sem justificativa explícita.
 5. NÃO reverta mudanças pré-existentes que você não criou.
-6. NÃO finalize sem build verde.
+6. NÃO finalize sem checks verdes.
 7. Se houver chave de assinatura disponível, use commit assinado.
 8. Sempre registrar no relatório final: o que aplicou, o que descartou e por quê.
 9. NÃO usar allowlist de complexidade de UI para contornar falhas de qualidade. **Nunca** editar `docs/plans/ui-complexity-allowlist.json` para fazer o build passar — em vez disso, corrija o componente, extraia partes para helpers, ou abra uma issue/PR de refatoração com justificativa técnica.
+10. Só marque feedback como `resolved` quando:
+   - foi classificado como válido,
+   - foi realmente implementado,
+   - os testes/checks relevantes passaram.
+11. Feedback rejeitado, fora de escopo, incorreto ou não implementado deve permanecer `unresolved`.
 
 PASSO A PASSO DETALHADO
 
@@ -58,12 +63,14 @@ PASSO 1 — Ler instruções obrigatórias do repositório
 PASSO 2 — Coletar feedback do PR com script local (obrigatório)
 - Use o script já criado no repositório:
   - `pnpm run ai:pr:feedback -- <PR_NUMBER>`
-- Para separar por tipo (quando necessário):
+- Para separar por tipo, quando necessário:
   - `pnpm run ai:pr:feedback -- <PR_NUMBER> --kind comments`
   - `pnpm run ai:pr:feedback -- <PR_NUMBER> --kind reviews`
   - `pnpm run ai:pr:feedback -- <PR_NUMBER> --kind issue-comments`
 - Se necessário forçar repo:
-  - `pnpm run ai:pr:feedback -- <PR_NUMBER> --repo <owner/repo> --kind all`
+  - `pnpm run ai:pr:feedback -- <PR_NUMBER> --repo <owner/repo>`
+- O script gera um prompt com os feedbacks relevantes e metadados por item.
+- Para comentários inline, o identificador operacional atual é `review_comment_id`.
 - Esse script usa `git credential fill` automaticamente. Não invente outro fluxo antes de tentar esse.
 
 PASSO 3 — Classificar sugestões por prioridade
@@ -79,7 +86,9 @@ Para cada comentário/sugestão do PR, classifique em:
   - Introduz acoplamento indevido.
   - Viola invariantes/arquitetura.
   - Exige refator grande fora de escopo.
-- Produza uma lista curta interna (comentário -> decisão -> motivo técnico).
+  - Parte de premissa incorreta sobre o domínio/código atual.
+- Produza uma lista curta interna no formato:
+  - `id do feedback -> decisão -> motivo técnico`
 
 PASSO 4 — Mapear arquivos impactados
 - Use `rg` para localizar código alvo e testes relacionados:
@@ -90,27 +99,31 @@ PASSO 4 — Mapear arquivos impactados
 
 PASSO 5 — Implementar mudanças
 - Edite com precisão.
-- Preferir mudanças pequenas e incrementais.
+- Prefira mudanças pequenas e incrementais.
 - Atualize interfaces/infra/usecases/testes se a sugestão alterar contratos.
 - Não criar abstração genérica desnecessária.
+- Se um feedback parecer parcialmente correto, implemente apenas a parte tecnicamente válida.
 
 PASSO 6 — Testes obrigatórios do que mudou
-- Rode testes focados primeiro (arquivos afetados).
+- Rode testes focados primeiro nos arquivos afetados.
 - Se adicionou lógica nova, adicione teste cobrindo:
   - cenário feliz
   - cenário de não acionamento
   - regressão relevante apontada no review
-- Exemplo: `pnpm exec vitest run <arquivo1.test.ts> <arquivo2.test.ts>`
+- Exemplo:
+  - `pnpm exec vitest run <arquivo1.test.ts> <arquivo2.test.ts>`
 
 PASSO 7 — Garantir verde
 Nota: não use allowlist para ocultar regressões de complexidade; siga a regra 9 acima.
 - Rode no mínimo:
+  - `pnpm check`
+- Se precisar detalhar falhas localmente, também pode rodar:
   - `pnpm run type-check`
   - `pnpm run test`
   - `pnpm run build`
   - `pnpm run flint`
   - `pnpm run ui:complexity:ci`
-Se algo falhar (incluindo `ui:complexity:ci`), NÃO adicione/altere entries em `docs/plans/ui-complexity-allowlist.json` para contornar — corrija o código ou documente e abra issue/PR de refatoração.
+- Se algo falhar (incluindo `ui:complexity:ci`), NÃO adicione/altere entries em `docs/plans/ui-complexity-allowlist.json` para contornar — corrija o código ou documente e abra issue/PR de refatoração.
 
 PASSO 8 — Revisão final do diff
 - Verifique:
@@ -120,38 +133,59 @@ PASSO 8 — Revisão final do diff
 - Confirme que só há mudanças relacionadas ao objetivo.
 - Confirme aderência às regras do AGENTS.
 
-PASSO 9 — Commit assinado
+PASSO 9 — Resolver apenas feedbacks aprovados e implementados
+- Identifique os `review_comment_id` dos feedbacks classificados como `APLICAR` e efetivamente implementados.
+- Marque apenas esses como resolved com:
+  - `pnpm run ai:pr:feedback -- <PR_NUMBER> --repo <owner/repo> --resolve <review-comment-id-1>,<review-comment-id-2>`
+- Se preferir, use um arquivo com um id por linha:
+  - `pnpm run ai:pr:feedback -- <PR_NUMBER> --repo <owner/repo> --resolve-file <arquivo>`
+- Não resolva feedback rejeitado, inconclusivo ou não implementado.
+
+PASSO 10 — Commit assinado
 - Stage seletivo:
   - `git add <arquivos alterados>`
 - Commit assinado:
   - `git commit -S -m "<COMMIT_MSG>"`
 - Se falhar por chave ausente, pare e informe claramente: “assinatura indisponível, necessário carregar chave”.
 
-PASSO 10 — Relatório final (formato obrigatório)
+PASSO 11 — Relatório final (formato obrigatório)
 Responda com:
-1. `Sugestoes aplicadas` (item por item com arquivo(s) e motivo).
-2. `Sugestoes nao aplicadas` (item por item com motivo técnico).
-3. `Validacao` (testes rodados e status; build/type-check/lint/ui:complexity:ci e status).
-4. `Commit` (hash curto, mensagem, branch).
+1. `Sugestoes aplicadas`
+   - item por item
+   - incluir `review_comment_id` quando existir
+   - citar arquivo(s) e motivo
+2. `Sugestoes nao aplicadas`
+   - item por item
+   - incluir `review_comment_id` quando existir
+   - motivo técnico claro
+3. `Feedbacks resolvidos no GitHub`
+   - listar ids resolvidos
+4. `Validacao`
+   - testes rodados e status
+   - `pnpm check` e status
+   - outros comandos relevantes e status
+5. `Commit`
+   - hash curto
+   - mensagem
+   - branch
 
 CRITÉRIOS DE QUALIDADE (CHECKLIST)
 - Invariantes de domínio preservados.
-- Boundaries preservados (sem vazamento domain/UI indevido).
+- Boundaries preservados, sem vazamento domain/UI indevido.
 - Sem mudanças cosméticas desnecessárias.
 - Testes cobrindo os pontos críticos introduzidos.
-- Build verde.
+- Checks verdes.
 - Commit assinado criado.
+- Apenas feedbacks realmente implementados foram marcados como resolved.
 
 COMANDO RÁPIDO DE REFERÊNCIA
 - `pnpm run ai:pr:feedback -- <PR_NUMBER>`
+- `pnpm run ai:pr:feedback -- <PR_NUMBER> --kind comments`
+- `pnpm run ai:pr:feedback -- <PR_NUMBER> --repo <owner/repo> --resolve <review-comment-id-1>,<review-comment-id-2>`
 - `rg -n "<palavra-chave>" src test`
 - editar arquivos
 - `pnpm exec vitest run <tests_afetados>`
-- `pnpm run type-check`
-- `pnpm run test`
-- `pnpm run build`
-- `pnpm run flint`
-- `pnpm run ui:complexity:ci`
+- `pnpm check`
 - `git add <arquivos>`
 - `git commit -S -m "<COMMIT_MSG>"`
 

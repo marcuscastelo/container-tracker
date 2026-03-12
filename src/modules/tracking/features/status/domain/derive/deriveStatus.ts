@@ -120,9 +120,27 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
     return !hasLaterLoad
   }
 
-  const hasActualArrivalAtFinal = () =>
-    finalLocation !== null &&
-    actualObservations.some((o) => o.type === 'ARRIVAL' && o.location_code === finalLocation)
+  const hasActualArrivalAtFinal = () => {
+    if (finalLocation === null) return false
+
+    let lastArrivalIndex = -1
+    for (let i = actualObservations.length - 1; i >= 0; i--) {
+      const observation = actualObservations[i]
+      if (observation?.type === 'ARRIVAL' && observation.location_code === finalLocation) {
+        lastArrivalIndex = i
+        break
+      }
+    }
+
+    if (lastArrivalIndex === -1) return false
+
+    // A later ACTUAL LOAD means the container moved on after that arrival.
+    const hasLaterLoad = actualObservations
+      .slice(lastArrivalIndex + 1)
+      .some((observation) => observation.type === 'LOAD')
+
+    return !hasLaterLoad
+  }
 
   const hasTerminalEmptyGateOut = () => {
     let lastEmptyGateOutIndex = -1

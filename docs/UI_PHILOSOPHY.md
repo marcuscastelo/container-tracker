@@ -75,6 +75,7 @@ UI must never:
 - reclassify ACTUAL vs EXPECTED
 - perform event-series grouping/classification as domain truth
 - detect transshipment semantics by reinterpreting raw events
+- reinterpret `TERMINAL_MOVE` as lifecycle progression (for example ARRIVAL/LOAD)
 - suppress or rewrite conflicting facts to make screens look cleaner
 - collapse append-only historical visibility into a lossy narrative
 
@@ -120,6 +121,7 @@ Each block may include:
 - conflict/uncertainty indicators
 
 These structures must come from canonical read models (or explicit projection contracts), not UI-side semantic reconstruction.
+`TERMINAL_MOVE` entries should remain visible as operational events and must stay status-neutral in UI behavior.
 
 ---
 

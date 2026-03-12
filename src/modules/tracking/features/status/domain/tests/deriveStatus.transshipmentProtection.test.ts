@@ -119,4 +119,67 @@ describe('deriveStatus transshipment protection', () => {
 
     expect(deriveStatus(timeline)).toBe('IN_TRANSIT')
   })
+
+  it('does not keep ARRIVED_AT_POD when there is a later ACTUAL LOAD after transshipment arrival', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000330',
+        fingerprint: 'fp-gate-in-origin',
+        type: 'GATE_IN',
+        event_time: '2026-01-13T08:00:00.000Z',
+        created_at: '2026-01-13T08:00:00.000Z',
+        location_code: 'TZTGT',
+        location_display: 'TANGA, TZ',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000331',
+        fingerprint: 'fp-load-origin',
+        type: 'LOAD',
+        event_time: '2026-01-22T09:00:00.000Z',
+        created_at: '2026-01-22T09:00:00.000Z',
+        location_code: 'TZTGT',
+        location_display: 'TANGA, TZ',
+        vessel_name: 'ALPHA KIRAWIRA',
+        voyage: '428V8S',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000332',
+        fingerprint: 'fp-arrival-ts',
+        type: 'ARRIVAL',
+        event_time: '2026-01-27T06:00:00.000Z',
+        created_at: '2026-01-27T06:00:00.000Z',
+        location_code: 'KEMBA',
+        location_display: 'MOMBASA, KE',
+        vessel_name: 'ALPHA KIRAWIRA',
+        voyage: '429V8N',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000333',
+        fingerprint: 'fp-discharge-ts',
+        type: 'DISCHARGE',
+        event_time: '2026-01-29T07:00:00.000Z',
+        created_at: '2026-01-29T07:00:00.000Z',
+        location_code: 'KEMBA',
+        location_display: 'MOMBASA, KE',
+        vessel_name: 'ALPHA KIRAWIRA',
+        voyage: '429V8N',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000334',
+        fingerprint: 'fp-load-ts',
+        type: 'LOAD',
+        event_time: '2026-03-11T05:00:00.000Z',
+        created_at: '2026-03-11T05:00:00.000Z',
+        location_code: 'KEMBA',
+        location_display: 'MOMBASA, KE',
+        vessel_name: 'MYNY',
+        voyage: '0K126E1MA',
+      }),
+    ])
+
+    const status = deriveStatus(timeline)
+
+    expect(status).toBe('LOADED')
+    expect(status).not.toBe('ARRIVED_AT_POD')
+  })
 })

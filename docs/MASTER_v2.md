@@ -140,12 +140,28 @@ Examples:
 - DEPARTURE
 - ARRIVAL
 - DISCHARGE
+- TERMINAL_MOVE
 - DELIVERY
 - EMPTY_RETURN
 - CUSTOMS_HOLD
 - CUSTOMS_RELEASE
 
 Events are facts, not states.
+
+`TERMINAL_MOVE` represents internal terminal-yard handling (for example positioned in/out).
+It preserves operational truth but does not, by itself, advance container lifecycle status.
+
+### 5.1 Transshipment Example (Operationally Realistic)
+
+Typical transshipment sequence may include:
+
+- LOAD
+- DISCHARGE
+- TERMINAL_MOVE
+- TERMINAL_MOVE
+- LOAD
+
+`TERMINAL_MOVE` keeps yard operations visible without being reinterpreted as ARRIVAL/DEPARTURE.
 
 ---
 

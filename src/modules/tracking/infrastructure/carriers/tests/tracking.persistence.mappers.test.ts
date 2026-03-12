@@ -49,6 +49,11 @@ describe('observationRowToDomain', () => {
     expect(result.carrier_label).toBe('Loaded on board')
   })
 
+  it('should accept TERMINAL_MOVE observation type', () => {
+    const result = observationRowToDomain({ ...validRow, type: 'TERMINAL_MOVE' })
+    expect(result.type).toBe('TERMINAL_MOVE')
+  })
+
   it('should throw for invalid provider', () => {
     expect(() => observationRowToDomain({ ...validRow, provider: 'invalid' })).toThrow(
       'not a valid provider',
