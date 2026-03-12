@@ -1,4 +1,4 @@
-Agent mode investigation — Linux vs Windows flows
+# Agent mode investigation — Linux vs Windows flows
 
 Data: 2026-03-11
 
