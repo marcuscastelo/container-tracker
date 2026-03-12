@@ -647,7 +647,7 @@
     "label": "Idioma"
   },
   "search": {
-    "placeholder": "Pesquisar processo, contentor, BL, importador...",
+    "placeholder": "Pesquisa global...",
     "loading": "A pesquisar...",
     "error": "Falha na pesquisa. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",

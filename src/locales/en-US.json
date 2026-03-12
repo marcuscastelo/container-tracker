@@ -647,7 +647,7 @@
     "label": "Language"
   },
   "search": {
-    "placeholder": "Search process, container, BL, importer...",
+    "placeholder": "Global search...",
     "loading": "Searching...",
     "error": "Search failed. Try again.",
     "noResults": "No results found",
