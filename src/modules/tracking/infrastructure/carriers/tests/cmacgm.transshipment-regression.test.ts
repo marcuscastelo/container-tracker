@@ -63,7 +63,7 @@ describe('CMA-CGM real transshipment regression fixture', () => {
     expect(drafts[4]?.voyage).toBe('0K126E1MA')
   })
 
-  it('documents current status gap: latest movement is LOAD on MYNY but status remains arrival-like', () => {
+  it('keeps post-transshipment LOAD as dominant movement for current status', () => {
     const drafts = normalizeCmaCgmSnapshot(makeSnapshot(transshipmentTangaMombasaMyny))
     const observations = drafts.map((draft, index) => toDomainObservation(draft, index))
 
@@ -81,8 +81,7 @@ describe('CMA-CGM real transshipment regression fixture', () => {
 
     expect(latestActual?.type).toBe('LOAD')
     expect(latestActual?.vessel_name).toBe('MYNY')
-    expect(status).toBe('ARRIVED_AT_POD')
+    expect(status).toBe('LOADED')
+    expect(status).not.toBe('ARRIVED_AT_POD')
   })
-
-  it.todo('should not remain ARRIVED_AT_POD when a later ACTUAL LOAD exists after transshipment')
 })
