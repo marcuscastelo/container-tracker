@@ -7,7 +7,7 @@ Usage:
   generate_pr_draft.sh [--base <branch>] [--repo <path>] [--outdir <path>]
 
 Options:
-  --base   Base branch to compare against (default: develop)
+  --base   Base branch to compare against (default: main)
   --repo   Repository path (default: current directory)
   --outdir Output directory for generated files (default: /tmp)
 USAGE
@@ -23,7 +23,7 @@ require_option_value() {
   fi
 }
 
-BASE_BRANCH="develop"
+BASE_BRANCH="main"
 REPO_DIR="$(pwd)"
 OUTDIR="/tmp"
 
