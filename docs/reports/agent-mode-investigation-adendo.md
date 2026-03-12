@@ -169,7 +169,7 @@ Opções: tarball/manual | `.deb`/`.rpm` | container image | multi-target
   - Aumenta CI complexity.
 
 Impacto em updates
-- Package-managed simplifica gerenciamento centralizado; self-update precisa coexistir com pacakge-managed
+- Package-managed simplifica gerenciamento centralizado; self-update precisa coexistir com package-managed
 
 Recomendação: priorizar empacotamento `.deb`/`.rpm` (multi-arch se possível) + oferecer tarball dev-friendly; container images como canal separado.
 
