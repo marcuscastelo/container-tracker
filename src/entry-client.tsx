@@ -118,9 +118,7 @@ try {
   }
 
   const root = document.getElementById('app')
-  if (!root) {
-    console.error('entry-client: #app root element not found — mount aborted')
-  } else {
+  if (root) {
     disposeRuntime(runtime)
 
     const disposeGlobalHandlers = installGlobalErrorHandlers()
@@ -142,6 +140,8 @@ try {
         }
       })
     }
+  } else {
+    console.error('entry-client: #app root element not found — mount aborted')
   }
 } catch (err) {
   console.error('entry-client: mount failed', err)
