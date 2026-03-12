@@ -52,6 +52,25 @@ export type ContainerSyncVM = {
   readonly isStale: boolean
 }
 
+export type ContainerObservationVM = {
+  readonly id: string
+  readonly type: string
+  readonly eventTime: string | null
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+  readonly vesselName: string | null
+  readonly voyage: string | null
+  readonly isEmpty: boolean | null
+  readonly provider: string
+  readonly carrierLabel: string | null
+  readonly confidence: string
+  readonly retroactive: boolean
+  readonly fingerprint: string
+  readonly createdAt: string
+  readonly createdFromSnapshotId: string | null
+}
+
 export type ContainerDetailVM = {
   readonly id: string
   readonly number: string
@@ -66,6 +85,7 @@ export type ContainerDetailVM = {
   readonly tsChipVm: ContainerTsChipVM
   readonly dataIssueChipVm: ContainerDataIssueChipVM
   readonly transshipment: ContainerTransshipmentVM
+  readonly observations: readonly ContainerObservationVM[]
   readonly timeline: readonly TrackingTimelineItem[]
 }
 

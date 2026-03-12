@@ -281,6 +281,39 @@
       "unknownEvent": "Evento desconhecido",
       "nonMappedIndicator": "Não mapeado",
       "viewPredictionHistory": "Ver histórico de previsões",
+      "viewObservation": "Ver observation",
+      "emptyContainerBadge": "Contentor vazio",
+      "observationInspector": {
+        "title": "Observation — {{type}}",
+        "close": "Fechar",
+        "fields": {
+          "type": "type",
+          "eventTime": "event_time",
+          "eventTimeType": "event_time_type",
+          "locationCode": "location_code",
+          "locationDisplay": "location_display",
+          "vesselName": "vessel_name",
+          "voyage": "voyage",
+          "condition": "Condição",
+          "isEmpty": "is_empty",
+          "provider": "provider",
+          "carrierLabel": "carrier_label",
+          "confidence": "confidence",
+          "retroactive": "retroactive",
+          "fingerprint": "fingerprint",
+          "createdAt": "created_at",
+          "createdFromSnapshotId": "created_from_snapshot_id"
+        },
+        "values": {
+          "empty": "Vazio",
+          "notEmpty": "Não vazio",
+          "unknown": "Não informado",
+          "true": "true",
+          "false": "false",
+          "null": "null",
+          "unavailable": "—"
+        }
+      },
       "blocks": {
         "voyage": "Viagem",
         "voyageRoute": "{{origin}} → {{destination}}",

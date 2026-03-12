@@ -50,6 +50,7 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
       count: 0,
       ports: [],
     },
+    observations: [],
     timeline: [],
   }
 }

@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { EyeIcon } from 'lucide-solid'
 import { createMemo, type JSX, Show } from 'solid-js'
 
 type Props = {
@@ -19,11 +20,15 @@ type Props = {
   readonly showPredictionHistoryButton: boolean
   readonly onOpenPredictionHistory: () => void
   readonly predictionHistoryLabel: string
+  readonly showObservationButton?: boolean
+  readonly onOpenObservation?: () => void
+  readonly observationLabel?: string
 
   readonly expiredExpectedLabel: string
   readonly expiredExpectedTooltip: string
   readonly expectedLabel?: string
   readonly predictedTooltip?: string
+  readonly emptyContainerBadgeLabel?: string
 
   readonly etaChipLabel?: string | null
   readonly location?: string | null
@@ -108,6 +113,14 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 )}
               </Show>
 
+              <Show when={props.emptyContainerBadgeLabel}>
+                {(emptyContainerBadgeLabel) => (
+                  <span class="inline-flex items-center rounded border border-tone-warning-border bg-tone-warning-bg px-1 py-px text-micro font-medium leading-none text-tone-warning-fg">
+                    {emptyContainerBadgeLabel()}
+                  </span>
+                )}
+              </Show>
+
               <Show when={props.isExpiredExpected}>
                 <span
                   class="inline-flex items-center rounded bg-tone-warning-bg px-1 py-px text-micro font-medium text-tone-warning-fg"
@@ -115,6 +128,18 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 >
                   {props.expiredExpectedLabel}
                 </span>
+              </Show>
+
+              <Show when={props.showObservationButton}>
+                <button
+                  type="button"
+                  onClick={() => props.onOpenObservation?.()}
+                  class="inline-flex items-center  rounded border border-border bg-surface px-1 py-px text-micro font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground text-xs"
+                >
+                  <span title={props.observationLabel}>
+                    <EyeIcon width={12} height={12} class="ml-0.5" aria-hidden="true" />
+                  </span>
+                </button>
               </Show>
             </div>
 

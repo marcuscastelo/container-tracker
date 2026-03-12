@@ -35,6 +35,7 @@ describe('toShipmentDetailVM', () => {
               is_empty: false,
               confidence: 'confirmed',
               provider: 'maersk',
+              created_from_snapshot_id: 'snapshot-001',
               retroactive: false,
               created_at: new Date().toISOString(),
             },
@@ -70,6 +71,14 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].timeline[0].type).toBe('LOAD')
     expect(result.containers[0].timeline[0].vesselName).toBe('MAERSK SEVILLE')
     expect(result.containers[0].timeline[0].voyage).toBe('123W')
+    expect(result.containers[0].observations.length).toBe(1)
+    expect(result.containers[0].observations[0]).toMatchObject({
+      id: 'obs-1',
+      type: 'LOAD',
+      isEmpty: false,
+      provider: 'maersk',
+      createdFromSnapshotId: 'snapshot-001',
+    })
     expect(result.containers[0].carrierCode).toBe('MAERSK')
     expect(result.containers[0].sync.state).toBe('never')
     expect(result.containers[0].etaChipVm.state).toBe('UNAVAILABLE')
