@@ -35,6 +35,17 @@ Key fields:
 
 Observations are immutable and append-only.
 
+### Observation Type Nuance: `TERMINAL_MOVE`
+
+`TERMINAL_MOVE` is a canonical observation type for internal terminal operations
+(for example positioned in/out during transshipment).
+
+Rules:
+
+- It is preserved as fact in timeline history.
+- It is status-neutral by default (does not advance lifecycle stage by itself).
+- It must not be promoted to ARRIVAL/LOAD by UI interpretation.
+
 ---
 
 ### Series
@@ -133,3 +144,16 @@ UI decides presentation with boundary constraints:
 Reference:
 
 - `docs/UI_PHILOSOPHY.md`
+
+---
+
+## 8. Transshipment Timeline Example
+
+A realistic transshipment sequence may appear as:
+
+- DISCHARGE (vessel A)
+- TERMINAL_MOVE
+- TERMINAL_MOVE
+- LOAD (vessel B)
+
+`TERMINAL_MOVE` preserves operational fidelity between discharge/reload without changing status progression rules.

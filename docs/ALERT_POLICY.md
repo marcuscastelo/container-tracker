@@ -83,6 +83,8 @@ Alerts must prioritize:
 - Deterministic behavior
 - No silent suppression of data
 
+Status-neutral operational events (for example `TERMINAL_MOVE`) are still facts, but they must not independently advance container status or be treated as lifecycle completion.
+
 ---
 
 ## 7. UI Consumption Note

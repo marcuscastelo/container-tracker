@@ -59,6 +59,25 @@ Examples:
 
 ---
 
+## 2.1 Canonical Event Types
+
+Observations use canonical event types such as:
+
+- GATE_IN
+- GATE_OUT
+- LOAD
+- DEPARTURE
+- ARRIVAL
+- DISCHARGE
+- TERMINAL_MOVE
+- DELIVERY
+- EMPTY_RETURN
+
+`TERMINAL_MOVE` represents operational movement inside terminals (for example positioned in/out).
+It must not be reinterpreted as ARRIVAL and does not advance lifecycle status on its own.
+
+---
+
 ## 3. ACTUAL vs EXPECTED
 
 Each event has:
