@@ -1,6 +1,6 @@
 pkgname=container-tracker-agent
 pkgver=0.1.0
-pkgrel=2
+pkgrel=5
 pkgdesc='Container Tracker headless Linux agent runtime'
 arch=('x86_64')
 url='https://github.com/marcuscastelo/container-tracker'
@@ -12,9 +12,11 @@ source=(
   'container-tracker-agent.service'
   'container-tracker-agent.sysusers'
   'container-tracker-agent.tmpfiles'
+  'container-tracker-agent.launcher'
   'container-tracker-agent.install'
 )
 sha256sums=(
+  'SKIP'
   'SKIP'
   'SKIP'
   'SKIP'
@@ -69,6 +71,9 @@ package() {
   install -Dm644 \
     "${_repo_root}/tools/agent/installer/bootstrap.env.template" \
     "${pkgdir}/etc/container-tracker-agent/bootstrap.env.template"
+  install -Dm755 \
+    "${startdir}/container-tracker-agent.launcher" \
+    "${install_root}/launcher.sh"
 
   cat > "${install_root}/supervisor.js" <<'SHIM'
 #!/usr/bin/env node

@@ -47,6 +47,20 @@ sudo systemctl enable --now container-tracker-agent.service
 sudo systemctl status container-tracker-agent.service
 ```
 
+### Rebuild/restart Linux a partir do `.env` do repositório
+
+Use o script abaixo no root do repositório para:
+
+- rebuild do pacote Arch
+- reinstalação do serviço
+- limpeza completa de `/var/lib/container-tracker-agent`
+- geração de `bootstrap.env` a partir de `./.env`
+- restart + logs finais do serviço
+
+```bash
+pnpm run rebuild-restart:linux
+```
+
 ## Paths instalados
 
 - Runtime: `/usr/lib/container-tracker-agent`

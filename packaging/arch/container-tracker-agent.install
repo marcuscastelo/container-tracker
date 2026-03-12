@@ -9,6 +9,7 @@ Container Tracker Agent installed.
 Service was not enabled automatically.
 
 Next steps:
+  pnpm run rebuild-restart:linux   # from repository root (.env => bootstrap.env)
   sudo systemctl enable --now container-tracker-agent.service
   ct-agent status
   ct-agent logs

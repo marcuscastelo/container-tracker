@@ -228,10 +228,11 @@ async function syncRuntimeDependencies({ sourceNodeModulesDir, targetNodeModules
   for (const dependencyId of runtimeSnapshot.dependencyIds) {
     const sourceDependencyDir = path.join(sourcePnpmStoreDir, dependencyId)
     const targetDependencyDir = path.join(targetPnpmStoreDir, dependencyId)
-    if (await pathExists(targetDependencyDir)) {
-      continue
-    }
-    await fs.cp(sourceDependencyDir, targetDependencyDir, { recursive: true })
+    await fs.rm(targetDependencyDir, { recursive: true, force: true })
+    await fs.cp(sourceDependencyDir, targetDependencyDir, {
+      recursive: true,
+      verbatimSymlinks: true,
+    })
   }
 
   const symlinkType = process.platform === 'win32' ? 'junction' : 'dir'

@@ -9,7 +9,7 @@ User=container-tracker-agent
 Group=container-tracker-agent
 WorkingDirectory=/usr/lib/container-tracker-agent
 Environment=AGENT_DATA_DIR=/var/lib/container-tracker-agent
-ExecStart=/usr/lib/container-tracker-agent/supervisor.js
+ExecStart=/usr/lib/container-tracker-agent/launcher.sh
 Restart=on-failure
 RestartSec=2
 RestartPreventExitStatus=50

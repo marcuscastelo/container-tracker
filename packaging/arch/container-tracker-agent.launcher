@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+agent_data_dir="${AGENT_DATA_DIR:-/var/lib/container-tracker-agent}"
+dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
+bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
+env_source_path="${AGENT_BOOTSTRAP_ENV_PATH:-}"
+
+mkdir -p "$agent_data_dir"
+
+trim_value() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  if [ "${#value}" -ge 2 ] && [ "${value:0:1}" = '"' ] && [ "${value: -1}" = '"' ]; then
+    value="${value:1:${#value}-2}"
+  elif [ "${#value}" -ge 2 ] && [ "${value:0:1}" = "'" ] && [ "${value: -1}" = "'" ]; then
+    value="${value:1:${#value}-2}"
+  fi
+
+  printf '%s' "$value"
+}
+
+read_env_value() {
+  local file_path="$1"
+  local key
+  shift
+
+  [ -f "$file_path" ] || return 1
+
+  for key in "$@"; do
+    local raw
+    raw="$(awk -v key="$key" '
+      /^[[:space:]]*#/ { next }
+      {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        if (index(line, "export " key "=") == 1) {
+          print substr(line, length("export " key) + 2)
+          exit
+        }
+        if (index(line, key "=") == 1) {
+          print substr(line, length(key) + 2)
+          exit
+        }
+      }
+    ' "$file_path")"
+
+    if [ -n "$raw" ]; then
+      trim_value "$raw"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+first_non_empty() {
+  local value
+  for value in "$@"; do
+    if [ -n "$value" ]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+
+  printf ''
+  return 0
+}
+
+if [ ! -f "$dotenv_path" ] && [ ! -f "$bootstrap_path" ]; then
+  backend_url="$(first_non_empty \
+    "$(read_env_value "$env_source_path" BACKEND_URL AGENT_BACKEND_URL || true)" \
+    "${AGENT_BACKEND_URL:-}" \
+    "${BACKEND_URL:-}")"
+  installer_token="$(first_non_empty \
+    "$(read_env_value "$env_source_path" INSTALLER_TOKEN AGENT_INSTALLER_TOKEN || true)" \
+    "${AGENT_INSTALLER_TOKEN:-}" \
+    "${INSTALLER_TOKEN:-}")"
+
+  if [ -n "$backend_url" ] && [ -n "$installer_token" ]; then
+    agent_id="$(first_non_empty \
+      "$(read_env_value "$env_source_path" AGENT_ID || true)" \
+      "${AGENT_ID:-}" \
+      "container-tracker-agent")"
+    interval_sec="$(first_non_empty \
+      "$(read_env_value "$env_source_path" INTERVAL_SEC AGENT_ENROLL_DEFAULT_INTERVAL_SEC || true)" \
+      "${AGENT_ENROLL_DEFAULT_INTERVAL_SEC:-}" \
+      "60")"
+    limit_value="$(first_non_empty \
+      "$(read_env_value "$env_source_path" LIMIT AGENT_ENROLL_DEFAULT_LIMIT || true)" \
+      "${AGENT_ENROLL_DEFAULT_LIMIT:-}" \
+      "10")"
+    maersk_enabled="$(first_non_empty \
+      "$(read_env_value "$env_source_path" MAERSK_ENABLED AGENT_ENROLL_DEFAULT_MAERSK_ENABLED || true)" \
+      "${AGENT_ENROLL_DEFAULT_MAERSK_ENABLED:-}" \
+      "0")"
+    maersk_headless="$(first_non_empty \
+      "$(read_env_value "$env_source_path" MAERSK_HEADLESS AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS || true)" \
+      "${AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS:-}" \
+      "false")"
+    maersk_timeout_ms="$(first_non_empty \
+      "$(read_env_value "$env_source_path" MAERSK_TIMEOUT_MS AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS || true)" \
+      "${AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS:-}" \
+      "120000")"
+    maersk_user_data_dir="$(first_non_empty \
+      "$(read_env_value "$env_source_path" MAERSK_USER_DATA_DIR AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR || true)" \
+      "${AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR:-}" \
+      "")"
+
+    umask 0077
+    {
+      printf 'BACKEND_URL=%s\n' "$backend_url"
+      printf 'INSTALLER_TOKEN=%s\n' "$installer_token"
+      printf 'AGENT_ID=%s\n' "$agent_id"
+      printf 'INTERVAL_SEC=%s\n' "$interval_sec"
+      printf 'LIMIT=%s\n' "$limit_value"
+      printf 'MAERSK_ENABLED=%s\n' "$maersk_enabled"
+      printf 'MAERSK_HEADLESS=%s\n' "$maersk_headless"
+      printf 'MAERSK_TIMEOUT_MS=%s\n' "$maersk_timeout_ms"
+      printf 'MAERSK_USER_DATA_DIR=%s\n' "$maersk_user_data_dir"
+    } > "$bootstrap_path"
+
+    echo "[agent:launch] generated bootstrap.env from $env_source_path at $bootstrap_path"
+  fi
+fi
+
+export DOTENV_PATH="$dotenv_path"
+export BOOTSTRAP_DOTENV_PATH="$bootstrap_path"
+export AGENT_DATA_DIR="$agent_data_dir"
+
+exec node /usr/lib/container-tracker-agent/tools/agent/supervisor.js
