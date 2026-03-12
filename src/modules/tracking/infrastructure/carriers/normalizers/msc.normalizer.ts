@@ -46,10 +46,20 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'devolucao de conteiner vazio': 'EMPTY_RETURN',
 }
 
+const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY'])
+
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
   const key = toLookupMapKey(description)
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
+}
+
+function sanitizeVesselName(vesselName: string | null): string | null {
+  if (typeof vesselName !== 'string') return null
+  const trimmed = vesselName.trim()
+  if (trimmed.length === 0) return null
+  if (INVALID_VESSEL_VALUES.has(trimmed.toUpperCase())) return null
+  return vesselName
 }
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
@@ -186,8 +196,9 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const eventTime = parsedDate ? parsedDate.toISOString() : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
-        const vesselName =
+        const vesselNameRaw =
           event.Detail && event.Detail.length > 0 ? (event.Detail[0] ?? null) : null
+        const vesselName = sanitizeVesselName(vesselNameRaw)
         const voyage = event.Detail && event.Detail.length > 1 ? (event.Detail[1] ?? null) : null
         const isEmpty = isEmptyEvent(event.Description, event.Detail)
 
