@@ -48,6 +48,7 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
 
 const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY'])
 const VESSEL_EVENT_TYPES: readonly ObservationType[] = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
+const MSC_NORMALIZER_VERSION = 'msc-v2'
 
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
@@ -65,6 +66,16 @@ function sanitizeVesselName(vesselName: string | null): string | null {
 
 function supportsVesselAndVoyage(type: ObservationType): boolean {
   return VESSEL_EVENT_TYPES.includes(type)
+}
+
+function withNormalizerVersion(rawEvent: unknown): unknown {
+  if (typeof rawEvent !== 'object' || rawEvent === null || Array.isArray(rawEvent)) {
+    return { normalizer_version: MSC_NORMALIZER_VERSION }
+  }
+  return {
+    ...rawEvent,
+    normalizer_version: MSC_NORMALIZER_VERSION,
+  }
 }
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
@@ -228,7 +239,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           provider: 'msc',
           snapshot_id: snapshot.id,
           carrier_label: toCarrierLabelOrNull(event.Description),
-          raw_event: event,
+          raw_event: withNormalizerVersion(event),
         }
 
         drafts.push(draft)
@@ -261,7 +272,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
               provider: 'msc',
               snapshot_id: snapshot.id,
               carrier_label: null,
-              raw_event: { source: 'PodEtaDate', value: podEtaDate },
+              raw_event: withNormalizerVersion({ source: 'PodEtaDate', value: podEtaDate }),
             }
 
             drafts.push(etaDraft)
