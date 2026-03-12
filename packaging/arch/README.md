@@ -7,7 +7,10 @@ Este diretório contém o pacote Arch/AUR-compatible do runtime Linux do agent.
 - Arch Linux (ou derivado com `makepkg`)
 - `base-devel`
 - `nodejs`
-- `pnpm`
+- `pnpm` disponível no PATH (uma das opções abaixo):
+  - `pacman -S pnpm`
+  - `npm i -g pnpm`
+  - `corepack enable` (com `nodejs` recente)
 - Dependências do projeto já instaladas no repositório (modo lean do PKGBUILD)
 
 No root do projeto:
@@ -21,8 +24,17 @@ pnpm install
 No root do projeto:
 
 ```bash
+pnpm --version
 cd packaging/arch
 makepkg -si
+```
+
+Se você já tiver `pnpm` instalado por `npm`, o `PKGBUILD` atual funciona sem forçar instalação do pacote `pnpm` via pacman.
+
+Se já estiver dentro de `packaging/arch`, rode apenas:
+
+```bash
+makepkg -si -f
 ```
 
 ## Pós-instalação (systemd)

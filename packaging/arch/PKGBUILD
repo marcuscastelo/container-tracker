@@ -1,12 +1,12 @@
 pkgname=container-tracker-agent
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Container Tracker headless Linux agent runtime'
 arch=('x86_64')
 url='https://github.com/marcuscastelo/container-tracker'
 license=('MIT')
 depends=('nodejs' 'systemd')
-makedepends=('pnpm' 'typescript')
+makedepends=('typescript')
 install='container-tracker-agent.install'
 source=(
   'container-tracker-agent.service'
@@ -22,25 +22,46 @@ sha256sums=(
 )
 
 _repo_root="${startdir}/../.."
-_deploy_dir="${srcdir}/agent-app"
+
+run_pnpm() {
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm "$@"
+    return $?
+  fi
+
+  if command -v corepack >/dev/null 2>&1; then
+    corepack pnpm "$@"
+    return $?
+  fi
+
+  echo "error: pnpm not found. Install pnpm (pacman or npm) or enable Corepack." >&2
+  return 1
+}
 
 prepare() {
-  rm -rf "${_deploy_dir}"
+  local deploy_dir="${srcdir}/agent-app"
+  mkdir -p "${startdir}/pkg" "${startdir}/src"
+  chmod 0755 "${startdir}/pkg" "${startdir}/src" || true
+  rm -rf "${deploy_dir}"
 }
 
 build() {
+  local deploy_dir="${srcdir}/agent-app"
+  chmod 0755 "${startdir}/pkg" "${startdir}/src" || true
+
   cd "${_repo_root}" || exit 1
 
-  pnpm run agent:build
-  pnpm --filter example-with-tailwindcss deploy --prod "${_deploy_dir}"
+  run_pnpm run agent:build
+  run_pnpm --filter example-with-tailwindcss deploy --legacy --prod "${deploy_dir}"
 }
 
 package() {
+  local deploy_dir="${srcdir}/agent-app"
   local install_root="${pkgdir}/usr/lib/container-tracker-agent"
 
   install -d "${install_root}"
   cp -a "${_repo_root}/tools/agent/dist/." "${install_root}/"
-  cp -a "${_deploy_dir}/node_modules" "${install_root}/node_modules"
+  cp -a "${deploy_dir}/node_modules" "${install_root}/node_modules"
   install -Dm644 "${_repo_root}/package.json" "${install_root}/package.json"
   install -Dm644 \
     "${_repo_root}/tools/agent/installer/bootstrap.env.template" \
