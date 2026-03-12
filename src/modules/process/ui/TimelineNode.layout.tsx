@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { EyeIcon } from 'lucide-solid'
 import { createMemo, type JSX, Show } from 'solid-js'
 
 type Props = {
@@ -101,16 +102,6 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 </button>
               </Show>
 
-              <Show when={props.showObservationButton}>
-                <button
-                  type="button"
-                  onClick={() => props.onOpenObservation?.()}
-                  class="inline-flex items-center rounded border border-border bg-surface px-1 py-px text-micro font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground"
-                >
-                  {props.observationLabel}
-                </button>
-              </Show>
-
               <Show when={props.nonMappedBadgeLabel}>
                 {(nonMappedBadgeLabel) => (
                   <span
@@ -137,6 +128,18 @@ export function TimelineNodeLayout(props: Props): JSX.Element {
                 >
                   {props.expiredExpectedLabel}
                 </span>
+              </Show>
+
+              <Show when={props.showObservationButton}>
+                <button
+                  type="button"
+                  onClick={() => props.onOpenObservation?.()}
+                  class="inline-flex items-center  rounded border border-border bg-surface px-1 py-px text-micro font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground text-xs"
+                >
+                  <span title={props.observationLabel}>
+                    <EyeIcon width={12} height={12} class="ml-0.5" aria-hidden="true" />
+                  </span>
+                </button>
               </Show>
             </div>
 
