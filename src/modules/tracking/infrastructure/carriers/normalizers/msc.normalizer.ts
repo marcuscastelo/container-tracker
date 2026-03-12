@@ -50,6 +50,16 @@ const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY'])
 const VESSEL_EVENT_TYPES: readonly ObservationType[] = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
 const MSC_NORMALIZER_VERSION = 'msc-v2'
 
+type ParsedMscDetail = {
+  readonly vessel_name: string | null
+  readonly voyage: string | null
+  readonly is_empty: boolean | null
+}
+
+type MscVesselInfo = {
+  readonly IMO?: string | null | undefined
+} | null
+
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
   const key = toLookupMapKey(description)
@@ -68,6 +78,52 @@ function supportsVesselAndVoyage(type: ObservationType): boolean {
   return VESSEL_EVENT_TYPES.includes(type)
 }
 
+function hasImo(vessel: MscVesselInfo | undefined): boolean {
+  const imo = vessel?.IMO?.trim() ?? ''
+  return imo.length > 0
+}
+
+function parseLoadState(detailValue: string | null): boolean | null {
+  if (typeof detailValue !== 'string') return null
+  const normalized = detailValue.trim().toUpperCase()
+  if (normalized === 'EMPTY') return true
+  if (normalized === 'LADEN') return false
+  return null
+}
+
+function parseMscDetail(
+  type: ObservationType,
+  detail: readonly string[] | null | undefined,
+  vessel: MscVesselInfo | undefined,
+): ParsedMscDetail {
+  const first = detail && detail.length > 0 ? (detail[0] ?? null) : null
+  const second = detail && detail.length > 1 ? (detail[1] ?? null) : null
+  const loadState = parseLoadState(first)
+
+  const isVesselContext = supportsVesselAndVoyage(type) || hasImo(vessel)
+  if (isVesselContext) {
+    return {
+      vessel_name: sanitizeVesselName(first),
+      voyage: second,
+      is_empty: loadState,
+    }
+  }
+
+  if (loadState !== null) {
+    return {
+      vessel_name: null,
+      voyage: null,
+      is_empty: loadState,
+    }
+  }
+
+  return {
+    vessel_name: null,
+    voyage: null,
+    is_empty: null,
+  }
+}
+
 function withNormalizerVersion(rawEvent: unknown): unknown {
   if (typeof rawEvent !== 'object' || rawEvent === null || Array.isArray(rawEvent)) {
     return { normalizer_version: MSC_NORMALIZER_VERSION }
@@ -83,21 +139,6 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   // Preserve original provider text for audit/UI transparency;
   // only use trim to detect blank values.
   return label.trim().length > 0 ? label : null
-}
-
-function isEmptyEvent(
-  description: string | null | undefined,
-  detail: readonly string[] | null | undefined,
-): boolean | null {
-  if (!description) return null
-  const lower = description.toLowerCase()
-  if (lower.includes('empty')) return true
-  if (detail && detail.length > 0) {
-    const firstDetail = detail[0]?.toUpperCase() ?? ''
-    if (firstDetail === 'EMPTY') return true
-    if (firstDetail === 'LADEN') return false
-  }
-  return null
 }
 
 function computeConfidence(
@@ -212,13 +253,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const eventTime = parsedDate ? parsedDate.toISOString() : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
-        const vesselNameRaw =
-          event.Detail && event.Detail.length > 0 ? (event.Detail[0] ?? null) : null
-        const vesselName = sanitizeVesselName(vesselNameRaw)
-        const voyageRaw = event.Detail && event.Detail.length > 1 ? (event.Detail[1] ?? null) : null
-        const isEmpty = isEmptyEvent(event.Description, event.Detail)
-        const finalVesselName = supportsVesselAndVoyage(type) ? vesselName : null
-        const finalVoyage = supportsVesselAndVoyage(type) ? voyageRaw : null
+        const parsedDetail = parseMscDetail(type, event.Detail, event.Vessel)
 
         // Determine ACTUAL vs EXPECTED based on date comparison
         const eventTimeType = determineEventTimeType(event.Date, currentDate, snapshot.fetched_at)
@@ -232,9 +267,9 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           event_time_type: eventTimeType,
           location_code: locationCode,
           location_display: locationDisplay,
-          vessel_name: finalVesselName,
-          voyage: finalVoyage,
-          is_empty: isEmpty,
+          vessel_name: parsedDetail.vessel_name,
+          voyage: parsedDetail.voyage,
+          is_empty: parsedDetail.is_empty,
           confidence,
           provider: 'msc',
           snapshot_id: snapshot.id,
