@@ -47,6 +47,7 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
 }
 
 const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY'])
+const VESSEL_EVENT_TYPES: readonly ObservationType[] = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
 
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
@@ -60,6 +61,10 @@ function sanitizeVesselName(vesselName: string | null): string | null {
   if (trimmed.length === 0) return null
   if (INVALID_VESSEL_VALUES.has(trimmed.toUpperCase())) return null
   return vesselName
+}
+
+function supportsVesselAndVoyage(type: ObservationType): boolean {
+  return VESSEL_EVENT_TYPES.includes(type)
 }
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
@@ -199,14 +204,10 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const vesselNameRaw =
           event.Detail && event.Detail.length > 0 ? (event.Detail[0] ?? null) : null
         const vesselName = sanitizeVesselName(vesselNameRaw)
-        const voyage = event.Detail && event.Detail.length > 1 ? (event.Detail[1] ?? null) : null
+        const voyageRaw = event.Detail && event.Detail.length > 1 ? (event.Detail[1] ?? null) : null
         const isEmpty = isEmptyEvent(event.Description, event.Detail)
-
-        // Skip vessel-like detail for non-vessel events (GATE_IN, GATE_OUT, etc.)
-        const isVesselEvent =
-          type === 'LOAD' || type === 'DISCHARGE' || type === 'DEPARTURE' || type === 'ARRIVAL'
-        const finalVesselName = isVesselEvent ? vesselName : null
-        const finalVoyage = isVesselEvent ? voyage : null
+        const finalVesselName = supportsVesselAndVoyage(type) ? vesselName : null
+        const finalVoyage = supportsVesselAndVoyage(type) ? voyageRaw : null
 
         // Determine ACTUAL vs EXPECTED based on date comparison
         const eventTimeType = determineEventTimeType(event.Date, currentDate, snapshot.fetched_at)
