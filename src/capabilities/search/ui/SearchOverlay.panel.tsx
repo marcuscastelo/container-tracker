@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { createSignal, For, onMount, Show } from 'solid-js'
 import type { SearchResultItemVm, SearchUiState } from '~/capabilities/search/ui/search.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
@@ -18,6 +18,41 @@ type SearchOverlayPanelProps = {
   readonly setInputRef: (element: HTMLInputElement) => void
   readonly focusInput: () => void
   readonly minimumQueryLength: number
+}
+
+type SearchTriggerButtonProps = {
+  readonly placeholder: string
+  readonly shortcutLabel: string
+  readonly onOpen: () => void
+}
+
+function SearchTriggerButton(props: SearchTriggerButtonProps): JSX.Element {
+  const [isFocused, setIsFocused] = createSignal(false)
+
+  return (
+    <button
+      type="button"
+      data-search-trigger="true"
+      onClick={() => props.onOpen()}
+      onFocusIn={() => setIsFocused(true)}
+      onFocusOut={() => setIsFocused(false)}
+      class="group relative flex w-full items-center gap-2 rounded-md border border-control-border bg-control-bg px-3 pr-12 text-left transition-colors hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      style={{ height: 'var(--dashboard-search-height)' }}
+    >
+      <SearchIcon />
+      <span class="flex-1 truncate text-sm-ui text-control-foreground">{props.placeholder}</span>
+      <span
+        class={`pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 transition-opacity sm:inline-block ${
+          isFocused() ? 'opacity-0' : 'opacity-80'
+        }`}
+        aria-hidden="true"
+      >
+        <kbd class="rounded border border-border bg-surface-muted/50 px-1.5 py-0.5 font-mono text-xs-ui text-text-muted">
+          {props.shortcutLabel}
+        </kbd>
+      </span>
+    </button>
+  )
 }
 
 function SearchIcon(): JSX.Element {
@@ -260,32 +295,36 @@ function SearchResultRow(props: SearchResultRowProps): JSX.Element {
   )
 }
 
-export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element {
-  const { t, keys } = useTranslation()
+type SearchPanelTranslation = ReturnType<typeof useTranslation>
 
-  const matchSourceLabel = (source: SearchResultItemVm['matchSource']): string => {
-    switch (source) {
-      case 'container':
-        return t(keys.search.matchSource.container)
-      case 'process':
-        return t(keys.search.matchSource.process)
-      case 'importer':
-        return t(keys.search.matchSource.importer)
-      case 'bl':
-        return t(keys.search.matchSource.bl)
-      case 'vessel':
-        return t(keys.search.matchSource.vessel)
-      case 'status':
-        return t(keys.search.matchSource.status)
-      case 'carrier':
-        return t(keys.search.matchSource.carrier)
-    }
+function getMatchSourceLabel(
+  source: SearchResultItemVm['matchSource'],
+  t: SearchPanelTranslation['t'],
+  keys: SearchPanelTranslation['keys'],
+): string {
+  switch (source) {
+    case 'container':
+      return t(keys.search.matchSource.container)
+    case 'process':
+      return t(keys.search.matchSource.process)
+    case 'importer':
+      return t(keys.search.matchSource.importer)
+    case 'bl':
+      return t(keys.search.matchSource.bl)
+    case 'vessel':
+      return t(keys.search.matchSource.vessel)
+    case 'status':
+      return t(keys.search.matchSource.status)
+    case 'carrier':
+      return t(keys.search.matchSource.carrier)
   }
+}
 
-  const shouldShowResultsState = () => props.query.trim().length >= props.minimumQueryLength
-  const showShortQueryHint = () => !shouldShowResultsState()
-  const fallbackText = t(keys.search.notAvailable)
-  const labels: SearchResultRowLabels = {
+function getSearchResultRowLabels(
+  t: SearchPanelTranslation['t'],
+  keys: SearchPanelTranslation['keys'],
+): SearchResultRowLabels {
+  return {
     processId: t(keys.search.fields.processId),
     importerName: t(keys.search.fields.importerName),
     containers: t(keys.search.fields.containers),
@@ -295,25 +334,39 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
     derivedStatus: t(keys.search.fields.derivedStatus),
     eta: t(keys.search.fields.eta),
   }
+}
+
+export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element {
+  const { t, keys } = useTranslation()
+  const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
+
+  onMount(() => {
+    const platform = navigator.platform.toLowerCase()
+    const userAgent = navigator.userAgent.toLowerCase()
+    const isApplePlatform =
+      platform.includes('mac') ||
+      platform.includes('iphone') ||
+      platform.includes('ipad') ||
+      platform.includes('ipod') ||
+      userAgent.includes('mac os') ||
+      userAgent.includes('iphone') ||
+      userAgent.includes('ipad')
+
+    setShortcutLabel(isApplePlatform ? '⌘K' : 'Ctrl K')
+  })
+
+  const shouldShowResultsState = () => props.query.trim().length >= props.minimumQueryLength
+  const showShortQueryHint = () => !shouldShowResultsState()
+  const fallbackText = t(keys.search.notAvailable)
+  const labels = getSearchResultRowLabels(t, keys)
 
   return (
     <>
-      <button
-        type="button"
-        data-search-trigger="true"
-        onClick={() => props.onOpen()}
-        class="group flex w-full items-center gap-2 rounded-md border border-control-border bg-control-bg px-3 text-left transition-colors hover:border-control-border-hover hover:bg-control-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        style={{ height: 'var(--dashboard-search-height)' }}
-      >
-        <SearchIcon />
-        <span class="flex-1 truncate text-sm-ui text-control-foreground">
-          {t(keys.search.placeholder)}
-        </span>
-        <kbd class="hidden items-center gap-0.5 rounded border border-control-border bg-control-bg-hover px-1.5 py-0.5 text-micro font-semibold text-control-foreground sm:inline-flex">
-          <span class="text-micro">{t(keys.search.footer.modifier)}</span>
-          <span>K</span>
-        </kbd>
-      </button>
+      <SearchTriggerButton
+        placeholder={t(keys.search.placeholder)}
+        shortcutLabel={shortcutLabel()}
+        onOpen={() => props.onOpen()}
+      />
 
       <Show when={props.isOpen}>
         <div
@@ -416,7 +469,7 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
                         activeIndex={props.activeIndex}
                         labels={labels}
                         fallbackText={fallbackText}
-                        matchSourceLabel={matchSourceLabel(item.matchSource)}
+                        matchSourceLabel={getMatchSourceLabel(item.matchSource, t, keys)}
                         onSelectResult={props.onSelectResult}
                         onHoverIndex={props.onHoverIndex}
                       />
