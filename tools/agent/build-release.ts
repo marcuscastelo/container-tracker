@@ -944,6 +944,7 @@ async function runPreflightChecks(command: {
   readonly bootstrapTemplatePath: string
   readonly updaterSourcePath: string
   readonly runtimePathsSourcePath: string
+  readonly canonicalRuntimePathsSourcePath: string
   readonly windowsAdapterSourcePath: string
 }): Promise<void> {
   const errors: string[] = []
@@ -1091,14 +1092,29 @@ async function runPreflightChecks(command: {
 
   if (await pathExists(command.runtimePathsSourcePath)) {
     const runtimePathsSource = await fs.readFile(command.runtimePathsSourcePath, 'utf8')
-    if (
-      !runtimePathsSource.includes('resolvePlatformAdapter') ||
-      !runtimePathsSource.includes('resolvePaths({ env: process.env }).dataDir')
-    ) {
-      errors.push('runtime-paths.ts must resolve dataDir through platform adapter')
+    if (!runtimePathsSource.includes("from './runtime/paths.ts'")) {
+      errors.push('runtime-paths.ts must re-export canonical runtime path helpers')
     }
   } else {
     errors.push(`runtime-paths.ts not found: ${command.runtimePathsSourcePath}`)
+  }
+
+  if (await pathExists(command.canonicalRuntimePathsSourcePath)) {
+    const canonicalRuntimePathsSource = await fs.readFile(
+      command.canonicalRuntimePathsSourcePath,
+      'utf8',
+    )
+    if (
+      !canonicalRuntimePathsSource.includes('resolveAgentDataDir') ||
+      !canonicalRuntimePathsSource.includes('/var/lib/container-tracker-agent') ||
+      !canonicalRuntimePathsSource.includes('.agent-runtime')
+    ) {
+      errors.push(
+        'runtime/paths.ts must provide Linux data-dir defaults (/var/lib/container-tracker-agent with .agent-runtime fallback)',
+      )
+    }
+  } else {
+    errors.push(`runtime/paths.ts not found: ${command.canonicalRuntimePathsSourcePath}`)
   }
 
   if (await pathExists(command.windowsAdapterSourcePath)) {
@@ -1231,6 +1247,7 @@ async function buildRelease(): Promise<void> {
     bootstrapTemplatePath: path.join(installerDir, 'bootstrap.env.template'),
     updaterSourcePath: path.join(toolsAgentDir, 'updater.ts'),
     runtimePathsSourcePath: path.join(toolsAgentDir, 'runtime-paths.ts'),
+    canonicalRuntimePathsSourcePath: path.join(toolsAgentDir, 'runtime', 'paths.ts'),
     windowsAdapterSourcePath: path.join(toolsAgentDir, 'platform', 'windows.adapter.ts'),
   })
 }

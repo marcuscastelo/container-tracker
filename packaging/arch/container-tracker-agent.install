@@ -1,0 +1,27 @@
+post_install() {
+  systemd-sysusers /usr/lib/sysusers.d/container-tracker-agent.conf >/dev/null 2>&1 || true
+  systemd-tmpfiles --create /usr/lib/tmpfiles.d/container-tracker-agent.conf >/dev/null 2>&1 || true
+  systemctl daemon-reload >/dev/null 2>&1 || true
+
+  cat <<'MSG'
+Container Tracker Agent installed.
+
+Service was not enabled automatically.
+
+Next steps:
+  pnpm run rebuild-restart:linux   # from repository root (.env => bootstrap.env)
+  sudo systemctl enable --now container-tracker-agent.service
+  ct-agent status
+  ct-agent logs
+MSG
+}
+
+post_upgrade() {
+  systemd-sysusers /usr/lib/sysusers.d/container-tracker-agent.conf >/dev/null 2>&1 || true
+  systemd-tmpfiles --create /usr/lib/tmpfiles.d/container-tracker-agent.conf >/dev/null 2>&1 || true
+  systemctl daemon-reload >/dev/null 2>&1 || true
+}
+
+post_remove() {
+  systemctl daemon-reload >/dev/null 2>&1 || true
+}

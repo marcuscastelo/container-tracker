@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${OSTYPE:-}" = "msys" ] || [ "${OSTYPE:-}" = "cygwin" ] || [ "${OSTYPE:-}" = "win32" ]; then
+  echo "[agent:rebuild-restart:linux] Linux only."
+  exit 1
+fi
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/../.." && pwd)"
+project_env_path="$repo_root/.env"
+pkg_dir="$repo_root/packaging/arch"
+agent_data_dir="/var/lib/container-tracker-agent"
+service_name="container-tracker-agent.service"
+
+trim_value() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  if [ "${#value}" -ge 2 ] && [ "${value:0:1}" = '"' ] && [ "${value: -1}" = '"' ]; then
+    value="${value:1:${#value}-2}"
+  elif [ "${#value}" -ge 2 ] && [ "${value:0:1}" = "'" ] && [ "${value: -1}" = "'" ]; then
+    value="${value:1:${#value}-2}"
+  fi
+
+  printf '%s' "$value"
+}
+
+read_env_value() {
+  local file_path="$1"
+  local key
+  shift
+
+  [ -f "$file_path" ] || return 1
+
+  for key in "$@"; do
+    local raw
+    raw="$(awk -v key="$key" '
+      /^[[:space:]]*#/ { next }
+      {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        if (index(line, "export " key "=") == 1) {
+          print substr(line, length("export " key) + 2)
+          exit
+        }
+        if (index(line, key "=") == 1) {
+          print substr(line, length(key) + 2)
+          exit
+        }
+      }
+    ' "$file_path")"
+
+    if [ -n "$raw" ]; then
+      trim_value "$raw"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+first_non_empty() {
+  local value
+  for value in "$@"; do
+    if [ -n "$value" ]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+
+  printf ''
+  return 0
+}
+
+if [ ! -f "$project_env_path" ]; then
+  echo "[agent:rebuild-restart:linux] missing repo .env at $project_env_path" >&2
+  exit 1
+fi
+
+backend_url="$(first_non_empty \
+  "$(read_env_value "$project_env_path" BACKEND_URL AGENT_BACKEND_URL || true)" \
+  "${AGENT_BACKEND_URL:-}" \
+  "${BACKEND_URL:-}")"
+installer_token="$(first_non_empty \
+  "$(read_env_value "$project_env_path" INSTALLER_TOKEN AGENT_INSTALLER_TOKEN || true)" \
+  "${AGENT_INSTALLER_TOKEN:-}" \
+  "${INSTALLER_TOKEN:-}")"
+
+if [ -z "$backend_url" ] || [ -z "$installer_token" ]; then
+  echo "[agent:rebuild-restart:linux] BACKEND_URL and INSTALLER_TOKEN are required in $project_env_path" >&2
+  exit 1
+fi
+
+agent_id="$(first_non_empty \
+  "$(read_env_value "$project_env_path" AGENT_ID || true)" \
+  "${AGENT_ID:-}" \
+  "container-tracker-agent")"
+interval_sec="$(first_non_empty \
+  "$(read_env_value "$project_env_path" INTERVAL_SEC AGENT_ENROLL_DEFAULT_INTERVAL_SEC || true)" \
+  "${AGENT_ENROLL_DEFAULT_INTERVAL_SEC:-}" \
+  "60")"
+limit_value="$(first_non_empty \
+  "$(read_env_value "$project_env_path" LIMIT AGENT_ENROLL_DEFAULT_LIMIT || true)" \
+  "${AGENT_ENROLL_DEFAULT_LIMIT:-}" \
+  "10")"
+maersk_enabled="$(first_non_empty \
+  "$(read_env_value "$project_env_path" MAERSK_ENABLED AGENT_ENROLL_DEFAULT_MAERSK_ENABLED || true)" \
+  "${AGENT_ENROLL_DEFAULT_MAERSK_ENABLED:-}" \
+  "1")"
+maersk_headless="$(first_non_empty \
+  "$(read_env_value "$project_env_path" MAERSK_HEADLESS AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS || true)" \
+  "${AGENT_ENROLL_DEFAULT_MAERSK_HEADLESS:-}" \
+  "1")"
+maersk_timeout_ms="$(first_non_empty \
+  "$(read_env_value "$project_env_path" MAERSK_TIMEOUT_MS AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS || true)" \
+  "${AGENT_ENROLL_DEFAULT_MAERSK_TIMEOUT_MS:-}" \
+  "120000")"
+maersk_user_data_dir="$(first_non_empty \
+  "$(read_env_value "$project_env_path" MAERSK_USER_DATA_DIR AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR || true)" \
+  "${AGENT_ENROLL_DEFAULT_MAERSK_USER_DATA_DIR:-}" \
+  "")"
+
+echo "[agent:rebuild-restart:linux] building package..."
+cd "$pkg_dir"
+makepkg -f --nodeps
+
+pkg_file="$(ls -1t container-tracker-agent-*-x86_64.pkg.tar.zst | head -n 1)"
+if [ -z "$pkg_file" ]; then
+  echo "[agent:rebuild-restart:linux] package file not found after makepkg" >&2
+  exit 1
+fi
+
+echo "[agent:rebuild-restart:linux] reinstalling package $pkg_file..."
+sudo systemctl stop "$service_name" || true
+sudo pacman -U --noconfirm "$pkg_file"
+sudo systemctl daemon-reload
+
+echo "[agent:rebuild-restart:linux] stopping service and cleaning runtime state..."
+sudo install -d -m 0750 -o container-tracker-agent -g container-tracker-agent "$agent_data_dir"
+sudo find "$agent_data_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+sudo install -d -m 0750 -o container-tracker-agent -g container-tracker-agent "$agent_data_dir/logs"
+
+tmp_bootstrap="$(mktemp)"
+{
+  printf 'BACKEND_URL=%s\n' "$backend_url"
+  printf 'INSTALLER_TOKEN=%s\n' "$installer_token"
+  printf 'AGENT_ID=%s\n' "$agent_id"
+  printf 'INTERVAL_SEC=%s\n' "$interval_sec"
+  printf 'LIMIT=%s\n' "$limit_value"
+  printf 'MAERSK_ENABLED=%s\n' "$maersk_enabled"
+  printf 'MAERSK_HEADLESS=%s\n' "$maersk_headless"
+  printf 'MAERSK_TIMEOUT_MS=%s\n' "$maersk_timeout_ms"
+  printf 'MAERSK_USER_DATA_DIR=%s\n' "$maersk_user_data_dir"
+} > "$tmp_bootstrap"
+sudo install -m 0640 -o container-tracker-agent -g container-tracker-agent \
+  "$tmp_bootstrap" "$agent_data_dir/bootstrap.env"
+rm -f "$tmp_bootstrap"
+
+echo "[agent:rebuild-restart:linux] starting service..."
+sudo systemctl enable --now "$service_name"
+sleep 2
+sudo systemctl status "$service_name" --no-pager
+echo "---"
+sudo journalctl -u "$service_name" -n 120 --no-pager

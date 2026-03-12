@@ -1,24 +1,25 @@
+#!/usr/bin/env node
+
+// biome-ignore-all lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import { appendPendingActivityEvents } from './pending-activity.ts'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import { resolvePlatformAdapter } from './platform/platform.adapter.ts'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 // biome-ignore lint/performance/noNamespaceImport: Supervisor runtime keeps grouped release-manager symbols for resilient formatting.
 import * as releaseManager from './release-manager.ts'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import { readReleaseState, withRecordedFailure, writeReleaseState } from './release-state.ts'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
+import {
+  EXIT_CONFIG_ERROR,
+  EXIT_FATAL,
+  EXIT_OK,
+  resolveSupervisorExitAction,
+} from './runtime/lifecycle-exit-codes.ts'
 import { readRuntimeHealth } from './runtime-health.ts'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
-// biome-ignore lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
 import { clearSupervisorControl } from './supervisor-control.ts'
 
-const EXIT_CODE_RESTART_FOR_UPDATE = 42
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000
 const DEFAULT_HEALTH_GRACE_MS = 120_000
 const DEFAULT_CRASH_LOOP_WINDOW_MS = 5 * 60 * 1000
@@ -327,6 +328,7 @@ async function main(): Promise<void> {
   appendSupervisorLog(layout.logsDir, 'supervisor started')
 
   let shuttingDown = false
+  let supervisorExitCode = EXIT_OK
   let consecutiveReleaseRuntimeFailures = 0
   process.once('SIGINT', () => {
     shuttingDown = true
@@ -486,8 +488,8 @@ async function main(): Promise<void> {
     }
 
     const refreshedState = readReleaseState(layout.releaseStatePath, fallbackVersion)
-
-    if (runResult.exitCode === EXIT_CODE_RESTART_FOR_UPDATE) {
+    const exitAction = resolveSupervisorExitAction(runResult.exitCode)
+    if (exitAction === 'restart-for-update') {
       consecutiveReleaseRuntimeFailures = 0
       await sleep(1_000)
       continue
@@ -634,8 +636,17 @@ async function main(): Promise<void> {
       continue
     }
 
-    if (runResult.exitCode === 0) {
+    if (exitAction === 'stop-graceful') {
       appendSupervisorLog(layout.logsDir, 'runtime exited cleanly, supervisor stopping')
+      break
+    }
+
+    if (exitAction === 'stop-config-error') {
+      appendSupervisorLog(
+        layout.logsDir,
+        'runtime exited with configuration error (code=50), supervisor stopping without restart',
+      )
+      supervisorExitCode = EXIT_CONFIG_ERROR
       break
     }
 
@@ -645,9 +656,11 @@ async function main(): Promise<void> {
     )
     await sleep(RESTART_BACKOFF_MS)
   }
+
+  process.exitCode = supervisorExitCode
 }
 
 void main().catch((error) => {
   console.error(`[supervisor] fatal error: ${toErrorMessage(error)}`)
-  process.exitCode = 1
+  process.exitCode = EXIT_FATAL
 })

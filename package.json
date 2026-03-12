@@ -45,7 +45,9 @@
     "agent:setup:wine": "node scripts/agent/setup-installer.mjs --mode=wine",
     "agent:setup:native": "node scripts/agent/setup-installer.mjs --mode=native",
     "agent:e2e:linux": "pnpm run agent:build && node scripts/agent/e2e-install-linux.mjs",
-    "agent:rebuild-restart": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/agent/rebuild-reinstall.ps1",
+    "agent:rebuild-restart:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/agent/rebuild-reinstall.ps1",
+    "agent:rebuild-restart:linux": "bash scripts/agent/rebuild-restart-linux.sh",
+    "rebuild-restart:linux": "pnpm run agent:rebuild-restart:linux",
     "supabase:gen-types": "yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh > src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip",
     "knip:files": "knip --files --no-progress"
