@@ -5,6 +5,7 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer'
 import mscTransshipment0312Regression from '~/modules/tracking/infrastructure/carriers/tests/fixtures/msc/msc_transshipment_0312_regression.json'
+import { assertNoObservationSemanticViolations } from '~/modules/tracking/infrastructure/carriers/tests/helpers/observationSemanticAudit'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000641'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000642'
@@ -70,10 +71,7 @@ describe('MSC transshipment regression (0312)', () => {
     expect(positionedDrafts).toHaveLength(2)
     expect(positionedDrafts.map((draft) => draft.type)).toEqual(['TERMINAL_MOVE', 'TERMINAL_MOVE'])
 
-    const invalidVesselNames = drafts.filter(
-      (draft) => draft.vessel_name === 'LADEN' || draft.vessel_name === 'EMPTY',
-    )
-    expect(invalidVesselNames).toHaveLength(0)
+    assertNoObservationSemanticViolations(drafts)
   })
 
   it('keeps current derived status as LOADED for the real MSC sequence', () => {
