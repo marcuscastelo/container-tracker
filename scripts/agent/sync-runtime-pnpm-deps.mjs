@@ -10,6 +10,7 @@ const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   'puppeteer',
   'puppeteer-extra',
   'puppeteer-extra-plugin-stealth',
+  'puppeteer-extra-plugin-user-preferences',
   'zod',
 ]
 

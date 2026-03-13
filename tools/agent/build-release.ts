@@ -18,6 +18,7 @@ const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   'puppeteer',
   'puppeteer-extra',
   'puppeteer-extra-plugin-stealth',
+  'puppeteer-extra-plugin-user-preferences',
   'zod',
 ] as const
 const RELEASE_APP_REQUIRED_TOP_LEVEL_ENTRIES = ['dist', 'node_modules', 'package.json'] as const
