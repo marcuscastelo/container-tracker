@@ -26,7 +26,7 @@ const noIifeInJsxRule = {
   },
 }
 
-const jsxShortCircuitWrapperTypes = new Set([
+const jsxWrapperTypes = new Set([
   'ParenthesizedExpression',
   'TSNonNullExpression',
   'TSAsExpression',
@@ -34,10 +34,10 @@ const jsxShortCircuitWrapperTypes = new Set([
   'TSSatisfiesExpression',
 ])
 
-function unwrapJsxShortCircuitNode(node) {
+function unwrapExpressionWrappers(node) {
   let currentNode = node
 
-  while (currentNode && jsxShortCircuitWrapperTypes.has(currentNode.type)) {
+  while (currentNode && jsxWrapperTypes.has(currentNode.type)) {
     if (currentNode.type === 'ParenthesizedExpression') {
       currentNode = currentNode.expression
       continue
@@ -67,7 +67,7 @@ function unwrapJsxShortCircuitNode(node) {
 }
 
 function containsExplicitJsx(node) {
-  const unwrappedNode = unwrapJsxShortCircuitNode(node)
+  const unwrappedNode = unwrapExpressionWrappers(node)
   if (!unwrappedNode) {
     return false
   }
