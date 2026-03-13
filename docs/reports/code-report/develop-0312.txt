@@ -1,0 +1,2660 @@
+=======================================
+PROJECT STRUCTURE + CODE SIZE REPORT
+Generated: Fri Mar 13 12:25:19 AM -03 2026
+=======================================
+
+=== TREE DO PROJETO ===
+.
+├── agent-manifests
+│   ├── canary.json
+│   ├── dev.json
+│   └── stable.json
+├── .agent-runtime
+│   ├── bootstrap.env.consumed
+│   ├── config.env
+│   ├── current -> /home/marucs/Development/Castro/container-tracker/.agent-runtime/releases/0.1.0
+│   ├── downloads
+│   │   ├── 0.1.0.download
+│   │   └── 0.1.4.download
+│   ├── logs
+│   │   └── supervisor.log
+│   ├── pending-activity-events.json
+│   ├── previous -> /home/marucs/Development/Castro/container-tracker/.agent-runtime/releases/0.1.0
+│   ├── releases
+│   │   ├── 0.1.0
+│   │   └── 0.1.4
+│   │       └── package.json
+│   ├── release-state.json
+│   ├── runtime-health.json
+│   └── supervisor-control.json
+├── AGENTS.md
+├── app.config.ts
+├── biome.jsonc
+├── .chatgpt
+│   └── prompts
+│       ├── bug.md
+│       ├── issue.md
+│       └── quality.md
+├── code-report.txt
+├── .devcontainer
+│   ├── configure-git-ssh-signing.sh
+│   ├── devcontainer.json
+│   ├── Dockerfile
+│   ├── git-guard.sh
+│   ├── post-create.sh
+│   ├── post-start.sh
+│   └── pre-push-block.sh
+├── docs
+│   ├── adr
+│   │   ├── 0003-separate-bc-from-capabilities.md
+│   │   ├── 0004-shared-kernel-policy.md
+│   │   ├── 0007-domain-truth-ownership.md
+│   │   ├── 0008-feature-slices-inside-bounded-contexts.md
+│   │   ├── 0009-adr-sync-as-capability.md
+│   │   ├── 0010-screen-composition-ui-workflow-separation-and-naming-vocabulary.md
+│   │   ├── 0012-unified-agent-release-system.md
+│   │   ├── 0013-dashboard-sync-ui-reconciliation.md
+│   │   ├── 0015-database-level-auto-pruning-for-operational-tables.md
+│   │   ├── 0016-database-daily-auto-sync.md
+│   │   ├── 0017-linux-agent-operational-model.md
+│   │   └── 0020-persisted-ui-theme.md
+│   ├── AGENT_ARCHITECTURE.md
+│   ├── agent-installer.md
+│   ├── AI_LOOP_CODEX.md
+│   ├── ALERT_POLICY.md
+│   ├── ARCHITECTURE.md
+│   ├── archive
+│   │   ├── 0204
+│   │   │   ├── 0204-debt-gpt5-mini.md
+│   │   │   ├── chat-gpt-brainstorm-1.md
+│   │   │   ├── chat-gpt-master-prompt.md
+│   │   │   ├── db-and-schemas-0204.md
+│   │   │   ├── ddd-0204.md
+│   │   │   ├── master-0204.md
+│   │   │   ├── priorities-0204.md
+│   │   │   ├── project-structure-0204.md
+│   │   │   └── results-0204.md
+│   │   ├── master-consolidated-0209.md
+│   │   ├── migration-alert-fingerprint.md
+│   │   ├── migration-tracking-0212.md
+│   │   ├── report.md
+│   │   └── roadmap-consolidated-0209.md
+│   ├── backlog.md
+│   ├── BOUNDARIES.md
+│   ├── debt
+│   │   ├── 0001-mvp-agent-sync-base.md
+│   │   ├── 0002-mvp-agent-sync-base copy.md
+│   │   ├── 0003-agent-runtime-enrolment.md
+│   │   ├── 0004-post-fix-notes-new-debts.md
+│   │   └── 0005-global-search-pr85.md
+│   ├── DOMAIN.md
+│   ├── entendimento-pre.md
+│   ├── event-series-classification-implementation.md
+│   ├── feedback.md
+│   ├── idea-dump.md
+│   ├── lint
+│   │   ├── no-iife-in-jsx-baseline.md
+│   │   ├── no-iife-in-jsx-transition.md
+│   │   └── no-jsx-short-circuit.md
+│   ├── LLM_GUARDRAILS.md
+│   ├── MASTER_v2.md
+│   ├── MODULE_CAPABILITIES_MAP.md
+│   ├── mvp-agent-sync.md
+│   ├── plans
+│   │   ├── complexity-hardening-plan.md
+│   │   ├── feedback-and-bugs-260309.md
+│   │   ├── refactor-bc-capabilities-baseline.md
+│   │   ├── refactor-bc-capabilities-execution-plan.md
+│   │   ├── refactor-bc-capabilities-report.md
+│   │   ├── ui-complexity-allowlist.json
+│   │   ├── ui-complexity-baseline.json
+│   │   ├── ui-complexity-baseline.md
+│   │   ├── ui-complexity-report.md
+│   │   └── ui-complexity-scope.json
+│   ├── process-fields-contract.md
+│   ├── reports
+│   │   ├── agent-mode-investigation-adendo.md
+│   │   ├── agent-mode-investigation.md
+│   │   ├── bug-status-investigation.md
+│   │   └── hmr-duplication-investigation-2026-03-11.md
+│   ├── respostas-pre.md
+│   ├── ROADMAP.md
+│   ├── SYNC_ARCHITECTURE_BOUNDARIES.md
+│   ├── SYNC_CODEMAP.md
+│   ├── SYNC_FAQ.md
+│   ├── SYNC_FLOWS.md
+│   ├── SYNC_GAPS_AND_ROADMAP.md
+│   ├── SYNC_OVERVIEW.md
+│   ├── SYNC_REQUESTS_MODEL.md
+│   ├── SYNC_RUNTIME_MODEL.md
+│   ├── TRACKING_EVENT_SERIES.md
+│   ├── TRACKING_INVARIANTS.md
+│   ├── TYPE_ARCHITECTURE.md
+│   ├── typography-audit-and-proposal.md
+│   ├── typography-audit.md
+│   ├── UI_DESIGN_PROMPT.md
+│   ├── ui-navigation-reconcile-guideline.md
+│   ├── UI_PHILOSOPHY.md
+│   └── UX-Investigation-Refresh-Alerts.md
+├── e2e
+│   ├── alerts-ack-reconciliation.spec.ts
+│   └── process-detail-qa.spec.ts
+├── EEcat
+├── .env
+├── eslint.config.mjs
+├── examples
+│   ├── api
+│   │   ├── cmagcm.json
+│   │   ├── cmagcm-updated.json
+│   │   ├── maersk.json
+│   │   ├── maersk-transbordo.json
+│   │   ├── msc-0312.json
+│   │   └── msc.json
+│   ├── CONTAINERS.md
+│   ├── CONTAINERS_public.md
+│   ├── ours
+│   │   ├── container.jsonc
+│   │   ├── event
+│   │   │   └── container_event.jsonc
+│   │   └── process.jsonc
+│   └── SITES.md
+├── .github
+│   ├── agents
+│   │   ├── accessibility.agent.md
+│   │   ├── address-comments.agent.md
+│   │   ├── expert-nextjs-developer.agent.md
+│   │   ├── expert-react-frontend-engineer.agent.md
+│   │   ├── expert-solid-frontend-engineer.agent.md
+│   │   ├── github-issue-manager.agent.md
+│   │   ├── janitor.agent.md
+│   │   ├── lingodotdev-i18n.agent.md
+│   │   ├── playwright-tester.agent.md
+│   │   ├── prompt-engineer.agent.md
+│   │   ├── search-ai-optimization-expert.agent.md
+│   │   └── tech-debt-remediation-plan.agent.md
+│   ├── copilot-instructions.md
+│   ├── instructions
+│   │   └── copilot
+│   │       ├── custom-agents.instructions.md
+│   │       ├── custom-instructions.instructions.md
+│   │       └── prompt-files.md
+│   ├── prompts
+│   │   ├── fix-prompt.prompt.md
+│   │   ├── generate-pr-draft-from-branch.prompt.md
+│   │   ├── i18n.prompt.md
+│   │   ├── new-prompt.prompt.md
+│   │   ├── pr-suggestions.prompt.md
+│   │   └── refine-prompt.prompt.md
+│   └── workflows
+│       ├── build-agent.yml
+│       ├── i18n-check.yml
+│       ├── promote-stable.yml
+│       ├── publish-canary.yml
+│       ├── quality.yml
+│       ├── rollback-channel.yml
+│       └── todo-to-issue.yml
+├── .gitignore
+├── .gitmodules
+├── knip.json
+├── package.json
+├── packaging
+│   └── arch
+│       ├── container-tracker-agent.install
+│       ├── container-tracker-agent.launcher
+│       ├── container-tracker-agent.service
+│       ├── container-tracker-agent.sysusers
+│       ├── container-tracker-agent.tmpfiles
+│       ├── PKGBUILD
+│       ├── README.md
+│       └── src
+│           ├── container-tracker-agent.install -> /home/marucs/Development/Castro/wt/linux-systemd-agent-service/packaging/arch/container-tracker-agent.install
+│           ├── container-tracker-agent.launcher -> /home/marucs/Development/Castro/wt/linux-systemd-agent-service/packaging/arch/container-tracker-agent.launcher
+│           ├── container-tracker-agent.service -> /home/marucs/Development/Castro/wt/linux-systemd-agent-service/packaging/arch/container-tracker-agent.service
+│           ├── container-tracker-agent.sysusers -> /home/marucs/Development/Castro/wt/linux-systemd-agent-service/packaging/arch/container-tracker-agent.sysusers
+│           └── container-tracker-agent.tmpfiles -> /home/marucs/Development/Castro/wt/linux-systemd-agent-service/packaging/arch/container-tracker-agent.tmpfiles
+├── PITCH.md
+├── playwright.config.ts
+├── pnpm-lock.yaml
+├── .pnpm-store
+├── public
+│   ├── branding
+│   │   ├── favicon.ico
+│   │   ├── logo-dark.png
+│   │   ├── logo-light.png
+│   │   ├── other.jpeg
+│   │   ├── wallpaper-color.jpeg
+│   │   └── wallpaper.jpg
+│   └── favicon.ico
+├── .ralph-loop
+├── README.md
+├── release
+├── scripts
+│   ├── agent
+│   │   ├── e2e-install-linux.mjs
+│   │   ├── rebuild-restart-linux.sh
+│   │   ├── run-linux.sh
+│   │   ├── setup-installer.mjs
+│   │   └── sync-runtime-pnpm-deps.mjs
+│   ├── ai
+│   │   ├── github-pr-feedback.sh
+│   │   ├── ralph-loop-common.sh
+│   │   ├── ralph-loop-doctor.sh
+│   │   ├── ralph-loop-exec.sh
+│   │   ├── ralph-loop-make-input.sh
+│   │   ├── ralph-loop-plan.sh
+│   │   ├── ralph-loop-start.sh
+│   │   ├── ralph-loop-update.sh
+│   │   └── sync-global-skills.sh
+│   ├── architecture-boundary-scan.mjs
+│   ├── check-i18n-keys.mjs
+│   ├── check-no-emoji.mjs
+│   ├── convert-relative-imports.cjs
+│   ├── convert-relative-imports.js
+│   ├── dev.sh
+│   ├── enforce-i18n-no-hardcoded.mjs
+│   ├── eslint-plugin-container-tracker.mjs
+│   ├── maersk-puppeteer-smoke.mjs
+│   ├── no-iife-in-jsx-error-smoke.mjs
+│   ├── no-iife-in-jsx-error-smoke.shared.mjs
+│   ├── remove-type-assertions.cjs
+│   ├── remove-type-assertions.js
+│   ├── tests
+│   │   ├── eslint-plugin-container-tracker.no-jsx-short-circuit.test.mjs
+│   │   ├── eslint-plugin-container-tracker.no-jsx-ternary.test.mjs
+│   │   ├── eslint-plugin-container-tracker.test.mjs
+│   │   └── no-iife-in-jsx-error-smoke.shared.test.mjs
+│   ├── ui-complexity-allowlist-check.mjs
+│   ├── ui-complexity-report.mjs
+│   └── ui-complexity.shared.mjs
+├── .serena
+│   ├── cache
+│   │   └── typescript
+│   │       ├── document_symbols.pkl
+│   │       └── raw_document_symbols.pkl
+│   ├── .gitignore
+│   ├── memories
+│   │   ├── code_style_and_conventions.md
+│   │   ├── project_overview.md
+│   │   ├── style_and_design_patterns.md
+│   │   ├── suggested_commands.md
+│   │   ├── task_completion_guidelines.md
+│   │   └── tech_stack_and_structure.md
+│   └── project.yml
+├── src
+│   ├── app.css
+│   ├── app.tsx
+│   ├── capabilities
+│   │   ├── CAPABILITIES.md
+│   │   ├── dashboard
+│   │   │   ├── application
+│   │   │   │   ├── dashboard.kpis.readmodel.ts
+│   │   │   │   ├── dashboard.operational-summary.readmodel.ts
+│   │   │   │   ├── dashboard.processes-created-by-month.readmodel.ts
+│   │   │   │   ├── dashboard.processes.projection.ts
+│   │   │   │   ├── dashboard.usecases.ts
+│   │   │   │   └── tests
+│   │   │   │       ├── dashboard.kpis.readmodel.test.ts
+│   │   │   │       ├── dashboard.operational-summary.readmodel.integration.test.ts
+│   │   │   │       ├── dashboard.operational-summary.readmodel.test.ts
+│   │   │   │       └── dashboard.processes-created-by-month.readmodel.test.ts
+│   │   │   └── interface
+│   │   │       └── http
+│   │   │           ├── dashboard.controllers.bootstrap.ts
+│   │   │           ├── dashboard.controllers.ts
+│   │   │           └── tests
+│   │   │               └── dashboard.controllers.test.ts
+│   │   ├── search
+│   │   │   ├── application
+│   │   │   │   ├── search.facade.ts
+│   │   │   │   ├── search.usecase.ts
+│   │   │   │   └── tests
+│   │   │   │       └── search.usecase.test.ts
+│   │   │   ├── interface
+│   │   │   │   └── http
+│   │   │   │       ├── search.controllers.bootstrap.ts
+│   │   │   │       ├── search.controllers.ts
+│   │   │   │       ├── search.controller.ts
+│   │   │   │       ├── search.http.mappers.ts
+│   │   │   │       ├── search.schemas.ts
+│   │   │   │       └── tests
+│   │   │   │           └── search.controllers.test.ts
+│   │   │   ├── README.md
+│   │   │   ├── tests
+│   │   │   │   └── search.boundary.test.ts
+│   │   │   └── ui
+│   │   │       ├── fetchSearch.ts
+│   │   │       ├── GlobalSearchOverlay.tsx
+│   │   │       ├── SearchOverlay.panel.tsx
+│   │   │       ├── SearchOverlay.tsx
+│   │   │       ├── search.ui-mapper.ts
+│   │   │       └── search.vm.ts
+│   │   └── sync
+│   │       ├── application
+│   │       │   ├── commands
+│   │       │   │   └── enqueue-sync.command.ts
+│   │       │   ├── ports
+│   │       │   │   ├── sync-queue.port.ts
+│   │       │   │   ├── sync-status-read.port.ts
+│   │       │   │   └── sync-target-read.port.ts
+│   │       │   ├── services
+│   │       │   │   ├── sync-enqueue-policy.service.ts
+│   │       │   │   ├── sync-status-aggregation.service.ts
+│   │       │   │   └── sync-target-resolver.service.ts
+│   │       │   ├── sync.usecases.ts
+│   │       │   └── usecases
+│   │       │       ├── get-sync-status.usecase.ts
+│   │       │       ├── refresh-process.usecase.ts
+│   │       │       ├── sync-container.usecase.ts
+│   │       │       ├── sync-dashboard.usecase.ts
+│   │       │       ├── sync-process.usecase.ts
+│   │       │       └── tests
+│   │       │           ├── get-sync-status.usecase.test.ts
+│   │       │           ├── refresh-process.usecase.test.ts
+│   │       │           ├── sync-container.usecase.test.ts
+│   │       │           ├── sync-dashboard.usecase.test.ts
+│   │       │           └── sync-process.usecase.test.ts
+│   │       ├── interface
+│   │       │   └── http
+│   │       │       ├── sync.controllers.bootstrap.ts
+│   │       │       ├── sync.controllers.ts
+│   │       │       ├── sync.schemas.ts
+│   │       │       ├── sync-status.controllers.ts
+│   │       │       └── tests
+│   │       │           ├── sync.controllers.test.ts
+│   │       │           └── sync-status.controllers.test.ts
+│   │       ├── presenter
+│   │       │   └── sync-response.presenter.ts
+│   │       └── tests
+│   │           └── sync.boundary.test.ts
+│   ├── entry-client.tsx
+│   ├── entry-server.tsx
+│   ├── global.d.ts
+│   ├── lib
+│   │   └── theme.ts
+│   ├── locales
+│   │   ├── en-US.json
+│   │   ├── pt-BR.json
+│   │   └── pt-PT.json
+│   ├── modules
+│   │   ├── agent
+│   │   │   ├── application
+│   │   │   │   ├── agent-monitoring.repository.ts
+│   │   │   │   ├── agent-monitoring.usecases.ts
+│   │   │   │   ├── tests
+│   │   │   │   │   └── update-manifest.service.test.ts
+│   │   │   │   └── update-manifest.service.ts
+│   │   │   ├── infrastructure
+│   │   │   │   ├── bootstrap
+│   │   │   │   │   └── agent.bootstrap.ts
+│   │   │   │   └── persistence
+│   │   │   │       ├── agent-monitoring.persistence.mappers.ts
+│   │   │   │       ├── agent-monitoring.row.ts
+│   │   │   │       └── supabaseAgentMonitoringRepository.ts
+│   │   │   ├── interface
+│   │   │   │   └── http
+│   │   │   │       ├── agent-monitoring.controllers.bootstrap.ts
+│   │   │   │       ├── agent-monitoring.controllers.ts
+│   │   │   │       ├── agent-monitoring.http.mappers.ts
+│   │   │   │       ├── agent-monitoring.schemas.ts
+│   │   │   │       ├── tests
+│   │   │   │       │   ├── agent-monitoring.http.mappers.test.ts
+│   │   │   │       │   └── update-manifest.controllers.test.ts
+│   │   │   │       ├── update-manifest.controllers.bootstrap.ts
+│   │   │   │       └── update-manifest.controllers.ts
+│   │   │   └── ui
+│   │   │       ├── agent-detail-page.tsx
+│   │   │       ├── agents-page.tsx
+│   │   │       ├── api
+│   │   │       │   └── agent.api.ts
+│   │   │       ├── components
+│   │   │       │   ├── AgentCapabilitiesCard.tsx
+│   │   │       │   ├── AgentCardList.tsx
+│   │   │       │   ├── AgentDiagnosticsCard.tsx
+│   │   │       │   ├── AgentEnrollmentCard.tsx
+│   │   │       │   ├── AgentFiltersBar.tsx
+│   │   │       │   ├── AgentFleetSummary.tsx
+│   │   │       │   ├── AgentHealthCard.tsx
+│   │   │       │   ├── AgentIdentityCard.tsx
+│   │   │       │   ├── AgentMetricsCard.tsx
+│   │   │       │   ├── AgentPageHeader.tsx
+│   │   │       │   ├── AgentRecentActivityCard.tsx
+│   │   │       │   ├── AgentRowStatus.tsx
+│   │   │       │   ├── AgentsTable.tsx
+│   │   │       │   └── AgentStatusBadge.tsx
+│   │   │       ├── mappers
+│   │   │       │   └── agent.ui-mapper.ts
+│   │   │       └── vm
+│   │   │           └── agent.vm.ts
+│   │   ├── container
+│   │   │   ├── application
+│   │   │   │   ├── container.readmodels.ts
+│   │   │   │   ├── container.repository.ts
+│   │   │   │   ├── container.usecases.ts
+│   │   │   │   └── usecases
+│   │   │   │       ├── check-container-existence.usecase.ts
+│   │   │   │       ├── create-container.usecase.ts
+│   │   │   │       ├── create-many-containers.usecase.ts
+│   │   │   │       ├── delete-container.usecase.ts
+│   │   │   │       ├── find-containers-by-number.usecase.ts
+│   │   │   │       ├── list-containers-by-process-ids.usecase.ts
+│   │   │   │       ├── list-containers-by-process-id.usecase.ts
+│   │   │   │       ├── reconcile-containers.usecase.ts
+│   │   │   │       ├── search-containers-by-number.usecase.ts
+│   │   │   │       └── tests
+│   │   │   │           ├── find-containers-by-number.usecase.test.ts
+│   │   │   │           ├── reconcile-containers.usecase.test.ts
+│   │   │   │           └── search-containers-by-number.usecase.test.ts
+│   │   │   ├── domain
+│   │   │   │   ├── container.entity.ts
+│   │   │   │   ├── container.types.ts
+│   │   │   │   ├── container.validation.ts
+│   │   │   │   └── identity
+│   │   │   │       ├── carrier-code.vo.ts
+│   │   │   │       ├── container-id.vo.ts
+│   │   │   │       ├── container-number.vo.ts
+│   │   │   │       └── process-id.vo.ts
+│   │   │   ├── infrastructure
+│   │   │   │   ├── bootstrap
+│   │   │   │   │   └── container.bootstrap.ts
+│   │   │   │   └── persistence
+│   │   │   │       ├── container.persistence.mappers.ts
+│   │   │   │       ├── container.repository.supabase.ts
+│   │   │   │       └── container.row.ts
+│   │   │   ├── interface
+│   │   │   │   └── http
+│   │   │   │       ├── container.controllers.bootstrap.ts
+│   │   │   │       ├── container.controllers.ts
+│   │   │   │       ├── container.http.mappers.ts
+│   │   │   │       ├── container.schemas.ts
+│   │   │   │       └── tests
+│   │   │   │           └── container.controllers.test.ts
+│   │   │   └── README.md
+│   │   ├── process
+│   │   │   ├── application
+│   │   │   │   ├── process.container-usecases.ts
+│   │   │   │   ├── process.readmodels.ts
+│   │   │   │   ├── process.records.ts
+│   │   │   │   ├── process.repository.ts
+│   │   │   │   ├── process.usecases.ts
+│   │   │   │   └── usecases
+│   │   │   │       ├── create-process.usecase.ts
+│   │   │   │       ├── delete-process.usecase.ts
+│   │   │   │       ├── find-process-by-id.usecase.ts
+│   │   │   │       ├── find-process-by-id-with-containers.usecase.ts
+│   │   │   │       ├── list-processes.usecase.ts
+│   │   │   │       ├── list-processes-with-containers.usecase.ts
+│   │   │   │       ├── list-processes-with-operational-summary.usecase.ts
+│   │   │   │       ├── remove-container-from-process.usecase.ts
+│   │   │   │       ├── search-processes-by-text.usecase.ts
+│   │   │   │       ├── tests
+│   │   │   │       │   ├── delete-process.usecase.test.ts
+│   │   │   │       │   └── search-processes-by-text.usecase.test.ts
+│   │   │   │       └── update-process.usecase.ts
+│   │   │   ├── domain
+│   │   │   │   ├── identity
+│   │   │   │   │   ├── carrier-code.vo.ts
+│   │   │   │   │   ├── process-id.vo.ts
+│   │   │   │   │   ├── process-reference.vo.ts
+│   │   │   │   │   └── process-source.vo.ts
+│   │   │   │   ├── process.entity.ts
+│   │   │   │   ├── process.types.ts
+│   │   │   │   └── process.validation.ts
+│   │   │   ├── features
+│   │   │   │   └── operational-projection
+│   │   │   │       └── application
+│   │   │   │           ├── deriveProcessStatus.ts
+│   │   │   │           ├── operationalSemantics.ts
+│   │   │   │           ├── processOperationalSummary.ts
+│   │   │   │           └── tests
+│   │   │   │               ├── aggregateOperationalSummary.test.ts
+│   │   │   │               └── deriveProcessStatus.test.ts
+│   │   │   ├── infrastructure
+│   │   │   │   ├── bootstrap
+│   │   │   │   │   └── process.bootstrap.ts
+│   │   │   │   └── persistence
+│   │   │   │       ├── process.persistence.mappers.ts
+│   │   │   │       ├── process.row.ts
+│   │   │   │       └── supabaseProcessRepository.ts
+│   │   │   ├── interface
+│   │   │   │   └── http
+│   │   │   │       ├── process.controllers.bootstrap.ts
+│   │   │   │       ├── process.controllers.ts
+│   │   │   │       ├── process.http.mappers.ts
+│   │   │   │       ├── process.schemas.ts
+│   │   │   │       └── tests
+│   │   │   │           ├── process.controllers.test.ts
+│   │   │   │           └── process.http.mappers.test.ts
+│   │   │   ├── README.md
+│   │   │   └── ui
+│   │   │       ├── api
+│   │   │       │   ├── processSync.api.ts
+│   │   │       │   └── tests
+│   │   │       │       └── processSync.api.test.ts
+│   │   │       ├── components
+│   │   │       │   ├── AlertActionBanner.tsx
+│   │   │       │   ├── AlertsListItem.tsx
+│   │   │       │   ├── AlertsList.tsx
+│   │   │       │   ├── AlertsPanel.tsx
+│   │   │       │   ├── computeRowDistribution.test.ts
+│   │   │       │   ├── container-distribution.ts
+│   │   │       │   ├── ContainerSelector.tsx
+│   │   │       │   ├── ContainersPanel.tsx
+│   │   │       │   ├── CreateProcessDialogs.tsx
+│   │   │       │   ├── DashboardActivityChartCard.tsx
+│   │   │       │   ├── dashboard-columns.ts
+│   │   │       │   ├── DashboardKpiCard.tsx
+│   │   │       │   ├── DashboardKpiRow.tsx
+│   │   │       │   ├── DashboardProcessTable.tsx
+│   │   │       │   ├── DashboardRefreshButton.tsx
+│   │   │       │   ├── dashboard-status-cell.presenter.ts
+│   │   │       │   ├── DeleteShipmentConfirmationInput.tsx
+│   │   │       │   ├── DeleteShipmentDialog.tsx
+│   │   │       │   ├── DeleteShipmentSummary.tsx
+│   │   │       │   ├── DeleteShipmentWarning.tsx
+│   │   │       │   ├── Icons.tsx
+│   │   │       │   ├── ObservationInspector.tsx
+│   │   │       │   ├── PredictionHistoryModal.tsx
+│   │   │       │   ├── PredictionHistoryTable.tsx
+│   │   │       │   ├── process-status-badges.presenter.ts
+│   │   │       │   ├── ProcessSyncButton.tsx
+│   │   │       │   ├── RefreshErrorBanner.tsx
+│   │   │       │   ├── ShipmentCurrentStatusDetails.tsx
+│   │   │       │   ├── ShipmentCurrentStatus.tsx
+│   │   │       │   ├── ShipmentDataView.tsx
+│   │   │       │   ├── ShipmentHeader.tsx
+│   │   │       │   ├── ShipmentInfoCard.tsx
+│   │   │       │   ├── SyncCell.tsx
+│   │   │       │   ├── tests
+│   │   │       │   │   ├── dashboard-refresh-button.test.ts
+│   │   │       │   │   ├── dashboard-status-cell.presenter.test.ts
+│   │   │       │   │   ├── process-status-badges.presenter.test.ts
+│   │   │       │   │   ├── process-sync-button.test.ts
+│   │   │       │   │   └── timeline-current-voyage.test.ts
+│   │   │       │   ├── TimelineNode.tsx
+│   │   │       │   ├── TimelinePanel.tsx
+│   │   │       │   ├── unified
+│   │   │       │   │   ├── ActiveFilterChip.tsx
+│   │   │       │   │   ├── ActiveFiltersPanel.tsx
+│   │   │       │   │   ├── FilterControlOption.ts
+│   │   │       │   │   ├── Icons.tsx
+│   │   │       │   │   ├── ImporterChipDropdown.tsx
+│   │   │       │   │   ├── ImporterOptionsList.tsx
+│   │   │       │   │   ├── MultiSelectChipDropdown.tsx
+│   │   │       │   │   ├── MultiSelectOptionsList.tsx
+│   │   │       │   │   ├── SingleSelectChipDropdown.tsx
+│   │   │       │   │   └── SingleSelectOptionsList.tsx
+│   │   │       │   └── UnifiedDashboardFilters.tsx
+│   │   │       ├── CreateProcessDialog.tsx
+│   │   │       ├── CreateProcessDialog.view.tsx
+│   │   │       ├── fetchDashboardKpis.ts
+│   │   │       ├── fetchDashboardProcessesCreatedByMonth.ts
+│   │   │       ├── fetchProcess.ts
+│   │   │       ├── hooks
+│   │   │       │   ├── tests
+│   │   │       │   │   └── useProcessSyncRealtime.test.ts
+│   │   │       │   └── useProcessSyncRealtime.ts
+│   │   │       ├── mappers
+│   │   │       │   ├── containerSummary.ui-mapper.ts
+│   │   │       │   ├── containerSync.ui-mapper.ts
+│   │   │       │   ├── dashboardGlobalAlerts.ui-mapper.ts
+│   │   │       │   ├── dashboard-kpis.ui-mapper.ts
+│   │   │       │   ├── dashboard-processes-created-by-month.ui-mapper.ts
+│   │   │       │   ├── dashboardProcessExceptions.ui-mapper.ts
+│   │   │       │   ├── processDetail.ui-mapper.ts
+│   │   │       │   ├── processList.ui-mapper.ts
+│   │   │       │   ├── processStatusMicrobadge.ui-mapper.ts
+│   │   │       │   ├── processStatus.ui-mapper.ts
+│   │   │       │   ├── seriesLabel.ui-mapper.ts
+│   │   │       │   ├── tests
+│   │   │       │   │   ├── container-chip-sync-state.test.ts
+│   │   │       │   │   ├── containerSummary.ui-mapper.test.ts
+│   │   │       │   │   ├── dashboardGlobalAlerts.ui-mapper.test.ts
+│   │   │       │   │   ├── dashboard-kpis.ui-mapper.test.ts
+│   │   │       │   │   ├── dashboard-processes-created-by-month.ui-mapper.test.ts
+│   │   │       │   │   ├── dashboardProcessExceptions.ui-mapper.test.ts
+│   │   │       │   │   ├── processDetail.ui-mapper.test.ts
+│   │   │       │   │   ├── process-header-sync.test.ts
+│   │   │       │   │   ├── processList.ui-mapper.test.ts
+│   │   │       │   │   ├── processStatusMicrobadge.ui-mapper.test.ts
+│   │   │       │   │   └── trackingEventLabel.ui-mapper.test.ts
+│   │   │       │   ├── trackingAlert.ui-mapper.ts
+│   │   │       │   ├── trackingEventLabel.ui-mapper.ts
+│   │   │       │   └── trackingStatus.ui-mapper.ts
+│   │   │       ├── process-status-color.ts
+│   │   │       ├── screens
+│   │   │       │   ├── DashboardScreen.tsx
+│   │   │       │   └── shipment
+│   │   │       │       ├── components
+│   │   │       │       │   ├── ShipmentAlertActionFeedback.tsx
+│   │   │       │       │   ├── ShipmentContainersView.tsx
+│   │   │       │       │   ├── ShipmentDialogsHost.tsx
+│   │   │       │       │   ├── ShipmentRefreshStatusView.tsx
+│   │   │       │       │   └── ShipmentScreenLayout.tsx
+│   │   │       │       ├── hooks
+│   │   │       │       │   ├── useShipmentAlertActionsController.ts
+│   │   │       │       │   ├── useShipmentDialogsController.ts
+│   │   │       │       │   ├── useShipmentRefreshController.ts
+│   │   │       │       │   ├── useShipmentScreenResource.ts
+│   │   │       │       │   └── useShipmentSelectedContainer.ts
+│   │   │       │       ├── lib
+│   │   │       │       │   ├── alert-lifecycle.ts
+│   │   │       │       │   ├── shipmentAlerts.sorting.ts
+│   │   │       │       │   ├── shipmentEdit.mapper.ts
+│   │   │       │       │   ├── shipmentError.presenter.ts
+│   │   │       │       │   ├── shipmentRefresh.helpers.ts
+│   │   │       │       │   ├── shipmentRefresh.status.ts
+│   │   │       │       │   └── shipmentScreenHelpers.test.ts
+│   │   │       │       ├── ShipmentPage.tsx
+│   │   │       │       ├── ShipmentScreen.tsx
+│   │   │       │       ├── types
+│   │   │       │       │   └── shipmentScreen.types.ts
+│   │   │       │       └── usecases
+│   │   │       │           ├── acknowledgeShipmentAlert.usecase.ts
+│   │   │       │           ├── refreshShipmentTracking.usecase.ts
+│   │   │       │           ├── submitCreateProcess.usecase.ts
+│   │   │       │           ├── submitEditProcess.usecase.ts
+│   │   │       │           └── unacknowledgeShipmentAlert.usecase.ts
+│   │   │       ├── status-color.ts
+│   │   │       ├── telemetry
+│   │   │       │   ├── dashboardSort.telemetry.ts
+│   │   │       │   └── tests
+│   │   │       │       └── dashboardSort.telemetry.test.ts
+│   │   │       ├── tests
+│   │   │       │   ├── fetchDashboardKpis.test.ts
+│   │   │       │   ├── fetchDashboardProcessesCreatedByMonth.test.ts
+│   │   │       │   ├── fetchProcess.cache.test.ts
+│   │   │       │   └── ShipmentView.sync-realtime.test.ts
+│   │   │       ├── timeline
+│   │   │       │   ├── currentVoyage.ts
+│   │   │       │   ├── tests
+│   │   │       │   │   ├── timelineBlockModel.test.ts
+│   │   │       │   │   └── timelineEventIcon.test.ts
+│   │   │       │   ├── timelineBlockModel.ts
+│   │   │       │   ├── TimelineBlocks.tsx
+│   │   │       │   └── timelineEventIcon.ts
+│   │   │       ├── TimelineNode.layout.tsx
+│   │   │       ├── utils
+│   │   │       │   ├── current-tracking-context.ts
+│   │   │       │   ├── dashboard-refresh-button.ts
+│   │   │       │   ├── dashboard-refresh.ts
+│   │   │       │   ├── dashboard-row-navigation.ts
+│   │   │       │   ├── dashboard-sync-reconciliation.ts
+│   │   │       │   ├── eta-labels.ts
+│   │   │       │   ├── formatRelativeTime.ts
+│   │   │       │   ├── process-resource-key.ts
+│   │   │       │   ├── refresh-sync-polling.ts
+│   │   │       │   ├── sync-realtime-coordinator.ts
+│   │   │       │   └── tests
+│   │   │       │       ├── current-tracking-context.test.ts
+│   │   │       │       ├── dashboard-refresh.test.ts
+│   │   │       │       ├── dashboard-row-navigation.test.ts
+│   │   │       │       ├── dashboard-sync-reconciliation.test.ts
+│   │   │       │       ├── eta-labels.test.ts
+│   │   │       │       ├── formatRelativeTime.test.ts
+│   │   │       │       └── refresh-sync-polling.test.ts
+│   │   │       ├── validation
+│   │   │       │   ├── containerBulkPaste.validation.ts
+│   │   │       │   ├── containerFormState.validation.ts
+│   │   │       │   ├── createProcessCloseGuard.validation.ts
+│   │   │       │   ├── dashboardFilterQuery.validation.ts
+│   │   │       │   ├── dashboardFilterStorage.validation.ts
+│   │   │       │   ├── dashboardSortQuery.validation.ts
+│   │   │       │   ├── dashboardSortStorage.validation.ts
+│   │   │       │   ├── processApi.validation.ts
+│   │   │       │   ├── processConflict.validation.ts
+│   │   │       │   ├── tests
+│   │   │       │   │   ├── containerBulkPaste.validation.test.ts
+│   │   │       │   │   ├── containerFormState.validation.test.ts
+│   │   │       │   │   ├── createProcessCloseGuard.validation.test.ts
+│   │   │       │   │   ├── dashboardFilterQuery.validation.test.ts
+│   │   │       │   │   ├── dashboardFilterStorage.validation.test.ts
+│   │   │       │   │   ├── dashboardSortQuery.validation.test.ts
+│   │   │       │   │   ├── dashboardSortStorage.validation.test.ts
+│   │   │       │   │   ├── processApi.validation.test.ts
+│   │   │       │   │   ├── trelloSmartPasteApply.validation.test.ts
+│   │   │       │   │   └── trelloSmartPaste.validation.test.ts
+│   │   │       │   ├── trelloSmartPasteApply.validation.ts
+│   │   │       │   └── trelloSmartPaste.validation.ts
+│   │   │       └── viewmodels
+│   │   │           ├── alert.vm.ts
+│   │   │           ├── containerSummary.vm.ts
+│   │   │           ├── dashboard-filter.service.ts
+│   │   │           ├── dashboard-global-alerts.vm.ts
+│   │   │           ├── dashboard-kpi.vm.ts
+│   │   │           ├── dashboard-monthly-bar-datum.vm.ts
+│   │   │           ├── dashboard-process-exception.vm.ts
+│   │   │           ├── dashboard-sort.service.ts
+│   │   │           ├── dashboard-sort.vm.ts
+│   │   │           ├── process-status-microbadge.vm.ts
+│   │   │           ├── process-summary.vm.ts
+│   │   │           ├── shipment.vm.ts
+│   │   │           └── tests
+│   │   │               ├── dashboard-filter-interaction.vm.test.ts
+│   │   │               ├── dashboard-sort-interaction.vm.test.ts
+│   │   │               └── dashboard-sort-null-policy.vm.test.ts
+│   │   ├── README.md
+│   │   └── tracking
+│   │       ├── AGENTS.md
+│   │       ├── application
+│   │       │   ├── orchestration
+│   │       │   │   └── pipeline.ts
+│   │       │   ├── ports
+│   │       │   │   ├── tracking.alert.repository.ts
+│   │       │   │   ├── tracking.observation.repository.ts
+│   │       │   │   ├── tracking.snapshot.repository.ts
+│   │       │   │   └── tracking.sync-metadata.repository.ts
+│   │       │   ├── projection
+│   │       │   │   ├── locationDisplayResolver.test.ts
+│   │       │   │   ├── locationDisplayResolver.ts
+│   │       │   │   ├── tests
+│   │       │   │   │   ├── tracking.operational-summary.readmodel.test.ts
+│   │       │   │   │   └── voyageSegments.test.ts
+│   │       │   │   ├── tracking.operational-summary.readmodel.ts
+│   │       │   │   ├── tracking.search.readmodel.ts
+│   │       │   │   └── voyageSegments.ts
+│   │       │   ├── tests
+│   │       │   │   ├── pipeline.alert-idempotency.integration.test.ts
+│   │       │   │   └── pipeline.integration.test.ts
+│   │       │   ├── tracking.usecases.ts
+│   │       │   └── usecases
+│   │       │       ├── fetch-and-process.usecase.ts
+│   │       │       ├── get-containers-summary.usecase.ts
+│   │       │       ├── get-containers-sync-metadata.usecase.ts
+│   │       │       ├── get-container-summary.usecase.ts
+│   │       │       ├── get-latest-snapshot.usecase.ts
+│   │       │       ├── get-snapshots-for-container.usecase.ts
+│   │       │       ├── list-active-alerts-by-container-id.usecase.ts
+│   │       │       ├── list-tracking-search-projections.usecase.ts
+│   │       │       ├── refresh-rest-container.usecase.ts
+│   │       │       ├── save-and-process.usecase.ts
+│   │       │       ├── search-tracking-by-derived-status-text.usecase.ts
+│   │       │       ├── search-tracking-by-vessel-name.usecase.ts
+│   │       │       ├── tests
+│   │       │       │   ├── get-containers-summary.usecase.test.ts
+│   │       │       │   ├── get-containers-sync-metadata.usecase.test.ts
+│   │       │       │   ├── get-container-summary.usecase.test.ts
+│   │       │       │   ├── refresh-rest-container.usecase.test.ts
+│   │       │       │   ├── search-tracking-by-derived-status-text.usecase.test.ts
+│   │       │       │   └── search-tracking-by-vessel-name.usecase.test.ts
+│   │       │       └── types.ts
+│   │       ├── dev
+│   │       │   └── scenario-lab
+│   │       │       ├── scenario.builder.ts
+│   │       │       ├── scenario.catalog.ts
+│   │       │       ├── scenario.seed.bootstrap.ts
+│   │       │       ├── scenario.seed.ts
+│   │       │       ├── scenario.types.ts
+│   │       │       └── tests
+│   │       │           ├── scenario.builder.test.ts
+│   │       │           ├── scenario.catalog.test.ts
+│   │       │           └── scenario.seed.test.ts
+│   │       ├── domain
+│   │       │   ├── identity
+│   │       │   │   └── fingerprint.ts
+│   │       │   ├── logistics
+│   │       │   │   └── transshipment.ts
+│   │       │   ├── model
+│   │       │   │   ├── provider.ts
+│   │       │   │   └── snapshot.ts
+│   │       │   └── tests
+│   │       │       ├── actualVsExpected.test.ts
+│   │       │       └── fingerprint.test.ts
+│   │       ├── features
+│   │       │   ├── alerts
+│   │       │   │   ├── application
+│   │       │   │   │   ├── projection
+│   │       │   │   │   │   ├── tests
+│   │       │   │   │   │   │   ├── tracking.alert-display.readmodel.test.ts
+│   │       │   │   │   │   │   └── tracking.alert.projection.test.ts
+│   │       │   │   │   │   ├── tracking.active-alert.readmodel.ts
+│   │       │   │   │   │   ├── tracking.alert-display.readmodel.ts
+│   │       │   │   │   │   ├── tracking.alert-message-contract.mapper.ts
+│   │       │   │   │   │   ├── tracking.alert.projection.ts
+│   │       │   │   │   │   └── tracking.operational-alert-category.readmodel.ts
+│   │       │   │   │   └── usecases
+│   │       │   │   │       ├── acknowledge-alert.usecase.ts
+│   │       │   │   │       ├── list-active-alert-read-model.usecase.ts
+│   │       │   │   │       ├── tests
+│   │       │   │   │       │   └── list-active-alert-read-model.usecase.test.ts
+│   │       │   │   │       └── unacknowledge-alert.usecase.ts
+│   │       │   │   ├── domain
+│   │       │   │   │   ├── derive
+│   │       │   │   │   │   └── deriveAlerts.ts
+│   │       │   │   │   ├── identity
+│   │       │   │   │   │   └── alertFingerprint.ts
+│   │       │   │   │   ├── model
+│   │       │   │   │   │   └── trackingAlert.ts
+│   │       │   │   │   └── tests
+│   │       │   │   │       └── deriveAlerts.test.ts
+│   │       │   │   └── tests
+│   │       │   │       └── noMovementBreakpoints.test.ts
+│   │       │   ├── observation
+│   │       │   │   ├── application
+│   │       │   │   │   ├── orchestration
+│   │       │   │   │   │   ├── diffObservations.ts
+│   │       │   │   │   │   └── normalizeSnapshot.ts
+│   │       │   │   │   ├── projection
+│   │       │   │   │   │   └── tracking.observation.projection.ts
+│   │       │   │   │   └── tests
+│   │       │   │   │       └── diffObservations.test.ts
+│   │       │   │   └── domain
+│   │       │   │       └── model
+│   │       │   │           ├── observationDraft.ts
+│   │       │   │           ├── observation.ts
+│   │       │   │           └── observationType.ts
+│   │       │   ├── series
+│   │       │   │   ├── application
+│   │       │   │   │   └── projection
+│   │       │   │   │       └── tracking.series.classification.ts
+│   │       │   │   └── domain
+│   │       │   │       └── reconcile
+│   │       │   │           ├── expiredExpected.ts
+│   │       │   │           ├── seriesClassification.ts
+│   │       │   │           └── tests
+│   │       │   │               ├── expiredExpected.test.ts
+│   │       │   │               ├── reconcileForDisplay.test.ts
+│   │       │   │               └── seriesClassification.test.ts
+│   │       │   ├── status
+│   │       │   │   ├── application
+│   │       │   │   │   └── projection
+│   │       │   │   │       ├── tests
+│   │       │   │   │       │   └── tracking.status.projection.test.ts
+│   │       │   │   │       └── tracking.status.projection.ts
+│   │       │   │   └── domain
+│   │       │   │       ├── derive
+│   │       │   │       │   └── deriveStatus.ts
+│   │       │   │       ├── model
+│   │       │   │       │   └── containerStatus.ts
+│   │       │   │       └── tests
+│   │       │   │           ├── deriveStatus.deliveryGateOut.test.ts
+│   │       │   │           ├── deriveStatus.emptyGateOut.test.ts
+│   │       │   │           ├── deriveStatus.test.ts
+│   │       │   │           └── deriveStatus.transshipmentProtection.test.ts
+│   │       │   └── timeline
+│   │       │       ├── application
+│   │       │       │   └── projection
+│   │       │       │       ├── tests
+│   │       │       │       │   └── tracking.timeline.readmodel.test.ts
+│   │       │       │       ├── tracking.timeline.blocks.readmodel.ts
+│   │       │       │       └── tracking.timeline.readmodel.ts
+│   │       │       └── domain
+│   │       │           ├── derive
+│   │       │           │   └── deriveTimeline.ts
+│   │       │           ├── model
+│   │       │           │   └── timeline.ts
+│   │       │           └── tests
+│   │       │               └── deriveTimeline.test.ts
+│   │       ├── infrastructure
+│   │       │   ├── bootstrap
+│   │       │   │   └── tracking.bootstrap.ts
+│   │       │   ├── carriers
+│   │       │   │   ├── fetchers
+│   │       │   │   │   ├── cmacgm.fetcher.ts
+│   │       │   │   │   ├── is-rest-carrier.ts
+│   │       │   │   │   ├── maersk.puppeteer.fetcher.ts
+│   │       │   │   │   ├── msc.fetcher.ts
+│   │       │   │   │   └── rest.fetchers.ts
+│   │       │   │   ├── normalizers
+│   │       │   │   │   ├── cmacgm.normalizer.ts
+│   │       │   │   │   ├── lookup-key.ts
+│   │       │   │   │   ├── maersk.normalizer.ts
+│   │       │   │   │   └── msc.normalizer.ts
+│   │       │   │   ├── schemas
+│   │       │   │   │   └── api
+│   │       │   │   │       ├── cmacgm.api.schema.ts
+│   │       │   │   │       ├── maersk.api.schema.ts
+│   │       │   │   │       └── msc.api.schema.ts
+│   │       │   │   └── tests
+│   │       │   │       ├── cmacgmNormalizer.test.ts
+│   │       │   │       ├── cmacgm.transshipment-regression.test.ts
+│   │       │   │       ├── cmacgm.transshipment-semantic-audit.test.ts
+│   │       │   │       ├── emptyReturnMapping.invariants.test.ts
+│   │       │   │       ├── fixtures
+│   │       │   │       │   ├── cmacgm
+│   │       │   │       │   │   ├── cmacgm_full.json
+│   │       │   │       │   │   └── cmacgm_transshipment_tanga_mombasa_myny.json
+│   │       │   │       │   ├── maersk
+│   │       │   │       │   │   └── maersk_full.json
+│   │       │   │       │   └── msc
+│   │       │   │       │       ├── msc_delivered.json
+│   │       │   │       │       ├── msc_discharge_pod.json
+│   │       │   │       │       ├── msc_initial_load.json
+│   │       │   │       │       ├── msc_in_transit.json
+│   │       │   │       │       ├── msc_transshipment_0312_regression.json
+│   │       │   │       │       └── msc_transshipment.json
+│   │       │   │       ├── helpers
+│   │       │   │       │   ├── observationSemanticAudit.ts
+│   │       │   │       │   └── transshipmentSemanticAudit.ts
+│   │       │   │       ├── maerskNormalizer.test.ts
+│   │       │   │       ├── msc.normalizer.detail-parser.test.ts
+│   │       │   │       ├── msc.normalizer.invalid-vessel.test.ts
+│   │       │   │       ├── msc.normalizer.positioned-events.test.ts
+│   │       │   │       ├── mscNormalizer.test.ts
+│   │       │   │       ├── msc.normalizer.transshipment-regression.test.ts
+│   │       │   │       ├── msc.normalizer.version-metadata.test.ts
+│   │       │   │       ├── msc.normalizer.vessel-event-eligibility.test.ts
+│   │       │   │       ├── msc.observation-semantic-audit.test.ts
+│   │       │   │       ├── tracking.persistence.mappers.test.ts
+│   │       │   │       └── unknownCarrierEvent.regression.test.ts
+│   │       │   └── persistence
+│   │       │       ├── supabaseObservationRepository.ts
+│   │       │       ├── supabaseSnapshotRepository.ts
+│   │       │       ├── supabaseSyncMetadataRepository.ts
+│   │       │       ├── supabaseTrackingAlertRepository.ts
+│   │       │       ├── toJson.ts
+│   │       │       ├── tracking.persistence.mappers.ts
+│   │       │       └── tracking.row.ts
+│   │       ├── interface
+│   │       │   └── http
+│   │       │       ├── agent-enroll.controllers.bootstrap.ts
+│   │       │       ├── agent-enroll.controllers.ts
+│   │       │       ├── agent-enroll.schemas.ts
+│   │       │       ├── agent-sync.controllers.bootstrap.ts
+│   │       │       ├── agent-sync.controllers.ts
+│   │       │       ├── agent-sync.schemas.ts
+│   │       │       ├── refresh.controllers.bootstrap.ts
+│   │       │       ├── refresh.controllers.ts
+│   │       │       ├── refresh.schemas.ts
+│   │       │       ├── tests
+│   │       │       │   ├── agent-enroll.controllers.test.ts
+│   │       │       │   ├── agent-sync.controllers.test.ts
+│   │       │       │   ├── refresh.controllers.test.ts
+│   │       │       │   └── tracking.controllers.test.ts
+│   │       │       ├── tracking.controllers.bootstrap.ts
+│   │       │       ├── tracking.controllers.ts
+│   │       │       ├── tracking.http.mappers.ts
+│   │       │       └── tracking.schemas.ts
+│   │       └── README.md
+│   ├── routes
+│   │   ├── [...404].tsx
+│   │   ├── agents
+│   │   │   ├── [id].tsx
+│   │   │   └── index.tsx
+│   │   ├── api
+│   │   │   ├── agent
+│   │   │   │   ├── enroll.ts
+│   │   │   │   ├── heartbeat.ts
+│   │   │   │   ├── targets.ts
+│   │   │   │   ├── tests
+│   │   │   │   │   ├── enroll.route.test.ts
+│   │   │   │   │   ├── heartbeat.route.test.ts
+│   │   │   │   │   ├── targets.route.test.ts
+│   │   │   │   │   └── update-manifest.route.test.ts
+│   │   │   │   └── update-manifest.ts
+│   │   │   ├── agents
+│   │   │   │   ├── [id]
+│   │   │   │   │   ├── request-restart.ts
+│   │   │   │   │   └── request-update.ts
+│   │   │   │   └── [id].ts
+│   │   │   ├── agents.ts
+│   │   │   ├── alerts.ts
+│   │   │   ├── containers
+│   │   │   │   ├── check.ts
+│   │   │   │   ├── [number]
+│   │   │   │   │   └── sync.ts
+│   │   │   │   └── tests
+│   │   │   │       └── check.route.test.ts
+│   │   │   ├── dashboard
+│   │   │   │   ├── charts
+│   │   │   │   │   └── processes-created-by-month.ts
+│   │   │   │   ├── kpis.ts
+│   │   │   │   ├── operational-summary.ts
+│   │   │   │   └── sync.ts
+│   │   │   ├── dev
+│   │   │   │   └── scenarios
+│   │   │   │       ├── catalog.ts
+│   │   │   │       └── load.ts
+│   │   │   ├── processes
+│   │   │   │   ├── [id]
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── refresh.ts
+│   │   │   │   │   └── sync.ts
+│   │   │   │   ├── sync-status.ts
+│   │   │   │   └── sync.ts
+│   │   │   ├── processes.ts
+│   │   │   ├── processes-v2.ts
+│   │   │   ├── refresh
+│   │   │   │   └── status.ts
+│   │   │   ├── refresh-maersk
+│   │   │   │   └── [container].ts
+│   │   │   ├── refresh.ts
+│   │   │   ├── search.ts
+│   │   │   ├── tests
+│   │   │   │   ├── agents.route.test.ts
+│   │   │   │   ├── containers-number-sync.route.test.ts
+│   │   │   │   ├── dashboard-kpis.route.test.ts
+│   │   │   │   ├── dashboard-processes-created-by-month.route.test.ts
+│   │   │   │   ├── dashboard-sync.route.test.ts
+│   │   │   │   ├── processes-process-index.route.test.ts
+│   │   │   │   ├── processes-process-refresh.route.test.ts
+│   │   │   │   ├── processes-process-sync.route.test.ts
+│   │   │   │   ├── processes-sync.route.test.ts
+│   │   │   │   ├── processes-sync-status.route.test.ts
+│   │   │   │   ├── processes-v2.route.test.ts
+│   │   │   │   ├── refresh.route.test.ts
+│   │   │   │   └── search.route.test.ts
+│   │   │   └── tracking
+│   │   │       ├── containers
+│   │   │       │   └── [containerId]
+│   │   │       │       ├── snapshots
+│   │   │       │       │   └── latest.ts
+│   │   │       │       └── snapshots.ts
+│   │   │       └── snapshots
+│   │   │           ├── ingest.route.test.ts
+│   │   │           └── ingest.ts
+│   │   ├── dev
+│   │   │   └── tracking-scenarios.tsx
+│   │   ├── index.tsx
+│   │   └── shipments
+│   │       └── [id].tsx
+│   └── shared
+│       ├── api
+│       │   ├── agent-monitoring.realtime.client.ts
+│       │   ├── dashboard.controllers.bootstrap.ts
+│       │   ├── errorToResponse.ts
+│       │   ├── respondWithSchema.ts
+│       │   ├── search.controllers.bootstrap.ts
+│       │   ├── sync.controllers.bootstrap.ts
+│       │   ├── sync-requests.realtime.client.ts
+│       │   ├── typedFetch.ts
+│       │   └── typedRoute.ts
+│       ├── api-schemas
+│       │   ├── dashboard.schemas.ts
+│       │   ├── processes.schemas.ts
+│       │   └── README.md
+│       ├── config
+│       │   ├── branding.ts
+│       │   ├── env.ts
+│       │   └── server-env.ts
+│       ├── errors
+│       │   ├── container-process.errors.ts
+│       │   └── httpErrors.ts
+│       ├── localization
+│       │   ├── defaultLocale.ts
+│       │   ├── i18n.ts
+│       │   ├── languageSelection.ts
+│       │   ├── resources.ts
+│       │   ├── tests
+│       │   │   └── languageSelection.test.ts
+│       │   └── translationTypes.ts
+│       ├── supabase
+│       │   ├── agent-monitoring.realtime.ts
+│       │   ├── database.types.ts
+│       │   ├── supabase.server.ts
+│       │   ├── supabase.ts
+│       │   ├── sync-requests.realtime.ts
+│       │   ├── tests
+│       │   │   └── sync-requests.realtime.test.ts
+│       │   └── unwrapSupabaseResult.ts
+│       ├── ui
+│       │   ├── AppHeader.tsx
+│       │   ├── Dialog.tsx
+│       │   ├── EmptyState.tsx
+│       │   ├── ExistingProcessError.tsx
+│       │   ├── FormFields.tsx
+│       │   ├── icons
+│       │   │   ├── FlagIcons.tsx
+│       │   │   └── flags
+│       │   │       ├── BRFlag.tsx
+│       │   │       ├── PTFlag.tsx
+│       │   │       └── USFlag.tsx
+│       │   ├── LanguageSwitch.tsx
+│       │   ├── layout
+│       │   │   ├── Panel.tsx
+│       │   │   └── Stack.tsx
+│       │   ├── navigation
+│       │   │   ├── app-navigation.ts
+│       │   │   └── tests
+│       │   │       └── app-navigation.test.ts
+│       │   ├── StatusBadge.tsx
+│       │   └── theme.css
+│       └── utils
+│           ├── carrier.ts
+│           ├── clipboard.ts
+│           ├── findDuplicateStrings.ts
+│           ├── formatDate.ts
+│           ├── formatParseError.ts
+│           ├── normalizeTimestamptz.ts
+│           ├── parseDate.ts
+│           ├── parseWithStack.ts
+│           ├── safeParseOrDefault.ts
+│           ├── tests
+│           │   ├── carrier.test.ts
+│           │   └── clipboard.test.ts
+│           └── typeGuards.ts
+├── supabase
+│   ├── migrations
+│   │   ├── 20260225_01_agent_sync_mvp.sql
+│   │   ├── 20260225_02_refresh_queue_first.sql
+│   │   ├── 20260226_01_agent_runtime_enrolment.sql
+│   │   ├── 20260303_01_add_carrier_label_to_observations.sql
+│   │   ├── 20260305_01_tracking_alerts_ack_only.sql
+│   │   ├── 20260306_02_process_sync_observability_and_alert_ack_metadata.sql
+│   │   ├── 20260309_01_tracking_alert_semantic_message_contract.sql
+│   │   ├── 20260309_02_agents_monitoring_operational_runtime.sql
+│   │   ├── 20260309_03_agents_update_runtime.sql
+│   │   ├── 20260310_01_tracking_alert_lifecycle_state.sql
+│   │   ├── 20260310_02_operational_tables_auto_prune.sql
+│   │   ├── 20260310_03_provider_paced_sync_scheduler.sql
+│   │   ├── 20260310_04_provider_paced_sync_scheduler_cron.sql
+│   │   └── 20260310_05_fix_provider_paced_scheduler_ambiguous_provider.sql
+│   └── .temp
+├── tasks
+│   ├── prd-better-alerts.md
+│   ├── prd-dashboard-alerts.md
+│   ├── prd-dashboard-sort.md
+│   ├── prd-devcontainer-chromium-maersk-fetch.md
+│   ├── prd-disallow-iife.md
+│   ├── prd-event-other.md
+│   ├── prd-global-search.md
+│   ├── prd-shipment-view-screen-composition-ui-workflow-separation-and-naming-vocabulary.md
+│   ├── prd-unified-agent-update-system.md
+│   ├── prd-worktrees.md
+│   └── refactor-features-reorg-baseline.md
+├── test
+│   └── fixtures
+│       └── msc
+│           ├── msc_delivered.json
+│           ├── msc_discharge_pod.json
+│           ├── msc_initial_load.json
+│           ├── msc_in_transit.json
+│           └── msc_transshipment.json
+├── TEST_PLAN.md
+├── test-results
+├── test-stubs
+│   └── solid-toast.mjs
+├── tools
+│   ├── agent
+│   │   ├── agent.scheduler.ts
+│   │   ├── agent.ts
+│   │   ├── backoff.ts
+│   │   ├── build-release.ts
+│   │   ├── bundle-release.ts
+│   │   ├── .cache
+│   │   │   └── downloads
+│   │   │       ├── node-v22.11.0-win-x64.zip
+│   │   │       └── WinSW-x64-v2.12.0.exe
+│   │   ├── cli
+│   │   │   └── ct-agent.ts
+│   │   ├── installer
+│   │   │   ├── agent-tray-host.ps1
+│   │   │   ├── bootstrap.env.template
+│   │   │   ├── ContainerTrackerAgent.xml
+│   │   │   ├── installer.iss
+│   │   │   ├── Output
+│   │   │   ├── resources
+│   │   │   │   └── tray.ico
+│   │   │   ├── stop-agent-runtime.ps1
+│   │   │   └── updater-hidden.ps1
+│   │   ├── pending-activity.ts
+│   │   ├── platform
+│   │   │   ├── common.ts
+│   │   │   ├── linux.adapter.ts
+│   │   │   ├── platform.adapter.ts
+│   │   │   ├── platform.types.ts
+│   │   │   └── windows.adapter.ts
+│   │   ├── rebuild-reinstall.ps1
+│   │   ├── release
+│   │   │   └── release-manifest.ts
+│   │   ├── release-manager.ts
+│   │   ├── release-state.ts
+│   │   ├── runtime
+│   │   │   ├── lifecycle-exit-codes.ts
+│   │   │   └── paths.ts
+│   │   ├── runtime-health.ts
+│   │   ├── runtime-paths.ts
+│   │   ├── supervisor-control.ts
+│   │   ├── supervisor.ts
+│   │   ├── tests
+│   │   │   ├── agent.scheduler.test.ts
+│   │   │   ├── backoff.test.ts
+│   │   │   ├── ct-agent.test.ts
+│   │   │   ├── lifecycle-exit-codes.test.ts
+│   │   │   ├── release-manifest.test.ts
+│   │   │   ├── runtime-paths.test.ts
+│   │   │   ├── self-update.integration.test.ts
+│   │   │   ├── supervisor.test.ts
+│   │   │   └── updater.test.ts
+│   │   ├── tsconfig.json
+│   │   ├── updater.core.ts
+│   │   └── updater.ts
+│   ├── codex-skills-global
+│   │   ├── apply-pr-suggestions
+│   │   │   ├── agents
+│   │   │   │   └── openai.yaml
+│   │   │   └── SKILL.md
+│   │   ├── draft-pr-from-branch
+│   │   │   ├── agents
+│   │   │   │   └── openai.yaml
+│   │   │   ├── scripts
+│   │   │   │   └── generate_pr_draft.sh
+│   │   │   └── SKILL.md
+│   │   ├── implement-existing-prd
+│   │   │   ├── agents
+│   │   │   │   └── openai.yaml
+│   │   │   ├── scripts
+│   │   │   │   └── start_from_prd.py
+│   │   │   └── SKILL.md
+│   │   ├── prd
+│   │   │   └── SKILL.md
+│   │   ├── ralph
+│   │   │   └── SKILL.md
+│   │   ├── .system
+│   │   │   ├── .codex-system-skills.marker
+│   │   │   ├── skill-creator
+│   │   │   │   ├── agents
+│   │   │   │   │   └── openai.yaml
+│   │   │   │   ├── assets
+│   │   │   │   │   ├── skill-creator.png
+│   │   │   │   │   └── skill-creator-small.svg
+│   │   │   │   ├── license.txt
+│   │   │   │   ├── references
+│   │   │   │   │   └── openai_yaml.md
+│   │   │   │   ├── scripts
+│   │   │   │   │   ├── generate_openai_yaml.py
+│   │   │   │   │   ├── init_skill.py
+│   │   │   │   │   ├── __pycache__
+│   │   │   │   │   │   └── generate_openai_yaml.cpython-311.pyc
+│   │   │   │   │   └── quick_validate.py
+│   │   │   │   └── SKILL.md
+│   │   │   └── skill-installer
+│   │   │       ├── agents
+│   │   │       │   └── openai.yaml
+│   │   │       ├── assets
+│   │   │       │   ├── skill-installer.png
+│   │   │       │   └── skill-installer-small.svg
+│   │   │       ├── LICENSE.txt
+│   │   │       ├── scripts
+│   │   │       │   ├── github_utils.py
+│   │   │       │   ├── install-skill-from-github.py
+│   │   │       │   └── list-skills.py
+│   │   │       └── SKILL.md
+│   │   └── wt
+│   │       ├── agents
+│   │       │   └── openai.yaml
+│   │       ├── scripts
+│   │       │   └── wt_implement_from_query.py
+│   │       └── SKILL.md
+│   ├── ralph-loop
+│   │   ├── AGENTS.md
+│   │   ├── CLAUDE.md
+│   │   ├── .claude-plugin
+│   │   │   ├── marketplace.json
+│   │   │   └── plugin.json
+│   │   ├── flowchart
+│   │   │   ├── eslint.config.js
+│   │   │   ├── .gitignore
+│   │   │   ├── index.html
+│   │   │   ├── package.json
+│   │   │   ├── package-lock.json
+│   │   │   ├── public
+│   │   │   │   └── vite.svg
+│   │   │   ├── README.md
+│   │   │   ├── src
+│   │   │   │   ├── App.css
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── assets
+│   │   │   │   │   └── react.svg
+│   │   │   │   ├── index.css
+│   │   │   │   └── main.tsx
+│   │   │   ├── tsconfig.app.json
+│   │   │   ├── tsconfig.json
+│   │   │   ├── tsconfig.node.json
+│   │   │   └── vite.config.ts
+│   │   ├── .github
+│   │   │   └── workflows
+│   │   │       └── deploy.yml
+│   │   ├── .gitignore
+│   │   ├── LICENSE
+│   │   ├── prd.json.example
+│   │   ├── prompt.md
+│   │   ├── ralph-flowchart.png
+│   │   ├── ralph.sh
+│   │   ├── ralph.webp
+│   │   ├── README.md
+│   │   └── skills
+│   │       ├── prd
+│   │       │   └── SKILL.md
+│   │       └── ralph
+│   │           └── SKILL.md
+│   └── worktrees
+│       ├── lib
+│       │   ├── common.sh
+│       │   └── usage.sh
+│       ├── seed.allowlist
+│       ├── wt-create.sh
+│       ├── wt-implement.sh
+│       └── wt-prune.sh
+├── tsconfig.json
+├── ux_investigation_dump.md
+├── .vinxi
+│   ├── prerender
+│   │   ├── chunks
+│   │   │   └── nitro
+│   │   │       ├── nitro.mjs
+│   │   │       └── nitro.mjs.map
+│   │   ├── index.mjs
+│   │   └── index.mjs.map
+│   └── types
+│       ├── nitro-config.d.ts
+│       ├── nitro.d.ts
+│       ├── nitro-imports.d.ts
+│       ├── nitro-routes.d.ts
+│       └── tsconfig.json
+├── vitest.config.ts
+├── vitest.setup.ts
+└── .vscode
+    ├── mcp.json
+    └── settings.json
+
+333 directories, 1009 files
+
+=== CONTAGEM DE LINHAS (.ts / .tsx) ===
+Linhas	Arquivo
+------	------
+1821	./src/modules/tracking/dev/scenario-lab/scenario.catalog.ts
+1786	./src/modules/process/ui/CreateProcessDialog.tsx
+1594	./tools/agent/agent.ts
+1258	./tools/agent/build-release.ts
+1041	./src/modules/tracking/features/alerts/domain/tests/deriveAlerts.test.ts
+881	./src/modules/process/ui/components/DashboardProcessTable.tsx
+787	./src/modules/process/ui/CreateProcessDialog.view.tsx
+784	./src/modules/agent/application/agent-monitoring.usecases.ts
+777	./src/shared/supabase/database.types.ts
+716	./src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts
+697	./tools/agent/cli/ct-agent.ts
+673	./src/routes/dev/tracking-scenarios.tsx
+666	./tools/agent/supervisor.ts
+662	./src/modules/process/ui/screens/DashboardScreen.tsx
+595	./src/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel.ts
+579	./src/modules/process/interface/http/tests/process.controllers.test.ts
+560	./e2e/process-detail-qa.spec.ts
+547	./src/capabilities/search/ui/SearchOverlay.panel.tsx
+542	./src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts
+533	./src/modules/tracking/infrastructure/persistence/tracking.persistence.mappers.ts
+527	./src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts
+511	./src/modules/process/application/usecases/list-processes-with-operational-summary.usecase.ts
+501	./src/modules/tracking/application/tests/pipeline.integration.test.ts
+496	./src/modules/tracking/interface/http/agent-sync.controllers.ts
+489	./src/modules/tracking/application/tests/pipeline.alert-idempotency.integration.test.ts
+489	./src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts
+482	./src/modules/tracking/infrastructure/carriers/tests/mscNormalizer.test.ts
+481	./src/modules/process/interface/http/process.http.mappers.ts
+454	./src/modules/tracking/domain/tests/actualVsExpected.test.ts
+454	./src/capabilities/dashboard/application/dashboard.operational-summary.readmodel.ts
+435	./src/modules/agent/ui/mappers/agent.ui-mapper.ts
+423	./src/modules/tracking/dev/scenario-lab/scenario.builder.ts
+418	./src/modules/process/features/operational-projection/application/tests/aggregateOperationalSummary.test.ts
+413	./src/modules/tracking/features/alerts/domain/derive/deriveAlerts.ts
+412	./tools/agent/updater.core.ts
+404	./src/modules/agent/application/update-manifest.service.ts
+401	./src/modules/process/ui/viewmodels/tests/dashboard-filter-interaction.vm.test.ts
+387	./e2e/alerts-ack-reconciliation.spec.ts
+379	./tools/ralph-loop/flowchart/src/App.tsx
+374	./src/modules/tracking/features/series/domain/reconcile/tests/seriesClassification.test.ts
+372	./src/modules/agent/ui/agent-detail-page.tsx
+369	./src/modules/process/interface/http/process.controllers.ts
+368	./src/modules/tracking/interface/http/tests/agent-sync.controllers.test.ts
+362	./src/modules/process/ui/validation/trelloSmartPaste.validation.ts
+362	./src/modules/process/ui/components/TimelinePanel.tsx
+360	./src/modules/tracking/interface/http/agent-enroll.controllers.ts
+360	./src/modules/process/ui/validation/tests/dashboardFilterQuery.validation.test.ts
+359	./src/capabilities/search/application/search.usecase.ts
+351	./src/capabilities/search/interface/http/tests/search.controllers.test.ts
+350	./src/modules/process/ui/timeline/TimelineBlocks.tsx
+346	./src/modules/tracking/application/projection/tracking.operational-summary.readmodel.ts
+336	./src/modules/process/ui/validation/tests/processApi.validation.test.ts
+335	./src/modules/process/features/operational-projection/application/deriveProcessStatus.ts
+333	./tools/agent/updater.ts
+333	./src/shared/api/sync.controllers.bootstrap.ts
+333	./src/modules/process/ui/screens/shipment/usecases/refreshShipmentTracking.usecase.ts
+331	./src/modules/agent/interface/http/agent-monitoring.controllers.ts
+330	./src/modules/tracking/infrastructure/carriers/tests/tracking.persistence.mappers.test.ts
+327	./src/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer.ts
+323	./src/modules/tracking/application/projection/tests/tracking.operational-summary.readmodel.test.ts
+323	./src/modules/process/ui/validation/processApi.validation.ts
+322	./src/modules/tracking/interface/http/agent-enroll.controllers.bootstrap.ts
+321	./src/modules/process/ui/components/ShipmentHeader.tsx
+320	./src/modules/process/ui/timeline/tests/timelineBlockModel.test.ts
+308	./src/modules/process/ui/mappers/processDetail.ui-mapper.ts
+308	./src/capabilities/search/application/tests/search.usecase.test.ts
+307	./src/modules/process/ui/viewmodels/tests/dashboard-sort-interaction.vm.test.ts
+305	./src/shared/api-schemas/processes.schemas.ts
+304	./src/shared/supabase/tests/sync-requests.realtime.test.ts
+299	./tools/agent/release-manager.ts
+299	./src/modules/process/ui/viewmodels/dashboard-filter.service.ts
+298	./src/modules/agent/ui/components/AgentsTable.tsx
+296	./src/shared/localization/i18n.ts
+293	./tools/agent/bundle-release.ts
+293	./src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts
+292	./src/modules/tracking/features/series/domain/reconcile/tests/reconcileForDisplay.test.ts
+292	./src/modules/process/ui/components/TimelineNode.tsx
+290	./src/modules/tracking/features/timeline/domain/derive/deriveTimeline.ts
+285	./src/shared/supabase/sync-requests.realtime.ts
+275	./src/shared/ui/AppHeader.tsx
+272	./src/modules/tracking/application/usecases/tests/get-container-summary.usecase.test.ts
+271	./tools/agent/release/release-manifest.ts
+270	./src/modules/tracking/infrastructure/carriers/tests/cmacgmNormalizer.test.ts
+267	./src/modules/process/ui/hooks/useProcessSyncRealtime.ts
+267	./src/modules/agent/application/tests/update-manifest.service.test.ts
+255	./src/modules/tracking/features/series/domain/reconcile/tests/expiredExpected.test.ts
+255	./src/modules/process/ui/viewmodels/dashboard-sort.service.ts
+251	./tools/agent/tests/updater.test.ts
+249	./src/modules/tracking/infrastructure/carriers/tests/maerskNormalizer.test.ts
+241	./src/modules/process/ui/mappers/tests/trackingEventLabel.ui-mapper.test.ts
+241	./src/modules/process/ui/components/dashboard-columns.ts
+240	./src/modules/process/ui/screens/shipment/lib/shipmentScreenHelpers.test.ts
+239	./src/modules/tracking/dev/scenario-lab/scenario.seed.ts
+238	./src/modules/agent/infrastructure/persistence/supabaseAgentMonitoringRepository.ts
+235	./src/modules/tracking/application/tracking.usecases.ts
+234	./src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.test.ts
+233	./tools/agent/tests/supervisor.test.ts
+232	./src/modules/tracking/interface/http/tests/tracking.controllers.test.ts
+228	./src/shared/supabase/agent-monitoring.realtime.ts
+228	./src/modules/process/ui/tests/fetchProcess.cache.test.ts
+226	./src/modules/tracking/interface/http/tests/refresh.controllers.test.ts
+226	./src/modules/tracking/features/status/domain/derive/deriveStatus.ts
+225	./src/modules/process/ui/validation/tests/dashboardSortQuery.validation.test.ts
+222	./src/modules/tracking/application/usecases/tests/search-tracking-by-derived-status-text.usecase.test.ts
+222	./src/modules/agent/infrastructure/persistence/agent-monitoring.persistence.mappers.ts
+221	./src/modules/process/ui/components/DashboardActivityChartCard.tsx
+220	./src/capabilities/sync/application/usecases/tests/sync-process.usecase.test.ts
+219	./src/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer.ts
+218	./src/capabilities/sync/interface/http/tests/sync.controllers.test.ts
+214	./src/modules/process/ui/validation/dashboardFilterQuery.validation.ts
+214	./src/modules/agent/interface/http/agent-monitoring.schemas.ts
+213	./src/capabilities/sync/application/usecases/tests/sync-dashboard.usecase.test.ts
+210	./src/modules/tracking/application/usecases/tests/search-tracking-by-vessel-name.usecase.test.ts
+209	./src/modules/process/ui/components/AlertsListItem.tsx
+204	./src/modules/tracking/features/series/domain/reconcile/seriesClassification.ts
+202	./src/modules/tracking/interface/http/tests/agent-enroll.controllers.test.ts
+202	./src/modules/process/ui/mappers/tests/processList.ui-mapper.test.ts
+202	./src/modules/process/ui/components/DeleteShipmentDialog.tsx
+202	./src/capabilities/sync/application/services/sync-status-aggregation.service.ts
+200	./src/modules/process/ui/utils/sync-realtime-coordinator.ts
+200	./src/modules/process/ui/fetchProcess.ts
+200	./src/modules/process/ui/components/UnifiedDashboardFilters.tsx
+199	./src/modules/tracking/features/alerts/tests/noMovementBreakpoints.test.ts
+199	./src/modules/tracking/application/usecases/get-container-summary.usecase.ts
+199	./src/capabilities/search/ui/SearchOverlay.tsx
+198	./src/modules/process/interface/http/tests/process.http.mappers.test.ts
+196	./src/modules/tracking/features/status/domain/tests/deriveStatus.test.ts
+191	./src/modules/process/ui/viewmodels/tests/dashboard-sort-null-policy.vm.test.ts
+191	./src/capabilities/dashboard/application/tests/dashboard.processes-created-by-month.readmodel.test.ts
+190	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.detail-parser.test.ts
+189	./src/modules/process/ui/validation/trelloSmartPasteApply.validation.ts
+189	./src/modules/agent/application/agent-monitoring.repository.ts
+188	./src/modules/process/ui/utils/tests/refresh-sync-polling.test.ts
+185	./src/modules/tracking/features/status/domain/tests/deriveStatus.transshipmentProtection.test.ts
+182	./src/modules/process/ui/TimelineNode.layout.tsx
+181	./src/modules/process/ui/components/ProcessSyncButton.tsx
+180	./src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts
+177	./src/modules/agent/ui/agents-page.tsx
+175	./src/modules/process/ui/components/SyncCell.tsx
+174	./src/modules/process/ui/components/unified/ImporterChipDropdown.tsx
+174	./src/capabilities/sync/application/services/sync-target-resolver.service.ts
+170	./src/modules/tracking/application/projection/tests/voyageSegments.test.ts
+168	./src/modules/container/infrastructure/persistence/container.repository.supabase.ts
+166	./src/capabilities/sync/application/usecases/refresh-process.usecase.ts
+165	./src/capabilities/sync/interface/http/sync.controllers.ts
+164	./src/modules/tracking/infrastructure/carriers/tests/unknownCarrierEvent.regression.test.ts
+164	./src/modules/process/ui/components/PredictionHistoryTable.tsx
+163	./src/modules/agent/interface/http/tests/update-manifest.controllers.test.ts
+161	./src/modules/process/ui/screens/shipment/ShipmentScreen.tsx
+160	./src/modules/tracking/interface/http/tracking.controllers.ts
+160	./src/modules/tracking/features/alerts/domain/model/trackingAlert.ts
+160	./src/modules/process/ui/components/ObservationInspector.tsx
+160	./src/capabilities/sync/application/usecases/tests/get-sync-status.usecase.test.ts
+158	./src/capabilities/sync/application/usecases/sync-process.usecase.ts
+156	./tools/agent/tests/self-update.integration.test.ts
+156	./tools/agent/release-state.ts
+155	./src/modules/tracking/application/orchestration/pipeline.ts
+155	./src/capabilities/sync/application/usecases/sync-dashboard.usecase.ts
+153	./src/capabilities/sync/application/usecases/sync-container.usecase.ts
+152	./src/capabilities/sync/application/usecases/tests/sync-container.usecase.test.ts
+151	./src/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer.ts
+148	./tools/agent/tests/agent.scheduler.test.ts
+148	./src/shared/ui/StatusBadge.tsx
+148	./src/modules/tracking/dev/scenario-lab/scenario.types.ts
+148	./src/entry-client.tsx
+146	./src/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel.ts
+146	./src/modules/process/ui/utils/tests/current-tracking-context.test.ts
+145	./src/modules/tracking/features/timeline/domain/tests/deriveTimeline.test.ts
+145	./src/modules/process/ui/mappers/containerSync.ui-mapper.ts
+142	./src/modules/process/ui/screens/shipment/hooks/useShipmentDialogsController.ts
+141	./src/capabilities/sync/application/usecases/tests/refresh-process.usecase.test.ts
+141	./src/capabilities/dashboard/interface/http/dashboard.controllers.ts
+140	./src/modules/process/ui/mappers/trackingEventLabel.ui-mapper.ts
+140	./src/modules/process/ui/components/ContainerSelector.tsx
+138	./src/modules/process/ui/validation/containerBulkPaste.validation.ts
+138	./src/modules/process/ui/mappers/tests/containerSummary.ui-mapper.test.ts
+137	./src/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper.ts
+136	./src/modules/tracking/interface/http/tracking.schemas.ts
+136	./src/modules/process/ui/screens/shipment/hooks/useShipmentRefreshController.ts
+135	./src/modules/agent/ui/components/AgentCardList.tsx
+134	./src/shared/ui/FormFields.tsx
+134	./src/modules/tracking/infrastructure/carriers/tests/cmacgm.transshipment-semantic-audit.test.ts
+132	./src/modules/tracking/infrastructure/carriers/tests/helpers/transshipmentSemanticAudit.ts
+132	./src/capabilities/dashboard/application/dashboard.processes-created-by-month.readmodel.ts
+131	./src/shared/ui/navigation/app-navigation.ts
+131	./src/modules/process/ui/timeline/currentVoyage.ts
+130	./src/modules/process/ui/tests/ShipmentView.sync-realtime.test.ts
+129	./src/modules/process/ui/validation/dashboardSortQuery.validation.ts
+129	./src/modules/container/application/usecases/tests/reconcile-containers.usecase.test.ts
+127	./src/modules/process/ui/components/DashboardRefreshButton.tsx
+127	./src/modules/process/features/operational-projection/application/tests/deriveProcessStatus.test.ts
+126	./src/modules/tracking/domain/tests/fingerprint.test.ts
+126	./src/modules/tracking/application/usecases/tests/get-containers-sync-metadata.usecase.test.ts
+126	./src/modules/process/ui/validation/tests/trelloSmartPasteApply.validation.test.ts
+125	./src/modules/tracking/infrastructure/carriers/tests/emptyReturnMapping.invariants.test.ts
+125	./src/modules/process/ui/telemetry/tests/dashboardSort.telemetry.test.ts
+125	./src/modules/process/ui/mappers/tests/container-chip-sync-state.test.ts
+125	./src/modules/process/application/usecases/tests/search-processes-by-text.usecase.test.ts
+125	./src/modules/container/application/usecases/tests/search-containers-by-number.usecase.test.ts
+124	./src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts
+124	./src/modules/tracking/features/status/domain/tests/deriveStatus.emptyGateOut.test.ts
+124	./src/modules/process/ui/utils/tests/dashboard-row-navigation.test.ts
+124	./src/modules/agent/ui/components/AgentFleetSummary.tsx
+122	./src/shared/ui/navigation/tests/app-navigation.test.ts
+122	./src/shared/ui/Dialog.tsx
+121	./src/modules/tracking/interface/http/refresh.controllers.ts
+121	./src/modules/process/ui/viewmodels/shipment.vm.ts
+121	./src/modules/process/ui/screens/shipment/lib/shipmentRefresh.status.ts
+121	./src/modules/agent/ui/vm/agent.vm.ts
+121	./src/capabilities/sync/application/services/sync-enqueue-policy.service.ts
+121	./src/capabilities/dashboard/application/tests/dashboard.kpis.readmodel.test.ts
+118	./src/modules/tracking/application/usecases/tests/get-containers-summary.usecase.test.ts
+117	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.vessel-event-eligibility.test.ts
+116	./src/modules/tracking/application/usecases/get-containers-sync-metadata.usecase.ts
+115	./src/shared/ui/ExistingProcessError.tsx
+115	./src/modules/process/ui/utils/refresh-sync-polling.ts
+113	./tools/agent/tests/ct-agent.test.ts
+113	./src/modules/process/ui/validation/tests/createProcessCloseGuard.validation.test.ts
+112	./src/modules/tracking/application/projection/tracking.search.readmodel.ts
+111	./src/modules/tracking/features/alerts/application/usecases/tests/list-active-alert-read-model.usecase.test.ts
+111	./src/modules/process/ui/mappers/tests/process-header-sync.test.ts
+110	./src/modules/process/ui/components/ShipmentDataView.tsx
+110	./src/modules/agent/ui/api/agent.api.ts
+109	./src/modules/agent/interface/http/agent-monitoring.http.mappers.ts
+108	./src/modules/tracking/infrastructure/persistence/supabaseObservationRepository.ts
+107	./src/modules/tracking/features/alerts/application/projection/tracking.alert.projection.ts
+107	./src/modules/process/ui/validation/tests/containerBulkPaste.validation.test.ts
+107	./src/modules/process/ui/screens/shipment/components/ShipmentScreenLayout.tsx
+107	./src/modules/process/ui/mappers/processList.ui-mapper.ts
+107	./src/modules/process/ui/components/DashboardKpiCard.tsx
+106	./src/modules/tracking/features/status/domain/tests/deriveStatus.deliveryGateOut.test.ts
+105	./src/modules/process/ui/components/unified/MultiSelectChipDropdown.tsx
+105	./src/modules/process/ui/components/ShipmentCurrentStatusDetails.tsx
+104	./src/modules/tracking/features/series/domain/reconcile/expiredExpected.ts
+104	./src/modules/process/ui/validation/tests/dashboardFilterStorage.validation.test.ts
+103	./src/modules/process/ui/components/tests/dashboard-status-cell.presenter.test.ts
+102	./src/modules/process/ui/utils/tests/eta-labels.test.ts
+102	./src/modules/process/ui/mappers/tests/dashboard-kpis.ui-mapper.test.ts
+101	./src/shared/config/server-env.ts
+101	./src/capabilities/sync/application/usecases/get-sync-status.usecase.ts
+99	./tools/agent/runtime-paths.ts
+99	./tools/agent/platform/windows.adapter.ts
+99	./src/modules/tracking/features/observation/domain/model/observation.ts
+99	./src/modules/process/ui/utils/tests/dashboard-refresh.test.ts
+99	./src/modules/agent/interface/http/update-manifest.controllers.ts
+98	./src/modules/tracking/application/usecases/fetch-and-process.usecase.ts
+97	./src/modules/process/ui/components/unified/SingleSelectChipDropdown.tsx
+97	./src/modules/agent/ui/components/AgentFiltersBar.tsx
+96	./src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts
+95	./src/modules/container/application/usecases/reconcile-containers.usecase.ts
+94	./src/shared/supabase/supabase.ts
+94	./src/modules/tracking/application/projection/locationDisplayResolver.ts
+93	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.transshipment-regression.test.ts
+93	./src/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource.ts
+92	./src/modules/tracking/application/usecases/tests/refresh-rest-container.usecase.test.ts
+92	./src/modules/tracking/application/projection/locationDisplayResolver.test.ts
+92	./src/modules/process/ui/validation/tests/dashboardSortStorage.validation.test.ts
+91	./tools/agent/tests/release-manifest.test.ts
+91	./tools/agent/agent.scheduler.ts
+91	./src/modules/tracking/application/projection/voyageSegments.ts
+91	./src/modules/process/ui/mappers/tests/processStatusMicrobadge.ui-mapper.test.ts
+89	./tools/agent/runtime/paths.ts
+89	./src/capabilities/sync/application/sync.usecases.ts
+88	./src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts
+88	./src/modules/tracking/features/alerts/application/projection/tests/tracking.alert-display.readmodel.test.ts
+88	./src/modules/process/ui/screens/shipment/hooks/useShipmentAlertActionsController.ts
+87	./src/modules/tracking/infrastructure/carriers/tests/cmacgm.transshipment-regression.test.ts
+87	./src/modules/tracking/features/observation/application/tests/diffObservations.test.ts
+85	./src/modules/process/application/process.usecases.ts
+84	./tools/agent/pending-activity.ts
+84	./src/modules/process/ui/components/unified/ActiveFiltersPanel.tsx
+83	./tools/agent/platform/linux.adapter.ts
+83	./src/shared/api-schemas/dashboard.schemas.ts
+83	./src/modules/process/ui/components/Icons.tsx
+81	./src/modules/process/ui/components/tests/process-status-badges.presenter.test.ts
+80	./src/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository.ts
+80	./src/modules/tracking/application/usecases/refresh-rest-container.usecase.ts
+79	./src/modules/process/ui/components/AlertsPanel.tsx
+79	./src/modules/process/infrastructure/persistence/process.persistence.mappers.ts
+78	./src/modules/container/application/usecases/tests/find-containers-by-number.usecase.test.ts
+78	./src/lib/theme.ts
+77	./src/shared/utils/formatDate.ts
+76	./tools/agent/runtime-health.ts
+76	./src/modules/process/ui/utils/current-tracking-context.ts
+76	./src/modules/process/ui/mappers/dashboard-kpis.ui-mapper.ts
+75	./src/modules/process/ui/mappers/tests/dashboardProcessExceptions.ui-mapper.test.ts
+75	./src/modules/process/ui/components/PredictionHistoryModal.tsx
+75	./src/capabilities/sync/tests/sync.boundary.test.ts
+75	./src/capabilities/sync/presenter/sync-response.presenter.ts
+75	./src/capabilities/search/tests/search.boundary.test.ts
+74	./src/shared/localization/resources.ts
+74	./src/modules/process/ui/validation/tests/trelloSmartPaste.validation.test.ts
+74	./src/modules/container/application/usecases/search-containers-by-number.usecase.ts
+73	./src/modules/agent/ui/components/AgentRecentActivityCard.tsx
+72	./tools/agent/tests/runtime-paths.test.ts
+72	./src/modules/tracking/features/observation/domain/model/observationDraft.ts
+72	./src/modules/agent/ui/components/AgentHealthCard.tsx
+71	./src/routes/api/dev/scenarios/load.ts
+71	./src/modules/process/infrastructure/persistence/supabaseProcessRepository.ts
+71	./src/modules/process/application/usecases/create-process.usecase.ts
+70	./src/modules/tracking/features/alerts/application/projection/tests/tracking.alert.projection.test.ts
+70	./src/modules/process/ui/validation/dashboardFilterStorage.validation.ts
+68	./vitest.config.ts
+68	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.version-metadata.test.ts
+68	./src/modules/tracking/infrastructure/carriers/schemas/api/maersk.api.schema.ts
+68	./src/modules/process/ui/validation/dashboardSortStorage.validation.ts
+67	./src/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel.ts
+67	./src/modules/tracking/application/usecases/get-containers-summary.usecase.ts
+67	./src/modules/container/application/usecases/create-many-containers.usecase.ts
+66	./src/modules/tracking/interface/http/refresh.schemas.ts
+66	./src/modules/process/ui/components/ShipmentInfoCard.tsx
+65	./src/modules/process/ui/utils/eta-labels.ts
+65	./src/modules/process/ui/tests/fetchDashboardProcessesCreatedByMonth.test.ts
+64	./src/shared/ui/LanguageSwitch.tsx
+64	./src/modules/tracking/features/alerts/domain/identity/alertFingerprint.ts
+64	./src/modules/process/ui/validation/createProcessCloseGuard.validation.ts
+64	./src/modules/container/interface/http/tests/container.controllers.test.ts
+64	./src/modules/agent/ui/components/AgentPageHeader.tsx
+63	./src/modules/tracking/interface/http/agent-sync.schemas.ts
+63	./src/modules/tracking/infrastructure/carriers/tests/helpers/observationSemanticAudit.ts
+63	./src/modules/tracking/features/observation/application/orchestration/diffObservations.ts
+63	./src/modules/process/ui/api/tests/processSync.api.test.ts
+62	./src/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema.ts
+62	./src/modules/tracking/features/timeline/application/projection/tests/tracking.timeline.readmodel.test.ts
+62	./src/modules/process/ui/components/tests/timeline-current-voyage.test.ts
+61	./src/modules/process/application/usecases/search-processes-by-text.usecase.ts
+60	./src/modules/tracking/dev/scenario-lab/tests/scenario.builder.test.ts
+60	./src/modules/tracking/application/usecases/save-and-process.usecase.ts
+59	./src/modules/tracking/dev/scenario-lab/tests/scenario.seed.test.ts
+59	./src/modules/process/ui/components/dashboard-status-cell.presenter.ts
+59	./src/capabilities/dashboard/application/dashboard.kpis.readmodel.ts
+58	./src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts
+57	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.positioned-events.test.ts
+57	./src/modules/process/ui/screens/shipment/hooks/useShipmentSelectedContainer.ts
+57	./src/modules/process/ui/screens/shipment/components/ShipmentContainersView.tsx
+57	./src/modules/process/ui/process-status-color.ts
+57	./src/modules/process/application/usecases/update-process.usecase.ts
+56	./src/modules/process/ui/utils/tests/dashboard-sync-reconciliation.test.ts
+56	./src/modules/process/ui/screens/shipment/lib/shipmentEdit.mapper.ts
+56	./src/modules/agent/ui/components/AgentMetricsCard.tsx
+56	./src/modules/agent/ui/components/AgentDiagnosticsCard.tsx
+55	./src/modules/tracking/infrastructure/carriers/tests/msc.observation-semantic-audit.test.ts
+55	./src/modules/tracking/application/ports/tracking.alert.repository.ts
+55	./src/modules/process/ui/components/DeleteShipmentSummary.tsx
+54	./src/shared/api/errorToResponse.ts
+54	./src/modules/tracking/interface/http/tracking.http.mappers.ts
+54	./src/modules/process/ui/components/unified/MultiSelectOptionsList.tsx
+53	./tools/agent/supervisor-control.ts
+53	./src/routes/api/dev/scenarios/catalog.ts
+53	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.invalid-vessel.test.ts
+53	./src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts
+53	./src/modules/process/ui/hooks/tests/useProcessSyncRealtime.test.ts
+53	./src/capabilities/sync/interface/http/sync.controllers.bootstrap.ts
+52	./src/modules/tracking/domain/identity/fingerprint.ts
+52	./src/modules/process/ui/validation/tests/containerFormState.validation.test.ts
+52	./src/modules/process/ui/components/unified/SingleSelectOptionsList.tsx
+52	./src/modules/container/interface/http/container.controllers.ts
+51	./src/modules/tracking/features/observation/application/projection/tracking.observation.projection.ts
+51	./src/modules/process/ui/telemetry/dashboardSort.telemetry.ts
+51	./src/modules/process/ui/mappers/containerSummary.ui-mapper.ts
+51	./src/modules/process/ui/components/tests/process-sync-button.test.ts
+51	./src/modules/process/features/operational-projection/application/operationalSemantics.ts
+51	./src/modules/process/application/usecases/tests/delete-process.usecase.test.ts
+50	./src/shared/ui/layout/Panel.tsx
+50	./src/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema.ts
+50	./src/modules/process/ui/validation/containerFormState.validation.ts
+50	./src/modules/process/ui/utils/tests/formatRelativeTime.test.ts
+50	./src/modules/process/ui/components/DeleteShipmentConfirmationInput.tsx
+49	./src/modules/process/ui/validation/processConflict.validation.ts
+49	./src/modules/process/ui/timeline/tests/timelineEventIcon.test.ts
+49	./src/modules/process/features/operational-projection/application/processOperationalSummary.ts
+48	./src/shared/ui/EmptyState.tsx
+48	./src/modules/process/ui/components/tests/dashboard-refresh-button.test.ts
+47	./src/modules/process/ui/utils/dashboard-refresh.ts
+47	./src/modules/process/ui/mappers/processStatus.ui-mapper.ts
+47	./src/modules/process/ui/components/process-status-badges.presenter.ts
+47	./src/modules/container/infrastructure/persistence/container.persistence.mappers.ts
+46	./src/modules/process/ui/components/computeRowDistribution.test.ts
+45	./src/shared/utils/formatParseError.ts
+45	./src/routes/api/tests/refresh.route.test.ts
+45	./src/modules/process/ui/screens/shipment/components/ShipmentDialogsHost.tsx
+44	./vitest.setup.ts
+44	./tools/agent/platform/common.ts
+44	./src/shared/ui/icons/FlagIcons.tsx
+44	./src/routes/api/tests/agents.route.test.ts
+44	./src/modules/process/ui/utils/dashboard-row-navigation.ts
+44	./src/modules/agent/ui/components/AgentStatusBadge.tsx
+44	./src/modules/agent/infrastructure/bootstrap/agent.bootstrap.ts
+43	./tools/agent/platform/platform.types.ts
+43	./tools/agent/platform/platform.adapter.ts
+43	./src/shared/supabase/unwrapSupabaseResult.ts
+43	./src/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper.ts
+43	./src/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel.ts
+43	./src/modules/tracking/dev/scenario-lab/tests/scenario.catalog.test.ts
+43	./src/modules/container/application/container.usecases.ts
+43	./src/modules/agent/ui/components/AgentIdentityCard.tsx
+43	./src/capabilities/search/interface/http/search.schemas.ts
+42	./src/shared/errors/container-process.errors.ts
+42	./src/modules/tracking/features/status/domain/model/containerStatus.ts
+42	./src/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase.ts
+42	./src/modules/process/ui/mappers/trackingStatus.ui-mapper.ts
+42	./src/modules/process/interface/http/process.schemas.ts
+42	./src/modules/process/infrastructure/bootstrap/process.bootstrap.ts
+42	./src/modules/agent/ui/components/AgentRowStatus.tsx
+42	./src/capabilities/dashboard/application/dashboard.processes.projection.ts
+41	./src/modules/process/ui/mappers/tests/dashboardGlobalAlerts.ui-mapper.test.ts
+41	./src/capabilities/search/interface/http/search.controllers.ts
+40	./src/modules/process/ui/timeline/timelineEventIcon.ts
+40	./src/modules/agent/ui/components/AgentEnrollmentCard.tsx
+39	./src/modules/process/ui/mappers/trackingAlert.ui-mapper.ts
+39	./src/capabilities/sync/interface/http/sync-status.controllers.ts
+38	./src/modules/process/ui/tests/fetchDashboardKpis.test.ts
+38	./src/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper.ts
+38	./src/entry-server.tsx
+38	./src/capabilities/sync/interface/http/tests/sync-status.controllers.test.ts
+37	./src/modules/tracking/infrastructure/persistence/toJson.ts
+37	./src/modules/process/ui/screens/shipment/usecases/submitEditProcess.usecase.ts
+37	./src/modules/process/ui/mappers/dashboard-processes-created-by-month.ui-mapper.ts
+36	./src/modules/process/ui/screens/shipment/lib/shipmentError.presenter.ts
+36	./src/modules/process/ui/mappers/seriesLabel.ui-mapper.ts
+36	./src/modules/process/ui/components/ShipmentCurrentStatus.tsx
+36	./src/modules/container/domain/container.validation.ts
+35	./src/shared/utils/parseDate.ts
+35	./src/shared/api/sync-requests.realtime.client.ts
+35	./src/shared/api/agent-monitoring.realtime.client.ts
+35	./src/modules/tracking/dev/scenario-lab/scenario.seed.bootstrap.ts
+35	./src/modules/process/ui/screens/shipment/usecases/submitCreateProcess.usecase.ts
+35	./src/modules/process/ui/fetchDashboardProcessesCreatedByMonth.ts
+35	./src/modules/process/ui/components/unified/ImporterOptionsList.tsx
+35	./src/modules/container/application/usecases/create-container.usecase.ts
+35	./src/modules/agent/interface/http/tests/agent-monitoring.http.mappers.test.ts
+34	./src/shared/utils/clipboard.ts
+34	./src/shared/localization/tests/languageSelection.test.ts
+34	./src/shared/api/typedFetch.ts
+34	./src/modules/tracking/features/observation/application/orchestration/normalizeSnapshot.ts
+34	./src/modules/tracking/domain/model/snapshot.ts
+34	./src/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase.ts
+34	./src/capabilities/sync/application/ports/sync-queue.port.ts
+33	./tools/agent/tests/backoff.test.ts
+33	./src/routes/[...404].tsx
+33	./src/modules/tracking/features/timeline/domain/model/timeline.ts
+33	./src/modules/tracking/features/observation/domain/model/observationType.ts
+33	./src/modules/process/ui/api/processSync.api.ts
+33	./src/capabilities/dashboard/interface/http/dashboard.controllers.bootstrap.ts
+32	./src/modules/tracking/features/alerts/application/usecases/acknowledge-alert.usecase.ts
+32	./src/modules/process/ui/viewmodels/process-summary.vm.ts
+32	./src/modules/process/ui/components/DeleteShipmentWarning.tsx
+32	./src/modules/process/ui/components/AlertsList.tsx
+31	./tools/agent/backoff.ts
+31	./src/shared/utils/normalizeTimestamptz.ts
+31	./src/capabilities/dashboard/application/dashboard.usecases.ts
+31	./src/app.tsx
+30	./src/shared/utils/safeParseOrDefault.ts
+30	./src/shared/config/env.ts
+30	./src/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase.ts
+30	./src/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting.ts
+30	./src/modules/process/ui/mappers/tests/dashboard-processes-created-by-month.ui-mapper.test.ts
+30	./src/modules/process/ui/components/CreateProcessDialogs.tsx
+30	./src/modules/process/application/usecases/remove-container-from-process.usecase.ts
+29	./src/shared/utils/tests/clipboard.test.ts
+29	./src/shared/config/branding.ts
+29	./src/routes/api/tests/processes-process-index.route.test.ts
+29	./src/routes/api/agent/tests/heartbeat.route.test.ts
+29	./src/modules/tracking/application/ports/tracking.observation.repository.ts
+29	./src/modules/process/ui/components/DashboardKpiRow.tsx
+29	./src/modules/process/domain/process.entity.ts
+29	./src/modules/process/application/usecases/find-process-by-id-with-containers.usecase.ts
+29	./src/modules/process/application/process.records.ts
+29	./src/capabilities/search/interface/http/search.controllers.bootstrap.ts
+28	./src/modules/process/ui/utils/formatRelativeTime.ts
+28	./src/modules/process/application/usecases/list-processes-with-containers.usecase.ts
+28	./src/modules/container/application/container.repository.ts
+28	./src/modules/agent/ui/components/AgentCapabilitiesCard.tsx
+28	./src/capabilities/search/interface/http/search.http.mappers.ts
+27	./src/modules/process/ui/utils/dashboard-sync-reconciliation.ts
+27	./src/modules/process/ui/components/ContainersPanel.tsx
+27	./src/capabilities/sync/application/ports/sync-status-read.port.ts
+26	./tools/agent/tests/lifecycle-exit-codes.test.ts
+26	./tools/agent/runtime/lifecycle-exit-codes.ts
+26	./src/modules/tracking/interface/http/agent-enroll.schemas.ts
+26	./src/modules/tracking/infrastructure/carriers/fetchers/rest.fetchers.ts
+26	./src/modules/tracking/features/alerts/application/projection/tracking.operational-alert-category.readmodel.ts
+26	./src/modules/process/ui/timeline/timelineBlockModel.ts
+26	./src/modules/process/ui/components/container-distribution.ts
+26	./src/modules/container/interface/http/container.http.mappers.ts
+25	./src/shared/api/respondWithSchema.ts
+25	./src/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase.ts
+25	./src/modules/process/ui/viewmodels/dashboard-sort.vm.ts
+25	./src/modules/container/application/usecases/find-containers-by-number.usecase.ts
+25	./src/modules/agent/interface/http/agent-monitoring.controllers.bootstrap.ts
+24	./src/shared/utils/tests/carrier.test.ts
+24	./src/shared/utils/parseWithStack.ts
+24	./src/modules/tracking/application/usecases/get-snapshots-for-container.usecase.ts
+24	./src/modules/tracking/application/usecases/get-latest-snapshot.usecase.ts
+24	./src/modules/agent/interface/http/update-manifest.controllers.bootstrap.ts
+23	./src/shared/supabase/supabase.server.ts
+23	./src/shared/localization/translationTypes.ts
+23	./src/modules/tracking/features/status/application/projection/tests/tracking.status.projection.test.ts
+23	./src/modules/tracking/application/ports/tracking.snapshot.repository.ts
+23	./src/modules/process/ui/viewmodels/alert.vm.ts
+23	./src/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper.ts
+23	./src/modules/container/application/usecases/check-container-existence.usecase.ts
+23	./src/capabilities/sync/application/ports/sync-target-read.port.ts
+23	./src/capabilities/search/ui/search.ui-mapper.ts
+23	./src/capabilities/search/interface/http/search.controller.ts
+23	./src/capabilities/search/application/search.facade.ts
+22	./src/shared/ui/layout/Stack.tsx
+22	./src/modules/tracking/application/ports/tracking.sync-metadata.repository.ts
+22	./src/modules/process/ui/components/RefreshErrorBanner.tsx
+22	./src/modules/process/ui/components/AlertActionBanner.tsx
+22	./src/capabilities/sync/interface/http/sync.schemas.ts
+21	./src/shared/api/typedRoute.ts
+21	./src/routes/api/tracking/snapshots/ingest.route.test.ts
+21	./src/routes/api/agent/tests/targets.route.test.ts
+21	./src/modules/process/application/process.readmodels.ts
+21	./src/modules/container/domain/container.entity.ts
+20	./src/shared/ui/icons/flags/USFlag.tsx
+20	./src/shared/ui/icons/flags/PTFlag.tsx
+20	./src/shared/ui/icons/flags/BRFlag.tsx
+20	./src/routes/api/tests/processes-sync.route.test.ts
+20	./src/routes/api/tests/processes-process-sync.route.test.ts
+20	./src/routes/api/tests/processes-process-refresh.route.test.ts
+20	./src/routes/api/tests/dashboard-sync.route.test.ts
+20	./src/routes/api/tests/containers-number-sync.route.test.ts
+20	./src/modules/tracking/application/usecases/list-tracking-search-projections.usecase.ts
+19	./src/shared/errors/httpErrors.ts
+19	./src/routes/api/tests/search.route.test.ts
+19	./src/routes/api/tests/processes-v2.route.test.ts
+19	./src/routes/api/tests/processes-sync-status.route.test.ts
+19	./src/routes/api/tests/dashboard-processes-created-by-month.route.test.ts
+19	./src/routes/api/tests/dashboard-kpis.route.test.ts
+19	./src/routes/api/containers/tests/check.route.test.ts
+19	./src/routes/api/agent/tests/update-manifest.route.test.ts
+19	./src/routes/api/agent/tests/enroll.route.test.ts
+19	./src/modules/tracking/infrastructure/persistence/tracking.row.ts
+19	./src/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase.ts
+19	./src/modules/process/ui/screens/shipment/components/ShipmentRefreshStatusView.tsx
+19	./src/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback.tsx
+19	./src/modules/process/ui/components/unified/ActiveFilterChip.tsx
+19	./src/modules/container/application/usecases/list-containers-by-process-id.usecase.ts
+19	./src/modules/container/application/usecases/list-containers-by-process-ids.usecase.ts
+18	./src/shared/utils/carrier.ts
+18	./src/shared/localization/languageSelection.ts
+18	./src/modules/process/ui/utils/dashboard-refresh-button.ts
+18	./src/modules/container/application/usecases/delete-container.usecase.ts
+18	./src/capabilities/search/ui/search.vm.ts
+18	./playwright.config.ts
+17	./src/modules/tracking/interface/http/tracking.controllers.bootstrap.ts
+17	./src/modules/tracking/features/status/application/projection/tracking.status.projection.ts
+17	./src/modules/tracking/application/usecases/types.ts
+17	./src/modules/process/ui/viewmodels/dashboard-process-exception.vm.ts
+17	./src/modules/process/application/usecases/find-process-by-id.usecase.ts
+17	./src/modules/container/interface/http/container.schemas.ts
+17	./src/modules/container/interface/http/container.controllers.bootstrap.ts
+16	./src/shared/utils/findDuplicateStrings.ts
+16	./src/routes/api/refresh-maersk/[container].ts
+16	./src/modules/process/ui/viewmodels/dashboard-global-alerts.vm.ts
+16	./src/modules/process/interface/http/process.controllers.bootstrap.ts
+16	./src/modules/process/application/usecases/delete-process.usecase.ts
+16	./src/modules/process/application/process.repository.ts
+15	./.vinxi/types/nitro-config.d.ts
+15	./src/routes/api/refresh.ts
+15	./src/routes/api/alerts.ts
+15	./src/modules/process/ui/components/unified/Icons.tsx
+14	./src/modules/process/ui/status-color.ts
+13	./.vinxi/types/nitro-routes.d.ts
+13	./src/routes/api/tracking/snapshots/ingest.ts
+13	./src/routes/api/tracking/containers/[containerId]/snapshots.ts
+13	./src/routes/api/tracking/containers/[containerId]/snapshots/latest.ts
+13	./src/routes/api/refresh/status.ts
+13	./src/routes/api/agent/targets.ts
+13	./src/routes/api/agent/enroll.ts
+13	./src/modules/process/ui/screens/shipment/ShipmentPage.tsx
+13	./src/modules/process/ui/screens/shipment/lib/shipmentRefresh.helpers.ts
+13	./src/modules/process/application/usecases/list-processes.usecase.ts
+12	./src/shared/api/search.controllers.bootstrap.ts
+12	./src/modules/tracking/infrastructure/carriers/fetchers/is-rest-carrier.ts
+12	./src/modules/tracking/features/series/application/projection/tracking.series.classification.ts
+12	./src/modules/process/application/process.container-usecases.ts
+12	./src/capabilities/sync/application/commands/enqueue-sync.command.ts
+11	./src/shared/utils/typeGuards.ts
+11	./src/routes/api/search.ts
+11	./src/routes/api/containers/check.ts
+11	./src/modules/tracking/domain/logistics/transshipment.ts
+11	./src/modules/process/ui/fetchDashboardKpis.ts
+11	./src/capabilities/search/ui/fetchSearch.ts
+10	./tools/ralph-loop/flowchart/src/main.tsx
+10	./src/shared/api/dashboard.controllers.bootstrap.ts
+10	./src/modules/process/ui/viewmodels/containerSummary.vm.ts
+10	./src/modules/process/ui/screens/shipment/lib/alert-lifecycle.ts
+10	./src/modules/process/domain/identity/process-reference.vo.ts
+9	./src/modules/process/ui/viewmodels/dashboard-kpi.vm.ts
+9	./src/modules/process/ui/utils/process-resource-key.ts
+9	./src/modules/process/domain/process.validation.ts
+9	./src/modules/process/domain/process.types.ts
+9	./src/modules/container/domain/container.types.ts
+9	./src/modules/agent/infrastructure/persistence/agent-monitoring.row.ts
+9	./app.config.ts
+8	./tools/ralph-loop/flowchart/vite.config.ts
+8	./src/routes/shipments/[id].tsx
+8	./src/modules/tracking/infrastructure/carriers/normalizers/lookup-key.ts
+8	./src/modules/process/domain/identity/process-source.vo.ts
+7	./src/routes/api/agent/update-manifest.ts
+7	./src/routes/api/agents.ts
+7	./src/routes/api/agents/[id].ts
+7	./src/routes/api/agents/[id]/request-update.ts
+7	./src/routes/api/agents/[id]/request-restart.ts
+7	./src/routes/api/agent/heartbeat.ts
+7	./src/routes/agents/[id].tsx
+7	./src/modules/process/domain/identity/process-id.vo.ts
+7	./src/modules/process/domain/identity/carrier-code.vo.ts
+7	./src/modules/container/domain/identity/process-id.vo.ts
+7	./src/modules/container/domain/identity/container-number.vo.ts
+7	./src/modules/container/domain/identity/container-id.vo.ts
+7	./src/modules/container/domain/identity/carrier-code.vo.ts
+6	./src/routes/index.tsx
+6	./src/modules/process/ui/viewmodels/process-status-microbadge.vm.ts
+6	./src/modules/container/infrastructure/bootstrap/container.bootstrap.ts
+6	./src/capabilities/search/ui/GlobalSearchOverlay.tsx
+5	./src/routes/api/processes/sync.ts
+5	./src/routes/api/processes/[id]/sync.ts
+5	./src/routes/api/processes/[id]/refresh.ts
+5	./src/routes/api/processes/[id]/index.ts
+5	./src/routes/api/dashboard/sync.ts
+5	./src/routes/api/containers/[number]/sync.ts
+5	./src/routes/agents/index.tsx
+5	./src/modules/tracking/domain/model/provider.ts
+5	./src/modules/process/ui/viewmodels/dashboard-monthly-bar-datum.vm.ts
+5	./src/modules/process/ui/screens/shipment/usecases/unacknowledgeShipmentAlert.usecase.ts
+5	./src/modules/process/ui/screens/shipment/usecases/acknowledgeShipmentAlert.usecase.ts
+5	./src/modules/process/ui/screens/shipment/types/shipmentScreen.types.ts
+5	./src/modules/process/ui/components/unified/FilterControlOption.ts
+5	./src/modules/process/infrastructure/persistence/process.row.ts
+5	./src/modules/container/infrastructure/persistence/container.row.ts
+4	./src/routes/api/processes.ts
+4	./src/modules/container/application/container.readmodels.ts
+3	./src/routes/api/processes-v2.ts
+3	./src/routes/api/processes/sync-status.ts
+3	./src/routes/api/dashboard/operational-summary.ts
+3	./src/routes/api/dashboard/kpis.ts
+3	./src/routes/api/dashboard/charts/processes-created-by-month.ts
+2	./.vinxi/types/nitro.d.ts
+1	./src/shared/localization/defaultLocale.ts
+1	./src/global.d.ts
+0	./.vinxi/types/nitro-imports.d.ts
+
+=== RESUMO ===
+Arquivos analisados:	645
+Total .ts:	66678
+Total .tsx:	14311
+Total geral:	80989
+Média por arquivo:	125
+
+=== REPORT DE CÓDIGO DESBALANCEADO ===
+Critérios:
+- CRÍTICO: > 800 linhas ou > 3x a média
+- ALERTA:  > 500 linhas ou > 2x a média
+- OK:      restante
+
+Status	Linhas	% Total	Arquivo
+------	------	-------	------
+CRÍTICO	1821	2.25%	./src/modules/tracking/dev/scenario-lab/scenario.catalog.ts
+CRÍTICO	1786	2.21%	./src/modules/process/ui/CreateProcessDialog.tsx
+CRÍTICO	1594	1.97%	./tools/agent/agent.ts
+CRÍTICO	1258	1.55%	./tools/agent/build-release.ts
+CRÍTICO	1041	1.29%	./src/modules/tracking/features/alerts/domain/tests/deriveAlerts.test.ts
+CRÍTICO	881	1.09%	./src/modules/process/ui/components/DashboardProcessTable.tsx
+CRÍTICO	787	0.97%	./src/modules/process/ui/CreateProcessDialog.view.tsx
+CRÍTICO	784	0.97%	./src/modules/agent/application/agent-monitoring.usecases.ts
+CRÍTICO	777	0.96%	./src/shared/supabase/database.types.ts
+CRÍTICO	716	0.88%	./src/modules/tracking/infrastructure/carriers/fetchers/maersk.puppeteer.fetcher.ts
+CRÍTICO	697	0.86%	./tools/agent/cli/ct-agent.ts
+CRÍTICO	673	0.83%	./src/routes/dev/tracking-scenarios.tsx
+CRÍTICO	666	0.82%	./tools/agent/supervisor.ts
+CRÍTICO	662	0.82%	./src/modules/process/ui/screens/DashboardScreen.tsx
+CRÍTICO	595	0.73%	./src/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel.ts
+CRÍTICO	579	0.71%	./src/modules/process/interface/http/tests/process.controllers.test.ts
+CRÍTICO	560	0.69%	./e2e/process-detail-qa.spec.ts
+CRÍTICO	547	0.68%	./src/capabilities/search/ui/SearchOverlay.panel.tsx
+CRÍTICO	542	0.67%	./src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts
+CRÍTICO	533	0.66%	./src/modules/tracking/infrastructure/persistence/tracking.persistence.mappers.ts
+CRÍTICO	527	0.65%	./src/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository.ts
+CRÍTICO	511	0.63%	./src/modules/process/application/usecases/list-processes-with-operational-summary.usecase.ts
+CRÍTICO	501	0.62%	./src/modules/tracking/application/tests/pipeline.integration.test.ts
+CRÍTICO	496	0.61%	./src/modules/tracking/interface/http/agent-sync.controllers.ts
+CRÍTICO	489	0.60%	./src/modules/tracking/application/tests/pipeline.alert-idempotency.integration.test.ts
+CRÍTICO	489	0.60%	./src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts
+CRÍTICO	482	0.60%	./src/modules/tracking/infrastructure/carriers/tests/mscNormalizer.test.ts
+CRÍTICO	481	0.59%	./src/modules/process/interface/http/process.http.mappers.ts
+CRÍTICO	454	0.56%	./src/modules/tracking/domain/tests/actualVsExpected.test.ts
+CRÍTICO	454	0.56%	./src/capabilities/dashboard/application/dashboard.operational-summary.readmodel.ts
+CRÍTICO	435	0.54%	./src/modules/agent/ui/mappers/agent.ui-mapper.ts
+CRÍTICO	423	0.52%	./src/modules/tracking/dev/scenario-lab/scenario.builder.ts
+CRÍTICO	418	0.52%	./src/modules/process/features/operational-projection/application/tests/aggregateOperationalSummary.test.ts
+CRÍTICO	413	0.51%	./src/modules/tracking/features/alerts/domain/derive/deriveAlerts.ts
+CRÍTICO	412	0.51%	./tools/agent/updater.core.ts
+CRÍTICO	404	0.50%	./src/modules/agent/application/update-manifest.service.ts
+CRÍTICO	401	0.50%	./src/modules/process/ui/viewmodels/tests/dashboard-filter-interaction.vm.test.ts
+CRÍTICO	387	0.48%	./e2e/alerts-ack-reconciliation.spec.ts
+CRÍTICO	379	0.47%	./tools/ralph-loop/flowchart/src/App.tsx
+ALERTA	374	0.46%	./src/modules/tracking/features/series/domain/reconcile/tests/seriesClassification.test.ts
+ALERTA	372	0.46%	./src/modules/agent/ui/agent-detail-page.tsx
+ALERTA	369	0.46%	./src/modules/process/interface/http/process.controllers.ts
+ALERTA	368	0.45%	./src/modules/tracking/interface/http/tests/agent-sync.controllers.test.ts
+ALERTA	362	0.45%	./src/modules/process/ui/validation/trelloSmartPaste.validation.ts
+ALERTA	362	0.45%	./src/modules/process/ui/components/TimelinePanel.tsx
+ALERTA	360	0.44%	./src/modules/tracking/interface/http/agent-enroll.controllers.ts
+ALERTA	360	0.44%	./src/modules/process/ui/validation/tests/dashboardFilterQuery.validation.test.ts
+ALERTA	359	0.44%	./src/capabilities/search/application/search.usecase.ts
+ALERTA	351	0.43%	./src/capabilities/search/interface/http/tests/search.controllers.test.ts
+ALERTA	350	0.43%	./src/modules/process/ui/timeline/TimelineBlocks.tsx
+ALERTA	346	0.43%	./src/modules/tracking/application/projection/tracking.operational-summary.readmodel.ts
+ALERTA	336	0.41%	./src/modules/process/ui/validation/tests/processApi.validation.test.ts
+ALERTA	335	0.41%	./src/modules/process/features/operational-projection/application/deriveProcessStatus.ts
+ALERTA	333	0.41%	./tools/agent/updater.ts
+ALERTA	333	0.41%	./src/shared/api/sync.controllers.bootstrap.ts
+ALERTA	333	0.41%	./src/modules/process/ui/screens/shipment/usecases/refreshShipmentTracking.usecase.ts
+ALERTA	331	0.41%	./src/modules/agent/interface/http/agent-monitoring.controllers.ts
+ALERTA	330	0.41%	./src/modules/tracking/infrastructure/carriers/tests/tracking.persistence.mappers.test.ts
+ALERTA	327	0.40%	./src/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer.ts
+ALERTA	323	0.40%	./src/modules/tracking/application/projection/tests/tracking.operational-summary.readmodel.test.ts
+ALERTA	323	0.40%	./src/modules/process/ui/validation/processApi.validation.ts
+ALERTA	322	0.40%	./src/modules/tracking/interface/http/agent-enroll.controllers.bootstrap.ts
+ALERTA	321	0.40%	./src/modules/process/ui/components/ShipmentHeader.tsx
+ALERTA	320	0.40%	./src/modules/process/ui/timeline/tests/timelineBlockModel.test.ts
+ALERTA	308	0.38%	./src/modules/process/ui/mappers/processDetail.ui-mapper.ts
+ALERTA	308	0.38%	./src/capabilities/search/application/tests/search.usecase.test.ts
+ALERTA	307	0.38%	./src/modules/process/ui/viewmodels/tests/dashboard-sort-interaction.vm.test.ts
+ALERTA	305	0.38%	./src/shared/api-schemas/processes.schemas.ts
+ALERTA	304	0.38%	./src/shared/supabase/tests/sync-requests.realtime.test.ts
+ALERTA	299	0.37%	./tools/agent/release-manager.ts
+ALERTA	299	0.37%	./src/modules/process/ui/viewmodels/dashboard-filter.service.ts
+ALERTA	298	0.37%	./src/modules/agent/ui/components/AgentsTable.tsx
+ALERTA	296	0.37%	./src/shared/localization/i18n.ts
+ALERTA	293	0.36%	./tools/agent/bundle-release.ts
+ALERTA	293	0.36%	./src/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.ts
+ALERTA	292	0.36%	./src/modules/tracking/features/series/domain/reconcile/tests/reconcileForDisplay.test.ts
+ALERTA	292	0.36%	./src/modules/process/ui/components/TimelineNode.tsx
+ALERTA	290	0.36%	./src/modules/tracking/features/timeline/domain/derive/deriveTimeline.ts
+ALERTA	285	0.35%	./src/shared/supabase/sync-requests.realtime.ts
+ALERTA	275	0.34%	./src/shared/ui/AppHeader.tsx
+ALERTA	272	0.34%	./src/modules/tracking/application/usecases/tests/get-container-summary.usecase.test.ts
+ALERTA	271	0.33%	./tools/agent/release/release-manifest.ts
+ALERTA	270	0.33%	./src/modules/tracking/infrastructure/carriers/tests/cmacgmNormalizer.test.ts
+ALERTA	267	0.33%	./src/modules/process/ui/hooks/useProcessSyncRealtime.ts
+ALERTA	267	0.33%	./src/modules/agent/application/tests/update-manifest.service.test.ts
+ALERTA	255	0.31%	./src/modules/tracking/features/series/domain/reconcile/tests/expiredExpected.test.ts
+ALERTA	255	0.31%	./src/modules/process/ui/viewmodels/dashboard-sort.service.ts
+OK	251	0.31%	./tools/agent/tests/updater.test.ts
+OK	249	0.31%	./src/modules/tracking/infrastructure/carriers/tests/maerskNormalizer.test.ts
+OK	241	0.30%	./src/modules/process/ui/mappers/tests/trackingEventLabel.ui-mapper.test.ts
+OK	241	0.30%	./src/modules/process/ui/components/dashboard-columns.ts
+OK	240	0.30%	./src/modules/process/ui/screens/shipment/lib/shipmentScreenHelpers.test.ts
+OK	239	0.30%	./src/modules/tracking/dev/scenario-lab/scenario.seed.ts
+OK	238	0.29%	./src/modules/agent/infrastructure/persistence/supabaseAgentMonitoringRepository.ts
+OK	235	0.29%	./src/modules/tracking/application/tracking.usecases.ts
+OK	234	0.29%	./src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.test.ts
+OK	233	0.29%	./tools/agent/tests/supervisor.test.ts
+OK	232	0.29%	./src/modules/tracking/interface/http/tests/tracking.controllers.test.ts
+OK	228	0.28%	./src/shared/supabase/agent-monitoring.realtime.ts
+OK	228	0.28%	./src/modules/process/ui/tests/fetchProcess.cache.test.ts
+OK	226	0.28%	./src/modules/tracking/interface/http/tests/refresh.controllers.test.ts
+OK	226	0.28%	./src/modules/tracking/features/status/domain/derive/deriveStatus.ts
+OK	225	0.28%	./src/modules/process/ui/validation/tests/dashboardSortQuery.validation.test.ts
+OK	222	0.27%	./src/modules/tracking/application/usecases/tests/search-tracking-by-derived-status-text.usecase.test.ts
+OK	222	0.27%	./src/modules/agent/infrastructure/persistence/agent-monitoring.persistence.mappers.ts
+OK	221	0.27%	./src/modules/process/ui/components/DashboardActivityChartCard.tsx
+OK	220	0.27%	./src/capabilities/sync/application/usecases/tests/sync-process.usecase.test.ts
+OK	219	0.27%	./src/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer.ts
+OK	218	0.27%	./src/capabilities/sync/interface/http/tests/sync.controllers.test.ts
+OK	214	0.26%	./src/modules/process/ui/validation/dashboardFilterQuery.validation.ts
+OK	214	0.26%	./src/modules/agent/interface/http/agent-monitoring.schemas.ts
+OK	213	0.26%	./src/capabilities/sync/application/usecases/tests/sync-dashboard.usecase.test.ts
+OK	210	0.26%	./src/modules/tracking/application/usecases/tests/search-tracking-by-vessel-name.usecase.test.ts
+OK	209	0.26%	./src/modules/process/ui/components/AlertsListItem.tsx
+OK	204	0.25%	./src/modules/tracking/features/series/domain/reconcile/seriesClassification.ts
+OK	202	0.25%	./src/modules/tracking/interface/http/tests/agent-enroll.controllers.test.ts
+OK	202	0.25%	./src/modules/process/ui/mappers/tests/processList.ui-mapper.test.ts
+OK	202	0.25%	./src/modules/process/ui/components/DeleteShipmentDialog.tsx
+OK	202	0.25%	./src/capabilities/sync/application/services/sync-status-aggregation.service.ts
+OK	200	0.25%	./src/modules/process/ui/utils/sync-realtime-coordinator.ts
+OK	200	0.25%	./src/modules/process/ui/fetchProcess.ts
+OK	200	0.25%	./src/modules/process/ui/components/UnifiedDashboardFilters.tsx
+OK	199	0.25%	./src/modules/tracking/features/alerts/tests/noMovementBreakpoints.test.ts
+OK	199	0.25%	./src/modules/tracking/application/usecases/get-container-summary.usecase.ts
+OK	199	0.25%	./src/capabilities/search/ui/SearchOverlay.tsx
+OK	198	0.24%	./src/modules/process/interface/http/tests/process.http.mappers.test.ts
+OK	196	0.24%	./src/modules/tracking/features/status/domain/tests/deriveStatus.test.ts
+OK	191	0.24%	./src/modules/process/ui/viewmodels/tests/dashboard-sort-null-policy.vm.test.ts
+OK	191	0.24%	./src/capabilities/dashboard/application/tests/dashboard.processes-created-by-month.readmodel.test.ts
+OK	190	0.23%	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.detail-parser.test.ts
+OK	189	0.23%	./src/modules/process/ui/validation/trelloSmartPasteApply.validation.ts
+OK	189	0.23%	./src/modules/agent/application/agent-monitoring.repository.ts
+OK	188	0.23%	./src/modules/process/ui/utils/tests/refresh-sync-polling.test.ts
+OK	185	0.23%	./src/modules/tracking/features/status/domain/tests/deriveStatus.transshipmentProtection.test.ts
+OK	182	0.22%	./src/modules/process/ui/TimelineNode.layout.tsx
+OK	181	0.22%	./src/modules/process/ui/components/ProcessSyncButton.tsx
+OK	180	0.22%	./src/modules/tracking/interface/http/agent-sync.controllers.bootstrap.ts
+OK	177	0.22%	./src/modules/agent/ui/agents-page.tsx
+OK	175	0.22%	./src/modules/process/ui/components/SyncCell.tsx
+OK	174	0.21%	./src/modules/process/ui/components/unified/ImporterChipDropdown.tsx
+OK	174	0.21%	./src/capabilities/sync/application/services/sync-target-resolver.service.ts
+OK	170	0.21%	./src/modules/tracking/application/projection/tests/voyageSegments.test.ts
+OK	168	0.21%	./src/modules/container/infrastructure/persistence/container.repository.supabase.ts
+OK	166	0.20%	./src/capabilities/sync/application/usecases/refresh-process.usecase.ts
+OK	165	0.20%	./src/capabilities/sync/interface/http/sync.controllers.ts
+OK	164	0.20%	./src/modules/tracking/infrastructure/carriers/tests/unknownCarrierEvent.regression.test.ts
+OK	164	0.20%	./src/modules/process/ui/components/PredictionHistoryTable.tsx
+OK	163	0.20%	./src/modules/agent/interface/http/tests/update-manifest.controllers.test.ts
+OK	161	0.20%	./src/modules/process/ui/screens/shipment/ShipmentScreen.tsx
+OK	160	0.20%	./src/modules/tracking/interface/http/tracking.controllers.ts
+OK	160	0.20%	./src/modules/tracking/features/alerts/domain/model/trackingAlert.ts
+OK	160	0.20%	./src/modules/process/ui/components/ObservationInspector.tsx
+OK	160	0.20%	./src/capabilities/sync/application/usecases/tests/get-sync-status.usecase.test.ts
+OK	158	0.20%	./src/capabilities/sync/application/usecases/sync-process.usecase.ts
+OK	156	0.19%	./tools/agent/tests/self-update.integration.test.ts
+OK	156	0.19%	./tools/agent/release-state.ts
+OK	155	0.19%	./src/modules/tracking/application/orchestration/pipeline.ts
+OK	155	0.19%	./src/capabilities/sync/application/usecases/sync-dashboard.usecase.ts
+OK	153	0.19%	./src/capabilities/sync/application/usecases/sync-container.usecase.ts
+OK	152	0.19%	./src/capabilities/sync/application/usecases/tests/sync-container.usecase.test.ts
+OK	151	0.19%	./src/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer.ts
+OK	148	0.18%	./tools/agent/tests/agent.scheduler.test.ts
+OK	148	0.18%	./src/shared/ui/StatusBadge.tsx
+OK	148	0.18%	./src/modules/tracking/dev/scenario-lab/scenario.types.ts
+OK	148	0.18%	./src/entry-client.tsx
+OK	146	0.18%	./src/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel.ts
+OK	146	0.18%	./src/modules/process/ui/utils/tests/current-tracking-context.test.ts
+OK	145	0.18%	./src/modules/tracking/features/timeline/domain/tests/deriveTimeline.test.ts
+OK	145	0.18%	./src/modules/process/ui/mappers/containerSync.ui-mapper.ts
+OK	142	0.18%	./src/modules/process/ui/screens/shipment/hooks/useShipmentDialogsController.ts
+OK	141	0.17%	./src/capabilities/sync/application/usecases/tests/refresh-process.usecase.test.ts
+OK	141	0.17%	./src/capabilities/dashboard/interface/http/dashboard.controllers.ts
+OK	140	0.17%	./src/modules/process/ui/mappers/trackingEventLabel.ui-mapper.ts
+OK	140	0.17%	./src/modules/process/ui/components/ContainerSelector.tsx
+OK	138	0.17%	./src/modules/process/ui/validation/containerBulkPaste.validation.ts
+OK	138	0.17%	./src/modules/process/ui/mappers/tests/containerSummary.ui-mapper.test.ts
+OK	137	0.17%	./src/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper.ts
+OK	136	0.17%	./src/modules/tracking/interface/http/tracking.schemas.ts
+OK	136	0.17%	./src/modules/process/ui/screens/shipment/hooks/useShipmentRefreshController.ts
+OK	135	0.17%	./src/modules/agent/ui/components/AgentCardList.tsx
+OK	134	0.17%	./src/shared/ui/FormFields.tsx
+OK	134	0.17%	./src/modules/tracking/infrastructure/carriers/tests/cmacgm.transshipment-semantic-audit.test.ts
+OK	132	0.16%	./src/modules/tracking/infrastructure/carriers/tests/helpers/transshipmentSemanticAudit.ts
+OK	132	0.16%	./src/capabilities/dashboard/application/dashboard.processes-created-by-month.readmodel.ts
+OK	131	0.16%	./src/shared/ui/navigation/app-navigation.ts
+OK	131	0.16%	./src/modules/process/ui/timeline/currentVoyage.ts
+OK	130	0.16%	./src/modules/process/ui/tests/ShipmentView.sync-realtime.test.ts
+OK	129	0.16%	./src/modules/process/ui/validation/dashboardSortQuery.validation.ts
+OK	129	0.16%	./src/modules/container/application/usecases/tests/reconcile-containers.usecase.test.ts
+OK	127	0.16%	./src/modules/process/ui/components/DashboardRefreshButton.tsx
+OK	127	0.16%	./src/modules/process/features/operational-projection/application/tests/deriveProcessStatus.test.ts
+OK	126	0.16%	./src/modules/tracking/domain/tests/fingerprint.test.ts
+OK	126	0.16%	./src/modules/tracking/application/usecases/tests/get-containers-sync-metadata.usecase.test.ts
+OK	126	0.16%	./src/modules/process/ui/validation/tests/trelloSmartPasteApply.validation.test.ts
+OK	125	0.15%	./src/modules/tracking/infrastructure/carriers/tests/emptyReturnMapping.invariants.test.ts
+OK	125	0.15%	./src/modules/process/ui/telemetry/tests/dashboardSort.telemetry.test.ts
+OK	125	0.15%	./src/modules/process/ui/mappers/tests/container-chip-sync-state.test.ts
+OK	125	0.15%	./src/modules/process/application/usecases/tests/search-processes-by-text.usecase.test.ts
+OK	125	0.15%	./src/modules/container/application/usecases/tests/search-containers-by-number.usecase.test.ts
+OK	124	0.15%	./src/modules/tracking/interface/http/refresh.controllers.bootstrap.ts
+OK	124	0.15%	./src/modules/tracking/features/status/domain/tests/deriveStatus.emptyGateOut.test.ts
+OK	124	0.15%	./src/modules/process/ui/utils/tests/dashboard-row-navigation.test.ts
+OK	124	0.15%	./src/modules/agent/ui/components/AgentFleetSummary.tsx
+OK	122	0.15%	./src/shared/ui/navigation/tests/app-navigation.test.ts
+OK	122	0.15%	./src/shared/ui/Dialog.tsx
+OK	121	0.15%	./src/modules/tracking/interface/http/refresh.controllers.ts
+OK	121	0.15%	./src/modules/process/ui/viewmodels/shipment.vm.ts
+OK	121	0.15%	./src/modules/process/ui/screens/shipment/lib/shipmentRefresh.status.ts
+OK	121	0.15%	./src/modules/agent/ui/vm/agent.vm.ts
+OK	121	0.15%	./src/capabilities/sync/application/services/sync-enqueue-policy.service.ts
+OK	121	0.15%	./src/capabilities/dashboard/application/tests/dashboard.kpis.readmodel.test.ts
+OK	118	0.15%	./src/modules/tracking/application/usecases/tests/get-containers-summary.usecase.test.ts
+OK	117	0.14%	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.vessel-event-eligibility.test.ts
+OK	116	0.14%	./src/modules/tracking/application/usecases/get-containers-sync-metadata.usecase.ts
+OK	115	0.14%	./src/shared/ui/ExistingProcessError.tsx
+OK	115	0.14%	./src/modules/process/ui/utils/refresh-sync-polling.ts
+OK	113	0.14%	./tools/agent/tests/ct-agent.test.ts
+OK	113	0.14%	./src/modules/process/ui/validation/tests/createProcessCloseGuard.validation.test.ts
+OK	112	0.14%	./src/modules/tracking/application/projection/tracking.search.readmodel.ts
+OK	111	0.14%	./src/modules/tracking/features/alerts/application/usecases/tests/list-active-alert-read-model.usecase.test.ts
+OK	111	0.14%	./src/modules/process/ui/mappers/tests/process-header-sync.test.ts
+OK	110	0.14%	./src/modules/process/ui/components/ShipmentDataView.tsx
+OK	110	0.14%	./src/modules/agent/ui/api/agent.api.ts
+OK	109	0.13%	./src/modules/agent/interface/http/agent-monitoring.http.mappers.ts
+OK	108	0.13%	./src/modules/tracking/infrastructure/persistence/supabaseObservationRepository.ts
+OK	107	0.13%	./src/modules/tracking/features/alerts/application/projection/tracking.alert.projection.ts
+OK	107	0.13%	./src/modules/process/ui/validation/tests/containerBulkPaste.validation.test.ts
+OK	107	0.13%	./src/modules/process/ui/screens/shipment/components/ShipmentScreenLayout.tsx
+OK	107	0.13%	./src/modules/process/ui/mappers/processList.ui-mapper.ts
+OK	107	0.13%	./src/modules/process/ui/components/DashboardKpiCard.tsx
+OK	106	0.13%	./src/modules/tracking/features/status/domain/tests/deriveStatus.deliveryGateOut.test.ts
+OK	105	0.13%	./src/modules/process/ui/components/unified/MultiSelectChipDropdown.tsx
+OK	105	0.13%	./src/modules/process/ui/components/ShipmentCurrentStatusDetails.tsx
+OK	104	0.13%	./src/modules/tracking/features/series/domain/reconcile/expiredExpected.ts
+OK	104	0.13%	./src/modules/process/ui/validation/tests/dashboardFilterStorage.validation.test.ts
+OK	103	0.13%	./src/modules/process/ui/components/tests/dashboard-status-cell.presenter.test.ts
+OK	102	0.13%	./src/modules/process/ui/utils/tests/eta-labels.test.ts
+OK	102	0.13%	./src/modules/process/ui/mappers/tests/dashboard-kpis.ui-mapper.test.ts
+OK	101	0.12%	./src/shared/config/server-env.ts
+OK	101	0.12%	./src/capabilities/sync/application/usecases/get-sync-status.usecase.ts
+OK	99	0.12%	./tools/agent/runtime-paths.ts
+OK	99	0.12%	./tools/agent/platform/windows.adapter.ts
+OK	99	0.12%	./src/modules/tracking/features/observation/domain/model/observation.ts
+OK	99	0.12%	./src/modules/process/ui/utils/tests/dashboard-refresh.test.ts
+OK	99	0.12%	./src/modules/agent/interface/http/update-manifest.controllers.ts
+OK	98	0.12%	./src/modules/tracking/application/usecases/fetch-and-process.usecase.ts
+OK	97	0.12%	./src/modules/process/ui/components/unified/SingleSelectChipDropdown.tsx
+OK	97	0.12%	./src/modules/agent/ui/components/AgentFiltersBar.tsx
+OK	96	0.12%	./src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts
+OK	95	0.12%	./src/modules/container/application/usecases/reconcile-containers.usecase.ts
+OK	94	0.12%	./src/shared/supabase/supabase.ts
+OK	94	0.12%	./src/modules/tracking/application/projection/locationDisplayResolver.ts
+OK	93	0.11%	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.transshipment-regression.test.ts
+OK	93	0.11%	./src/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource.ts
+OK	92	0.11%	./src/modules/tracking/application/usecases/tests/refresh-rest-container.usecase.test.ts
+OK	92	0.11%	./src/modules/tracking/application/projection/locationDisplayResolver.test.ts
+OK	92	0.11%	./src/modules/process/ui/validation/tests/dashboardSortStorage.validation.test.ts
+OK	91	0.11%	./tools/agent/tests/release-manifest.test.ts
+OK	91	0.11%	./tools/agent/agent.scheduler.ts
+OK	91	0.11%	./src/modules/tracking/application/projection/voyageSegments.ts
+OK	91	0.11%	./src/modules/process/ui/mappers/tests/processStatusMicrobadge.ui-mapper.test.ts
+OK	89	0.11%	./tools/agent/runtime/paths.ts
+OK	89	0.11%	./src/capabilities/sync/application/sync.usecases.ts
+OK	88	0.11%	./src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts
+OK	88	0.11%	./src/modules/tracking/features/alerts/application/projection/tests/tracking.alert-display.readmodel.test.ts
+OK	88	0.11%	./src/modules/process/ui/screens/shipment/hooks/useShipmentAlertActionsController.ts
+OK	87	0.11%	./src/modules/tracking/infrastructure/carriers/tests/cmacgm.transshipment-regression.test.ts
+OK	87	0.11%	./src/modules/tracking/features/observation/application/tests/diffObservations.test.ts
+OK	85	0.10%	./src/modules/process/application/process.usecases.ts
+OK	84	0.10%	./tools/agent/pending-activity.ts
+OK	84	0.10%	./src/modules/process/ui/components/unified/ActiveFiltersPanel.tsx
+OK	83	0.10%	./tools/agent/platform/linux.adapter.ts
+OK	83	0.10%	./src/shared/api-schemas/dashboard.schemas.ts
+OK	83	0.10%	./src/modules/process/ui/components/Icons.tsx
+OK	81	0.10%	./src/modules/process/ui/components/tests/process-status-badges.presenter.test.ts
+OK	80	0.10%	./src/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository.ts
+OK	80	0.10%	./src/modules/tracking/application/usecases/refresh-rest-container.usecase.ts
+OK	79	0.10%	./src/modules/process/ui/components/AlertsPanel.tsx
+OK	79	0.10%	./src/modules/process/infrastructure/persistence/process.persistence.mappers.ts
+OK	78	0.10%	./src/modules/container/application/usecases/tests/find-containers-by-number.usecase.test.ts
+OK	78	0.10%	./src/lib/theme.ts
+OK	77	0.10%	./src/shared/utils/formatDate.ts
+OK	76	0.09%	./tools/agent/runtime-health.ts
+OK	76	0.09%	./src/modules/process/ui/utils/current-tracking-context.ts
+OK	76	0.09%	./src/modules/process/ui/mappers/dashboard-kpis.ui-mapper.ts
+OK	75	0.09%	./src/modules/process/ui/mappers/tests/dashboardProcessExceptions.ui-mapper.test.ts
+OK	75	0.09%	./src/modules/process/ui/components/PredictionHistoryModal.tsx
+OK	75	0.09%	./src/capabilities/sync/tests/sync.boundary.test.ts
+OK	75	0.09%	./src/capabilities/sync/presenter/sync-response.presenter.ts
+OK	75	0.09%	./src/capabilities/search/tests/search.boundary.test.ts
+OK	74	0.09%	./src/shared/localization/resources.ts
+OK	74	0.09%	./src/modules/process/ui/validation/tests/trelloSmartPaste.validation.test.ts
+OK	74	0.09%	./src/modules/container/application/usecases/search-containers-by-number.usecase.ts
+OK	73	0.09%	./src/modules/agent/ui/components/AgentRecentActivityCard.tsx
+OK	72	0.09%	./tools/agent/tests/runtime-paths.test.ts
+OK	72	0.09%	./src/modules/tracking/features/observation/domain/model/observationDraft.ts
+OK	72	0.09%	./src/modules/agent/ui/components/AgentHealthCard.tsx
+OK	71	0.09%	./src/routes/api/dev/scenarios/load.ts
+OK	71	0.09%	./src/modules/process/infrastructure/persistence/supabaseProcessRepository.ts
+OK	71	0.09%	./src/modules/process/application/usecases/create-process.usecase.ts
+OK	70	0.09%	./src/modules/tracking/features/alerts/application/projection/tests/tracking.alert.projection.test.ts
+OK	70	0.09%	./src/modules/process/ui/validation/dashboardFilterStorage.validation.ts
+OK	68	0.08%	./vitest.config.ts
+OK	68	0.08%	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.version-metadata.test.ts
+OK	68	0.08%	./src/modules/tracking/infrastructure/carriers/schemas/api/maersk.api.schema.ts
+OK	68	0.08%	./src/modules/process/ui/validation/dashboardSortStorage.validation.ts
+OK	67	0.08%	./src/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel.ts
+OK	67	0.08%	./src/modules/tracking/application/usecases/get-containers-summary.usecase.ts
+OK	67	0.08%	./src/modules/container/application/usecases/create-many-containers.usecase.ts
+OK	66	0.08%	./src/modules/tracking/interface/http/refresh.schemas.ts
+OK	66	0.08%	./src/modules/process/ui/components/ShipmentInfoCard.tsx
+OK	65	0.08%	./src/modules/process/ui/utils/eta-labels.ts
+OK	65	0.08%	./src/modules/process/ui/tests/fetchDashboardProcessesCreatedByMonth.test.ts
+OK	64	0.08%	./src/shared/ui/LanguageSwitch.tsx
+OK	64	0.08%	./src/modules/tracking/features/alerts/domain/identity/alertFingerprint.ts
+OK	64	0.08%	./src/modules/process/ui/validation/createProcessCloseGuard.validation.ts
+OK	64	0.08%	./src/modules/container/interface/http/tests/container.controllers.test.ts
+OK	64	0.08%	./src/modules/agent/ui/components/AgentPageHeader.tsx
+OK	63	0.08%	./src/modules/tracking/interface/http/agent-sync.schemas.ts
+OK	63	0.08%	./src/modules/tracking/infrastructure/carriers/tests/helpers/observationSemanticAudit.ts
+OK	63	0.08%	./src/modules/tracking/features/observation/application/orchestration/diffObservations.ts
+OK	63	0.08%	./src/modules/process/ui/api/tests/processSync.api.test.ts
+OK	62	0.08%	./src/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema.ts
+OK	62	0.08%	./src/modules/tracking/features/timeline/application/projection/tests/tracking.timeline.readmodel.test.ts
+OK	62	0.08%	./src/modules/process/ui/components/tests/timeline-current-voyage.test.ts
+OK	61	0.08%	./src/modules/process/application/usecases/search-processes-by-text.usecase.ts
+OK	60	0.07%	./src/modules/tracking/dev/scenario-lab/tests/scenario.builder.test.ts
+OK	60	0.07%	./src/modules/tracking/application/usecases/save-and-process.usecase.ts
+OK	59	0.07%	./src/modules/tracking/dev/scenario-lab/tests/scenario.seed.test.ts
+OK	59	0.07%	./src/modules/process/ui/components/dashboard-status-cell.presenter.ts
+OK	59	0.07%	./src/capabilities/dashboard/application/dashboard.kpis.readmodel.ts
+OK	58	0.07%	./src/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository.ts
+OK	57	0.07%	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.positioned-events.test.ts
+OK	57	0.07%	./src/modules/process/ui/screens/shipment/hooks/useShipmentSelectedContainer.ts
+OK	57	0.07%	./src/modules/process/ui/screens/shipment/components/ShipmentContainersView.tsx
+OK	57	0.07%	./src/modules/process/ui/process-status-color.ts
+OK	57	0.07%	./src/modules/process/application/usecases/update-process.usecase.ts
+OK	56	0.07%	./src/modules/process/ui/utils/tests/dashboard-sync-reconciliation.test.ts
+OK	56	0.07%	./src/modules/process/ui/screens/shipment/lib/shipmentEdit.mapper.ts
+OK	56	0.07%	./src/modules/agent/ui/components/AgentMetricsCard.tsx
+OK	56	0.07%	./src/modules/agent/ui/components/AgentDiagnosticsCard.tsx
+OK	55	0.07%	./src/modules/tracking/infrastructure/carriers/tests/msc.observation-semantic-audit.test.ts
+OK	55	0.07%	./src/modules/tracking/application/ports/tracking.alert.repository.ts
+OK	55	0.07%	./src/modules/process/ui/components/DeleteShipmentSummary.tsx
+OK	54	0.07%	./src/shared/api/errorToResponse.ts
+OK	54	0.07%	./src/modules/tracking/interface/http/tracking.http.mappers.ts
+OK	54	0.07%	./src/modules/process/ui/components/unified/MultiSelectOptionsList.tsx
+OK	53	0.07%	./tools/agent/supervisor-control.ts
+OK	53	0.07%	./src/routes/api/dev/scenarios/catalog.ts
+OK	53	0.07%	./src/modules/tracking/infrastructure/carriers/tests/msc.normalizer.invalid-vessel.test.ts
+OK	53	0.07%	./src/modules/tracking/infrastructure/bootstrap/tracking.bootstrap.ts
+OK	53	0.07%	./src/modules/process/ui/hooks/tests/useProcessSyncRealtime.test.ts
+OK	53	0.07%	./src/capabilities/sync/interface/http/sync.controllers.bootstrap.ts
+OK	52	0.06%	./src/modules/tracking/domain/identity/fingerprint.ts
+OK	52	0.06%	./src/modules/process/ui/validation/tests/containerFormState.validation.test.ts
+OK	52	0.06%	./src/modules/process/ui/components/unified/SingleSelectOptionsList.tsx
+OK	52	0.06%	./src/modules/container/interface/http/container.controllers.ts
+OK	51	0.06%	./src/modules/tracking/features/observation/application/projection/tracking.observation.projection.ts
+OK	51	0.06%	./src/modules/process/ui/telemetry/dashboardSort.telemetry.ts
+OK	51	0.06%	./src/modules/process/ui/mappers/containerSummary.ui-mapper.ts
+OK	51	0.06%	./src/modules/process/ui/components/tests/process-sync-button.test.ts
+OK	51	0.06%	./src/modules/process/features/operational-projection/application/operationalSemantics.ts
+OK	51	0.06%	./src/modules/process/application/usecases/tests/delete-process.usecase.test.ts
+OK	50	0.06%	./src/shared/ui/layout/Panel.tsx
+OK	50	0.06%	./src/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema.ts
+OK	50	0.06%	./src/modules/process/ui/validation/containerFormState.validation.ts
+OK	50	0.06%	./src/modules/process/ui/utils/tests/formatRelativeTime.test.ts
+OK	50	0.06%	./src/modules/process/ui/components/DeleteShipmentConfirmationInput.tsx
+OK	49	0.06%	./src/modules/process/ui/validation/processConflict.validation.ts
+OK	49	0.06%	./src/modules/process/ui/timeline/tests/timelineEventIcon.test.ts
+OK	49	0.06%	./src/modules/process/features/operational-projection/application/processOperationalSummary.ts
+OK	48	0.06%	./src/shared/ui/EmptyState.tsx
+OK	48	0.06%	./src/modules/process/ui/components/tests/dashboard-refresh-button.test.ts
+OK	47	0.06%	./src/modules/process/ui/utils/dashboard-refresh.ts
+OK	47	0.06%	./src/modules/process/ui/mappers/processStatus.ui-mapper.ts
+OK	47	0.06%	./src/modules/process/ui/components/process-status-badges.presenter.ts
+OK	47	0.06%	./src/modules/container/infrastructure/persistence/container.persistence.mappers.ts
+OK	46	0.06%	./src/modules/process/ui/components/computeRowDistribution.test.ts
+OK	45	0.06%	./src/shared/utils/formatParseError.ts
+OK	45	0.06%	./src/routes/api/tests/refresh.route.test.ts
+OK	45	0.06%	./src/modules/process/ui/screens/shipment/components/ShipmentDialogsHost.tsx
+OK	44	0.05%	./vitest.setup.ts
+OK	44	0.05%	./tools/agent/platform/common.ts
+OK	44	0.05%	./src/shared/ui/icons/FlagIcons.tsx
+OK	44	0.05%	./src/routes/api/tests/agents.route.test.ts
+OK	44	0.05%	./src/modules/process/ui/utils/dashboard-row-navigation.ts
+OK	44	0.05%	./src/modules/agent/ui/components/AgentStatusBadge.tsx
+OK	44	0.05%	./src/modules/agent/infrastructure/bootstrap/agent.bootstrap.ts
+OK	43	0.05%	./tools/agent/platform/platform.types.ts
+OK	43	0.05%	./tools/agent/platform/platform.adapter.ts
+OK	43	0.05%	./src/shared/supabase/unwrapSupabaseResult.ts
+OK	43	0.05%	./src/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper.ts
+OK	43	0.05%	./src/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel.ts
+OK	43	0.05%	./src/modules/tracking/dev/scenario-lab/tests/scenario.catalog.test.ts
+OK	43	0.05%	./src/modules/container/application/container.usecases.ts
+OK	43	0.05%	./src/modules/agent/ui/components/AgentIdentityCard.tsx
+OK	43	0.05%	./src/capabilities/search/interface/http/search.schemas.ts
+OK	42	0.05%	./src/shared/errors/container-process.errors.ts
+OK	42	0.05%	./src/modules/tracking/features/status/domain/model/containerStatus.ts
+OK	42	0.05%	./src/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase.ts
+OK	42	0.05%	./src/modules/process/ui/mappers/trackingStatus.ui-mapper.ts
+OK	42	0.05%	./src/modules/process/interface/http/process.schemas.ts
+OK	42	0.05%	./src/modules/process/infrastructure/bootstrap/process.bootstrap.ts
+OK	42	0.05%	./src/modules/agent/ui/components/AgentRowStatus.tsx
+OK	42	0.05%	./src/capabilities/dashboard/application/dashboard.processes.projection.ts
+OK	41	0.05%	./src/modules/process/ui/mappers/tests/dashboardGlobalAlerts.ui-mapper.test.ts
+OK	41	0.05%	./src/capabilities/search/interface/http/search.controllers.ts
+OK	40	0.05%	./src/modules/process/ui/timeline/timelineEventIcon.ts
+OK	40	0.05%	./src/modules/agent/ui/components/AgentEnrollmentCard.tsx
+OK	39	0.05%	./src/modules/process/ui/mappers/trackingAlert.ui-mapper.ts
+OK	39	0.05%	./src/capabilities/sync/interface/http/sync-status.controllers.ts
+OK	38	0.05%	./src/modules/process/ui/tests/fetchDashboardKpis.test.ts
+OK	38	0.05%	./src/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper.ts
+OK	38	0.05%	./src/entry-server.tsx
+OK	38	0.05%	./src/capabilities/sync/interface/http/tests/sync-status.controllers.test.ts
+OK	37	0.05%	./src/modules/tracking/infrastructure/persistence/toJson.ts
+OK	37	0.05%	./src/modules/process/ui/screens/shipment/usecases/submitEditProcess.usecase.ts
+OK	37	0.05%	./src/modules/process/ui/mappers/dashboard-processes-created-by-month.ui-mapper.ts
+OK	36	0.04%	./src/modules/process/ui/screens/shipment/lib/shipmentError.presenter.ts
+OK	36	0.04%	./src/modules/process/ui/mappers/seriesLabel.ui-mapper.ts
+OK	36	0.04%	./src/modules/process/ui/components/ShipmentCurrentStatus.tsx
+OK	36	0.04%	./src/modules/container/domain/container.validation.ts
+OK	35	0.04%	./src/shared/utils/parseDate.ts
+OK	35	0.04%	./src/shared/api/sync-requests.realtime.client.ts
+OK	35	0.04%	./src/shared/api/agent-monitoring.realtime.client.ts
+OK	35	0.04%	./src/modules/tracking/dev/scenario-lab/scenario.seed.bootstrap.ts
+OK	35	0.04%	./src/modules/process/ui/screens/shipment/usecases/submitCreateProcess.usecase.ts
+OK	35	0.04%	./src/modules/process/ui/fetchDashboardProcessesCreatedByMonth.ts
+OK	35	0.04%	./src/modules/process/ui/components/unified/ImporterOptionsList.tsx
+OK	35	0.04%	./src/modules/container/application/usecases/create-container.usecase.ts
+OK	35	0.04%	./src/modules/agent/interface/http/tests/agent-monitoring.http.mappers.test.ts
+OK	34	0.04%	./src/shared/utils/clipboard.ts
+OK	34	0.04%	./src/shared/localization/tests/languageSelection.test.ts
+OK	34	0.04%	./src/shared/api/typedFetch.ts
+OK	34	0.04%	./src/modules/tracking/features/observation/application/orchestration/normalizeSnapshot.ts
+OK	34	0.04%	./src/modules/tracking/domain/model/snapshot.ts
+OK	34	0.04%	./src/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase.ts
+OK	34	0.04%	./src/capabilities/sync/application/ports/sync-queue.port.ts
+OK	33	0.04%	./tools/agent/tests/backoff.test.ts
+OK	33	0.04%	./src/routes/[...404].tsx
+OK	33	0.04%	./src/modules/tracking/features/timeline/domain/model/timeline.ts
+OK	33	0.04%	./src/modules/tracking/features/observation/domain/model/observationType.ts
+OK	33	0.04%	./src/modules/process/ui/api/processSync.api.ts
+OK	33	0.04%	./src/capabilities/dashboard/interface/http/dashboard.controllers.bootstrap.ts
+OK	32	0.04%	./src/modules/tracking/features/alerts/application/usecases/acknowledge-alert.usecase.ts
+OK	32	0.04%	./src/modules/process/ui/viewmodels/process-summary.vm.ts
+OK	32	0.04%	./src/modules/process/ui/components/DeleteShipmentWarning.tsx
+OK	32	0.04%	./src/modules/process/ui/components/AlertsList.tsx
+OK	31	0.04%	./tools/agent/backoff.ts
+OK	31	0.04%	./src/shared/utils/normalizeTimestamptz.ts
+OK	31	0.04%	./src/capabilities/dashboard/application/dashboard.usecases.ts
+OK	31	0.04%	./src/app.tsx
+OK	30	0.04%	./src/shared/utils/safeParseOrDefault.ts
+OK	30	0.04%	./src/shared/config/env.ts
+OK	30	0.04%	./src/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase.ts
+OK	30	0.04%	./src/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting.ts
+OK	30	0.04%	./src/modules/process/ui/mappers/tests/dashboard-processes-created-by-month.ui-mapper.test.ts
+OK	30	0.04%	./src/modules/process/ui/components/CreateProcessDialogs.tsx
+OK	30	0.04%	./src/modules/process/application/usecases/remove-container-from-process.usecase.ts
+OK	29	0.04%	./src/shared/utils/tests/clipboard.test.ts
+OK	29	0.04%	./src/shared/config/branding.ts
+OK	29	0.04%	./src/routes/api/tests/processes-process-index.route.test.ts
+OK	29	0.04%	./src/routes/api/agent/tests/heartbeat.route.test.ts
+OK	29	0.04%	./src/modules/tracking/application/ports/tracking.observation.repository.ts
+OK	29	0.04%	./src/modules/process/ui/components/DashboardKpiRow.tsx
+OK	29	0.04%	./src/modules/process/domain/process.entity.ts
+OK	29	0.04%	./src/modules/process/application/usecases/find-process-by-id-with-containers.usecase.ts
+OK	29	0.04%	./src/modules/process/application/process.records.ts
+OK	29	0.04%	./src/capabilities/search/interface/http/search.controllers.bootstrap.ts
+OK	28	0.03%	./src/modules/process/ui/utils/formatRelativeTime.ts
+OK	28	0.03%	./src/modules/process/application/usecases/list-processes-with-containers.usecase.ts
+OK	28	0.03%	./src/modules/container/application/container.repository.ts
+OK	28	0.03%	./src/modules/agent/ui/components/AgentCapabilitiesCard.tsx
+OK	28	0.03%	./src/capabilities/search/interface/http/search.http.mappers.ts
+OK	27	0.03%	./src/modules/process/ui/utils/dashboard-sync-reconciliation.ts
+OK	27	0.03%	./src/modules/process/ui/components/ContainersPanel.tsx
+OK	27	0.03%	./src/capabilities/sync/application/ports/sync-status-read.port.ts
+OK	26	0.03%	./tools/agent/tests/lifecycle-exit-codes.test.ts
+OK	26	0.03%	./tools/agent/runtime/lifecycle-exit-codes.ts
+OK	26	0.03%	./src/modules/tracking/interface/http/agent-enroll.schemas.ts
+OK	26	0.03%	./src/modules/tracking/infrastructure/carriers/fetchers/rest.fetchers.ts
+OK	26	0.03%	./src/modules/tracking/features/alerts/application/projection/tracking.operational-alert-category.readmodel.ts
+OK	26	0.03%	./src/modules/process/ui/timeline/timelineBlockModel.ts
+OK	26	0.03%	./src/modules/process/ui/components/container-distribution.ts
+OK	26	0.03%	./src/modules/container/interface/http/container.http.mappers.ts
+OK	25	0.03%	./src/shared/api/respondWithSchema.ts
+OK	25	0.03%	./src/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase.ts
+OK	25	0.03%	./src/modules/process/ui/viewmodels/dashboard-sort.vm.ts
+OK	25	0.03%	./src/modules/container/application/usecases/find-containers-by-number.usecase.ts
+OK	25	0.03%	./src/modules/agent/interface/http/agent-monitoring.controllers.bootstrap.ts
+OK	24	0.03%	./src/shared/utils/tests/carrier.test.ts
+OK	24	0.03%	./src/shared/utils/parseWithStack.ts
+OK	24	0.03%	./src/modules/tracking/application/usecases/get-snapshots-for-container.usecase.ts
+OK	24	0.03%	./src/modules/tracking/application/usecases/get-latest-snapshot.usecase.ts
+OK	24	0.03%	./src/modules/agent/interface/http/update-manifest.controllers.bootstrap.ts
+OK	23	0.03%	./src/shared/supabase/supabase.server.ts
+OK	23	0.03%	./src/shared/localization/translationTypes.ts
+OK	23	0.03%	./src/modules/tracking/features/status/application/projection/tests/tracking.status.projection.test.ts
+OK	23	0.03%	./src/modules/tracking/application/ports/tracking.snapshot.repository.ts
+OK	23	0.03%	./src/modules/process/ui/viewmodels/alert.vm.ts
+OK	23	0.03%	./src/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper.ts
+OK	23	0.03%	./src/modules/container/application/usecases/check-container-existence.usecase.ts
+OK	23	0.03%	./src/capabilities/sync/application/ports/sync-target-read.port.ts
+OK	23	0.03%	./src/capabilities/search/ui/search.ui-mapper.ts
+OK	23	0.03%	./src/capabilities/search/interface/http/search.controller.ts
+OK	23	0.03%	./src/capabilities/search/application/search.facade.ts
+OK	22	0.03%	./src/shared/ui/layout/Stack.tsx
+OK	22	0.03%	./src/modules/tracking/application/ports/tracking.sync-metadata.repository.ts
+OK	22	0.03%	./src/modules/process/ui/components/RefreshErrorBanner.tsx
+OK	22	0.03%	./src/modules/process/ui/components/AlertActionBanner.tsx
+OK	22	0.03%	./src/capabilities/sync/interface/http/sync.schemas.ts
+OK	21	0.03%	./src/shared/api/typedRoute.ts
+OK	21	0.03%	./src/routes/api/tracking/snapshots/ingest.route.test.ts
+OK	21	0.03%	./src/routes/api/agent/tests/targets.route.test.ts
+OK	21	0.03%	./src/modules/process/application/process.readmodels.ts
+OK	21	0.03%	./src/modules/container/domain/container.entity.ts
+OK	20	0.02%	./src/shared/ui/icons/flags/USFlag.tsx
+OK	20	0.02%	./src/shared/ui/icons/flags/PTFlag.tsx
+OK	20	0.02%	./src/shared/ui/icons/flags/BRFlag.tsx
+OK	20	0.02%	./src/routes/api/tests/processes-sync.route.test.ts
+OK	20	0.02%	./src/routes/api/tests/processes-process-sync.route.test.ts
+OK	20	0.02%	./src/routes/api/tests/processes-process-refresh.route.test.ts
+OK	20	0.02%	./src/routes/api/tests/dashboard-sync.route.test.ts
+OK	20	0.02%	./src/routes/api/tests/containers-number-sync.route.test.ts
+OK	20	0.02%	./src/modules/tracking/application/usecases/list-tracking-search-projections.usecase.ts
+OK	19	0.02%	./src/shared/errors/httpErrors.ts
+OK	19	0.02%	./src/routes/api/tests/search.route.test.ts
+OK	19	0.02%	./src/routes/api/tests/processes-v2.route.test.ts
+OK	19	0.02%	./src/routes/api/tests/processes-sync-status.route.test.ts
+OK	19	0.02%	./src/routes/api/tests/dashboard-processes-created-by-month.route.test.ts
+OK	19	0.02%	./src/routes/api/tests/dashboard-kpis.route.test.ts
+OK	19	0.02%	./src/routes/api/containers/tests/check.route.test.ts
+OK	19	0.02%	./src/routes/api/agent/tests/update-manifest.route.test.ts
+OK	19	0.02%	./src/routes/api/agent/tests/enroll.route.test.ts
+OK	19	0.02%	./src/modules/tracking/infrastructure/persistence/tracking.row.ts
+OK	19	0.02%	./src/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase.ts
+OK	19	0.02%	./src/modules/process/ui/screens/shipment/components/ShipmentRefreshStatusView.tsx
+OK	19	0.02%	./src/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback.tsx
+OK	19	0.02%	./src/modules/process/ui/components/unified/ActiveFilterChip.tsx
+OK	19	0.02%	./src/modules/container/application/usecases/list-containers-by-process-id.usecase.ts
+OK	19	0.02%	./src/modules/container/application/usecases/list-containers-by-process-ids.usecase.ts
+OK	18	0.02%	./src/shared/utils/carrier.ts
+OK	18	0.02%	./src/shared/localization/languageSelection.ts
+OK	18	0.02%	./src/modules/process/ui/utils/dashboard-refresh-button.ts
+OK	18	0.02%	./src/modules/container/application/usecases/delete-container.usecase.ts
+OK	18	0.02%	./src/capabilities/search/ui/search.vm.ts
+OK	18	0.02%	./playwright.config.ts
+OK	17	0.02%	./src/modules/tracking/interface/http/tracking.controllers.bootstrap.ts
+OK	17	0.02%	./src/modules/tracking/features/status/application/projection/tracking.status.projection.ts
+OK	17	0.02%	./src/modules/tracking/application/usecases/types.ts
+OK	17	0.02%	./src/modules/process/ui/viewmodels/dashboard-process-exception.vm.ts
+OK	17	0.02%	./src/modules/process/application/usecases/find-process-by-id.usecase.ts
+OK	17	0.02%	./src/modules/container/interface/http/container.schemas.ts
+OK	17	0.02%	./src/modules/container/interface/http/container.controllers.bootstrap.ts
+OK	16	0.02%	./src/shared/utils/findDuplicateStrings.ts
+OK	16	0.02%	./src/routes/api/refresh-maersk/[container].ts
+OK	16	0.02%	./src/modules/process/ui/viewmodels/dashboard-global-alerts.vm.ts
+OK	16	0.02%	./src/modules/process/interface/http/process.controllers.bootstrap.ts
+OK	16	0.02%	./src/modules/process/application/usecases/delete-process.usecase.ts
+OK	16	0.02%	./src/modules/process/application/process.repository.ts
+OK	15	0.02%	./.vinxi/types/nitro-config.d.ts
+OK	15	0.02%	./src/routes/api/refresh.ts
+OK	15	0.02%	./src/routes/api/alerts.ts
+OK	15	0.02%	./src/modules/process/ui/components/unified/Icons.tsx
+OK	14	0.02%	./src/modules/process/ui/status-color.ts
+OK	13	0.02%	./.vinxi/types/nitro-routes.d.ts
+OK	13	0.02%	./src/routes/api/tracking/snapshots/ingest.ts
+OK	13	0.02%	./src/routes/api/tracking/containers/[containerId]/snapshots.ts
+OK	13	0.02%	./src/routes/api/tracking/containers/[containerId]/snapshots/latest.ts
+OK	13	0.02%	./src/routes/api/refresh/status.ts
+OK	13	0.02%	./src/routes/api/agent/targets.ts
+OK	13	0.02%	./src/routes/api/agent/enroll.ts
+OK	13	0.02%	./src/modules/process/ui/screens/shipment/ShipmentPage.tsx
+OK	13	0.02%	./src/modules/process/ui/screens/shipment/lib/shipmentRefresh.helpers.ts
+OK	13	0.02%	./src/modules/process/application/usecases/list-processes.usecase.ts
+OK	12	0.01%	./src/shared/api/search.controllers.bootstrap.ts
+OK	12	0.01%	./src/modules/tracking/infrastructure/carriers/fetchers/is-rest-carrier.ts
+OK	12	0.01%	./src/modules/tracking/features/series/application/projection/tracking.series.classification.ts
+OK	12	0.01%	./src/modules/process/application/process.container-usecases.ts
+OK	12	0.01%	./src/capabilities/sync/application/commands/enqueue-sync.command.ts
+OK	11	0.01%	./src/shared/utils/typeGuards.ts
+OK	11	0.01%	./src/routes/api/search.ts
+OK	11	0.01%	./src/routes/api/containers/check.ts
+OK	11	0.01%	./src/modules/tracking/domain/logistics/transshipment.ts
+OK	11	0.01%	./src/modules/process/ui/fetchDashboardKpis.ts
+OK	11	0.01%	./src/capabilities/search/ui/fetchSearch.ts
+OK	10	0.01%	./tools/ralph-loop/flowchart/src/main.tsx
+OK	10	0.01%	./src/shared/api/dashboard.controllers.bootstrap.ts
+OK	10	0.01%	./src/modules/process/ui/viewmodels/containerSummary.vm.ts
+OK	10	0.01%	./src/modules/process/ui/screens/shipment/lib/alert-lifecycle.ts
+OK	10	0.01%	./src/modules/process/domain/identity/process-reference.vo.ts
+OK	9	0.01%	./src/modules/process/ui/viewmodels/dashboard-kpi.vm.ts
+OK	9	0.01%	./src/modules/process/ui/utils/process-resource-key.ts
+OK	9	0.01%	./src/modules/process/domain/process.validation.ts
+OK	9	0.01%	./src/modules/process/domain/process.types.ts
+OK	9	0.01%	./src/modules/container/domain/container.types.ts
+OK	9	0.01%	./src/modules/agent/infrastructure/persistence/agent-monitoring.row.ts
+OK	9	0.01%	./app.config.ts
+OK	8	0.01%	./tools/ralph-loop/flowchart/vite.config.ts
+OK	8	0.01%	./src/routes/shipments/[id].tsx
+OK	8	0.01%	./src/modules/tracking/infrastructure/carriers/normalizers/lookup-key.ts
+OK	8	0.01%	./src/modules/process/domain/identity/process-source.vo.ts
+OK	7	0.01%	./src/routes/api/agent/update-manifest.ts
+OK	7	0.01%	./src/routes/api/agents.ts
+OK	7	0.01%	./src/routes/api/agents/[id].ts
+OK	7	0.01%	./src/routes/api/agents/[id]/request-update.ts
+OK	7	0.01%	./src/routes/api/agents/[id]/request-restart.ts
+OK	7	0.01%	./src/routes/api/agent/heartbeat.ts
+OK	7	0.01%	./src/routes/agents/[id].tsx
+OK	7	0.01%	./src/modules/process/domain/identity/process-id.vo.ts
+OK	7	0.01%	./src/modules/process/domain/identity/carrier-code.vo.ts
+OK	7	0.01%	./src/modules/container/domain/identity/process-id.vo.ts
+OK	7	0.01%	./src/modules/container/domain/identity/container-number.vo.ts
+OK	7	0.01%	./src/modules/container/domain/identity/container-id.vo.ts
+OK	7	0.01%	./src/modules/container/domain/identity/carrier-code.vo.ts
+OK	6	0.01%	./src/routes/index.tsx
+OK	6	0.01%	./src/modules/process/ui/viewmodels/process-status-microbadge.vm.ts
+OK	6	0.01%	./src/modules/container/infrastructure/bootstrap/container.bootstrap.ts
+OK	6	0.01%	./src/capabilities/search/ui/GlobalSearchOverlay.tsx
+OK	5	0.01%	./src/routes/api/processes/sync.ts
+OK	5	0.01%	./src/routes/api/processes/[id]/sync.ts
+OK	5	0.01%	./src/routes/api/processes/[id]/refresh.ts
+OK	5	0.01%	./src/routes/api/processes/[id]/index.ts
+OK	5	0.01%	./src/routes/api/dashboard/sync.ts
+OK	5	0.01%	./src/routes/api/containers/[number]/sync.ts
+OK	5	0.01%	./src/routes/agents/index.tsx
+OK	5	0.01%	./src/modules/tracking/domain/model/provider.ts
+OK	5	0.01%	./src/modules/process/ui/viewmodels/dashboard-monthly-bar-datum.vm.ts
+OK	5	0.01%	./src/modules/process/ui/screens/shipment/usecases/unacknowledgeShipmentAlert.usecase.ts
+OK	5	0.01%	./src/modules/process/ui/screens/shipment/usecases/acknowledgeShipmentAlert.usecase.ts
+OK	5	0.01%	./src/modules/process/ui/screens/shipment/types/shipmentScreen.types.ts
+OK	5	0.01%	./src/modules/process/ui/components/unified/FilterControlOption.ts
+OK	5	0.01%	./src/modules/process/infrastructure/persistence/process.row.ts
+OK	5	0.01%	./src/modules/container/infrastructure/persistence/container.row.ts
+OK	4	0.00%	./src/routes/api/processes.ts
+OK	4	0.00%	./src/modules/container/application/container.readmodels.ts
+OK	3	0.00%	./src/routes/api/processes-v2.ts
+OK	3	0.00%	./src/routes/api/processes/sync-status.ts
+OK	3	0.00%	./src/routes/api/dashboard/operational-summary.ts
+OK	3	0.00%	./src/routes/api/dashboard/kpis.ts
+OK	3	0.00%	./src/routes/api/dashboard/charts/processes-created-by-month.ts
+OK	2	0.00%	./.vinxi/types/nitro.d.ts
+OK	1	0.00%	./src/shared/localization/defaultLocale.ts
+OK	1	0.00%	./src/global.d.ts
+OK	0	0.00%	./.vinxi/types/nitro-imports.d.ts
