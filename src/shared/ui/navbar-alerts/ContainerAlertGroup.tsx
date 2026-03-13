@@ -14,7 +14,7 @@ type ContainerAlertGroupProps = {
 function toDisplayValue(value: string | null, fallback: string): string {
   if (value === null) return fallback
   const trimmed = value.trim()
-  return trimmed.length > 0 ? value : fallback
+  return trimmed.length > 0 ? trimmed : fallback
 }
 
 export function ContainerAlertGroup(props: ContainerAlertGroupProps): JSX.Element {

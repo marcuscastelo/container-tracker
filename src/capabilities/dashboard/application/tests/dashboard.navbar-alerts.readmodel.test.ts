@@ -102,8 +102,8 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
           process: {
             id: 'process-warning',
             reference: 'REF-WARN',
-            origin: 'Santos',
-            destination: 'Hamburg',
+            origin: '  Santos ',
+            destination: ' Hamburg  ',
             carrier: 'MSC',
           },
           containers: [
@@ -247,6 +247,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       'container-warn-1',
       'container-warn-2',
     ])
+    expect(result.processes[1]?.routeSummary).toBe('Santos → Hamburg')
     expect(getContainersSummary).toHaveBeenCalledTimes(1)
   })
 

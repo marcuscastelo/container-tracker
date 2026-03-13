@@ -29,6 +29,16 @@ function toAlertCardTone(severity: NavbarAlertVM['severity']): string {
   return 'border-tone-info-border/80 bg-tone-info-bg/35'
 }
 
+function toAlertCardHoverTone(severity: NavbarAlertVM['severity']): string {
+  if (severity === 'danger') {
+    return 'hover:border-tone-danger-strong hover:bg-tone-danger-bg/45'
+  }
+  if (severity === 'warning') {
+    return 'hover:border-tone-warning-strong hover:bg-tone-warning-bg/45'
+  }
+  return 'hover:border-tone-info-strong hover:bg-tone-info-bg/45'
+}
+
 function toSeverityLabel(
   severity: NavbarAlertVM['severity'],
   t: ReturnType<typeof useTranslation>['t'],
@@ -55,7 +65,7 @@ export function AlertItem(props: AlertItemProps): JSX.Element {
       onClick={() => props.onOpenContainer()}
       class={`block w-full rounded-md border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ${toAlertCardTone(
         props.alert.severity,
-      )} hover:border-tone-warning-strong hover:bg-tone-warning-bg/45`}
+      )} ${toAlertCardHoverTone(props.alert.severity)}`}
     >
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">

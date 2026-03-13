@@ -13,7 +13,7 @@ type ProcessAlertGroupProps = {
 function toDisplayValue(value: string | null, fallback: string): string {
   if (value === null) return fallback
   const trimmed = value.trim()
-  return trimmed.length > 0 ? value : fallback
+  return trimmed.length > 0 ? trimmed : fallback
 }
 
 export function ProcessAlertGroup(props: ProcessAlertGroupProps): JSX.Element {

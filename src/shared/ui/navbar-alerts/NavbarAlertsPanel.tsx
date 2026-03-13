@@ -5,6 +5,7 @@ import type { NavbarProcessAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar
 import { ProcessAlertGroup } from '~/shared/ui/navbar-alerts/ProcessAlertGroup'
 
 type NavbarAlertsPanelProps = {
+  readonly panelId: string
   readonly totalAlerts: number
   readonly processes: readonly NavbarProcessAlertGroupVM[]
   readonly loading: boolean
@@ -17,6 +18,7 @@ type NavbarAlertsPanelProps = {
 }
 
 type PanelHeaderProps = {
+  readonly titleId: string
   readonly totalAlerts: number
   readonly onClose: () => void
   readonly onOpenDashboard: () => void
@@ -109,7 +111,9 @@ function PanelHeader(props: PanelHeaderProps): JSX.Element {
   return (
     <header class="flex items-start justify-between gap-2 border-b border-border bg-surface px-3 py-2.5">
       <div class="min-w-0">
-        <p class="text-sm-ui font-semibold text-foreground">{t(keys.header.alertsPanel.title)}</p>
+        <p id={props.titleId} class="text-sm-ui font-semibold text-foreground">
+          {t(keys.header.alertsPanel.title)}
+        </p>
         <p class="text-xs-ui text-text-muted">{t(keys.header.alertsPanel.subtitle)}</p>
       </div>
 
@@ -174,6 +178,7 @@ function PanelContent(props: PanelContentProps): JSX.Element {
 
 export function NavbarAlertsPanel(props: NavbarAlertsPanelProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const titleId = () => `${props.panelId}-title`
 
   return (
     <>
@@ -184,8 +189,15 @@ export function NavbarAlertsPanel(props: NavbarAlertsPanelProps): JSX.Element {
         onClick={() => props.onClose()}
       />
 
-      <section class="fixed inset-0 z-50 flex flex-col bg-surface min-[1024px]:absolute min-[1024px]:inset-auto min-[1024px]:right-0 min-[1024px]:top-full min-[1024px]:z-20 min-[1024px]:mt-2 min-[1024px]:max-h-[72vh] min-[1024px]:w-[min(92vw,640px)] min-[1024px]:rounded-xl min-[1024px]:border min-[1024px]:border-border min-[1024px]:bg-surface-elevated min-[1024px]:shadow-2xl">
+      <section
+        id={props.panelId}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId()}
+        class="fixed inset-0 z-50 flex flex-col bg-surface min-[1024px]:absolute min-[1024px]:inset-auto min-[1024px]:right-0 min-[1024px]:top-full min-[1024px]:z-20 min-[1024px]:mt-2 min-[1024px]:max-h-[72vh] min-[1024px]:w-[min(92vw,640px)] min-[1024px]:rounded-xl min-[1024px]:border min-[1024px]:border-border min-[1024px]:bg-surface-elevated min-[1024px]:shadow-2xl"
+      >
         <PanelHeader
+          titleId={titleId()}
           totalAlerts={props.totalAlerts}
           onClose={props.onClose}
           onOpenDashboard={props.onOpenDashboard}

@@ -15,6 +15,7 @@ export function NavbarAlertsButton(): JSX.Element {
   const navigate = useNavigate()
   const navbarAlerts = useNavbarAlerts()
   const [isOpen, setIsOpen] = createSignal(false)
+  const panelId = 'navbar-alerts-panel'
   let rootRef: HTMLDivElement | undefined
 
   createEffect(() => {
@@ -93,6 +94,7 @@ export function NavbarAlertsButton(): JSX.Element {
         onClick={togglePanel}
         aria-haspopup="dialog"
         aria-expanded={isOpen()}
+        aria-controls={panelId}
         aria-label={t(keys.header.alertsBadge, { count: totalAlerts() })}
         title={buttonTitle()}
         class={clsx(
@@ -125,6 +127,7 @@ export function NavbarAlertsButton(): JSX.Element {
 
       <Show when={isOpen()}>
         <NavbarAlertsPanel
+          panelId={panelId}
           totalAlerts={totalAlerts()}
           processes={navbarAlerts.state().processes}
           loading={navbarAlerts.state().loading}

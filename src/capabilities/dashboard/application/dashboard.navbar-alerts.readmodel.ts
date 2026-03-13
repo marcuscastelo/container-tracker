@@ -133,9 +133,9 @@ const DASHBOARD_NAVBAR_SEVERITY_ORDER: Readonly<Record<DashboardNavbarSeverity, 
 }
 
 function toRouteSummary(origin: string | null, destination: string | null): string {
-  const normalizedOrigin = origin?.trim() ? origin : '—'
-  const normalizedDestination = destination?.trim() ? destination : '—'
-  return `${normalizedOrigin} → ${normalizedDestination}`
+  const normalizedOrigin = origin?.trim() ?? ''
+  const normalizedDestination = destination?.trim() ?? ''
+  return `${normalizedOrigin.length > 0 ? normalizedOrigin : '—'} → ${normalizedDestination.length > 0 ? normalizedDestination : '—'}`
 }
 
 function toTimestampOrNegativeInfinity(value: string | null | undefined): number {
