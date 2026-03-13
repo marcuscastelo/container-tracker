@@ -10,6 +10,7 @@ const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   'puppeteer',
   'puppeteer-extra',
   'puppeteer-extra-plugin-stealth',
+  'puppeteer-extra-plugin-user-data-dir',
   'puppeteer-extra-plugin-user-preferences',
   'zod',
 ]
@@ -43,6 +44,36 @@ function resolvePackageEntryPath(nodeModulesDir, packageName) {
 function isInsideDirectory(rootDir, targetPath) {
   const relativePath = path.relative(rootDir, targetPath)
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+}
+
+function extractRelativePathFromAnyNodeModules(targetPath) {
+  const normalizedTargetPath = path.normalize(targetPath)
+  const marker = `${path.sep}node_modules${path.sep}`
+  const markerIndex = normalizedTargetPath.lastIndexOf(marker)
+  if (markerIndex < 0) {
+    return null
+  }
+
+  const relativePath = normalizedTargetPath.slice(markerIndex + marker.length)
+  return relativePath.length > 0 ? relativePath : null
+}
+
+function remapAbsoluteRuntimeSymlinkTarget({
+  sourceNodeModulesDir,
+  targetNodeModulesDir,
+  resolvedTargetPath,
+}) {
+  if (isInsideDirectory(sourceNodeModulesDir, resolvedTargetPath)) {
+    const relativeFromSourceRoot = path.relative(sourceNodeModulesDir, resolvedTargetPath)
+    return path.join(targetNodeModulesDir, relativeFromSourceRoot)
+  }
+
+  const relativeFromNodeModules = extractRelativePathFromAnyNodeModules(resolvedTargetPath)
+  if (!relativeFromNodeModules) {
+    return null
+  }
+
+  return path.join(targetNodeModulesDir, relativeFromNodeModules)
 }
 
 function extractPnpmDepId(pnpmStoreDir, packageDir) {
@@ -209,6 +240,76 @@ async function collectRuntimeDependencyIds({ nodeModulesDir, pnpmStoreDir, direc
   }
 }
 
+async function normalizeAbsoluteRuntimeSymlinks({ sourceNodeModulesDir, targetNodeModulesDir }) {
+  const pendingDirs = [targetNodeModulesDir]
+  let normalizedCount = 0
+
+  while (pendingDirs.length > 0) {
+    const currentDir = pendingDirs.pop()
+    if (!currentDir) {
+      continue
+    }
+
+    const entries = await fs.readdir(currentDir, { withFileTypes: true })
+    for (const entry of entries) {
+      const entryPath = path.join(currentDir, entry.name)
+
+      if (entry.isDirectory()) {
+        pendingDirs.push(entryPath)
+        continue
+      }
+
+      if (!entry.isSymbolicLink()) {
+        continue
+      }
+
+      let rawTargetPath
+      try {
+        rawTargetPath = await fs.readlink(entryPath)
+      } catch {
+        continue
+      }
+
+      if (!path.isAbsolute(rawTargetPath)) {
+        continue
+      }
+
+      const resolvedTargetPath = path.resolve(path.dirname(entryPath), rawTargetPath)
+      const remappedTargetPath = remapAbsoluteRuntimeSymlinkTarget({
+        sourceNodeModulesDir,
+        targetNodeModulesDir,
+        resolvedTargetPath,
+      })
+      if (!remappedTargetPath) {
+        throw new Error(`Could not remap absolute runtime symlink target: ${entryPath} -> ${rawTargetPath}`)
+      }
+
+      if (!(await pathExists(remappedTargetPath))) {
+        throw new Error(`Absolute runtime symlink target missing after sync: ${remappedTargetPath}`)
+      }
+
+      const targetStats = await fs.lstat(remappedTargetPath)
+      const relativeLinkTarget = path.relative(path.dirname(entryPath), remappedTargetPath)
+      const symlinkType =
+        process.platform === 'win32'
+          ? targetStats.isDirectory()
+            ? 'junction'
+            : 'file'
+          : undefined
+
+      await fs.rm(entryPath, { recursive: true, force: true })
+      await fs.symlink(relativeLinkTarget, entryPath, symlinkType)
+      normalizedCount += 1
+    }
+  }
+
+  if (normalizedCount > 0) {
+    console.log(
+      `[agent:linux-package] normalized ${normalizedCount} absolute runtime symlink(s)`,
+    )
+  }
+}
+
 async function syncRuntimeDependencies({ sourceNodeModulesDir, targetNodeModulesDir }) {
   const sourcePnpmStoreDir = path.join(sourceNodeModulesDir, '.pnpm')
   const targetPnpmStoreDir = path.join(targetNodeModulesDir, '.pnpm')
@@ -255,6 +356,11 @@ async function syncRuntimeDependencies({ sourceNodeModulesDir, targetNodeModules
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }
+
+  await normalizeAbsoluteRuntimeSymlinks({
+    sourceNodeModulesDir,
+    targetNodeModulesDir,
+  })
 
   console.log(
     `[agent:linux-package] synced ${runtimeSnapshot.dependencyIds.size} pnpm snapshots and ${runtimeSnapshot.directResolutions.length} direct runtime links`,
