@@ -30,7 +30,7 @@ type ShipmentDataViewProps = {
   readonly selectedContainer: ShipmentDetailVM['containers'][number] | null
 }
 
-const TRACKING_REPLAY_DEBUG_ENABLED = import.meta.env.DEV
+const ENABLE_TRACKING_REPLAY_DEBUG = import.meta.env.DEV
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const { t, keys } = useTranslation()
@@ -97,7 +97,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
               />
             </ErrorBoundary>
           </section>
-          <Show when={TRACKING_REPLAY_DEBUG_ENABLED && props.selectedContainer}>
+          <Show when={ENABLE_TRACKING_REPLAY_DEBUG && props.selectedContainer}>
             {(container) => (
               <section id="shipment-tracking-replay" class="scroll-mt-30">
                 <TrackingReplayDebugPanel

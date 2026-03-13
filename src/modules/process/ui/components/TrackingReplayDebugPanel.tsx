@@ -71,6 +71,7 @@ function ReplayActions(props: {
   readonly onRunReplay: () => void
   readonly onPrevious: () => void
   readonly onNext: () => void
+  readonly onDownload: (replay: TrackingReplayResponse) => void
 }): JSX.Element {
   return (
     <div class="flex flex-wrap items-center gap-2">
@@ -89,6 +90,7 @@ function ReplayActions(props: {
             selectedStepIndex={props.selectedStepIndex}
             onPrevious={props.onPrevious}
             onNext={props.onNext}
+            onDownload={props.onDownload}
           />
         )}
       </Show>
@@ -102,6 +104,7 @@ function ReplayNavigationActions(props: {
   readonly selectedStepIndex: number
   readonly onPrevious: () => void
   readonly onNext: () => void
+  readonly onDownload: (replay: TrackingReplayResponse) => void
 }): JSX.Element {
   return (
     <>
@@ -124,7 +127,7 @@ function ReplayNavigationActions(props: {
       <button
         type="button"
         class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
-        onClick={() => downloadReplay(props.containerNumber, props.replay)}
+        onClick={() => props.onDownload(props.replay)}
       >
         Export JSON
       </button>
@@ -133,6 +136,7 @@ function ReplayNavigationActions(props: {
 }
 
 function ReplayStepInspector(props: {
+  readonly containerNumber: string
   readonly maxStep: number
   readonly selectedStepIndex: number
   readonly step: TrackingReplayResponse['steps'][number] | null
@@ -153,6 +157,11 @@ function ReplayStepInspector(props: {
           max={String(props.maxStep)}
           value={String(props.selectedStepIndex + 1)}
           class="w-full"
+          aria-label={`Tracking replay step for ${props.containerNumber}`}
+          aria-valuemin={1}
+          aria-valuemax={props.maxStep}
+          aria-valuenow={props.selectedStepIndex + 1}
+          aria-valuetext={`Step ${props.selectedStepIndex + 1} of ${props.maxStep}`}
           onInput={(event) =>
             props.onSelectStep(Math.max(0, Number(event.currentTarget.value) - 1))
           }
@@ -181,6 +190,7 @@ function ReplayStepInspector(props: {
 }
 
 function ReplayResultDetails(props: {
+  readonly containerNumber: string
   readonly replay: TrackingReplayResponse
   readonly selectedStepIndex: number
   readonly step: TrackingReplayResponse['steps'][number] | null
@@ -198,6 +208,7 @@ function ReplayResultDetails(props: {
       <ReplayComparisonSummary replay={props.replay} />
 
       <ReplayStepInspector
+        containerNumber={props.containerNumber}
         maxStep={props.replay.steps.length}
         selectedStepIndex={props.selectedStepIndex}
         step={props.step}
@@ -210,6 +221,7 @@ function ReplayResultDetails(props: {
 export function TrackingReplayDebugPanel(props: TrackingReplayDebugPanelProps): JSX.Element {
   const [requestNonce, setRequestNonce] = createSignal(0)
   const [selectedStepIndex, setSelectedStepIndex] = createSignal(0)
+  const [downloadAnnouncement, setDownloadAnnouncement] = createSignal('')
   const [replay] = createResource(
     () => {
       const nonce = requestNonce()
@@ -238,6 +250,9 @@ export function TrackingReplayDebugPanel(props: TrackingReplayDebugPanelProps): 
       class="rounded-xl border-dashed"
       bodyClass="space-y-3 px-3 py-3"
     >
+      <div class="sr-only" aria-live="polite">
+        {downloadAnnouncement()}
+      </div>
       <ReplayActions
         replay={replay()}
         loading={replay.loading}
@@ -246,6 +261,10 @@ export function TrackingReplayDebugPanel(props: TrackingReplayDebugPanelProps): 
         onRunReplay={() => setRequestNonce((current) => current + 1)}
         onPrevious={() => setSelectedStepIndex((current) => Math.max(0, current - 1))}
         onNext={() => setSelectedStepIndex((current) => Math.min(maxStep() - 1, current + 1))}
+        onDownload={(result) => {
+          downloadReplay(props.containerNumber, result)
+          setDownloadAnnouncement(`Replay download started for ${props.containerNumber}`)
+        }}
       />
 
       <Show when={replay.error}>
@@ -267,6 +286,7 @@ export function TrackingReplayDebugPanel(props: TrackingReplayDebugPanelProps): 
       >
         {(result) => (
           <ReplayResultDetails
+            containerNumber={props.containerNumber}
             replay={result()}
             selectedStepIndex={selectedStepIndex()}
             step={currentStep()}

@@ -16,6 +16,14 @@ import {
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 
+/**
+ * Safety cap for on-demand replay responses.
+ *
+ * Replay duplicates the full derivation graph in memory and can embed complete
+ * intermediate state per step, so very large histories can produce oversized
+ * responses and expensive recomputation. When the cap is exceeded we abort the
+ * replay with TrackingReplayStepLimitError instead of returning partial state.
+ */
 export const MAX_TRACKING_REPLAY_STEPS = 5000
 
 export class TrackingReplayStepLimitError extends Error {
