@@ -112,8 +112,16 @@ class InMemoryObservationRepository implements ObservationRepository {
  */
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts: Map<string, TrackingAlert> = new Map()
-  public findByContainerIdCalls = 0
-  public findAlertDerivationStateByContainerIdCalls = 0
+  private findByContainerIdCalls = 0
+  private findAlertDerivationStateByContainerIdCalls = 0
+
+  get fullAlertReadCalls(): number {
+    return this.findByContainerIdCalls
+  }
+
+  get derivationStateReadCalls(): number {
+    return this.findAlertDerivationStateByContainerIdCalls
+  }
 
   async insertMany(newAlerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     const inserted: TrackingAlert[] = []
@@ -528,7 +536,7 @@ describe('Pipeline Integration Tests - Maersk', () => {
       trackingAlertRepository,
     })
 
-    expect(trackingAlertRepository.findAlertDerivationStateByContainerIdCalls).toBe(1)
-    expect(trackingAlertRepository.findByContainerIdCalls).toBe(0)
+    expect(trackingAlertRepository.derivationStateReadCalls).toBe(1)
+    expect(trackingAlertRepository.fullAlertReadCalls).toBe(0)
   })
 })

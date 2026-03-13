@@ -83,7 +83,19 @@ function isNoMovementAlertDerivationState(
     readonly lastEventDate: string
   }
 } {
-  return alert.category === 'monitoring' && alert.type === 'NO_MOVEMENT'
+  const params = alert.message_params
+  return (
+    alert.category === 'monitoring' &&
+    alert.type === 'NO_MOVEMENT' &&
+    'threshold_days' in params &&
+    'days_without_movement' in params &&
+    'days' in params &&
+    'lastEventDate' in params &&
+    typeof params.threshold_days === 'number' &&
+    typeof params.days_without_movement === 'number' &&
+    typeof params.days === 'number' &&
+    typeof params.lastEventDate === 'string'
+  )
 }
 
 function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
