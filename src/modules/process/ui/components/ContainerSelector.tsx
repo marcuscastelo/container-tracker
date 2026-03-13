@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js'
 import { createMemo, For, Show } from 'solid-js'
+import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -15,28 +16,8 @@ type ContainerSelectorItemLabels = {
   readonly etaLabel: string
 }
 
-/**
- * Computes how many items to place in each row given a total count.
- *
- * Rules (max 4 per row):
- *   rows = ceil(n / 4)
- *   base = floor(n / rows)
- *   The first (n % rows) rows get (base + 1) items; the rest get base.
- *
- * Examples for n = 1..20:
- *   1→[1]  2→[2]  3→[3]  4→[4]
- *   5→[3,2]  6→[3,3]  7→[4,3]  8→[4,4]
- *   9→[3,3,3]  10→[4,3,3]  11→[4,4,3]  12→[4,4,4]
- *   13→[4,3,3,3]  14→[4,4,3,3]  15→[4,4,4,3]  16→[4,4,4,4]
- *   17→[4,4,3,3,3]  18→[4,4,4,3,3]  19→[4,4,4,4,3]  20→[4,4,4,4,4]
- */
-function computeRowDistribution(n: number): number[] {
-  if (n <= 0) return []
-  const rowCount = Math.ceil(n / 4)
-  const base = Math.floor(n / rowCount)
-  const remainder = n % rowCount
-  return Array.from({ length: rowCount }, (_, i) => (i < remainder ? base + 1 : base))
-}
+// computeRowDistribution is implemented in a small separate module so it can be
+// unit-tested without pulling client-only UI dependencies.
 
 function ContainerSelectorItem(props: {
   readonly container: ContainerDetailVM
@@ -109,7 +90,6 @@ export function ContainerSelector(props: {
   containers: readonly ContainerDetailVM[]
   selectedId: string
   onSelect: (id: string) => void
-  syncNow: Date
 }): JSX.Element {
   const { t, keys } = useTranslation()
 
