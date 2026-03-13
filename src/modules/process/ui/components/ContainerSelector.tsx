@@ -69,7 +69,6 @@ function ContainerSelectorItem(props: {
             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        <span class="font-medium">{props.labels.etaLabel}:</span>
         <span class="truncate">{etaValue()}</span>
       </div>
 
