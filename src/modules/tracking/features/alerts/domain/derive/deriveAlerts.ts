@@ -11,6 +11,7 @@ import type {
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**
@@ -107,22 +108,25 @@ function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
  * - Only LOAD and DISCHARGE events are relevant
  * - Both vessel names must be present and different
  * - ARRIVAL/DEPARTURE are irrelevant for vessel-change detection
- * - Ordering is deterministic: event_time → type → location_code → fingerprint
+ * - Ordering follows canonical observation chronology (null event_time last)
+ *   with stable timeline order as the final tiebreaker
  *
  * @see docs/TRACKING_INVARIANTS.md
  */
 function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[] {
-  const events = [...timeline.observations]
-    .filter((o) => (o.type === 'LOAD' || o.type === 'DISCHARGE') && o.event_time_type === 'ACTUAL')
+  const events = timeline.observations
+    .map((observation, timelineIndex) => ({ observation, timelineIndex }))
+    .filter(
+      (entry) =>
+        (entry.observation.type === 'LOAD' || entry.observation.type === 'DISCHARGE') &&
+        entry.observation.event_time_type === 'ACTUAL',
+    )
     .sort((a, b) => {
-      const timeCompare = (a.event_time ?? '').localeCompare(b.event_time ?? '')
-      if (timeCompare !== 0) return timeCompare
-      const typeCompare = a.type.localeCompare(b.type)
-      if (typeCompare !== 0) return typeCompare
-      const locCompare = (a.location_code ?? '').localeCompare(b.location_code ?? '')
-      if (locCompare !== 0) return locCompare
-      return a.fingerprint.localeCompare(b.fingerprint)
+      const chronologyCompare = compareObservationsChronologically(a.observation, b.observation)
+      if (chronologyCompare !== 0) return chronologyCompare
+      return a.timelineIndex - b.timelineIndex
     })
+    .map((entry) => entry.observation)
 
   const pairs: TransshipmentPair[] = []
 
