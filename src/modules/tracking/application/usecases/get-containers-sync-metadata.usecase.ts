@@ -1,4 +1,5 @@
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
+import { normalizeContainerNumber as normalizeTrackingContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 export type ContainerSyncRecord = {
   readonly containerNumber: string
@@ -43,7 +44,7 @@ function isOpenStatus(status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'): boolean
 }
 
 export function normalizeContainerNumber(containerNumber: string): string {
-  return containerNumber.trim().toUpperCase()
+  return normalizeTrackingContainerNumber(containerNumber)
 }
 
 export function createContainerSyncMetadataFallback(containerNumber: string): ContainerSyncRecord {

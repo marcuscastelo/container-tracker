@@ -1,8 +1,7 @@
 import type { ProcessUseCases } from '~/modules/process/application/process.usecases'
+import { resolveProcessDetailTracking } from '~/modules/process/interface/http/process.detail-with-tracking.http'
 import {
   toContainerInputs,
-  toContainerWithTrackingFallback,
-  toContainerWithTrackingResponse,
   toInsertProcessRecord,
   toProcessDetailResponse,
   toProcessResponse,
@@ -10,14 +9,7 @@ import {
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
-import { createTrackingOperationalSummaryFallback } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
-import {
-  type ContainerSyncRecord,
-  createContainerSyncMetadataFallback,
-} from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
-import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
-import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
@@ -44,62 +36,6 @@ type ProcessControllerDeps = {
     TrackingUseCases,
     'getContainerSummary' | 'getContainersSyncMetadata'
   >
-}
-
-function normalizeStructuredLocationCode(value: string): string | null {
-  const normalized = value.trim().toUpperCase()
-  return /^[A-Z]{5}[A-Z0-9]{0,3}$/.test(normalized) ? normalized : null
-}
-
-function normalizeDirectDestinationCode(value: string): string | null {
-  const normalized = value.trim().toUpperCase()
-  if (/^[A-Z]{5}$/.test(normalized)) return normalized
-
-  // Free-text destination names are common; only accept suffixes when they contain digits
-  // to avoid classifying generic city names (e.g. "SANTOS") as canonical POD codes.
-  if (/^[A-Z]{5}[A-Z0-9]{2,3}$/.test(normalized) && /[0-9]/.test(normalized.slice(5))) {
-    return normalized
-  }
-
-  return null
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function extractPodLocationCode(destination: string | null | undefined): string | null {
-  if (!destination) return null
-
-  const directCode = normalizeDirectDestinationCode(destination)
-  if (directCode) return directCode
-
-  const trimmed = destination.trim()
-  if (!trimmed.startsWith('{')) return null
-
-  try {
-    const parsed: unknown = JSON.parse(trimmed)
-    if (!isRecord(parsed)) return null
-
-    const candidates: unknown[] = [
-      parsed.destination_location_code,
-      parsed.pod_location_code,
-      parsed.destinationCode,
-      parsed.code,
-      parsed.unlocode,
-      parsed.location_code,
-    ]
-
-    for (const candidate of candidates) {
-      if (typeof candidate !== 'string') continue
-      const normalized = normalizeStructuredLocationCode(candidate)
-      if (normalized) return normalized
-    }
-
-    return null
-  } catch {
-    return null
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -198,69 +134,8 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
 
       const pwc = result.process
       const now = new Date()
-      // Destination can be a canonical code or a serialized location payload.
-      // If we cannot extract a canonical POD code, tracking falls back safely.
-      const podLocationCode = extractPodLocationCode(pwc.process.destination)
-      const containerNumbers = pwc.containers.map((container) =>
-        String(container.containerNumber).trim().toUpperCase(),
-      )
-      let containersSync: readonly ContainerSyncRecord[] = containerNumbers.map((containerNumber) =>
-        createContainerSyncMetadataFallback(containerNumber),
-      )
-
-      try {
-        containersSync = await trackingUseCases.getContainersSyncMetadata({
-          containerNumbers,
-        })
-      } catch (err) {
-        console.error('Failed to get container sync metadata:', err)
-      }
-
-      // For each container, get tracking summary (observations, status, alerts)
-      const trackingResults = await Promise.all(
-        pwc.containers.map(async (c) => {
-          try {
-            const summary = await trackingUseCases.getContainerSummary(
-              String(c.id),
-              String(c.containerNumber),
-              podLocationCode,
-              now,
-              { includeAcknowledgedAlerts: true },
-            )
-            const timeline = deriveTimelineWithSeriesReadModel(
-              toTrackingObservationProjections(summary.observations),
-              now,
-            )
-            return {
-              container: toContainerWithTrackingResponse(c, {
-                status: summary.status,
-                observations: summary.observations,
-                timeline,
-              }),
-              alerts: summary.alerts,
-              operational: summary.operational,
-            }
-          } catch (err) {
-            console.error(`Failed to get tracking summary for container ${String(c.id)}:`, err)
-            return {
-              container: toContainerWithTrackingFallback(c),
-              alerts: [],
-              operational: createTrackingOperationalSummaryFallback(true),
-            }
-          }
-        }),
-      )
-
-      const operationalByContainerId = new Map<
-        string,
-        (typeof trackingResults)[number]['operational']
-      >()
-      for (const resultItem of trackingResults) {
-        operationalByContainerId.set(resultItem.container.id, resultItem.operational)
-      }
-
-      const containersWithTracking = trackingResults.map((resultItem) => resultItem.container)
-      const allAlerts = trackingResults.flatMap((resultItem) => resultItem.alerts)
+      const { containersWithTracking, allAlerts, operationalByContainerId, containersSync } =
+        await resolveProcessDetailTracking(pwc, trackingUseCases, now)
 
       const response = toProcessDetailResponse(
         pwc,
