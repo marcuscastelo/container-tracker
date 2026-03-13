@@ -89,7 +89,10 @@ function assertSingleProvider(
 ): void {
   const providers = new Set(targets.map((target) => target.provider))
   if (providers.size > 1) {
-    throw new HttpError(`ambiguous_sync_provider_for_container:${containerNumber}`, 409)
+    throw new HttpError(
+      `ambiguous_sync_provider_for_container:${containerNumber}:${Array.from(providers).join(',')}`,
+      409,
+    )
   }
 }
 
@@ -128,7 +131,7 @@ async function detectCarrierAndRetry(command: {
     mode: 'manual',
     targets: [
       {
-        processId: command.records[0]?.processId ?? null,
+        processId: command.records[0].processId,
         containerNumber: command.containerNumber,
         provider: detectionResult.provider,
       },

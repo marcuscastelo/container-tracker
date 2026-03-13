@@ -48,6 +48,12 @@ const carrierDetectionWritePort = {
       return String(container.processId) === command.processId
     })
 
+    if (command.processId === null && matchingContainers.length > 1) {
+      throw new Error(
+        `multiple_processes_found_for_container:${command.containerNumber}:process_id_required`,
+      )
+    }
+
     for (const container of matchingContainers) {
       await containerUseCases.updateCarrier({
         containerId: String(container.id),
