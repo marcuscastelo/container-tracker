@@ -3,16 +3,16 @@ import {
   computeAlertFingerprint,
   computeNoMovementAlertFingerprint,
 } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
-import {
-  classifyNoMovementBreakpoint,
-  normalizeNoMovementThresholdDays,
-} from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  classifyNoMovementBreakpoint,
+  normalizeNoMovementThresholdDays,
+} from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'

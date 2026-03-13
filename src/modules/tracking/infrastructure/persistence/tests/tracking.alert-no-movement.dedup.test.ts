@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { deriveAlerts } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { alertToInsertRow } from '~/modules/tracking/infrastructure/persistence/tracking.alert.persistence.mappers'
 import {
   toNoMovementDedupKeysFromAlert,
   toNoMovementDedupKeysFromRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.alert-no-movement.dedup'
-import { alertToInsertRow } from '~/modules/tracking/infrastructure/persistence/tracking.alert.persistence.mappers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000401'
 const CONTAINER_NUMBER = 'MSCU4014010'
@@ -53,16 +53,30 @@ describe('NO_MOVEMENT dedup policy alignment', () => {
     const noMovement = alerts.find((alert) => alert.type === 'NO_MOVEMENT')
 
     expect(noMovement).toBeDefined()
-    if (noMovement === undefined) {
+    if (
+      noMovement === undefined ||
+      noMovement.type !== 'NO_MOVEMENT' ||
+      noMovement.message_key !== 'alerts.noMovementDetected'
+    ) {
       throw new Error('expected derived NO_MOVEMENT alert')
     }
 
     expect(noMovement.message_params.threshold_days).toBe(5)
 
     const row = alertToInsertRow(noMovement)
+    const dedupRow = {
+      container_id: noMovement.container_id,
+      category: noMovement.category,
+      type: noMovement.type,
+      message_key: noMovement.message_key,
+      message_params: row.message_params,
+      source_observation_fingerprints: row.source_observation_fingerprints,
+    }
 
     expect(row.message_params).toEqual(noMovement.message_params)
-    expect(toNoMovementDedupKeysFromAlert(noMovement)).toEqual(toNoMovementDedupKeysFromRow(row))
+    expect(toNoMovementDedupKeysFromAlert(noMovement)).toEqual(
+      toNoMovementDedupKeysFromRow(dedupRow),
+    )
     expect(toNoMovementDedupKeysFromAlert(noMovement)).toEqual([
       `${CONTAINER_ID}|date:2025-11-01|threshold:5`,
       `${CONTAINER_ID}|source:fp-cycle-1|threshold:5`,
