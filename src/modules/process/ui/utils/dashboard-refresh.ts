@@ -2,6 +2,8 @@ type DashboardRefreshCommand = {
   readonly syncAllProcesses: () => unknown
   readonly refetchProcesses: () => unknown
   readonly refetchGlobalAlerts: () => unknown
+  readonly refetchDashboardKpis?: () => unknown
+  readonly refetchDashboardProcessesCreatedByMonth?: () => unknown
 }
 
 function toFirstRejectedReason(results: readonly PromiseSettledResult<unknown>[]): unknown | null {
@@ -16,10 +18,20 @@ function toFirstRejectedReason(results: readonly PromiseSettledResult<unknown>[]
 export async function refreshDashboardData(command: DashboardRefreshCommand): Promise<void> {
   await Promise.resolve(command.syncAllProcesses())
 
-  const results = await Promise.allSettled([
+  const refetchTasks: Promise<unknown>[] = [
     Promise.resolve(command.refetchProcesses()),
     Promise.resolve(command.refetchGlobalAlerts()),
-  ])
+  ]
+
+  if (command.refetchDashboardKpis) {
+    refetchTasks.push(Promise.resolve(command.refetchDashboardKpis()))
+  }
+
+  if (command.refetchDashboardProcessesCreatedByMonth) {
+    refetchTasks.push(Promise.resolve(command.refetchDashboardProcessesCreatedByMonth()))
+  }
+
+  const results = await Promise.allSettled(refetchTasks)
 
   const hasFailure = results.some((result) => result.status === 'rejected')
   if (!hasFailure) {

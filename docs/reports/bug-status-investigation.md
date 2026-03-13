@@ -1,5 +1,24 @@
 # Investigation Report
 
+## Update — 2026-03 MSC Hardening Applied
+
+The MSC hardening series has already implemented the key normalization corrections discussed in this report.
+
+Current canonical behavior for MSC positioned events:
+
+- `Full Transshipment Positioned In` -> `TERMINAL_MOVE`
+- `Full Transshipment Positioned Out` -> `TERMINAL_MOVE`
+- never mapped to `ARRIVAL`
+
+Additional hardening now active:
+
+- contextual `Detail` parsing (vessel/voyage only for vessel-like events)
+- `LADEN`/`EMPTY` blocked as vessel names
+- `raw_event.normalizer_version` metadata on MSC drafts (`msc-v2`)
+- regression tests for real transshipment timelines and semantic-audit helpers
+
+Historical analysis below remains useful for context, but mapping recommendations that suggested promoting positioned events to `ARRIVAL`/`LOAD` are superseded by `TERMINAL_MOVE`.
+
 ## Bug 1 — CA083-25
 ### Symptom
 - Timeline shows full flow (transshipments, arrival in SANTOS, discharge, delivery, gate-out)
@@ -56,11 +75,11 @@ Suggested test file(s):
 
 ## Bug 2 — CA064-25
 ### Symptom
-- Timeline shows: LOAD (Karachi) → DISCHARGE (Busan) → transshipment block → LOAD (Busan → Santos) → an event `Full Transshipment Positioned In` appears as `OTHER` ("Não mapeado"). ETA predicted for Santos.
+- Timeline shows: LOAD (Karachi) → DISCHARGE (Busan) → transshipment block → LOAD (Busan → Santos) → historically, `Full Transshipment Positioned In` appeared as `OTHER` ("Não mapeado"). ETA predicted for Santos.
 - UI status remains `DISCHARGED` despite a subsequent ACTUAL LOAD onto a different vessel (i.e., container was transshipped and is now in transit to final POD).
 
 ### Root cause (validated in code)
-- Primary cause A (mapping gap): the carrier normalizer did not map the provider's event label `Full Transshipment Positioned In` to a canonical type (e.g., `ARRIVAL` or `LOAD`), resulting in `OTHER` observations. Missing mapping caused the read-model's final-location selection to prefer an earlier `DISCHARGE` as the last lifecycle event.
+- Primary cause A (mapping gap): the carrier normalizer did not map the provider's event label `Full Transshipment Positioned In` to a canonical `TERMINAL_MOVE`, resulting in `OTHER` observations. Missing mapping caused the read-model's final-location selection to prefer an earlier `DISCHARGE` as the last lifecycle event.
 - Primary cause B (derivation ordering / logic): `deriveStatus` uses a final-location heuristic (walks timeline from the end and picks the first `DISCHARGE|ARRIVAL|DELIVERY` with `location_code`). Because `deriveStatus` is executed before `deriveTransshipment` in the pipeline, and because `deriveStatus` does not consider the presence of a subsequent ACTUAL `LOAD` (transshipment), a DISCHARGE at a transshipment port may be treated as final and advance status to `DISCHARGED`.
 - Contributing factor: observation normalization (missing mapping) + reconciliation rules that may remove or collapse expected events leading to finalLocation pointing to the wrong event.
 
@@ -68,7 +87,7 @@ Suggested test file(s):
 - MSC normalizer (example):
   - File: `src/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer.ts`
   - Function: `normalizeMscSnapshot`
-  - Behavior: maps many 'Full Transshipment ...' descriptions (e.g. `'full transshipment loaded' -> 'LOAD'`, `'full transshipment discharged' -> 'DISCHARGE'`) but a provider variant like `'Full Transshipment Positioned In'` was not in the mapping table and thus becomes `'OTHER'`.
+  - Behavior: maps many 'Full Transshipment ...' descriptions (e.g. `'full transshipment loaded' -> 'LOAD'`, `'full transshipment discharged' -> 'DISCHARGE'`). Historically, `'Full Transshipment Positioned In'` was missing and became `'OTHER'`; current hardening maps positioned labels to `TERMINAL_MOVE`.
 - Timeline read-model and series classification:
   - Files: `src/modules/tracking/features/timeline/domain/derive/deriveTimeline.ts` and `src/modules/tracking/features/series/domain/reconcile/seriesClassification.ts`
   - Behavior: groups by series (`buildSeriesKey`) and classifies safe-first primary. `deriveTimeline` collapses redundant EXPECTED and returns ordered `observations` used by `deriveStatus`.
@@ -87,7 +106,7 @@ Suggested test file(s):
 - Two complementary minimal fixes to address both mapping coverage and derivation semantics:
 
 1) Mapping patch (low-risk):
-   - Add missing mapping entries to carrier normalizers for the provider phrases observed in the failing snapshots (e.g., map `'Full Transshipment Positioned In'` → `'ARRIVAL'` or `'LOAD'` depending on provider semantics). Files to change:
+   - Add missing mapping entries to carrier normalizers for the provider phrases observed in the failing snapshots (map `'Full Transshipment Positioned In/Out'` → `TERMINAL_MOVE`). Files to change:
      - `src/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer.ts`
      - `src/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer.ts` (if Maersk uses similar strings)
    - Rationale: many cases are simple synonyms; mapping them preserves domain semantics at ingestion and fixes downstream selection of `finalLocation`.
@@ -109,7 +128,7 @@ Suggested test files and assertions:
 
 - `src/modules/tracking/infrastructure/carriers/tests/mscPositionedMapping.test.ts`
   - Provide MSC-style payload containing `Full Transshipment Positioned In`.
-  - Assert normalizer produces an `ARRIVAL` / `LOAD` / mapped type (decide mapping consistent with provider semantics) and that `deriveStatus` then yields expected in-transit status.
+  - Assert normalizer produces `TERMINAL_MOVE` and that status derivation remains non-arrival-like when later ACTUAL `LOAD` exists.
 
 
 ## Cross-cutting findings
@@ -138,14 +157,14 @@ Suggested test files and assertions:
 
 - Missing / weak coverage (to add)
   - Regression for ambiguous empty-return labels that are currently mapped to `GATE_OUT` (ensure either normalizer or deriveStatus handles `is_empty` correctly).
-  - Regression for mapped/ unmapped transshipment phrase like `Full Transshipment Positioned In` leading to `OTHER` — add mapping test and end-to-end pipeline test ensuring `DISCHARGED` is not selected when an ACTUAL LOAD follows a DISCHARGE.
+  - Regression for transshipment positioned phrases (`Full Transshipment Positioned In/Out`) — ensure mapping is `TERMINAL_MOVE` and pipeline does not select arrival/discharge-like terminal status when a later ACTUAL `LOAD` exists.
   - A unit test for `deriveStatus` ensuring that if an ACTUAL `DISCHARGE` at `L1` is followed by an ACTUAL `LOAD` (vessel changed) later, the status does not become `DISCHARGED`.
 
 
 ## Actionable next steps (minimal PRs suggested)
 1. Small PR: normalize `GATE_OUT` + `is_empty === true` → `EMPTY_RETURN` in `maersk.normalizer.ts` (and optionally `msc.normalizer.ts`) and add unit test (`maerskEmptyGateOut.invariants.test.ts`). This addresses Bug 1 directly with minimal surface area.
 2. Small PR: strengthen `deriveStatus` to avoid treating DISCHARGE as final if a later ACTUAL LOAD exists after that discharge (add unit test `deriveStatus.transshipmentProtection.test.ts`). This prevents Bug 2 class of failures even when a provider emits an unmapped label.
-3. Add mapping for `Full Transshipment Positioned In` in MSC/Maersk normalizers (investigate provider semantics to pick `ARRIVAL` vs `LOAD`). Add a carrier-mapping unit test and an end-to-end pipeline test asserting derived status is `IN_TRANSIT` not `DISCHARGED`.
+3. Add/keep explicit mapping for `Full Transshipment Positioned In/Out` in MSC/Maersk normalizers as `TERMINAL_MOVE`. Add carrier-mapping tests and an end-to-end pipeline test asserting derived status is not arrival/discharge-like after a later ACTUAL `LOAD`.
 
 Notes:
 - Prefer making the normalizer change first for semantic correctness; add defensive deriveStatus guard as a follow-up for robustness.

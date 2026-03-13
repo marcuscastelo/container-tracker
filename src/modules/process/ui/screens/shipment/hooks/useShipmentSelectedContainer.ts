@@ -1,5 +1,6 @@
 import type { Accessor, Resource } from 'solid-js'
 import { createEffect, createMemo, createSignal } from 'solid-js'
+import { findContainerIdByNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import type {
   ContainerEtaDetailVM,
   ShipmentDetailVM,
@@ -7,6 +8,7 @@ import type {
 
 type UseShipmentSelectedContainerCommand = {
   readonly shipment: Resource<ShipmentDetailVM | null | undefined>
+  readonly preferredContainerNumber: Accessor<string | null>
 }
 
 type ShipmentSelectedContainerResult = {
@@ -20,6 +22,9 @@ export function useShipmentSelectedContainer(
   command: UseShipmentSelectedContainerCommand,
 ): ShipmentSelectedContainerResult {
   const [selectedContainerId, setSelectedContainerId] = createSignal<string>('')
+  const [appliedPreferredSelectionKey, setAppliedPreferredSelectionKey] = createSignal<
+    string | null
+  >(null)
 
   // Ensure a default container is selected when data loads
   createEffect(() => {
@@ -27,6 +32,32 @@ export function useShipmentSelectedContainer(
     if (data && data.containers.length > 0 && !selectedContainerId()) {
       setSelectedContainerId(String(data.containers[0].id))
     }
+  })
+
+  createEffect(() => {
+    const preferredContainerNumber = command.preferredContainerNumber()
+    const data = command.shipment()
+    if (!data || data.containers.length === 0) return
+
+    if (preferredContainerNumber === null) {
+      setAppliedPreferredSelectionKey(null)
+      return
+    }
+
+    const normalizedSelectionKey = `${data.id}::${preferredContainerNumber}`
+    if (appliedPreferredSelectionKey() === normalizedSelectionKey) return
+
+    const matchedContainerId = findContainerIdByNumber(
+      data.containers.map((container) => ({
+        id: String(container.id),
+        number: container.number,
+      })),
+      preferredContainerNumber,
+    )
+
+    setAppliedPreferredSelectionKey(normalizedSelectionKey)
+    if (matchedContainerId === null) return
+    setSelectedContainerId(matchedContainerId)
   })
 
   const selectedContainer = createMemo(() => {

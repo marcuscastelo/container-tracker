@@ -4,10 +4,10 @@ import type {
   SyncMetadataRecord,
   SyncMetadataRepository,
 } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
-import { normalizeContainerNumber } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { serverEnv } from '~/shared/config/server-env'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
+import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 const SyncMetadataRowSchema = z.object({
   ref_value: z.string(),

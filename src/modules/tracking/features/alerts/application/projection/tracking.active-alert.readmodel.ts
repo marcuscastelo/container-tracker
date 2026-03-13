@@ -13,6 +13,8 @@ export type TrackingActiveAlertReadModel = {
   readonly category: TrackingAlert['category']
   readonly severity: TrackingAlert['severity']
   readonly type: TrackingAlert['type']
+  readonly message_key: TrackingAlert['message_key']
+  readonly message_params: TrackingAlert['message_params']
   readonly generated_at: string
   readonly fingerprint: string | null
   readonly is_active: boolean
@@ -35,6 +37,8 @@ export function toTrackingActiveAlertReadModel(
       category: alert.category,
       severity: alert.severity,
       type: alert.type,
+      message_key: alert.message_key,
+      message_params: alert.message_params,
       generated_at: alert.generated_at,
       fingerprint: alert.fingerprint,
       is_active: true,

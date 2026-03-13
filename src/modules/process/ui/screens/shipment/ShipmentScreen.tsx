@@ -1,6 +1,10 @@
-import { useNavigate, usePreloadRoute } from '@solidjs/router'
+import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
+import {
+  prefetchDashboardGlobalAlertsSummary,
+  prefetchDashboardProcessSummaries,
+} from '~/modules/process/ui/api/process.api'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
 import { ShipmentDialogsHost } from '~/modules/process/ui/screens/shipment/components/ShipmentDialogsHost'
@@ -15,10 +19,7 @@ import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
-import {
-  prefetchDashboardGlobalAlertsSummary,
-  prefetchDashboardProcessSummaries,
-} from '~/modules/process/ui/validation/processApi.validation'
+import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'
@@ -30,11 +31,16 @@ type ShipmentScreenProps = {
 
 export function ShipmentScreen(props: ShipmentScreenProps) {
   const { locale } = useTranslation()
+  const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
 
   // props.processId is already an Accessor<string>; no extra createMemo indirection required
   const processId = () => props.processId()
+
+  const preferredContainerNumber = createMemo(() =>
+    normalizeSelectedContainerNumber(new URLSearchParams(location.search).get('container')),
+  )
 
   // ── Resource ───────────────────────────────────────────────────────────────
   const resource = useShipmentScreenResource({
@@ -45,6 +51,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   // ── Selected container ─────────────────────────────────────────────────────
   const selection = useShipmentSelectedContainer({
     shipment: resource.shipment,
+    preferredContainerNumber,
   })
 
   // ── Refresh controller ─────────────────────────────────────────────────────
@@ -104,7 +111,6 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       shipmentData={resource.shipment}
       shipmentLoading={resource.loading}
       shipmentError={resource.error}
-      activeAlerts={activeAlerts}
       onOpenCreateProcess={dialogs.openCreateDialog}
       onDashboardIntent={handleDashboardIntent}
       searchSlot={props.searchSlot}

@@ -27,5 +27,7 @@ export type ObservationType =
   | 'DELIVERY'
   /** Empty container returned */
   | 'EMPTY_RETURN'
+  /** Terminal positioning move (yard movement, not vessel milestone) */
+  | 'TERMINAL_MOVE'
   /** Catch-all for unmapped events */
   | 'OTHER'

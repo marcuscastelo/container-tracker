@@ -14,6 +14,23 @@
     "alertsBadge": "{{count}} Alerts",
     "alertsLabel": "Alerts",
     "alertsActiveTooltip": "{{count}} active alerts",
+    "alertsPanel": {
+      "title": "Active alerts",
+      "subtitle": "Processes that need attention",
+      "openDashboard": "Open dashboard",
+      "openProcess": "Open process",
+      "close": "Close alerts panel",
+      "alertsCount": "{{count}} alerts",
+      "containerStatus": "Status",
+      "containerEta": "ETA",
+      "lastEvent": "Last event: {{date}}",
+      "retroactive": "Retroactive",
+      "loading": "Loading alerts...",
+      "empty": "No active alerts",
+      "error": "Failed to load alerts",
+      "retry": "Retry",
+      "valueUnavailable": "—"
+    },
     "theme": {
       "light": "Light",
       "dark": "Dark",
@@ -55,6 +72,22 @@
         "customs": "Customs",
         "status": "Status",
         "data": "Data"
+      }
+    },
+    "kpis": {
+      "activeProcesses": "Active Processes",
+      "trackedContainers": "Tracked Containers",
+      "processesWithAlerts": "With Alerts",
+      "lastSync": "Last Sync",
+      "lastSyncUnavailable": "—"
+    },
+    "activityChart": {
+      "title": "Processes Created by Month",
+      "subtitleLastMonths": "Last {{count}} months",
+      "empty": "No process creation activity yet",
+      "error": "Failed to load monthly activity",
+      "tooltip": {
+        "processes": "{{count}} processes"
       }
     },
     "metrics": {
@@ -647,7 +680,7 @@
     "label": "Language"
   },
   "search": {
-    "placeholder": "Search process, container, BL, importer...",
+    "placeholder": "Global search...",
     "loading": "Searching...",
     "error": "Search failed. Try again.",
     "noResults": "No results found",
@@ -677,8 +710,7 @@
     "footer": {
       "navigate": "Navigate",
       "select": "Select",
-      "close": "Close",
-      "modifier": "Ctrl/⌘"
+      "close": "Close"
     }
   }
 }

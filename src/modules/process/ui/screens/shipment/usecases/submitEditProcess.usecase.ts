@@ -1,9 +1,7 @@
+import { updateProcessRequest } from '~/modules/process/ui/api/process.api'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { toReadableErrorMessage } from '~/modules/process/ui/screens/shipment/lib/shipmentError.presenter'
-import {
-  toCreateProcessInput,
-  updateProcessRequest,
-} from '~/modules/process/ui/validation/processApi.validation'
+import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,

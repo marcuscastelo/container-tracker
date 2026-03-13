@@ -18,7 +18,8 @@ import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
  *   - "Export Loaded on Vessel" → LOAD
  *   - "Full Transshipment Loaded" → LOAD
  *   - "Full Transshipment Discharged" → DISCHARGE
- *   - "Full Transshipment Positioned In" → contextual (LOAD on vessel change, ARRIVAL fallback)
+ *   - "Full Transshipment Positioned In" → TERMINAL_MOVE
+ *   - "Full Transshipment Positioned Out" → TERMINAL_MOVE
  *   - "Import Discharged from Vessel" → DISCHARGE
  *   - "Delivered" → DELIVERY
  *
@@ -30,6 +31,8 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'export loaded on vessel': 'LOAD',
   'full transshipment loaded': 'LOAD',
   'full transshipment discharged': 'DISCHARGE',
+  'full transshipment positioned in': 'TERMINAL_MOVE',
+  'full transshipment positioned out': 'TERMINAL_MOVE',
   'import discharged from vessel': 'DISCHARGE',
   'import to consignee': 'DELIVERY',
   delivered: 'DELIVERY',
@@ -43,17 +46,19 @@ const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
   'devolucao de conteiner vazio': 'EMPTY_RETURN',
 }
 
-const MSC_TRANSHIPMENT_POSITIONED_IN_KEY = 'full transshipment positioned in'
+const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY'])
+const VESSEL_EVENT_TYPES: readonly ObservationType[] = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
+const MSC_NORMALIZER_VERSION = 'msc-v2'
 
-type MscEventForSemanticMapping = {
-  readonly Description?: string | null | undefined
-  readonly Detail?: readonly string[] | null | undefined
-  readonly UnLocationCode?: string | null | undefined
-  readonly Location?: string | null | undefined
-  readonly Vessel?: {
-    readonly IMO?: string | null | undefined
-  } | null
+type ParsedMscDetail = {
+  readonly vessel_name: string | null
+  readonly voyage: string | null
+  readonly is_empty: boolean | null
 }
+
+type MscVesselInfo = {
+  readonly IMO?: string | null | undefined
+} | null
 
 function mapMscDescription(description: string | null | undefined): ObservationType {
   if (!description) return 'OTHER'
@@ -61,103 +66,78 @@ function mapMscDescription(description: string | null | undefined): ObservationT
   return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
 }
 
-function toEventDescriptionKey(description: string | null | undefined): string {
-  if (!description) return ''
-  return toLookupMapKey(description)
+function sanitizeVesselName(vesselName: string | null): string | null {
+  if (typeof vesselName !== 'string') return null
+  const trimmed = vesselName.trim()
+  if (trimmed.length === 0) return null
+  if (INVALID_VESSEL_VALUES.has(trimmed.toUpperCase())) return null
+  return trimmed
 }
 
-function toEventLocationKey(event: MscEventForSemanticMapping): string {
-  const locationCandidate = event.UnLocationCode ?? event.Location ?? ''
-  return toLookupMapKey(locationCandidate)
+function normalizeDetailValue(detailValue: string | null | undefined): string | null {
+  if (typeof detailValue !== 'string') return null
+  const trimmed = detailValue.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
-function toVesselSignature(event: MscEventForSemanticMapping): string | null {
-  const detail = event.Detail ?? []
-  const vesselName = detail[0]?.trim() ?? ''
-  const voyage = detail[1]?.trim() ?? ''
-  const imo = event.Vessel?.IMO?.trim() ?? ''
-
-  const vesselUpper = vesselName.toUpperCase()
-  const voyageUpper = voyage.toUpperCase()
-  const imoUpper = imo.toUpperCase()
-
-  const isPlaceholder = vesselUpper === '' || vesselUpper === 'EMPTY' || vesselUpper === 'LADEN'
-  if (isPlaceholder && voyageUpper === '' && imoUpper === '') return null
-
-  if (vesselUpper === '' && voyageUpper === '' && imoUpper === '') return null
-  return `${vesselUpper}|${voyageUpper}|${imoUpper}`
+function supportsVesselAndVoyage(type: ObservationType): boolean {
+  return VESSEL_EVENT_TYPES.includes(type)
 }
 
-function isTransshipmentDescription(description: string | null | undefined): boolean {
-  const key = toEventDescriptionKey(description)
-  return key.includes('transshipment')
+function hasImo(vessel: MscVesselInfo | undefined): boolean {
+  const imo = vessel?.IMO?.trim() ?? ''
+  return imo.length > 0
 }
 
-function findNearestComparableTransshipmentVesselSignature(
-  events: readonly MscEventForSemanticMapping[],
-  currentIndex: number,
-): string | null {
-  const currentEvent = events[currentIndex]
-  if (!currentEvent) return null
-
-  const currentLocationKey = toEventLocationKey(currentEvent)
-
-  for (let offset = 1; offset < events.length; offset++) {
-    const leftIndex = currentIndex - offset
-    if (leftIndex >= 0) {
-      const leftEvent = events[leftIndex]
-      if (leftEvent) {
-        const sameLocation =
-          currentLocationKey === '' || toEventLocationKey(leftEvent) === currentLocationKey
-        if (sameLocation && isTransshipmentDescription(leftEvent.Description)) {
-          const signature = toVesselSignature(leftEvent)
-          if (signature) return signature
-        }
-      }
-    }
-
-    const rightIndex = currentIndex + offset
-    if (rightIndex < events.length) {
-      const rightEvent = events[rightIndex]
-      if (rightEvent) {
-        const sameLocation =
-          currentLocationKey === '' || toEventLocationKey(rightEvent) === currentLocationKey
-        if (sameLocation && isTransshipmentDescription(rightEvent.Description)) {
-          const signature = toVesselSignature(rightEvent)
-          if (signature) return signature
-        }
-      }
-    }
-  }
-
+function parseLoadState(detailValue: string | null): boolean | null {
+  if (typeof detailValue !== 'string') return null
+  const normalized = detailValue.trim().toUpperCase()
+  if (normalized === 'EMPTY') return true
+  if (normalized === 'LADEN') return false
   return null
 }
 
-/**
- * Contextual mapping for ambiguous MSC transshipment labels.
- *
- * Evidence source for vessel_change (explicit):
- * - current event vessel signature from Detail[0]/Detail[1]/Vessel.IMO
- * - nearest transshipment event in the same location from the same snapshot container stream
- */
-function mapMscEventType(
-  event: MscEventForSemanticMapping,
-  events: readonly MscEventForSemanticMapping[],
-  eventIndex: number,
-): ObservationType {
-  const baseType = mapMscDescription(event.Description)
-  if (baseType !== 'OTHER') return baseType
+function parseMscDetail(
+  type: ObservationType,
+  detail: readonly string[] | null | undefined,
+  vessel: MscVesselInfo | undefined,
+): ParsedMscDetail {
+  const first = normalizeDetailValue(detail && detail.length > 0 ? (detail[0] ?? null) : null)
+  const second = normalizeDetailValue(detail && detail.length > 1 ? (detail[1] ?? null) : null)
+  const loadState = parseLoadState(first)
 
-  const descriptionKey = toEventDescriptionKey(event.Description)
-  if (descriptionKey !== MSC_TRANSHIPMENT_POSITIONED_IN_KEY) return baseType
+  const isVesselContext = supportsVesselAndVoyage(type) || hasImo(vessel)
+  if (isVesselContext) {
+    return {
+      vessel_name: sanitizeVesselName(first),
+      voyage: second,
+      is_empty: loadState,
+    }
+  }
 
-  const currentSignature = toVesselSignature(event)
-  if (!currentSignature) return 'ARRIVAL'
+  if (loadState !== null) {
+    return {
+      vessel_name: null,
+      voyage: null,
+      is_empty: loadState,
+    }
+  }
 
-  const nearbySignature = findNearestComparableTransshipmentVesselSignature(events, eventIndex)
-  if (!nearbySignature) return 'ARRIVAL'
+  return {
+    vessel_name: null,
+    voyage: null,
+    is_empty: null,
+  }
+}
 
-  return nearbySignature !== currentSignature ? 'LOAD' : 'ARRIVAL'
+function withNormalizerVersion(rawEvent: unknown): unknown {
+  if (typeof rawEvent !== 'object' || rawEvent === null || Array.isArray(rawEvent)) {
+    return { normalizer_version: MSC_NORMALIZER_VERSION }
+  }
+  return {
+    ...rawEvent,
+    normalizer_version: MSC_NORMALIZER_VERSION,
+  }
 }
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
@@ -165,21 +145,6 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   // Preserve original provider text for audit/UI transparency;
   // only use trim to detect blank values.
   return label.trim().length > 0 ? label : null
-}
-
-function isEmptyEvent(
-  description: string | null | undefined,
-  detail: readonly string[] | null | undefined,
-): boolean | null {
-  if (!description) return null
-  const lower = description.toLowerCase()
-  if (lower.includes('empty')) return true
-  if (detail && detail.length > 0) {
-    const firstDetail = detail[0]?.toUpperCase() ?? ''
-    if (firstDetail === 'EMPTY') return true
-    if (firstDetail === 'LADEN') return false
-  }
-  return null
 }
 
 function computeConfidence(
@@ -288,22 +253,13 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       const events = containerInfo.Events ?? []
 
       // Process historical/confirmed events from Events array
-      for (const [eventIndex, event] of events.entries()) {
-        const type = mapMscEventType(event, events, eventIndex)
+      for (const event of events) {
+        const type = mapMscDescription(event.Description)
         const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
         const eventTime = parsedDate ? parsedDate.toISOString() : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
-        const vesselName =
-          event.Detail && event.Detail.length > 0 ? (event.Detail[0] ?? null) : null
-        const voyage = event.Detail && event.Detail.length > 1 ? (event.Detail[1] ?? null) : null
-        const isEmpty = isEmptyEvent(event.Description, event.Detail)
-
-        // Skip vessel-like detail for non-vessel events (GATE_IN, GATE_OUT, etc.)
-        const isVesselEvent =
-          type === 'LOAD' || type === 'DISCHARGE' || type === 'DEPARTURE' || type === 'ARRIVAL'
-        const finalVesselName = isVesselEvent ? vesselName : null
-        const finalVoyage = isVesselEvent ? voyage : null
+        const parsedDetail = parseMscDetail(type, event.Detail, event.Vessel)
 
         // Determine ACTUAL vs EXPECTED based on date comparison
         const eventTimeType = determineEventTimeType(event.Date, currentDate, snapshot.fetched_at)
@@ -317,14 +273,14 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           event_time_type: eventTimeType,
           location_code: locationCode,
           location_display: locationDisplay,
-          vessel_name: finalVesselName,
-          voyage: finalVoyage,
-          is_empty: isEmpty,
+          vessel_name: parsedDetail.vessel_name,
+          voyage: parsedDetail.voyage,
+          is_empty: parsedDetail.is_empty,
           confidence,
           provider: 'msc',
           snapshot_id: snapshot.id,
           carrier_label: toCarrierLabelOrNull(event.Description),
-          raw_event: event,
+          raw_event: withNormalizerVersion(event),
         }
 
         drafts.push(draft)
@@ -357,7 +313,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
               provider: 'msc',
               snapshot_id: snapshot.id,
               carrier_label: null,
-              raw_event: { source: 'PodEtaDate', value: podEtaDate },
+              raw_event: withNormalizerVersion({ source: 'PodEtaDate', value: podEtaDate }),
             }
 
             drafts.push(etaDraft)

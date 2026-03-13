@@ -14,6 +14,23 @@
     "alertsBadge": "{{count}} Alertas",
     "alertsLabel": "Alertas",
     "alertsActiveTooltip": "{{count}} alertas ativos",
+    "alertsPanel": {
+      "title": "Alertas ativos",
+      "subtitle": "Processos que requerem atenção",
+      "openDashboard": "Abrir dashboard",
+      "openProcess": "Abrir processo",
+      "close": "Fechar painel de alertas",
+      "alertsCount": "{{count}} alertas",
+      "containerStatus": "Status",
+      "containerEta": "ETA",
+      "lastEvent": "Último evento: {{date}}",
+      "retroactive": "Retroativo",
+      "loading": "Carregando alertas...",
+      "empty": "Nenhum alerta ativo",
+      "error": "Falha ao carregar alertas",
+      "retry": "Tentar novamente",
+      "valueUnavailable": "—"
+    },
     "theme": {
       "light": "Claro",
       "dark": "Escuro",
@@ -66,6 +83,22 @@
         "customs": "Alfândega",
         "status": "Status",
         "data": "Dados"
+      }
+    },
+    "kpis": {
+      "activeProcesses": "Processos Ativos",
+      "trackedContainers": "Containers Rastreáveis",
+      "processesWithAlerts": "Com Alertas",
+      "lastSync": "Último Sync",
+      "lastSyncUnavailable": "—"
+    },
+    "activityChart": {
+      "title": "Processos Criados por Mês",
+      "subtitleLastMonths": "Últimos {{count}} meses",
+      "empty": "Ainda não há atividade de criação de processos",
+      "error": "Falha ao carregar atividade mensal",
+      "tooltip": {
+        "processes": "{{count}} processos"
       }
     },
     "metrics": {
@@ -647,7 +680,7 @@
     "label": "Idioma"
   },
   "search": {
-    "placeholder": "Buscar processo, container, BL, importador...",
+    "placeholder": "Busca geral...",
     "loading": "Buscando...",
     "error": "Falha na busca. Tente novamente.",
     "noResults": "Nenhum resultado encontrado",
@@ -677,8 +710,7 @@
     "footer": {
       "navigate": "Navegar",
       "select": "Selecionar",
-      "close": "Fechar",
-      "modifier": "Ctrl/⌘"
+      "close": "Fechar"
     }
   }
 }

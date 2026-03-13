@@ -6,6 +6,7 @@ import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboa
 
 export type DashboardColumnId =
   | 'processRef'
+  | 'carrier'
   | 'importer'
   | 'exporter'
   | 'route'
@@ -41,16 +42,25 @@ const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'processRef',
     labelKey: 'process',
-    width: '176px',
+    width: '110px',
     sortField: 'processNumber',
     reorderable: false,
     pinned: 'start',
     align: 'left',
   },
   {
+    id: 'carrier',
+    labelKey: 'carrier',
+    width: '170px',
+    sortField: 'provider',
+    reorderable: true,
+    pinned: false,
+    align: 'left',
+  },
+  {
     id: 'importer',
     labelKey: 'importerName',
-    width: '192px',
+    width: '170px',
     sortField: 'importerName',
     reorderable: true,
     pinned: false,
@@ -59,7 +69,7 @@ const DASHBOARD_COLUMNS: readonly DashboardColumnDef[] = [
   {
     id: 'exporter',
     labelKey: 'exporterName',
-    width: '192px',
+    width: '170px',
     sortField: 'exporterName',
     reorderable: true,
     pinned: false,

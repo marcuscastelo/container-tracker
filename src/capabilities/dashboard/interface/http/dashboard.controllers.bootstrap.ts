@@ -1,3 +1,4 @@
+import type { DashboardNavbarAlertsReadModelDeps } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
 import type { DashboardOperationalSummaryReadModelDeps } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import { createDashboardUseCases } from '~/capabilities/dashboard/application/dashboard.usecases'
 import {
@@ -10,7 +11,7 @@ type DashboardControllersBootstrapOverrides = {
 }
 
 export type DashboardControllersBootstrapDeps = Pick<
-  DashboardOperationalSummaryReadModelDeps,
+  DashboardOperationalSummaryReadModelDeps & DashboardNavbarAlertsReadModelDeps,
   'processUseCases' | 'trackingUseCases'
 >
 

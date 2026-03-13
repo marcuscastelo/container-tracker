@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import type { DashboardKpisReadModel } from '~/capabilities/dashboard/application/dashboard.kpis.readmodel'
 import type { DashboardOperationalSummaryReadModel } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
-import { createDashboardControllers } from '~/capabilities/dashboard/interface/http/dashboard.controllers'
-import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
+import { createDashboardControllersHarness } from '~/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.helpers'
+import {
+  DashboardKpisResponseSchema,
+  DashboardOperationalSummaryResponseSchema,
+} from '~/shared/api-schemas/dashboard.schemas'
 
-describe('dashboard controllers', () => {
+describe('dashboard controllers - boundary behavior', () => {
   it('returns operational summary including process exceptions in backend order', async () => {
     const summary: DashboardOperationalSummaryReadModel = {
       globalAlerts: {
@@ -51,12 +55,8 @@ describe('dashboard controllers', () => {
       activeAlertsPanel: [],
     }
 
-    const getOperationalSummaryReadModel = vi.fn(async () => summary)
-
-    const controllers = createDashboardControllers({
-      dashboardUseCases: {
-        getOperationalSummaryReadModel,
-      },
+    const { controllers } = createDashboardControllersHarness({
+      getOperationalSummaryReadModel: async () => summary,
     })
 
     const response = await controllers.getOperationalSummary()
@@ -96,6 +96,30 @@ describe('dashboard controllers', () => {
       dominant_severity: 'none',
       dominant_alert_created_at: null,
       active_alert_count: 0,
+    })
+  })
+
+  it('returns dashboard kpis in camelCase contract', async () => {
+    const kpis: DashboardKpisReadModel = {
+      activeProcesses: 24,
+      trackedContainers: 61,
+      processesWithAlerts: 8,
+      lastSyncAt: '2026-03-12T13:42:00.000Z',
+    }
+
+    const { controllers } = createDashboardControllersHarness({
+      getDashboardKpisReadModel: async () => kpis,
+    })
+
+    const response = await controllers.getKpis()
+    const body = DashboardKpisResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      activeProcesses: 24,
+      trackedContainers: 61,
+      processesWithAlerts: 8,
+      lastSyncAt: '2026-03-12T13:42:00.000Z',
     })
   })
 })

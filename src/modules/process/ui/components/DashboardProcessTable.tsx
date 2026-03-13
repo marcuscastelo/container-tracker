@@ -284,7 +284,7 @@ type CellContext = {
 
 function ProcessRefCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
       <A
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui font-semibold leading-tight tracking-[-0.01em] text-primary hover:text-primary-hover"
@@ -299,9 +299,26 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function CarrierCell(ctx: CellContext): JSX.Element {
+  return (
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+      <A
+        href={ctx.processHref}
+        class="row-link block truncate text-sm-ui leading-tight text-foreground"
+        onClick={ctx.handleProcessLinkClick}
+        onPointerEnter={ctx.triggerProcessIntent}
+        onFocusIn={ctx.triggerProcessIntent}
+        onPointerDown={ctx.triggerProcessIntent}
+      >
+        {displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)}
+      </A>
+    </div>
+  )
+}
+
 function ImporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
       <A
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
@@ -318,7 +335,7 @@ function ImporterCell(ctx: CellContext): JSX.Element {
 
 function ExporterCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
       <A
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
@@ -336,7 +353,7 @@ function ExporterCell(ctx: CellContext): JSX.Element {
 function RouteCell(ctx: CellContext): JSX.Element {
   const route = () => displayRoute(ctx.process)
   return (
-    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
       <A
         href={ctx.processHref}
         class="row-link block"
@@ -376,7 +393,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
   )
 
   return (
-    <div class="flex min-w-0 items-center justify-center overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)]">
+    <div class="flex min-w-0 items-center justify-center overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
       <A
         href={ctx.processHref}
         class="row-link inline-flex max-w-full items-center"
@@ -404,7 +421,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
 
 function EtaCell(ctx: CellContext): JSX.Element {
   return (
-    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)] text-center">
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py) text-center">
       <A
         href={ctx.processHref}
         class="row-link block"
@@ -482,7 +499,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
   }
 
   return (
-    <div class="min-w-0 overflow-hidden px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)] text-center">
+    <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py) text-center">
       <A
         href={ctx.processHref}
         class="row-link flex justify-center"
@@ -523,6 +540,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
 
 const CELL_RENDERERS: Record<DashboardColumnId, (ctx: CellContext) => JSX.Element> = {
   processRef: ProcessRefCell,
+  carrier: CarrierCell,
   importer: ImporterCell,
   exporter: ExporterCell,
   route: RouteCell,
@@ -599,7 +617,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <div
       role="button"
       tabIndex={0}
-      class={`grid min-h-[var(--dashboard-table-row-height)] cursor-pointer items-center border-b border-border/50 bg-surface transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 last:border-b-0 ${getSeverityBorderClass(dominantSeverity())}`}
+      class={`grid min-h-(--dashboard-table-row-height) cursor-pointer items-center border-b border-border/50 bg-surface transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 last:border-b-0 ${getSeverityBorderClass(dominantSeverity())}`}
       style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
@@ -635,6 +653,7 @@ function DashboardTableHeader(props: {
 
   const columnLabelKeys: Record<string, string> = {
     process: keys.dashboard.table.col.process,
+    carrier: keys.dashboard.table.col.carrier,
     importerName: keys.dashboard.table.col.importerName,
     exporterName: keys.dashboard.table.col.exporterName,
     route: keys.dashboard.table.col.route,
@@ -690,7 +709,7 @@ function DashboardTableHeader(props: {
 
   return (
     <div
-      class="grid min-h-[var(--dashboard-table-header-height)] border-b border-border bg-surface-muted text-left text-sm-ui font-semibold leading-tight tracking-[0.01em] text-text-muted"
+      class="grid min-h-(--dashboard-table-header-height) border-b border-border bg-surface-muted text-left text-sm-ui font-semibold leading-tight tracking-[0.01em] text-text-muted"
       style={{ 'grid-template-columns': props.gridStyle }}
     >
       <For each={props.columnOrder}>
@@ -708,7 +727,7 @@ function DashboardTableHeader(props: {
             <div
               role="columnheader"
               tabIndex={colDef.reorderable ? 0 : undefined}
-              class={`min-h-[var(--dashboard-table-header-height)] px-[var(--dashboard-table-cell-px)] py-[var(--dashboard-table-cell-py)] ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-surface' : ''}`}
+              class={`min-h-(--dashboard-table-header-height) px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py) ${alignClass()} ${colDef.reorderable ? 'cursor-grab' : ''} ${isDragTarget() ? 'bg-surface' : ''}`}
               draggable={colDef.reorderable}
               onDragStart={(e: DragEvent) => handleDragStart(colId, colDef, e)}
               onDragOver={(e: DragEvent) => handleDragOver(i(), e)}

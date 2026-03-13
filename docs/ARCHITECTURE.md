@@ -82,6 +82,8 @@ Tracking responsibilities:
 - Safe-first primary selection
 - Derived state (ACTUAL / EXPECTED / EXPIRED_EXPECTED)
 - Chronological ordering
+- Preserve status-neutral operational observations (for example `TERMINAL_MOVE`) as facts
+- Keep carrier-normalizer technical traceability in raw event metadata (for example `normalizer_version`)
 
 Tracking does NOT:
 - Generate human labels
