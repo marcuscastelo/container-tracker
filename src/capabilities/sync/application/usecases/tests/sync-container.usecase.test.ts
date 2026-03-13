@@ -13,6 +13,7 @@ function toHttpErrorOrThrow(error: unknown): HttpError {
 function createDeps(overrides: Partial<SyncContainerDeps> = {}): {
   readonly deps: SyncContainerDeps
   readonly getSyncRequestStatuses: ReturnType<typeof vi.fn>
+  readonly persistDetectedCarrier: ReturnType<typeof vi.fn>
 } {
   let now = 0
   const nowMs = () => now
@@ -20,28 +21,32 @@ function createDeps(overrides: Partial<SyncContainerDeps> = {}): {
     now += delayMs
   })
 
-  const getSyncRequestStatuses = vi.fn(async () => ({
+  const getSyncRequestStatuses = vi.fn(async () => [
+    {
+      syncRequestId: 'sync-1',
+      status: 'DONE' as const,
+      lastError: null,
+      updatedAt: '2026-03-06T10:00:00.000Z',
+      refValue: 'MSCU1234567',
+    },
+  ])
+  const getSyncRequestStatusesPort = vi.fn(async () => ({
     allTerminal: true,
-    requests: [
-      {
-        syncRequestId: 'sync-1',
-        status: 'DONE' as const,
-        lastError: null,
-        updatedAt: '2026-03-06T10:00:00.000Z',
-        refValue: 'MSCU1234567',
-      },
-    ],
+    requests: await getSyncRequestStatuses(),
   }))
+  const persistDetectedCarrier = vi.fn(async () => undefined)
 
   const deps: SyncContainerDeps = {
-    targetResolverService: {
-      resolveTargets: vi.fn(async () => [
-        {
-          processId: 'process-1',
-          containerNumber: 'MSCU1234567',
-          provider: 'msc' as const,
-        },
-      ]),
+    targetReadPort: {
+      findContainersByNumber: vi.fn(async () => ({
+        containers: [
+          {
+            processId: 'process-1',
+            containerNumber: 'MSCU1234567',
+            carrierCode: 'msc',
+          },
+        ],
+      })),
     },
     enqueuePolicyService: {
       enqueue: vi.fn(async () => ({
@@ -59,7 +64,19 @@ function createDeps(overrides: Partial<SyncContainerDeps> = {}): {
       })),
     },
     queuePort: {
-      getSyncRequestStatuses,
+      getSyncRequestStatuses: getSyncRequestStatusesPort,
+    },
+    carrierDetectionEngine: {
+      detectCarrier: vi.fn(async () => ({
+        detected: true as const,
+        provider: 'msc' as const,
+        attemptedProviders: ['msc'] as const,
+        reason: 'found' as const,
+        error: null,
+      })),
+    },
+    carrierDetectionWritePort: {
+      persistDetectedCarrier,
     },
     nowMs,
     sleep,
@@ -68,7 +85,8 @@ function createDeps(overrides: Partial<SyncContainerDeps> = {}): {
 
   return {
     deps,
-    getSyncRequestStatuses,
+    getSyncRequestStatuses: getSyncRequestStatusesPort,
+    persistDetectedCarrier,
   }
 }
 
@@ -89,10 +107,12 @@ describe('sync-container.usecase', () => {
     })
   })
 
-  it('fails with 404 when target resolver returns no container target', async () => {
+  it('fails with 404 when container cannot be found', async () => {
     const { deps } = createDeps({
-      targetResolverService: {
-        resolveTargets: vi.fn(async () => []),
+      targetReadPort: {
+        findContainersByNumber: vi.fn(async () => ({
+          containers: [],
+        })),
       },
     })
 
@@ -114,7 +134,114 @@ describe('sync-container.usecase', () => {
     expect(httpError.message).toBe('container_not_found')
   })
 
-  it('fails with 502 when request reaches FAILED terminal status', async () => {
+  it('detects the carrier when the stored carrier is unsupported and retries sync', async () => {
+    const { deps, persistDetectedCarrier } = createDeps({
+      targetReadPort: {
+        findContainersByNumber: vi.fn(async () => ({
+          containers: [
+            {
+              processId: 'process-1',
+              containerNumber: 'MSCU1234567',
+              carrierCode: null,
+            },
+          ],
+        })),
+      },
+      carrierDetectionEngine: {
+        detectCarrier: vi.fn(async () => ({
+          detected: true as const,
+          provider: 'maersk' as const,
+          attemptedProviders: ['maersk'] as const,
+          reason: 'found' as const,
+          error: null,
+        })),
+      },
+    })
+
+    const execute = createSyncContainerUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'container', containerNumber: 'MSCU1234567' },
+      mode: 'manual',
+    })
+
+    expect(result).toEqual({
+      containerNumber: 'MSCU1234567',
+      syncedContainers: 1,
+    })
+    expect(persistDetectedCarrier).toHaveBeenCalledWith({
+      processId: 'process-1',
+      containerNumber: 'MSCU1234567',
+      carrierCode: 'maersk',
+    })
+  })
+
+  it('retries with a detected carrier after a not-found-like failure', async () => {
+    const { deps, getSyncRequestStatuses, persistDetectedCarrier } = createDeps({
+      targetReadPort: {
+        findContainersByNumber: vi.fn(async () => ({
+          containers: [
+            {
+              processId: 'process-1',
+              containerNumber: 'MSCU1234567',
+              carrierCode: 'maersk',
+            },
+          ],
+        })),
+      },
+      carrierDetectionEngine: {
+        detectCarrier: vi.fn(async () => ({
+          detected: true as const,
+          provider: 'msc' as const,
+          attemptedProviders: ['msc'] as const,
+          reason: 'found' as const,
+          error: null,
+        })),
+      },
+    })
+
+    getSyncRequestStatuses
+      .mockResolvedValueOnce({
+        allTerminal: true,
+        requests: [
+          {
+            syncRequestId: 'sync-1',
+            status: 'FAILED',
+            lastError: 'No container found for maersk:MSCU1234567',
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        allTerminal: true,
+        requests: [
+          {
+            syncRequestId: 'sync-1',
+            status: 'DONE',
+            lastError: null,
+            updatedAt: '2026-03-06T10:01:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+        ],
+      })
+
+    const execute = createSyncContainerUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'container', containerNumber: 'MSCU1234567' },
+      mode: 'manual',
+    })
+
+    expect(result.syncedContainers).toBe(1)
+    expect(persistDetectedCarrier).toHaveBeenCalledWith({
+      processId: 'process-1',
+      containerNumber: 'MSCU1234567',
+      carrierCode: 'msc',
+    })
+  })
+
+  it('fails with 502 when request reaches a non-detectable FAILED terminal status', async () => {
     const { deps } = createDeps({
       queuePort: {
         getSyncRequestStatuses: vi.fn(async () => ({

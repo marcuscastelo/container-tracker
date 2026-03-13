@@ -9,6 +9,7 @@ import { createListContainersByProcessIdUseCase } from '~/modules/container/appl
 import { createListContainersByProcessIdsUseCase } from '~/modules/container/application/usecases/list-containers-by-process-ids.usecase'
 import { createReconcileContainersUseCase } from '~/modules/container/application/usecases/reconcile-containers.usecase'
 import { createSearchContainersByNumberUseCase } from '~/modules/container/application/usecases/search-containers-by-number.usecase'
+import { createUpdateContainerCarrierUseCase } from '~/modules/container/application/usecases/update-container-carrier.usecase'
 
 /**
  * ContainerUseCases
@@ -26,6 +27,7 @@ export function createContainerUseCases(deps: { repository: ContainerRepository 
   const listByProcessId = createListContainersByProcessIdUseCase(deps)
   const listByProcessIds = createListContainersByProcessIdsUseCase(deps)
   const searchByNumber = createSearchContainersByNumberUseCase(deps)
+  const updateCarrier = createUpdateContainerCarrierUseCase(deps)
 
   return {
     createContainer,
@@ -37,6 +39,7 @@ export function createContainerUseCases(deps: { repository: ContainerRepository 
     searchByNumber,
     listByProcessId,
     listByProcessIds,
+    updateCarrier,
   }
 }
 

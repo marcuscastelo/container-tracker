@@ -33,6 +33,9 @@ function createContainerRepositoryDouble() {
       return createInsertedEntity(record, `inserted-${insertCounter}`)
     }),
     insertMany: vi.fn(async () => []),
+    updateCarrierCode: vi.fn(async () => {
+      throw new Error('Not implemented in reconcile tests')
+    }),
     delete: vi.fn(async (id) => {
       deleted.push(id)
     }),

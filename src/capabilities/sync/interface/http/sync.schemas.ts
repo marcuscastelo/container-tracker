@@ -15,8 +15,17 @@ export const ProcessRefreshRequestSchema = z
     }
   })
 
+export const ProcessCarrierDetectionRequestSchema = z.object({
+  container_number: z.string().min(1).optional(),
+})
+
 export const SyncContainerResponseSchema = z.object({
   ok: z.literal(true),
   containerNumber: z.string(),
   syncedContainers: z.number().int().nonnegative(),
+})
+
+export const DetectProcessCarrierResponseSchema = z.object({
+  detected: z.boolean(),
+  carrier: z.string().nullable(),
 })

@@ -16,6 +16,10 @@ export type UpdateContainerRecord = {
 export type ContainerRepository = {
   insert(record: InsertContainerRecord): Promise<ContainerEntity>
   insertMany(records: InsertContainerRecord[]): Promise<ContainerEntity[]>
+  updateCarrierCode(command: {
+    readonly id: string
+    readonly carrierCode: string
+  }): Promise<ContainerEntity>
   delete(id: string): Promise<void>
   existsMany(numbers: string[]): Promise<Map<string, boolean>>
   findByNumber(containerNumber: string): Promise<ContainerEntity | null>
