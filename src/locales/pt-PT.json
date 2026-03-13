@@ -14,6 +14,23 @@
     "alertsBadge": "{{count}} Alertas",
     "alertsLabel": "Alertas",
     "alertsActiveTooltip": "{{count}} alertas ativos",
+    "alertsPanel": {
+      "title": "Alertas ativos",
+      "subtitle": "Processos que requerem atenção",
+      "openDashboard": "Abrir painel",
+      "openProcess": "Abrir processo",
+      "close": "Fechar painel de alertas",
+      "alertsCount": "{{count}} alertas",
+      "containerStatus": "Estado",
+      "containerEta": "ETA",
+      "lastEvent": "Último evento: {{date}}",
+      "retroactive": "Retroativo",
+      "loading": "A carregar alertas...",
+      "empty": "Nenhum alerta ativo",
+      "error": "Falha ao carregar alertas",
+      "retry": "Tentar novamente",
+      "valueUnavailable": "—"
+    },
     "theme": {
       "light": "Claro",
       "dark": "Escuro",

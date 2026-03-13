@@ -52,6 +52,61 @@ function makeAlert(
     readonly is_active?: TrackingActiveAlertReadModel['is_active']
   },
 ): TrackingActiveAlertReadModel {
+  function toMessageContract(
+    type: TrackingActiveAlertReadModel['type'],
+  ): Pick<TrackingActiveAlertReadModel, 'message_key' | 'message_params'> {
+    if (type === 'TRANSSHIPMENT') {
+      return {
+        message_key: 'alerts.transshipmentDetected',
+        message_params: {
+          port: 'SANTOS',
+          fromVessel: 'VESSEL A',
+          toVessel: 'VESSEL B',
+        },
+      }
+    }
+    if (type === 'CUSTOMS_HOLD') {
+      return {
+        message_key: 'alerts.customsHoldDetected',
+        message_params: { location: 'SANTOS' },
+      }
+    }
+    if (type === 'NO_MOVEMENT') {
+      return {
+        message_key: 'alerts.noMovementDetected',
+        message_params: {
+          threshold_days: 10,
+          days_without_movement: 11,
+          days: 11,
+          lastEventDate: '2026-02-28',
+        },
+      }
+    }
+    if (type === 'ETA_MISSING') {
+      return {
+        message_key: 'alerts.etaMissing',
+        message_params: {},
+      }
+    }
+    if (type === 'ETA_PASSED') {
+      return {
+        message_key: 'alerts.etaPassed',
+        message_params: {},
+      }
+    }
+    if (type === 'PORT_CHANGE') {
+      return {
+        message_key: 'alerts.portChange',
+        message_params: {},
+      }
+    }
+    return {
+      message_key: 'alerts.dataInconsistent',
+      message_params: {},
+    }
+  }
+
+  const message = toMessageContract(args.type)
   return {
     alert_id: args.alert_id,
     process_id: args.process_id,
@@ -59,6 +114,8 @@ function makeAlert(
     category: args.category,
     severity: args.severity,
     type: args.type,
+    message_key: message.message_key,
+    message_params: message.message_params,
     generated_at: args.generated_at ?? '2026-03-03T00:00:00.000Z',
     fingerprint: null,
     is_active: args.is_active ?? true,
@@ -145,7 +202,10 @@ describe('dashboard operational summary read model integration', () => {
 
     const useCases = createDashboardUseCases({
       processUseCases: { listProcessesWithOperationalSummary },
-      trackingUseCases: { listActiveAlertReadModel },
+      trackingUseCases: {
+        listActiveAlertReadModel,
+        getContainersSummary: vi.fn(async () => new Map()),
+      },
     })
 
     const result = await useCases.getOperationalSummaryReadModel()
@@ -206,7 +266,10 @@ describe('dashboard operational summary read model integration', () => {
 
     const useCases = createDashboardUseCases({
       processUseCases: { listProcessesWithOperationalSummary },
-      trackingUseCases: { listActiveAlertReadModel },
+      trackingUseCases: {
+        listActiveAlertReadModel,
+        getContainersSummary: vi.fn(async () => new Map()),
+      },
     })
     const result = await useCases.getOperationalSummaryReadModel()
 
@@ -306,7 +369,10 @@ describe('dashboard operational summary read model integration', () => {
 
     const useCases = createDashboardUseCases({
       processUseCases: { listProcessesWithOperationalSummary },
-      trackingUseCases: { listActiveAlertReadModel },
+      trackingUseCases: {
+        listActiveAlertReadModel,
+        getContainersSummary: vi.fn(async () => new Map()),
+      },
     })
 
     const result = await useCases.getOperationalSummaryReadModel()
@@ -464,7 +530,10 @@ describe('dashboard operational summary read model integration', () => {
 
     const useCases = createDashboardUseCases({
       processUseCases: { listProcessesWithOperationalSummary },
-      trackingUseCases: { listActiveAlertReadModel },
+      trackingUseCases: {
+        listActiveAlertReadModel,
+        getContainersSummary: vi.fn(async () => new Map()),
+      },
     })
 
     const result = await useCases.getOperationalSummaryReadModel()

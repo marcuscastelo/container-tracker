@@ -14,6 +14,23 @@
     "alertsBadge": "{{count}} Alerts",
     "alertsLabel": "Alerts",
     "alertsActiveTooltip": "{{count}} active alerts",
+    "alertsPanel": {
+      "title": "Active alerts",
+      "subtitle": "Processes that need attention",
+      "openDashboard": "Open dashboard",
+      "openProcess": "Open process",
+      "close": "Close alerts panel",
+      "alertsCount": "{{count}} alerts",
+      "containerStatus": "Status",
+      "containerEta": "ETA",
+      "lastEvent": "Last event: {{date}}",
+      "retroactive": "Retroactive",
+      "loading": "Loading alerts...",
+      "empty": "No active alerts",
+      "error": "Failed to load alerts",
+      "retry": "Retry",
+      "valueUnavailable": "—"
+    },
     "theme": {
       "light": "Light",
       "dark": "Dark",

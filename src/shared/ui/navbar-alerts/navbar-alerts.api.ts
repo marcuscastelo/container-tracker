@@ -1,0 +1,62 @@
+import { typedFetch } from '~/shared/api/typedFetch'
+import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
+import type { NavbarAlertsSummaryResponse } from '~/shared/api-schemas/dashboard.schemas'
+
+const NAVBAR_ALERTS_SUMMARY_ENDPOINT = '/api/alerts/navbar-summary'
+const NAVBAR_ALERTS_CACHE_TTL_MS = 15_000
+
+type NavbarAlertsCacheRecord = {
+  readonly expiresAtMs: number
+  readonly value: NavbarAlertsSummaryResponse
+}
+
+let navbarAlertsCache: NavbarAlertsCacheRecord | null = null
+let inFlightNavbarAlerts: Promise<NavbarAlertsSummaryResponse> | null = null
+
+function readFreshNavbarAlertsCache(): NavbarAlertsSummaryResponse | null {
+  if (!navbarAlertsCache) return null
+  if (navbarAlertsCache.expiresAtMs <= Date.now()) {
+    navbarAlertsCache = null
+    return null
+  }
+  return navbarAlertsCache.value
+}
+
+function writeNavbarAlertsCache(value: NavbarAlertsSummaryResponse): void {
+  navbarAlertsCache = {
+    value,
+    expiresAtMs: Date.now() + NAVBAR_ALERTS_CACHE_TTL_MS,
+  }
+}
+
+export async function fetchNavbarAlertsSummary(options?: {
+  readonly preferCached?: boolean
+}): Promise<NavbarAlertsSummaryResponse> {
+  if (options?.preferCached === true) {
+    const cached = readFreshNavbarAlertsCache()
+    if (cached !== null) return cached
+  }
+
+  if (inFlightNavbarAlerts) return inFlightNavbarAlerts
+
+  const request = typedFetch(
+    NAVBAR_ALERTS_SUMMARY_ENDPOINT,
+    undefined,
+    NavbarAlertsSummaryResponseSchema,
+  )
+    .then((value) => {
+      writeNavbarAlertsCache(value)
+      return value
+    })
+    .finally(() => {
+      inFlightNavbarAlerts = null
+    })
+
+  inFlightNavbarAlerts = request
+  return request
+}
+
+export function clearNavbarAlertsSummaryCache(): void {
+  navbarAlertsCache = null
+  inFlightNavbarAlerts = null
+}

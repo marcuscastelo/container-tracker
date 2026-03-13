@@ -1,4 +1,4 @@
-import { useNavigate, usePreloadRoute } from '@solidjs/router'
+import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
@@ -11,6 +11,7 @@ import { useShipmentDialogsController } from '~/modules/process/ui/screens/shipm
 import { useShipmentRefreshController } from '~/modules/process/ui/screens/shipment/hooks/useShipmentRefreshController'
 import { useShipmentScreenResource } from '~/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource'
 import { useShipmentSelectedContainer } from '~/modules/process/ui/screens/shipment/hooks/useShipmentSelectedContainer'
+import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
@@ -30,11 +31,16 @@ type ShipmentScreenProps = {
 
 export function ShipmentScreen(props: ShipmentScreenProps) {
   const { locale } = useTranslation()
+  const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
 
   // props.processId is already an Accessor<string>; no extra createMemo indirection required
   const processId = () => props.processId()
+
+  const preferredContainerNumber = createMemo(() =>
+    normalizeSelectedContainerNumber(new URLSearchParams(location.search).get('container')),
+  )
 
   // ── Resource ───────────────────────────────────────────────────────────────
   const resource = useShipmentScreenResource({
@@ -45,6 +51,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   // ── Selected container ─────────────────────────────────────────────────────
   const selection = useShipmentSelectedContainer({
     shipment: resource.shipment,
+    preferredContainerNumber,
   })
 
   // ── Refresh controller ─────────────────────────────────────────────────────
@@ -104,7 +111,6 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       shipmentData={resource.shipment}
       shipmentLoading={resource.loading}
       shipmentError={resource.error}
-      activeAlerts={activeAlerts}
       onOpenCreateProcess={dialogs.openCreateDialog}
       onDashboardIntent={handleDashboardIntent}
       searchSlot={props.searchSlot}

@@ -5,6 +5,7 @@ export type DashboardProcessRecordProjection = {
   readonly reference?: string | null
   readonly origin?: string | null
   readonly destination?: string | null
+  readonly carrier?: string | null
   readonly createdAt?: Date | string | null
 }
 

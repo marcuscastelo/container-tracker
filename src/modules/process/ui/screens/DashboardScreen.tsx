@@ -600,7 +600,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       <div class="relative z-10">
         <AppHeader
           onCreateProcess={handleCreateProcess}
-          alertCount={globalAlerts()?.totalActiveAlerts ?? 0}
           searchSlot={props.searchSlot}
           syncSlot={<DashboardRefreshButton onRefresh={handleDashboardRefresh} />}
         />

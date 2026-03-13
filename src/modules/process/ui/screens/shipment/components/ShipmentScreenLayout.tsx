@@ -2,7 +2,6 @@ import { A } from '@solidjs/router'
 import type { Accessor, JSX, Resource } from 'solid-js'
 import { Show } from 'solid-js'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
-import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -12,7 +11,6 @@ type ShipmentScreenLayoutProps = {
   readonly shipmentData: Resource<ShipmentDetailVM | null | undefined>
   readonly shipmentLoading: Accessor<boolean>
   readonly shipmentError: Accessor<unknown>
-  readonly activeAlerts: Accessor<readonly AlertDisplayVM[]>
   readonly onOpenCreateProcess: () => void
   readonly onDashboardIntent: () => void
   readonly searchSlot?: JSX.Element
@@ -24,7 +22,10 @@ type ShipmentScreenLayoutProps = {
 export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
   const { t, keys } = useTranslation()
 
-  const shouldShowNotFound = () => props.shipmentData() === null && !props.shipmentLoading()
+  const shouldShowNotFound = () =>
+    props.shipmentData() === null && !props.shipmentLoading() && !props.shipmentError()
+  const shouldShowPendingLoading = () =>
+    props.shipmentData() === undefined && !props.shipmentError()
   const shouldShowLoadError = () =>
     Boolean(props.shipmentError()) && props.shipmentData() === undefined && !props.shipmentLoading()
 
@@ -42,16 +43,12 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
       />
       <div class="relative z-10">
-        <AppHeader
-          onCreateProcess={props.onOpenCreateProcess}
-          alertCount={props.activeAlerts().length}
-          searchSlot={props.searchSlot}
-        />
+        <AppHeader onCreateProcess={props.onOpenCreateProcess} searchSlot={props.searchSlot} />
 
         {props.banners}
         {props.dialogs}
 
-        <main class="relative mx-auto max-w-[var(--dashboard-container-max-width)] px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
+        <main class="relative mx-auto max-w-(--dashboard-container-max-width) px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
           <A
             href="/"
             class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-text-muted transition-colors hover:text-foreground"
@@ -63,7 +60,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
             {t(keys.shipmentView.backToList)}
           </A>
 
-          <Show when={props.shipmentLoading()}>
+          <Show when={props.shipmentLoading() || shouldShowPendingLoading()}>
             <div class="rounded-lg border border-border bg-surface p-12 text-center">
               <p class="text-text-muted">{t(keys.shipmentView.loading)}</p>
             </div>
@@ -99,7 +96,9 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
             </div>
           </Show>
 
-          {props.content}
+          <Show when={props.shipmentData() !== null && props.shipmentData() !== undefined}>
+            {props.content}
+          </Show>
         </main>
       </div>
     </div>
