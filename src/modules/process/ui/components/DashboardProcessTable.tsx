@@ -11,7 +11,7 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
-import { toDashboardStatusCellDisplay } from '~/modules/process/ui/components/dashboard-status-cell.presenter'
+import { createDashboardStatusCellDisplayMemo } from '~/modules/process/ui/components/dashboard-status-cell.display'
 import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
@@ -378,10 +378,8 @@ function RouteCell(ctx: CellContext): JSX.Element {
 }
 
 function StatusCell(ctx: CellContext): JSX.Element {
-  // compute display data once per render to avoid recomputing translations and
-  // microbadge mapping multiple times during JSX evaluation
-  const display = createMemo(() =>
-    toDashboardStatusCellDisplay({
+  const display = createDashboardStatusCellDisplayMemo({
+    getCommand: () => ({
       source: {
         status: ctx.process.status,
         statusCode: ctx.process.statusCode,
@@ -390,7 +388,9 @@ function StatusCell(ctx: CellContext): JSX.Element {
       t: ctx.t,
       keys: ctx.keys,
     }),
-  )
+  })
+  const primary = () => display().primary
+  const subtitle = () => display().subtitle
 
   return (
     <div class="flex min-w-0 items-center justify-center overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
@@ -403,13 +403,13 @@ function StatusCell(ctx: CellContext): JSX.Element {
         onPointerDown={ctx.triggerProcessIntent}
       >
         <div class="inline-flex max-w-full flex-col items-start leading-tight">
-          <StatusBadge variant={display().primary.variant} label={display().primary.label} />
-          <Show when={display().subtitle}>
-            {(subtitle) => (
+          <StatusBadge variant={primary().variant} label={primary().label} />
+          <Show when={subtitle()}>
+            {(subtitleDisplay) => (
               <span
-                class={`mt-1 max-w-full truncate whitespace-nowrap text-xs-ui font-medium leading-tight ${subtitle().textClass}`}
+                class={`mt-1 max-w-full truncate whitespace-nowrap text-xs-ui font-medium leading-tight ${subtitleDisplay().textClass}`}
               >
-                {subtitle().label}
+                {subtitleDisplay().label}
               </span>
             )}
           </Show>

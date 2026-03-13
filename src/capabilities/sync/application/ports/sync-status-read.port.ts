@@ -14,8 +14,14 @@ export type ProcessSyncContainerRecord = {
   readonly containerNumber: string
 }
 
+export type ListProcessSyncCandidatesCommand = {
+  readonly processIds?: readonly string[]
+}
+
 export type SyncStatusReadPort = {
-  readonly listProcessSyncCandidates: () => Promise<readonly ProcessSyncCandidate[]>
+  readonly listProcessSyncCandidates: (
+    command?: ListProcessSyncCandidatesCommand,
+  ) => Promise<readonly ProcessSyncCandidate[]>
   readonly listContainersByProcessIds: (command: {
     readonly processIds: readonly string[]
   }) => Promise<{

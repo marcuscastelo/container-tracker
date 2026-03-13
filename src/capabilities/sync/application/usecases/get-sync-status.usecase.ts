@@ -30,12 +30,18 @@ export type GetSyncStatusDeps = {
   readonly nowFactory?: () => Date
 }
 
+export type GetSyncStatusCommand = {
+  readonly processIds?: readonly string[]
+}
+
 export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
   const nowFactory = deps.nowFactory ?? (() => new Date())
   const aggregationService = deps.statusAggregationService ?? createSyncStatusAggregationService()
 
-  return async function execute(): Promise<GetSyncStatusResult> {
-    const candidates = await deps.statusReadPort.listProcessSyncCandidates()
+  return async function execute(command: GetSyncStatusCommand = {}): Promise<GetSyncStatusResult> {
+    const candidates = await deps.statusReadPort.listProcessSyncCandidates({
+      processIds: command.processIds,
+    })
     if (candidates.length === 0) {
       return {
         generatedAt: nowFactory().toISOString(),

@@ -15,36 +15,6 @@ Itens obsoletos ou redundantes foram removidos.
 
 # 🐞 Bugs
 
-## Process Creation / Editing
-
-- Soft-lock ao manipular containers no **Create Process**:
-  
-  Cenário:
-  
-  ```
-  1. Criar processo
-  2. Adicionar container existente
-  3. Editar para container inexistente
-  4. Adicionar outro container existente
-  5. Remover com lixeira
-  6. Re-adicionar container inexistente
-  ```
-  
-  Resultado:
-  
-  ```
-  Mensagem "container já existente"
-  Campo removido
-  Usuário não consegue resolver
-  ```
-
-- Não é possível **remover BL do processo** durante update.
-
-- Container removido do processo **não pode ser re-adicionado**  
-  (checagem atual verifica existência global em vez de existência no processo).
-
----
-
 ## Dashboard UI
 
 - Botões de **sync no dashboard apresentam bugs visuais** e só atualizam após refresh.
@@ -80,28 +50,9 @@ Itens obsoletos ou redundantes foram removidos.
 - Mostrar **"Última edição há Xs"** logo após criar processo  
   para confirmar que o processo foi criado com sucesso.
 
-- Adicionar **barra de busca global na página de processo**.
-
 - Adicionar **animações de abertura/fechamento de dialogs**.
 
 - Adicionar **transição suave nos efeitos de blur** do search overlay.
-
----
-
-## Process Creation
-
-- Permitir **colar múltiplos containers** para adicionar vários de uma vez.
-
-- Permitir **colar markdown / CSV / formato human-friendly** contendo:
-
-  ```
-  container
-  booking
-  carrier
-  etc
-  ```
-
-  para criar processo rapidamente.
 
 ---
 
@@ -220,37 +171,18 @@ botão "Tentar identificar armador automaticamente"
 
 ## Domain
 
-- Adicionar **booking_number** ao processo.
-
 - Revisar se `operation_type` pode ser removido do banco.
 
 - Padronizar uso de:
 
 ```
-null vs unknown
+null vs undefined
 ```
 
 para campos opcionais.
 
 ---
 
-## Tracking / Domain Events
-
-Gerar **evento de transbordo** quando:
-
-```
-Navio A chega
-Navio B sai com o mesmo container
-```
-
-Evento deve gerar:
-
-```
-alerta operacional
-visibilidade para importadores
-```
-
----
 
 ## Alert Content
 
@@ -260,36 +192,7 @@ Alertas de transbordo devem incluir:
 container
 navio original
 navio novo
-redestinação do processo
-```
-
----
-
-## Tracking Engine
-
-Melhorar promoção:
-
-```
-EXPECTED -> ACTUAL
-```
-
-Atualmente:
-
-```
-EXPECTED mantido
-ACTUAL criado
-```
-
-Resultado:
-
-```
-timeline duplicada
-```
-
-Objetivo:
-
-```
-promover registro EXPECTED existente para ACTUAL
+redestinação do processo (hoje falta, como aplicar?)
 ```
 
 ---

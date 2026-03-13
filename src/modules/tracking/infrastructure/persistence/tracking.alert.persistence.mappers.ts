@@ -1,6 +1,7 @@
 import type {
   NewTrackingAlert,
   TrackingAlert,
+  TrackingAlertDerivationState,
   TrackingAlertLifecycleState,
   TrackingAlertMessageContract,
   TrackingAlertMessageKey,
@@ -266,6 +267,45 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     acked_source: optionalAlertAckSource(row.acked_source, 'alert.acked_source'),
     resolved_at: resolvedAtIso,
     resolved_reason: optionalAlertResolvedReason(row.resolved_reason, 'alert.resolved_reason'),
+  }
+}
+
+export function alertRowToDerivationState(
+  row: Pick<
+    TrackingAlertRow,
+    | 'id'
+    | 'category'
+    | 'type'
+    | 'message_key'
+    | 'message_params'
+    | 'source_observation_fingerprints'
+    | 'alert_fingerprint'
+    | 'acked_at'
+    | 'resolved_at'
+  >,
+): TrackingAlertDerivationState {
+  let fingerprints: string[] = []
+  if (Array.isArray(row.source_observation_fingerprints)) {
+    fingerprints = row.source_observation_fingerprints.filter(
+      (value): value is string => typeof value === 'string',
+    )
+  }
+
+  const messageContract = requireAlertMessageContract(
+    row.message_key,
+    row.message_params,
+    'alert.message',
+  )
+
+  return {
+    id: requireString(row.id, 'alert.id'),
+    category: requireAlertCategory(row.category, 'alert.category'),
+    type: requireAlertType(row.type, 'alert.type'),
+    message_params: messageContract.message_params,
+    source_observation_fingerprints: fingerprints,
+    alert_fingerprint: row.alert_fingerprint ?? null,
+    acked_at: normalizeAlertIso(row.acked_at),
+    resolved_at: normalizeAlertIso(row.resolved_at),
   }
 }
 
