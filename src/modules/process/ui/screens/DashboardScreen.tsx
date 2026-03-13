@@ -3,6 +3,11 @@ import { Check, CircleAlert, RefreshCw, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import {
+  createProcessRequest,
+  fetchDashboardGlobalAlertsSummary,
+  fetchDashboardProcessSummaries,
+} from '~/modules/process/ui/api/process.api'
+import {
   syncAllProcessesRequest,
   syncProcessRequest,
 } from '~/modules/process/ui/api/processSync.api'
@@ -47,12 +52,7 @@ import {
   readDashboardSortFromLocalStorage,
   writeDashboardSortToLocalStorage,
 } from '~/modules/process/ui/validation/dashboardSortStorage.validation'
-import {
-  createProcessRequest,
-  fetchDashboardGlobalAlertsSummary,
-  fetchDashboardProcessSummaries,
-  toCreateProcessInput,
-} from '~/modules/process/ui/validation/processApi.validation'
+import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
   parseExistingProcessConflictError,

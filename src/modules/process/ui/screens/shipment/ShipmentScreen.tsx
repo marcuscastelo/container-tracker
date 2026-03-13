@@ -1,6 +1,10 @@
 import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
+import {
+  prefetchDashboardGlobalAlertsSummary,
+  prefetchDashboardProcessSummaries,
+} from '~/modules/process/ui/api/process.api'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
 import { ShipmentDialogsHost } from '~/modules/process/ui/screens/shipment/components/ShipmentDialogsHost'
@@ -16,10 +20,6 @@ import {
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
-import {
-  prefetchDashboardGlobalAlertsSummary,
-  prefetchDashboardProcessSummaries,
-} from '~/modules/process/ui/validation/processApi.validation'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'

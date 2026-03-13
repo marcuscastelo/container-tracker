@@ -1,14 +1,14 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createSignal, Show } from 'solid-js'
+import {
+  clearDashboardPrefetchCache,
+  deleteProcessRequest,
+} from '~/modules/process/ui/api/process.api'
 import { DeleteShipmentConfirmationInput } from '~/modules/process/ui/components/DeleteShipmentConfirmationInput'
 import { DeleteShipmentSummary } from '~/modules/process/ui/components/DeleteShipmentSummary'
 import { DeleteShipmentWarning } from '~/modules/process/ui/components/DeleteShipmentWarning'
 import { clearPrefetchedProcessDetailById } from '~/modules/process/ui/fetchProcess'
-import {
-  clearDashboardPrefetchCache,
-  deleteProcessRequest,
-} from '~/modules/process/ui/validation/processApi.validation'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { buildDashboardHref } from '~/shared/ui/navigation/app-navigation'
