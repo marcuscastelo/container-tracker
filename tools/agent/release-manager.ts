@@ -276,6 +276,9 @@ export function rollbackRelease(command: {
   readonly reason: string
   readonly crashLoopDetected: boolean
 }): ReleaseState {
+  // Crash-loop handling is version-scoped; rollback no longer changes global activation state.
+  void command.crashLoopDetected
+
   const rollbackDir = resolveReleaseDir(command.layout.releasesDir, command.rollbackVersion)
   if (pathExists(rollbackDir)) {
     createOrReplaceDirectoryLink({
@@ -292,7 +295,7 @@ export function rollbackRelease(command: {
     current_version: command.rollbackVersion,
     last_known_good_version: command.rollbackVersion,
     target_version: null,
-    activation_state: command.crashLoopDetected ? 'blocked' : 'rolled_back',
+    activation_state: 'rolled_back',
     last_update_attempt: command.nowIso,
     last_error: command.reason,
   }

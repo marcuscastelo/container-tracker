@@ -227,10 +227,10 @@ async function runUpdater(): Promise<void> {
   if (staged.kind === 'blocked') {
     releaseState = {
       ...releaseState,
-      activation_state: 'blocked',
+      activation_state: 'idle',
       last_error: staged.reason,
       last_update_attempt: nowIso,
-      automatic_updates_blocked: true,
+      automatic_updates_blocked: releaseState.automatic_updates_blocked,
     }
     writeReleaseState(layout.releaseStatePath, releaseState)
     appendPendingActivityEvents(layout.pendingActivityPath, [
@@ -244,7 +244,7 @@ async function runUpdater(): Promise<void> {
         occurred_at: nowIso,
       },
     ])
-    appendLogLine(layout, `[updater] blocked: ${staged.reason}`)
+    appendLogLine(layout, `[updater] skipping blocked version: ${staged.reason}`)
     return
   }
 

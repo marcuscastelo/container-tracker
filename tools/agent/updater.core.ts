@@ -339,11 +339,12 @@ export async function stageReleaseFromManifest(command: {
     return {
       kind: 'blocked',
       manifest: command.manifest,
-      reason: 'automatic updates are blocked due to previous crash loop',
+      reason: 'automatic updates are disabled by policy',
     }
   }
 
   if (hasBlockedVersion(command.state, command.manifest.version)) {
+    console.log(`[agent:update] skipping blocked version ${command.manifest.version}`)
     return {
       kind: 'blocked',
       manifest: command.manifest,

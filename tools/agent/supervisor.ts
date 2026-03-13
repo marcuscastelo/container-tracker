@@ -381,6 +381,12 @@ async function main(): Promise<void> {
                 crashLoopThreshold,
                 maxActivationFailures: MAX_ACTIVATION_FAILURES,
               })
+        if (failureTracked?.newlyBlocked && failedTargetVersion) {
+          appendSupervisorLog(
+            layout.logsDir,
+            `[update] version ${failedTargetVersion} blocked after ${failureTracked.activationFailuresForVersion} activation failures`,
+          )
+        }
         const rollbackVersion = selectRollbackVersion({
           releasesDir: layout.releasesDir,
           lastKnownGoodVersion: state.last_known_good_version,
@@ -523,6 +529,12 @@ async function main(): Promise<void> {
         crashLoopThreshold,
         maxActivationFailures: MAX_ACTIVATION_FAILURES,
       })
+      if (failureTracked.newlyBlocked) {
+        appendSupervisorLog(
+          layout.logsDir,
+          `[update] version ${refreshedState.target_version} blocked after ${failureTracked.activationFailuresForVersion} activation failures`,
+        )
+      }
 
       const rollbackVersion = selectRollbackVersion({
         releasesDir: layout.releasesDir,
@@ -593,6 +605,12 @@ async function main(): Promise<void> {
         crashLoopThreshold,
         maxActivationFailures: MAX_ACTIVATION_FAILURES,
       })
+      if (failureTracked.newlyBlocked) {
+        appendSupervisorLog(
+          layout.logsDir,
+          `[update] version ${runtimeSelection.version} blocked after ${failureTracked.activationFailuresForVersion} activation failures`,
+        )
+      }
 
       const fallbackState = releaseManager.rollbackRelease({
         layout,

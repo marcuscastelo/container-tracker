@@ -148,9 +148,10 @@ describe('supervisor release policies', () => {
     })
 
     expect(third.isCrashLoop).toBe(true)
-    expect(third.nextState.activation_state).toBe('blocked')
+    expect(third.nextState.activation_state).toBe('idle')
     expect(third.nextState.blocked_versions).toContain('2.0.0')
-    expect(third.nextState.automatic_updates_blocked).toBe(true)
+    expect(third.nextState.automatic_updates_blocked).toBe(false)
+    expect(third.newlyBlocked).toBe(true)
   })
 
   it('clears release links and falls back when rollback target is missing', () => {

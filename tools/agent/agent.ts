@@ -1255,7 +1255,7 @@ async function runUpdateCheck(command: {
 
     if (stagedRelease.kind === 'no_update') {
       if (command.state.updateState !== 'draining') {
-        command.state.updateState = releaseState.automatic_updates_blocked ? 'blocked' : 'idle'
+        command.state.updateState = 'idle'
       }
       return { activities, shouldDrain }
     }
@@ -1265,8 +1265,8 @@ async function runUpdateCheck(command: {
       command.state.lastError = stagedRelease.reason
       writeReleaseState(command.releaseStatePath, {
         ...releaseState,
-        activation_state: 'blocked',
-        automatic_updates_blocked: true,
+        activation_state: 'idle',
+        automatic_updates_blocked: releaseState.automatic_updates_blocked,
         last_update_attempt: nowIso,
         last_error: stagedRelease.reason,
       })
