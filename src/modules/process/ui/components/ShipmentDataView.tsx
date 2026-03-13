@@ -66,9 +66,9 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         </ErrorBoundary>
       </div>
 
-      <div class="grid gap-4 xl:grid-cols-[minmax(0,_1fr)_320px]">
+      <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div class="space-y-4">
-          <section id="shipment-containers" class="scroll-mt-[120px]">
+          <section id="shipment-containers" class="scroll-mt-30">
             <ContainersPanel
               containers={props.data.containers}
               selectedId={props.selectedContainerId}
@@ -76,7 +76,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             />
           </section>
 
-          <section id="shipment-timeline" class="scroll-mt-[120px]">
+          <section id="shipment-timeline" class="scroll-mt-30">
             <ErrorBoundary
               fallback={(err) => {
                 console.error('Timeline panel render failure:', err)
@@ -97,7 +97,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         </div>
         <div class="space-y-4">
           <ShipmentInfoCard data={props.data} />
-          <section id="shipment-current-status" class="scroll-mt-[120px]">
+          <section id="shipment-current-status" class="scroll-mt-30">
             <ShipmentCurrentStatus
               selectedContainer={props.selectedContainer}
               syncNow={props.syncNow}
