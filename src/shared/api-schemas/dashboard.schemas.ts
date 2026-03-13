@@ -47,9 +47,37 @@ export const DashboardOperationalSummaryResponseSchema =
     process_exceptions: z.array(DashboardProcessExceptionResponseSchema),
   })
 
+export const DashboardKpisResponseSchema = z.object({
+  activeProcesses: z.number(),
+  trackedContainers: z.number(),
+  processesWithAlerts: z.number(),
+  lastSyncAt: z.string().nullable(),
+})
+
+const DashboardProcessesCreatedByMonthDatumResponseSchema = z.object({
+  month: z.string(),
+  label: z.string(),
+  count: z.number(),
+})
+
+export const DashboardProcessesCreatedByMonthResponseSchema = z.object({
+  months: z.array(DashboardProcessesCreatedByMonthDatumResponseSchema),
+})
+
+export const DashboardProcessesCreatedByMonthQuerySchema = z.object({
+  window: z.enum(['6', '12', '24']).optional(),
+})
+
 export type DashboardGlobalAlertsSummaryResponse = z.infer<
   typeof DashboardGlobalAlertsSummaryResponseSchema
 >
 export type DashboardOperationalSummaryResponse = z.infer<
   typeof DashboardOperationalSummaryResponseSchema
+>
+export type DashboardKpisResponse = z.infer<typeof DashboardKpisResponseSchema>
+export type DashboardProcessesCreatedByMonthResponse = z.infer<
+  typeof DashboardProcessesCreatedByMonthResponseSchema
+>
+export type DashboardProcessesCreatedByMonthQuery = z.infer<
+  typeof DashboardProcessesCreatedByMonthQuerySchema
 >

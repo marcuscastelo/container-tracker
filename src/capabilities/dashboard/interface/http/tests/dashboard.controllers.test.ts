@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
+import type { DashboardKpisReadModel } from '~/capabilities/dashboard/application/dashboard.kpis.readmodel'
 import type { DashboardOperationalSummaryReadModel } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
+import type { DashboardProcessesCreatedByMonthReadModel } from '~/capabilities/dashboard/application/dashboard.processes-created-by-month.readmodel'
 import { createDashboardControllers } from '~/capabilities/dashboard/interface/http/dashboard.controllers'
-import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
+import {
+  DashboardKpisResponseSchema,
+  DashboardOperationalSummaryResponseSchema,
+  DashboardProcessesCreatedByMonthResponseSchema,
+} from '~/shared/api-schemas/dashboard.schemas'
 
 describe('dashboard controllers', () => {
   it('returns operational summary including process exceptions in backend order', async () => {
@@ -56,6 +63,19 @@ describe('dashboard controllers', () => {
     const controllers = createDashboardControllers({
       dashboardUseCases: {
         getOperationalSummaryReadModel,
+        getDashboardKpisReadModel: vi.fn(
+          async (): Promise<DashboardKpisReadModel> => ({
+            activeProcesses: 0,
+            trackedContainers: 0,
+            processesWithAlerts: 0,
+            lastSyncAt: null,
+          }),
+        ),
+        getProcessesCreatedByMonthReadModel: vi.fn(
+          async (): Promise<DashboardProcessesCreatedByMonthReadModel> => ({
+            months: [],
+          }),
+        ),
       },
     })
 
@@ -97,5 +117,177 @@ describe('dashboard controllers', () => {
       dominant_alert_created_at: null,
       active_alert_count: 0,
     })
+  })
+
+  it('returns dashboard kpis in camelCase contract', async () => {
+    const kpis: DashboardKpisReadModel = {
+      activeProcesses: 24,
+      trackedContainers: 61,
+      processesWithAlerts: 8,
+      lastSyncAt: '2026-03-12T13:42:00.000Z',
+    }
+
+    const getDashboardKpisReadModel = vi.fn(async () => kpis)
+
+    const controllers = createDashboardControllers({
+      dashboardUseCases: {
+        getOperationalSummaryReadModel: vi.fn(
+          async (): Promise<DashboardOperationalSummaryReadModel> => ({
+            globalAlerts: {
+              totalActiveAlerts: 0,
+              bySeverity: {
+                danger: 0,
+                warning: 0,
+                info: 0,
+                success: 0,
+              },
+              byCategory: {
+                eta: 0,
+                movement: 0,
+                customs: 0,
+                status: 0,
+                data: 0,
+              },
+            },
+            processes: [],
+            activeAlertsPanel: [],
+          }),
+        ),
+        getDashboardKpisReadModel,
+        getProcessesCreatedByMonthReadModel: vi.fn(
+          async (): Promise<DashboardProcessesCreatedByMonthReadModel> => ({
+            months: [],
+          }),
+        ),
+      },
+    })
+
+    const response = await controllers.getKpis()
+    const body = DashboardKpisResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      activeProcesses: 24,
+      trackedContainers: 61,
+      processesWithAlerts: 8,
+      lastSyncAt: '2026-03-12T13:42:00.000Z',
+    })
+  })
+
+  it('returns monthly chart data in chronological order', async () => {
+    const monthly: DashboardProcessesCreatedByMonthReadModel = {
+      months: [
+        { month: '2025-10', label: 'Oct', count: 4 },
+        { month: '2025-11', label: 'Nov', count: 7 },
+      ],
+    }
+
+    const getProcessesCreatedByMonthReadModel = vi.fn(async () => monthly)
+
+    const controllers = createDashboardControllers({
+      dashboardUseCases: {
+        getOperationalSummaryReadModel: vi.fn(
+          async (): Promise<DashboardOperationalSummaryReadModel> => ({
+            globalAlerts: {
+              totalActiveAlerts: 0,
+              bySeverity: {
+                danger: 0,
+                warning: 0,
+                info: 0,
+                success: 0,
+              },
+              byCategory: {
+                eta: 0,
+                movement: 0,
+                customs: 0,
+                status: 0,
+                data: 0,
+              },
+            },
+            processes: [],
+            activeAlertsPanel: [],
+          }),
+        ),
+        getDashboardKpisReadModel: vi.fn(
+          async (): Promise<DashboardKpisReadModel> => ({
+            activeProcesses: 0,
+            trackedContainers: 0,
+            processesWithAlerts: 0,
+            lastSyncAt: null,
+          }),
+        ),
+        getProcessesCreatedByMonthReadModel,
+      },
+    })
+
+    const response = await controllers.getProcessesCreatedByMonth({
+      request: new Request(
+        'http://localhost/api/dashboard/charts/processes-created-by-month?window=12',
+      ),
+    })
+    const body = DashboardProcessesCreatedByMonthResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(getProcessesCreatedByMonthReadModel).toHaveBeenCalledWith({ windowSize: 12 })
+    expect(body.months).toEqual([
+      { month: '2025-10', label: 'Oct', count: 4 },
+      { month: '2025-11', label: 'Nov', count: 7 },
+    ])
+  })
+
+  it('returns 400 for invalid monthly chart query', async () => {
+    const ErrorResponseSchema = z.object({
+      error: z.string(),
+    })
+
+    const controllers = createDashboardControllers({
+      dashboardUseCases: {
+        getOperationalSummaryReadModel: vi.fn(
+          async (): Promise<DashboardOperationalSummaryReadModel> => ({
+            globalAlerts: {
+              totalActiveAlerts: 0,
+              bySeverity: {
+                danger: 0,
+                warning: 0,
+                info: 0,
+                success: 0,
+              },
+              byCategory: {
+                eta: 0,
+                movement: 0,
+                customs: 0,
+                status: 0,
+                data: 0,
+              },
+            },
+            processes: [],
+            activeAlertsPanel: [],
+          }),
+        ),
+        getDashboardKpisReadModel: vi.fn(
+          async (): Promise<DashboardKpisReadModel> => ({
+            activeProcesses: 0,
+            trackedContainers: 0,
+            processesWithAlerts: 0,
+            lastSyncAt: null,
+          }),
+        ),
+        getProcessesCreatedByMonthReadModel: vi.fn(
+          async (): Promise<DashboardProcessesCreatedByMonthReadModel> => ({
+            months: [],
+          }),
+        ),
+      },
+    })
+
+    const response = await controllers.getProcessesCreatedByMonth({
+      request: new Request(
+        'http://localhost/api/dashboard/charts/processes-created-by-month?window=9',
+      ),
+    })
+    const body = ErrorResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(400)
+    expect(body.error).toContain('Invalid monthly chart query')
   })
 })

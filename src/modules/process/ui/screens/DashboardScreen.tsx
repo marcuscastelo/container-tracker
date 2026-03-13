@@ -1,4 +1,5 @@
 import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
+import { Check, CircleAlert, RefreshCw, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import {
@@ -7,12 +8,20 @@ import {
 } from '~/modules/process/ui/api/processSync.api'
 import type { CreateProcessDialogFormData } from '~/modules/process/ui/CreateProcessDialog'
 import { CreateProcessDialog } from '~/modules/process/ui/CreateProcessDialog'
-import { DashboardMetricsGrid } from '~/modules/process/ui/components/DashboardMetricsGrid'
+import { DashboardActivityChartCard } from '~/modules/process/ui/components/DashboardActivityChartCard'
+import { DashboardKpiRow } from '~/modules/process/ui/components/DashboardKpiRow'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
 import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
+import { fetchDashboardKpis } from '~/modules/process/ui/fetchDashboardKpis'
+import {
+  type DashboardChartWindowSize,
+  fetchDashboardProcessesCreatedByMonth,
+} from '~/modules/process/ui/fetchDashboardProcessesCreatedByMonth'
 import { prefetchProcessDetail } from '~/modules/process/ui/fetchProcess'
 import { useProcessSyncRealtime } from '~/modules/process/ui/hooks/useProcessSyncRealtime'
+import { toDashboardKpiVMs } from '~/modules/process/ui/mappers/dashboard-kpis.ui-mapper'
+import { toDashboardMonthlyBarDatumVMs } from '~/modules/process/ui/mappers/dashboard-processes-created-by-month.ui-mapper'
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import { emitDashboardSortChangedTelemetry } from '~/modules/process/ui/telemetry/dashboardSort.telemetry'
 import { refreshDashboardData } from '~/modules/process/ui/utils/dashboard-refresh'
@@ -82,8 +91,22 @@ const LOCAL_SYNC_FEEDBACK_TTL_MS = 3_000
 // Debounce for realtime reconciliation is handled in the realtime hook; avoid
 // stacking multiple debounce layers in the screen.
 const REALTIME_RECONCILIATION_DEBOUNCE_MS = 0
+const DASHBOARD_CHART_TABLET_MIN_WIDTH = 768
+const DASHBOARD_CHART_DESKTOP_MIN_WIDTH = 1280
 
 type LocalSyncStateByProcessId = Readonly<Record<string, DashboardLocalSyncStatus>>
+
+function resolveDashboardChartWindowSize(viewportWidth: number): DashboardChartWindowSize {
+  if (viewportWidth >= DASHBOARD_CHART_DESKTOP_MIN_WIDTH) {
+    return 24
+  }
+
+  if (viewportWidth >= DASHBOARD_CHART_TABLET_MIN_WIDTH) {
+    return 12
+  }
+
+  return 6
+}
 
 function toPathWithSearch(pathname: string, searchParams: URLSearchParams): string {
   const nextQuery = searchParams.toString()
@@ -172,7 +195,7 @@ function withoutProcessLocalSyncState(
 
 // eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
-  const { locale } = useTranslation()
+  const { t, keys, locale } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
@@ -192,6 +215,15 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       preferPrefetched,
     })
   })
+  const [dashboardKpis, { refetch: refetchDashboardKpis }] = createResource(() =>
+    fetchDashboardKpis(),
+  )
+  const [dashboardChartWindowSize, setDashboardChartWindowSize] =
+    createSignal<DashboardChartWindowSize>(6)
+  const [dashboardProcessesCreatedByMonth, { refetch: refetchDashboardProcessesCreatedByMonth }] =
+    createResource(dashboardChartWindowSize, (windowSize) =>
+      fetchDashboardProcessesCreatedByMonth({ windowSize }),
+    )
   const [sortSelection, setSortSelection] = createSignal<DashboardSortSelection>(
     parseDashboardSortFromSearchParams(new URLSearchParams(location.search)),
   )
@@ -330,6 +362,33 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const severityFilterOptions = createMemo(() =>
     deriveDashboardSeverityFilterOptions(processes() ?? []),
   )
+  const dashboardKpiItems = createMemo(() => {
+    const source = dashboardKpis()
+    if (!source) return []
+
+    return toDashboardKpiVMs({
+      source,
+      locale: locale(),
+      labels: {
+        activeProcesses: t(keys.dashboard.kpis.activeProcesses),
+        trackedContainers: t(keys.dashboard.kpis.trackedContainers),
+        processesWithAlerts: t(keys.dashboard.kpis.processesWithAlerts),
+        lastSync: t(keys.dashboard.kpis.lastSync),
+        lastSyncUnavailable: t(keys.dashboard.kpis.lastSyncUnavailable),
+      },
+      icons: {
+        activeProcesses: CircleAlert,
+        trackedContainers: Check,
+        processesWithAlerts: TriangleAlert,
+        lastSync: RefreshCw,
+      },
+    })
+  })
+  const dashboardMonthlyBarData = createMemo(() => {
+    const source = dashboardProcessesCreatedByMonth()
+    if (!source) return []
+    return toDashboardMonthlyBarDatumVMs(source, locale())
+  })
   const filteredProcesses = createMemo(() =>
     filterDashboardProcesses(processes() ?? [], filterSelection()),
   )
@@ -369,6 +428,16 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       setSortSelection,
       setFilterSelection,
     })
+
+    const updateChartWindowSize = (): void => {
+      setDashboardChartWindowSize(resolveDashboardChartWindowSize(window.innerWidth))
+    }
+
+    updateChartWindowSize()
+    window.addEventListener('resize', updateChartWindowSize)
+    onCleanup(() => {
+      window.removeEventListener('resize', updateChartWindowSize)
+    })
   })
 
   const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
@@ -398,6 +467,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
         syncAllProcesses: syncAllProcessesRequest,
         refetchProcesses,
         refetchGlobalAlerts,
+        refetchDashboardKpis,
+        refetchDashboardProcessesCreatedByMonth,
       })
 
       setLocalSyncStates(currentProcessIds, 'success', {
@@ -543,10 +614,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             />
           </Show>
 
-          <DashboardMetricsGrid
-            summary={globalAlerts() ?? null}
-            loading={globalAlerts.loading}
-            hasError={Boolean(globalAlerts.error)}
+          <DashboardKpiRow items={dashboardKpiItems()} loading={dashboardKpis.loading} />
+          <DashboardActivityChartCard
+            data={dashboardMonthlyBarData()}
+            loading={dashboardProcessesCreatedByMonth.loading}
+            hasError={Boolean(dashboardProcessesCreatedByMonth.error)}
+            windowSize={dashboardChartWindowSize()}
           />
           <UnifiedDashboardFilters
             providers={providerFilterOptions()}
