@@ -105,9 +105,9 @@ function ChartBarItem(props: ChartBarItemProps): JSX.Element {
   return (
     <div class="flex min-w-0 flex-col items-center gap-1">
       <span class="text-[11px] font-medium tabular-nums text-text-muted">{props.datum.value}</span>
-      <div class="relative h-28 w-full rounded-md border border-border/70 bg-surface-muted/70">
+      <div class="relative h-28 w-full overflow-hidden rounded-md border border-border/70 bg-surface-muted/70">
         <div
-          class="absolute inset-x-1 bottom-1 rounded-sm bg-primary"
+          class="absolute inset-x-0 bottom-0 rounded-t-sm bg-primary"
           style={{ height: props.barHeight }}
           title={`${toMonthTooltipLabel(props.datum.key, props.locale)}\n${props.formatProcessCount(props.datum.value)}`}
         />
