@@ -25,19 +25,10 @@ type SyncControllersDeps = {
   readonly defaultTenantId: string
 }
 
-let isSyncDashboardRunning = false
-const syncingProcessIds = new Set<string>()
-const syncingContainerNumbers = new Set<string>()
-
 export function createSyncControllers(deps: SyncControllersDeps) {
   const { syncUseCases, defaultTenantId } = deps
 
   async function syncDashboard(): Promise<Response> {
-    if (isSyncDashboardRunning || syncingProcessIds.size > 0 || syncingContainerNumbers.size > 0) {
-      return jsonResponse({ error: 'sync_already_running' }, 409)
-    }
-
-    isSyncDashboardRunning = true
     try {
       const result = await syncUseCases.syncDashboard({
         tenantId: defaultTenantId,
@@ -49,8 +40,6 @@ export function createSyncControllers(deps: SyncControllersDeps) {
     } catch (err) {
       console.error('POST /api/dashboard/sync error:', err)
       return mapErrorToResponse(err)
-    } finally {
-      isSyncDashboardRunning = false
     }
   }
 
@@ -69,11 +58,6 @@ export function createSyncControllers(deps: SyncControllersDeps) {
       return jsonResponse({ error: 'Process ID is required' }, 400)
     }
 
-    if (isSyncDashboardRunning || syncingProcessIds.has(processId)) {
-      return jsonResponse({ error: 'sync_already_running' }, 409)
-    }
-
-    syncingProcessIds.add(processId)
     try {
       const result = await syncUseCases.syncProcess({
         tenantId: defaultTenantId,
@@ -85,8 +69,6 @@ export function createSyncControllers(deps: SyncControllersDeps) {
     } catch (err) {
       console.error(`POST /api/processes/${processId}/sync error:`, err)
       return mapErrorToResponse(err)
-    } finally {
-      syncingProcessIds.delete(processId)
     }
   }
 
@@ -100,11 +82,6 @@ export function createSyncControllers(deps: SyncControllersDeps) {
       return jsonResponse({ error: 'Container number is required' }, 400)
     }
 
-    if (isSyncDashboardRunning || syncingContainerNumbers.has(containerNumber)) {
-      return jsonResponse({ error: 'sync_already_running' }, 409)
-    }
-
-    syncingContainerNumbers.add(containerNumber)
     try {
       const result = await syncUseCases.syncContainer({
         tenantId: defaultTenantId,
@@ -116,8 +93,6 @@ export function createSyncControllers(deps: SyncControllersDeps) {
     } catch (err) {
       console.error(`POST /api/containers/${containerNumber}/sync error:`, err)
       return mapErrorToResponse(err)
-    } finally {
-      syncingContainerNumbers.delete(containerNumber)
     }
   }
 
