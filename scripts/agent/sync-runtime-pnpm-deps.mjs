@@ -281,7 +281,9 @@ async function normalizeAbsoluteRuntimeSymlinks({ sourceNodeModulesDir, targetNo
         resolvedTargetPath,
       })
       if (!remappedTargetPath) {
-        throw new Error(`Could not remap absolute runtime symlink target: ${entryPath} -> ${rawTargetPath}`)
+        throw new Error(
+          `Could not remap absolute runtime symlink target: ${entryPath} -> ${rawTargetPath}`,
+        )
       }
 
       if (!(await pathExists(remappedTargetPath))) {
@@ -291,11 +293,7 @@ async function normalizeAbsoluteRuntimeSymlinks({ sourceNodeModulesDir, targetNo
       const targetStats = await fs.lstat(remappedTargetPath)
       const relativeLinkTarget = path.relative(path.dirname(entryPath), remappedTargetPath)
       const symlinkType =
-        process.platform === 'win32'
-          ? targetStats.isDirectory()
-            ? 'junction'
-            : 'file'
-          : undefined
+        process.platform === 'win32' ? (targetStats.isDirectory() ? 'junction' : 'file') : undefined
 
       await fs.rm(entryPath, { recursive: true, force: true })
       await fs.symlink(relativeLinkTarget, entryPath, symlinkType)
@@ -304,9 +302,7 @@ async function normalizeAbsoluteRuntimeSymlinks({ sourceNodeModulesDir, targetNo
   }
 
   if (normalizedCount > 0) {
-    console.log(
-      `[agent:linux-package] normalized ${normalizedCount} absolute runtime symlink(s)`,
-    )
+    console.log(`[agent:linux-package] normalized ${normalizedCount} absolute runtime symlink(s)`)
   }
 }
 
