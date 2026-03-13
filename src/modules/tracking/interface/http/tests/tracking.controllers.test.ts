@@ -2,15 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createTrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
+import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 
 function createControllers(options?: {
   readonly activeAlerts?: readonly TrackingAlert[]
   readonly containerNumberByContainerId?: ReadonlyMap<string, string>
+  readonly snapshots?: readonly Snapshot[]
 }) {
   const acknowledge = vi.fn(
     async (
@@ -48,7 +51,7 @@ function createControllers(options?: {
         throw new Error('not used')
       }),
       findLatestByContainerId: vi.fn(async () => null),
-      findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerId: vi.fn(async () => options?.snapshots ?? []),
       findByIds: vi.fn(async () => []),
     },
     observationRepository: {
@@ -228,5 +231,89 @@ describe('tracking controllers', () => {
     expect(acknowledge).not.toHaveBeenCalled()
     expect(unacknowledge).toHaveBeenCalledTimes(1)
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
+  })
+
+  it('replay endpoint returns a step-by-step reconstruction payload', async () => {
+    const containerId = 'container-replay'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(`http://localhost/api/tracking/replay/${containerId}`)
+    const response = await controllers.replay.getReplay({
+      params: { containerId },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.total_snapshots).toBe(1)
+    expect(body.total_steps).toBeGreaterThan(0)
+    expect(body.steps[0]?.stage).toBe('SNAPSHOT')
+  })
+
+  it('replay steps endpoint paginates with cursor and limit', async () => {
+    const containerId = 'container-replay-steps'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/replay/${containerId}/steps?limit=1&cursor=0`,
+    )
+    const response = await controllers.replay.getReplaySteps({
+      params: { containerId },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.steps).toHaveLength(1)
+    expect(body.next_cursor).toBe(1)
+  })
+
+  it('replay step snapshot endpoint returns a single step state', async () => {
+    const containerId = 'container-replay-step-snapshot'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(`http://localhost/api/tracking/replay/${containerId}/snapshot/1`)
+    const response = await controllers.replay.getReplayStepSnapshot({
+      params: { containerId, step: '1' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.step_index).toBe(1)
+    expect(body.step.stage).toBe('SNAPSHOT')
   })
 })

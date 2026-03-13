@@ -8,12 +8,21 @@ import type { TrackingUseCases } from '~/modules/tracking/application/tracking.u
 import {
   toAlertResponseDto,
   toSnapshotResponseDto,
+  toTrackingReplayResultResponseDto,
+  toTrackingReplayStepSnapshotResponseDto,
+  toTrackingReplayStepsResponseDto,
 } from '~/modules/tracking/interface/http/tracking.http.mappers'
 import {
   AlertActionBodySchema,
+  GetTrackingReplayRequestSchema,
+  GetTrackingReplayStepSnapshotRequestSchema,
+  GetTrackingReplayStepsQuerySchema,
   GetLatestSnapshotRequestSchema,
   GetSnapshotsForContainerRequestSchema,
   ListAlertsQuerySchema,
+  TrackingReplayResultResponseDtoSchema,
+  TrackingReplayStepSnapshotResponseDtoSchema,
+  TrackingReplayStepsResponseDtoSchema,
 } from '~/modules/tracking/interface/http/tracking.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
@@ -140,21 +149,166 @@ function createSnapshotsController(trackingUseCases: TrackingUseCases) {
   return { getSnapshotsForContainer, getLatestSnapshot }
 }
 
+function createReplayController(trackingUseCases: TrackingUseCases) {
+  function parseReplayNow(rawNow: string | undefined): Date | null {
+    if (typeof rawNow !== 'string' || rawNow.trim().length === 0) return new Date()
+    const parsed = new Date(rawNow)
+    if (Number.isNaN(parsed.getTime())) return null
+    return parsed
+  }
+
+  async function getReplay({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTrackingReplayRequestSchema.safeParse({
+        containerId: params.containerId,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReplayNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.replayContainerTracking(
+        parsed.data.containerId,
+        referenceNow,
+      )
+      return jsonResponse(
+        toTrackingReplayResultResponseDto(replay),
+        200,
+        TrackingReplayResultResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error('GET /api/tracking/replay/:containerId error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getReplaySteps({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const query = GetTrackingReplayStepsQuerySchema.safeParse({
+        limit: url.searchParams.get('limit') ?? undefined,
+        cursor: url.searchParams.get('cursor') ?? undefined,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!query.success) {
+        return jsonResponse({ error: query.error.message }, 400)
+      }
+
+      const parsed = GetTrackingReplayRequestSchema.safeParse({
+        containerId: params.containerId,
+        now: query.data.now,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReplayNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.replayContainerTracking(
+        parsed.data.containerId,
+        referenceNow,
+      )
+      const cursor = query.data.cursor ?? 0
+      const limit = query.data.limit ?? replay.totalSteps
+      const steps = replay.steps.slice(cursor, cursor + limit)
+      const nextCursor = cursor + steps.length < replay.totalSteps ? cursor + steps.length : null
+
+      return jsonResponse(
+        toTrackingReplayStepsResponseDto(replay, steps, nextCursor),
+        200,
+        TrackingReplayStepsResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error('GET /api/tracking/replay/:containerId/steps error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getReplayStepSnapshot({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTrackingReplayStepSnapshotRequestSchema.safeParse({
+        containerId: params.containerId,
+        step: params.step,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReplayNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.replayContainerTracking(
+        parsed.data.containerId,
+        referenceNow,
+      )
+      const step = replay.steps.find((entry) => entry.stepIndex === parsed.data.step)
+      if (!step) {
+        return jsonResponse({ error: 'Replay step not found' }, 404)
+      }
+
+      return jsonResponse(
+        toTrackingReplayStepSnapshotResponseDto(replay, step),
+        200,
+        TrackingReplayStepSnapshotResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error('GET /api/tracking/replay/:containerId/snapshot/:step error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  return { getReplay, getReplaySteps, getReplayStepSnapshot }
+}
+
 // ---------------------------------------------------------------------------
 // Aggregated controllers
 // ---------------------------------------------------------------------------
 
 export type AlertsController = ReturnType<typeof createAlertsController>
 export type SnapshotsController = ReturnType<typeof createSnapshotsController>
+export type ReplayController = ReturnType<typeof createReplayController>
 
 export type TrackingControllers = {
   readonly alerts: AlertsController
   readonly snapshots: SnapshotsController
+  readonly replay: ReplayController
 }
 
 export function createTrackingControllers(deps: TrackingControllersDeps): TrackingControllers {
   return {
     alerts: createAlertsController(deps.trackingUseCases),
     snapshots: createSnapshotsController(deps.trackingUseCases),
+    replay: createReplayController(deps.trackingUseCases),
   }
 }

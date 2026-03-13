@@ -1,10 +1,11 @@
 import type { JSX } from 'solid-js'
-import { ErrorBoundary } from 'solid-js'
+import { ErrorBoundary, Show } from 'solid-js'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ShipmentCurrentStatus } from '~/modules/process/ui/components/ShipmentCurrentStatus'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCard'
+import { TrackingReplayDebugPanel } from '~/modules/process/ui/components/TrackingReplayDebugPanel'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -28,6 +29,8 @@ type ShipmentDataViewProps = {
   readonly onSelectContainer: (containerId: string) => void
   readonly selectedContainer: ShipmentDetailVM['containers'][number] | null
 }
+
+const TRACKING_REPLAY_DEBUG_ENABLED = import.meta.env.DEV
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const { t, keys } = useTranslation()
@@ -94,6 +97,16 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
               />
             </ErrorBoundary>
           </section>
+          <Show when={TRACKING_REPLAY_DEBUG_ENABLED && props.selectedContainer}>
+            {(container) => (
+              <section id="shipment-tracking-replay" class="scroll-mt-30">
+                <TrackingReplayDebugPanel
+                  containerId={container().id}
+                  containerNumber={container().number}
+                />
+              </section>
+            )}
+          </Show>
         </div>
         <div class="space-y-4">
           <ShipmentInfoCard data={props.data} />
