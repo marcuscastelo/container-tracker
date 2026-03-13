@@ -1023,8 +1023,12 @@ async function normalizeAbsoluteRuntimeSymlinks(command: {
 
       const targetStats = await fs.lstat(remappedTargetPath)
       const relativeLinkTarget = path.relative(path.dirname(entryPath), remappedTargetPath)
-      const remappedSymlinkType: fsSync.symlink.Type | undefined =
-        process.platform === 'win32' ? (targetStats.isDirectory() ? 'junction' : 'file') : undefined
+      let remappedSymlinkType: fsSync.symlink.Type | undefined
+      if (process.platform === 'win32') {
+        remappedSymlinkType = targetStats.isDirectory() ? 'junction' : 'file'
+      } else {
+        remappedSymlinkType = undefined
+      }
 
       await fs.rm(entryPath, { recursive: true, force: true })
       await fs.symlink(relativeLinkTarget, entryPath, remappedSymlinkType)
