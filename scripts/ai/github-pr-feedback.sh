@@ -217,9 +217,16 @@ graphql_query() {
   fi
 
   if ! printf '%s' "$variables_json" | jq empty >/dev/null 2>&1; then
-    echo "error: invalid GraphQL variables JSON" >&2
-    printf '%s\n' "$variables_json" >&2
-    exit 1
+    # Defensive recovery for the intermittent "extra trailing brace" case
+    # observed in some shells/environments while building vars JSON.
+    local maybe_trimmed="${variables_json%?}"
+    if [[ "$variables_json" == *"}" ]] && printf '%s' "$maybe_trimmed" | jq empty >/dev/null 2>&1; then
+      variables_json="$maybe_trimmed"
+    else
+      echo "error: invalid GraphQL variables JSON" >&2
+      printf '%s\n' "$variables_json" >&2
+      exit 1
+    fi
   fi
 
   jq -nc \
@@ -374,13 +381,30 @@ resolve_threads() {
     exit 1
   fi
 
-  while IFS= read -r thread_id; do
-    [[ -z "$thread_id" ]] && continue
+  while IFS= read -r resolve_id; do
+    [[ -z "$resolve_id" ]] && continue
+
+    local thread_id="$resolve_id"
+    if [[ "$resolve_id" =~ ^[0-9]+$ ]]; then
+      # Allow --resolve with review_comment_id by mapping comment -> thread.
+      thread_id="$(
+        echo "$threads_json" |
+        jq -r --argjson comment_id "$resolve_id" '
+          .[]
+          | select(any(.comments.nodes[]?; .databaseId == $comment_id))
+          | .id
+        ' | head -n 1
+      )"
+      if [[ -z "$thread_id" || "$thread_id" == "null" ]]; then
+        echo "warning: review comment id not found in PR #${PR_NUMBER}: $resolve_id" >&2
+        continue
+      fi
+    fi
 
     local exists
     exists="$(echo "$threads_json" | jq --arg id "$thread_id" 'map(select(.id == $id)) | length')"
     if [[ "$exists" -eq 0 ]]; then
-      echo "warning: thread id not found in PR #${PR_NUMBER}: $thread_id" >&2
+      echo "warning: thread id not found in PR #${PR_NUMBER}: $thread_id (from $resolve_id)" >&2
       continue
     fi
 

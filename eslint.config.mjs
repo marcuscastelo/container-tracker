@@ -150,6 +150,10 @@ export default [
         project: 'tsconfig.json',
       },
     },
+    rules: {
+      ...(solid.rules ?? {}),
+      'solid/components-return-once': 'error',
+    },
   },
   {
     files: ['src/modules/**/ui/**/*.{ts,tsx}'],

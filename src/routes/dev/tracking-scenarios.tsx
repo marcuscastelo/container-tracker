@@ -2,6 +2,7 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { z } from 'zod'
+import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/api/process.api'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
@@ -10,7 +11,6 @@ import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
-import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/validation/processApi.validation'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'

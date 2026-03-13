@@ -7,9 +7,9 @@ import {
   fetchDashboardProcessSummaries,
   prefetchDashboardGlobalAlertsSummary,
   prefetchDashboardProcessSummaries,
-  toCreateProcessInput,
   unacknowledgeTrackingAlertRequest,
-} from '~/modules/process/ui/validation/processApi.validation'
+} from '~/modules/process/ui/api/process.api'
+import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 
 function mockProcessListFetch() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(
