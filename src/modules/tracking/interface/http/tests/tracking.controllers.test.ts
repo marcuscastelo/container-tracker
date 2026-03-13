@@ -63,6 +63,7 @@ function createControllers(options?: {
       listActiveAlertReadModel: vi.fn(async () => []),
       findActiveByContainerId,
       findByContainerId: vi.fn(async () => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds,
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge,

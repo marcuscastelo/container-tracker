@@ -5,7 +5,7 @@ import {
 } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type {
   NewTrackingAlert,
-  TrackingAlert,
+  TrackingAlertDerivationState,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
@@ -72,16 +72,41 @@ function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
   return normalizedCandidate
 }
 
+function isNoMovementAlertDerivationState(
+  alert: TrackingAlertDerivationState,
+): alert is TrackingAlertDerivationState & {
+  readonly type: 'NO_MOVEMENT'
+  readonly category: 'monitoring'
+  readonly message_params: {
+    readonly threshold_days: number
+    readonly days_without_movement: number
+    readonly days: number
+    readonly lastEventDate: string
+  }
+} {
+  const params = alert.message_params
+  return (
+    alert.category === 'monitoring' &&
+    alert.type === 'NO_MOVEMENT' &&
+    'threshold_days' in params &&
+    'days_without_movement' in params &&
+    'days' in params &&
+    'lastEventDate' in params &&
+    typeof params.threshold_days === 'number' &&
+    typeof params.days_without_movement === 'number' &&
+    typeof params.days === 'number' &&
+    typeof params.lastEventDate === 'string'
+  )
+}
+
 function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   thresholdDays: number,
   cycleAnchorDate: string,
   cycleAnchorObservationFingerprint: string,
 ): boolean {
   for (const alert of existingAlerts) {
-    if (alert.category !== 'monitoring') continue
-    if (alert.type !== 'NO_MOVEMENT') continue
-    if (alert.message_key !== 'alerts.noMovementDetected') continue
+    if (!isNoMovementAlertDerivationState(alert)) continue
     const emittedThresholdDays = normalizeNoMovementThresholdDays(
       alert.message_params.threshold_days,
     )
@@ -96,7 +121,7 @@ function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
   return false
 }
 
-function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
+function isMonitoringActiveAlert(alert: TrackingAlertDerivationState): boolean {
   return alert.category === 'monitoring' && resolveAlertLifecycleState(alert) === 'ACTIVE'
 }
 
@@ -209,7 +234,7 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
 export function deriveAlertTransitions(
   timeline: Timeline,
   status: ContainerStatus,
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
   now: Date = new Date(),
 ): DerivedAlertTransitions {
@@ -409,7 +434,7 @@ export function deriveAlertTransitions(
 export function deriveAlerts(
   timeline: Timeline,
   status: ContainerStatus,
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
   now: Date = new Date(),
 ): readonly NewTrackingAlert[] {
