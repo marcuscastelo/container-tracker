@@ -1,3 +1,9 @@
+import type {
+  DashboardContainerRecordProjection,
+  DashboardProcessRecordProjection,
+  DashboardProcessUseCases,
+  DashboardProcessWithOperationalSummaryProjection,
+} from '~/capabilities/dashboard/application/dashboard.processes.projection'
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import {
@@ -49,39 +55,6 @@ type DashboardOperationalAlertReadModel = {
   readonly description: TrackingActiveAlertReadModel['type']
   readonly generated_at: string
   readonly retroactive: boolean
-}
-
-type DashboardProcessRecord = {
-  readonly id: string
-  readonly reference: string | null
-  readonly origin: string | null
-  readonly destination: string | null
-}
-
-type DashboardContainerRecord = {
-  readonly id: string
-  readonly containerNumber: string
-}
-
-type ProcessWithContainersProjection = {
-  readonly process: DashboardProcessRecord
-  readonly containers: readonly DashboardContainerRecord[]
-}
-
-type ProcessOperationalSummaryProjection = {
-  readonly process_status: ProcessAggregatedStatus
-  readonly eta: string | null
-}
-
-type ProcessWithOperationalSummaryProjection = {
-  readonly pwc: ProcessWithContainersProjection
-  readonly summary: ProcessOperationalSummaryProjection
-}
-
-type DashboardProcessUseCases = {
-  listProcessesWithOperationalSummary(): Promise<{
-    readonly processes: readonly ProcessWithOperationalSummaryProjection[]
-  }>
 }
 
 type DashboardTrackingUseCases = {
@@ -287,18 +260,18 @@ function groupAlertsByProcessId(
 }
 
 type DashboardProcessContext = {
-  readonly process: DashboardProcessRecord
-  readonly containersById: ReadonlyMap<string, DashboardContainerRecord>
+  readonly process: DashboardProcessRecordProjection
+  readonly containersById: ReadonlyMap<string, DashboardContainerRecordProjection>
 }
 
 function indexDashboardProcessContextById(
-  processes: readonly ProcessWithOperationalSummaryProjection[],
+  processes: readonly DashboardProcessWithOperationalSummaryProjection[],
 ): ReadonlyMap<string, DashboardProcessContext> {
   const contextByProcessId = new Map<string, DashboardProcessContext>()
 
   for (const processWithSummary of processes) {
     const processId = String(processWithSummary.pwc.process.id)
-    const containersById = new Map<string, DashboardContainerRecord>()
+    const containersById = new Map<string, DashboardContainerRecordProjection>()
 
     for (const container of processWithSummary.pwc.containers) {
       containersById.set(String(container.id), container)
@@ -328,9 +301,9 @@ function toDashboardAlertProcessReadModel(
 
   return {
     processId: alertProcessId,
-    reference: context.process.reference,
-    origin: context.process.origin,
-    destination: context.process.destination,
+    reference: context.process.reference ?? null,
+    origin: context.process.origin ?? null,
+    destination: context.process.destination ?? null,
   }
 }
 
@@ -459,11 +432,11 @@ export function createDashboardOperationalSummaryReadModelUseCase(
 
           return {
             processId,
-            reference: entry.pwc.process.reference,
-            origin: entry.pwc.process.origin,
-            destination: entry.pwc.process.destination,
-            status: entry.summary.process_status,
-            eta: entry.summary.eta,
+            reference: entry.pwc.process.reference ?? null,
+            origin: entry.pwc.process.origin ?? null,
+            destination: entry.pwc.process.destination ?? null,
+            status: entry.summary.process_status ?? 'UNKNOWN',
+            eta: entry.summary.eta ?? null,
             dominantSeverity: dominantAlert.severity,
             dominantAlertCreatedAt: dominantAlert.createdAt,
             activeAlertsCount: activeAlerts.length,

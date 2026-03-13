@@ -57,6 +57,22 @@
         "data": "Data"
       }
     },
+    "kpis": {
+      "activeProcesses": "Active Processes",
+      "trackedContainers": "Tracked Containers",
+      "processesWithAlerts": "With Alerts",
+      "lastSync": "Last Sync",
+      "lastSyncUnavailable": "—"
+    },
+    "activityChart": {
+      "title": "Processes Created by Month",
+      "subtitleLastMonths": "Last {{count}} months",
+      "empty": "No process creation activity yet",
+      "error": "Failed to load monthly activity",
+      "tooltip": {
+        "processes": "{{count}} processes"
+      }
+    },
     "metrics": {
       "activeShipments": "Active Shipments",
       "inTransit": "In Transit",
