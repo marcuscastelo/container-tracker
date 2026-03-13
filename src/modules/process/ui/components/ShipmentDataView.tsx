@@ -73,7 +73,6 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
               containers={props.data.containers}
               selectedId={props.selectedContainerId}
               onSelect={props.onSelectContainer}
-              syncNow={props.syncNow}
             />
           </section>
 
