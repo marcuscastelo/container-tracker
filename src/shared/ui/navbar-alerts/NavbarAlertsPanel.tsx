@@ -36,14 +36,14 @@ function PanelSkeleton(): JSX.Element {
 export function NavbarAlertsPanel(props: NavbarAlertsPanelProps): JSX.Element {
   const { t, keys } = useTranslation()
   const hasProcesses = () => props.processes.length > 0
-  const shouldShowInitialLoading = () => props.loading && props.processes.length === 0 && !props.error
+  const shouldShowInitialLoading = () =>
+    props.loading && props.processes.length === 0 && !props.error
 
   return (
     <>
-      <div
-        class="fixed inset-0 z-40 bg-ring/35 backdrop-blur-sm min-[1024px]:hidden"
-        role="button"
-        tabIndex={-1}
+      <button
+        type="button"
+        class="appearance-none border-0 fixed inset-0 z-40 bg-ring/35 backdrop-blur-sm min-[1024px]:hidden"
         aria-label={t(keys.header.alertsPanel.close)}
         onClick={() => props.onClose()}
       />

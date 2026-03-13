@@ -1,13 +1,13 @@
 import type { Accessor } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal } from 'solid-js'
 import { fetchNavbarAlertsSummary } from '~/shared/ui/navbar-alerts/navbar-alerts.api'
+import { toNavbarAlertsVM } from '~/shared/ui/navbar-alerts/navbar-alerts.mapper'
 import {
   EMPTY_NAVBAR_ALERTS_VM,
-  toNavbarAlertsVM,
   type NavbarAlertsVM,
 } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 
-export type NavbarAlertsState = {
+type NavbarAlertsState = {
   readonly totalAlerts: number
   readonly processes: NavbarAlertsVM['processes']
   readonly loading: boolean

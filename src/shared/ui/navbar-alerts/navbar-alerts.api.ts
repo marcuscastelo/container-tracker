@@ -1,6 +1,6 @@
 import { typedFetch } from '~/shared/api/typedFetch'
-import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import type { NavbarAlertsSummaryResponse } from '~/shared/api-schemas/dashboard.schemas'
+import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 
 const NAVBAR_ALERTS_SUMMARY_ENDPOINT = '/api/alerts/navbar-summary'
 const NAVBAR_ALERTS_CACHE_TTL_MS = 15_000

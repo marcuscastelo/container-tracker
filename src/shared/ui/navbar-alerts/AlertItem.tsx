@@ -1,7 +1,7 @@
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
-import type { NavbarAlertVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { NavbarAlertVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type AlertItemProps = {

@@ -168,7 +168,10 @@ function toNavbarSeverity(
   return 'none'
 }
 
-function compareSeverityDesc(left: DashboardNavbarSeverity, right: DashboardNavbarSeverity): number {
+function compareSeverityDesc(
+  left: DashboardNavbarSeverity,
+  right: DashboardNavbarSeverity,
+): number {
   return DASHBOARD_NAVBAR_SEVERITY_ORDER[right] - DASHBOARD_NAVBAR_SEVERITY_ORDER[left]
 }
 
@@ -201,7 +204,10 @@ function resolveLatestAlertAt(alerts: readonly NavbarAlertItemReadModel[]): stri
 
 function isTransshipmentParams(
   params: TrackingActiveAlertReadModel['message_params'],
-): params is Extract<NavbarAlertMessageContract, { messageKey: 'alerts.transshipmentDetected' }>['messageParams'] {
+): params is Extract<
+  NavbarAlertMessageContract,
+  { messageKey: 'alerts.transshipmentDetected' }
+>['messageParams'] {
   return (
     typeof params === 'object' &&
     params !== null &&
@@ -216,7 +222,10 @@ function isTransshipmentParams(
 
 function isCustomsHoldParams(
   params: TrackingActiveAlertReadModel['message_params'],
-): params is Extract<NavbarAlertMessageContract, { messageKey: 'alerts.customsHoldDetected' }>['messageParams'] {
+): params is Extract<
+  NavbarAlertMessageContract,
+  { messageKey: 'alerts.customsHoldDetected' }
+>['messageParams'] {
   return (
     typeof params === 'object' &&
     params !== null &&
@@ -227,7 +236,10 @@ function isCustomsHoldParams(
 
 function isNoMovementParams(
   params: TrackingActiveAlertReadModel['message_params'],
-): params is Extract<NavbarAlertMessageContract, { messageKey: 'alerts.noMovementDetected' }>['messageParams'] {
+): params is Extract<
+  NavbarAlertMessageContract,
+  { messageKey: 'alerts.noMovementDetected' }
+>['messageParams'] {
   return (
     typeof params === 'object' &&
     params !== null &&
@@ -387,7 +399,10 @@ function compareNavbarAlertItems(
   left: NavbarAlertItemReadModel,
   right: NavbarAlertItemReadModel,
 ): number {
-  const bySeverity = compareSeverityDesc(toNavbarSeverity(left.severity), toNavbarSeverity(right.severity))
+  const bySeverity = compareSeverityDesc(
+    toNavbarSeverity(left.severity),
+    toNavbarSeverity(right.severity),
+  )
   if (bySeverity !== 0) return bySeverity
 
   const byOccurredAt = compareIsoDesc(left.occurredAt, right.occurredAt)
@@ -508,7 +523,9 @@ export function createDashboardNavbarAlertsReadModelUseCase(
       const containerGroups: NavbarContainerAlertGroupReadModel[] = []
       for (const containerAccumulator of processAccumulator.containersById.values()) {
         const sortedAlerts = [...containerAccumulator.alerts].sort(compareNavbarAlertItems)
-        const dominantSeverity = resolveDominantSeverity(sortedAlerts.map((alert) => alert.severity))
+        const dominantSeverity = resolveDominantSeverity(
+          sortedAlerts.map((alert) => alert.severity),
+        )
         const latestAlertAt = resolveLatestAlertAt(sortedAlerts)
 
         containerGroups.push({

@@ -1,8 +1,8 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
+import { useTranslation } from '~/shared/localization/i18n'
 import { ContainerAlertGroup } from '~/shared/ui/navbar-alerts/ContainerAlertGroup'
 import type { NavbarProcessAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
-import { useTranslation } from '~/shared/localization/i18n'
 
 type ProcessAlertGroupProps = {
   readonly process: NavbarProcessAlertGroupVM

@@ -208,7 +208,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       preferPrefetched,
     })
   })
-  const [globalAlerts, { refetch: refetchGlobalAlerts }] = createResource(() => {
+  const [_, { refetch: refetchGlobalAlerts }] = createResource(() => {
     const preferPrefetched = shouldPreferPrefetchedGlobalAlerts
     shouldPreferPrefetchedGlobalAlerts = false
     return fetchDashboardGlobalAlertsSummary({
@@ -609,7 +609,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onSubmit={handleProcessSubmit}
         />
 
-        <main class="relative mx-auto max-w-[var(--dashboard-container-max-width)] px-[var(--dashboard-container-px)] py-[var(--dashboard-container-py)]">
+        <main class="relative mx-auto max-w-(--dashboard-container-max-width) px-(--dashboard-container-px) py-(--dashboard-container-py)">
           <Show when={createError()}>
             <ExistingProcessError
               message={getCreateErrorMessage(createError())}

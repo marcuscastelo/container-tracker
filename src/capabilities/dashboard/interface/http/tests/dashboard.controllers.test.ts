@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import type { NavbarAlertsSummaryReadModel } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
 import type { DashboardKpisReadModel } from '~/capabilities/dashboard/application/dashboard.kpis.readmodel'
+import type { NavbarAlertsSummaryReadModel } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
 import type { DashboardOperationalSummaryReadModel } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import type { DashboardProcessesCreatedByMonthReadModel } from '~/capabilities/dashboard/application/dashboard.processes-created-by-month.readmodel'
 import { createDashboardControllers } from '~/capabilities/dashboard/interface/http/dashboard.controllers'
 import {
   DashboardKpisResponseSchema,
-  NavbarAlertsSummaryResponseSchema,
   DashboardOperationalSummaryResponseSchema,
   DashboardProcessesCreatedByMonthResponseSchema,
+  NavbarAlertsSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
 
 const EMPTY_NAVBAR_ALERTS_SUMMARY: NavbarAlertsSummaryReadModel = {

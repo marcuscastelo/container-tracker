@@ -4,12 +4,12 @@ import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   DashboardKpisResponseSchema,
-  NavbarAlertsSummaryResponseSchema,
   DashboardOperationalSummaryResponseSchema,
   type DashboardProcessesCreatedByMonthQuery,
-  type NavbarAlertsSummaryResponse,
   DashboardProcessesCreatedByMonthQuerySchema,
   DashboardProcessesCreatedByMonthResponseSchema,
+  type NavbarAlertsSummaryResponse,
+  NavbarAlertsSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
 
 type DashboardControllersDeps = {
@@ -70,11 +70,13 @@ function toDashboardMonthWindowSize(
 
 type NavbarAlertResponse =
   NavbarAlertsSummaryResponse['processes'][number]['containers'][number]['alerts'][number]
-type NavbarContainerResponse = NavbarAlertsSummaryResponse['processes'][number]['containers'][number]
+type NavbarContainerResponse =
+  NavbarAlertsSummaryResponse['processes'][number]['containers'][number]
 type NavbarProcessResponse = NavbarAlertsSummaryResponse['processes'][number]
 
-type NavbarAlertReadModel =
-  Awaited<ReturnType<DashboardUseCases['getNavbarAlertsSummaryReadModel']>>['processes'][number]['containers'][number]['alerts'][number]
+type NavbarAlertReadModel = Awaited<
+  ReturnType<DashboardUseCases['getNavbarAlertsSummaryReadModel']>
+>['processes'][number]['containers'][number]['alerts'][number]
 
 function toNavbarAlertResponse(alert: NavbarAlertReadModel): NavbarAlertResponse {
   const baseAlert = {
@@ -148,26 +150,28 @@ function toNavbarAlertsSummaryResponse(
     total_active_alerts: summary.totalActiveAlerts,
     processes: summary.processes.map(
       (process): NavbarProcessResponse => ({
-      process_id: process.processId,
-      process_reference: process.processReference,
-      carrier: process.carrier,
-      route_summary: process.routeSummary,
-      active_alerts_count: process.activeAlertsCount,
-      dominant_severity: process.dominantSeverity,
-      latest_alert_at: process.latestAlertAt,
-      containers: process.containers.map(
-        (container): NavbarContainerResponse => ({
-        container_id: container.containerId,
-        container_number: container.containerNumber,
-        status: container.status,
-        eta: container.eta,
-        active_alerts_count: container.activeAlertsCount,
-        dominant_severity: container.dominantSeverity,
-        latest_alert_at: container.latestAlertAt,
-        alerts: container.alerts.map((alert): NavbarAlertResponse => toNavbarAlertResponse(alert)),
+        process_id: process.processId,
+        process_reference: process.processReference,
+        carrier: process.carrier,
+        route_summary: process.routeSummary,
+        active_alerts_count: process.activeAlertsCount,
+        dominant_severity: process.dominantSeverity,
+        latest_alert_at: process.latestAlertAt,
+        containers: process.containers.map(
+          (container): NavbarContainerResponse => ({
+            container_id: container.containerId,
+            container_number: container.containerNumber,
+            status: container.status,
+            eta: container.eta,
+            active_alerts_count: container.activeAlertsCount,
+            dominant_severity: container.dominantSeverity,
+            latest_alert_at: container.latestAlertAt,
+            alerts: container.alerts.map(
+              (alert): NavbarAlertResponse => toNavbarAlertResponse(alert),
+            ),
+          }),
+        ),
       }),
-      ),
-    }),
     ),
   }
 }

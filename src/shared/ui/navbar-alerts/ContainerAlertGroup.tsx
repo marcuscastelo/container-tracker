@@ -1,8 +1,8 @@
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
+import { useTranslation } from '~/shared/localization/i18n'
 import { AlertItem } from '~/shared/ui/navbar-alerts/AlertItem'
 import type { NavbarContainerAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
-import { useTranslation } from '~/shared/localization/i18n'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type ContainerAlertGroupProps = {

@@ -47,7 +47,10 @@ export function NavbarAlertsButton(): JSX.Element {
   const togglePanel = () => {
     const nextOpenState = !isOpen()
     setIsOpen(nextOpenState)
-    if (nextOpenState && (!navbarAlerts.hasResolved() || navbarAlerts.state().error !== undefined)) {
+    if (
+      nextOpenState &&
+      (!navbarAlerts.hasResolved() || navbarAlerts.state().error !== undefined)
+    ) {
       void navbarAlerts.refresh()
     }
   }

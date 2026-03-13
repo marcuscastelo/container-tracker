@@ -119,10 +119,9 @@ export function navigateToProcess(command: NavigateToProcessCommand): void {
 }
 
 export function navigateToProcessContainer(command: NavigateToProcessContainerCommand): void {
-  void command.navigate(
-    buildProcessContainerHref(command.processId, command.containerNumber),
-    { replace: command.replace },
-  )
+  void command.navigate(buildProcessContainerHref(command.processId, command.containerNumber), {
+    replace: command.replace,
+  })
 }
 
 function shouldThrottleDashboardIntent(nowMs: number): boolean {
