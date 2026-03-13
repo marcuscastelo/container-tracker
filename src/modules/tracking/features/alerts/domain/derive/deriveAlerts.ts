@@ -9,6 +9,10 @@ import type {
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  classifyNoMovementBreakpoint,
+  normalizeNoMovementThresholdDays,
+} from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
@@ -26,18 +30,17 @@ type TransshipmentPair = {
   readonly vesselTo: string
 }
 
-export type MonitoringAutoResolution = {
+type MonitoringAutoResolution = {
   readonly alertId: string
   readonly reason: TrackingAlertResolvedReason
 }
 
-export type DerivedAlertTransitions = {
+type DerivedAlertTransitions = {
   readonly newAlerts: readonly NewTrackingAlert[]
   readonly monitoringAutoResolutions: readonly MonitoringAutoResolution[]
 }
 
 const TERMINAL_STATUSES: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
-const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
 
 function resolveObservationLocationDisplay(observation: Observation | null | undefined): string {
   const locationDisplay = observation?.location_display?.trim() ?? ''
@@ -55,21 +58,6 @@ function toLatestActualEventWithTime(timeline: Timeline): Observation | undefine
       (observation) => observation.event_time !== null && observation.event_time_type === 'ACTUAL',
     )
     .sort((a, b) => (b.event_time ?? '').localeCompare(a.event_time ?? ''))[0]
-}
-
-function toHighestCrossedNoMovementBreakpoint(daysWithoutMovement: number): number | null {
-  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
-    (thresholdDays) => daysWithoutMovement >= thresholdDays,
-  )
-  if (eligible.length === 0) return null
-  return eligible[eligible.length - 1] ?? null
-}
-
-function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
-  const normalizedCandidate = Math.floor(rawThresholdDays)
-  const breakpoint = toHighestCrossedNoMovementBreakpoint(normalizedCandidate)
-  if (breakpoint !== null) return breakpoint
-  return normalizedCandidate
 }
 
 function isNoMovementAlertDerivationState(
@@ -348,7 +336,7 @@ export function deriveAlertTransitions(
         const lastEventDate = new Date(lastActualEvent.event_time)
         const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
         const daysWithoutMovement = Math.floor(daysSinceLastEvent)
-        const highestCrossedBreakpoint = toHighestCrossedNoMovementBreakpoint(daysWithoutMovement)
+        const highestCrossedBreakpoint = classifyNoMovementBreakpoint(daysWithoutMovement)
 
         if (highestCrossedBreakpoint !== null) {
           hasNoMovementCondition = true
