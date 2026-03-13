@@ -157,4 +157,22 @@ describe('get-sync-status.usecase', () => {
       },
     ])
   })
+
+  it('forwards scoped process ids to candidate selection', async () => {
+    const deps = createDeps({
+      candidates: [{ processId: 'process-1', archivedAt: null }],
+      containersByProcessId: new Map([['process-1', [{ containerNumber: 'MSCU1234567' }]]]),
+      syncRequests: [],
+    })
+
+    const execute = createGetSyncStatusUseCase(deps)
+
+    await execute({
+      processIds: ['process-1', 'process-2'],
+    })
+
+    expect(deps.statusReadPort.listProcessSyncCandidates).toHaveBeenCalledWith({
+      processIds: ['process-1', 'process-2'],
+    })
+  })
 })

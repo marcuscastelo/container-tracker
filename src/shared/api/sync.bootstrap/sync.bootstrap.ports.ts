@@ -85,10 +85,30 @@ const SyncStatusByContainerRowSchema = z.object({
 
 const SyncStatusByContainerRowsSchema = z.array(SyncStatusByContainerRowSchema)
 
+const PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS = 7
+
 function toPriority(mode: 'manual' | 'live' | 'backfill'): number {
   if (mode === 'live') return 1
   if (mode === 'backfill') return -1
   return 0
+}
+
+function normalizeScopedProcessIds(processIds: readonly string[] | undefined): readonly string[] {
+  if (!processIds) {
+    return []
+  }
+
+  return Array.from(
+    new Set(
+      processIds.map((processId) => processId.trim()).filter((processId) => processId.length > 0),
+    ),
+  )
+}
+
+function getRecentArchivedProcessCutoff(now: Date): string {
+  return new Date(
+    now.getTime() - PROCESS_SYNC_RECENT_ARCHIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString()
 }
 
 export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetReadPort {
@@ -266,13 +286,28 @@ export function createSyncQueuePort(deps: { readonly defaultTenantId: string }):
 export function createSyncStatusReadPort(deps: {
   readonly targetReadPort: SyncTargetReadPort
   readonly defaultTenantId: string
+  readonly nowFactory?: () => Date
 }): SyncStatusReadPort {
+  const nowFactory = deps.nowFactory ?? (() => new Date())
+
   return {
-    async listProcessSyncCandidates() {
-      const result = await supabaseServer
-        .from('processes')
-        .select('id,archived_at')
-        .is('deleted_at', null)
+    async listProcessSyncCandidates(command = {}) {
+      const scopedProcessIds = normalizeScopedProcessIds(command.processIds)
+      if (command.processIds && scopedProcessIds.length === 0) {
+        return []
+      }
+
+      let query = supabaseServer.from('processes').select('id,archived_at').is('deleted_at', null)
+
+      if (scopedProcessIds.length > 0) {
+        query = query.in('id', scopedProcessIds)
+      } else {
+        query = query.or(
+          `archived_at.is.null,archived_at.gt.${getRecentArchivedProcessCutoff(nowFactory())}`,
+        )
+      }
+
+      const result = await query
 
       const data = unwrapSupabaseResultOrThrow(result, {
         operation: 'list_process_sync_candidates',
