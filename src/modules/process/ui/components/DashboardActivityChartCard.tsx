@@ -41,15 +41,18 @@ function ChartSkeleton(props: { readonly windowSize: DashboardChartWindowSize })
         style={{ 'grid-template-columns': `repeat(${props.windowSize}, minmax(0, 1fr))` }}
       >
         <For each={toSkeletonIndexes(props.windowSize)}>
-          {(index) => (
-            <div class="flex flex-col items-center gap-1">
-              <div
-                class="w-full animate-pulse rounded-md bg-surface-muted"
-                style={{ height: `${50 + index * 10}px` }}
-              />
-              <div class="h-2 w-6 animate-pulse rounded bg-surface-muted" />
-            </div>
-          )}
+          {(index) => {
+            const percent = Math.max(10, Math.round(((index + 1) / props.windowSize) * 100))
+            return (
+              <div class="flex flex-col items-center gap-1">
+                <div
+                  class="w-full animate-pulse rounded-md bg-surface-muted"
+                  style={{ height: `${percent}%` }}
+                />
+                <div class="h-2 w-6 animate-pulse rounded bg-surface-muted" />
+              </div>
+            )
+          }}
         </For>
       </div>
     </div>

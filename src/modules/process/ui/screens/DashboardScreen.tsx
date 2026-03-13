@@ -219,7 +219,15 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     fetchDashboardKpis(),
   )
   const [dashboardChartWindowSize, setDashboardChartWindowSize] =
-    createSignal<DashboardChartWindowSize>(6)
+    createSignal<DashboardChartWindowSize>(
+      (() => {
+        // Initialize from the real window size when available to avoid an
+        // unnecessary initial fetch with the default 6-month window on the
+        // client. Keep 6 as the SSR-safe default.
+        if (typeof window === 'undefined') return 6 as DashboardChartWindowSize
+        return resolveDashboardChartWindowSize(window.innerWidth)
+      })(),
+    )
   const [dashboardProcessesCreatedByMonth, { refetch: refetchDashboardProcessesCreatedByMonth }] =
     createResource(dashboardChartWindowSize, (windowSize) =>
       fetchDashboardProcessesCreatedByMonth({ windowSize }),

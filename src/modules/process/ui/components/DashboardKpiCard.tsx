@@ -1,3 +1,4 @@
+import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
@@ -37,6 +38,8 @@ function toValueClasses(tone: DashboardKpiVM['tone']): string {
   return 'text-foreground'
 }
 
+import { isInternalAppHref, navigateToAppHref } from '~/shared/ui/navigation/app-navigation'
+
 export function DashboardKpiCard(props: DashboardKpiCardProps): JSX.Element {
   const rootClasses = () =>
     `flex min-h-[84px] items-center gap-3 rounded-lg border px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/8%)] ${toToneClasses(props.item.tone)}`
@@ -66,13 +69,27 @@ export function DashboardKpiCard(props: DashboardKpiCardProps): JSX.Element {
     </div>
   )
 
+  const navigate = useNavigate()
+
   return (
     <Show when={props.item.href} fallback={cardBody()}>
-      {(href) => (
-        <a href={href()} class="block transition-opacity hover:opacity-95">
-          {cardBody()}
-        </a>
-      )}
+      {(href) => {
+        const hrefValue = href()
+        return (
+          <a
+            href={hrefValue}
+            class="block transition-opacity hover:opacity-95"
+            onClick={(e: MouseEvent) => {
+              if (isInternalAppHref(hrefValue)) {
+                e.preventDefault()
+                navigateToAppHref({ navigate, href: hrefValue })
+              }
+            }}
+          >
+            {cardBody()}
+          </a>
+        )
+      }}
     </Show>
   )
 }
