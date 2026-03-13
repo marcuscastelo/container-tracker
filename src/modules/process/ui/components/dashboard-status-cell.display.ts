@@ -7,13 +7,13 @@ type DashboardStatusCellDisplayBuilder = (
   command: DashboardStatusCellDisplayCommand,
 ) => ReturnType<typeof toDashboardStatusCellDisplay>
 
-export function createDashboardStatusCellDisplayMemo(command: {
+export function createDashboardStatusCellDisplayMemo(config: {
   readonly getCommand: () => DashboardStatusCellDisplayCommand
   readonly buildDisplay?: DashboardStatusCellDisplayBuilder
 }) {
-  const buildDisplay = command.buildDisplay ?? toDashboardStatusCellDisplay
+  const buildDisplay = config.buildDisplay ?? toDashboardStatusCellDisplay
   const display = createMemo(() => {
-    const displayCommand = command.getCommand()
+    const displayCommand = config.getCommand()
     return buildDisplay(displayCommand)
   })
 

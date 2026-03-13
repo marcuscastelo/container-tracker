@@ -16,13 +16,15 @@ function createStatusSource(
 }
 
 function createTranslationStub(
-  keys: ReturnType<typeof useTranslation>['keys'],
+  translationKeys: ReturnType<typeof useTranslation>['keys'],
 ): (key: string, options?: Record<string, unknown>) => string {
   return (key: string, options?: Record<string, unknown>) => {
     const count = typeof options?.count === 'number' ? options.count : 0
-    if (key === keys.tracking.status.IN_TRANSIT) return 'Em trânsito'
-    if (key === keys.tracking.statusMicrobadge.DISCHARGED.one) return `${count} descarregado`
-    if (key === keys.tracking.statusMicrobadge.DISCHARGED.other) return `${count} descarregados`
+    if (key === translationKeys.tracking.status.IN_TRANSIT) return 'Em trânsito'
+    if (key === translationKeys.tracking.statusMicrobadge.DISCHARGED.one)
+      return `${count} descarregado`
+    if (key === translationKeys.tracking.statusMicrobadge.DISCHARGED.other)
+      return `${count} descarregados`
     return key
   }
 }

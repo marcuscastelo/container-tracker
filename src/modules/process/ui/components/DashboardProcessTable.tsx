@@ -389,8 +389,8 @@ function StatusCell(ctx: CellContext): JSX.Element {
       keys: ctx.keys,
     }),
   })
-  const primary = createMemo(() => display().primary)
-  const subtitle = createMemo(() => display().subtitle)
+  const primary = () => display().primary
+  const subtitle = () => display().subtitle
 
   return (
     <div class="flex min-w-0 items-center justify-center overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
