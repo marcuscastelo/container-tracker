@@ -151,18 +151,13 @@ function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[
     if (prev === undefined || curr === undefined) continue
     if (prev.type !== 'DISCHARGE' || curr.type !== 'LOAD') continue
 
-    const vesselFrom = prev.vessel_name?.trim() || null
-    const vesselTo = curr.vessel_name?.trim() || null
+    const vesselFrom = prev.vessel_name?.trim() ?? ''
+    const vesselTo = curr.vessel_name?.trim() ?? ''
     const normalizedVesselFrom = normalizeVesselName(prev.vessel_name)
     const normalizedVesselTo = normalizeVesselName(curr.vessel_name)
 
     // Cannot determine transshipment without both vessel names — conservative: skip
-    if (
-      vesselFrom === null ||
-      vesselTo === null ||
-      normalizedVesselFrom === null ||
-      normalizedVesselTo === null
-    ) {
+    if (normalizedVesselFrom === null || normalizedVesselTo === null) {
       continue
     }
 
