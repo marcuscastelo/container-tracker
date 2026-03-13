@@ -11,6 +11,7 @@ import {
   toNoMovementDedupKeysFromRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.alert-no-movement.dedup'
 import {
+  alertRowToDerivationState,
   alertRowToDomain,
   alertToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mappers'
@@ -217,6 +218,24 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     })
 
     return (data ?? []).map(alertRowToDomain)
+  },
+
+  async findAlertDerivationStateByContainerId(containerId: string) {
+    const result = await supabase
+      .from(TABLE)
+      .select(
+        'id, category, type, message_key, message_params, source_observation_fingerprints, alert_fingerprint, acked_at, resolved_at',
+      )
+      .eq('container_id', containerId)
+      .order('triggered_at', { ascending: false })
+      .order('id', { ascending: false })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findAlertDerivationStateByContainerId',
+      table: TABLE,
+    })
+
+    return (data ?? []).map(alertRowToDerivationState)
   },
 
   async findContainerNumbersByIds(

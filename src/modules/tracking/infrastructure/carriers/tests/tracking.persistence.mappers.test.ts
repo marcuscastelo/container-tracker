@@ -295,6 +295,29 @@ describe('alertRowToDomain', () => {
       lastEventDate: '2026-01-04',
     })
   })
+
+  it('should normalize NO_MOVEMENT threshold_days to the canonical breakpoint policy', () => {
+    const result = alertRowToDomain({
+      ...validRow,
+      category: 'monitoring',
+      type: 'NO_MOVEMENT',
+      message_key: 'alerts.noMovementDetected',
+      message_params: {
+        threshold_days: 7,
+        days_without_movement: 7,
+        days: 7,
+        lastEventDate: '2026-01-04',
+      },
+    })
+
+    expect(result.message_key).toBe('alerts.noMovementDetected')
+    expect(result.message_params).toEqual({
+      threshold_days: 5,
+      days_without_movement: 7,
+      days: 7,
+      lastEventDate: '2026-01-04',
+    })
+  })
 })
 
 describe('alertToInsertRow', () => {
