@@ -73,3 +73,13 @@ export function toProcessRefreshResponse(result: RefreshProcessResult) {
     })),
   }
 }
+
+export function toDetectProcessCarrierResponse(result: {
+  readonly detected: boolean
+  readonly carrier: string | null
+}) {
+  return {
+    detected: result.detected,
+    carrier: result.carrier,
+  }
+}

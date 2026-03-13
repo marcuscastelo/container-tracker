@@ -55,6 +55,24 @@ export const supabaseContainerRepository: ContainerRepository = {
     return data.map(containerMappers.fromRow)
   },
 
+  async updateCarrierCode(command): Promise<ContainerEntity> {
+    const result = await supabase
+      .from(TABLE_NAME)
+      .update({
+        carrier_code: command.carrierCode,
+      })
+      .eq('id', command.id)
+      .select()
+      .single()
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'updateCarrierCode',
+      table: TABLE_NAME,
+    })
+
+    return containerMappers.fromRow(data)
+  },
+
   async existsMany(containerNumbers: string[]): Promise<Map<string, boolean>> {
     if (containerNumbers.length === 0) {
       return new Map()

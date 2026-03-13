@@ -1,152 +1,220 @@
-import type { EnqueueSyncCommand } from '~/capabilities/sync/application/commands/enqueue-sync.command'
+import type { CarrierDetectionWritePort } from '~/capabilities/sync/application/ports/carrier-detection-write.port'
 import type {
+  SupportedSyncProvider,
   SyncQueuePort,
   SyncRequestStatusItem,
 } from '~/capabilities/sync/application/ports/sync-queue.port'
+import type { SyncTargetReadPort } from '~/capabilities/sync/application/ports/sync-target-read.port'
 import type { SyncEnqueuePolicyService } from '~/capabilities/sync/application/services/sync-enqueue-policy.service'
-import type { SyncTargetResolverService } from '~/capabilities/sync/application/services/sync-target-resolver.service'
+import type { ResolvedSyncTarget } from '~/capabilities/sync/application/services/sync-target-resolver.service'
+import {
+  executeSyncTargets,
+  isContainerNotFoundLikeStatus,
+} from '~/capabilities/sync/application/usecases/sync-execution'
+import type { CarrierDetectionEngine } from '~/capabilities/sync/carrier-detection/carrier-detection.engine'
+import {
+  normalizeContainerNumber,
+  toPersistedCarrierCode,
+  toSupportedSyncProvider,
+} from '~/capabilities/sync/carrier-detection/carrier-detection.providers'
 import { HttpError } from '~/shared/errors/httpErrors'
-
-const DEFAULT_SYNC_TIMEOUT_MS = 180_000
-const DEFAULT_SYNC_POLL_INTERVAL_MS = 5_000
 
 type SyncContainerResult = {
   readonly containerNumber: string
   readonly syncedContainers: number
 }
 
+type SyncContainerRecord = {
+  readonly processId: string
+  readonly containerNumber: string
+  readonly carrierCode: string | null
+}
+
 export type SyncContainerDeps = {
-  readonly targetResolverService: SyncTargetResolverService
+  readonly targetReadPort: Pick<SyncTargetReadPort, 'findContainersByNumber'>
   readonly enqueuePolicyService: SyncEnqueuePolicyService
   readonly queuePort: Pick<SyncQueuePort, 'getSyncRequestStatuses'>
+  readonly carrierDetectionEngine: CarrierDetectionEngine
+  readonly carrierDetectionWritePort: CarrierDetectionWritePort
   readonly nowMs?: () => number
   readonly sleep?: (delayMs: number) => Promise<void>
   readonly timeoutMs?: number
   readonly pollIntervalMs?: number
 }
 
-function isTerminalStatus(status: SyncRequestStatusItem['status']): boolean {
-  return status === 'DONE' || status === 'FAILED' || status === 'NOT_FOUND'
-}
+function dedupeTargets(targets: readonly ResolvedSyncTarget[]): readonly ResolvedSyncTarget[] {
+  const byKey = new Map<string, ResolvedSyncTarget>()
 
-function toTerminalStatusItems(
-  syncRequestIds: readonly string[],
-  requests: readonly SyncRequestStatusItem[],
-): readonly SyncRequestStatusItem[] {
-  const byId = new Map(requests.map((request) => [request.syncRequestId, request]))
-
-  return syncRequestIds.map((syncRequestId) => {
-    const request = byId.get(syncRequestId)
-    if (request) return request
-
-    return {
-      syncRequestId,
-      status: 'NOT_FOUND',
-      lastError: 'sync_request_not_found',
-      updatedAt: null,
-      refValue: null,
+  for (const target of targets) {
+    const key = `${target.provider}:${target.containerNumber}`
+    if (!byKey.has(key)) {
+      byKey.set(key, target)
     }
-  })
-}
-
-async function defaultSleep(delayMs: number): Promise<void> {
-  await new Promise<void>((resolve) => {
-    globalThis.setTimeout(resolve, delayMs)
-  })
-}
-
-async function waitForTerminalStatuses(command: {
-  readonly syncRequestIds: readonly string[]
-  readonly timeoutMs: number
-  readonly pollIntervalMs: number
-  readonly getSyncRequestStatuses: SyncQueuePort['getSyncRequestStatuses']
-  readonly nowMs: () => number
-  readonly sleep: (delayMs: number) => Promise<void>
-}): Promise<readonly SyncRequestStatusItem[]> {
-  let lastProgressAtMs = command.nowMs()
-  let highestDoneCount = 0
-
-  while (true) {
-    const response = await command.getSyncRequestStatuses({
-      syncRequestIds: command.syncRequestIds,
-    })
-
-    const requests = toTerminalStatusItems(command.syncRequestIds, response.requests)
-    const doneCount = requests.filter((request) => request.status === 'DONE').length
-    if (doneCount > highestDoneCount) {
-      highestDoneCount = doneCount
-      lastProgressAtMs = command.nowMs()
-    }
-
-    if (requests.every((request) => isTerminalStatus(request.status))) {
-      return requests
-    }
-
-    const nowMs = command.nowMs()
-    const idleMs = nowMs - lastProgressAtMs
-    if (idleMs >= command.timeoutMs) {
-      break
-    }
-
-    const remainingMs = command.timeoutMs - idleMs
-    await command.sleep(Math.min(command.pollIntervalMs, remainingMs))
   }
 
-  throw new HttpError('sync_container_timeout', 504)
+  return Array.from(byKey.values())
+}
+
+function toSyncTargets(records: readonly SyncContainerRecord[]): readonly ResolvedSyncTarget[] {
+  const targets: ResolvedSyncTarget[] = []
+
+  for (const record of records) {
+    const provider = toSupportedSyncProvider(record.carrierCode)
+    if (!provider) {
+      continue
+    }
+
+    targets.push({
+      processId: record.processId,
+      containerNumber: normalizeContainerNumber(record.containerNumber),
+      provider,
+    })
+  }
+
+  return dedupeTargets(targets)
+}
+
+function toFirstError(statuses: readonly SyncRequestStatusItem[], fallback: string): string {
+  const firstFailure = statuses.find((status) => status.status !== 'DONE')
+  if (!firstFailure) return fallback
+
+  return (
+    firstFailure.lastError ?? `${firstFailure.status.toLowerCase()}_${firstFailure.syncRequestId}`
+  )
+}
+
+function assertSingleProvider(
+  targets: readonly ResolvedSyncTarget[],
+  containerNumber: string,
+): void {
+  const providers = new Set(targets.map((target) => target.provider))
+  if (providers.size > 1) {
+    throw new HttpError(`ambiguous_sync_provider_for_container:${containerNumber}`, 409)
+  }
+}
+
+async function detectCarrierAndRetry(command: {
+  readonly tenantId: string
+  readonly containerNumber: string
+  readonly currentTargets: readonly ResolvedSyncTarget[]
+  readonly records: readonly SyncContainerRecord[]
+  readonly deps: SyncContainerDeps
+}): Promise<readonly SyncRequestStatusItem[]> {
+  const excludedProviders = command.currentTargets.map((target) => target.provider)
+  const detectionResult = await command.deps.carrierDetectionEngine.detectCarrier({
+    tenantId: command.tenantId,
+    containerNumber: command.containerNumber,
+    excludeProviders: excludedProviders,
+  })
+
+  if (!detectionResult.detected) {
+    throw new HttpError(
+      `sync_container_failed:${detectionResult.error ?? detectionResult.reason}`,
+      502,
+    )
+  }
+
+  const persistedCarrierCode = toPersistedCarrierCode(detectionResult.provider)
+  for (const record of command.records) {
+    await command.deps.carrierDetectionWritePort.persistDetectedCarrier({
+      processId: record.processId,
+      containerNumber: command.containerNumber,
+      carrierCode: persistedCarrierCode,
+    })
+  }
+
+  return executeSyncTargets({
+    tenantId: command.tenantId,
+    mode: 'manual',
+    targets: [
+      {
+        processId: command.records[0]?.processId ?? null,
+        containerNumber: command.containerNumber,
+        provider: detectionResult.provider,
+      },
+    ],
+    enqueuePolicyService: command.deps.enqueuePolicyService,
+    queuePort: command.deps.queuePort,
+    nowMs: command.deps.nowMs,
+    sleep: command.deps.sleep,
+    timeoutMs: command.deps.timeoutMs,
+    pollIntervalMs: command.deps.pollIntervalMs,
+    timeoutErrorMessage: 'sync_container_timeout',
+  })
 }
 
 export function createSyncContainerUseCase(deps: SyncContainerDeps) {
-  const nowMs = deps.nowMs ?? Date.now
-  const sleep = deps.sleep ?? defaultSleep
-  const timeoutMs = deps.timeoutMs ?? DEFAULT_SYNC_TIMEOUT_MS
-  const pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_SYNC_POLL_INTERVAL_MS
-
-  return async function execute(command: EnqueueSyncCommand): Promise<SyncContainerResult> {
+  return async function execute(command: {
+    readonly tenantId: string
+    readonly scope: { readonly kind: 'container'; readonly containerNumber: string }
+    readonly mode: 'manual' | 'live' | 'backfill'
+  }): Promise<SyncContainerResult> {
     if (command.scope.kind !== 'container') {
       throw new HttpError('invalid_sync_scope_for_container', 400)
     }
 
-    const targets = await deps.targetResolverService.resolveTargets(command.scope)
-    if (targets.length === 0) {
+    const containerNumber = normalizeContainerNumber(command.scope.containerNumber)
+    const lookupResult = await deps.targetReadPort.findContainersByNumber({ containerNumber })
+    const records = lookupResult.containers.map((record) => ({
+      processId: record.processId,
+      containerNumber: normalizeContainerNumber(record.containerNumber),
+      carrierCode: record.carrierCode,
+    }))
+
+    if (records.length === 0) {
       throw new HttpError('container_not_found', 404)
     }
 
-    const enqueueResult = await deps.enqueuePolicyService.enqueue({
-      tenantId: command.tenantId,
-      mode: command.mode,
-      targets,
-    })
+    const targets = toSyncTargets(records)
+    assertSingleProvider(targets, containerNumber)
 
-    if (enqueueResult.syncRequestIds.length === 0) {
+    let terminalStatuses: readonly SyncRequestStatusItem[] = []
+
+    if (targets.length > 0) {
+      terminalStatuses = await executeSyncTargets({
+        tenantId: command.tenantId,
+        mode: command.mode,
+        targets,
+        enqueuePolicyService: deps.enqueuePolicyService,
+        queuePort: deps.queuePort,
+        nowMs: deps.nowMs,
+        sleep: deps.sleep,
+        timeoutMs: deps.timeoutMs,
+        pollIntervalMs: deps.pollIntervalMs,
+        timeoutErrorMessage: 'sync_container_timeout',
+      })
+    }
+
+    const failures = terminalStatuses.filter((status) => status.status !== 'DONE')
+    if (targets.length === 0 || failures.some((status) => isContainerNotFoundLikeStatus(status))) {
+      const retryStatuses = await detectCarrierAndRetry({
+        tenantId: command.tenantId,
+        containerNumber,
+        currentTargets: targets,
+        records,
+        deps,
+      })
+
+      const retryFailures = retryStatuses.filter((status) => status.status !== 'DONE')
+      if (retryFailures.length > 0) {
+        throw new HttpError(
+          `sync_container_failed:${toFirstError(retryFailures, 'retry_failed')}`,
+          502,
+        )
+      }
+
       return {
-        containerNumber: command.scope.containerNumber.trim().toUpperCase(),
-        syncedContainers: 0,
+        containerNumber,
+        syncedContainers: 1,
       }
     }
 
-    const requests = await waitForTerminalStatuses({
-      syncRequestIds: enqueueResult.syncRequestIds,
-      timeoutMs,
-      pollIntervalMs,
-      getSyncRequestStatuses: deps.queuePort.getSyncRequestStatuses,
-      nowMs,
-      sleep,
-    })
-
-    const failures = requests.filter((request) => {
-      return request.status === 'FAILED' || request.status === 'NOT_FOUND'
-    })
-
     if (failures.length > 0) {
-      const firstFailure = failures[0]
-      const firstError =
-        firstFailure.lastError ??
-        `${firstFailure.status.toLowerCase()}_${firstFailure.syncRequestId}`
-      throw new HttpError(`sync_container_failed:${firstError}`, 502)
+      throw new HttpError(`sync_container_failed:${toFirstError(failures, 'sync_failed')}`, 502)
     }
 
     return {
-      containerNumber: command.scope.containerNumber.trim().toUpperCase(),
+      containerNumber,
       syncedContainers: targets.length,
     }
   }

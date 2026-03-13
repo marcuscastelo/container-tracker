@@ -16,6 +16,14 @@ function createRepository(projections: readonly ContainerSearchProjection[]): Co
     insertMany: vi.fn(async (_records: InsertContainerRecord[]): Promise<ContainerEntity[]> => {
       throw new Error('Not implemented in search tests')
     }),
+    updateCarrierCode: vi.fn(
+      async (_command: {
+        readonly id: string
+        readonly carrierCode: string
+      }): Promise<ContainerEntity> => {
+        throw new Error('Not implemented in search tests')
+      },
+    ),
     delete: vi.fn(async (_id: string): Promise<void> => {
       throw new Error('Not implemented in search tests')
     }),
