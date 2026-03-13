@@ -1,10 +1,10 @@
-import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type {
   ReplayContainerTrackingResult,
   TrackingReplaySeries,
   TrackingReplayState,
   TrackingReplayStep,
 } from '~/modules/tracking/application/usecases/replay-container-tracking.usecase'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertDisplayReadModels } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
@@ -152,10 +152,7 @@ function toReplayStateResponseDto(state: TrackingReplayState, containerNumber: s
   }
 }
 
-function toReplayStepResponseDto(
-  step: TrackingReplayStep,
-  containerNumber: string | null,
-) {
+function toReplayStepResponseDto(step: TrackingReplayStep, containerNumber: string | null) {
   return {
     step_index: step.stepIndex,
     snapshot_id: step.snapshotId,

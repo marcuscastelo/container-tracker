@@ -7,8 +7,8 @@ import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
-import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
+import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
 
 function createControllers(options?: {
   readonly activeAlerts?: readonly TrackingAlert[]

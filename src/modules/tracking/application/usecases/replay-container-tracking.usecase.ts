@@ -2,14 +2,14 @@ import { getContainerSummary } from '~/modules/tracking/application/usecases/get
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import { deriveAlertTransitions } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
-import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
-import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
+import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import {
   deriveTimelineWithSeriesReadModel,
   type TrackingTimelineItem,
@@ -115,7 +115,9 @@ function toReplayCreatedAt(referenceIso: string, sequence: number): string {
 }
 
 function resolveReplayContainerNumber(observations: readonly Observation[]): string | null {
-  const firstWithNumber = observations.find((observation) => observation.container_number.trim().length > 0)
+  const firstWithNumber = observations.find(
+    (observation) => observation.container_number.trim().length > 0,
+  )
   return firstWithNumber?.container_number ?? null
 }
 
@@ -185,7 +187,11 @@ function applyReplayAlertTransitions(
   return [...alertsById.values()]
 }
 
-function toReplayAlertId(stepIndex: number, alertIndex: number, alertFingerprint: string | null): string {
+function toReplayAlertId(
+  stepIndex: number,
+  alertIndex: number,
+  alertFingerprint: string | null,
+): string {
   if (typeof alertFingerprint === 'string' && alertFingerprint.trim().length > 0) {
     return `replay-alert-${alertFingerprint}`
   }
@@ -202,7 +208,10 @@ function toReplayState(
   const resolvedContainerNumber = containerNumber ?? 'UNKNOWN'
   const timelineDomain = deriveTimeline(containerId, resolvedContainerNumber, observations, now)
   const status = deriveStatus(timelineDomain)
-  const timeline = deriveTimelineWithSeriesReadModel(toTrackingObservationProjections(observations), now)
+  const timeline = deriveTimelineWithSeriesReadModel(
+    toTrackingObservationProjections(observations),
+    now,
+  )
   const series = buildReplaySeries(timeline)
   const activeAlerts = alerts.filter((alert) => resolveAlertLifecycleState(alert) === 'ACTIVE')
 
@@ -299,9 +308,9 @@ export async function replayContainerTracking(
   command: ReplayContainerTrackingCommand,
 ): Promise<ReplayContainerTrackingResult> {
   const referenceNow = command.now ?? new Date()
-  const snapshots = [...(await deps.snapshotRepository.findAllByContainerId(command.containerId))].sort(
-    compareSnapshotsChronologically,
-  )
+  const snapshots = [
+    ...(await deps.snapshotRepository.findAllByContainerId(command.containerId)),
+  ].sort(compareSnapshotsChronologically)
   const steps: TrackingReplayStep[] = []
   const observations: Observation[] = []
   let alerts: readonly TrackingAlert[] = []
@@ -310,7 +319,8 @@ export async function replayContainerTracking(
   for (const snapshot of snapshots) {
     const snapshotNow = new Date(snapshot.fetched_at)
     const drafts = normalizeSnapshot(snapshot)
-    const containerNumber = resolveReplayContainerNumber(observations) ?? drafts[0]?.container_number ?? null
+    const containerNumber =
+      resolveReplayContainerNumber(observations) ?? drafts[0]?.container_number ?? null
 
     pushReplayStep({
       steps,
@@ -342,12 +352,12 @@ export async function replayContainerTracking(
       const fingerprint = computeFingerprint(draft)
       const isDuplicateFromHistory = existingFingerprints.has(fingerprint)
       const isDuplicateInSnapshot = seenInSnapshot.has(fingerprint)
-      const duplicateReason =
-        isDuplicateFromHistory === true
-          ? 'existing_observation'
-          : isDuplicateInSnapshot === true
-            ? 'duplicate_in_snapshot'
-            : null
+      let duplicateReason: 'existing_observation' | 'duplicate_in_snapshot' | null = null
+      if (isDuplicateFromHistory) {
+        duplicateReason = 'existing_observation'
+      } else if (isDuplicateInSnapshot) {
+        duplicateReason = 'duplicate_in_snapshot'
+      }
       seenInSnapshot.add(fingerprint)
 
       let insertedObservation: Observation | null = null
@@ -364,7 +374,8 @@ export async function replayContainerTracking(
         }
       }
 
-      const containerNumberAfterObservation = resolveReplayContainerNumber(observations) ?? containerNumber
+      const containerNumberAfterObservation =
+        resolveReplayContainerNumber(observations) ?? containerNumber
       const currentTimeline = deriveTimeline(
         command.containerId,
         containerNumberAfterObservation ?? 'UNKNOWN',
@@ -551,7 +562,9 @@ export async function replayContainerTracking(
       normalizeTimelineForComparison(productionTimeline),
     statusMatches: finalState.status === (productionSummary?.status ?? finalState.status),
     alertsMatch:
-      productionSummary === null ? finalState.alerts.length === 0 : compareAlertSets(finalState.alerts, productionSummary.alerts),
+      productionSummary === null
+        ? finalState.alerts.length === 0
+        : compareAlertSets(finalState.alerts, productionSummary.alerts),
   }
 
   return {
