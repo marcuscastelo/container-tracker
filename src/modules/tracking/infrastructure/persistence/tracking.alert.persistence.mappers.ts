@@ -6,8 +6,8 @@ import type {
   TrackingAlertMessageKey,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { normalizeNoMovementThresholdDays } from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import { stringsToJson, toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
-import { normalizeNoMovementThresholdDays } from '~/modules/tracking/infrastructure/persistence/tracking.no-movement-threshold'
 import {
   isRecord,
   normalizeAlertIso,

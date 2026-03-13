@@ -1,5 +1,5 @@
 import type { NewTrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
-import { normalizeNoMovementThresholdDays } from '~/modules/tracking/infrastructure/persistence/tracking.no-movement-threshold'
+import { normalizeNoMovementThresholdDays } from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import {
   isRecord,
   optionalFiniteNumber,
