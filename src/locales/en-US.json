@@ -677,8 +677,7 @@
     "footer": {
       "navigate": "Navigate",
       "select": "Select",
-      "close": "Close",
-      "modifier": "Ctrl/⌘"
+      "close": "Close"
     }
   }
 }

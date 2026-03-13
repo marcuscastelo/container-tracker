@@ -3,6 +3,17 @@ import { createSignal, For, onMount, Show } from 'solid-js'
 import type { SearchResultItemVm, SearchUiState } from '~/capabilities/search/ui/search.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 
+// Augment Navigator with User-Agent Client Hints (platform) when available.
+declare global {
+  type NavigatorUAData = {
+    platform?: string
+  }
+
+  type Navigator = {
+    userAgentData?: NavigatorUAData
+  }
+}
+
 type SearchOverlayPanelProps = {
   readonly isOpen: boolean
   readonly query: string
@@ -341,8 +352,11 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
   const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
 
   onMount(() => {
-    const platform = navigator.platform.toLowerCase()
-    const userAgent = navigator.userAgent.toLowerCase()
+    // Use User-Agent Client Hints when available and fall back to navigator.platform.
+    const rawPlatform = navigator.userAgentData?.platform ?? navigator.platform
+    const platform = typeof rawPlatform === 'string' ? rawPlatform.toLowerCase() : ''
+    const userAgent =
+      typeof navigator.userAgent === 'string' ? navigator.userAgent.toLowerCase() : ''
     const isApplePlatform =
       platform.includes('mac') ||
       platform.includes('iphone') ||
