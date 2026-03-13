@@ -1,14 +1,8 @@
 import z from 'zod/v4'
+import { normalizeProcessIdsScope } from '~/capabilities/sync/application/utils/normalizeProcessIdsScope'
 
 const ProcessIdsQueryValueSchema = z.string().transform((value, ctx) => {
-  const processIds = Array.from(
-    new Set(
-      value
-        .split(',')
-        .map((processId) => processId.trim())
-        .filter((processId) => processId.length > 0),
-    ),
-  )
+  const processIds = normalizeProcessIdsScope(value.split(','))
 
   if (processIds.length === 0) {
     ctx.addIssue({

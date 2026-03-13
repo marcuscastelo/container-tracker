@@ -3,6 +3,7 @@ import type { SyncQueuePort } from '~/capabilities/sync/application/ports/sync-q
 import type { SyncStatusReadPort } from '~/capabilities/sync/application/ports/sync-status-read.port'
 import type { SyncTargetReadPort } from '~/capabilities/sync/application/ports/sync-target-read.port'
 import type { RefreshProcessDeps } from '~/capabilities/sync/application/usecases/refresh-process.usecase'
+import { normalizeProcessIdsScope } from '~/capabilities/sync/application/utils/normalizeProcessIdsScope'
 import { serverEnv } from '~/shared/config/server-env'
 import { supabaseServer } from '~/shared/supabase/supabase.server'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
@@ -91,18 +92,6 @@ function toPriority(mode: 'manual' | 'live' | 'backfill'): number {
   if (mode === 'live') return 1
   if (mode === 'backfill') return -1
   return 0
-}
-
-function normalizeScopedProcessIds(processIds: readonly string[] | undefined): readonly string[] {
-  if (!processIds) {
-    return []
-  }
-
-  return Array.from(
-    new Set(
-      processIds.map((processId) => processId.trim()).filter((processId) => processId.length > 0),
-    ),
-  )
 }
 
 function getRecentArchivedProcessCutoff(now: Date): string {
@@ -292,7 +281,7 @@ export function createSyncStatusReadPort(deps: {
 
   return {
     async listProcessSyncCandidates(command = {}) {
-      const scopedProcessIds = normalizeScopedProcessIds(command.processIds)
+      const scopedProcessIds = normalizeProcessIdsScope(command.processIds)
       if (command.processIds && scopedProcessIds.length === 0) {
         return []
       }
