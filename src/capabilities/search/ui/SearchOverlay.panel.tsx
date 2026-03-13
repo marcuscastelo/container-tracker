@@ -9,7 +9,8 @@ declare global {
     platform?: string
   }
 
-  type Navigator = {
+  // biome-ignore lint/style/useConsistentTypeDefinitions: To override the built-in Navigator type, we need to redeclare it as an interface.
+  interface Navigator {
     userAgentData?: NavigatorUAData
   }
 }
