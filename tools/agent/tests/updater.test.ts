@@ -248,4 +248,35 @@ describe('updater core', () => {
       }),
     ).rejects.toThrow(/checksum mismatch/i)
   })
+
+  it('skips blocked versions without disabling updater globally', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-updater-test-'))
+    const layout = createLayout(tempDir)
+
+    const result = await stageReleaseFromManifest({
+      manifest: {
+        version: '2.0.0',
+        download_url: 'https://agent.test.local/release-v2.js',
+        checksum: sha256("console.log('agent v2')\n"),
+        channel: 'stable',
+        update_available: true,
+        desired_version: '2.0.0',
+        current_version: '1.0.0',
+        update_ready_version: null,
+        restart_required: false,
+        restart_requested_at: null,
+      },
+      layout,
+      state: {
+        ...createInitialReleaseState('1.0.0'),
+        blocked_versions: ['2.0.0'],
+        automatic_updates_blocked: false,
+      },
+      fetchImpl: async () => new Response('should-not-download', { status: 200 }),
+    })
+
+    expect(result.kind).toBe('blocked')
+    if (result.kind !== 'blocked') return
+    expect(result.reason).toContain('blocked locally')
+  })
 })

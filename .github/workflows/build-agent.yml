@@ -46,6 +46,12 @@ jobs:
           mkdir -p /tmp/agent-linux-x64
           cp -R release/app/. /tmp/agent-linux-x64
           test -f /tmp/agent-linux-x64/node_modules/@supabase/supabase-js/package.json
+          ABSOLUTE_SYMLINK_COUNT="$(find /tmp/agent-linux-x64/node_modules -type l -exec readlink {} \; | awk '/^\//{c++} END {print c+0}')"
+          if [ "$ABSOLUTE_SYMLINK_COUNT" -gt 0 ]; then
+            echo "Found $ABSOLUTE_SYMLINK_COUNT absolute symlink(s) in Linux runtime node_modules." >&2
+            find /tmp/agent-linux-x64/node_modules -type l -exec readlink {} \; | awk '/^\//{print; if (++n==20) exit}' >&2
+            exit 1
+          fi
           tar -C /tmp -czf agent-linux-x64.tar.gz agent-linux-x64
           sha256sum agent-linux-x64.tar.gz | awk '{print $1}' > agent-linux-x64.sha256
 

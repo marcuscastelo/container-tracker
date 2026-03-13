@@ -19,5 +19,5 @@
       "@tools/*": ["./tools/*"]
     }
   },
-  "exclude": ["tools/ralph-loop/**/*", ".ralph-loop/**/*"]
+  "exclude": ["tools/ralph-loop/**/*", ".ralph-loop/**/*", "packaging/arch/src/agent-app/**/*"]
 }

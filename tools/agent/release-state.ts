@@ -59,11 +59,30 @@ export function createInitialReleaseState(currentVersion: string): ReleaseState 
   }
 }
 
+function migrateReleaseState(state: ReleaseState): ReleaseState {
+  const hasLegacyCrashLoopBlock =
+    state.activation_state === 'blocked' ||
+    state.last_error === 'automatic updates are blocked due to previous crash loop'
+
+  if (!state.automatic_updates_blocked || !hasLegacyCrashLoopBlock) {
+    return state
+  }
+
+  return {
+    ...state,
+    automatic_updates_blocked: false,
+    activation_state: state.activation_state === 'blocked' ? 'idle' : state.activation_state,
+    last_error:
+      state.last_error ??
+      `version ${state.blocked_versions.at(-1) ?? 'unknown'} blocked after crash loop`,
+  }
+}
+
 function parseRawState(raw: string, fallbackVersion: string): ReleaseState {
   const parsedJson: unknown = JSON.parse(raw)
   const parsedState = releaseStateSchema.safeParse(parsedJson)
   if (parsedState.success) {
-    return parsedState.data
+    return migrateReleaseState(parsedState.data)
   }
 
   return createInitialReleaseState(fallbackVersion)
@@ -108,6 +127,8 @@ export function withRecordedFailure(command: {
   readonly nextState: ReleaseState
   readonly isCrashLoop: boolean
   readonly activationFailuresForVersion: number
+  readonly versionBlocked: boolean
+  readonly newlyBlocked: boolean
 } {
   const nowMs = new Date(command.nowIso).getTime()
   const windowStartMs = nowMs - command.crashLoopWindowMs
@@ -137,8 +158,8 @@ export function withRecordedFailure(command: {
       ? [...new Set([...command.state.blocked_versions, command.version])]
       : [...command.state.blocked_versions]
 
-  const shouldBlockUpdates =
-    crashLoopDetected || activationFailureLimitReached || command.state.automatic_updates_blocked
+  const versionBlocked = blockedVersions.includes(command.version)
+  const newlyBlocked = versionBlocked && !command.state.blocked_versions.includes(command.version)
 
   return {
     nextState: {
@@ -147,10 +168,12 @@ export function withRecordedFailure(command: {
       recent_failures: failures,
       activation_failures: activationFailures,
       blocked_versions: blockedVersions,
-      automatic_updates_blocked: shouldBlockUpdates,
-      activation_state: shouldBlockUpdates ? 'blocked' : command.state.activation_state,
+      automatic_updates_blocked: command.state.automatic_updates_blocked,
+      activation_state: command.state.activation_state,
     },
     isCrashLoop: crashLoopDetected,
     activationFailuresForVersion,
+    versionBlocked,
+    newlyBlocked,
   }
 }

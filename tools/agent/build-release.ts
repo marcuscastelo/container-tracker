@@ -18,6 +18,8 @@ const AGENT_RUNTIME_DIRECT_DEPENDENCIES = [
   'puppeteer',
   'puppeteer-extra',
   'puppeteer-extra-plugin-stealth',
+  'puppeteer-extra-plugin-user-data-dir',
+  'puppeteer-extra-plugin-user-preferences',
   'zod',
 ] as const
 const RELEASE_APP_REQUIRED_TOP_LEVEL_ENTRIES = ['dist', 'node_modules', 'package.json'] as const
@@ -293,6 +295,22 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
+async function removePathSafely(targetPath: string): Promise<void> {
+  let stats: fsSync.Stats
+  try {
+    stats = await fs.lstat(targetPath)
+  } catch {
+    return
+  }
+
+  if (stats.isSymbolicLink()) {
+    await fs.unlink(targetPath)
+    return
+  }
+
+  await fs.rm(targetPath, { recursive: true, force: true })
+}
+
 async function ensurePathExists(targetPath: string, label: string): Promise<void> {
   if (!(await pathExists(targetPath))) {
     throw new Error(`${label} not found: ${targetPath}`)
@@ -511,6 +529,39 @@ async function writeAgentEntrypointShims(distDir: string): Promise<void> {
 function isInsideDirectory(rootDir: string, targetPath: string): boolean {
   const relativePath = path.relative(rootDir, targetPath)
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+}
+
+function extractRelativePathFromAnyNodeModules(targetPath: string): string | null {
+  const normalizedTargetPath = path.normalize(targetPath)
+  const marker = `${path.sep}node_modules${path.sep}`
+  const markerIndex = normalizedTargetPath.lastIndexOf(marker)
+  if (markerIndex < 0) {
+    return null
+  }
+
+  const relativePath = normalizedTargetPath.slice(markerIndex + marker.length)
+  return relativePath.length > 0 ? relativePath : null
+}
+
+function remapAbsoluteRuntimeSymlinkTarget(command: {
+  readonly sourceNodeModulesDir: string
+  readonly targetNodeModulesDir: string
+  readonly resolvedTargetPath: string
+}): string | null {
+  if (isInsideDirectory(command.sourceNodeModulesDir, command.resolvedTargetPath)) {
+    const relativeFromSourceRoot = path.relative(
+      command.sourceNodeModulesDir,
+      command.resolvedTargetPath,
+    )
+    return path.join(command.targetNodeModulesDir, relativeFromSourceRoot)
+  }
+
+  const relativeFromNodeModules = extractRelativePathFromAnyNodeModules(command.resolvedTargetPath)
+  if (!relativeFromNodeModules) {
+    return null
+  }
+
+  return path.join(command.targetNodeModulesDir, relativeFromNodeModules)
 }
 
 function toPackageNameSegments(packageName: string): readonly [string, string] | readonly [string] {
@@ -822,7 +873,7 @@ async function pruneRuntimeNodeModules(
 
     const topLevelEntryPath = resolvePackageEntryPath(nodeModulesDir, packageName)
     await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
-    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
+    await removePathSafely(topLevelEntryPath)
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }
@@ -916,16 +967,94 @@ async function ensureAgentRuntimeDependenciesInReleaseApp(command: {
     }
 
     await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
-    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
+    await removePathSafely(topLevelEntryPath)
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }
+
+  await normalizeAbsoluteRuntimeSymlinks({
+    sourceNodeModulesDir,
+    targetNodeModulesDir,
+  })
 
   console.log(
     `[agent:release] synced ${dependencyIds.size} runtime package snapshots from workspace cache`,
   )
 
   return runtimeSnapshot
+}
+
+async function normalizeAbsoluteRuntimeSymlinks(command: {
+  readonly sourceNodeModulesDir: string
+  readonly targetNodeModulesDir: string
+}): Promise<void> {
+  const pendingDirs = [command.targetNodeModulesDir]
+  let normalizedCount = 0
+
+  while (pendingDirs.length > 0) {
+    const currentDir = pendingDirs.pop()
+    if (!currentDir) {
+      continue
+    }
+
+    const entries = await fs.readdir(currentDir, { withFileTypes: true })
+    for (const entry of entries) {
+      const entryPath = path.join(currentDir, entry.name)
+
+      if (entry.isDirectory()) {
+        pendingDirs.push(entryPath)
+        continue
+      }
+
+      if (!entry.isSymbolicLink()) {
+        continue
+      }
+
+      let rawTargetPath: string
+      try {
+        rawTargetPath = await fs.readlink(entryPath)
+      } catch {
+        continue
+      }
+
+      if (!path.isAbsolute(rawTargetPath)) {
+        continue
+      }
+
+      const resolvedTargetPath = path.resolve(path.dirname(entryPath), rawTargetPath)
+      const remappedTargetPath = remapAbsoluteRuntimeSymlinkTarget({
+        sourceNodeModulesDir: command.sourceNodeModulesDir,
+        targetNodeModulesDir: command.targetNodeModulesDir,
+        resolvedTargetPath,
+      })
+      if (!remappedTargetPath) {
+        throw new Error(
+          `could not remap absolute runtime symlink target: ${entryPath} -> ${rawTargetPath}`,
+        )
+      }
+
+      if (!(await pathExists(remappedTargetPath))) {
+        throw new Error(`absolute runtime symlink target missing after sync: ${remappedTargetPath}`)
+      }
+
+      const targetStats = await fs.lstat(remappedTargetPath)
+      const relativeLinkTarget = path.relative(path.dirname(entryPath), remappedTargetPath)
+      let remappedSymlinkType: fsSync.symlink.Type | undefined
+      if (process.platform === 'win32') {
+        remappedSymlinkType = targetStats.isDirectory() ? 'junction' : 'file'
+      } else {
+        remappedSymlinkType = undefined
+      }
+
+      await removePathSafely(entryPath)
+      await fs.symlink(relativeLinkTarget, entryPath, remappedSymlinkType)
+      normalizedCount += 1
+    }
+  }
+
+  if (normalizedCount > 0) {
+    console.log(`[agent:release] normalized ${normalizedCount} absolute runtime symlink(s)`)
+  }
 }
 
 async function pruneReleaseAppForRuntime(

@@ -339,7 +339,7 @@ export async function stageReleaseFromManifest(command: {
     return {
       kind: 'blocked',
       manifest: command.manifest,
-      reason: 'automatic updates are blocked due to previous crash loop',
+      reason: 'automatic updates are disabled by policy',
     }
   }
 

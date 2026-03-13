@@ -109,7 +109,6 @@ describe('supervisor release policies', () => {
       rollbackVersion: '1.0.0',
       nowIso: new Date().toISOString(),
       reason: 'startup timeout',
-      crashLoopDetected: false,
     })
 
     const currentRealpath = fs.realpathSync(layout.currentLinkPath)
@@ -148,9 +147,10 @@ describe('supervisor release policies', () => {
     })
 
     expect(third.isCrashLoop).toBe(true)
-    expect(third.nextState.activation_state).toBe('blocked')
+    expect(third.nextState.activation_state).toBe('idle')
     expect(third.nextState.blocked_versions).toContain('2.0.0')
-    expect(third.nextState.automatic_updates_blocked).toBe(true)
+    expect(third.nextState.automatic_updates_blocked).toBe(false)
+    expect(third.newlyBlocked).toBe(true)
   })
 
   it('clears release links and falls back when rollback target is missing', () => {
@@ -173,7 +173,6 @@ describe('supervisor release policies', () => {
       rollbackVersion: 'fallback-runtime',
       nowIso: new Date().toISOString(),
       reason: 'release directory missing',
-      crashLoopDetected: false,
     })
 
     expect(fs.existsSync(layout.currentLinkPath)).toBe(false)

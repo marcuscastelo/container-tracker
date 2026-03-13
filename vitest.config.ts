@@ -63,6 +63,6 @@ export default defineConfig({
     environment: 'node',
     setupFiles: [path.resolve(__dirname, 'vitest.setup.ts')],
     // Playwright specs run via `pnpm test:playwright`, not Vitest.
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'packaging/arch/src/**'],
   },
 })

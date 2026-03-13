@@ -274,7 +274,6 @@ export function rollbackRelease(command: {
   readonly rollbackVersion: string
   readonly nowIso: string
   readonly reason: string
-  readonly crashLoopDetected: boolean
 }): ReleaseState {
   const rollbackDir = resolveReleaseDir(command.layout.releasesDir, command.rollbackVersion)
   if (pathExists(rollbackDir)) {
@@ -292,7 +291,7 @@ export function rollbackRelease(command: {
     current_version: command.rollbackVersion,
     last_known_good_version: command.rollbackVersion,
     target_version: null,
-    activation_state: command.crashLoopDetected ? 'blocked' : 'rolled_back',
+    activation_state: 'rolled_back',
     last_update_attempt: command.nowIso,
     last_error: command.reason,
   }

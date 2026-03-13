@@ -381,6 +381,12 @@ async function main(): Promise<void> {
                 crashLoopThreshold,
                 maxActivationFailures: MAX_ACTIVATION_FAILURES,
               })
+        if (failureTracked?.newlyBlocked && failedTargetVersion) {
+          appendSupervisorLog(
+            layout.logsDir,
+            `[update] version ${failedTargetVersion} blocked after ${failureTracked.activationFailuresForVersion} activation failures`,
+          )
+        }
         const rollbackVersion = selectRollbackVersion({
           releasesDir: layout.releasesDir,
           lastKnownGoodVersion: state.last_known_good_version,
@@ -393,7 +399,6 @@ async function main(): Promise<void> {
           rollbackVersion,
           nowIso,
           reason: `failed to activate pending release: ${errorMessage}`,
-          crashLoopDetected: failureTracked?.isCrashLoop ?? false,
         })
         writeReleaseState(layout.releaseStatePath, state)
         appendSupervisorLog(
@@ -523,6 +528,12 @@ async function main(): Promise<void> {
         crashLoopThreshold,
         maxActivationFailures: MAX_ACTIVATION_FAILURES,
       })
+      if (failureTracked.newlyBlocked) {
+        appendSupervisorLog(
+          layout.logsDir,
+          `[update] version ${refreshedState.target_version} blocked after ${failureTracked.activationFailuresForVersion} activation failures`,
+        )
+      }
 
       const rollbackVersion = selectRollbackVersion({
         releasesDir: layout.releasesDir,
@@ -537,7 +548,6 @@ async function main(): Promise<void> {
         rollbackVersion,
         nowIso: new Date().toISOString(),
         reason: failureReason,
-        crashLoopDetected: failureTracked.isCrashLoop,
       })
 
       writeReleaseState(layout.releaseStatePath, rolledBackState)
@@ -593,6 +603,12 @@ async function main(): Promise<void> {
         crashLoopThreshold,
         maxActivationFailures: MAX_ACTIVATION_FAILURES,
       })
+      if (failureTracked.newlyBlocked) {
+        appendSupervisorLog(
+          layout.logsDir,
+          `[update] version ${runtimeSelection.version} blocked after ${failureTracked.activationFailuresForVersion} activation failures`,
+        )
+      }
 
       const fallbackState = releaseManager.rollbackRelease({
         layout,
@@ -600,7 +616,6 @@ async function main(): Promise<void> {
         rollbackVersion: fallbackVersion,
         nowIso: now,
         reason: `release crash loop detected for version ${runtimeSelection.version}; switching to fallback runtime`,
-        crashLoopDetected: failureTracked.isCrashLoop,
       })
 
       writeReleaseState(layout.releaseStatePath, fallbackState)

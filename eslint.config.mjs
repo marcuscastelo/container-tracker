@@ -133,7 +133,13 @@ const trackingReadModelRestrictedPaths = [
 export default [
   // Ignore build/output folders from linting
   {
-    ignores: ['.output/**', '.vinxi/**', 'tools/ralph-loop/**', '.ralph-loop/**'],
+    ignores: [
+      '.output/**',
+      '.vinxi/**',
+      'tools/ralph-loop/**',
+      '.ralph-loop/**',
+      'packaging/arch/src/agent-app/**',
+    ],
   },
   {
     plugins: {
