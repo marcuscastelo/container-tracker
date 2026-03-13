@@ -15,6 +15,7 @@ import {
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 type ProcessTrackingDeps = Pick<
   TrackingUseCases,
@@ -89,7 +90,7 @@ async function resolveContainerSyncMetadata(
   deps: ProcessTrackingDeps,
 ): Promise<readonly ContainerSyncRecord[]> {
   const containerNumbers = processWithContainers.containers.map((container) =>
-    String(container.containerNumber).trim().toUpperCase(),
+    normalizeContainerNumber(String(container.containerNumber)),
   )
 
   let containersSync: readonly ContainerSyncRecord[] = containerNumbers.map((containerNumber) =>

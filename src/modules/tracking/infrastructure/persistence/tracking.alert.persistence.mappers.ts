@@ -7,6 +7,7 @@ import type {
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { stringsToJson, toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
+import { normalizeNoMovementThresholdDays } from '~/modules/tracking/infrastructure/persistence/tracking.no-movement-threshold'
 import {
   isRecord,
   normalizeAlertIso,
@@ -72,8 +73,6 @@ const ALERT_RESOLVED_REASON_MAP: Record<string, TrackingAlertResolvedReason> = {
   condition_cleared: 'condition_cleared',
   terminal_state: 'terminal_state',
 }
-
-const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
 
 function requireAlertCategory(value: unknown, field: string): AlertCategory {
   const s = requireString(value, field)
@@ -141,15 +140,6 @@ function optionalAlertAckSource(value: unknown, field: string): AlertAckSource |
     throw new Error(`tracking persistence mapper: ${field} is not a valid ack source: ${s}`)
   }
   return mapped
-}
-
-function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
-  const normalizedCandidate = Math.floor(rawThresholdDays)
-  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
-    (thresholdDays) => normalizedCandidate >= thresholdDays,
-  )
-  if (eligible.length === 0) return normalizedCandidate
-  return eligible[eligible.length - 1] ?? normalizedCandidate
 }
 
 function requireAlertMessageContract(

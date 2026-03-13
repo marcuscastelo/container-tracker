@@ -1,6 +1,9 @@
 import type { NewTrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
-
-const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
+import { normalizeNoMovementThresholdDays } from '~/modules/tracking/infrastructure/persistence/tracking.no-movement-threshold'
+import {
+  isRecord,
+  optionalFiniteNumber,
+} from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mapper-primitives'
 
 export type NoMovementDedupRow = {
   readonly container_id: string
@@ -11,29 +14,11 @@ export type NoMovementDedupRow = {
   readonly source_observation_fingerprints: unknown
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function toFiniteNumberOrNull(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null
-  return value
-}
-
-function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
-  const normalizedCandidate = Math.floor(rawThresholdDays)
-  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
-    (thresholdDays) => normalizedCandidate >= thresholdDays,
-  )
-  if (eligible.length === 0) return normalizedCandidate
-  return eligible[eligible.length - 1] ?? normalizedCandidate
-}
-
 function toNoMovementThresholdDaysFromParams(messageParams: unknown): number | null {
   if (!isRecord(messageParams)) return null
 
-  const days = toFiniteNumberOrNull(messageParams.days)
-  const rawThresholdDays = toFiniteNumberOrNull(messageParams.threshold_days) ?? days
+  const days = optionalFiniteNumber(messageParams.days)
+  const rawThresholdDays = optionalFiniteNumber(messageParams.threshold_days) ?? days
   if (rawThresholdDays === null) return null
 
   return normalizeNoMovementThresholdDays(rawThresholdDays)

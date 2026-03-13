@@ -32,6 +32,23 @@ type DashboardSyncControllerResult = {
   readonly handleProcessSync: (processId: string) => Promise<void>
 }
 
+export function schedulePerProcessLocalSyncExpiry(command: {
+  readonly processIds: readonly string[]
+  readonly ttlMs: number
+  readonly onExpire: (processId: string) => void
+}): ReadonlyMap<string, ReturnType<typeof setTimeout>> {
+  const timeoutByProcessId = new Map<string, ReturnType<typeof setTimeout>>()
+
+  for (const processId of command.processIds) {
+    const timeoutId = setTimeout(() => {
+      command.onExpire(processId)
+    }, command.ttlMs)
+    timeoutByProcessId.set(processId, timeoutId)
+  }
+
+  return timeoutByProcessId
+}
+
 function withProcessLocalSyncState(
   currentState: LocalSyncStateByProcessId,
   processId: string,
@@ -135,13 +152,15 @@ export function useDashboardSyncController(
 
     if (options?.ttlMs === undefined) return
 
-    const timeoutId = setTimeout(() => {
-      for (const processId of processIds) {
+    const timeoutByProcessId = schedulePerProcessLocalSyncExpiry({
+      processIds,
+      ttlMs: options.ttlMs,
+      onExpire: (processId) => {
         clearLocalSyncState(processId)
-      }
-    }, options.ttlMs)
+      },
+    })
 
-    for (const processId of processIds) {
+    for (const [processId, timeoutId] of timeoutByProcessId.entries()) {
       localSyncFeedbackTimeoutByProcessId.set(processId, timeoutId)
     }
   }
