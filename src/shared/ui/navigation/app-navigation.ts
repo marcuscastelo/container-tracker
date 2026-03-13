@@ -19,6 +19,13 @@ type NavigateToProcessCommand = {
   readonly replace?: boolean
 }
 
+type NavigateToProcessContainerCommand = {
+  readonly navigate: NavigateFn
+  readonly processId: string
+  readonly containerNumber: string
+  readonly replace?: boolean
+}
+
 type PrefetchProcessIntentCommand = {
   readonly processId: string
   readonly preloadRoute: PreloadRouteFn
@@ -73,6 +80,18 @@ export function buildProcessHref(processId: string): string {
   return `/shipments/${encodeURIComponent(processId)}`
 }
 
+export function buildProcessContainerHref(processId: string, containerNumber: string): string {
+  const processHref = buildProcessHref(processId)
+  const normalizedContainerNumber = containerNumber.trim().toUpperCase()
+  if (normalizedContainerNumber.length === 0) {
+    return processHref
+  }
+
+  const searchParams = new URLSearchParams()
+  searchParams.set('container', normalizedContainerNumber)
+  return `${processHref}?${searchParams.toString()}`
+}
+
 export function buildDashboardHref(): string {
   return '/'
 }
@@ -97,6 +116,12 @@ export function navigateToAppHref(command: NavigateToAppHrefCommand): boolean {
 
 export function navigateToProcess(command: NavigateToProcessCommand): void {
   void command.navigate(buildProcessHref(command.processId), { replace: command.replace })
+}
+
+export function navigateToProcessContainer(command: NavigateToProcessContainerCommand): void {
+  void command.navigate(buildProcessContainerHref(command.processId, command.containerNumber), {
+    replace: command.replace,
+  })
 }
 
 function shouldThrottleDashboardIntent(nowMs: number): boolean {

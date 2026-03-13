@@ -32,11 +32,13 @@ export function useShipmentScreenResource(
   )
 
   let previousProcessId: string | null = null
+  let lastUndefinedRecoveryKey: string | null = null
 
   createEffect(() => {
     const currentKey = processResourceKey()
     if (currentKey === null) {
       previousProcessId = null
+      lastUndefinedRecoveryKey = null
       mutate(undefined)
       return
     }
@@ -51,6 +53,27 @@ export function useShipmentScreenResource(
 
     previousProcessId = currentProcessId
     mutate(undefined)
+  })
+
+  createEffect(() => {
+    const currentKey = processResourceKey()
+    if (currentKey === null) return
+
+    const recoveryKey = `${currentKey[0]}::${currentKey[1]}`
+    const data = shipment()
+    const hasError = Boolean(shipment.error)
+    const isLoading = shipment.loading
+
+    if (data !== undefined || hasError || isLoading) {
+      if (lastUndefinedRecoveryKey === recoveryKey) {
+        lastUndefinedRecoveryKey = null
+      }
+      return
+    }
+
+    if (lastUndefinedRecoveryKey === recoveryKey) return
+    lastUndefinedRecoveryKey = recoveryKey
+    void refetch()
   })
 
   const reconcileTrackingView = async () => {

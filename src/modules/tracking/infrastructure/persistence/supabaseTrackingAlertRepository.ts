@@ -454,6 +454,8 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         category: domainAlert.category,
         severity: domainAlert.severity,
         type: domainAlert.type,
+        message_key: domainAlert.message_key,
+        message_params: domainAlert.message_params,
         generated_at: domainAlert.triggered_at,
         fingerprint: domainAlert.alert_fingerprint,
         is_active: resolveAlertLifecycleState(domainAlert) === 'ACTIVE',

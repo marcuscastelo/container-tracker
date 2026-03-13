@@ -8,12 +8,15 @@ import {
   type DashboardProcessesCreatedByMonthQuery,
   DashboardProcessesCreatedByMonthQuerySchema,
   DashboardProcessesCreatedByMonthResponseSchema,
+  type NavbarAlertsSummaryResponse,
+  NavbarAlertsSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
 
 type DashboardControllersDeps = {
   readonly dashboardUseCases: Pick<
     DashboardUseCases,
     | 'getOperationalSummaryReadModel'
+    | 'getNavbarAlertsSummaryReadModel'
     | 'getDashboardKpisReadModel'
     | 'getProcessesCreatedByMonthReadModel'
   >
@@ -65,6 +68,114 @@ function toDashboardMonthWindowSize(
   return undefined
 }
 
+type NavbarAlertResponse =
+  NavbarAlertsSummaryResponse['processes'][number]['containers'][number]['alerts'][number]
+type NavbarContainerResponse =
+  NavbarAlertsSummaryResponse['processes'][number]['containers'][number]
+type NavbarProcessResponse = NavbarAlertsSummaryResponse['processes'][number]
+
+type NavbarAlertReadModel = Awaited<
+  ReturnType<DashboardUseCases['getNavbarAlertsSummaryReadModel']>
+>['processes'][number]['containers'][number]['alerts'][number]
+
+function toNavbarAlertResponse(alert: NavbarAlertReadModel): NavbarAlertResponse {
+  const baseAlert = {
+    alert_id: alert.alertId,
+    severity: alert.severity,
+    category: alert.category,
+    occurred_at: alert.occurredAt,
+    retroactive: alert.retroactive,
+  }
+
+  if (alert.messageKey === 'alerts.transshipmentDetected') {
+    return {
+      ...baseAlert,
+      message_key: 'alerts.transshipmentDetected',
+      message_params: alert.messageParams,
+    }
+  }
+
+  if (alert.messageKey === 'alerts.customsHoldDetected') {
+    return {
+      ...baseAlert,
+      message_key: 'alerts.customsHoldDetected',
+      message_params: alert.messageParams,
+    }
+  }
+
+  if (alert.messageKey === 'alerts.noMovementDetected') {
+    return {
+      ...baseAlert,
+      message_key: 'alerts.noMovementDetected',
+      message_params: alert.messageParams,
+    }
+  }
+
+  if (alert.messageKey === 'alerts.etaMissing') {
+    return {
+      ...baseAlert,
+      message_key: 'alerts.etaMissing',
+      message_params: {},
+    }
+  }
+
+  if (alert.messageKey === 'alerts.etaPassed') {
+    return {
+      ...baseAlert,
+      message_key: 'alerts.etaPassed',
+      message_params: {},
+    }
+  }
+
+  if (alert.messageKey === 'alerts.portChange') {
+    return {
+      ...baseAlert,
+      message_key: 'alerts.portChange',
+      message_params: {},
+    }
+  }
+
+  return {
+    ...baseAlert,
+    message_key: 'alerts.dataInconsistent',
+    message_params: {},
+  }
+}
+
+function toNavbarAlertsSummaryResponse(
+  summary: Awaited<ReturnType<DashboardUseCases['getNavbarAlertsSummaryReadModel']>>,
+): NavbarAlertsSummaryResponse {
+  return {
+    generated_at: new Date().toISOString(),
+    total_active_alerts: summary.totalActiveAlerts,
+    processes: summary.processes.map(
+      (process): NavbarProcessResponse => ({
+        process_id: process.processId,
+        process_reference: process.processReference,
+        carrier: process.carrier,
+        route_summary: process.routeSummary,
+        active_alerts_count: process.activeAlertsCount,
+        dominant_severity: process.dominantSeverity,
+        latest_alert_at: process.latestAlertAt,
+        containers: process.containers.map(
+          (container): NavbarContainerResponse => ({
+            container_id: container.containerId,
+            container_number: container.containerNumber,
+            status: container.status,
+            eta: container.eta,
+            active_alerts_count: container.activeAlertsCount,
+            dominant_severity: container.dominantSeverity,
+            latest_alert_at: container.latestAlertAt,
+            alerts: container.alerts.map(
+              (alert): NavbarAlertResponse => toNavbarAlertResponse(alert),
+            ),
+          }),
+        ),
+      }),
+    ),
+  }
+}
+
 export function createDashboardControllers(deps: DashboardControllersDeps) {
   const { dashboardUseCases } = deps
 
@@ -80,6 +191,17 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
       return jsonResponse(response, 200, DashboardOperationalSummaryResponseSchema)
     } catch (err) {
       console.error('GET /api/dashboard/operational-summary error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getNavbarAlertsSummary(): Promise<Response> {
+    try {
+      const result = await dashboardUseCases.getNavbarAlertsSummaryReadModel()
+      const response = toNavbarAlertsSummaryResponse(result)
+      return jsonResponse(response, 200, NavbarAlertsSummaryResponseSchema)
+    } catch (err) {
+      console.error('GET /api/alerts/navbar-summary error:', err)
       return mapErrorToResponse(err)
     }
   }
@@ -133,6 +255,7 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
 
   return {
     getOperationalSummary,
+    getNavbarAlertsSummary,
     getKpis,
     getProcessesCreatedByMonth,
   }

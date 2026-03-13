@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildDashboardHref,
+  buildProcessContainerHref,
   buildProcessHref,
   isInternalAppHref,
   navigateToAppHref,
   navigateToProcess,
+  navigateToProcessContainer,
   prefetchDashboardIntent,
   prefetchProcessIntent,
   toInternalAppPathname,
@@ -17,6 +19,12 @@ describe('app-navigation helpers', () => {
 
   it('builds process href with encoded process id', () => {
     expect(buildProcessHref('process/with space')).toBe('/shipments/process%2Fwith%20space')
+  })
+
+  it('builds process href with container deep-link query', () => {
+    expect(buildProcessContainerHref('process/with space', ' mscu1234567 ')).toBe(
+      '/shipments/process%2Fwith%20space?container=MSCU1234567',
+    )
   })
 
   it('detects internal hrefs and parses pathname safely', () => {
@@ -55,6 +63,19 @@ describe('app-navigation helpers', () => {
     })
 
     expect(navigate).toHaveBeenCalledWith('/shipments/p-abc', { replace: undefined })
+  })
+
+  it('navigates to process container deep-link through canonical helper', () => {
+    const navigate = vi.fn()
+    navigateToProcessContainer({
+      navigate,
+      processId: 'p-abc',
+      containerNumber: 'mscu7654321',
+    })
+
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', {
+      replace: undefined,
+    })
   })
 
   it('prefetches process intent with throttle', async () => {

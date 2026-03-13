@@ -7,10 +7,10 @@ import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { LanguageSwitch } from '~/shared/ui/LanguageSwitch'
+import { NavbarAlertsButton } from '~/shared/ui/navbar-alerts/NavbarAlertsButton'
 
 type Props = {
   readonly onCreateProcess?: () => void
-  readonly alertCount?: number
   readonly searchSlot?: JSX.Element
   readonly syncSlot?: JSX.Element
 }
@@ -48,43 +48,6 @@ function NavLink(props: {
     >
       {props.children}
     </A>
-  )
-}
-
-function AlertCountBadge(props: {
-  readonly count: number
-  readonly label: string
-  readonly fullLabel: string
-  readonly activeTooltip: string
-}): JSX.Element {
-  return (
-    <span
-      class={clsx(
-        'inline-flex h-(--dashboard-control-height) min-h-(--dashboard-control-height) items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs-ui font-semibold',
-        {
-          'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg': props.count > 0,
-          'border-border bg-surface text-text-muted': props.count === 0,
-        },
-      )}
-      title={props.activeTooltip}
-    >
-      <svg
-        class="h-3.5 w-3.5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-        />
-      </svg>
-      <span>{props.count}</span>
-      <span class="hidden min-[1280px]:inline">{props.label}</span>
-    </span>
   )
 }
 
@@ -205,10 +168,6 @@ function HeaderActions(props: {
   readonly syncSlot?: JSX.Element
   readonly createProcessLabel: string
   readonly onCreateProcess?: () => void
-  readonly alertCount?: number
-  readonly alertTextLabel: string
-  readonly alertLabel: string
-  readonly alertActiveTooltip: string
 }): JSX.Element {
   return (
     <div class="navbar-right flex min-w-0 items-center justify-end gap-2 whitespace-nowrap">
@@ -220,15 +179,7 @@ function HeaderActions(props: {
         label={props.createProcessLabel}
         onCreateProcess={props.onCreateProcess}
       />
-
-      <Show when={props.alertCount != null}>
-        <AlertCountBadge
-          count={props.alertCount ?? 0}
-          label={props.alertTextLabel}
-          fullLabel={props.alertLabel}
-          activeTooltip={props.alertActiveTooltip}
-        />
-      </Show>
+      <NavbarAlertsButton />
 
       <div class="flex items-center">
         <LanguageSwitch />
@@ -261,12 +212,6 @@ export function AppHeader(props: Props): JSX.Element {
             syncSlot={props.syncSlot}
             createProcessLabel={t(keys.header.createProcess)}
             onCreateProcess={props.onCreateProcess}
-            alertCount={props.alertCount}
-            alertTextLabel={t(keys.header.alertsLabel)}
-            alertLabel={t(keys.header.alertsBadge, { count: props.alertCount ?? 0 })}
-            alertActiveTooltip={t(keys.header.alertsActiveTooltip, {
-              count: props.alertCount ?? 0,
-            })}
           />
         </div>
       </div>

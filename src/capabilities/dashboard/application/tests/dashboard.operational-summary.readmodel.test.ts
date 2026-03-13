@@ -24,6 +24,13 @@ function makeAlert(
     category: 'monitoring',
     severity,
     type: 'NO_MOVEMENT',
+    message_key: 'alerts.noMovementDetected',
+    message_params: {
+      threshold_days: 10,
+      days_without_movement: 11,
+      days: 11,
+      lastEventDate: '2026-02-28',
+    },
     generated_at: '2026-03-03T00:00:00.000Z',
     fingerprint: null,
     is_active: true,
