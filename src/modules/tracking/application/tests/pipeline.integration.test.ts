@@ -10,6 +10,7 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertDerivationState,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
@@ -111,6 +112,8 @@ class InMemoryObservationRepository implements ObservationRepository {
  */
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts: Map<string, TrackingAlert> = new Map()
+  public findByContainerIdCalls = 0
+  public findAlertDerivationStateByContainerIdCalls = 0
 
   async insertMany(newAlerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     const inserted: TrackingAlert[] = []
@@ -131,8 +134,15 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     return list
   }
   async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    this.findByContainerIdCalls += 1
     const list = Array.from(this.alerts.values()).filter((a) => a.container_id === containerId)
     return list
+  }
+  async findAlertDerivationStateByContainerId(
+    containerId: string,
+  ): Promise<readonly TrackingAlertDerivationState[]> {
+    this.findAlertDerivationStateByContainerIdCalls += 1
+    return Array.from(this.alerts.values()).filter((alert) => alert.container_id === containerId)
   }
   async findContainerNumbersByIds(
     containerIds: readonly string[],
@@ -497,5 +507,28 @@ describe('Pipeline Integration Tests - Maersk', () => {
 
     // The timeline holes detection is working
     // (will vary based on actual event dates in the fixture)
+  })
+
+  it('uses lightweight alert derivation state during snapshot processing', async () => {
+    const containerId = randomUUID()
+    const containerNumber = 'MNBU3094033'
+    const snapshot: Snapshot = {
+      id: randomUUID(),
+      container_id: containerId,
+      provider: 'maersk',
+      fetched_at: '2026-02-03T15:00:00.000Z',
+      payload: maerskPayload,
+    }
+
+    const trackingAlertRepository = new InMemoryTrackingAlertRepository()
+
+    await processSnapshot(snapshot, containerId, containerNumber, {
+      snapshotRepository: new InMemorySnapshotRepository(),
+      observationRepository: new InMemoryObservationRepository(),
+      trackingAlertRepository,
+    })
+
+    expect(trackingAlertRepository.findAlertDerivationStateByContainerIdCalls).toBe(1)
+    expect(trackingAlertRepository.findByContainerIdCalls).toBe(0)
   })
 })

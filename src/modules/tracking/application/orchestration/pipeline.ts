@@ -104,7 +104,8 @@ export async function processSnapshot(
 
   // Step 7: Derive Alerts
   // Fact alerts dedupe by historical fingerprint, so derivation must see full history.
-  const existingAlerts = await deps.trackingAlertRepository.findByContainerId(containerId)
+  const existingAlerts =
+    await deps.trackingAlertRepository.findAlertDerivationStateByContainerId(containerId)
   const alertTransitions = deriveAlertTransitions(timeline, status, existingAlerts, isBackfill)
   const newAlertDescriptors: readonly NewTrackingAlert[] = alertTransitions.newAlerts
 

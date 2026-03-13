@@ -118,6 +118,7 @@ function createDeps(
       ),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds: vi.fn(async () => new Map<string, string>()),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge: vi.fn(async () => undefined),
@@ -266,6 +267,9 @@ describe('getContainerSummary', () => {
     })
 
     expect(findAllAlerts).toHaveBeenCalledTimes(1)
+    expect(
+      deps.trackingAlertRepository.findAlertDerivationStateByContainerId,
+    ).not.toHaveBeenCalled()
     expect(result.alerts.length).toBe(2)
     expect(result.alerts.some((alert) => alert.acked_at !== null)).toBe(true)
   })

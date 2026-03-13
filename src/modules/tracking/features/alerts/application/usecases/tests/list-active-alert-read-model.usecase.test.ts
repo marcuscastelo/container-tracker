@@ -25,6 +25,7 @@ function createDeps(
       insertMany: vi.fn(async () => []),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds: vi.fn(async () => new Map<string, string>()),
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       listActiveAlertReadModel: listActiveAlertReadModelImpl,
