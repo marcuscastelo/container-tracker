@@ -42,26 +42,28 @@ describe('dashboard-status-cell.display', () => {
     })
 
     createRoot((dispose) => {
-      const display = createDashboardStatusCellDisplayMemo({
-        getCommand: () => ({
-          source,
-          t: translate,
-          keys,
-        }),
-        buildDisplay,
-      })
+      try {
+        const display = createDashboardStatusCellDisplayMemo({
+          getCommand: () => ({
+            source,
+            t: translate,
+            keys,
+          }),
+          buildDisplay,
+        })
 
-      const initial = display()
-      const repeated = display()
+        const initial = display()
+        const repeated = display()
 
-      expect(buildDisplay).toHaveBeenCalledTimes(1)
-      expect(repeated).toBe(initial)
-      expect(initial.subtitle).toEqual({
-        label: '2 descarregados',
-        textClass: 'text-tone-warning-fg',
-      })
-
-      dispose()
+        expect(buildDisplay).toHaveBeenCalledTimes(1)
+        expect(repeated).toBe(initial)
+        expect(initial.subtitle).toEqual({
+          label: '2 descarregados',
+          textClass: 'text-tone-warning-fg',
+        })
+      } finally {
+        dispose()
+      }
     })
   })
 })
