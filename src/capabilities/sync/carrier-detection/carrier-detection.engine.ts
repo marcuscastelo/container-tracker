@@ -88,6 +88,7 @@ export function createCarrierDetectionEngine(deps: {
         })
 
         if (probeResult.kind === 'found') {
+          const durationMs = Math.max(0, nowMs() - startedAtMs)
           const result: CarrierDetectionResult = {
             detected: true,
             provider,
@@ -99,13 +100,14 @@ export function createCarrierDetectionEngine(deps: {
             containerNumber,
             candidateProviders,
             detectedProvider: provider,
-            durationMs: Math.max(0, nowMs() - startedAtMs),
+            durationMs,
             reason: result.reason,
           })
           return result
         }
 
         if (probeResult.kind === 'error') {
+          const durationMs = Math.max(0, nowMs() - startedAtMs)
           const result: CarrierDetectionResult = {
             detected: false,
             provider: null,
@@ -117,7 +119,7 @@ export function createCarrierDetectionEngine(deps: {
             containerNumber,
             candidateProviders,
             detectedProvider: null,
-            durationMs: Math.max(0, nowMs() - startedAtMs),
+            durationMs,
             reason: result.reason,
             error: probeResult.error,
           })
@@ -125,6 +127,7 @@ export function createCarrierDetectionEngine(deps: {
         }
       }
 
+      const durationMs = Math.max(0, nowMs() - startedAtMs)
       const result: CarrierDetectionResult = {
         detected: false,
         provider: null,
@@ -136,7 +139,7 @@ export function createCarrierDetectionEngine(deps: {
         containerNumber,
         candidateProviders,
         detectedProvider: null,
-        durationMs: Math.max(0, nowMs() - startedAtMs),
+        durationMs,
         reason: result.reason,
       })
       return result
