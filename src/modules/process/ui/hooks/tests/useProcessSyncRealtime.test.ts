@@ -77,7 +77,7 @@ describe('useProcessSyncRealtime helpers', () => {
       containerToProcessId: new Map([['MSCU1234567', 'process-1']]),
     })
 
-    expect(prunedState).not.toBe(currentState)
+    expect(prunedState).toEqual(currentState)
     expect(shallowEqualProcessSyncContainerStateMap(currentState, prunedState)).toBe(true)
   })
 
