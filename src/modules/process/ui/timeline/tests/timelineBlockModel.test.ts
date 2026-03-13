@@ -74,6 +74,19 @@ describe('buildTimelineRenderList', () => {
     expect(tsBlocks).toHaveLength(0)
   })
 
+  it('does NOT insert transshipment when vessel differs only by casing or whitespace', () => {
+    const events = [
+      makeEvent({ id: 'e1', type: 'LOAD', vesselName: ' MAERSK ', voyage: 'VY1', location: 'A' }),
+      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'maersk', voyage: 'VY1', location: 'B' }),
+      makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
+    ]
+    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+
+    const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
+    expect(tsBlocks).toHaveLength(0)
+  })
+
   it('creates pre-carriage terminal block for events before voyage', () => {
     const events = [
       makeEvent({ id: 'e1', type: 'GATE_IN', location: 'Terminal X' }),

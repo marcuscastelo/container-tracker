@@ -185,6 +185,39 @@ describe('deriveTransshipment', () => {
     expect(result.ports).toEqual(['SGSIN'])
   })
 
+  it('should ignore case-only and whitespace-only vessel name differences', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        vessel_name: 'MAERSK',
+        id: '00000000-0000-0000-0000-000000000021',
+        fingerprint: 'fp-case-load-origin',
+        event_time: '2025-11-17T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        vessel_name: ' MAERSK ',
+        id: '00000000-0000-0000-0000-000000000022',
+        fingerprint: 'fp-case-discharge',
+        event_time: '2025-12-01T00:00:00.000Z',
+      }),
+      makeObs({
+        type: 'LOAD',
+        location_code: 'SGSIN',
+        vessel_name: 'Maersk',
+        id: '00000000-0000-0000-0000-000000000023',
+        fingerprint: 'fp-case-load',
+        event_time: '2025-12-03T00:00:00.000Z',
+      }),
+    ])
+
+    const result = deriveTransshipment(timeline)
+    expect(result.hasTransshipment).toBe(false)
+    expect(result.transshipmentCount).toBe(0)
+  })
+
   it('should detect multiple transshipments when vessel changes twice', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
       makeObs({
@@ -379,6 +412,44 @@ describe('deriveAlerts', () => {
       // source fingerprints = [discharge, load]
       expect(transAlert?.source_observation_fingerprints).toContain('fp-discharge-sgsin')
       expect(transAlert?.source_observation_fingerprints).toContain('fp-load-sgsin')
+    })
+
+    it('should preserve original vessel casing in alert messages', () => {
+      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+        makeObs({
+          type: 'LOAD',
+          location_code: 'CNSHA',
+          vessel_name: 'Maersk Aurora',
+          id: '00000000-0000-0000-0000-000000000031',
+          fingerprint: 'fp-alert-load-origin',
+          event_time: '2025-11-17T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'DISCHARGE',
+          location_code: 'SGSIN',
+          vessel_name: 'Maersk Aurora',
+          id: '00000000-0000-0000-0000-000000000032',
+          fingerprint: 'fp-alert-discharge',
+          event_time: '2025-12-01T00:00:00.000Z',
+        }),
+        makeObs({
+          type: 'LOAD',
+          location_code: 'SGSIN',
+          vessel_name: 'Msc Bianca Silvia',
+          id: '00000000-0000-0000-0000-000000000033',
+          fingerprint: 'fp-alert-load',
+          event_time: '2025-12-03T00:00:00.000Z',
+        }),
+      ])
+
+      const alerts = deriveAlerts(timeline, 'LOADED', [])
+      const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
+
+      expect(transAlert?.message_params).toEqual({
+        port: 'SGSIN',
+        fromVessel: 'Maersk Aurora',
+        toVessel: 'Msc Bianca Silvia',
+      })
     })
 
     it('should mark TRANSSHIPMENT alert as retroactive during backfill', () => {

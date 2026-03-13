@@ -1,3 +1,4 @@
+import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import {
   computeAlertFingerprint,
@@ -135,11 +136,20 @@ function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[
 
     const vesselFrom = prev.vessel_name?.trim() || null
     const vesselTo = curr.vessel_name?.trim() || null
+    const normalizedVesselFrom = normalizeVesselName(prev.vessel_name)
+    const normalizedVesselTo = normalizeVesselName(curr.vessel_name)
 
     // Cannot determine transshipment without both vessel names — conservative: skip
-    if (vesselFrom === null || vesselTo === null) continue
+    if (
+      vesselFrom === null ||
+      vesselTo === null ||
+      normalizedVesselFrom === null ||
+      normalizedVesselTo === null
+    ) {
+      continue
+    }
 
-    if (vesselFrom !== vesselTo) {
+    if (normalizedVesselFrom !== normalizedVesselTo) {
       const port = (curr.location_code ?? prev.location_code ?? 'UNKNOWN').toUpperCase()
       pairs.push({ dischargeObs: prev, loadObs: curr, port, vesselFrom, vesselTo })
     }
