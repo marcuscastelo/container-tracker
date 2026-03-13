@@ -60,7 +60,11 @@ export function createInitialReleaseState(currentVersion: string): ReleaseState 
 }
 
 function migrateReleaseState(state: ReleaseState): ReleaseState {
-  if (!state.automatic_updates_blocked || state.blocked_versions.length === 0) {
+  const hasLegacyCrashLoopBlock =
+    state.activation_state === 'blocked' ||
+    state.last_error === 'automatic updates are blocked due to previous crash loop'
+
+  if (!state.automatic_updates_blocked || !hasLegacyCrashLoopBlock) {
     return state
   }
 

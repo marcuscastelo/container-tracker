@@ -344,7 +344,6 @@ export async function stageReleaseFromManifest(command: {
   }
 
   if (hasBlockedVersion(command.state, command.manifest.version)) {
-    console.log(`[agent:update] skipping blocked version ${command.manifest.version}`)
     return {
       kind: 'blocked',
       manifest: command.manifest,

@@ -41,6 +41,39 @@ describe('release state crash-loop policy', () => {
     expect(migrated.last_error).toContain('0.2.2-alpha.1')
   })
 
+  it('migrates legacy blocked state even when blocked_versions is empty', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-release-state-test-'))
+    const releaseStatePath = path.join(tempDir, 'release-state.json')
+
+    fs.writeFileSync(
+      releaseStatePath,
+      JSON.stringify(
+        {
+          current_version: 'unknown',
+          previous_version: 'unknown',
+          last_known_good_version: 'unknown',
+          target_version: null,
+          activation_state: 'blocked',
+          failure_count: 4,
+          last_update_attempt: '2026-03-13T12:19:17.998Z',
+          blocked_versions: [],
+          automatic_updates_blocked: true,
+          recent_failures: [],
+          activation_failures: {},
+          last_error: 'automatic updates are blocked due to previous crash loop',
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    )
+
+    const migrated = readReleaseState(releaseStatePath, 'unknown')
+    expect(migrated.automatic_updates_blocked).toBe(false)
+    expect(migrated.activation_state).toBe('idle')
+    expect(migrated.blocked_versions).toEqual([])
+  })
+
   it('blocks only the failing version when activation failure threshold is reached', () => {
     const now = Date.now()
     const first = withRecordedFailure({

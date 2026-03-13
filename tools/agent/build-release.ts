@@ -295,6 +295,22 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
+async function removePathSafely(targetPath: string): Promise<void> {
+  let stats: fsSync.Stats
+  try {
+    stats = await fs.lstat(targetPath)
+  } catch {
+    return
+  }
+
+  if (stats.isSymbolicLink()) {
+    await fs.unlink(targetPath)
+    return
+  }
+
+  await fs.rm(targetPath, { recursive: true, force: true })
+}
+
 async function ensurePathExists(targetPath: string, label: string): Promise<void> {
   if (!(await pathExists(targetPath))) {
     throw new Error(`${label} not found: ${targetPath}`)
@@ -857,7 +873,7 @@ async function pruneRuntimeNodeModules(
 
     const topLevelEntryPath = resolvePackageEntryPath(nodeModulesDir, packageName)
     await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
-    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
+    await removePathSafely(topLevelEntryPath)
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }
@@ -951,7 +967,7 @@ async function ensureAgentRuntimeDependenciesInReleaseApp(command: {
     }
 
     await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
-    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
+    await removePathSafely(topLevelEntryPath)
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }
@@ -1030,7 +1046,7 @@ async function normalizeAbsoluteRuntimeSymlinks(command: {
         remappedSymlinkType = undefined
       }
 
-      await fs.rm(entryPath, { recursive: true, force: true })
+      await removePathSafely(entryPath)
       await fs.symlink(relativeLinkTarget, entryPath, remappedSymlinkType)
       normalizedCount += 1
     }

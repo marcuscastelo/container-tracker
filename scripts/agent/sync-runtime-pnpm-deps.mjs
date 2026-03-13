@@ -24,6 +24,22 @@ async function pathExists(targetPath) {
   }
 }
 
+async function removePathSafely(targetPath) {
+  let stats
+  try {
+    stats = await fs.lstat(targetPath)
+  } catch {
+    return
+  }
+
+  if (stats.isSymbolicLink()) {
+    await fs.unlink(targetPath)
+    return
+  }
+
+  await fs.rm(targetPath, { recursive: true, force: true })
+}
+
 function toPackageNameSegments(packageName) {
   if (!packageName.startsWith('@')) {
     return [packageName]
@@ -299,7 +315,7 @@ async function normalizeAbsoluteRuntimeSymlinks({ sourceNodeModulesDir, targetNo
         symlinkType = undefined
       }
 
-      await fs.rm(entryPath, { recursive: true, force: true })
+      await removePathSafely(entryPath)
       await fs.symlink(relativeLinkTarget, entryPath, symlinkType)
       normalizedCount += 1
     }
@@ -352,7 +368,7 @@ async function syncRuntimeDependencies({ sourceNodeModulesDir, targetNodeModules
     }
 
     await fs.mkdir(path.dirname(topLevelEntryPath), { recursive: true })
-    await fs.rm(topLevelEntryPath, { recursive: true, force: true })
+    await removePathSafely(topLevelEntryPath)
     const relativeLinkTarget = path.relative(path.dirname(topLevelEntryPath), storePackagePath)
     await fs.symlink(relativeLinkTarget, topLevelEntryPath, symlinkType)
   }

@@ -144,7 +144,6 @@ describe('self-update integration flows', () => {
       rollbackVersion: '1.0.0',
       nowIso: new Date().toISOString(),
       reason: 'runtime crashed before heartbeat',
-      crashLoopDetected: false,
     })
 
     const currentRealpath = fs.realpathSync(layout.currentLinkPath)

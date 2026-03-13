@@ -399,7 +399,6 @@ async function main(): Promise<void> {
           rollbackVersion,
           nowIso,
           reason: `failed to activate pending release: ${errorMessage}`,
-          crashLoopDetected: failureTracked?.isCrashLoop ?? false,
         })
         writeReleaseState(layout.releaseStatePath, state)
         appendSupervisorLog(
@@ -549,7 +548,6 @@ async function main(): Promise<void> {
         rollbackVersion,
         nowIso: new Date().toISOString(),
         reason: failureReason,
-        crashLoopDetected: failureTracked.isCrashLoop,
       })
 
       writeReleaseState(layout.releaseStatePath, rolledBackState)
@@ -618,7 +616,6 @@ async function main(): Promise<void> {
         rollbackVersion: fallbackVersion,
         nowIso: now,
         reason: `release crash loop detected for version ${runtimeSelection.version}; switching to fallback runtime`,
-        crashLoopDetected: failureTracked.isCrashLoop,
       })
 
       writeReleaseState(layout.releaseStatePath, fallbackState)

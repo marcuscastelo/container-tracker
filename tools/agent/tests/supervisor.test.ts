@@ -109,7 +109,6 @@ describe('supervisor release policies', () => {
       rollbackVersion: '1.0.0',
       nowIso: new Date().toISOString(),
       reason: 'startup timeout',
-      crashLoopDetected: false,
     })
 
     const currentRealpath = fs.realpathSync(layout.currentLinkPath)
@@ -174,7 +173,6 @@ describe('supervisor release policies', () => {
       rollbackVersion: 'fallback-runtime',
       nowIso: new Date().toISOString(),
       reason: 'release directory missing',
-      crashLoopDetected: false,
     })
 
     expect(fs.existsSync(layout.currentLinkPath)).toBe(false)
