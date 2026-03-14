@@ -45,6 +45,7 @@ function toProcessAggregatedStatus(status: string | null | undefined): ProcessAg
     case 'UNKNOWN':
     case 'BOOKED':
     case 'IN_TRANSIT':
+    case 'ARRIVED_AT_POD':
     case 'DISCHARGED':
     case 'DELIVERED':
     case 'AWAITING_DATA':
@@ -53,7 +54,6 @@ function toProcessAggregatedStatus(status: string | null | undefined): ProcessAg
     case 'IN_PROGRESS':
       return 'BOOKED'
     case 'LOADED':
-    case 'ARRIVED_AT_POD':
       return 'IN_TRANSIT'
     case 'AVAILABLE_FOR_PICKUP':
       return 'DISCHARGED'

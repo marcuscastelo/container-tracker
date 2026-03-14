@@ -595,7 +595,7 @@
       "IN_PROGRESS": "Em Curso",
       "LOADED": "Carregado",
       "IN_TRANSIT": "Em Trânsito",
-      "ARRIVED_AT_POD": "Chegou ao Porto",
+      "ARRIVED_AT_POD": "No Porto",
       "DISCHARGED": "Descarregado",
       "AVAILABLE_FOR_PICKUP": "Disponível para Recolha",
       "DELIVERED": "Entregue",
