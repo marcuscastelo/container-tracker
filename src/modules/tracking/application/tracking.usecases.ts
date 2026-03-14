@@ -24,6 +24,10 @@ import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
+import {
+  type ReplayContainerTrackingResult,
+  replayContainerTracking,
+} from '~/modules/tracking/application/usecases/replay-container-tracking.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
@@ -210,6 +214,16 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
       return getLatestSnapshot(deps, { containerId })
+    },
+
+    /**
+     * Replay tracking derivation step-by-step from historical snapshots.
+     */
+    async replayContainerTracking(
+      containerId: string,
+      now: Date = new Date(),
+    ): Promise<ReplayContainerTrackingResult> {
+      return replayContainerTracking(deps, { containerId, now })
     },
 
     /**
