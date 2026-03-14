@@ -56,6 +56,22 @@ function Test-IsInstallRootProcess {
     ''
   }
 
+  $processName = if ($ProcessRecord.Name) {
+    $ProcessRecord.Name.ToLowerInvariant()
+  }
+  else {
+    ''
+  }
+
+  # Never target Inno uninstaller processes. Killing unins000.exe/_unins.tmp aborts uninstall.
+  if (
+    ($processName -match '^_?unins.*\.(exe|tmp)$') -or
+    ($executablePath -match '\\_?unins[^\\]*\.(exe|tmp)$') -or
+    ($commandLine -match '\\_?unins[^\\]*\.(exe|tmp)(\"|\s|$)')
+  ) {
+    return $false
+  }
+
   $commandLineMatch = $commandLine.Length -gt 0 -and $commandLine.Contains($normalizedInstallRoot)
   $executablePathMatch = $executablePath.Length -gt 0 -and $executablePath.StartsWith($normalizedInstallRoot)
   return $commandLineMatch -or $executablePathMatch

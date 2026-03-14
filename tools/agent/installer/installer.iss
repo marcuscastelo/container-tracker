@@ -69,9 +69,7 @@ const
   InstallLogMinHeight = 120;
   UninstallCleanupLogPathConstant = '{localappdata}\ContainerTracker\logs\uninstall-cleanup.log';
   UninstallerRunLogPathConstant = '{localappdata}\ContainerTracker\logs\uninstaller-run.log';
-  UninstallLogTailMaxChars = 1200;
-  UninstallCompletionTimeoutSeconds = 180;
-  UninstallCompletionPollDelayMs = 1000;
+  UninstallerDeferredStartSeconds = 2;
 
 var
   AgentInstalled: Boolean;
@@ -96,7 +94,6 @@ var
 procedure CreateUninstallProgressPage(); forward;
 function IsUninstallActionSelected(): Boolean; forward;
 procedure CloseSetupWithoutIncompleteWarning(); forward;
-function TryFindInstalledUninstaller(var UninstallerPath: string): Boolean; forward;
 
 procedure AppendMemoLogLine(const TargetMemo: TMemo; const Msg: string);
 begin
@@ -140,94 +137,38 @@ begin
   UILog('ERROR: ' + Msg);
 end;
 
-function ReadFileTailForDiagnostics(const FilePath: string; const MaxChars: Integer): string;
-var
-  Content: AnsiString;
-  StartPos: Integer;
+function EscapePowerShellSingleQuotedValue(const Value: string): string;
 begin
-  Result := '';
-  if not LoadStringFromFile(FilePath, Content) then
-  begin
-    exit;
-  end;
-
-  Result := Trim(string(Content));
-  if Result = '' then
-  begin
-    exit;
-  end;
-
-  if Length(Result) <= MaxChars then
-  begin
-    exit;
-  end;
-
-  StartPos := Length(Result) - MaxChars + 1;
-  Result := '...' + Copy(Result, StartPos, MaxChars);
+  Result := Value;
+  StringChangeEx(Result, '''', '''''', True);
 end;
 
-function BuildUninstallDiagnosticsMessage(
-  const StatusDetail: string;
-  const CleanupLogPath: string;
-  const UninstallerLogPath: string
-): string;
+function LaunchDeferredInstalledUninstaller(
+  const UninstallerPath: string;
+  const UninstallerParams: string;
+  var SpawnResultCode: Integer
+): Boolean;
 var
-  CleanupLogTail: string;
-  UninstallerLogTail: string;
+  DeferredCommand: string;
+  EscapedUninstallerPath: string;
+  EscapedUninstallerParams: string;
 begin
-  Result :=
-    'Desinstalacao nao confirmou conclusao.' + #13#10 + #13#10 +
-    'Status: ' + StatusDetail + #13#10 +
-    'Uninstaller: ' + InstalledUninstallerPath + #13#10 +
-    'Cleanup log: ' + CleanupLogPath + #13#10 +
-    'Uninstaller log: ' + UninstallerLogPath + #13#10;
-
-  CleanupLogTail := ReadFileTailForDiagnostics(CleanupLogPath, UninstallLogTailMaxChars);
-  UninstallerLogTail := ReadFileTailForDiagnostics(UninstallerLogPath, UninstallLogTailMaxChars);
-
-  if CleanupLogTail = '' then
-  begin
-    Result := Result + #13#10 + 'Nao foi possivel ler conteudo do cleanup log.' + #13#10;
-  end
-  else
-  begin
-    Result := Result + #13#10 + 'Ultimas linhas do cleanup log:' + #13#10 + CleanupLogTail + #13#10;
-  end;
-
-  if UninstallerLogTail = '' then
-  begin
-    Result := Result + #13#10 + 'Nao foi possivel ler conteudo do log do uninstaller.';
-    exit;
-  end;
-
-  Result := Result + #13#10 + 'Ultimas linhas do log do uninstaller:' + #13#10 + UninstallerLogTail;
-end;
-
-function WaitForUninstallCompletion(const TimeoutSeconds: Integer): Boolean;
-var
-  ElapsedSeconds: Integer;
-  CurrentUninstallerPath: string;
-begin
-  for ElapsedSeconds := 0 to TimeoutSeconds do
-  begin
-    if not TryFindInstalledUninstaller(CurrentUninstallerPath) then
-    begin
-      Result := True;
-      exit;
-    end;
-
-    if (ElapsedSeconds > 0) and ((ElapsedSeconds mod 5) = 0) then
-    begin
-      UILog(
-        'Waiting uninstall completion: ' + IntToStr(ElapsedSeconds) + 's elapsed, still detected at ' +
-        CurrentUninstallerPath
-      );
-    end;
-
-    Sleep(UninstallCompletionPollDelayMs);
-  end;
-
-  Result := False;
+  SpawnResultCode := -1;
+  EscapedUninstallerPath := EscapePowerShellSingleQuotedValue(UninstallerPath);
+  EscapedUninstallerParams := EscapePowerShellSingleQuotedValue(UninstallerParams);
+  DeferredCommand :=
+    'Start-Sleep -Seconds ' + IntToStr(UninstallerDeferredStartSeconds) + '; ' +
+    'Start-Process -FilePath ''' + EscapedUninstallerPath + ''' -ArgumentList ''' +
+    EscapedUninstallerParams + '''';
+  UILog('Scheduling deferred uninstaller command via PowerShell.');
+  Result := Exec(
+    'powershell.exe',
+    '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "' + DeferredCommand + '"',
+    '',
+    SW_HIDE,
+    ewNoWait,
+    SpawnResultCode
+  );
 end;
 
 procedure CreateInstallingLogPanel();
@@ -1041,7 +982,6 @@ var
   CleanupLogPath: string;
   UninstallerLogPath: string;
   UninstallerCommandLine: string;
-  DiagnosticsMessage: string;
 begin
   UILog('Uninstall flow selected from installer action page.');
   if not AgentInstalled then
@@ -1091,50 +1031,29 @@ begin
   end;
 
   UninstallerCommandLine :=
-    '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG="' + UninstallerLogPath + '"';
-  UILog('Launching installed uninstaller: ' + InstalledUninstallerPath);
+    '/NORESTART /LOG="' + UninstallerLogPath + '"';
+  UILog('Scheduling installed uninstaller: ' + InstalledUninstallerPath);
   UILog('Uninstaller parameters: ' + UninstallerCommandLine);
-  if not Exec(
+  if not LaunchDeferredInstalledUninstaller(
     InstalledUninstallerPath,
     UninstallerCommandLine,
-    '',
-    SW_HIDE,
-    ewNoWait,
     LaunchResultCode
   ) then
   begin
-    UIErrorLog('Failed to launch installed uninstaller.');
-    DiagnosticsMessage :=
-      'Falha ao iniciar o desinstalador.' + #13#10 + #13#10 +
+    UIErrorLog('Failed to schedule installed uninstaller launch.');
+    MsgBox(
+      'Falha ao agendar a execucao do desinstalador.' + #13#10 + #13#10 +
       'Uninstaller: ' + InstalledUninstallerPath + #13#10 +
       'Cleanup log: ' + CleanupLogPath + #13#10 +
-      'Uninstaller log: ' + UninstallerLogPath;
-    MsgBox(DiagnosticsMessage, mbCriticalError, MB_OK);
-    exit;
-  end;
-
-  UILog('Uninstaller process started (pid=' + IntToStr(LaunchResultCode) + ').');
-  UILog(
-    'Waiting up to ' + IntToStr(UninstallCompletionTimeoutSeconds) +
-    ' seconds for uninstall completion.'
-  );
-
-  if not WaitForUninstallCompletion(UninstallCompletionTimeoutSeconds) then
-  begin
-    UIErrorLog('Timed out waiting for uninstall completion.');
-    DiagnosticsMessage := BuildUninstallDiagnosticsMessage(
-      'Timeout while waiting for uninstall completion.',
-      CleanupLogPath,
-      UninstallerLogPath
+      'Uninstaller log: ' + UninstallerLogPath,
+      mbCriticalError,
+      MB_OK
     );
-    MsgBox(DiagnosticsMessage, mbCriticalError, MB_OK);
     exit;
   end;
 
-  AgentInstalled := False;
-  InstalledUninstallerPath := '';
-  UILog('Uninstall completed successfully.');
-  MsgBox('Desinstalacao concluida. O setup sera fechado.', mbInformation, MB_OK);
+  UILog('Deferred uninstaller launcher started (pid=' + IntToStr(LaunchResultCode) + ').');
+  UILog('Closing setup now so uninstall can continue without setup mutex contention.');
   CloseSetupWithoutIncompleteWarning();
 end;
 
