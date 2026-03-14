@@ -2,10 +2,14 @@ import type {
   AgentActivityEventRecord,
   AgentActivityInsertRecord,
   AgentAuthenticatedIdentity,
+  AgentLogEventRecord,
+  AgentLogInsertRecord,
   AgentMonitoringRecord,
   AgentRuntimeStateUpdate,
 } from '~/modules/agent/application/agent-monitoring.repository'
 import type {
+  AgentLogEventInsert,
+  AgentLogEventRow,
   TrackingAgentActivityEventInsert,
   TrackingAgentActivityEventRow,
   TrackingAgentRow,
@@ -83,6 +87,11 @@ function toAgentActivitySeverity(value: string): AgentActivityEventRecord['sever
   return 'info'
 }
 
+function toAgentLogChannel(value: string): AgentLogEventRecord['channel'] {
+  if (value === 'stderr') return 'stderr'
+  return 'stdout'
+}
+
 function toCapabilities(value: unknown): readonly string[] {
   if (!Array.isArray(value)) return []
 
@@ -121,6 +130,7 @@ export const agentMonitoringPersistenceMappers = {
       agentId: row.id,
       tenantId: row.tenant_id,
       hostname: row.hostname,
+      os: row.os,
       version: row.agent_version,
       currentVersion: row.current_version,
       desiredVersion: row.desired_version,
@@ -144,6 +154,8 @@ export const agentMonitoringPersistenceMappers = {
       intervalSec: row.interval_sec,
       lastError: row.last_error,
       queueLagSeconds: row.queue_lag_seconds,
+      logsSupported: row.logs_supported,
+      lastLogAt: row.last_log_at,
     }
   },
 
@@ -192,6 +204,8 @@ export const agentMonitoringPersistenceMappers = {
         ? { queue_lag_seconds: toNullableInteger(command.queueLagSeconds) }
         : {}),
       ...(command.lastError !== undefined ? { last_error: command.lastError } : {}),
+      ...(command.logsSupported !== undefined ? { logs_supported: command.logsSupported } : {}),
+      ...(command.lastLogAt !== undefined ? { last_log_at: command.lastLogAt } : {}),
     }
   },
 
@@ -217,6 +231,31 @@ export const agentMonitoringPersistenceMappers = {
       severity: event.severity,
       metadata: event.metadata,
       occurred_at: event.occurredAt,
+    }
+  },
+
+  fromLogEventRow(row: AgentLogEventRow): AgentLogEventRecord {
+    return {
+      id: row.id,
+      agentId: row.agent_id,
+      tenantId: row.tenant_id,
+      channel: toAgentLogChannel(row.channel),
+      message: row.message,
+      sequence: row.sequence,
+      truncated: row.truncated,
+      occurredAt: row.occurred_at,
+    }
+  },
+
+  toLogEventInsertRow(event: AgentLogInsertRecord): AgentLogEventInsert {
+    return {
+      agent_id: event.agentId,
+      tenant_id: event.tenantId,
+      sequence: event.sequence,
+      channel: event.channel,
+      message: event.message,
+      occurred_at: event.occurredAt,
+      truncated: event.truncated,
     }
   },
 }

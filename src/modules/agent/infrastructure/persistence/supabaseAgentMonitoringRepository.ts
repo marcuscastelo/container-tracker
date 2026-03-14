@@ -114,6 +114,27 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
     return rows.map(agentMonitoringPersistenceMappers.fromActivityRow)
   },
 
+  async listRecentLogsForAgent({ tenantId, agentId, channel, tail }) {
+    const safeTail = Math.max(1, Math.min(tail, 2000))
+    let query = supabaseServer
+      .from('agent_log_events')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('agent_id', agentId)
+
+    if (channel !== 'both') {
+      query = query.eq('channel', channel)
+    }
+
+    const result = await query.order('sequence', { ascending: false }).limit(safeTail)
+    const rows = unwrapSupabaseResultOrThrow(result, {
+      operation: 'listRecentLogsForAgent',
+      table: 'agent_log_events',
+    })
+
+    return rows.map(agentMonitoringPersistenceMappers.fromLogEventRow).reverse()
+  },
+
   async getTenantQueueLagSeconds({ tenantId }) {
     const result = await supabaseServer
       .from('sync_requests')
@@ -234,5 +255,52 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
       operation: 'insertActivityEvents',
       table: 'tracking_agent_activity_events',
     })
+  },
+
+  async insertLogEvents(events) {
+    if (events.length === 0) {
+      return {
+        accepted: 0,
+        persisted: 0,
+      }
+    }
+
+    const rows = events.map(agentMonitoringPersistenceMappers.toLogEventInsertRow)
+    const result = await supabaseServer
+      .from('agent_log_events')
+      .upsert(rows, {
+        onConflict: 'tenant_id,agent_id,sequence',
+        ignoreDuplicates: true,
+      })
+      .select('id')
+
+    const persistedRows = unwrapSupabaseResultOrThrow(result, {
+      operation: 'insertLogEvents',
+      table: 'agent_log_events',
+    })
+
+    if (persistedRows.length > 0) {
+      const sample = events[0]
+      const updateResult = await supabaseServer
+        .from('tracking_agents')
+        .update({
+          logs_supported: true,
+          last_log_at: new Date().toISOString(),
+        })
+        .eq('tenant_id', sample.tenantId)
+        .eq('id', sample.agentId)
+        .is('revoked_at', null)
+        .select('id')
+
+      unwrapSupabaseResultOrThrow(updateResult, {
+        operation: 'insertLogEvents/updateTrackingAgentMetadata',
+        table: 'tracking_agents',
+      })
+    }
+
+    return {
+      accepted: events.length,
+      persisted: persistedRows.length,
+    }
   },
 }

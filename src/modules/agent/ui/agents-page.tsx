@@ -119,6 +119,10 @@ export function AgentsPage(): JSX.Element {
     void navigate(`/agents/${encodeURIComponent(agentId)}`)
   }
 
+  function handleLogsClick(agentId: string): void {
+    void navigate(`/agents/${encodeURIComponent(agentId)}?logs=1`)
+  }
+
   function handleRefresh(): void {
     setLastRefreshed(new Date())
     void refetch()
@@ -160,6 +164,7 @@ export function AgentsPage(): JSX.Element {
             sortAsc={sortAsc()}
             onSortChange={handleSortChange}
             onAgentClick={handleAgentClick}
+            onLogsClick={handleLogsClick}
             onRetry={handleRefresh}
           />
 
@@ -168,6 +173,7 @@ export function AgentsPage(): JSX.Element {
             loading={agentsResponse.loading}
             hasError={Boolean(agentsResponse.error)}
             onAgentClick={handleAgentClick}
+            onLogsClick={handleLogsClick}
             onRetry={handleRefresh}
           />
         </main>

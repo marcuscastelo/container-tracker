@@ -19,9 +19,11 @@ import { AgentDiagnosticsCard } from '~/modules/agent/ui/components/AgentDiagnos
 import { AgentEnrollmentCard } from '~/modules/agent/ui/components/AgentEnrollmentCard'
 import { AgentHealthCard } from '~/modules/agent/ui/components/AgentHealthCard'
 import { AgentIdentityCard } from '~/modules/agent/ui/components/AgentIdentityCard'
+import { AgentLogsPanelView } from '~/modules/agent/ui/components/AgentLogsPanelView'
 import { AgentMetricsCard } from '~/modules/agent/ui/components/AgentMetricsCard'
 import { AgentRecentActivityCard } from '~/modules/agent/ui/components/AgentRecentActivityCard'
 import { AgentStatusBadge } from '~/modules/agent/ui/components/AgentStatusBadge'
+import { useAgentLogsController } from '~/modules/agent/ui/logs/useAgentLogsController'
 import { toAgentDetailVM } from '~/modules/agent/ui/mappers/agent.ui-mapper'
 import type { AgentDetailVM } from '~/modules/agent/ui/vm/agent.vm'
 import {
@@ -32,6 +34,7 @@ import { AppHeader } from '~/shared/ui/AppHeader'
 
 type Props = {
   readonly agentId: string
+  readonly initialOpenLogs?: boolean
 }
 
 function DetailSkeleton(): JSX.Element {
@@ -101,6 +104,8 @@ type AgentDetailToolbarProps = {
   readonly onRefresh: () => void
   readonly onRequestUpdate: () => Promise<void>
   readonly onRequestRestart: () => Promise<void>
+  readonly showLogs: () => boolean
+  readonly onToggleLogs: () => void
   readonly lastRefreshed: () => Date
 }
 
@@ -156,6 +161,13 @@ function AgentDetailToolbar(props: AgentDetailToolbarProps): JSX.Element {
         >
           Request restart
         </button>
+        <button
+          type="button"
+          onClick={() => props.onToggleLogs()}
+          class="inline-flex items-center rounded border border-control-border bg-control-bg px-2.5 py-1 text-sm-ui font-medium text-control-foreground transition-colors hover:bg-control-bg-hover hover:text-control-foreground-strong focus:outline-none focus:ring-2 focus:ring-ring/40"
+        >
+          {props.showLogs() ? 'Hide logs' : 'View logs'}
+        </button>
         <span class="text-micro text-text-muted">
           Updated {formatRefreshTime(props.lastRefreshed())}
         </span>
@@ -202,10 +214,14 @@ function extractRealtimeRowId(value: unknown): string | null {
 
 export function AgentDetailPage(props: Props): JSX.Element {
   const navigate = useNavigate()
+  const logsController = useAgentLogsController({
+    agentId: props.agentId,
+  })
   const [detail, { refetch }] = createResource(() => props.agentId, fetchAgentDetail)
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
   const [actionMessage, setActionMessage] = createSignal<string | null>(null)
   const [actionError, setActionError] = createSignal<string | null>(null)
+  const [showLogs, setShowLogs] = createSignal(props.initialOpenLogs ?? false)
 
   const fallbackPollTimer = setInterval(() => {
     setLastRefreshed(new Date())
@@ -319,6 +335,8 @@ export function AgentDetailPage(props: Props): JSX.Element {
             onRefresh={handleRefresh}
             onRequestUpdate={handleRequestUpdate}
             onRequestRestart={handleRequestRestart}
+            showLogs={showLogs}
+            onToggleLogs={() => setShowLogs((current) => !current)}
             lastRefreshed={lastRefreshed}
           />
 
@@ -362,6 +380,14 @@ export function AgentDetailPage(props: Props): JSX.Element {
                 <div class="lg:col-span-2">
                   <AgentRecentActivityCard activities={currentVM().recentActivity} />
                 </div>
+                <Show when={showLogs()}>
+                  <div class="lg:col-span-2">
+                    <AgentLogsPanelView
+                      controller={logsController}
+                      agentStatus={currentVM().status}
+                    />
+                  </div>
+                </Show>
               </div>
             )}
           </Show>

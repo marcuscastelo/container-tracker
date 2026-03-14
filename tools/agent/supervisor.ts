@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 // biome-ignore-all lint/style/noRestrictedImports: Supervisor runtime resolves direct .ts imports for agent release execution.
+import type { ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -28,6 +29,7 @@ const DEFAULT_MAX_ACTIVATION_FAILURES = 5
 const RESTART_BACKOFF_MS = 2_000
 const HEALTH_POLL_INTERVAL_MS = 500
 const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
+const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
 
 type ChildRunOutcome = {
   readonly exitCode: number | null
@@ -69,13 +71,13 @@ function resolveNumberEnv(value: string | undefined, fallback: number): number {
   return parsed
 }
 
-function rotateLogIfNeeded(logPath: string): void {
+function rotateLogIfNeeded(logPath: string, maxSizeBytes: number): void {
   if (!fs.existsSync(logPath)) {
     return
   }
 
   const stat = fs.statSync(logPath)
-  if (stat.size <= MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES) {
+  if (stat.size <= maxSizeBytes) {
     return
   }
 
@@ -93,8 +95,46 @@ function appendSupervisorLog(logsDir: string, message: string): void {
 
   const logPath = path.join(logsDir, 'supervisor.log')
   fs.mkdirSync(path.dirname(logPath), { recursive: true })
-  rotateLogIfNeeded(logPath)
+  rotateLogIfNeeded(logPath, MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES)
   fs.appendFileSync(logPath, `${line}\n`, 'utf8')
+}
+
+function appendRuntimeLogChunk(command: {
+  readonly logPath: string
+  readonly chunk: Buffer | string
+}): void {
+  fs.mkdirSync(path.dirname(command.logPath), { recursive: true })
+  rotateLogIfNeeded(command.logPath, MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES)
+  fs.appendFileSync(command.logPath, command.chunk)
+}
+
+function mirrorRuntimeOutput(command: {
+  readonly child: ChildProcess
+  readonly logsDir: string
+}): void {
+  const stdout = command.child.stdout
+  if (stdout) {
+    const stdoutLogPath = path.join(command.logsDir, 'agent.out.log')
+    stdout.on('data', (chunk: Buffer | string) => {
+      process.stdout.write(chunk)
+      appendRuntimeLogChunk({
+        logPath: stdoutLogPath,
+        chunk,
+      })
+    })
+  }
+
+  const stderr = command.child.stderr
+  if (stderr) {
+    const stderrLogPath = path.join(command.logsDir, 'agent.err.log')
+    stderr.on('data', (chunk: Buffer | string) => {
+      process.stderr.write(chunk)
+      appendRuntimeLogChunk({
+        logPath: stderrLogPath,
+        chunk,
+      })
+    })
+  }
 }
 
 function resolveFallbackRuntimeEntrypoint(scriptDir: string): string {
@@ -192,7 +232,11 @@ async function runChildWithHealthGate(command: {
   const child = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
     env: command.env,
-    stdio: 'inherit',
+    stdio: 'pipe',
+  })
+  mirrorRuntimeOutput({
+    child,
+    logsDir: command.logsDir,
   })
   appendSupervisorLog(
     command.logsDir,
@@ -273,7 +317,11 @@ async function runChildWithoutHealthGate(command: {
   const child = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
     env: command.env,
-    stdio: 'inherit',
+    stdio: 'pipe',
+  })
+  mirrorRuntimeOutput({
+    child,
+    logsDir: command.logsDir,
   })
   appendSupervisorLog(
     command.logsDir,

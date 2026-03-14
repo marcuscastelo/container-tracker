@@ -3,12 +3,14 @@ import type { z } from 'zod/v4'
 import {
   AgentDetailResponseSchema,
   AgentListResponseSchema,
+  AgentLogsResponseSchema,
   AgentRequestOperationResponseSchema,
 } from '~/modules/agent/interface/http/agent-monitoring.schemas'
 import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
 
 type AgentListResponseDto = z.infer<typeof AgentListResponseSchema>
 type AgentDetailResponseDto = z.infer<typeof AgentDetailResponseSchema>
+type AgentLogsResponseDto = z.infer<typeof AgentLogsResponseSchema>
 type AgentRequestOperationDto = z.infer<typeof AgentRequestOperationResponseSchema>
 
 export type AgentSummaryPayload = AgentListResponseDto['agents'][number]
@@ -19,6 +21,8 @@ export type AgentRealtimeState = AgentSummaryPayload['realtimeState']
 export type AgentActivityType = AgentDetailPayload['recentActivity'][number]['type']
 export type AgentActivitySeverity = AgentDetailPayload['recentActivity'][number]['severity']
 export type AgentActivityEntry = AgentDetailPayload['recentActivity'][number]
+export type AgentLogLinePayload = AgentLogsResponseDto['lines'][number]
+export type AgentLogsChannel = 'stdout' | 'stderr' | 'both'
 
 export type AgentListQuery = {
   readonly search?: string
@@ -27,6 +31,11 @@ export type AgentListQuery = {
   readonly onlyProblematic?: boolean
   readonly sortField?: 'status' | 'tenant' | 'lastSeen' | 'failures' | 'queueLag' | 'activeJobs'
   readonly sortDir?: 'asc' | 'desc'
+}
+
+export type AgentLogsQuery = {
+  readonly channel?: AgentLogsChannel
+  readonly tail?: number
 }
 
 function toAgentListPath(query: AgentListQuery | undefined): string {
@@ -107,4 +116,31 @@ export async function requestAgentRestart(command: {
     },
     AgentRequestOperationResponseSchema,
   )
+}
+
+function toAgentLogsPath(command: {
+  readonly agentId: string
+  readonly query?: AgentLogsQuery
+}): string {
+  const searchParams = new URLSearchParams()
+  if (command.query?.channel) {
+    searchParams.set('channel', command.query.channel)
+  }
+  if (typeof command.query?.tail === 'number') {
+    searchParams.set('tail', String(command.query.tail))
+  }
+
+  const queryString = searchParams.toString()
+  if (queryString.length === 0) {
+    return `/api/agents/${command.agentId}/logs`
+  }
+
+  return `/api/agents/${command.agentId}/logs?${queryString}`
+}
+
+export async function fetchAgentLogs(command: {
+  readonly agentId: string
+  readonly query?: AgentLogsQuery
+}): Promise<AgentLogsResponseDto> {
+  return typedFetch(toAgentLogsPath(command), undefined, AgentLogsResponseSchema)
 }

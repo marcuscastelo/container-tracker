@@ -58,6 +58,8 @@ export const AgentActivityTypeSchema = z.enum([
 ])
 
 export const AgentActivitySeveritySchema = z.enum(['info', 'warning', 'danger', 'success'])
+export const AgentLogChannelSchema = z.enum(['stdout', 'stderr'])
+export const AgentLogChannelQuerySchema = z.enum(['stdout', 'stderr', 'both'])
 
 export const AgentListSortFieldSchema = z.enum([
   'status',
@@ -84,6 +86,7 @@ export const AgentSummaryResponseSchema = z.object({
   tenantId: z.string().uuid(),
   tenantName: z.string().min(1),
   hostname: z.string().min(1),
+  os: z.string().min(1),
   version: z.string().min(1),
   currentVersion: z.string().min(1),
   desiredVersion: z.string().nullable(),
@@ -104,6 +107,8 @@ export const AgentSummaryResponseSchema = z.object({
   queueLagSeconds: z.number().int().min(0).nullable(),
   capabilities: z.array(z.string()),
   realtimeState: AgentRealtimeStateSchema,
+  logsSupported: z.boolean(),
+  lastLogAt: z.string().datetime({ offset: true }).nullable(),
 })
 
 export const AgentFleetSummaryResponseSchema = z.object({
@@ -160,6 +165,7 @@ export const AgentHeartbeatBodySchema = z.object({
   lease_health: AgentLeaseHealthSchema.optional(),
   active_jobs: z.number().int().min(0).optional(),
   capabilities: z.array(z.string().trim().min(1)).max(32).optional(),
+  logs_supported: z.boolean().optional(),
   interval_sec: z.number().int().positive().optional(),
   queue_lag_seconds: z.number().int().min(0).nullable().optional(),
   last_error: z.string().nullable().optional(),
@@ -180,6 +186,50 @@ export const AgentHeartbeatBodySchema = z.object({
 
 export const AgentHeartbeatResponseSchema = z.object({
   ok: z.literal(true),
+  updatedAt: z.string().datetime({ offset: true }),
+})
+
+export const AgentLogsQuerySchema = z.object({
+  channel: AgentLogChannelQuerySchema.default('both'),
+  tail: z.coerce.number().int().min(1).max(2000).default(500),
+})
+
+export const AgentLogLineResponseSchema = z.object({
+  id: z.string().uuid(),
+  agentId: z.string().uuid(),
+  channel: AgentLogChannelSchema,
+  timestamp: z.string().datetime({ offset: true }),
+  message: z.string(),
+  sequence: z.number().int().min(0),
+  truncated: z.boolean(),
+})
+
+export const AgentLogsResponseSchema = z.object({
+  agentId: z.string().uuid(),
+  os: z.string().min(1),
+  logsSupported: z.boolean(),
+  lastLogAt: z.string().datetime({ offset: true }).nullable(),
+  lines: z.array(AgentLogLineResponseSchema),
+})
+
+export const AgentLogIngestBodySchema = z.object({
+  lines: z
+    .array(
+      z.object({
+        sequence: z.number().int().min(0),
+        channel: AgentLogChannelSchema,
+        message: z.string(),
+        occurred_at: z.string().datetime({ offset: true }).optional(),
+        truncated: z.boolean().optional(),
+      }),
+    )
+    .max(1000),
+})
+
+export const AgentLogIngestResponseSchema = z.object({
+  ok: z.literal(true),
+  accepted: z.number().int().min(0),
+  persisted: z.number().int().min(0),
   updatedAt: z.string().datetime({ offset: true }),
 })
 
