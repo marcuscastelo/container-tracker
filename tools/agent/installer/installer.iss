@@ -47,14 +47,14 @@ Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B 
 Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\updater-hidden.ps1"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting updater runtime process.')
 
 [UninstallRun]
-Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#UpdaterTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-updater-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#UpdaterTaskName}"" >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "end-updater-task"
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\stop-agent-runtime.ps1"" -CleanupNodeModules >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "kill-agent-runtime-processes"
-Filename: "cmd.exe"; Parameters: "/C timeout /T 5 /NOBREAK >NUL || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "post-kill-runtime-delay"
-Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-agent-task"
-Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "delete-updater-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Disabling scheduled task {#AgentTaskName}..."; RunOnceId: "disable-agent-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#UpdaterTaskName}"" /DISABLE || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Disabling scheduled task {#UpdaterTaskName}..."; RunOnceId: "disable-updater-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#AgentTaskName}"" || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping scheduled task {#AgentTaskName}..."; RunOnceId: "end-agent-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /End /TN ""{#UpdaterTaskName}"" || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping scheduled task {#UpdaterTaskName}..."; RunOnceId: "end-updater-task"
+Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\stop-agent-runtime.ps1"" -CleanupNodeModules || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Stopping agent runtime processes..."; RunOnceId: "kill-agent-runtime-processes"
+Filename: "cmd.exe"; Parameters: "/C timeout /T 5 /NOBREAK || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Waiting for process shutdown..."; RunOnceId: "post-kill-runtime-delay"
+Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#AgentTaskName}"" /F || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Deleting scheduled task {#AgentTaskName}..."; RunOnceId: "delete-agent-task"
+Filename: "cmd.exe"; Parameters: "/C schtasks /Delete /TN ""{#UpdaterTaskName}"" /F || exit /B 0"; Flags: runhidden waituntilterminated logoutput; StatusMsg: "Deleting scheduled task {#UpdaterTaskName}..."; RunOnceId: "delete-updater-task"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\ContainerTracker\*"
@@ -67,6 +67,8 @@ const
   InstallLogMaxLines = 600;
   InstallLogBottomPadding = 8;
   InstallLogMinHeight = 120;
+  UninstallCleanupLogPathConstant = '{localappdata}\ContainerTracker\logs\uninstall-cleanup.log';
+  UninstallLogTailMaxChars = 1200;
 
 var
   AgentInstalled: Boolean;
@@ -112,6 +114,57 @@ end;
 procedure UIErrorLog(const Msg: String);
 begin
   UILog('ERROR: ' + Msg);
+end;
+
+function ReadFileTailForDiagnostics(const FilePath: string; const MaxChars: Integer): string;
+var
+  Content: AnsiString;
+  StartPos: Integer;
+begin
+  Result := '';
+  if not LoadStringFromFile(FilePath, Content) then
+  begin
+    exit;
+  end;
+
+  Result := Trim(string(Content));
+  if Result = '' then
+  begin
+    exit;
+  end;
+
+  if Length(Result) <= MaxChars then
+  begin
+    exit;
+  end;
+
+  StartPos := Length(Result) - MaxChars + 1;
+  Result := '...' + Copy(Result, StartPos, MaxChars);
+end;
+
+function BuildUninstallDiagnosticsMessage(
+  const ExitCode: Integer;
+  const CleanupLogPath: string
+): string;
+var
+  CleanupLogTail: string;
+begin
+  Result :=
+    'Desinstalacao finalizou com codigo de saida ' + IntToStr(ExitCode) + '.' + #13#10 + #13#10 +
+    'Uninstaller: ' + InstalledUninstallerPath + #13#10 +
+    'Cleanup log: ' + CleanupLogPath + #13#10;
+
+  CleanupLogTail := ReadFileTailForDiagnostics(CleanupLogPath, UninstallLogTailMaxChars);
+  if CleanupLogTail = '' then
+  begin
+    Result := Result + #13#10 + 'Nao foi possivel ler conteudo do cleanup log.';
+    exit;
+  end;
+
+  Result :=
+    Result + #13#10 +
+    'Ultimas linhas do cleanup log:' + #13#10 +
+    CleanupLogTail;
 end;
 
 procedure CreateInstallingLogPanel();
@@ -916,6 +969,9 @@ end;
 procedure RunChosenUninstallAndCloseSetup();
 var
   UninstallResultCode: Integer;
+  StopRuntimeError: string;
+  CleanupLogPath: string;
+  DiagnosticsMessage: string;
 begin
   UILog('Uninstall flow selected from installer action page.');
   if not AgentInstalled then
@@ -942,6 +998,26 @@ begin
     exit;
   end;
 
+  CleanupLogPath := ExpandConstant(UninstallCleanupLogPathConstant);
+  StopRuntimeError := '';
+
+  UILog('Running pre-uninstall runtime stop to reduce locked files/processes.');
+  if not StopAgentRuntimeBeforeInstall(StopRuntimeError) then
+  begin
+    UIErrorLog('Pre-uninstall runtime stop failed: ' + StopRuntimeError);
+    if MsgBox(
+      'Falhou ao encerrar completamente processos em execucao antes da desinstalacao.' + #13#10 +
+      StopRuntimeError + #13#10 + #13#10 +
+      'Deseja tentar desinstalar mesmo assim?',
+      mbConfirmation,
+      MB_YESNO
+    ) <> IDYES then
+    begin
+      UILog('User aborted uninstall after pre-uninstall runtime stop failure.');
+      exit;
+    end;
+  end;
+
   UILog('Launching installed uninstaller: ' + InstalledUninstallerPath);
   if not Exec(
     InstalledUninstallerPath,
@@ -953,18 +1029,19 @@ begin
   ) then
   begin
     UIErrorLog('Failed to launch installed uninstaller.');
-    MsgBox('Falha ao iniciar o desinstalador.', mbCriticalError, MB_OK);
+    DiagnosticsMessage :=
+      'Falha ao iniciar o desinstalador.' + #13#10 + #13#10 +
+      'Uninstaller: ' + InstalledUninstallerPath + #13#10 +
+      'Cleanup log: ' + CleanupLogPath;
+    MsgBox(DiagnosticsMessage, mbCriticalError, MB_OK);
     exit;
   end;
 
   if UninstallResultCode <> 0 then
   begin
     UIErrorLog('Uninstaller returned exit code ' + IntToStr(UninstallResultCode) + '.');
-    MsgBox(
-      'Desinstalacao finalizou com codigo de saida ' + IntToStr(UninstallResultCode) + '.',
-      mbCriticalError,
-      MB_OK
-    );
+    DiagnosticsMessage := BuildUninstallDiagnosticsMessage(UninstallResultCode, CleanupLogPath);
+    MsgBox(DiagnosticsMessage, mbCriticalError, MB_OK);
     exit;
   end;
 
@@ -1134,5 +1211,19 @@ begin
   begin
     UILog('Installer finished successfully.');
   end;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Log('InitializeUninstall: starting uninstall flow for {#AppName}.');
+  Log('InitializeUninstall: install root=' + ExpandConstant('{app}'));
+  Log('InitializeUninstall: runtime cleanup log=' +
+    ExpandConstant('{localappdata}\ContainerTracker\logs\uninstall-cleanup.log'));
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  Log('CurUninstallStepChanged: step=' + IntToStr(Ord(CurUninstallStep)));
 end;
 

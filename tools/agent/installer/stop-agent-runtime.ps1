@@ -12,6 +12,7 @@ $nodeModulesPath = Join-Path $installRoot 'app\node_modules'
 $pnpmStorePath = Join-Path $nodeModulesPath '.pnpm'
 $logsDir = Join-Path (Join-Path $env:LOCALAPPDATA 'ContainerTracker') 'logs'
 $cleanupLogPath = Join-Path $logsDir 'uninstall-cleanup.log'
+$emitConsoleLog = $true
 
 function Write-CleanupLog {
   param(
@@ -26,6 +27,9 @@ function Write-CleanupLog {
 
     $line = '[{0}] {1}' -f [DateTime]::UtcNow.ToString('o'), $Message
     Add-Content -Path $cleanupLogPath -Value $line
+    if ($emitConsoleLog) {
+      Write-Output $line
+    }
   }
   catch {
     # Best effort logging only.
@@ -124,24 +128,54 @@ function Get-InstallRootRelatedProcessIds {
 }
 
 function Stop-InstallRootProcesses {
-  $maxAttempts = 6
+  $maxAttempts = 12
+  $delayMilliseconds = 500
 
   for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
     $processMap = Get-ProcessMap
     $relatedProcessIds = @(Get-InstallRootRelatedProcessIds -ProcessMap $processMap)
     if ($relatedProcessIds.Count -eq 0) {
       Write-CleanupLog -Message "stop-process attempt=$attempt no matching processes"
-      return
+      return $true
     }
 
-    Write-CleanupLog -Message "stop-process attempt=$attempt found=$($relatedProcessIds.Count)"
     $orderedIds = @($relatedProcessIds) | Sort-Object -Descending
+    Write-CleanupLog -Message "stop-process attempt=$attempt found=$($orderedIds.Count) ids=$([string]::Join(',', $orderedIds))"
     foreach ($processId in $orderedIds) {
       Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
     }
 
-    Start-Sleep -Milliseconds 300
+    Start-Sleep -Milliseconds $delayMilliseconds
   }
+
+  $remainingProcessMap = Get-ProcessMap
+  $remainingIds = @(Get-InstallRootRelatedProcessIds -ProcessMap $remainingProcessMap)
+
+  if ($remainingIds.Count -eq 0) {
+    Write-CleanupLog -Message "stop-process post-loop no remaining processes"
+    return $true
+  }
+
+  $orderedRemainingIds = @($remainingIds) | Sort-Object -Descending
+  Write-CleanupLog -Message "stop-process post-loop remaining=$($orderedRemainingIds.Count) ids=$([string]::Join(',', $orderedRemainingIds))"
+
+  foreach ($processId in $orderedRemainingIds) {
+    $null = & taskkill.exe /PID $processId /T /F 2>&1
+    Write-CleanupLog -Message "stop-process fallback-taskkill pid=$processId exit=$LASTEXITCODE"
+  }
+
+  Start-Sleep -Milliseconds $delayMilliseconds
+
+  $finalProcessMap = Get-ProcessMap
+  $finalIds = @(Get-InstallRootRelatedProcessIds -ProcessMap $finalProcessMap)
+  if ($finalIds.Count -gt 0) {
+    $orderedFinalIds = @($finalIds) | Sort-Object -Descending
+    Write-CleanupLog -Message "stop-process final remaining=$($orderedFinalIds.Count) ids=$([string]::Join(',', $orderedFinalIds))"
+    return $false
+  }
+
+  Write-CleanupLog -Message "stop-process final no remaining processes"
+  return $true
 }
 
 function Clear-ReadOnlyAttributes {
@@ -232,7 +266,8 @@ function Invoke-NodeModulesCleanup {
 Write-CleanupLog -Message "script-start pid=$PID cleanupNodeModules=$CleanupNodeModules installRoot=$installRoot"
 
 try {
-  Stop-InstallRootProcesses
+  $processesStopped = Stop-InstallRootProcesses
+  Write-CleanupLog -Message "stop-processes-finish success=$processesStopped"
 }
 catch {
   Write-CleanupLog -Message "stop-processes-failed error=$($_.Exception.Message)"
