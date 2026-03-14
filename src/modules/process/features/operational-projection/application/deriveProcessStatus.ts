@@ -63,6 +63,26 @@ const OPERATIONAL_STATUS_ORDER_INDEX: Readonly<Record<OperationalStatus, number>
   EMPTY_RETURNED: 8,
 }
 
+const PROCESS_STATUS_ORDER = [
+  'UNKNOWN',
+  'BOOKED',
+  'IN_TRANSIT',
+  'ARRIVED_AT_POD',
+  'DISCHARGED',
+  'DELIVERED',
+] as const
+
+type ProcessLifecycleStatus = (typeof PROCESS_STATUS_ORDER)[number]
+
+const PROCESS_STATUS_ORDER_INDEX: Readonly<Record<ProcessLifecycleStatus, number>> = {
+  UNKNOWN: 0,
+  BOOKED: 1,
+  IN_TRANSIT: 2,
+  ARRIVED_AT_POD: 3,
+  DISCHARGED: 4,
+  DELIVERED: 5,
+}
+
 const MICROBADGE_MEANINGFUL_STATUSES: ReadonlySet<OperationalStatus> = new Set([
   'ARRIVED_AT_POD',
   'DISCHARGED',
@@ -71,50 +91,26 @@ const MICROBADGE_MEANINGFUL_STATUSES: ReadonlySet<OperationalStatus> = new Set([
   'EMPTY_RETURNED',
 ])
 
-/**
- * Process pre-shipment phase mapped from container lifecycle.
- */
-const PRE_SHIPMENT_STATUSES: ReadonlySet<OperationalStatus> = new Set(['UNKNOWN', 'IN_PROGRESS'])
-
-/**
- * Transportation + arrival statuses keep the process operationally in transit.
- */
-const TRANSIT_STATUSES: ReadonlySet<OperationalStatus> = new Set([
-  'LOADED',
-  'IN_TRANSIT',
-  'ARRIVED_AT_POD',
-])
-
-/**
- * Arrival/port operation statuses that are not completed yet.
- */
-const ARRIVAL_RISK_STATUSES: ReadonlySet<OperationalStatus> = new Set([
-  'DISCHARGED',
-  'AVAILABLE_FOR_PICKUP',
-])
-
-/**
- * Final completion statuses.
- */
-const FINAL_DELIVERY_STATUSES: ReadonlySet<OperationalStatus> = new Set([
-  'DELIVERED',
-  'EMPTY_RETURNED',
-])
-
-function isPreShipment(status: OperationalStatus): boolean {
-  return PRE_SHIPMENT_STATUSES.has(status)
+function toProcessLifecycleStatus(status: OperationalStatus): ProcessLifecycleStatus {
+  if (status === 'UNKNOWN') return 'UNKNOWN'
+  if (status === 'IN_PROGRESS') return 'BOOKED'
+  if (status === 'LOADED' || status === 'IN_TRANSIT') return 'IN_TRANSIT'
+  if (status === 'ARRIVED_AT_POD') return 'ARRIVED_AT_POD'
+  if (status === 'DISCHARGED' || status === 'AVAILABLE_FOR_PICKUP') return 'DISCHARGED'
+  return 'DELIVERED'
 }
 
-function isTransit(status: OperationalStatus): boolean {
-  return TRANSIT_STATUSES.has(status)
+function isKnownProcessLifecycleStatus(
+  status: ProcessLifecycleStatus,
+): status is Exclude<ProcessLifecycleStatus, 'UNKNOWN'> {
+  return status !== 'UNKNOWN'
 }
 
-function isArrivalRisk(status: OperationalStatus): boolean {
-  return ARRIVAL_RISK_STATUSES.has(status)
-}
-
-function isFinalDelivery(status: OperationalStatus): boolean {
-  return FINAL_DELIVERY_STATUSES.has(status)
+function compareProcessLifecycleProgress(
+  left: ProcessLifecycleStatus,
+  right: ProcessLifecycleStatus,
+): number {
+  return PROCESS_STATUS_ORDER_INDEX[left] - PROCESS_STATUS_ORDER_INDEX[right]
 }
 
 function createEmptyOperationalStatusCounts(): MutableOperationalStatusCounts {
@@ -229,6 +225,10 @@ function toPrimaryStatusOrderIndex(primaryStatus: ProcessAggregatedStatus): numb
     return OPERATIONAL_STATUS_ORDER_INDEX.IN_TRANSIT
   }
 
+  if (primaryStatus === 'ARRIVED_AT_POD') {
+    return OPERATIONAL_STATUS_ORDER_INDEX.ARRIVED_AT_POD
+  }
+
   if (primaryStatus === 'DISCHARGED') {
     return OPERATIONAL_STATUS_ORDER_INDEX.DISCHARGED
   }
@@ -268,7 +268,7 @@ function resolveProcessStatusMicrobadge(command: {
   return null
 }
 
-export function deriveOperationalStatusCounts(
+function deriveOperationalStatusCounts(
   statuses: readonly OperationalStatus[],
 ): OperationalStatusCounts {
   const statusCounts = createEmptyOperationalStatusCounts()
@@ -306,30 +306,26 @@ export function deriveProcessStatusFromContainers(
   statuses: readonly OperationalStatus[],
 ): ProcessAggregatedStatus {
   if (statuses.length === 0) return 'UNKNOWN'
-  if (statuses.every((status) => status === 'UNKNOWN')) return 'UNKNOWN'
 
-  const allFinal = statuses.every(isFinalDelivery)
-  if (allFinal) return 'DELIVERED'
-
-  const allDischargedOrBeyond = statuses.every(
-    (status) => isArrivalRisk(status) || isFinalDelivery(status),
-  )
-  const hasArrivalRisk = statuses.some(isArrivalRisk)
-  if (allDischargedOrBeyond && hasArrivalRisk) {
-    return 'DISCHARGED'
+  const mappedStatuses = statuses.map(toProcessLifecycleStatus)
+  const knownStatuses = mappedStatuses.filter(isKnownProcessLifecycleStatus)
+  if (knownStatuses.length === 0) {
+    return 'UNKNOWN'
   }
 
-  const hasTransit = statuses.some(isTransit)
-  if (hasTransit) {
-    return 'IN_TRANSIT'
+  const firstKnownStatus = knownStatuses[0]
+  if (firstKnownStatus === undefined) {
+    return 'UNKNOWN'
   }
 
-  const allPreShipment = statuses.every(isPreShipment)
-  const hasPreShipmentEvidence = statuses.some((status) => status !== 'UNKNOWN')
-  if (allPreShipment && hasPreShipmentEvidence) {
-    return 'BOOKED'
+  let minimumProgressStatus: ProcessLifecycleStatus = firstKnownStatus
+  for (let index = 1; index < knownStatuses.length; index += 1) {
+    const candidate = knownStatuses[index]
+    if (candidate === undefined) continue
+    if (compareProcessLifecycleProgress(candidate, minimumProgressStatus) < 0) {
+      minimumProgressStatus = candidate
+    }
   }
 
-  // Conservative fallback for mixed/inconsistent groups.
-  return 'IN_TRANSIT'
+  return minimumProgressStatus
 }
