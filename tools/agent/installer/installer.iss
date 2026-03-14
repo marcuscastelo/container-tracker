@@ -20,29 +20,31 @@ PrivilegesRequired=lowest
 OutputBaseFilename=ContainerTrackerAgent-Setup
 Compression=lzma
 SolidCompression=yes
+SetupLogging=yes
+UninstallLogging=yes
 
 [Dirs]
-Name: "{localappdata}\ContainerTracker"
-Name: "{localappdata}\ContainerTracker\data"
-Name: "{localappdata}\ContainerTracker\logs"
-Name: "{localappdata}\ContainerTracker\cache"
+Name: "{localappdata}\ContainerTracker"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker')
+Name: "{localappdata}\ContainerTracker\data"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\data')
+Name: "{localappdata}\ContainerTracker\logs"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\logs')
+Name: "{localappdata}\ContainerTracker\cache"; BeforeInstall: LogDirectoryCreation('{localappdata}\ContainerTracker\cache')
 
 [Files]
-Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
-Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
-Source: "stop-agent-runtime.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion
-Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion
-Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: uninsneveruninstall
-Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy
-Source: "stop-agent-runtime.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "{#ReleaseRoot}\node\*"; DestDir: "{app}\node"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogNodeRuntimeCopyStart
+Source: "{#ReleaseRoot}\app\*"; DestDir: "{app}\app"; Flags: recursesubdirs createallsubdirs ignoreversion; BeforeInstall: LogAppBundleCopyStart
+Source: "agent-tray-host.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('agent-tray-host.ps1', '{app}\app\dist\agent-tray-host.ps1')
+Source: "updater-hidden.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('updater-hidden.ps1', '{app}\app\dist\updater-hidden.ps1')
+Source: "stop-agent-runtime.ps1"; DestDir: "{app}\app\dist"; Flags: ignoreversion; BeforeInstall: LogFileCopy('stop-agent-runtime.ps1', '{app}\app\dist\stop-agent-runtime.ps1')
+Source: "resources\tray.ico"; DestDir: "{app}\app\assets"; Flags: ignoreversion; BeforeInstall: LogFileCopy('tray icon', '{app}\app\assets\tray.ico')
+Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{localappdata}\ContainerTracker"; DestName: "bootstrap.env"; Flags: uninsneveruninstall; BeforeInstall: LogFileCopy('bootstrap.env', '{localappdata}\ContainerTracker\bootstrap.env')
+Source: "{#ReleaseRoot}\config\bootstrap.env"; DestDir: "{tmp}"; DestName: "bootstrap.env.template"; Flags: dontcopy; BeforeInstall: LogFileCopy('bootstrap.env template', '{tmp}\bootstrap.env.template')
+Source: "stop-agent-runtime.ps1"; DestDir: "{tmp}"; Flags: dontcopy; BeforeInstall: LogFileCopy('stop-agent-runtime.ps1 (temp)', '{tmp}\stop-agent-runtime.ps1')
 
 [Run]
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null"""; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#UpdaterTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null"""; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\agent-tray-host.ps1"""; Flags: runhidden waituntilterminated
-Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\updater-hidden.ps1"""; Flags: runhidden waituntilterminated
+Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#AgentTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\agent-tray-host.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Registering scheduled task {#AgentTaskName}.')
+Filename: "cmd.exe"; Parameters: "/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$taskName = '{#UpdaterTaskName}'; $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/d /s /c powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"{app}\app\dist\updater-hidden.ps1""""'; $trigger = New-ScheduledTaskTrigger -AtLogOn; $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries; $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited; Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Registering scheduled task {#UpdaterTaskName}.')
+Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\agent-tray-host.ps1"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting agent runtime process.')
+Filename: "cmd.exe"; Parameters: "/C timeout /T 8 /NOBREAK >NUL & start """" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\app\dist\updater-hidden.ps1"""; Flags: runhidden waituntilterminated logoutput; BeforeInstall: LogRunAction('Starting updater runtime process.')
 
 [UninstallRun]
 Filename: "cmd.exe"; Parameters: "/C schtasks /Change /TN ""{#AgentTaskName}"" /DISABLE >NUL 2>&1 || exit /B 0"; Flags: runhidden waituntilterminated; RunOnceId: "disable-agent-task"
@@ -61,6 +63,11 @@ Type: filesandordirs; Name: "{localappdata}\Programs\ContainerTrackerAgent\*"
 Type: dirifempty; Name: "{localappdata}\Programs\ContainerTrackerAgent"
 
 [Code]
+const
+  InstallLogMaxLines = 600;
+  InstallLogBottomPadding = 8;
+  InstallLogMinHeight = 120;
+
 var
   AgentInstalled: Boolean;
   InstalledUninstallerPath: string;
@@ -73,6 +80,162 @@ var
   DependenciesPage: TWizardPage;
   ChromeDependencyCheckBox: TNewCheckBox;
   ChromeDependencyStatusLabel: TNewStaticText;
+  InstallLogMemo: TMemo;
+  InstallLogLabel: TNewStaticText;
+  NodeRuntimeCopyStarted: Boolean;
+  AppBundleCopyStarted: Boolean;
+
+procedure AppendUILogLine(const Msg: string);
+begin
+  if InstallLogMemo = nil then
+  begin
+    exit;
+  end;
+
+  InstallLogMemo.Lines.Add(Msg);
+  while InstallLogMemo.Lines.Count > InstallLogMaxLines do
+  begin
+    InstallLogMemo.Lines.Delete(0);
+  end;
+
+  InstallLogMemo.SelStart := Length(InstallLogMemo.Text);
+  InstallLogMemo.SelLength := 0;
+  WizardForm.Update;
+end;
+
+procedure UILog(const Msg: String);
+begin
+  Log(Msg);
+  AppendUILogLine(Msg);
+end;
+
+procedure UIErrorLog(const Msg: String);
+begin
+  UILog('ERROR: ' + Msg);
+end;
+
+procedure CreateInstallingLogPanel();
+var
+  MemoTop: Integer;
+begin
+  InstallLogLabel := TNewStaticText.Create(WizardForm);
+  InstallLogLabel.Parent := WizardForm.InstallingPage;
+  InstallLogLabel.Left := WizardForm.StatusLabel.Left;
+  InstallLogLabel.Top :=
+    WizardForm.ProgressGauge.Top + WizardForm.ProgressGauge.Height + ScaleY(14);
+  InstallLogLabel.Width := WizardForm.ProgressGauge.Width;
+  InstallLogLabel.AutoSize := False;
+  InstallLogLabel.WordWrap := True;
+  InstallLogLabel.Caption := 'Operational log (real time)';
+  WizardForm.AdjustLabelHeight(InstallLogLabel);
+
+  MemoTop := InstallLogLabel.Top + InstallLogLabel.Height + ScaleY(4);
+
+  InstallLogMemo := TMemo.Create(WizardForm);
+  InstallLogMemo.Parent := WizardForm.InstallingPage;
+  InstallLogMemo.Left := WizardForm.StatusLabel.Left;
+  InstallLogMemo.Top := MemoTop;
+  InstallLogMemo.Width := WizardForm.ProgressGauge.Width;
+  InstallLogMemo.Height :=
+    WizardForm.InstallingPage.Height - InstallLogMemo.Top - ScaleY(InstallLogBottomPadding);
+  if InstallLogMemo.Height < ScaleY(InstallLogMinHeight) then
+  begin
+    InstallLogMemo.Height := ScaleY(InstallLogMinHeight);
+  end;
+  InstallLogMemo.ReadOnly := True;
+  InstallLogMemo.ScrollBars := ssVertical;
+  InstallLogMemo.WordWrap := False;
+  InstallLogMemo.TabStop := False;
+end;
+
+procedure LogDirectoryCreation(const DirectoryConstant: string);
+begin
+  UILog('Ensuring directory exists: ' + ExpandConstant(DirectoryConstant));
+end;
+
+procedure LogNodeRuntimeCopyStart();
+begin
+  if NodeRuntimeCopyStarted then
+  begin
+    exit;
+  end;
+
+  NodeRuntimeCopyStarted := True;
+  UILog('Copying Node runtime files to ' + ExpandConstant('{app}\node') + '.');
+end;
+
+procedure LogAppBundleCopyStart();
+begin
+  if AppBundleCopyStarted then
+  begin
+    exit;
+  end;
+
+  AppBundleCopyStarted := True;
+  UILog('Copying agent app files to ' + ExpandConstant('{app}\app') + '.');
+end;
+
+procedure LogFileCopy(const FileDescription: string; const DestinationPathConstant: string);
+begin
+  UILog(
+    'Copying ' + FileDescription + ' to ' + ExpandConstant(DestinationPathConstant) + '.'
+  );
+end;
+
+procedure LogRunAction(const ActionMessage: string);
+begin
+  UILog(ActionMessage);
+end;
+
+procedure OnExternalCommandLog(const S: String; const Error, FirstLine: Boolean);
+begin
+  if Error then
+  begin
+    UILog('cmd:error> ' + S);
+    exit;
+  end;
+
+  UILog('cmd> ' + S);
+end;
+
+function RunCmdAndLogOutput(
+  const StepName: string;
+  const Parameters: string;
+  var ResultCode: Integer
+): Boolean;
+begin
+  ResultCode := -1;
+  UILog('Starting command: ' + StepName);
+  UILog('Command line: cmd.exe ' + Parameters);
+
+  try
+    Result := ExecAndLogOutput(
+      'cmd.exe',
+      Parameters,
+      '',
+      SW_HIDE,
+      ewWaitUntilTerminated,
+      ResultCode,
+      @OnExternalCommandLog
+    );
+  except
+    UIErrorLog(
+      'Failed to set up command output capture for "' + StepName + '": ' + GetExceptionMessage
+    );
+    Result := False;
+    exit;
+  end;
+
+  if not Result then
+  begin
+    UIErrorLog('Failed to launch command "' + StepName + '".');
+    exit;
+  end;
+
+  UILog(
+    'Command completed: ' + StepName + ' (exit code ' + IntToStr(ResultCode) + ').'
+  );
+end;
 
 function NormalizeNewLines(const Value: AnsiString): AnsiString;
 var
@@ -487,6 +650,7 @@ function InitializeSetup(): Boolean;
 var
   EffectiveConfig: AnsiString;
 begin
+  UILog('Initializing setup context.');
   Result := True;
   AgentInstalled := False;
   InstalledUninstallerPath := '';
@@ -499,10 +663,23 @@ begin
   DependenciesPage := nil;
   ChromeDependencyCheckBox := nil;
   ChromeDependencyStatusLabel := nil;
+  InstallLogMemo := nil;
+  InstallLogLabel := nil;
+  NodeRuntimeCopyStarted := False;
+  AppBundleCopyStarted := False;
   AgentInstalled := TryFindInstalledUninstaller(InstalledUninstallerPath);
+  if AgentInstalled then
+  begin
+    UILog('Existing installation detected: ' + InstalledUninstallerPath);
+  end
+  else
+  begin
+    UILog('No existing installation detected.');
+  end;
 
   if not TryLoadEffectiveConfig(EffectiveConfig) then
   begin
+    UIErrorLog('Unable to load effective config/bootstrap template.');
     MsgBox(
       'Could not load effective config/bootstrap template to evaluate MAERSK_ENABLED.',
       mbCriticalError,
@@ -514,11 +691,20 @@ begin
 
   if not IsMaerskEnabledInConfig(EffectiveConfig) then
   begin
+    UILog('MAERSK provider disabled in effective config.');
     exit;
   end;
 
   MaerskEnabled := True;
   ChromeInstalled := FindChromeExe(ChromePath);
+  if ChromeInstalled then
+  begin
+    UILog('Detected Chrome/Chromium dependency at: ' + ChromePath);
+  end
+  else
+  begin
+    UILog('Chrome/Chromium dependency not detected.');
+  end;
 end;
 
 procedure InitializeWizard();
@@ -527,6 +713,12 @@ var
   ActionStatusLabel: TNewStaticText;
   IntroLabel: TNewStaticText;
 begin
+  UILog('Initializing wizard UI.');
+  CreateInstallingLogPanel();
+  UILog(
+    'Installing page log panel ready. Showing up to ' + IntToStr(InstallLogMaxLines) + ' lines.'
+  );
+
   ActionSelectionPage := CreateCustomPage(
     wpWelcome,
     'Escolha a acao',
@@ -633,73 +825,91 @@ begin
   WizardForm.AdjustLabelHeight(ChromeDependencyStatusLabel);
 end;
 
-function RunCmdHidden(const Parameters: string; var ResultCode: Integer): Boolean;
-begin
-  Result := Exec('cmd.exe', Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-end;
-
 function StopAgentRuntimeBeforeInstall(var ErrorMessage: string): Boolean;
 var
   ResultCode: Integer;
   StopRuntimeScriptPath: string;
 begin
+  UILog('Preparing runtime shutdown before install/update.');
   ErrorMessage := '';
   ResultCode := -1;
 
-  if not RunCmdHidden(
-    '/C schtasks /Change /TN "{#AgentTaskName}" /DISABLE >NUL 2>&1 || exit /B 0',
+  if (not RunCmdAndLogOutput(
+    'Disable scheduled task {#AgentTaskName}',
+    '/C schtasks /Change /TN "{#AgentTaskName}" /DISABLE || exit /B 0',
     ResultCode
-  ) then
+  )) or (ResultCode <> 0) then
   begin
-    ErrorMessage := 'Failed to disable scheduled task {#AgentTaskName} before install/update.';
+    ErrorMessage :=
+      'Failed to disable scheduled task {#AgentTaskName} before install/update ' +
+      '(exit code ' + IntToStr(ResultCode) + ').';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
 
-  if not RunCmdHidden(
-    '/C schtasks /Change /TN "{#UpdaterTaskName}" /DISABLE >NUL 2>&1 || exit /B 0',
+  if (not RunCmdAndLogOutput(
+    'Disable scheduled task {#UpdaterTaskName}',
+    '/C schtasks /Change /TN "{#UpdaterTaskName}" /DISABLE || exit /B 0',
     ResultCode
-  ) then
+  )) or (ResultCode <> 0) then
   begin
-    ErrorMessage := 'Failed to disable scheduled task {#UpdaterTaskName} before install/update.';
+    ErrorMessage :=
+      'Failed to disable scheduled task {#UpdaterTaskName} before install/update ' +
+      '(exit code ' + IntToStr(ResultCode) + ').';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
 
-  if not RunCmdHidden(
-    '/C schtasks /End /TN "{#AgentTaskName}" >NUL 2>&1 || exit /B 0',
+  if (not RunCmdAndLogOutput(
+    'Stop running task {#AgentTaskName}',
+    '/C schtasks /End /TN "{#AgentTaskName}" || exit /B 0',
     ResultCode
-  ) then
+  )) or (ResultCode <> 0) then
   begin
-    ErrorMessage := 'Failed to stop running task {#AgentTaskName} before install/update.';
+    ErrorMessage :=
+      'Failed to stop running task {#AgentTaskName} before install/update ' +
+      '(exit code ' + IntToStr(ResultCode) + ').';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
 
-  if not RunCmdHidden(
-    '/C schtasks /End /TN "{#UpdaterTaskName}" >NUL 2>&1 || exit /B 0',
+  if (not RunCmdAndLogOutput(
+    'Stop running task {#UpdaterTaskName}',
+    '/C schtasks /End /TN "{#UpdaterTaskName}" || exit /B 0',
     ResultCode
-  ) then
+  )) or (ResultCode <> 0) then
   begin
-    ErrorMessage := 'Failed to stop running task {#UpdaterTaskName} before install/update.';
+    ErrorMessage :=
+      'Failed to stop running task {#UpdaterTaskName} before install/update ' +
+      '(exit code ' + IntToStr(ResultCode) + ').';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
 
   ExtractTemporaryFile('stop-agent-runtime.ps1');
   StopRuntimeScriptPath := ExpandConstant('{tmp}\stop-agent-runtime.ps1');
+  UILog('Extracted stop runtime script to: ' + StopRuntimeScriptPath);
 
-  if not RunCmdHidden(
+  if (not RunCmdAndLogOutput(
+    'Terminate agent runtime processes',
     '/C powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
-    StopRuntimeScriptPath + '" >NUL 2>&1',
+    StopRuntimeScriptPath + '"',
     ResultCode
-  ) then
+  )) or (ResultCode <> 0) then
   begin
-    ErrorMessage := 'Failed to terminate running agent processes before install/update.';
+    ErrorMessage :=
+      'Failed to terminate running agent processes before install/update ' +
+      '(exit code ' + IntToStr(ResultCode) + ').';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
 
+  UILog('Runtime shutdown checks completed.');
   Result := True;
 end;
 
@@ -707,14 +917,17 @@ procedure RunChosenUninstallAndCloseSetup();
 var
   UninstallResultCode: Integer;
 begin
+  UILog('Uninstall flow selected from installer action page.');
   if not AgentInstalled then
   begin
+    UIErrorLog('Uninstall requested but agent is not installed.');
     MsgBox('Container Tracker Agent nao esta instalado neste computador.', mbInformation, MB_OK);
     exit;
   end;
 
   if InstalledUninstallerPath = '' then
   begin
+    UIErrorLog('Installed uninstaller path was not found.');
     MsgBox('Nao foi possivel localizar o desinstalador instalado.', mbCriticalError, MB_OK);
     exit;
   end;
@@ -725,9 +938,11 @@ begin
     MB_YESNO
   ) <> IDYES then
   begin
+    UILog('User canceled uninstall confirmation dialog.');
     exit;
   end;
 
+  UILog('Launching installed uninstaller: ' + InstalledUninstallerPath);
   if not Exec(
     InstalledUninstallerPath,
     '/NORESTART',
@@ -737,12 +952,14 @@ begin
     UninstallResultCode
   ) then
   begin
+    UIErrorLog('Failed to launch installed uninstaller.');
     MsgBox('Falha ao iniciar o desinstalador.', mbCriticalError, MB_OK);
     exit;
   end;
 
   if UninstallResultCode <> 0 then
   begin
+    UIErrorLog('Uninstaller returned exit code ' + IntToStr(UninstallResultCode) + '.');
     MsgBox(
       'Desinstalacao finalizou com codigo de saida ' + IntToStr(UninstallResultCode) + '.',
       mbCriticalError,
@@ -751,6 +968,7 @@ begin
     exit;
   end;
 
+  UILog('Uninstall completed successfully.');
   MsgBox('Desinstalacao concluida. O setup sera fechado.', mbInformation, MB_OK);
   WizardForm.Close;
 end;
@@ -769,16 +987,19 @@ var
   ResultCode: Integer;
   CommandParams: string;
 begin
+  UILog('Chrome/Chromium dependency installation requested.');
   ResultCode := -1;
   CommandParams :=
     '/C winget install --id Google.Chrome --exact --source winget ' +
     '--accept-package-agreements --accept-source-agreements --silent --disable-interactivity';
 
-  if (not RunCmdHidden(CommandParams, ResultCode)) or (ResultCode <> 0) then
+  if (not RunCmdAndLogOutput('Install Chrome via winget', CommandParams, ResultCode)) or
+     (ResultCode <> 0) then
   begin
     ErrorMessage :=
       'Automatic Chrome install failed (winget exit code ' + IntToStr(ResultCode) + '). ' +
       'Install Google Chrome or Chromium manually and run setup again.';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
@@ -788,10 +1009,12 @@ begin
     ErrorMessage :=
       'Chrome install command completed, but chrome.exe was not found. ' +
       'Install Google Chrome or Chromium manually and run setup again.';
+    UIErrorLog(ErrorMessage);
     Result := False;
     exit;
   end;
 
+  UILog('Chrome/Chromium dependency detected after install: ' + ChromePath);
   ChromeInstalled := True;
   Result := True;
 end;
@@ -843,21 +1066,26 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ErrorMessage: string;
 begin
+  UILog('PrepareToInstall started.');
+  UILog('Resolved install target directory: ' + ExpandConstant('{app}'));
   Result := '';
 
   if not StopAgentRuntimeBeforeInstall(ErrorMessage) then
   begin
+    UIErrorLog('PrepareToInstall failed while stopping existing runtime.');
     Result := ErrorMessage;
     exit;
   end;
 
   if not MaerskEnabled then
   begin
+    UILog('MAERSK dependency flow skipped (MAERSK_ENABLED is off).');
     exit;
   end;
 
   if ChromeInstalled then
   begin
+    UILog('Chrome/Chromium dependency already satisfied.');
     exit;
   end;
 
@@ -866,14 +1094,45 @@ begin
     Result :=
       'Chrome/Chromium nao foi encontrado. Marque a instalacao automatica na pagina de dependencias ' +
       'ou instale manualmente antes de executar este setup.';
+    UIErrorLog(Result);
     exit;
   end;
 
   if InstallChromeDependency(ErrorMessage) then
   begin
+    UILog('PrepareToInstall finished successfully.');
     exit;
   end;
 
+  UIErrorLog('PrepareToInstall failed while installing Chrome dependency.');
   Result := ErrorMessage;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = wpInstalling then
+  begin
+    UILog('Installing page opened. Real-time operational log is visible by default.');
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+  begin
+    UILog('Install step started: creating directories and copying release artifacts.');
+    exit;
+  end;
+
+  if CurStep = ssPostInstall then
+  begin
+    UILog('Post-install step started: configuring scheduled tasks and runtime startup.');
+    exit;
+  end;
+
+  if CurStep = ssDone then
+  begin
+    UILog('Installer finished successfully.');
+  end;
 end;
 
