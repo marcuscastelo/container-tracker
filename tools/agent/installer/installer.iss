@@ -74,6 +74,7 @@ var
   AgentInstalled: Boolean;
   InstalledUninstallerPath: string;
   ActionSelectionPage: TWizardPage;
+  UninstallProgressPage: TWizardPage;
   InstallActionRadio: TNewRadioButton;
   UninstallActionRadio: TNewRadioButton;
   MaerskEnabled: Boolean;
@@ -84,25 +85,44 @@ var
   ChromeDependencyStatusLabel: TNewStaticText;
   InstallLogMemo: TMemo;
   InstallLogLabel: TNewStaticText;
+  UninstallProgressLogMemo: TMemo;
   NodeRuntimeCopyStarted: Boolean;
   AppBundleCopyStarted: Boolean;
+  CloseWithoutIncompleteWarning: Boolean;
 
-procedure AppendUILogLine(const Msg: string);
+procedure CreateUninstallProgressPage(); forward;
+function IsUninstallActionSelected(): Boolean; forward;
+procedure CloseSetupWithoutIncompleteWarning(); forward;
+
+procedure AppendMemoLogLine(const TargetMemo: TMemo; const Msg: string);
 begin
-  if InstallLogMemo = nil then
+  if TargetMemo = nil then
   begin
     exit;
   end;
 
-  InstallLogMemo.Lines.Add(Msg);
-  while InstallLogMemo.Lines.Count > InstallLogMaxLines do
+  TargetMemo.Lines.Add(Msg);
+  while TargetMemo.Lines.Count > InstallLogMaxLines do
   begin
-    InstallLogMemo.Lines.Delete(0);
+    TargetMemo.Lines.Delete(0);
   end;
 
-  InstallLogMemo.SelStart := Length(InstallLogMemo.Text);
-  InstallLogMemo.SelLength := 0;
-  WizardForm.Update;
+  TargetMemo.SelStart := Length(TargetMemo.Text);
+  TargetMemo.SelLength := 0;
+end;
+
+procedure AppendUILogLine(const Msg: string);
+var
+  HasVisibleMemo: Boolean;
+begin
+  HasVisibleMemo := (InstallLogMemo <> nil) or (UninstallProgressLogMemo <> nil);
+  AppendMemoLogLine(InstallLogMemo, Msg);
+  AppendMemoLogLine(UninstallProgressLogMemo, Msg);
+
+  if HasVisibleMemo and (WizardForm <> nil) then
+  begin
+    WizardForm.Update;
+  end;
 end;
 
 procedure UILog(const Msg: String);
@@ -708,6 +728,7 @@ begin
   AgentInstalled := False;
   InstalledUninstallerPath := '';
   ActionSelectionPage := nil;
+  UninstallProgressPage := nil;
   InstallActionRadio := nil;
   UninstallActionRadio := nil;
   MaerskEnabled := False;
@@ -718,8 +739,10 @@ begin
   ChromeDependencyStatusLabel := nil;
   InstallLogMemo := nil;
   InstallLogLabel := nil;
+  UninstallProgressLogMemo := nil;
   NodeRuntimeCopyStarted := False;
   AppBundleCopyStarted := False;
+  CloseWithoutIncompleteWarning := False;
   AgentInstalled := TryFindInstalledUninstaller(InstalledUninstallerPath);
   if AgentInstalled then
   begin
@@ -823,6 +846,8 @@ begin
     ActionStatusLabel.Caption := 'Status: nenhuma instalacao existente detectada para desinstalar.';
   end;
   WizardForm.AdjustLabelHeight(ActionStatusLabel);
+
+  CreateUninstallProgressPage();
 
   if not MaerskEnabled then
   begin
@@ -1047,7 +1072,7 @@ begin
 
   UILog('Uninstall completed successfully.');
   MsgBox('Desinstalacao concluida. O setup sera fechado.', mbInformation, MB_OK);
-  WizardForm.Close;
+  CloseSetupWithoutIncompleteWarning();
 end;
 
 function ShouldInstallChromeDependency(): Boolean;
@@ -1057,6 +1082,17 @@ begin
     (not ChromeInstalled) and
     (ChromeDependencyCheckBox <> nil) and
     ChromeDependencyCheckBox.Checked;
+end;
+
+function IsUninstallActionSelected(): Boolean;
+begin
+  Result := (UninstallActionRadio <> nil) and UninstallActionRadio.Checked;
+end;
+
+procedure CloseSetupWithoutIncompleteWarning();
+begin
+  CloseWithoutIncompleteWarning := True;
+  WizardForm.Close;
 end;
 
 function InstallChromeDependency(var ErrorMessage: string): Boolean;
@@ -1100,14 +1136,16 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
 
-  if (ActionSelectionPage <> nil) and (CurPageID = ActionSelectionPage.ID) then
+  if (UninstallProgressPage <> nil) and (CurPageID = UninstallProgressPage.ID) then
   begin
-    if (UninstallActionRadio <> nil) and UninstallActionRadio.Checked then
-    begin
-      RunChosenUninstallAndCloseSetup();
-      Result := False;
-      exit;
-    end;
+    RunChosenUninstallAndCloseSetup();
+    Result := False;
+    exit;
+  end;
+
+  if IsUninstallActionSelected() then
+  begin
+    exit;
   end;
 
   if not MaerskEnabled then
@@ -1137,6 +1175,22 @@ begin
     MB_OK
   );
   Result := False;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+
+  if (UninstallProgressPage <> nil) and (PageID = UninstallProgressPage.ID) then
+  begin
+    Result := not IsUninstallActionSelected();
+    exit;
+  end;
+
+  if (DependenciesPage <> nil) and (PageID = DependenciesPage.ID) then
+  begin
+    Result := IsUninstallActionSelected();
+  end;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -1187,6 +1241,13 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  if (UninstallProgressPage <> nil) and (CurPageID = UninstallProgressPage.ID) then
+  begin
+    UILog('Uninstall log page opened. Click Next to start uninstall.');
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonNext);
+    exit;
+  end;
+
   if CurPageID = wpInstalling then
   begin
     UILog('Installing page opened. Real-time operational log is visible by default.');
@@ -1213,6 +1274,45 @@ begin
   end;
 end;
 
+procedure CreateUninstallProgressPage();
+var
+  IntroLabel: TNewStaticText;
+begin
+  UninstallProgressPage := CreateCustomPage(
+    ActionSelectionPage.ID,
+    'Desinstalacao com logs',
+    'Acompanhe o log operacional da desinstalacao.'
+  );
+
+  IntroLabel := TNewStaticText.Create(UninstallProgressPage);
+  IntroLabel.Parent := UninstallProgressPage.Surface;
+  IntroLabel.Left := ScaleX(0);
+  IntroLabel.Top := ScaleY(0);
+  IntroLabel.Width := UninstallProgressPage.SurfaceWidth;
+  IntroLabel.AutoSize := False;
+  IntroLabel.WordWrap := True;
+  IntroLabel.Caption :=
+    'Clique em Next para iniciar a desinstalacao. ' +
+    'As etapas e eventuais erros aparecerao no painel abaixo.';
+  WizardForm.AdjustLabelHeight(IntroLabel);
+
+  UninstallProgressLogMemo := TMemo.Create(UninstallProgressPage);
+  UninstallProgressLogMemo.Parent := UninstallProgressPage.Surface;
+  UninstallProgressLogMemo.Left := ScaleX(0);
+  UninstallProgressLogMemo.Top := IntroLabel.Top + IntroLabel.Height + ScaleY(10);
+  UninstallProgressLogMemo.Width := UninstallProgressPage.SurfaceWidth;
+  UninstallProgressLogMemo.Height :=
+    UninstallProgressPage.SurfaceHeight - UninstallProgressLogMemo.Top - ScaleY(8);
+  if UninstallProgressLogMemo.Height < ScaleY(InstallLogMinHeight) then
+  begin
+    UninstallProgressLogMemo.Height := ScaleY(InstallLogMinHeight);
+  end;
+  UninstallProgressLogMemo.ReadOnly := True;
+  UninstallProgressLogMemo.ScrollBars := ssVertical;
+  UninstallProgressLogMemo.WordWrap := False;
+  UninstallProgressLogMemo.TabStop := False;
+end;
+
 function InitializeUninstall(): Boolean;
 begin
   Log('InitializeUninstall: starting uninstall flow for {#AppName}.');
@@ -1225,5 +1325,13 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   Log('CurUninstallStepChanged: step=' + IntToStr(Ord(CurUninstallStep)));
+end;
+
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  if CloseWithoutIncompleteWarning then
+  begin
+    Confirm := False;
+  end;
 end;
 
