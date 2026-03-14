@@ -97,7 +97,7 @@ describe('aggregateOperationalSummary', () => {
     expect(result.status_counts.UNKNOWN).toBe(2)
   })
 
-  it('returns IN_TRANSIT when observations exist and at least one container is in transit phase', () => {
+  it('returns BOOKED when observations include both pre-shipment and transit statuses', () => {
     const summaries = [
       makeSummary({
         status: 'IN_PROGRESS',
@@ -111,7 +111,7 @@ describe('aggregateOperationalSummary', () => {
 
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
-    expect(result.process_status).toBe('IN_TRANSIT')
+    expect(result.process_status).toBe('BOOKED')
   })
 
   it('derives ARRIVED_AT_POD microbadge when process primary status is IN_TRANSIT', () => {
