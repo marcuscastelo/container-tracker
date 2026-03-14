@@ -68,7 +68,10 @@ const
   InstallLogBottomPadding = 8;
   InstallLogMinHeight = 120;
   UninstallCleanupLogPathConstant = '{localappdata}\ContainerTracker\logs\uninstall-cleanup.log';
+  UninstallerRunLogPathConstant = '{localappdata}\ContainerTracker\logs\uninstaller-run.log';
   UninstallLogTailMaxChars = 1200;
+  UninstallCompletionTimeoutSeconds = 180;
+  UninstallCompletionPollDelayMs = 1000;
 
 var
   AgentInstalled: Boolean;
@@ -93,6 +96,7 @@ var
 procedure CreateUninstallProgressPage(); forward;
 function IsUninstallActionSelected(): Boolean; forward;
 procedure CloseSetupWithoutIncompleteWarning(); forward;
+function TryFindInstalledUninstaller(var UninstallerPath: string): Boolean; forward;
 
 procedure AppendMemoLogLine(const TargetMemo: TMemo; const Msg: string);
 begin
@@ -163,28 +167,67 @@ begin
 end;
 
 function BuildUninstallDiagnosticsMessage(
-  const ExitCode: Integer;
-  const CleanupLogPath: string
+  const StatusDetail: string;
+  const CleanupLogPath: string;
+  const UninstallerLogPath: string
 ): string;
 var
   CleanupLogTail: string;
+  UninstallerLogTail: string;
 begin
   Result :=
-    'Desinstalacao finalizou com codigo de saida ' + IntToStr(ExitCode) + '.' + #13#10 + #13#10 +
+    'Desinstalacao nao confirmou conclusao.' + #13#10 + #13#10 +
+    'Status: ' + StatusDetail + #13#10 +
     'Uninstaller: ' + InstalledUninstallerPath + #13#10 +
-    'Cleanup log: ' + CleanupLogPath + #13#10;
+    'Cleanup log: ' + CleanupLogPath + #13#10 +
+    'Uninstaller log: ' + UninstallerLogPath + #13#10;
 
   CleanupLogTail := ReadFileTailForDiagnostics(CleanupLogPath, UninstallLogTailMaxChars);
+  UninstallerLogTail := ReadFileTailForDiagnostics(UninstallerLogPath, UninstallLogTailMaxChars);
+
   if CleanupLogTail = '' then
   begin
-    Result := Result + #13#10 + 'Nao foi possivel ler conteudo do cleanup log.';
+    Result := Result + #13#10 + 'Nao foi possivel ler conteudo do cleanup log.' + #13#10;
+  end
+  else
+  begin
+    Result := Result + #13#10 + 'Ultimas linhas do cleanup log:' + #13#10 + CleanupLogTail + #13#10;
+  end;
+
+  if UninstallerLogTail = '' then
+  begin
+    Result := Result + #13#10 + 'Nao foi possivel ler conteudo do log do uninstaller.';
     exit;
   end;
 
-  Result :=
-    Result + #13#10 +
-    'Ultimas linhas do cleanup log:' + #13#10 +
-    CleanupLogTail;
+  Result := Result + #13#10 + 'Ultimas linhas do log do uninstaller:' + #13#10 + UninstallerLogTail;
+end;
+
+function WaitForUninstallCompletion(const TimeoutSeconds: Integer): Boolean;
+var
+  ElapsedSeconds: Integer;
+  CurrentUninstallerPath: string;
+begin
+  for ElapsedSeconds := 0 to TimeoutSeconds do
+  begin
+    if not TryFindInstalledUninstaller(CurrentUninstallerPath) then
+    begin
+      Result := True;
+      exit;
+    end;
+
+    if (ElapsedSeconds > 0) and ((ElapsedSeconds mod 5) = 0) then
+    begin
+      UILog(
+        'Waiting uninstall completion: ' + IntToStr(ElapsedSeconds) + 's elapsed, still detected at ' +
+        CurrentUninstallerPath
+      );
+    end;
+
+    Sleep(UninstallCompletionPollDelayMs);
+  end;
+
+  Result := False;
 end;
 
 procedure CreateInstallingLogPanel();
@@ -993,9 +1036,11 @@ end;
 
 procedure RunChosenUninstallAndCloseSetup();
 var
-  UninstallResultCode: Integer;
+  LaunchResultCode: Integer;
   StopRuntimeError: string;
   CleanupLogPath: string;
+  UninstallerLogPath: string;
+  UninstallerCommandLine: string;
   DiagnosticsMessage: string;
 begin
   UILog('Uninstall flow selected from installer action page.');
@@ -1024,6 +1069,8 @@ begin
   end;
 
   CleanupLogPath := ExpandConstant(UninstallCleanupLogPathConstant);
+  UninstallerLogPath := ExpandConstant(UninstallerRunLogPathConstant);
+  DeleteFile(UninstallerLogPath);
   StopRuntimeError := '';
 
   UILog('Running pre-uninstall runtime stop to reduce locked files/processes.');
@@ -1043,33 +1090,49 @@ begin
     end;
   end;
 
+  UninstallerCommandLine :=
+    '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG="' + UninstallerLogPath + '"';
   UILog('Launching installed uninstaller: ' + InstalledUninstallerPath);
+  UILog('Uninstaller parameters: ' + UninstallerCommandLine);
   if not Exec(
     InstalledUninstallerPath,
-    '/NORESTART',
+    UninstallerCommandLine,
     '',
-    SW_SHOWNORMAL,
-    ewWaitUntilTerminated,
-    UninstallResultCode
+    SW_HIDE,
+    ewNoWait,
+    LaunchResultCode
   ) then
   begin
     UIErrorLog('Failed to launch installed uninstaller.');
     DiagnosticsMessage :=
       'Falha ao iniciar o desinstalador.' + #13#10 + #13#10 +
       'Uninstaller: ' + InstalledUninstallerPath + #13#10 +
-      'Cleanup log: ' + CleanupLogPath;
+      'Cleanup log: ' + CleanupLogPath + #13#10 +
+      'Uninstaller log: ' + UninstallerLogPath;
     MsgBox(DiagnosticsMessage, mbCriticalError, MB_OK);
     exit;
   end;
 
-  if UninstallResultCode <> 0 then
+  UILog('Uninstaller process started (pid=' + IntToStr(LaunchResultCode) + ').');
+  UILog(
+    'Waiting up to ' + IntToStr(UninstallCompletionTimeoutSeconds) +
+    ' seconds for uninstall completion.'
+  );
+
+  if not WaitForUninstallCompletion(UninstallCompletionTimeoutSeconds) then
   begin
-    UIErrorLog('Uninstaller returned exit code ' + IntToStr(UninstallResultCode) + '.');
-    DiagnosticsMessage := BuildUninstallDiagnosticsMessage(UninstallResultCode, CleanupLogPath);
+    UIErrorLog('Timed out waiting for uninstall completion.');
+    DiagnosticsMessage := BuildUninstallDiagnosticsMessage(
+      'Timeout while waiting for uninstall completion.',
+      CleanupLogPath,
+      UninstallerLogPath
+    );
     MsgBox(DiagnosticsMessage, mbCriticalError, MB_OK);
     exit;
   end;
 
+  AgentInstalled := False;
+  InstalledUninstallerPath := '';
   UILog('Uninstall completed successfully.');
   MsgBox('Desinstalacao concluida. O setup sera fechado.', mbInformation, MB_OK);
   CloseSetupWithoutIncompleteWarning();
