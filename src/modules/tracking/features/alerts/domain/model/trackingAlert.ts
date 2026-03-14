@@ -141,6 +141,24 @@ type TrackingAlertBase = {
 export type TrackingAlert = TrackingAlertBase & TrackingAlertMessageContract
 
 /**
+ * Minimal alert state required by alert derivation and monitoring transitions.
+ *
+ * This boundary intentionally excludes heavyweight read-model fields that are
+ * not needed during snapshot processing.
+ */
+export type TrackingAlertDerivationState = Pick<
+  TrackingAlert,
+  | 'id'
+  | 'category'
+  | 'type'
+  | 'message_params'
+  | 'source_observation_fingerprints'
+  | 'alert_fingerprint'
+  | 'acked_at'
+  | 'resolved_at'
+>
+
+/**
  * Shape for inserting a new tracking alert.
  */
 type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id'>

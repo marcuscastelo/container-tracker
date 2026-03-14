@@ -33,7 +33,8 @@ type ContainerObservationGroup = {
   observations: Observation[]
 }
 
-function normalizeVesselName(vesselName: string | null): string | null {
+function trimVesselName(vesselName: string | null): string | null {
+  // Search projection keeps provider casing for display while dropping blank values.
   if (vesselName === null) return null
   const normalized = vesselName.trim()
   return normalized.length > 0 ? normalized : null
@@ -69,7 +70,7 @@ function deriveLatestVesselName(observations: readonly Observation[]): string | 
     const observation = ordered[idx]
     if (!observation) continue
 
-    const vesselName = normalizeVesselName(observation.vessel_name)
+    const vesselName = trimVesselName(observation.vessel_name)
     if (vesselName !== null) {
       return vesselName
     }

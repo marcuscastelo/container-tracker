@@ -584,7 +584,7 @@
       "IN_PROGRESS": "In Progress",
       "LOADED": "Loaded",
       "IN_TRANSIT": "In Transit",
-      "ARRIVED_AT_POD": "Arrived at POD",
+      "ARRIVED_AT_POD": "At POD",
       "DISCHARGED": "Discharged",
       "AVAILABLE_FOR_PICKUP": "Available for Pickup",
       "DELIVERED": "Delivered",

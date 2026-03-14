@@ -1,3 +1,4 @@
+import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import {
   computeAlertFingerprint,
@@ -5,12 +6,17 @@ import {
 } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type {
   NewTrackingAlert,
-  TrackingAlert,
+  TrackingAlertDerivationState,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  classifyNoMovementBreakpoint,
+  normalizeNoMovementThresholdDays,
+} from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 
 /**
@@ -25,18 +31,17 @@ type TransshipmentPair = {
   readonly vesselTo: string
 }
 
-export type MonitoringAutoResolution = {
+type MonitoringAutoResolution = {
   readonly alertId: string
   readonly reason: TrackingAlertResolvedReason
 }
 
-export type DerivedAlertTransitions = {
+type DerivedAlertTransitions = {
   readonly newAlerts: readonly NewTrackingAlert[]
   readonly monitoringAutoResolutions: readonly MonitoringAutoResolution[]
 }
 
 const TERMINAL_STATUSES: readonly ContainerStatus[] = ['DELIVERED', 'EMPTY_RETURNED']
-const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
 
 function resolveObservationLocationDisplay(observation: Observation | null | undefined): string {
   const locationDisplay = observation?.location_display?.trim() ?? ''
@@ -56,31 +61,41 @@ function toLatestActualEventWithTime(timeline: Timeline): Observation | undefine
     .sort((a, b) => (b.event_time ?? '').localeCompare(a.event_time ?? ''))[0]
 }
 
-function toHighestCrossedNoMovementBreakpoint(daysWithoutMovement: number): number | null {
-  const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(
-    (thresholdDays) => daysWithoutMovement >= thresholdDays,
+function isNoMovementAlertDerivationState(
+  alert: TrackingAlertDerivationState,
+): alert is TrackingAlertDerivationState & {
+  readonly type: 'NO_MOVEMENT'
+  readonly category: 'monitoring'
+  readonly message_params: {
+    readonly threshold_days: number
+    readonly days_without_movement: number
+    readonly days: number
+    readonly lastEventDate: string
+  }
+} {
+  const params = alert.message_params
+  return (
+    alert.category === 'monitoring' &&
+    alert.type === 'NO_MOVEMENT' &&
+    'threshold_days' in params &&
+    'days_without_movement' in params &&
+    'days' in params &&
+    'lastEventDate' in params &&
+    typeof params.threshold_days === 'number' &&
+    typeof params.days_without_movement === 'number' &&
+    typeof params.days === 'number' &&
+    typeof params.lastEventDate === 'string'
   )
-  if (eligible.length === 0) return null
-  return eligible[eligible.length - 1] ?? null
-}
-
-function normalizeNoMovementThresholdDays(rawThresholdDays: number): number {
-  const normalizedCandidate = Math.floor(rawThresholdDays)
-  const breakpoint = toHighestCrossedNoMovementBreakpoint(normalizedCandidate)
-  if (breakpoint !== null) return breakpoint
-  return normalizedCandidate
 }
 
 function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   thresholdDays: number,
   cycleAnchorDate: string,
   cycleAnchorObservationFingerprint: string,
 ): boolean {
   for (const alert of existingAlerts) {
-    if (alert.category !== 'monitoring') continue
-    if (alert.type !== 'NO_MOVEMENT') continue
-    if (alert.message_key !== 'alerts.noMovementDetected') continue
+    if (!isNoMovementAlertDerivationState(alert)) continue
     const emittedThresholdDays = normalizeNoMovementThresholdDays(
       alert.message_params.threshold_days,
     )
@@ -95,7 +110,7 @@ function hasNoMovementBreakpointBeenEmittedForCurrentCycle(
   return false
 }
 
-function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
+function isMonitoringActiveAlert(alert: TrackingAlertDerivationState): boolean {
   return alert.category === 'monitoring' && resolveAlertLifecycleState(alert) === 'ACTIVE'
 }
 
@@ -107,22 +122,25 @@ function isMonitoringActiveAlert(alert: TrackingAlert): boolean {
  * - Only LOAD and DISCHARGE events are relevant
  * - Both vessel names must be present and different
  * - ARRIVAL/DEPARTURE are irrelevant for vessel-change detection
- * - Ordering is deterministic: event_time → type → location_code → fingerprint
+ * - Ordering follows canonical observation chronology (null event_time last)
+ *   with stable timeline order as the final tiebreaker
  *
  * @see docs/TRACKING_INVARIANTS.md
  */
 function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[] {
-  const events = [...timeline.observations]
-    .filter((o) => (o.type === 'LOAD' || o.type === 'DISCHARGE') && o.event_time_type === 'ACTUAL')
+  const events = timeline.observations
+    .map((observation, timelineIndex) => ({ observation, timelineIndex }))
+    .filter(
+      (entry) =>
+        (entry.observation.type === 'LOAD' || entry.observation.type === 'DISCHARGE') &&
+        entry.observation.event_time_type === 'ACTUAL',
+    )
     .sort((a, b) => {
-      const timeCompare = (a.event_time ?? '').localeCompare(b.event_time ?? '')
-      if (timeCompare !== 0) return timeCompare
-      const typeCompare = a.type.localeCompare(b.type)
-      if (typeCompare !== 0) return typeCompare
-      const locCompare = (a.location_code ?? '').localeCompare(b.location_code ?? '')
-      if (locCompare !== 0) return locCompare
-      return a.fingerprint.localeCompare(b.fingerprint)
+      const chronologyCompare = compareObservationsChronologically(a.observation, b.observation)
+      if (chronologyCompare !== 0) return chronologyCompare
+      return a.timelineIndex - b.timelineIndex
     })
+    .map((entry) => entry.observation)
 
   const pairs: TransshipmentPair[] = []
 
@@ -133,13 +151,17 @@ function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[
     if (prev === undefined || curr === undefined) continue
     if (prev.type !== 'DISCHARGE' || curr.type !== 'LOAD') continue
 
-    const vesselFrom = prev.vessel_name?.trim() || null
-    const vesselTo = curr.vessel_name?.trim() || null
+    const vesselFrom = prev.vessel_name?.trim() ?? ''
+    const vesselTo = curr.vessel_name?.trim() ?? ''
+    const normalizedVesselFrom = normalizeVesselName(prev.vessel_name)
+    const normalizedVesselTo = normalizeVesselName(curr.vessel_name)
 
     // Cannot determine transshipment without both vessel names — conservative: skip
-    if (vesselFrom === null || vesselTo === null) continue
+    if (normalizedVesselFrom === null || normalizedVesselTo === null) {
+      continue
+    }
 
-    if (vesselFrom !== vesselTo) {
+    if (normalizedVesselFrom !== normalizedVesselTo) {
       const port = (curr.location_code ?? prev.location_code ?? 'UNKNOWN').toUpperCase()
       pairs.push({ dischargeObs: prev, loadObs: curr, port, vesselFrom, vesselTo })
     }
@@ -205,7 +227,7 @@ export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
 export function deriveAlertTransitions(
   timeline: Timeline,
   status: ContainerStatus,
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
   now: Date = new Date(),
 ): DerivedAlertTransitions {
@@ -319,7 +341,7 @@ export function deriveAlertTransitions(
         const lastEventDate = new Date(lastActualEvent.event_time)
         const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
         const daysWithoutMovement = Math.floor(daysSinceLastEvent)
-        const highestCrossedBreakpoint = toHighestCrossedNoMovementBreakpoint(daysWithoutMovement)
+        const highestCrossedBreakpoint = classifyNoMovementBreakpoint(daysWithoutMovement)
 
         if (highestCrossedBreakpoint !== null) {
           hasNoMovementCondition = true
@@ -405,7 +427,7 @@ export function deriveAlertTransitions(
 export function deriveAlerts(
   timeline: Timeline,
   status: ContainerStatus,
-  existingAlerts: readonly TrackingAlert[],
+  existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
   now: Date = new Date(),
 ): readonly NewTrackingAlert[] {

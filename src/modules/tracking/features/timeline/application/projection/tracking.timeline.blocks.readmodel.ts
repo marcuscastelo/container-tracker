@@ -2,6 +2,7 @@ import {
   groupVoyageSegments,
   type VoyageSegment,
 } from '~/modules/tracking/application/projection/voyageSegments'
+import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 
 export type TerminalSegmentKind = 'pre-carriage' | 'transshipment-terminal' | 'post-carriage'
@@ -173,12 +174,14 @@ export type PortRiskMarker = {
 function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegment[]): readonly {
   readonly afterVoyageIndex: number
   readonly port: string | null
+  readonly reason: string
   readonly fromVessel: string | null
   readonly toVessel: string | null
 }[] {
   const transshipments: {
     afterVoyageIndex: number
     port: string | null
+    reason: string
     fromVessel: string | null
     toVessel: string | null
   }[] = []
@@ -191,12 +194,25 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
   for (let i = 0; i < voyageOnly.length - 1; i++) {
     const current = voyageOnly[i]
     const next = voyageOnly[i + 1]
+    const currentVessel = normalizeVesselName(current.seg.vessel)
+    const nextVessel = normalizeVesselName(next.seg.vessel)
+    const vesselChanged = currentVessel !== nextVessel
+    const voyageChanged = current.seg.voyage !== next.seg.voyage
+
     // Transshipment when vessel or voyage differs
-    if (current.seg.vessel !== next.seg.vessel || current.seg.voyage !== next.seg.voyage) {
+    if (vesselChanged || voyageChanged) {
       const port = current.seg.destination ?? next.seg.origin ?? null
+      let reason = 'Voyage change'
+      if (vesselChanged && voyageChanged) {
+        reason = 'Vessel and voyage change'
+      } else if (vesselChanged) {
+        reason = 'Vessel change'
+      }
+
       transshipments.push({
         afterVoyageIndex: current.idx,
         port,
+        reason,
         fromVessel: current.seg.vessel,
         toVessel: next.seg.vessel,
       })
@@ -407,7 +423,7 @@ export function buildTimelineRenderList(
     transshipmentMap.set(ts.afterVoyageIndex, {
       blockType: 'transshipment',
       port: ts.port,
-      reason: 'Vessel change',
+      reason: ts.reason,
       fromVessel: ts.fromVessel,
       toVessel: ts.toVessel,
     })

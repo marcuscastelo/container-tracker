@@ -26,7 +26,9 @@ describe('sync-status controllers', () => {
       },
     })
 
-    const response = await controllers.listProcessesSyncStatus()
+    const response = await controllers.listProcessesSyncStatus({
+      request: new Request('http://localhost/api/processes/sync-status'),
+    })
     const body = ProcessesSyncStatusResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
@@ -34,5 +36,51 @@ describe('sync-status controllers', () => {
     expect(response.headers.get('Cache-Control')).toContain('no-store')
     expect(response.headers.get('Pragma')).toBe('no-cache')
     expect(response.headers.get('Expires')).toBe('0')
+  })
+
+  it('forwards processIds scope from query parameters', async () => {
+    const getSyncStatus = vi.fn(async () => ({
+      generatedAt: '2026-03-06T12:00:00.000Z',
+      processes: [],
+    }))
+
+    const controllers = createSyncStatusControllers({
+      syncUseCases: {
+        getSyncStatus,
+      },
+    })
+
+    const response = await controllers.listProcessesSyncStatus({
+      request: new Request(
+        'http://localhost/api/processes/sync-status?processIds=process-1,%20process-2,process-1',
+      ),
+    })
+
+    expect(response.status).toBe(200)
+    expect(getSyncStatus).toHaveBeenCalledWith({
+      processIds: ['process-1', 'process-2'],
+    })
+  })
+
+  it('rejects invalid blank processIds filters', async () => {
+    const getSyncStatus = vi.fn()
+    const controllers = createSyncStatusControllers({
+      syncUseCases: {
+        getSyncStatus,
+      },
+    })
+
+    const response = await controllers.listProcessesSyncStatus({
+      request: new Request('http://localhost/api/processes/sync-status?processIds=,%20'),
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body).toEqual(
+      expect.objectContaining({
+        error: expect.stringContaining('Invalid sync-status query'),
+      }),
+    )
+    expect(getSyncStatus).not.toHaveBeenCalled()
   })
 })
