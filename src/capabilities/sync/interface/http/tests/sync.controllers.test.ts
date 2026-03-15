@@ -202,6 +202,7 @@ describe('sync controllers', () => {
           requests: [],
           failures: [],
         })),
+        detectProcessCarrier: vi.fn(async () => ({ detected: false, carrier: null })),
       },
       defaultTenantId: 'tenant-a',
     })
@@ -277,6 +278,7 @@ describe('sync controllers', () => {
           requests: [],
           failures: [],
         })),
+        detectProcessCarrier: vi.fn(async () => ({ detected: false, carrier: null })),
       },
       defaultTenantId: 'tenant-a',
     })
