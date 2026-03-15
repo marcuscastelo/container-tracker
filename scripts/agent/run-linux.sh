@@ -13,6 +13,7 @@ project_env_path="$repo_root/.env"
 agent_data_dir="${AGENT_DATA_DIR:-$repo_root/.agent-runtime}"
 dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
 bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
+update_manifest_channel="${AGENT_UPDATE_MANIFEST_CHANNEL:-disabled}"
 
 mkdir -p "$agent_data_dir"
 
@@ -135,6 +136,7 @@ if [ ! -f "$dotenv_path" ] && [ ! -f "$bootstrap_path" ]; then
       printf 'MAERSK_HEADLESS=%s\n' "$maersk_headless"
       printf 'MAERSK_TIMEOUT_MS=%s\n' "$maersk_timeout_ms"
       printf 'MAERSK_USER_DATA_DIR=%s\n' "$maersk_user_data_dir"
+      printf 'AGENT_UPDATE_MANIFEST_CHANNEL=%s\n' "$update_manifest_channel"
     } > "$bootstrap_path"
 
     echo "[agent:run] generated bootstrap.env from .env at $bootstrap_path"
@@ -151,4 +153,5 @@ fi
 DOTENV_PATH="$dotenv_path" \
 BOOTSTRAP_DOTENV_PATH="$bootstrap_path" \
 AGENT_DATA_DIR="$agent_data_dir" \
+AGENT_UPDATE_MANIFEST_CHANNEL="$update_manifest_channel" \
 node tools/agent/dist/tools/agent/supervisor.js

@@ -87,6 +87,10 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
   return fallback
 }
 
+function isUpdateManifestChecksDisabled(config: RuntimeConfig): boolean {
+  return config.AGENT_UPDATE_MANIFEST_CHANNEL === 'disabled'
+}
+
 function sanitizeText(value: string, secrets: readonly string[]): string {
   let sanitized = value
   for (const secret of secrets) {
@@ -1376,12 +1380,18 @@ async function main(): Promise<void> {
   const agentLayout = runtimePaths.resolveAgentPathLayout()
   runtimePaths.ensureAgentPathLayout(agentLayout)
   const runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
+  const updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
   const agentVersion = resolveAgentVersion()
   const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
+  if (updateManifestChecksDisabled) {
+    console.log(
+      '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
+    )
+  }
 
   const runtimeState: AgentRuntimeState = {
     realtimeState:
@@ -1437,6 +1447,7 @@ async function main(): Promise<void> {
 
       const nowMs = Date.now()
       const shouldRunUpdateCheck =
+        !updateManifestChecksDisabled &&
         runtimeState.updateState !== 'draining' &&
         nowMs - lastUpdateCheckAtMs >= UPDATE_CHECK_INTERVAL_MS
 
