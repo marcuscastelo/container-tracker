@@ -26,11 +26,38 @@ function InfoFieldRow(props: InfoField): JSX.Element | null {
 
 export function ShipmentInfoCard(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const effectiveCarrierSummary = () => props.data.effectiveCarrierSummary ?? 'UNKNOWN'
+
+  const carrierModeLabel = () => {
+    if (props.data.carrierMode === 'MANUAL') {
+      return t(keys.shipmentView.shipmentInfo.modeManual)
+    }
+    return t(keys.shipmentView.shipmentInfo.modeAuto)
+  }
+
+  const effectiveCarrierLabel = () => {
+    if (effectiveCarrierSummary() === 'MIXED') {
+      return t(keys.shipmentView.shipmentInfo.effectiveCarrierMixed)
+    }
+    if (effectiveCarrierSummary() === 'UNKNOWN') {
+      return t(keys.shipmentView.shipmentInfo.effectiveCarrierUnknown)
+    }
+
+    return props.data.carrier?.toUpperCase() ?? t(keys.shipmentView.shipmentInfo.effectiveCarrierUnknown)
+  }
 
   const fields = (): readonly InfoField[] => [
     {
       label: t(keys.shipmentView.shipmentInfo.carrier),
       value: props.data.carrier?.toUpperCase(),
+    },
+    {
+      label: t(keys.shipmentView.shipmentInfo.mode),
+      value: carrierModeLabel(),
+    },
+    {
+      label: t(keys.shipmentView.shipmentInfo.effectiveCarrier),
+      value: effectiveCarrierLabel(),
     },
     {
       label: t(keys.shipmentView.shipmentInfo.bl),

@@ -2,7 +2,7 @@ export type InsertProcessRecord = Readonly<{
   reference: string | null
   origin?: string | null
   destination?: string | null
-  carrier: string
+  carrier: string | null
   bill_of_lading: string | null
   booking_number: string | null
   importer_name: string | null
@@ -17,7 +17,7 @@ export type UpdateProcessRecord = Readonly<{
   reference?: string | null
   origin?: string | null
   destination?: string | null
-  carrier?: string
+  carrier?: string | null
   bill_of_lading?: string | null
   booking_number?: string | null
   importer_name?: string | null

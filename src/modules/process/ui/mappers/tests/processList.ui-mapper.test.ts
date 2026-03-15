@@ -199,4 +199,27 @@ describe('toProcessSummaryVMs', () => {
     ])
     expect(result[0].redestinationNumber).toBeNull()
   })
+
+  it('derives effective carrier summary from container carriers', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-mixed',
+        carrier: 'msc',
+        containers: [
+          { id: 'c1', container_number: 'MSCU1111111', carrier_code: 'msc' },
+          { id: 'c2', container_number: 'CMAU2222222', carrier_code: 'cmacgm' },
+        ],
+      }),
+      makeSource({
+        id: 'p-unknown-carrier',
+        carrier: null,
+        containers: [{ id: 'c3', container_number: 'MSCU3333333', carrier_code: null }],
+      }),
+    ])
+
+    expect(result[0].effectiveCarrierSummary).toBe('MIXED')
+    expect(result[0].effectiveCarrierLabel).toBe('MSC +1')
+    expect(result[1].effectiveCarrierSummary).toBe('UNKNOWN')
+    expect(result[1].effectiveCarrierLabel).toBe('Unknown')
+  })
 })

@@ -10,6 +10,8 @@ describe('toShipmentDetailVM', () => {
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
       carrier: 'maersk',
+      carrier_mode: 'MANUAL',
+      effective_carrier_summary: 'SINGLE',
       bill_of_lading: null,
       booking_number: null,
       source: 'api',
@@ -83,6 +85,8 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].sync.state).toBe('never')
     expect(result.containers[0].etaChipVm.state).toBe('UNAVAILABLE')
     expect(result.containers[0].dataIssueChipVm.visible).toBe(false)
+    expect(result.carrierMode).toBe('MANUAL')
+    expect(result.effectiveCarrierSummary).toBe('SINGLE')
     expect(result.processEtaSecondaryVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.total).toBe(1)
     expect(Array.isArray(result.alerts)).toBe(true)

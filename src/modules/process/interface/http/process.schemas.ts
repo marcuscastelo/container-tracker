@@ -34,7 +34,7 @@ export const CreateProcessInputSchema = z.object({
     .array(
       z.object({
         container_number: z.string().min(1),
-        carrier_code: z.string(),
+        carrier_code: z.string().nullable().optional(),
       }),
     )
     .min(1, 'At least one container is required'),

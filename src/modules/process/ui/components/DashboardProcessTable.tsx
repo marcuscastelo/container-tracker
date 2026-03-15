@@ -300,6 +300,10 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
 }
 
 function CarrierCell(ctx: CellContext): JSX.Element {
+  const carrierLabel =
+    ctx.process.effectiveCarrierLabel ??
+    displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)
+
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
       <A
@@ -310,7 +314,7 @@ function CarrierCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        {displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)}
+        {carrierLabel}
       </A>
     </div>
   )

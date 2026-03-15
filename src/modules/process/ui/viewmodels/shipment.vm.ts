@@ -102,6 +102,8 @@ export type ShipmentDetailVM = {
   readonly processRef: string
   readonly reference?: string | null
   readonly carrier?: string | null
+  readonly carrierMode?: 'AUTO' | 'MANUAL'
+  readonly effectiveCarrierSummary?: 'UNKNOWN' | 'SINGLE' | 'MIXED'
   readonly bill_of_lading?: string | null
   readonly booking_number?: string | null
   readonly importer_name?: string | null

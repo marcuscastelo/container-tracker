@@ -7,6 +7,7 @@ import { toProcessSource } from '~/modules/process/domain/identity/process-sourc
 import { createProcessEntity } from '~/modules/process/domain/process.entity'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import {
+  toInsertProcessRecord,
   toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
@@ -138,6 +139,23 @@ describe('process.http.mappers', () => {
     expect(toUpdateProcessRecord({})).toEqual({})
   })
 
+  it('maps unknown carrier to null in insert/update records for auto mode processes', () => {
+    const createInput: CreateProcessInput = {
+      carrier: 'unknown',
+      containers: [{ container_number: 'CMAU1945069', carrier_code: null }],
+    }
+
+    expect(
+      toInsertProcessRecord(createInput),
+    ).toMatchObject({
+      carrier: null,
+    })
+
+    expect(toUpdateProcessRecord({ carrier: 'unknown' })).toMatchObject({
+      carrier: null,
+    })
+  })
+
   it('maps status microbadge fields into process list response DTO', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),
@@ -152,6 +170,8 @@ describe('process.http.mappers', () => {
 
     const parsed = ProcessResponseSchema.parse(response)
 
+    expect(parsed.carrier_mode).toBe('MANUAL')
+    expect(parsed.effective_carrier_summary).toBe('SINGLE')
     expect(parsed.process_status).toBe('IN_TRANSIT')
     expect(parsed.highest_container_status).toBe('DISCHARGED')
     expect(parsed.status_counts?.DISCHARGED).toBe(1)
@@ -190,6 +210,8 @@ describe('process.http.mappers', () => {
 
     const parsed = ProcessResponseSchema.parse(response)
 
+    expect(parsed.carrier_mode).toBe('MANUAL')
+    expect(parsed.effective_carrier_summary).toBe('SINGLE')
     expect(parsed.process_status).toBe('UNKNOWN')
     expect(parsed.status_microbadge).toBeNull()
     expect(parsed.has_status_dispersion).toBe(false)

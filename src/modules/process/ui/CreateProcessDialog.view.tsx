@@ -630,11 +630,14 @@ function SourceSection(props: SourceSectionProps): JSX.Element {
             placeholder={t(keys.createProcess.field.carrierPlaceholder)}
             required
           />
-          <Show when={props.carrier === 'unknown'}>
-            <p class="mt-2 text-xs-ui text-text-muted">
-              {t(keys.createProcess.unknownCarrierWarning)}
-            </p>
-          </Show>
+          <p class="mt-2 text-xs-ui text-text-muted">
+            <Show
+              when={props.carrier === 'unknown'}
+              fallback={t(keys.createProcess.selectedCarrierHint)}
+            >
+              {t(keys.createProcess.unknownCarrierHint)}
+            </Show>
+          </p>
         </div>
         <FormInput
           label={t(keys.createProcess.field.billOfLading)}
