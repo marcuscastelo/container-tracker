@@ -8,7 +8,7 @@ export function toCreateProcessInput(data: CreateProcessDialogFormData): CreateP
     reference: data.reference || null,
     origin: data.origin ? { display_name: data.origin } : null,
     destination: data.destination ? { display_name: data.destination } : null,
-    carrier: data.carrier,
+    carrier: resolvedCarrier,
     bill_of_lading: data.billOfLading || null,
     booking_number: data.bookingNumber || null,
     importer_name: data.importerName || null,

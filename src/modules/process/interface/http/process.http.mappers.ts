@@ -83,7 +83,7 @@ export function toContainerInputs(
 ): readonly { container_number: string; carrier_code: string | null }[] {
   return dto.containers.map((c) => ({
     container_number: c.container_number,
-    carrier_code: c.carrier_code === 'unknown' ? null : c.carrier_code ?? null,
+    carrier_code: c.carrier_code === 'unknown' ? null : (c.carrier_code ?? null),
   }))
 }
 
@@ -104,13 +104,17 @@ function toEffectiveCarrierSummary(
 
   if (normalizedContainerCarriers.length === 0) {
     const normalizedProcessCarrier = (processCarrier ?? '').trim()
-    if (normalizedProcessCarrier.length === 0 || normalizedProcessCarrier.toLowerCase() === 'unknown') {
+    if (
+      normalizedProcessCarrier.length === 0 ||
+      normalizedProcessCarrier.toLowerCase() === 'unknown'
+    ) {
       return 'UNKNOWN'
     }
     return 'SINGLE'
   }
 
-  return new Set(normalizedContainerCarriers.map((carrierCode) => carrierCode.toLowerCase())).size === 1
+  return new Set(normalizedContainerCarriers.map((carrierCode) => carrierCode.toLowerCase()))
+    .size === 1
     ? 'SINGLE'
     : 'MIXED'
 }

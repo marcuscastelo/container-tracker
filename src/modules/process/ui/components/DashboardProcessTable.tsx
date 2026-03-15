@@ -300,7 +300,7 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
 }
 
 function CarrierCell(ctx: CellContext): JSX.Element {
-  const carrierLabel =
+  const carrierLabel = () =>
     ctx.process.effectiveCarrierLabel ??
     displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)
 
@@ -314,7 +314,7 @@ function CarrierCell(ctx: CellContext): JSX.Element {
         onFocusIn={ctx.triggerProcessIntent}
         onPointerDown={ctx.triggerProcessIntent}
       >
-        {carrierLabel}
+        {carrierLabel()}
       </A>
     </div>
   )

@@ -22,7 +22,7 @@ export const CreateProcessInputSchema = z.object({
     })
     .nullable()
     .optional(),
-  carrier: CarrierSchema,
+  carrier: CarrierSchema.nullable(),
   bill_of_lading: z.string().nullable().optional(),
   booking_number: z.string().nullable().optional(),
   importer_name: z.string().nullable().optional(),

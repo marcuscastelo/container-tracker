@@ -145,9 +145,7 @@ describe('process.http.mappers', () => {
       containers: [{ container_number: 'CMAU1945069', carrier_code: null }],
     }
 
-    expect(
-      toInsertProcessRecord(createInput),
-    ).toMatchObject({
+    expect(toInsertProcessRecord(createInput)).toMatchObject({
       carrier: null,
     })
 

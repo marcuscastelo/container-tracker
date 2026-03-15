@@ -43,7 +43,9 @@ export function ShipmentInfoCard(props: Props): JSX.Element {
       return t(keys.shipmentView.shipmentInfo.effectiveCarrierUnknown)
     }
 
-    return props.data.carrier?.toUpperCase() ?? t(keys.shipmentView.shipmentInfo.effectiveCarrierUnknown)
+    return (
+      props.data.carrier?.toUpperCase() ?? t(keys.shipmentView.shipmentInfo.effectiveCarrierUnknown)
+    )
   }
 
   const fields = (): readonly InfoField[] => [

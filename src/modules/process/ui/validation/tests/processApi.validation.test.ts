@@ -119,7 +119,7 @@ describe('toCreateProcessInput', () => {
     expect(payload.redestination_number).toBeNull()
   })
 
-  it('keeps process carrier as unknown while seeding containers without carrier for auto detection', () => {
+  it('maps unknown carrier to null and seeds containers without carrier for auto detection', () => {
     const payload = toCreateProcessInput({
       reference: 'REF-AUTO',
       origin: 'Shanghai',
@@ -135,7 +135,7 @@ describe('toCreateProcessInput', () => {
       redestinationNumber: '',
     })
 
-    expect(payload.carrier).toBe('unknown')
+    expect(payload.carrier).toBeNull()
     expect(payload.containers).toEqual([
       {
         container_number: 'CMAU1945069',
