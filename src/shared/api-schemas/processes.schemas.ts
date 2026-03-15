@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
+const CarrierModeSchema = z.enum(['AUTO', 'MANUAL'])
+const EffectiveCarrierSummarySchema = z.enum(['UNKNOWN', 'SINGLE', 'MIXED'])
 const ProcessStatusMicrobadgeStatusSchema = z.enum([
   'UNKNOWN',
   'IN_PROGRESS',
@@ -37,6 +39,8 @@ export const ProcessResponseSchema = z.object({
   origin: z.object({ display_name: z.string().nullish() }).nullable().optional(),
   destination: z.object({ display_name: z.string().nullish() }).nullable().optional(),
   carrier: z.string().nullish(),
+  carrier_mode: CarrierModeSchema.optional(),
+  effective_carrier_summary: EffectiveCarrierSummarySchema.optional(),
   bill_of_lading: z.string().nullish(),
   booking_number: z.string().nullish(),
   importer_name: z.string().nullish(),

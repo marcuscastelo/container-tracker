@@ -230,6 +230,12 @@
     "shipmentInfo": {
       "title": "Shipment Info",
       "carrier": "Carrier",
+      "mode": "Mode",
+      "modeAuto": "Auto",
+      "modeManual": "Manual",
+      "effectiveCarrier": "Effective carriers",
+      "effectiveCarrierUnknown": "Unknown",
+      "effectiveCarrierMixed": "Mixed",
       "vessel": "Vessel",
       "bl": "BL",
       "booking": "Booking",
@@ -503,7 +509,8 @@
       "redestinationNumber": "Redestination Number",
       "redestinationNumberPlaceholder": "e.g. RED-001"
     },
-    "unknownCarrierWarning": "If 'Unknown', automatic carrier updates won't be available.",
+    "selectedCarrierHint": "Carrier will be used as default. Containers may still auto-correct if not found.",
+    "unknownCarrierHint": "Carrier will be detected automatically during sync.",
     "carrierUnknown": "Unknown",
     "validation": {
       "containerNumberRequired": "Container number is required.",

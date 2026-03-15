@@ -36,11 +36,13 @@ import type {
 // ---------------------------------------------------------------------------
 
 export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRecord {
+  const carrier = dto.carrier === 'unknown' ? null : dto.carrier
+
   return {
     reference: dto.reference ?? null,
     origin: dto.origin?.display_name,
     destination: dto.destination?.display_name,
-    carrier: dto.carrier,
+    carrier,
     bill_of_lading: dto.bill_of_lading ?? null,
     booking_number: dto.booking_number ?? null,
     importer_name: dto.importer_name ?? null,
@@ -53,13 +55,15 @@ export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRec
 }
 
 export function toUpdateProcessRecord(dto: Partial<CreateProcessInput>): UpdateProcessRecord {
+  const carrier = dto.carrier === 'unknown' ? null : dto.carrier
+
   return {
     ...(dto.reference !== undefined ? { reference: dto.reference ?? null } : {}),
     ...(dto.origin !== undefined ? { origin: dto.origin?.display_name ?? null } : {}),
     ...(dto.destination !== undefined
       ? { destination: dto.destination?.display_name ?? null }
       : {}),
-    ...(dto.carrier !== undefined ? { carrier: dto.carrier } : {}),
+    ...(dto.carrier !== undefined ? { carrier } : {}),
     ...(dto.bill_of_lading !== undefined ? { bill_of_lading: dto.bill_of_lading ?? null } : {}),
     ...(dto.booking_number !== undefined ? { booking_number: dto.booking_number ?? null } : {}),
     ...(dto.importer_name !== undefined ? { importer_name: dto.importer_name ?? null } : {}),
@@ -79,8 +83,40 @@ export function toContainerInputs(
 ): readonly { container_number: string; carrier_code: string | null }[] {
   return dto.containers.map((c) => ({
     container_number: c.container_number,
-    carrier_code: c.carrier_code ?? null,
+    carrier_code: c.carrier_code === 'unknown' ? null : (c.carrier_code ?? null),
   }))
+}
+
+function toCarrierMode(carrier: string | null): 'AUTO' | 'MANUAL' {
+  if (carrier === null) return 'AUTO'
+  const normalizedCarrier = carrier.trim().toLowerCase()
+  if (normalizedCarrier.length === 0 || normalizedCarrier === 'unknown') return 'AUTO'
+  return 'MANUAL'
+}
+
+function toEffectiveCarrierSummary(
+  processCarrier: string | null,
+  containerCarrierCodes: readonly (string | null)[],
+): 'UNKNOWN' | 'SINGLE' | 'MIXED' {
+  const normalizedContainerCarriers = containerCarrierCodes
+    .map((carrierCode) => (carrierCode ?? '').trim())
+    .filter((carrierCode) => carrierCode.length > 0 && carrierCode.toLowerCase() !== 'unknown')
+
+  if (normalizedContainerCarriers.length === 0) {
+    const normalizedProcessCarrier = (processCarrier ?? '').trim()
+    if (
+      normalizedProcessCarrier.length === 0 ||
+      normalizedProcessCarrier.toLowerCase() === 'unknown'
+    ) {
+      return 'UNKNOWN'
+    }
+    return 'SINGLE'
+  }
+
+  return new Set(normalizedContainerCarriers.map((carrierCode) => carrierCode.toLowerCase()))
+    .size === 1
+    ? 'SINGLE'
+    : 'MIXED'
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +179,7 @@ function processToResponseFields(p: ProcessEntity) {
     origin: p.origin ? { display_name: p.origin } : null,
     destination: p.destination ? { display_name: p.destination } : null,
     carrier: p.carrier ?? null,
+    carrier_mode: toCarrierMode(p.carrier ?? null),
     bill_of_lading: p.billOfLading ?? null,
     booking_number: p.bookingNumber ?? null,
     importer_name: p.importerName ?? null,
@@ -157,8 +194,14 @@ function processToResponseFields(p: ProcessEntity) {
 }
 
 export function toProcessResponse(pwc: ProcessWithContainers) {
+  const containerCarrierCodes = pwc.containers.map((container) => container.carrierCode)
+
   return {
     ...processToResponseFields(pwc.process),
+    effective_carrier_summary: toEffectiveCarrierSummary(
+      pwc.process.carrier ?? null,
+      containerCarrierCodes,
+    ),
     containers: pwc.containers.map(toContainerResponse),
   }
 }
@@ -168,8 +211,14 @@ export function toProcessResponseWithSummary(
   summary: ProcessOperationalSummary,
   sync: ProcessSyncSummaryReadModel,
 ) {
+  const containerCarrierCodes = pwc.containers.map((container) => container.carrierCode)
+
   return {
     ...processToResponseFields(pwc.process),
+    effective_carrier_summary: toEffectiveCarrierSummary(
+      pwc.process.carrier ?? null,
+      containerCarrierCodes,
+    ),
     containers: pwc.containers.map(toContainerResponse),
     process_status: summary.process_status,
     highest_container_status: summary.highest_container_status,
@@ -471,6 +520,10 @@ export function toProcessDetailResponse(
 
   return {
     ...processToResponseFields(pwc.process),
+    effective_carrier_summary: toEffectiveCarrierSummary(
+      pwc.process.carrier ?? null,
+      containers.map((container) => container.carrier_code),
+    ),
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
     alerts: [...alertDisplayReadModel]

@@ -16,6 +16,7 @@ import {
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
+import { createUpdateProcessCarrierUseCase } from '~/modules/process/application/usecases/update-process-carrier.usecase'
 
 export type CreateProcessUseCasesDeps = {
   repository: ProcessRepository
@@ -51,6 +52,9 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     repository: deps.repository,
     containerUseCases: deps.containerUseCases,
   })
+  const updateCarrier = createUpdateProcessCarrierUseCase({
+    repository: deps.repository,
+  })
 
   const deleteProcess = createDeleteProcessUseCase({ repository: deps.repository })
 
@@ -76,6 +80,7 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     findProcessByIdWithContainers,
     createProcess,
     updateProcess,
+    updateCarrier,
     deleteProcess,
     removeContainerFromProcess,
     searchByText,

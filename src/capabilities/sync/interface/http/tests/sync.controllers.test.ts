@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { EnqueueSyncCommand } from '~/capabilities/sync/application/commands/enqueue-sync.command'
 import { createSyncControllers } from '~/capabilities/sync/interface/http/sync.controllers'
-import { SyncContainerResponseSchema } from '~/capabilities/sync/interface/http/sync.schemas'
+import {
+  DetectProcessCarrierResponseSchema,
+  SyncContainerResponseSchema,
+} from '~/capabilities/sync/interface/http/sync.schemas'
 import {
   ProcessRefreshResponseSchema,
   SyncAllProcessesResponseSchema,
@@ -55,6 +58,10 @@ function createControllers() {
       ],
     }),
   )
+  const detectProcessCarrier = vi.fn(async () => ({
+    detected: true,
+    carrier: 'MSC',
+  }))
 
   const controllers = createSyncControllers({
     syncUseCases: {
@@ -62,6 +69,7 @@ function createControllers() {
       syncProcess,
       syncContainer,
       refreshProcess,
+      detectProcessCarrier,
     },
     defaultTenantId: 'tenant-a',
   })
@@ -72,6 +80,7 @@ function createControllers() {
     syncProcess,
     syncContainer,
     refreshProcess,
+    detectProcessCarrier,
   }
 }
 
@@ -119,6 +128,7 @@ describe('sync controllers', () => {
           requests: [],
           failures: [],
         })),
+        detectProcessCarrier: vi.fn(async () => ({ detected: false, carrier: null })),
       },
       defaultTenantId: 'tenant-a',
     })
@@ -192,6 +202,7 @@ describe('sync controllers', () => {
           requests: [],
           failures: [],
         })),
+        detectProcessCarrier: vi.fn(async () => ({ detected: false, carrier: null })),
       },
       defaultTenantId: 'tenant-a',
     })
@@ -267,6 +278,7 @@ describe('sync controllers', () => {
           requests: [],
           failures: [],
         })),
+        detectProcessCarrier: vi.fn(async () => ({ detected: false, carrier: null })),
       },
       defaultTenantId: 'tenant-a',
     })
@@ -317,6 +329,33 @@ describe('sync controllers', () => {
       processId: 'process-1',
       mode: 'process',
       containerNumber: undefined,
+    })
+  })
+
+  it('returns 200 for process carrier detection', async () => {
+    const { controllers, detectProcessCarrier } = createControllers()
+
+    const request = new Request('http://localhost/api/processes/process-1/detect-carrier', {
+      method: 'POST',
+      body: JSON.stringify({ container_number: 'MSCU1234567' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await controllers.detectCarrierByProcessId({
+      params: { id: 'process-1' },
+      request,
+    })
+    const body = DetectProcessCarrierResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      detected: true,
+      carrier: 'MSC',
+    })
+    expect(detectProcessCarrier).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      processId: 'process-1',
+      containerNumber: 'MSCU1234567',
     })
   })
 })

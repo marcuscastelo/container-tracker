@@ -118,6 +118,31 @@ describe('toCreateProcessInput', () => {
     expect(payload.product).toBeNull()
     expect(payload.redestination_number).toBeNull()
   })
+
+  it('maps unknown carrier to null and seeds containers without carrier for auto detection', () => {
+    const payload = toCreateProcessInput({
+      reference: 'REF-AUTO',
+      origin: 'Shanghai',
+      destination: 'Santos',
+      containers: [{ id: '1', containerNumber: 'CMAU1945069' }],
+      carrier: 'unknown',
+      billOfLading: '',
+      bookingNumber: '',
+      importerName: '',
+      exporterName: '',
+      referenceImporter: '',
+      product: '',
+      redestinationNumber: '',
+    })
+
+    expect(payload.carrier).toBeNull()
+    expect(payload.containers).toEqual([
+      {
+        container_number: 'CMAU1945069',
+        carrier_code: null,
+      },
+    ])
+  })
 })
 
 describe('fetchDashboardProcessSummaries', () => {

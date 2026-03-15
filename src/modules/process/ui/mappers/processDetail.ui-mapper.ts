@@ -288,6 +288,8 @@ export function toShipmentDetailVM(
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference,
     carrier: data.carrier ?? null,
+    carrierMode: data.carrier_mode,
+    effectiveCarrierSummary: data.effective_carrier_summary,
     bill_of_lading: data.bill_of_lading,
     booking_number: data.booking_number,
     importer_name: data.importer_name,

@@ -241,6 +241,12 @@
     "shipmentInfo": {
       "title": "Informações do Embarque",
       "carrier": "Armador",
+      "mode": "Modo",
+      "modeAuto": "Automático",
+      "modeManual": "Manual",
+      "effectiveCarrier": "Armadores efetivos",
+      "effectiveCarrierUnknown": "Desconhecido",
+      "effectiveCarrierMixed": "Misto",
       "vessel": "Navio",
       "bl": "BL",
       "booking": "Booking",
@@ -514,7 +520,8 @@
       "redestinationNumber": "Número de Redestinação",
       "redestinationNumberPlaceholder": "ex. RED-001"
     },
-    "unknownCarrierWarning": "Se 'Desconhecido', não haverá atualizações automáticas do armador.",
+    "selectedCarrierHint": "O armador será usado como padrão. Containers ainda podem ser autocorrigidos se não forem encontrados.",
+    "unknownCarrierHint": "O armador será detectado automaticamente durante o sync.",
     "carrierUnknown": "Desconhecido",
     "validation": {
       "containerNumberRequired": "Número do container é obrigatório.",

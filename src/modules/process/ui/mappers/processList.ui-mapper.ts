@@ -12,6 +12,8 @@ export type ProcessListItemSource = {
   origin?: { display_name?: string | null } | null
   destination?: { display_name?: string | null } | null
   carrier?: string | null
+  carrier_mode?: 'AUTO' | 'MANUAL'
+  effective_carrier_summary?: 'UNKNOWN' | 'SINGLE' | 'MIXED'
   importer_id?: string | null
   importer_name?: string | null
   exporter_name?: string | null
@@ -41,6 +43,11 @@ export type ProcessListItemSource = {
   last_sync_at?: string | null
 }
 
+type EffectiveCarrierProjection = {
+  readonly summary: 'UNKNOWN' | 'SINGLE' | 'MIXED'
+  readonly label: string
+}
+
 function toOptionalNonBlankString(value: string | null | undefined): string | null {
   if (value == null) return null
   const trimmed = value.trim()
@@ -55,6 +62,43 @@ function toTimestampOrNull(value: string | null | undefined): number | null {
   if (!value) return null
   const parsed = Date.parse(value)
   return Number.isNaN(parsed) ? null : parsed
+}
+
+function toEffectiveCarrierProjection(process: ProcessListItemSource): EffectiveCarrierProjection {
+  const nonBlankContainerCarriers = process.containers
+    .map((container) => toOptionalNonBlankString(container.carrier_code))
+    .filter((carrier): carrier is string => carrier !== null)
+
+  const uniqueUpperContainerCarriers = Array.from(
+    new Set(nonBlankContainerCarriers.map((carrier) => carrier.trim().toUpperCase())),
+  )
+
+  if (uniqueUpperContainerCarriers.length === 0) {
+    const processCarrier = toOptionalNonBlankString(process.carrier)?.trim().toUpperCase() ?? null
+    if (!processCarrier || processCarrier === 'UNKNOWN') {
+      return {
+        summary: 'UNKNOWN',
+        label: 'Unknown',
+      }
+    }
+
+    return {
+      summary: process.effective_carrier_summary ?? 'SINGLE',
+      label: processCarrier,
+    }
+  }
+
+  if (uniqueUpperContainerCarriers.length === 1) {
+    return {
+      summary: 'SINGLE',
+      label: uniqueUpperContainerCarriers[0],
+    }
+  }
+
+  return {
+    summary: 'MIXED',
+    label: `${uniqueUpperContainerCarriers[0]} +${uniqueUpperContainerCarriers.length - 1}`,
+  }
 }
 
 function toProcessSyncStatus(
@@ -75,6 +119,8 @@ export function toProcessSummaryVMs(
     const statusCode = toProcessStatusCode(rawStatus)
     const statusRank = processStatusToRank(statusCode)
 
+    const effectiveCarrier = toEffectiveCarrierProjection(process)
+
     return {
       id: process.id,
       reference: process.reference ?? null,
@@ -94,6 +140,9 @@ export function toProcessSummaryVMs(
       eta,
       etaMsOrNull: toTimestampOrNull(eta),
       carrier: toOptionalNonBlankString(process.carrier),
+      carrierMode: process.carrier_mode,
+      effectiveCarrierSummary: process.effective_carrier_summary ?? effectiveCarrier.summary,
+      effectiveCarrierLabel: effectiveCarrier.label,
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,
       dominantAlertCreatedAt: process.dominant_alert_created_at ?? null,

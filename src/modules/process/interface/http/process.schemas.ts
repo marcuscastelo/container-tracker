@@ -22,7 +22,7 @@ export const CreateProcessInputSchema = z.object({
     })
     .nullable()
     .optional(),
-  carrier: CarrierSchema,
+  carrier: CarrierSchema.nullable(),
   bill_of_lading: z.string().nullable().optional(),
   booking_number: z.string().nullable().optional(),
   importer_name: z.string().nullable().optional(),
@@ -34,7 +34,7 @@ export const CreateProcessInputSchema = z.object({
     .array(
       z.object({
         container_number: z.string().min(1),
-        carrier_code: z.string(),
+        carrier_code: z.string().nullable().optional(),
       }),
     )
     .min(1, 'At least one container is required'),

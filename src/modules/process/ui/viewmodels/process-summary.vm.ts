@@ -21,6 +21,9 @@ export type ProcessSummaryVM = {
   readonly eta: string | null
   readonly etaMsOrNull: number | null
   readonly carrier: string | null
+  readonly carrierMode?: 'AUTO' | 'MANUAL'
+  readonly effectiveCarrierSummary?: 'UNKNOWN' | 'SINGLE' | 'MIXED'
+  readonly effectiveCarrierLabel?: string
   readonly alertsCount: number
   readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
   readonly dominantAlertCreatedAt: string | null

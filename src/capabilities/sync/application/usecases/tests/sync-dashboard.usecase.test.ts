@@ -15,6 +15,8 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
   readonly getSyncRequestStatuses: ReturnType<typeof vi.fn>
   readonly resolveTargets: ReturnType<typeof vi.fn>
   readonly enqueue: ReturnType<typeof vi.fn>
+  readonly detectCarrier: ReturnType<typeof vi.fn>
+  readonly persistDetectedCarrier: ReturnType<typeof vi.fn>
 } {
   let now = 0
   const nowMs = () => now
@@ -35,38 +37,50 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     },
   ])
 
-  const enqueue = vi.fn(async () => ({
-    requestedTargets: 2,
-    queuedTargets: 2,
-    syncRequestIds: ['sync-1', 'sync-2'],
-    requests: [
-      {
-        processId: 'process-a',
-        containerNumber: 'MSCU1234567',
-        syncRequestId: 'sync-1',
+  const enqueue = vi.fn(
+    async (command: {
+      readonly tenantId: string
+      readonly mode: 'manual' | 'live' | 'backfill'
+      readonly targets: readonly {
+        readonly processId: string | null
+        readonly containerNumber: string
+      }[]
+    }) => ({
+      requestedTargets: command.targets.length,
+      queuedTargets: command.targets.length,
+      syncRequestIds: command.targets.map((_, index: number) => `sync-${index + 1}`),
+      requests: command.targets.map((target, index: number) => ({
+        processId: target.processId,
+        containerNumber: target.containerNumber,
+        syncRequestId: `sync-${index + 1}`,
         deduped: false,
-      },
-      {
-        processId: 'process-b',
-        containerNumber: 'MRKU7654321',
-        syncRequestId: 'sync-2',
-        deduped: false,
-      },
-    ],
-  }))
+      })),
+    }),
+  )
 
   const getSyncRequestStatuses = vi.fn(
     async (command: { readonly syncRequestIds: readonly string[] }) => ({
       allTerminal: true,
-      requests: command.syncRequestIds.map((syncRequestId) => ({
-        syncRequestId,
-        status: 'DONE' as const,
-        lastError: null,
-        updatedAt: '2026-03-06T10:00:00.000Z',
-        refValue: 'MSCU1234567',
-      })),
+      requests: command.syncRequestIds.map((syncRequestId) => {
+        const refValue = syncRequestId === 'sync-2' ? 'MRKU7654321' : 'MSCU1234567'
+        return {
+          syncRequestId,
+          status: 'DONE' as const,
+          lastError: null,
+          updatedAt: '2026-03-06T10:00:00.000Z',
+          refValue,
+        }
+      }),
     }),
   )
+  const detectCarrier = vi.fn(async () => ({
+    detected: true as const,
+    provider: 'msc' as const,
+    attemptedProviders: ['msc'] as const,
+    reason: 'found' as const,
+    error: null,
+  }))
+  const persistDetectedCarrier = vi.fn(async () => undefined)
 
   const deps: SyncDashboardDeps = {
     targetResolverService: {
@@ -78,6 +92,12 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     queuePort: {
       getSyncRequestStatuses,
     },
+    carrierDetectionEngine: {
+      detectCarrier,
+    },
+    carrierDetectionWritePort: {
+      persistDetectedCarrier,
+    },
     nowMs,
     sleep,
     ...overrides,
@@ -88,6 +108,8 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     getSyncRequestStatuses,
     resolveTargets,
     enqueue,
+    detectCarrier,
+    persistDetectedCarrier,
   }
 }
 
@@ -209,5 +231,124 @@ describe('sync-dashboard.usecase', () => {
     const httpError = toHttpErrorOrThrow(thrown)
     expect(httpError.status).toBe(502)
     expect(httpError.message).toContain('provider_unavailable')
+  })
+
+  it('detects the carrier for not-found-like failures and retries the dashboard sync', async () => {
+    const detectCarrier = vi.fn(async () => ({
+      detected: true as const,
+      provider: 'cmacgm' as const,
+      attemptedProviders: ['maersk', 'cmacgm'] as const,
+      reason: 'found' as const,
+      error: null,
+    }))
+
+    const { deps, getSyncRequestStatuses, enqueue, persistDetectedCarrier } = createDeps({
+      carrierDetectionEngine: {
+        detectCarrier,
+      },
+    })
+
+    getSyncRequestStatuses
+      .mockResolvedValueOnce({
+        allTerminal: true,
+        requests: [
+          {
+            syncRequestId: 'sync-1',
+            status: 'FAILED',
+            lastError: 'No container found for msc:MSCU1234567',
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+          {
+            syncRequestId: 'sync-2',
+            status: 'DONE',
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MRKU7654321',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        allTerminal: true,
+        requests: [
+          {
+            syncRequestId: 'sync-1',
+            status: 'DONE',
+            lastError: null,
+            updatedAt: '2026-03-06T10:01:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+        ],
+      })
+
+    const execute = createSyncDashboardUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'dashboard' },
+      mode: 'manual',
+    })
+
+    expect(result).toEqual({
+      syncedProcesses: 2,
+      syncedContainers: 2,
+    })
+    expect(detectCarrier).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      containerNumber: 'MSCU1234567',
+      excludeProviders: ['msc'],
+    })
+    expect(persistDetectedCarrier).toHaveBeenCalledWith({
+      processId: 'process-a',
+      containerNumber: 'MSCU1234567',
+      carrierCode: 'cmacgm',
+    })
+    expect(enqueue).toHaveBeenCalledTimes(2)
+  })
+
+  it('fails with 502 when detection cannot resolve a not-found-like dashboard failure', async () => {
+    const detectCarrier = vi.fn(async () => ({
+      detected: false as const,
+      provider: null,
+      attemptedProviders: ['maersk', 'cmacgm'] as const,
+      reason: 'not_found' as const,
+      error: 'carrier_detection_not_found',
+    }))
+
+    const { deps, getSyncRequestStatuses } = createDeps({
+      carrierDetectionEngine: {
+        detectCarrier,
+      },
+    })
+
+    getSyncRequestStatuses.mockResolvedValueOnce({
+      allTerminal: true,
+      requests: [
+        {
+          syncRequestId: 'sync-1',
+          status: 'FAILED',
+          lastError: 'No container found for msc:MSCU1234567',
+          updatedAt: '2026-03-06T10:00:00.000Z',
+          refValue: 'MSCU1234567',
+        },
+      ],
+    })
+
+    const execute = createSyncDashboardUseCase(deps)
+
+    let thrown: unknown = null
+    try {
+      await execute({
+        tenantId: 'tenant-a',
+        scope: { kind: 'dashboard' },
+        mode: 'manual',
+      })
+    } catch (error) {
+      thrown = error
+    }
+
+    const httpError = toHttpErrorOrThrow(thrown)
+    expect(httpError.status).toBe(502)
+    expect(httpError.message).toContain('carrier_detection_not_found')
+    expect(detectCarrier).toHaveBeenCalledTimes(1)
   })
 })
