@@ -1,6 +1,6 @@
 import type { SupportedSyncProvider } from '~/capabilities/sync/application/ports/sync-queue.port'
 
-export const SUPPORTED_CARRIER_DETECTION_PROVIDERS: readonly SupportedSyncProvider[] = [
+const SUPPORTED_CARRIER_DETECTION_PROVIDERS: readonly SupportedSyncProvider[] = [
   'msc',
   'maersk',
   'cmacgm',
@@ -12,7 +12,7 @@ const PROVIDER_BY_CARRIER: Readonly<Record<string, SupportedSyncProvider>> = {
   cmacgm: 'cmacgm',
 }
 
-export function normalizeCarrierCode(value: string): string {
+function normalizeCarrierCode(value: string): string {
   return value
     .toLowerCase()
     .trim()

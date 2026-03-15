@@ -1,6 +1,5 @@
 import type { CarrierDetectionWritePort } from '~/capabilities/sync/application/ports/carrier-detection-write.port'
 import type {
-  SupportedSyncProvider,
   SyncQueuePort,
   SyncRequestStatusItem,
 } from '~/capabilities/sync/application/ports/sync-queue.port'

@@ -5,12 +5,12 @@ import {
   normalizeContainerNumber,
 } from '~/capabilities/sync/carrier-detection/carrier-detection.providers'
 
-export type CarrierProbeResult =
+type CarrierProbeResult =
   | { readonly kind: 'found' }
   | { readonly kind: 'not_found' }
   | { readonly kind: 'error'; readonly error: string }
 
-export type CarrierDetectionResult =
+type CarrierDetectionResult =
   | {
       readonly detected: true
       readonly provider: SupportedSyncProvider
