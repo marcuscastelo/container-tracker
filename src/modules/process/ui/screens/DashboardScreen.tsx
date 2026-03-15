@@ -13,6 +13,7 @@ import { DashboardActivityChartCard } from '~/modules/process/ui/components/Dash
 import { DashboardKpiRow } from '~/modules/process/ui/components/DashboardKpiRow'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { DashboardRefreshButton } from '~/modules/process/ui/components/DashboardRefreshButton'
+import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { UnifiedDashboardFilters } from '~/modules/process/ui/components/UnifiedDashboardFilters'
 import { fetchDashboardKpis } from '~/modules/process/ui/fetchDashboardKpis'
 import {
@@ -251,6 +252,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           onCreateProcess={handleCreateProcess}
           searchSlot={props.searchSlot}
           syncSlot={<DashboardRefreshButton onRefresh={handleDashboardRefresh} />}
+          actionsSlot={<ExportImportActions processId={null} showImport />}
         />
         <CreateProcessDialog
           open={isCreateDialogOpen()}
