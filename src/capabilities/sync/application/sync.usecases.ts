@@ -42,7 +42,14 @@ export type CreateSyncUseCasesDeps = {
   readonly refreshProcessDeps: RefreshProcessDeps
   readonly carrierDetectionWritePort: CarrierDetectionWritePort
   readonly syncDashboardDeps?: Partial<
-    Omit<SyncDashboardDeps, 'targetResolverService' | 'enqueuePolicyService' | 'queuePort'>
+    Omit<
+      SyncDashboardDeps,
+      | 'targetResolverService'
+      | 'enqueuePolicyService'
+      | 'queuePort'
+      | 'carrierDetectionEngine'
+      | 'carrierDetectionWritePort'
+    >
   >
   readonly syncProcessDeps?: Partial<
     Omit<
@@ -133,6 +140,8 @@ export function createSyncUseCases(deps: CreateSyncUseCasesDeps) {
     targetResolverService,
     enqueuePolicyService,
     queuePort: deps.queuePort,
+    carrierDetectionEngine,
+    carrierDetectionWritePort: deps.carrierDetectionWritePort,
     ...deps.syncDashboardDeps,
   })
 
