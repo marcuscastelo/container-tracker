@@ -5,22 +5,23 @@
  */
 
 /**
- * Maximum items per row used by the distribution algorithm.
- */
-export const MAX_PER_ROW = 4
-
-/**
- * Computes how many items to place in each row given a total count.
+ * Computes how many items to place in each row given a total count
+ * and a caller-provided max items per row.
  *
- * Rules (max MAX_PER_ROW per row):
- *   rows = ceil(n / MAX_PER_ROW)
+ * Rules:
+ *   rows = ceil(n / maxPerRow)
  *   base = floor(n / rows)
  *   The first (n % rows) rows get (base + 1) items; the rest get base.
  */
-export function computeRowDistribution(n: number): number[] {
+export function computeRowDistribution(n: number, maxPerRow: number): number[] {
   if (n <= 0) return []
-  const rowCount = Math.ceil(n / MAX_PER_ROW)
+
+  const normalizedMaxPerRow = Math.floor(maxPerRow)
+  if (!Number.isFinite(normalizedMaxPerRow) || normalizedMaxPerRow < 1) return []
+
+  const rowCount = Math.ceil(n / normalizedMaxPerRow)
   const base = Math.floor(n / rowCount)
   const remainder = n % rowCount
+
   return Array.from({ length: rowCount }, (_, i) => (i < remainder ? base + 1 : base))
 }
