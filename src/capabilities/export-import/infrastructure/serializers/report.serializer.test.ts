@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { serializeReportExport } from '~/capabilities/export-import/infrastructure/serializers/report.serializer'
+import type { TemporalValueDto } from '~/shared/time/dto'
+
+function instant(s: string | null): TemporalValueDto | null {
+  return s === null ? null : { kind: 'instant', value: s }
+}
 
 function createReport(scope: 'all_processes' | 'single_process') {
   return {
@@ -35,8 +40,8 @@ function createReport(scope: 'all_processes' | 'single_process') {
         processStatus: 'ARRIVED_AT_POD',
         alertCount: 0,
         highestAlertSeverity: null,
-        eta: '2026-04-30T00:00:00.000Z',
-        lastEventAt: '2026-04-20T16:18:00.000Z',
+        eta: instant('2026-04-30T00:00:00.000Z'),
+        lastEventAt: instant('2026-04-20T16:18:00.000Z'),
         lastSyncAt: '2026-04-20T16:18:00.000Z',
         lastSyncStatus: 'DONE' as const,
         containers: [
@@ -45,8 +50,8 @@ function createReport(scope: 'all_processes' | 'single_process') {
             containerNumber: 'FCIU2000205',
             carrierCode: 'MSC',
             status: 'IN_TRANSIT',
-            eta: '2026-04-30T00:00:00.000Z',
-            latestEvent: '2026-04-20T16:18:00.000Z',
+            eta: instant('2026-04-30T00:00:00.000Z'),
+            latestEvent: instant('2026-04-20T16:18:00.000Z'),
             latestEventLabel: 'Discharged at destination port',
             latestTrackingUpdate: '2026-04-20T16:18:00.000Z',
             vesselName: 'MSC BIANCA SILVIA',
@@ -60,8 +65,8 @@ function createReport(scope: 'all_processes' | 'single_process') {
             containerNumber: 'MSBU3493578',
             carrierCode: 'MSC',
             status: 'IN_TRANSIT',
-            eta: '2026-04-30T00:00:00.000Z',
-            latestEvent: '2026-04-18T12:00:00.000Z',
+            eta: instant('2026-04-30T00:00:00.000Z'),
+            latestEvent: instant('2026-04-18T12:00:00.000Z'),
             latestEventLabel: 'Loaded on board',
             latestTrackingUpdate: '2026-04-18T12:00:00.000Z',
             vesselName: '',

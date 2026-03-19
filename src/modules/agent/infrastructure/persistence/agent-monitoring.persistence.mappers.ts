@@ -54,7 +54,7 @@ function toAgentLeaseHealth(value: string): AgentMonitoringRecord['leaseHealth']
   return 'unknown'
 }
 
-function toAgentEnrollmentMethod(value: string): AgentMonitoringRecord['enrollmentMethod'] {
+function toAgentEnrollmentMethod(value: string | null): AgentMonitoringRecord['enrollmentMethod'] {
   if (value === 'bootstrap-token') return 'bootstrap-token'
   if (value === 'manual') return 'manual'
   return 'unknown'

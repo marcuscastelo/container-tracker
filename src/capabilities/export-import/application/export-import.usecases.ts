@@ -287,7 +287,15 @@ async function buildReportContainerEntry(
   )
 
   const latestEvent = getLatestEventFromTimelineItems(summary.timeline.observations)
-  const latestObservation = getLatestObservationInfo(summary.observations)
+  const latestObservation = getLatestObservationInfo(
+    summary.observations.map((o) => ({
+      type: o.type,
+      event_time: o.event_time ? toTemporalValueDto(o.event_time).value : null,
+      carrier_label: o.carrier_label ?? null,
+      vessel_name: o.vessel_name ?? null,
+      created_at: o.created_at,
+    })),
+  )
   const timelineSummary = command.includeTimelineSummary
     ? toReportTimelineItem(summary.timeline.observations)
     : []

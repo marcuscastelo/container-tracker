@@ -28,6 +28,7 @@ describe('observationRowToDomain', () => {
     type: 'LOAD',
     temporal_kind: 'instant',
     event_time_instant: '2026-01-15T10:00:00.000Z',
+    event_time: '2026-01-15T10:00:00.000Z',
     event_date: null,
     location_code: 'USNYC',
     location_display: 'New York',
