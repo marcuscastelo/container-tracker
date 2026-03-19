@@ -160,11 +160,15 @@ if (import.meta.hot) {
 export function useTranslation() {
   const { locale, availableLocales } = localeRoot
   // build a keys object from the reference locale (memoized at module/runtime)
-  function buildKeys(obj: any, prefix = ''): any {
-    const out: Record<string, any> = {}
+  function isRecord(x: unknown): x is Record<string, unknown> {
+    return typeof x === 'object' && x !== null && !Array.isArray(x)
+  }
+
+  function buildKeys(obj: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+    const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(obj)) {
       const p = prefix ? `${prefix}.${k}` : k
-      if (v && typeof v === 'object' && !Array.isArray(v)) {
+      if (isRecord(v)) {
         out[k] = buildKeys(v, p)
       } else {
         out[k] = p
@@ -176,13 +180,13 @@ export function useTranslation() {
   // biome-ignore lint: keys object is built from reference locale and provides type safety, so no need for exhaustive checks
   const actualKeys = buildKeys(referenceLocale) as TranslationKeys
 
-  function createProxy(target: any, path = ''): any {
+  function createProxy(target: Record<string, unknown>, path = ''): unknown {
     return new Proxy(target, {
       get(_target, prop) {
         if (prop in target) {
           // biome-ignore lint: We know this is safe because we only create proxies for objects derived from the reference locale, which has a consistent shape.
-          const value = target[prop as keyof typeof target]
-          if (typeof value === 'object' && value !== null) {
+          const value = (target as Record<string, unknown>)[String(prop)]
+          if (isRecord(value)) {
             return createProxy(value, path ? `${path}.${String(prop)}` : String(prop))
           }
           return value
@@ -205,11 +209,11 @@ export function useTranslation() {
   const keys = createProxy(actualKeys) as TranslationKeys
 
   // Build a set of valid reference keys for runtime validation/warnings
-  function flattenKeys(obj: any, prefix = ''): string[] {
+  function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
     const out: string[] = []
     for (const [k, v] of Object.entries(obj)) {
       const p = prefix ? `${prefix}.${k}` : k
-      if (v && typeof v === 'object' && !Array.isArray(v)) {
+      if (isRecord(v)) {
         out.push(...flattenKeys(v, p))
       } else {
         out.push(p)

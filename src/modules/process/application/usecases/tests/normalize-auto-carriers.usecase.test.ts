@@ -13,7 +13,7 @@ function makeContainer(command: {
   readonly containerNumber: string
   readonly carrierCode: string | null
   readonly carrierAssignmentMode: 'AUTO' | 'MANUAL'
-}): any {
+}): Record<string, unknown> {
   // Use a plain test fixture object instead of importing cross-BC domain constructors
   return {
     id: command.id,

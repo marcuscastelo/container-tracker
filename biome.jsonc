@@ -316,7 +316,7 @@
             "noDuplicateObjectKeys": "error",
             "noDuplicateParameters": "error",
             "noEmptyBlockStatements": "off",
-            "noExplicitAny": "warn",
+            "noExplicitAny": "error",
             "noExtraNonNullAssertion": "error",
             "noFallthroughSwitchClause": "error",
             "noFunctionAssign": "error",
