@@ -117,20 +117,14 @@ export const GetLatestSnapshotRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
 
-export const GetTrackingReplayRequestSchema = z.object({
+export const GetTrackingTimeTravelRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
   now: z.string().optional(),
 })
 
-export const GetTrackingReplayStepsQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(5000).optional(),
-  cursor: z.coerce.number().int().nonnegative().optional(),
-  now: z.string().optional(),
-})
-
-export const GetTrackingReplayStepSnapshotRequestSchema = z.object({
+export const GetTrackingReplayDebugRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
-  step: z.coerce.number().int().positive(),
+  snapshotId: z.string().min(1, 'snapshotId is required'),
   now: z.string().optional(),
 })
 
@@ -177,7 +171,14 @@ const ReplayTimelineSeriesItemResponseDtoSchema = z.object({
   event_time: z.string().nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   created_at: z.string(),
-  series_label: z.string(),
+  series_label: z.enum([
+    'ACTIVE',
+    'EXPIRED',
+    'REDUNDANT_AFTER_ACTUAL',
+    'SUPERSEDED_EXPECTED',
+    'CONFIRMED',
+    'CONFLICTING_ACTUAL',
+  ]),
 })
 
 const ReplaySeriesResponseDtoSchema = z.object({
@@ -192,7 +193,7 @@ const ReplaySeriesResponseDtoSchema = z.object({
   items: z.array(ReplayTimelineSeriesItemResponseDtoSchema),
 })
 
-const ReplayTimelineItemResponseDtoSchema = z.object({
+export const TrackingTimelineItemResponseDtoSchema = z.object({
   id: z.string(),
   type: z.string(),
   carrier_label: z.string().nullable(),
@@ -210,15 +211,24 @@ const ReplayTimelineItemResponseDtoSchema = z.object({
     .nullable(),
 })
 
+export const TrackingOperationalEtaResponseDtoSchema = z.object({
+  event_time: z.string(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
+  type: z.string(),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+})
+
 const ReplayStateResponseDtoSchema = z.object({
   observations: z.array(ReplayObservationResponseDtoSchema),
   series: z.array(ReplaySeriesResponseDtoSchema),
-  timeline: z.array(ReplayTimelineItemResponseDtoSchema),
+  timeline: z.array(TrackingTimelineItemResponseDtoSchema),
   status: z.string(),
   alerts: z.array(AlertResponseDtoSchema),
 })
 
-const ReplayStepResponseDtoSchema = z.object({
+export const TrackingReplayStepResponseDtoSchema = z.object({
   step_index: z.number().int().positive(),
   snapshot_id: z.string().nullable(),
   observation_id: z.string().nullable(),
@@ -229,38 +239,69 @@ const ReplayStepResponseDtoSchema = z.object({
   state: ReplayStateResponseDtoSchema,
 })
 
-export const TrackingReplayResultResponseDtoSchema = z.object({
+const TrackingTimeTravelDiffComparisonResponseDtoSchema = z.object({
+  kind: z.literal('comparison'),
+  status_changed: z.boolean(),
+  previous_status: z.string(),
+  current_status: z.string(),
+  timeline_changed: z.boolean(),
+  added_timeline_item_ids: z.array(z.string()),
+  removed_timeline_item_ids: z.array(z.string()),
+  alerts_changed: z.boolean(),
+  new_alert_fingerprints: z.array(z.string()),
+  resolved_alert_fingerprints: z.array(z.string()),
+  eta_changed: z.boolean(),
+  previous_eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  current_eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  actual_conflict_appeared: z.boolean(),
+  actual_conflict_resolved: z.boolean(),
+})
+
+export const TrackingTimeTravelDiffResponseDtoSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('initial'),
+  }),
+  TrackingTimeTravelDiffComparisonResponseDtoSchema,
+])
+export type TrackingTimeTravelDiffResponseDto = z.infer<
+  typeof TrackingTimeTravelDiffResponseDtoSchema
+>
+
+export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
+  snapshot_id: z.string(),
+  fetched_at: z.string(),
+  position: z.number().int().positive(),
+  timeline: z.array(TrackingTimelineItemResponseDtoSchema),
+  status: z.string(),
+  alerts: z.array(AlertResponseDtoSchema),
+  eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  diff_from_previous: TrackingTimeTravelDiffResponseDtoSchema,
+  debug_available: z.literal(true),
+})
+export type TrackingTimeTravelCheckpointResponseDto = z.infer<
+  typeof TrackingTimeTravelCheckpointResponseDtoSchema
+>
+
+export const TrackingTimeTravelResponseDtoSchema = z.object({
   container_id: z.string(),
   container_number: z.string().nullable(),
   reference_now: z.string(),
-  total_snapshots: z.number().int().nonnegative(),
+  selected_snapshot_id: z.string().nullable(),
+  sync_count: z.number().int().nonnegative(),
+  syncs: z.array(TrackingTimeTravelCheckpointResponseDtoSchema),
+})
+export type TrackingTimeTravelResponseDto = z.infer<typeof TrackingTimeTravelResponseDtoSchema>
+
+export const TrackingReplayDebugResponseDtoSchema = z.object({
+  container_id: z.string(),
+  container_number: z.string().nullable(),
+  snapshot_id: z.string(),
+  fetched_at: z.string(),
+  position: z.number().int().positive(),
+  reference_now: z.string(),
   total_observations: z.number().int().nonnegative(),
   total_steps: z.number().int().nonnegative(),
-  steps: z.array(ReplayStepResponseDtoSchema),
-  final_timeline: z.array(ReplayTimelineItemResponseDtoSchema),
-  final_status: z.string(),
-  final_alerts: z.array(AlertResponseDtoSchema),
-  production_comparison: z.object({
-    timeline_matches: z.boolean(),
-    status_matches: z.boolean(),
-    alerts_match: z.boolean(),
-  }),
+  steps: z.array(TrackingReplayStepResponseDtoSchema),
+  checkpoint: TrackingTimeTravelCheckpointResponseDtoSchema,
 })
-export type TrackingReplayResultResponseDto = z.infer<typeof TrackingReplayResultResponseDtoSchema>
-
-export const TrackingReplayStepsResponseDtoSchema = z.object({
-  container_id: z.string(),
-  total_steps: z.number().int().nonnegative(),
-  next_cursor: z.number().int().nonnegative().nullable(),
-  steps: z.array(ReplayStepResponseDtoSchema),
-})
-export type TrackingReplayStepsResponseDto = z.infer<typeof TrackingReplayStepsResponseDtoSchema>
-
-export const TrackingReplayStepSnapshotResponseDtoSchema = z.object({
-  container_id: z.string(),
-  step_index: z.number().int().positive(),
-  step: ReplayStepResponseDtoSchema,
-})
-export type TrackingReplayStepSnapshotResponseDto = z.infer<
-  typeof TrackingReplayStepSnapshotResponseDtoSchema
->
+export type TrackingReplayDebugResponseDto = z.infer<typeof TrackingReplayDebugResponseDtoSchema>

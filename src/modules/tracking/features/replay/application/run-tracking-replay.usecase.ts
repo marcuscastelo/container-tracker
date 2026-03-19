@@ -1,6 +1,6 @@
-import { getContainerSummary } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { deriveAlertTransitions } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
@@ -8,106 +8,25 @@ import { diffObservations } from '~/modules/tracking/features/observation/applic
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import {
+  MAX_TRACKING_REPLAY_STEPS,
+  type RunTrackingReplayCommand,
+  type TrackingReplayRunCheckpoint,
+  type TrackingReplayRunResult,
+  type TrackingReplaySeries,
+  type TrackingReplayStage,
+  type TrackingReplayState,
+  type TrackingReplayStep,
+  TrackingReplayStepLimitError,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
-import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import {
   deriveTimelineWithSeriesReadModel,
   type TrackingTimelineItem,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 
-/**
- * Safety cap for on-demand replay responses.
- *
- * Replay duplicates the full derivation graph in memory and can embed complete
- * intermediate state per step, so very large histories can produce oversized
- * responses and expensive recomputation. When the cap is exceeded we abort the
- * replay with TrackingReplayStepLimitError instead of returning partial state.
- */
-export const MAX_TRACKING_REPLAY_STEPS = 5000
-
-export class TrackingReplayStepLimitError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'TrackingReplayStepLimitError'
-  }
-}
-
-export type TrackingReplayStage =
-  | 'SNAPSHOT'
-  | 'OBSERVATION'
-  | 'SERIES'
-  | 'TIMELINE'
-  | 'STATUS'
-  | 'ALERT'
-
-export type TrackingReplaySeries = {
-  readonly key: string
-  readonly primary: {
-    readonly id: string
-    readonly type: string
-    readonly eventTime: string | null
-    readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
-  }
-  readonly hasActualConflict: boolean
-  readonly items: readonly {
-    readonly id: string
-    readonly type: string
-    readonly eventTime: string | null
-    readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
-    readonly createdAt: string
-    readonly seriesLabel: string
-  }[]
-}
-
-export type TrackingReplayState = {
-  readonly observations: readonly Observation[]
-  readonly series: readonly TrackingReplaySeries[]
-  readonly timeline: readonly TrackingTimelineItem[]
-  readonly status: ContainerStatus
-  readonly alerts: readonly TrackingAlert[]
-}
-
-export type TrackingReplayStep = {
-  readonly stepIndex: number
-  readonly snapshotId: string | null
-  readonly observationId: string | null
-  readonly stage: TrackingReplayStage
-  readonly input: unknown
-  readonly output: unknown
-  readonly timestamp: string
-  readonly state: TrackingReplayState
-}
-
-export type TrackingReplayProductionComparison = {
-  readonly timelineMatches: boolean
-  readonly statusMatches: boolean
-  readonly alertsMatch: boolean
-}
-
-export type ReplayContainerTrackingResult = {
-  readonly containerId: string
-  readonly containerNumber: string | null
-  readonly referenceNow: string
-  readonly totalSnapshots: number
-  readonly totalObservations: number
-  readonly totalSteps: number
-  readonly steps: readonly TrackingReplayStep[]
-  readonly finalTimeline: readonly TrackingTimelineItem[]
-  readonly finalStatus: ContainerStatus
-  readonly finalAlerts: readonly TrackingAlert[]
-  readonly productionComparison: TrackingReplayProductionComparison
-}
-
-export type ReplayContainerTrackingCommand = {
-  readonly containerId: string
-  readonly now?: Date
-}
-
-function compareSnapshotsChronologically(
-  a: { readonly fetched_at: string; readonly id: string },
-  b: { readonly fetched_at: string; readonly id: string },
-): number {
+function compareSnapshotsChronologically(a: Snapshot, b: Snapshot): number {
   const fetchedAtCompare = a.fetched_at.localeCompare(b.fetched_at)
   if (fetchedAtCompare !== 0) return fetchedAtCompare
   return a.id.localeCompare(b.id)
@@ -271,55 +190,42 @@ function pushReplayStep(command: {
   })
 }
 
-function compareAlertSets(
-  replayAlerts: readonly TrackingAlert[],
-  productionAlerts: readonly TrackingAlert[],
-): boolean {
-  const replayFingerprints = [...replayAlerts]
-    .map((alert) => alert.alert_fingerprint ?? alert.type)
-    .sort((left, right) => left.localeCompare(right))
-  const productionFingerprints = [...productionAlerts]
-    .map((alert) => alert.alert_fingerprint ?? alert.type)
-    .sort((left, right) => left.localeCompare(right))
+function buildCheckpoint(command: {
+  readonly containerId: string
+  readonly snapshotId: string
+  readonly fetchedAt: string
+  readonly position: number
+  readonly observations: readonly Observation[]
+  readonly alerts: readonly TrackingAlert[]
+}): TrackingReplayRunCheckpoint {
+  const now = new Date(command.fetchedAt)
+  const containerNumber = resolveReplayContainerNumber(command.observations)
 
-  return JSON.stringify(replayFingerprints) === JSON.stringify(productionFingerprints)
+  return {
+    snapshotId: command.snapshotId,
+    fetchedAt: command.fetchedAt,
+    position: command.position,
+    containerNumber,
+    state: toReplayState(
+      command.observations,
+      command.alerts,
+      command.containerId,
+      containerNumber,
+      now,
+    ),
+  }
 }
 
-function normalizeTimelineForComparison(timeline: readonly TrackingTimelineItem[]): string {
-  return JSON.stringify(
-    timeline.map((item) => ({
-      type: item.type,
-      carrierLabel: item.carrierLabel ?? null,
-      location: item.location ?? null,
-      eventTimeIso: item.eventTimeIso,
-      eventTimeType: item.eventTimeType,
-      derivedState: item.derivedState,
-      vesselName: item.vesselName ?? null,
-      voyage: item.voyage ?? null,
-      seriesHistory: item.seriesHistory
-        ? {
-            hasActualConflict: item.seriesHistory.hasActualConflict,
-            classified: item.seriesHistory.classified.map((historyItem) => ({
-              type: historyItem.type,
-              event_time: historyItem.event_time,
-              event_time_type: historyItem.event_time_type,
-              seriesLabel: historyItem.seriesLabel,
-            })),
-          }
-        : null,
-    })),
-  )
-}
-
-export async function replayContainerTracking(
+export async function runTrackingReplay(
   deps: TrackingUseCasesDeps,
-  command: ReplayContainerTrackingCommand,
-): Promise<ReplayContainerTrackingResult> {
+  command: RunTrackingReplayCommand,
+): Promise<TrackingReplayRunResult> {
   const referenceNow = command.now ?? new Date()
   const snapshots = [
     ...(await deps.snapshotRepository.findAllByContainerId(command.containerId)),
   ].sort(compareSnapshotsChronologically)
   const steps: TrackingReplayStep[] = []
+  const checkpoints: TrackingReplayRunCheckpoint[] = []
   const observations: Observation[] = []
   let alerts: readonly TrackingAlert[] = []
   let observationSequence = 0
@@ -513,79 +419,41 @@ export async function replayContainerTracking(
         },
       })
     }
+
+    checkpoints.push(
+      buildCheckpoint({
+        containerId: command.containerId,
+        snapshotId: snapshot.id,
+        fetchedAt: snapshot.fetched_at,
+        position: checkpoints.length + 1,
+        observations,
+        alerts,
+      }),
+    )
+
+    if (command.stopAfterSnapshotId === snapshot.id) {
+      break
+    }
   }
 
   const containerNumber = resolveReplayContainerNumber(observations)
-  const finalContainerNumber = containerNumber ?? 'UNKNOWN'
-  const finalTimelineDomain = deriveTimeline(
-    command.containerId,
-    finalContainerNumber,
-    observations,
-    referenceNow,
-  )
-  const finalStatus = deriveStatus(finalTimelineDomain)
-  const finalAlertTransitions = deriveAlertTransitions(
-    finalTimelineDomain,
-    finalStatus,
-    alerts,
-    false,
-    referenceNow,
-  )
-  const finalDerivedAlerts = finalAlertTransitions.newAlerts.map((alert, alertIndex) => ({
-    ...alert,
-    id: toReplayAlertId(steps.length + 1, alertIndex, alert.alert_fingerprint),
-  }))
-  const finalAlerts = applyReplayAlertTransitions(
-    alerts,
-    finalDerivedAlerts,
-    finalAlertTransitions.monitoringAutoResolutions,
-    referenceNow.toISOString(),
-  )
   const finalState = toReplayState(
     observations,
-    finalAlerts,
+    alerts,
     command.containerId,
     containerNumber,
     referenceNow,
   )
-
-  const productionSummary =
-    containerNumber === null
-      ? null
-      : await getContainerSummary(deps, {
-          containerId: command.containerId,
-          containerNumber,
-          now: referenceNow,
-        })
-  const productionTimeline =
-    productionSummary === null
-      ? []
-      : deriveTimelineWithSeriesReadModel(
-          toTrackingObservationProjections(productionSummary.observations),
-          referenceNow,
-        )
-  const productionComparison: TrackingReplayProductionComparison = {
-    timelineMatches:
-      normalizeTimelineForComparison(finalState.timeline) ===
-      normalizeTimelineForComparison(productionTimeline),
-    statusMatches: finalState.status === (productionSummary?.status ?? finalState.status),
-    alertsMatch:
-      productionSummary === null
-        ? finalState.alerts.length === 0
-        : compareAlertSets(finalState.alerts, productionSummary.alerts),
-  }
 
   return {
     containerId: command.containerId,
     containerNumber,
     referenceNow: referenceNow.toISOString(),
-    totalSnapshots: snapshots.length,
+    totalSnapshots: checkpoints.length,
     totalObservations: observations.length,
     totalSteps: steps.length,
     steps,
-    finalTimeline: finalState.timeline,
-    finalStatus: finalState.status,
-    finalAlerts: finalState.alerts,
-    productionComparison,
+    checkpoints,
+    finalState,
   }
 }

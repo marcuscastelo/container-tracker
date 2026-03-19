@@ -411,6 +411,52 @@
         "info": "INFO"
       }
     },
+    "timeTravel": {
+      "open": "Open time travel",
+      "close": "Exit historical mode",
+      "badge": "Time Travel",
+      "syncPosition": "Sync {{current}}/{{total}}",
+      "syncSelector": "Syncs",
+      "syncAt": "Sync at",
+      "previous": "Previous",
+      "next": "Next",
+      "openDebug": "Open debug",
+      "closeDebug": "Close debug",
+      "loading": "Loading sync history...",
+      "error": "Failed to load sync history",
+      "empty": "No historical syncs are available for this container yet.",
+      "statusTitle": "Historical Status",
+      "alertsTitle": "Historical Alerts",
+      "alertsEmpty": "No alerts were active in this sync.",
+      "diffTitle": "What Changed",
+      "initialCheckpoint": "Initial checkpoint. There is no previous sync for comparison.",
+      "debugTitle": "Historical Debug",
+      "exportDebug": "Export selected sync JSON",
+      "debugLoading": "Loading sync debug...",
+      "debugError": "Failed to load sync debug",
+      "debugEmpty": "Open debug to inspect the selected sync.",
+      "stepPosition": "Step {{current}} / {{total}}",
+      "debugStage": "Stage: {{stage}}",
+      "debugInput": "Input",
+      "debugOutput": "Output",
+      "debugTimeline": "Derived Timeline",
+      "debugState": "Derived State",
+      "debugMetrics": {
+        "observations": "Observations",
+        "steps": "Steps",
+        "status": "Status",
+        "snapshot": "Snapshot"
+      },
+      "diff": {
+        "statusChanged": "Status changed from {{from}} to {{to}}.",
+        "timelineChanged": "Timeline changed: +{{added}} items, -{{removed}} items.",
+        "alertsChanged": "Alerts changed: +{{added}} active, -{{removed}} resolved.",
+        "etaChanged": "ETA changed in this sync.",
+        "conflictAppeared": "An ACTUAL conflict appeared in this sync.",
+        "conflictResolved": "An ACTUAL conflict was resolved in this sync.",
+        "noChanges": "No derived changes compared with the previous sync."
+      }
+    },
     "transshipment": {
       "title": "Intermediate ports",
       "route": "Intermediate route",

@@ -422,6 +422,52 @@
         "info": "INFO"
       }
     },
+    "timeTravel": {
+      "open": "Abrir time travel",
+      "close": "Sair do modo histórico",
+      "badge": "Time Travel",
+      "syncPosition": "Sync {{current}}/{{total}}",
+      "syncSelector": "Syncs",
+      "syncAt": "Sync em",
+      "previous": "Anterior",
+      "next": "Próximo",
+      "openDebug": "Abrir debug",
+      "closeDebug": "Fechar debug",
+      "loading": "Carregando histórico de syncs...",
+      "error": "Falha ao carregar histórico de syncs",
+      "empty": "Ainda não há syncs históricos disponíveis para este container.",
+      "statusTitle": "Status Histórico",
+      "alertsTitle": "Alertas Históricos",
+      "alertsEmpty": "Nenhum alerta estava ativo neste sync.",
+      "diffTitle": "O Que Mudou",
+      "initialCheckpoint": "Checkpoint inicial. Não existe sync anterior para comparação.",
+      "debugTitle": "Debug Histórico",
+      "exportDebug": "Exportar JSON do sync selecionado",
+      "debugLoading": "Carregando debug do sync...",
+      "debugError": "Falha ao carregar debug do sync",
+      "debugEmpty": "Abra o debug para inspecionar o sync selecionado.",
+      "stepPosition": "Step {{current}} / {{total}}",
+      "debugStage": "Stage: {{stage}}",
+      "debugInput": "Input",
+      "debugOutput": "Output",
+      "debugTimeline": "Timeline Derivada",
+      "debugState": "State Derivado",
+      "debugMetrics": {
+        "observations": "Observations",
+        "steps": "Steps",
+        "status": "Status",
+        "snapshot": "Snapshot"
+      },
+      "diff": {
+        "statusChanged": "Status mudou de {{from}} para {{to}}.",
+        "timelineChanged": "Timeline mudou: +{{added}} itens, -{{removed}} itens.",
+        "alertsChanged": "Alertas mudaram: +{{added}} ativos, -{{removed}} resolvidos.",
+        "etaChanged": "A ETA mudou neste sync.",
+        "conflictAppeared": "Um conflito de ACTUAL apareceu neste sync.",
+        "conflictResolved": "Um conflito de ACTUAL foi resolvido neste sync.",
+        "noChanges": "Nenhuma mudança derivada em relação ao sync anterior."
+      }
+    },
     "transshipment": {
       "title": "Portos intermediários",
       "route": "Rota intermediária",

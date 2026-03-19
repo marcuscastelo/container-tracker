@@ -1,6 +1,7 @@
 import type { Accessor, Resource } from 'solid-js'
 import { Show } from 'solid-js'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
+import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import type { RefreshRetryState } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -21,6 +22,7 @@ type ShipmentContainersViewProps = {
   readonly selectedContainerId: Accessor<string>
   readonly onSelectContainer: (id: string) => void
   readonly selectedContainer: Accessor<ShipmentDetailVM['containers'][number] | null>
+  readonly trackingTimeTravel: TrackingTimeTravelControllerResult
   readonly onOpenEditForShipment: (
     shipment: ShipmentDetailVM,
     focus?: 'reference' | 'carrier' | null | undefined,
@@ -50,6 +52,7 @@ export function ShipmentContainersView(props: ShipmentContainersViewProps) {
           selectedContainerId={props.selectedContainerId()}
           onSelectContainer={props.onSelectContainer}
           selectedContainer={props.selectedContainer()}
+          trackingTimeTravel={props.trackingTimeTravel}
         />
       )}
     </Show>

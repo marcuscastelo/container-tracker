@@ -24,10 +24,6 @@ import {
   type ListActiveAlertsByContainerIdResult,
   listActiveAlertsByContainerId,
 } from '~/modules/tracking/application/usecases/list-active-alerts-by-container-id.usecase'
-import {
-  type ReplayContainerTrackingResult,
-  replayContainerTracking,
-} from '~/modules/tracking/application/usecases/replay-container-tracking.usecase'
 import { saveAndProcess } from '~/modules/tracking/application/usecases/save-and-process.usecase'
 import { searchTrackingByDerivedStatusText } from '~/modules/tracking/application/usecases/search-tracking-by-derived-status-text.usecase'
 import { searchTrackingByVesselName } from '~/modules/tracking/application/usecases/search-tracking-by-vessel-name.usecase'
@@ -41,6 +37,18 @@ import {
 } from '~/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase'
 import { unacknowledgeAlert } from '~/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase'
 import type { TrackingAlertAckSource } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  type GetTrackingReplayDebugCommand,
+  getTrackingReplayDebug,
+} from '~/modules/tracking/features/replay/application/get-tracking-replay-debug.usecase'
+import {
+  type GetTrackingTimeTravelCommand,
+  getTrackingTimeTravel,
+} from '~/modules/tracking/features/replay/application/get-tracking-time-travel.usecase'
+import type {
+  TrackingReplayDebugResult,
+  TrackingTimeTravelResult,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.
@@ -216,14 +224,16 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       return getLatestSnapshot(deps, { containerId })
     },
 
-    /**
-     * Replay tracking derivation step-by-step from historical snapshots.
-     */
-    async replayContainerTracking(
-      containerId: string,
-      now: Date = new Date(),
-    ): Promise<ReplayContainerTrackingResult> {
-      return replayContainerTracking(deps, { containerId, now })
+    async getTrackingTimeTravel(
+      command: GetTrackingTimeTravelCommand,
+    ): Promise<TrackingTimeTravelResult> {
+      return getTrackingTimeTravel(deps, command)
+    },
+
+    async getTrackingReplayDebug(
+      command: GetTrackingReplayDebugCommand,
+    ): Promise<TrackingReplayDebugResult> {
+      return getTrackingReplayDebug(deps, command)
     },
 
     /**

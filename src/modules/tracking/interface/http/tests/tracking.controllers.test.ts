@@ -233,7 +233,7 @@ describe('tracking controllers', () => {
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
   })
 
-  it('replay endpoint returns a step-by-step reconstruction payload', async () => {
+  it('time-travel endpoint returns snapshot checkpoints', async () => {
     const containerId = 'container-replay'
     const { controllers } = createControllers({
       snapshots: [
@@ -247,8 +247,10 @@ describe('tracking controllers', () => {
       ],
     })
 
-    const request = new Request(`http://localhost/api/tracking/replay/${containerId}`)
-    const response = await controllers.replay.getReplay({
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel`,
+    )
+    const response = await controllers.timeTravel.getTimeTravel({
       params: { containerId },
       request,
     })
@@ -256,13 +258,14 @@ describe('tracking controllers', () => {
 
     expect(response.status).toBe(200)
     expect(body.container_id).toBe(containerId)
-    expect(body.total_snapshots).toBe(1)
-    expect(body.total_steps).toBeGreaterThan(0)
-    expect(body.steps[0]?.stage).toBe('SNAPSHOT')
+    expect(body.sync_count).toBe(1)
+    expect(body.selected_snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
   })
 
-  it('replay steps endpoint paginates with cursor and limit', async () => {
-    const containerId = 'container-replay-steps'
+  it('time-travel debug endpoint returns selected snapshot debug payload', async () => {
+    const containerId = 'container-replay-debug'
     const { controllers } = createControllers({
       snapshots: [
         {
@@ -276,22 +279,28 @@ describe('tracking controllers', () => {
     })
 
     const request = new Request(
-      `http://localhost/api/tracking/replay/${containerId}/steps?limit=1&cursor=0`,
+      `http://localhost/api/tracking/containers/${containerId}/time-travel/snapshot-1/debug`,
     )
-    const response = await controllers.replay.getReplaySteps({
-      params: { containerId },
+    const response = await controllers.timeTravel.getReplayDebug({
+      params: { containerId, snapshotId: 'snapshot-1' },
       request,
     })
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.container_id).toBe(containerId)
-    expect(body.steps).toHaveLength(1)
-    expect(body.next_cursor).toBe(1)
+    expect(body.snapshot_id).toBe('snapshot-1')
+    expect(body.total_steps).toBeGreaterThan(0)
+    expect(body.checkpoint.snapshot_id).toBe('snapshot-1')
+    expect(
+      body.steps.every(
+        (step: { readonly snapshot_id: string | null }) => step.snapshot_id === 'snapshot-1',
+      ),
+    ).toBe(true)
   })
 
-  it('replay step snapshot endpoint returns a single step state', async () => {
-    const containerId = 'container-replay-step-snapshot'
+  it('time-travel debug endpoint returns 404 for unknown snapshot id', async () => {
+    const containerId = 'container-replay-missing-debug'
     const { controllers } = createControllers({
       snapshots: [
         {
@@ -304,16 +313,16 @@ describe('tracking controllers', () => {
       ],
     })
 
-    const request = new Request(`http://localhost/api/tracking/replay/${containerId}/snapshot/1`)
-    const response = await controllers.replay.getReplayStepSnapshot({
-      params: { containerId, step: '1' },
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel/unknown/debug`,
+    )
+    const response = await controllers.timeTravel.getReplayDebug({
+      params: { containerId, snapshotId: 'unknown' },
       request,
     })
     const body = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(body.container_id).toBe(containerId)
-    expect(body.step_index).toBe(1)
-    expect(body.step.stage).toBe('SNAPSHOT')
+    expect(response.status).toBe(404)
+    expect(body.error).toBe('Replay snapshot not found')
   })
 })

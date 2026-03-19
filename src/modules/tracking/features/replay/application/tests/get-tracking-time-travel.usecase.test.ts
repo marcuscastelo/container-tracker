@@ -7,16 +7,20 @@ import { createTrackingUseCases } from '~/modules/tracking/application/tracking.
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import { deriveAlerts } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 
 class InMemorySnapshotRepository implements SnapshotRepository {
@@ -185,12 +189,39 @@ function createDeps(): TrackingUseCasesDeps {
   }
 }
 
-describe('replayContainerTracking', () => {
-  it('replays snapshots chronologically and flags duplicate observations from later snapshots', async () => {
+function normalizeTimelineForParity(
+  timeline: readonly TrackingTimelineItem[],
+): readonly Record<string, unknown>[] {
+  return timeline.map((item) => ({
+    type: item.type,
+    carrierLabel: item.carrierLabel ?? null,
+    location: item.location ?? null,
+    eventTimeIso: item.eventTimeIso,
+    eventTimeType: item.eventTimeType,
+    derivedState: item.derivedState,
+    vesselName: item.vesselName ?? null,
+    voyage: item.voyage ?? null,
+    seriesHistory: item.seriesHistory
+      ? {
+          hasActualConflict: item.seriesHistory.hasActualConflict,
+          classified: item.seriesHistory.classified.map((seriesItem) => ({
+            type: seriesItem.type,
+            event_time: seriesItem.event_time,
+            event_time_type: seriesItem.event_time_type,
+            created_at: seriesItem.created_at,
+            seriesLabel: seriesItem.seriesLabel,
+          })),
+        }
+      : null,
+  }))
+}
+
+describe('getTrackingTimeTravel', () => {
+  it('builds chronological checkpoints and keeps exact latest parity for the same referenceNow', async () => {
     const containerId = randomUUID()
     const deps = createDeps()
     const trackingUseCases = createTrackingUseCases(deps)
-    const referenceNow = new Date()
+    const referenceNow = new Date('2026-02-03T18:30:00.000Z')
 
     const laterSnapshot = await trackingUseCases.saveAndProcess(
       containerId,
@@ -209,35 +240,50 @@ describe('replayContainerTracking', () => {
       '2026-02-03T15:00:00.000Z',
     )
 
-    const replay = await trackingUseCases.replayContainerTracking(containerId, referenceNow)
-
-    expect(replay.totalSnapshots).toBe(2)
-    expect(replay.totalObservations).toBeGreaterThan(0)
-    expect(replay.steps[0]?.stage).toBe('SNAPSHOT')
-    expect(replay.steps[0]?.snapshotId).toBe(earlierSnapshot.snapshot.id)
-    expect(replay.steps.some((step) => step.snapshotId === laterSnapshot.snapshot.id)).toBe(true)
-
-    const discardedDuplicateStep = replay.steps.find(
-      (step) =>
-        step.stage === 'OBSERVATION' &&
-        typeof step.output === 'object' &&
-        step.output !== null &&
-        'kind' in step.output &&
-        step.output.kind === 'discarded',
+    const timeTravel = await trackingUseCases.getTrackingTimeTravel({
+      containerId,
+      now: referenceNow,
+    })
+    const latestLiveSummary = await trackingUseCases.getContainerSummary(
+      containerId,
+      'MNBU3094033',
+      null,
+      referenceNow,
     )
 
-    expect(discardedDuplicateStep).toBeDefined()
-    expect(replay.productionComparison.timelineMatches).toBe(true)
-    expect(replay.productionComparison.statusMatches).toBe(true)
-    expect(replay.productionComparison.alertsMatch).toBe(true)
-    expect(replay.finalTimeline.length).toBeGreaterThan(0)
+    expect(timeTravel.syncCount).toBe(2)
+    expect(timeTravel.selectedSnapshotId).toBe(laterSnapshot.snapshot.id)
+    expect(timeTravel.referenceNow).toBe(referenceNow.toISOString())
+    expect(timeTravel.syncs[0]?.snapshotId).toBe(earlierSnapshot.snapshot.id)
+    expect(timeTravel.syncs[0]?.diffFromPrevious.kind).toBe('initial')
+    expect(timeTravel.syncs[1]?.diffFromPrevious.kind).toBe('comparison')
+
+    const latestSync = timeTravel.syncs[1]
+    expect(latestSync?.status).toBe(latestLiveSummary.status)
+    expect(normalizeTimelineForParity(latestSync?.timeline ?? [])).toEqual(
+      normalizeTimelineForParity(
+        deriveTimelineWithSeriesReadModel(
+          toTrackingObservationProjections(latestLiveSummary.observations),
+          referenceNow,
+        ),
+      ),
+    )
+    const expectedAlerts = deriveAlerts(
+      latestLiveSummary.timeline,
+      latestLiveSummary.status,
+      [],
+      false,
+      referenceNow,
+    )
+    expect(latestSync?.alerts.map((alert) => alert.alert_fingerprint ?? alert.type).sort()).toEqual(
+      expectedAlerts.map((alert) => alert.alert_fingerprint ?? alert.type).sort(),
+    )
   })
 
-  it('reports matching final state when production snapshots were ingested in chronological order', async () => {
+  it('returns snapshot-scoped debug steps while preserving cumulative checkpoint state', async () => {
     const containerId = randomUUID()
     const deps = createDeps()
     const trackingUseCases = createTrackingUseCases(deps)
-    const referenceNow = new Date()
 
     await trackingUseCases.saveAndProcess(
       containerId,
@@ -247,7 +293,7 @@ describe('replayContainerTracking', () => {
       null,
       '2026-02-03T15:00:00.000Z',
     )
-    await trackingUseCases.saveAndProcess(
+    const laterSnapshot = await trackingUseCases.saveAndProcess(
       containerId,
       'MNBU3094033',
       'maersk',
@@ -256,10 +302,16 @@ describe('replayContainerTracking', () => {
       '2026-02-03T16:00:00.000Z',
     )
 
-    const replay = await trackingUseCases.replayContainerTracking(containerId, referenceNow)
+    const debug = await trackingUseCases.getTrackingReplayDebug({
+      containerId,
+      snapshotId: laterSnapshot.snapshot.id,
+      now: new Date('2026-02-03T18:30:00.000Z'),
+    })
 
-    expect(replay.productionComparison.timelineMatches).toBe(true)
-    expect(replay.productionComparison.statusMatches).toBe(true)
-    expect(replay.productionComparison.alertsMatch).toBe(true)
+    expect(debug.snapshotId).toBe(laterSnapshot.snapshot.id)
+    expect(debug.totalSteps).toBeGreaterThan(0)
+    expect(debug.steps.every((step) => step.snapshotId === laterSnapshot.snapshot.id)).toBe(true)
+    expect(debug.checkpoint.snapshotId).toBe(laterSnapshot.snapshot.id)
+    expect(debug.totalObservations).toBeGreaterThan(0)
   })
 })

@@ -1,22 +1,26 @@
-import type {
-  ReplayContainerTrackingResult,
-  TrackingReplaySeries,
-  TrackingReplayState,
-  TrackingReplayStep,
-} from '~/modules/tracking/application/usecases/replay-container-tracking.usecase'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertDisplayReadModels } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type {
+  TrackingReplayDebugResult,
+  TrackingReplaySeries,
+  TrackingReplayState,
+  TrackingReplayStep,
+  TrackingTimeTravelCheckpoint,
+  TrackingTimeTravelDiff,
+  TrackingTimeTravelResult,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
-  TrackingReplayResultResponseDto,
-  TrackingReplayStepSnapshotResponseDto,
-  TrackingReplayStepsResponseDto,
+  TrackingReplayDebugResponseDto,
+  TrackingTimeTravelCheckpointResponseDto,
+  TrackingTimeTravelDiffResponseDto,
+  TrackingTimeTravelResponseDto,
 } from '~/modules/tracking/interface/http/tracking.schemas'
 
 // ---------------------------------------------------------------------------
@@ -165,48 +169,95 @@ function toReplayStepResponseDto(step: TrackingReplayStep, containerNumber: stri
   }
 }
 
-export function toTrackingReplayResultResponseDto(
-  replay: ReplayContainerTrackingResult,
-): TrackingReplayResultResponseDto {
+function toTrackingOperationalEtaResponseDto(eta: TrackingTimeTravelCheckpoint['eta']) {
+  if (eta === null) return null
+
+  return {
+    event_time: eta.eventTimeIso,
+    event_time_type: eta.eventTimeType,
+    state: eta.state,
+    type: eta.type,
+    location_code: eta.locationCode,
+    location_display: eta.locationDisplay,
+  }
+}
+
+function toTrackingTimeTravelDiffResponseDto(
+  diff: TrackingTimeTravelDiff,
+): TrackingTimeTravelDiffResponseDto {
+  if (diff.kind === 'initial') {
+    return {
+      kind: 'initial',
+    }
+  }
+
+  return {
+    kind: 'comparison',
+    status_changed: diff.statusChanged,
+    previous_status: diff.previousStatus,
+    current_status: diff.currentStatus,
+    timeline_changed: diff.timelineChanged,
+    added_timeline_item_ids: [...diff.addedTimelineItemIds],
+    removed_timeline_item_ids: [...diff.removedTimelineItemIds],
+    alerts_changed: diff.alertsChanged,
+    new_alert_fingerprints: [...diff.newAlertFingerprints],
+    resolved_alert_fingerprints: [...diff.resolvedAlertFingerprints],
+    eta_changed: diff.etaChanged,
+    previous_eta: toTrackingOperationalEtaResponseDto(diff.previousEta),
+    current_eta: toTrackingOperationalEtaResponseDto(diff.currentEta),
+    actual_conflict_appeared: diff.actualConflictAppeared,
+    actual_conflict_resolved: diff.actualConflictResolved,
+  }
+}
+
+function toTrackingTimeTravelCheckpointResponseDto(
+  checkpoint: TrackingTimeTravelCheckpoint,
+  containerNumber: string | null,
+): TrackingTimeTravelCheckpointResponseDto {
+  return {
+    snapshot_id: checkpoint.snapshotId,
+    fetched_at: checkpoint.fetchedAt,
+    position: checkpoint.position,
+    timeline: checkpoint.timeline.map(toReplayTimelineItemResponseDto),
+    status: checkpoint.status,
+    alerts: [...toReplayAlertsResponseDto(checkpoint.alerts, containerNumber)],
+    eta: toTrackingOperationalEtaResponseDto(checkpoint.eta),
+    diff_from_previous: toTrackingTimeTravelDiffResponseDto(checkpoint.diffFromPrevious),
+    debug_available: true,
+  }
+}
+
+export function toTrackingTimeTravelResponseDto(
+  replay: TrackingTimeTravelResult,
+): TrackingTimeTravelResponseDto {
   return {
     container_id: replay.containerId,
     container_number: replay.containerNumber,
     reference_now: replay.referenceNow,
-    total_snapshots: replay.totalSnapshots,
+    selected_snapshot_id: replay.selectedSnapshotId,
+    sync_count: replay.syncCount,
+    syncs: replay.syncs.map((checkpoint) =>
+      toTrackingTimeTravelCheckpointResponseDto(checkpoint, replay.containerNumber),
+    ),
+  }
+}
+
+export function toTrackingReplayDebugResponseDto(
+  replay: TrackingReplayDebugResult,
+): TrackingReplayDebugResponseDto {
+  return {
+    container_id: replay.containerId,
+    container_number: replay.containerNumber,
+    snapshot_id: replay.snapshotId,
+    fetched_at: replay.fetchedAt,
+    position: replay.position,
+    reference_now: replay.referenceNow,
     total_observations: replay.totalObservations,
     total_steps: replay.totalSteps,
     steps: replay.steps.map((step) => toReplayStepResponseDto(step, replay.containerNumber)),
-    final_timeline: replay.finalTimeline.map(toReplayTimelineItemResponseDto),
-    final_status: replay.finalStatus,
-    final_alerts: [...toReplayAlertsResponseDto(replay.finalAlerts, replay.containerNumber)],
-    production_comparison: {
-      timeline_matches: replay.productionComparison.timelineMatches,
-      status_matches: replay.productionComparison.statusMatches,
-      alerts_match: replay.productionComparison.alertsMatch,
-    },
-  }
-}
-
-export function toTrackingReplayStepsResponseDto(
-  replay: ReplayContainerTrackingResult,
-  steps: readonly TrackingReplayStep[],
-  nextCursor: number | null,
-): TrackingReplayStepsResponseDto {
-  return {
-    container_id: replay.containerId,
-    total_steps: replay.totalSteps,
-    next_cursor: nextCursor,
-    steps: steps.map((step) => toReplayStepResponseDto(step, replay.containerNumber)),
-  }
-}
-
-export function toTrackingReplayStepSnapshotResponseDto(
-  replay: ReplayContainerTrackingResult,
-  step: TrackingReplayStep,
-): TrackingReplayStepSnapshotResponseDto {
-  return {
-    container_id: replay.containerId,
-    step_index: step.stepIndex,
-    step: toReplayStepResponseDto(step, replay.containerNumber),
+    checkpoint: toTrackingTimeTravelCheckpointResponseDto(
+      replay.checkpoint,
+      replay.containerNumber,
+    ),
   }
 }

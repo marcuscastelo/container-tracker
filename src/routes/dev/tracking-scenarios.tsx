@@ -7,6 +7,7 @@ import { DashboardProcessTable } from '~/modules/process/ui/components/Dashboard
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
+import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
@@ -67,6 +68,25 @@ const ScenarioLoadResponseSchema = z.object({
 type ScenarioCatalogResponse = z.infer<typeof ScenarioCatalogResponseSchema>
 type ScenarioSummary = z.infer<typeof ScenarioSummarySchema>
 type ScenarioLoadResult = z.infer<typeof ScenarioLoadResponseSchema>['result']
+
+const DISABLED_TIME_TRAVEL_CONTROLLER: TrackingTimeTravelControllerResult = {
+  isActive: () => false,
+  isLoading: () => false,
+  errorMessage: () => null,
+  value: () => null,
+  selectedSync: () => null,
+  isDebugOpen: () => false,
+  isDebugLoading: () => false,
+  debugErrorMessage: () => null,
+  debugValue: () => null,
+  debugPayload: () => null,
+  open: () => undefined,
+  close: () => undefined,
+  toggleDebug: () => undefined,
+  selectSnapshot: () => undefined,
+  selectPrevious: () => undefined,
+  selectNext: () => undefined,
+}
 
 async function fetchScenarioCatalog(): Promise<ScenarioCatalogResponse> {
   return typedFetch('/api/dev/scenarios/catalog', undefined, ScenarioCatalogResponseSchema)
@@ -382,6 +402,7 @@ function ShipmentPreview(props: {
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}
               selectedContainer={selectedContainer()}
+              trackingTimeTravel={DISABLED_TIME_TRAVEL_CONTROLLER}
             />
           </div>
         )}
