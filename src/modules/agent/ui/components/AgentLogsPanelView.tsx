@@ -185,16 +185,16 @@ function LogLinesList(props: { readonly lines: readonly AgentLogLineVM[] }): JSX
   )
 }
 
-function resolveEmptyState(props: {
+function resolveEmptyState(state: {
   readonly hasLines: boolean
   readonly isLoading: boolean
   readonly logsSupported: boolean
   readonly agentStatus: string
 }): EmptyStateKind {
-  if (props.hasLines) return 'none'
-  if (props.isLoading) return 'loading'
-  if (!props.logsSupported) return 'not_supported'
-  if (props.agentStatus === 'Disconnected') return 'offline'
+  if (state.hasLines) return 'none'
+  if (state.isLoading) return 'loading'
+  if (!state.logsSupported) return 'not_supported'
+  if (state.agentStatus === 'Disconnected') return 'offline'
   return 'empty'
 }
 

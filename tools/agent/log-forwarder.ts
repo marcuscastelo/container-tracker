@@ -29,6 +29,18 @@ type ForwarderStateFile = {
   readonly nextSequence: number
 }
 
+function resetTailState(state: LogTailState): void {
+  state.offset = 0
+  state.residual = ''
+  state.inode = null
+}
+
+function isMissingFileError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const code = Reflect.get(error, 'code')
+  return code === 'ENOENT'
+}
+
 function normalizeOptionalText(value: string | undefined): string | undefined {
   if (typeof value !== 'string') return undefined
   const normalized = value.trim()
@@ -104,14 +116,16 @@ function readNewLines(command: {
   readonly maxReadBytes: number
 }): readonly string[] {
   const currentPath = command.state.filePath
-  if (!fs.existsSync(currentPath)) {
-    command.state.offset = 0
-    command.state.residual = ''
-    command.state.inode = null
-    return []
+  let stat: fs.Stats
+  try {
+    stat = fs.statSync(currentPath)
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      resetTailState(command.state)
+      return []
+    }
+    throw error
   }
-
-  const stat = fs.statSync(currentPath)
 
   if (command.state.inode !== null && stat.ino !== command.state.inode) {
     command.state.offset = 0
@@ -135,9 +149,19 @@ function readNewLines(command: {
   }
 
   const buffer = Buffer.allocUnsafe(readLength)
-  const fd = fs.openSync(currentPath, 'r')
+  let fd: number | null = null
 
   try {
+    try {
+      fd = fs.openSync(currentPath, 'r')
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        resetTailState(command.state)
+        return []
+      }
+      throw error
+    }
+
     const bytesRead = fs.readSync(fd, buffer, 0, readLength, command.state.offset)
     command.state.offset += bytesRead
     command.state.inode = stat.ino
@@ -150,8 +174,16 @@ function readNewLines(command: {
     const split = text.split(/\r?\n/u)
     command.state.residual = split.pop() ?? ''
     return split
+  } catch (error) {
+    if (isMissingFileError(error)) {
+      resetTailState(command.state)
+      return []
+    }
+    throw error
   } finally {
-    fs.closeSync(fd)
+    if (fd !== null) {
+      fs.closeSync(fd)
+    }
   }
 }
 
@@ -179,7 +211,7 @@ function computeBackoffMs(failures: number): number {
 
 export type AgentLogForwarder = {
   start: () => void
-  stop: () => void
+  stop: () => Promise<void>
 }
 
 export function createAgentLogForwarder(command: {
@@ -209,6 +241,7 @@ export function createAgentLogForwarder(command: {
   let running = false
   let pollingHandle: ReturnType<typeof setInterval> | null = null
   let flushing = false
+  let flushInFlight: Promise<{ readonly ok: boolean; readonly flushed: number }> | null = null
 
   const outTail = initializeTailState({
     channel: 'stdout',
@@ -287,58 +320,75 @@ export function createAgentLogForwarder(command: {
     }
   }
 
-  const flushQueue = async (): Promise<void> => {
-    if (!running || flushing) return
-    if (Date.now() < nextFlushAtMs) return
+  const flushQueueOnce = async (options?: {
+    readonly force?: boolean
+    readonly signal?: AbortSignal
+  }): Promise<{ readonly ok: boolean; readonly flushed: number }> => {
+    if ((!running && !options?.force) || flushing) return { ok: true, flushed: 0 }
+    if (!options?.force && Date.now() < nextFlushAtMs) return { ok: true, flushed: 0 }
 
     enqueueDropSummaryIfNeeded()
 
     if (queue.length === 0) {
-      return
+      return { ok: true, flushed: 0 }
     }
 
     const batch = queue.slice(0, maxBatchSize)
 
     flushing = true
-    try {
-      const response = await fetch(`${command.backendUrl}/api/agent/logs`, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${command.agentToken}`,
-          'content-type': 'application/json',
-          'x-agent-id': command.agentId,
-          'user-agent': `container-tracker-agent/${command.agentId}`,
-        },
-        body: JSON.stringify({
-          lines: batch.map((line) => ({
-            sequence: line.sequence,
-            channel: line.channel,
-            message: line.message,
-            occurred_at: line.occurredAt,
-            truncated: line.truncated,
-          })),
-        }),
-      })
+    const flushPromise = (async (): Promise<{ readonly ok: boolean; readonly flushed: number }> => {
+      try {
+        const response = await fetch(`${command.backendUrl}/api/agent/logs`, {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${command.agentToken}`,
+            'content-type': 'application/json',
+            'x-agent-id': command.agentId,
+            'user-agent': `container-tracker-agent/${command.agentId}`,
+          },
+          body: JSON.stringify({
+            lines: batch.map((line) => ({
+              sequence: line.sequence,
+              channel: line.channel,
+              message: line.message,
+              occurred_at: line.occurredAt,
+              truncated: line.truncated,
+            })),
+          }),
+          signal: options?.signal,
+        })
 
-      if (!response.ok) {
-        const details = await response.text().catch(() => '')
-        throw new Error(`log ingest failed (${response.status}): ${details}`)
+        if (!response.ok) {
+          const details = await response.text().catch(() => '')
+          throw new Error(`log ingest failed (${response.status}): ${details}`)
+        }
+
+        queue = queue.slice(batch.length)
+        flushFailures = 0
+        nextFlushAtMs = 0
+        writeForwarderState({
+          filePath: command.statePath,
+          nextSequence,
+        })
+
+        return { ok: true, flushed: batch.length }
+      } catch (error) {
+        flushFailures += 1
+        nextFlushAtMs = Date.now() + computeBackoffMs(flushFailures)
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn(`[agent-log-forwarder] flush failed: ${message}`)
+        return { ok: false, flushed: 0 }
+      } finally {
+        flushing = false
+        flushInFlight = null
       }
+    })()
 
-      queue = queue.slice(batch.length)
-      flushFailures = 0
-      nextFlushAtMs = 0
-      writeForwarderState({
-        filePath: command.statePath,
-        nextSequence,
-      })
-    } catch (error) {
-      flushFailures += 1
-      nextFlushAtMs = Date.now() + computeBackoffMs(flushFailures)
-      const message = error instanceof Error ? error.message : String(error)
-      console.warn(`[agent-log-forwarder] flush failed: ${message}`)
+    flushInFlight = flushPromise
+    try {
+      return await flushPromise
     } finally {
-      flushing = false
+      // handled inside flushPromise finally
     }
   }
 
@@ -352,7 +402,7 @@ export function createAgentLogForwarder(command: {
       pollingHandle = setInterval(() => {
         try {
           pollLogFiles()
-          void flushQueue()
+          void flushQueueOnce()
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           console.warn(`[agent-log-forwarder] polling failed: ${message}`)
@@ -360,15 +410,38 @@ export function createAgentLogForwarder(command: {
       }, flushIntervalMs)
     },
 
-    stop() {
+    async stop() {
       if (!running) return
-      running = false
 
       if (pollingHandle) {
         clearInterval(pollingHandle)
         pollingHandle = null
       }
 
+      const flushTimeoutMs = 1500
+      const deadlineMs = Date.now() + flushTimeoutMs
+
+      const abortController = new AbortController()
+      const timeoutHandle = setTimeout(() => abortController.abort(), flushTimeoutMs)
+
+      try {
+        if (flushInFlight) {
+          await flushInFlight.catch(() => ({ ok: false, flushed: 0 }))
+        }
+
+        for (;;) {
+          if (queue.length === 0) break
+          if (Date.now() >= deadlineMs) break
+
+          const result = await flushQueueOnce({ force: true, signal: abortController.signal })
+          if (!result.ok) break
+          if (result.flushed <= 0) break
+        }
+      } finally {
+        clearTimeout(timeoutHandle)
+      }
+
+      running = false
       writeForwarderState({
         filePath: command.statePath,
         nextSequence,

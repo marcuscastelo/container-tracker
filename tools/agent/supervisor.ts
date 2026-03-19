@@ -30,6 +30,7 @@ const RESTART_BACKOFF_MS = 2_000
 const HEALTH_POLL_INTERVAL_MS = 500
 const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
+const RUNTIME_STDIO_ROTATION_CHECK_INTERVAL_MS = 2000
 
 type ChildRunOutcome = {
   readonly exitCode: number | null
@@ -99,13 +100,93 @@ function appendSupervisorLog(logsDir: string, message: string): void {
   fs.appendFileSync(logPath, `${line}\n`, 'utf8')
 }
 
-function appendRuntimeLogChunk(command: {
+function isErrorCode(command: { readonly code: string; readonly error: unknown }): boolean {
+  const error = command.error
+  if (typeof error !== 'object' || error === null) return false
+  const code = Reflect.get(error, 'code')
+  return code === command.code
+}
+
+type RotatingChunkWriter = {
+  write: (chunk: Buffer | string) => void
+  close: () => Promise<void>
+}
+
+function createRotatingChunkWriter(command: {
   readonly logPath: string
-  readonly chunk: Buffer | string
-}): void {
+  readonly maxSizeBytes: number
+}): RotatingChunkWriter {
   fs.mkdirSync(path.dirname(command.logPath), { recursive: true })
-  rotateLogIfNeeded(command.logPath, MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES)
-  fs.appendFileSync(command.logPath, command.chunk)
+
+  let stream = fs.createWriteStream(command.logPath, { flags: 'a' })
+  let closed = false
+  let rotating = false
+  let buffer: (Buffer | string)[] = []
+
+  const closeStream = async (): Promise<void> => {
+    await new Promise<void>((resolve, reject) => {
+      stream.end(() => resolve())
+      stream.once('error', reject)
+    })
+  }
+
+  const flushBuffer = (): void => {
+    const pending = buffer
+    buffer = []
+    for (const chunk of pending) {
+      stream.write(chunk)
+    }
+  }
+
+  const rotate = async (): Promise<void> => {
+    if (closed || rotating) return
+    rotating = true
+
+    try {
+      await closeStream()
+
+      const rotationPath = `${command.logPath}.1`
+      await fs.promises.rm(rotationPath, { force: true }).catch(() => undefined)
+      await fs.promises.rename(command.logPath, rotationPath).catch(() => undefined)
+
+      stream = fs.createWriteStream(command.logPath, { flags: 'a' })
+      flushBuffer()
+    } finally {
+      rotating = false
+    }
+  }
+
+  const checkHandle = setInterval(() => {
+    void (async () => {
+      if (closed || rotating) return
+      try {
+        const stat = await fs.promises.stat(command.logPath)
+        if (stat.size <= command.maxSizeBytes) return
+        await rotate()
+      } catch (error) {
+        if (isErrorCode({ code: 'ENOENT', error })) {
+          return
+        }
+      }
+    })()
+  }, RUNTIME_STDIO_ROTATION_CHECK_INTERVAL_MS)
+
+  return {
+    write(chunk) {
+      if (closed) return
+      if (rotating) {
+        buffer.push(chunk)
+        return
+      }
+      stream.write(chunk)
+    },
+    async close() {
+      if (closed) return
+      closed = true
+      clearInterval(checkHandle)
+      await closeStream()
+    },
+  }
 }
 
 function mirrorRuntimeOutput(command: {
@@ -115,24 +196,32 @@ function mirrorRuntimeOutput(command: {
   const stdout = command.child.stdout
   if (stdout) {
     const stdoutLogPath = path.join(command.logsDir, 'agent.out.log')
+    const stdoutWriter = createRotatingChunkWriter({
+      logPath: stdoutLogPath,
+      maxSizeBytes: MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES,
+    })
     stdout.on('data', (chunk: Buffer | string) => {
       process.stdout.write(chunk)
-      appendRuntimeLogChunk({
-        logPath: stdoutLogPath,
-        chunk,
-      })
+      stdoutWriter.write(chunk)
+    })
+    command.child.once('exit', () => {
+      void stdoutWriter.close()
     })
   }
 
   const stderr = command.child.stderr
   if (stderr) {
     const stderrLogPath = path.join(command.logsDir, 'agent.err.log')
+    const stderrWriter = createRotatingChunkWriter({
+      logPath: stderrLogPath,
+      maxSizeBytes: MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES,
+    })
     stderr.on('data', (chunk: Buffer | string) => {
       process.stderr.write(chunk)
-      appendRuntimeLogChunk({
-        logPath: stderrLogPath,
-        chunk,
-      })
+      stderrWriter.write(chunk)
+    })
+    command.child.once('exit', () => {
+      void stderrWriter.close()
     })
   }
 }

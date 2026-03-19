@@ -8,6 +8,7 @@ import {
   Index,
   onCleanup,
   Show,
+  untrack,
 } from 'solid-js'
 import {
   fetchAgentDetail,
@@ -214,14 +215,16 @@ function extractRealtimeRowId(value: unknown): string | null {
 
 export function AgentDetailPage(props: Props): JSX.Element {
   const navigate = useNavigate()
-  const logsController = useAgentLogsController({
-    agentId: props.agentId,
-  })
   const [detail, { refetch }] = createResource(() => props.agentId, fetchAgentDetail)
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
   const [actionMessage, setActionMessage] = createSignal<string | null>(null)
   const [actionError, setActionError] = createSignal<string | null>(null)
   const [showLogs, setShowLogs] = createSignal(props.initialOpenLogs ?? false)
+  const agentId = untrack(() => props.agentId)
+  const logsController = useAgentLogsController({
+    agentId,
+    enabled: showLogs,
+  })
 
   const fallbackPollTimer = setInterval(() => {
     setLastRefreshed(new Date())

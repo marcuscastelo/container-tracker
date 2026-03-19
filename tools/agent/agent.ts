@@ -1498,10 +1498,9 @@ async function main(): Promise<void> {
         })
         scheduler?.stop()
         realtimeSubscription?.unsubscribe()
-        logForwarder.stop()
-        setTimeout(() => {
+        void logForwarder.stop().finally(() => {
           process.exit(EXIT_UPDATE_RESTART)
-        }, 0)
+        })
       }
     },
     onRunError({ reason, error }) {
@@ -1594,7 +1593,9 @@ async function main(): Promise<void> {
     })
     realtimeSubscription?.unsubscribe()
     scheduler?.stop()
-    logForwarder.stop()
+    void logForwarder.stop().catch((error) => {
+      console.warn(`[agent] log forwarder stop failed: ${toErrorMessage(error)}`)
+    })
     supervisorControl.clearSupervisorControl(supervisorPaths.controlPath)
   }
 

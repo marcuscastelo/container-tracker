@@ -218,7 +218,7 @@ export const AgentLogIngestBodySchema = z.object({
       z.object({
         sequence: z.number().int().min(0),
         channel: AgentLogChannelSchema,
-        message: z.string(),
+        message: z.string().max(8192),
         occurred_at: z.string().datetime({ offset: true }).optional(),
         truncated: z.boolean().optional(),
       }),

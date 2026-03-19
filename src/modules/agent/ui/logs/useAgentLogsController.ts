@@ -65,7 +65,11 @@ function hasSequence(lines: readonly AgentLogLineVM[], sequence: number): boolea
   return lines.some((line) => line.sequence === sequence)
 }
 
-export function useAgentLogsController(command: { readonly agentId: string }) {
+export function useAgentLogsController(command: {
+  readonly agentId: string
+  readonly enabled?: () => boolean
+}) {
+  const enabled = command.enabled ?? (() => true)
   const [channel, setChannel] = createSignal<AgentLogsChannel>('both')
   const [connectionState, setConnectionState] = createSignal<AgentLogsConnectionState>('connecting')
   const [lines, setLines] = createSignal<readonly AgentLogLineVM[]>([])
@@ -77,17 +81,28 @@ export function useAgentLogsController(command: { readonly agentId: string }) {
   const [reconnectToken, setReconnectToken] = createSignal(0)
 
   const backlogKey = createMemo(() => ({
+    enabled: enabled(),
     agentId: command.agentId,
     channel: channel(),
     reconnectToken: reconnectToken(),
   }))
 
-  const [backlog, backlogActions] = createResource(backlogKey, (key) =>
-    fetchAgentLogsBacklog({
-      agentId: key.agentId,
-      channel: key.channel,
-      tail: DEFAULT_TAIL_LINES,
-    }),
+  const [backlog, backlogActions] = createResource(
+    () => {
+      const key = backlogKey()
+      if (!key.enabled) return undefined
+      return {
+        agentId: key.agentId,
+        channel: key.channel,
+        reconnectToken: key.reconnectToken,
+      }
+    },
+    (key) =>
+      fetchAgentLogsBacklog({
+        agentId: key.agentId,
+        channel: key.channel,
+        tail: DEFAULT_TAIL_LINES,
+      }),
   )
 
   createEffect(() => {
@@ -105,6 +120,11 @@ export function useAgentLogsController(command: { readonly agentId: string }) {
   })
 
   createEffect(() => {
+    if (!enabled()) {
+      setConnectionState('disconnected')
+      return
+    }
+
     const agentId = command.agentId
     const currentReconnectToken = reconnectToken()
 
@@ -160,6 +180,7 @@ export function useAgentLogsController(command: { readonly agentId: string }) {
   })
 
   function reconnect(): void {
+    if (!enabled()) return
     setConnectionState('reconnecting')
     setReconnectToken((current) => current + 1)
     void backlogActions.refetch()
