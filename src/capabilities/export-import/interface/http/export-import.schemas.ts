@@ -2,11 +2,31 @@ import { z } from 'zod'
 
 const ScopeSchema = z.enum(['all_processes', 'single_process'])
 
-export const SymmetricExportRequestSchema = z.object({
-  scope: ScopeSchema,
-  processId: z.string().nullish(),
-  format: z.enum(['json', 'zip']),
-})
+function requireProcessIdForSingleProcessScope(
+  data: {
+    readonly scope: 'all_processes' | 'single_process'
+    readonly processId?: string | null
+  },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.scope !== 'single_process') return
+
+  if (typeof data.processId !== 'string' || data.processId.trim().length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['processId'],
+      message: 'processId is required when scope is single_process',
+    })
+  }
+}
+
+export const SymmetricExportRequestSchema = z
+  .object({
+    scope: ScopeSchema,
+    processId: z.string().nullish(),
+    format: z.enum(['json', 'zip']),
+  })
+  .superRefine(requireProcessIdForSingleProcessScope)
 
 const SymmetricContainerEntrySchema = z.object({
   importKey: z.string(),
@@ -92,12 +112,14 @@ export const ExecuteSymmetricImportResponseSchema = z.object({
   importedDocuments: z.number().int().nonnegative(),
 })
 
-export const ReportExportRequestSchema = z.object({
-  scope: ScopeSchema,
-  processId: z.string().nullish(),
-  format: z.enum(['json', 'csv', 'xlsx', 'markdown', 'pdf']),
-  includeContainers: z.boolean().optional(),
-  includeAlerts: z.boolean().optional(),
-  includeTimelineSummary: z.boolean().optional(),
-  includeExecutiveSummary: z.boolean().optional(),
-})
+export const ReportExportRequestSchema = z
+  .object({
+    scope: ScopeSchema,
+    processId: z.string().nullish(),
+    format: z.enum(['json', 'csv', 'xlsx', 'markdown', 'pdf']),
+    includeContainers: z.boolean().optional(),
+    includeAlerts: z.boolean().optional(),
+    includeTimelineSummary: z.boolean().optional(),
+    includeExecutiveSummary: z.boolean().optional(),
+  })
+  .superRefine(requireProcessIdForSingleProcessScope)

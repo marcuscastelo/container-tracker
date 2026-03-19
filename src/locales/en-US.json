@@ -67,7 +67,17 @@
       "importing": "Importing...",
       "databaseNotEmpty": "Import is blocked: database is not empty.",
       "invalidBundleJson": "Invalid bundle JSON file.",
-      "importSuccess": "Imported {{processes}} process(es) and {{containers}} container(s)."
+      "importSuccess": "Imported {{processes}} process(es) and {{containers}} container(s).",
+      "validation": {
+        "schemaVersion": "Schema version",
+        "processes": "Processes",
+        "containers": "Containers",
+        "documents": "Documents",
+        "databaseEmpty": "Database empty",
+        "yes": "yes",
+        "no": "no",
+        "valueUnavailable": "—"
+      }
     }
   },
   "dashboard": {

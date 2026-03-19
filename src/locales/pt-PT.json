@@ -67,7 +67,17 @@
       "importing": "A importar...",
       "databaseNotEmpty": "Importação bloqueada: a base de dados não está vazia.",
       "invalidBundleJson": "Ficheiro JSON do bundle inválido.",
-      "importSuccess": "{{processes}} processo(s) e {{containers}} contentor(es) importados."
+      "importSuccess": "{{processes}} processo(s) e {{containers}} contentor(es) importados.",
+      "validation": {
+        "schemaVersion": "Versão do esquema",
+        "processes": "Processos",
+        "containers": "Contentores",
+        "documents": "Documentos",
+        "databaseEmpty": "Base de dados vazia",
+        "yes": "sim",
+        "no": "não",
+        "valueUnavailable": "—"
+      }
     }
   },
   "app": {

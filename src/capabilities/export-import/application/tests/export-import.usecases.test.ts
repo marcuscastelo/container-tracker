@@ -1,6 +1,96 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ImportRequiresEmptyDatabaseError } from '~/capabilities/export-import/application/export-import.errors'
+import {
+  ImportRequiresEmptyDatabaseError,
+  ProcessNotFoundError,
+} from '~/capabilities/export-import/application/export-import.errors'
 import { createExportImportUseCases } from '~/capabilities/export-import/application/export-import.usecases'
+
+function createReportProcessEntry(overrides: {
+  readonly processId: string
+  readonly containerIds: readonly string[]
+}): {
+  readonly pwc: {
+    readonly process: {
+      readonly id: string
+      readonly reference: string
+      readonly origin: string
+      readonly destination: string
+      readonly carrier: string
+    }
+    readonly containers: readonly {
+      readonly id: string
+      readonly containerNumber: string
+      readonly carrierCode: string | null
+    }[]
+  }
+  readonly summary: {
+    readonly process_status: 'AWAITING_DATA' | 'IN_TRANSIT' | 'DELIVERED' | 'EMPTY_RETURNED'
+    readonly alerts_count: number
+    readonly highest_alert_severity: 'info' | 'warning' | 'danger' | null
+    readonly eta: string | null
+    readonly last_event_at: string | null
+  }
+  readonly sync: {
+    readonly lastSyncAt: string | null
+    readonly lastSyncStatus: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
+  }
+} {
+  return {
+    pwc: {
+      process: {
+        id: overrides.processId,
+        reference: `REF-${overrides.processId}`,
+        origin: 'Santos',
+        destination: 'Hamburg',
+        carrier: 'MSC',
+      },
+      containers: overrides.containerIds.map((containerId, index) => ({
+        id: containerId,
+        containerNumber: `MSCU${index + 1}`,
+        carrierCode: 'MSC',
+      })),
+    },
+    summary: {
+      process_status: 'IN_TRANSIT',
+      alerts_count: 0,
+      highest_alert_severity: null,
+      eta: null,
+      last_event_at: null,
+    },
+    sync: {
+      lastSyncAt: null,
+      lastSyncStatus: 'UNKNOWN',
+    },
+  }
+}
+
+function createContainerSummary(overrides: {
+  readonly hasActualConflict: boolean
+  readonly createdAt: string
+  readonly eventTime: string
+}) {
+  return {
+    status: 'IN_TRANSIT',
+    operational: {
+      eta: null,
+      dataIssue: false,
+    },
+    alerts: [],
+    observations: [{ created_at: overrides.createdAt }],
+    timeline: {
+      observations: [
+        {
+          type: 'LOAD',
+          event_time: overrides.eventTime,
+          event_time_type: 'ACTUAL',
+          seriesHistory: {
+            hasActualConflict: overrides.hasActualConflict,
+          },
+        },
+      ],
+    },
+  }
+}
 
 function createUseCases() {
   const deps = {
@@ -142,5 +232,78 @@ describe('export-import usecases', () => {
         documents: [],
       }),
     ).rejects.toBeInstanceOf(ImportRequiresEmptyDatabaseError)
+  })
+
+  it('exports report containers without treating every ACTUAL event as a conflict', async () => {
+    const { deps, useCases } = createUseCases()
+
+    vi.mocked(deps.processUseCases.listProcessesWithOperationalSummary).mockResolvedValueOnce({
+      processes: [
+        createReportProcessEntry({
+          processId: 'process-1',
+          containerIds: ['container-1', 'container-2'],
+        }),
+      ],
+    })
+
+    vi.mocked(deps.trackingUseCases.getContainerSummary).mockImplementation(
+      async (containerId: string) => {
+        if (containerId === 'container-1') {
+          return createContainerSummary({
+            hasActualConflict: false,
+            createdAt: '2026-03-15T10:00:00.000Z',
+            eventTime: '2026-03-15T09:00:00.000Z',
+          })
+        }
+
+        return createContainerSummary({
+          hasActualConflict: true,
+          createdAt: '2026-03-15T11:00:00.000Z',
+          eventTime: '2026-03-15T10:30:00.000Z',
+        })
+      },
+    )
+
+    const report = await useCases.exportReport({
+      scope: 'all_processes',
+      processId: null,
+      includeContainers: true,
+      includeAlerts: false,
+      includeTimelineSummary: true,
+      includeExecutiveSummary: true,
+    })
+
+    const containers = report.processes[0]?.containers ?? []
+
+    expect(containers).toHaveLength(2)
+    expect(containers[0]?.id).toBe('container-1')
+    expect(containers[0]?.hasConflict).toBe(false)
+    expect(containers[1]?.id).toBe('container-2')
+    expect(containers[1]?.hasConflict).toBe(true)
+    expect(report.totals.processesWithConflict).toBe(1)
+  })
+
+  it('throws not-found when a single-process report targets a missing process', async () => {
+    const { deps, useCases } = createUseCases()
+
+    vi.mocked(deps.processUseCases.listProcessesWithOperationalSummary).mockResolvedValueOnce({
+      processes: [
+        createReportProcessEntry({
+          processId: 'process-1',
+          containerIds: [],
+        }),
+      ],
+    })
+
+    await expect(
+      useCases.exportReport({
+        scope: 'single_process',
+        processId: 'missing-process',
+        includeContainers: false,
+        includeAlerts: false,
+        includeTimelineSummary: false,
+        includeExecutiveSummary: false,
+      }),
+    ).rejects.toBeInstanceOf(ProcessNotFoundError)
   })
 })

@@ -73,20 +73,34 @@ function ImportValidationPanel(props: {
   readonly validation: ImportValidationState
   readonly blockedMessage: string
 }): JSX.Element {
+  const { t, keys } = useTranslation()
+  const labels = {
+    schemaVersion: t(keys.exportImport.importDialog.validation.schemaVersion),
+    processes: t(keys.exportImport.importDialog.validation.processes),
+    containers: t(keys.exportImport.importDialog.validation.containers),
+    documents: t(keys.exportImport.importDialog.validation.documents),
+    databaseEmpty: t(keys.exportImport.importDialog.validation.databaseEmpty),
+    yes: t(keys.exportImport.importDialog.validation.yes),
+    no: t(keys.exportImport.importDialog.validation.no),
+    unavailable: t(keys.exportImport.importDialog.validation.valueUnavailable),
+  }
+
   return (
     <div class="space-y-3 rounded-lg border border-border bg-surface-muted p-3">
       <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs-ui text-text-muted">
-        <span>Schema version</span>
-        <span class="font-medium text-foreground">{props.validation.schemaVersion ?? '—'}</span>
-        <span>Processes</span>
-        <span class="font-medium text-foreground">{props.validation.processCount}</span>
-        <span>Containers</span>
-        <span class="font-medium text-foreground">{props.validation.containerCount}</span>
-        <span>Documents</span>
-        <span class="font-medium text-foreground">{props.validation.documentCount}</span>
-        <span>Database empty</span>
+        <span>{labels.schemaVersion}</span>
         <span class="font-medium text-foreground">
-          {props.validation.databaseEmpty ? 'yes' : 'no'}
+          {props.validation.schemaVersion ?? labels.unavailable}
+        </span>
+        <span>{labels.processes}</span>
+        <span class="font-medium text-foreground">{props.validation.processCount}</span>
+        <span>{labels.containers}</span>
+        <span class="font-medium text-foreground">{props.validation.containerCount}</span>
+        <span>{labels.documents}</span>
+        <span class="font-medium text-foreground">{props.validation.documentCount}</span>
+        <span>{labels.databaseEmpty}</span>
+        <span class="font-medium text-foreground">
+          {props.validation.databaseEmpty ? labels.yes : labels.no}
         </span>
       </div>
 

@@ -18,3 +18,10 @@ export class InvalidSymmetricBundleError extends HttpError {
     this.name = 'InvalidSymmetricBundleError'
   }
 }
+
+export class ProcessNotFoundError extends HttpError {
+  constructor(message = 'Process not found for export') {
+    super(message, 404)
+    this.name = 'ProcessNotFoundError'
+  }
+}

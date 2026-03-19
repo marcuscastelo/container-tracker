@@ -1,6 +1,7 @@
 import {
   ImportRequiresEmptyDatabaseError,
   InvalidSymmetricBundleError,
+  ProcessNotFoundError,
 } from '~/capabilities/export-import/application/export-import.errors'
 import type {
   OperationalSnapshotReport,
@@ -20,6 +21,8 @@ import type { TrackingUseCases } from '~/modules/tracking/application/tracking.u
 
 // 24 hours in milliseconds — threshold for considering process sync as recent.
 const FRESH_SYNC_WINDOW_MS = 1000 * 60 * 60 * 24
+const REPORT_PROCESS_CONCURRENCY = 4
+const REPORT_CONTAINER_CONCURRENCY = 4
 
 type ExportImportUseCasesDeps = {
   readonly processUseCases: Pick<
@@ -58,17 +61,39 @@ function getLatestEventFromTimelineItems(
   return latest
 }
 
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return []
+
+  const limit = Math.max(1, Math.min(concurrency, items.length))
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+
+  const workers = Array.from({ length: limit }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex
+      nextIndex += 1
+      const currentItem = items[currentIndex]
+      if (currentItem === undefined) continue
+
+      results[currentIndex] = await mapper(currentItem, currentIndex)
+    }
+  })
+
+  await Promise.all(workers)
+  return results
+}
+
 function deriveContainerConflictSignal(
   timelineItems: readonly {
     readonly event_time_type: 'ACTUAL' | 'EXPECTED'
     readonly seriesHistory?: { readonly hasActualConflict: boolean } | null
   }[],
 ): boolean {
-  return timelineItems.some((item) => {
-    const hasActualConflict = item.seriesHistory?.hasActualConflict === true
-    if (hasActualConflict) return true
-    return item.event_time_type === 'ACTUAL'
-  })
+  return timelineItems.some((item) => item.seriesHistory?.hasActualConflict === true)
 }
 
 type ContainerSummaryAlert = {
@@ -152,7 +177,56 @@ async function resolveProcessesForReport(
     throw new InvalidSymmetricBundleError('processId is required for single_process scope')
   }
 
-  return result.processes.filter((entry) => String(entry.pwc.process.id) === processId)
+  const matchingProcesses = result.processes.filter(
+    (entry) => String(entry.pwc.process.id) === processId,
+  )
+
+  if (matchingProcesses.length === 0) {
+    throw new ProcessNotFoundError('Process not found for report export')
+  }
+
+  return matchingProcesses
+}
+
+async function buildReportContainerEntry(
+  deps: ExportImportUseCasesDeps,
+  container: {
+    readonly id: string
+    readonly containerNumber: string
+    readonly carrierCode: string | null
+  },
+  now: Date,
+  command: Pick<ReportExportCommand, 'includeAlerts' | 'includeTimelineSummary'>,
+): Promise<ReportContainerEntry> {
+  const summary = await deps.trackingUseCases.getContainerSummary(
+    String(container.id),
+    String(container.containerNumber),
+    undefined,
+    now,
+    {
+      includeAcknowledgedAlerts: true,
+    },
+  )
+
+  const latestEvent = getLatestEventFromTimelineItems(summary.timeline.observations)
+  const timelineSummary = command.includeTimelineSummary
+    ? toReportTimelineItem(summary.timeline.observations)
+    : []
+  const alertItems = command.includeAlerts ? summary.alerts.map(toReportAlert) : []
+
+  return {
+    id: String(container.id),
+    containerNumber: String(container.containerNumber),
+    carrierCode: container.carrierCode,
+    status: summary.status,
+    eta: summary.operational.eta?.eventTimeIso ?? null,
+    latestEvent,
+    latestTrackingUpdate: summary.observations.at(-1)?.created_at ?? null,
+    hasConflict: deriveContainerConflictSignal(summary.timeline.observations),
+    uncertainty: summary.operational.dataIssue === true ? 'tracking_summary_data_issue' : null,
+    alerts: alertItems,
+    timelineSummary,
+  }
 }
 
 function validateSymmetricBundle(bundle: SymmetricExportBundle): SymmetricImportValidationResult {
@@ -380,63 +454,39 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
     const exportedAt = now.toISOString()
     const entries = await resolveProcessesForReport(deps, command)
 
-    const reportProcesses: ReportProcessEntry[] = []
+    const reportProcesses: ReportProcessEntry[] = await mapWithConcurrency(
+      entries,
+      REPORT_PROCESS_CONCURRENCY,
+      async (entry) => {
+        const containers: ReportContainerEntry[] = command.includeContainers
+          ? await mapWithConcurrency(
+              entry.pwc.containers,
+              REPORT_CONTAINER_CONCURRENCY,
+              async (container) =>
+                buildReportContainerEntry(deps, container, now, {
+                  includeAlerts: command.includeAlerts,
+                  includeTimelineSummary: command.includeTimelineSummary,
+                }),
+            )
+          : []
 
-    for (const entry of entries) {
-      const containers: ReportContainerEntry[] = []
-
-      if (command.includeContainers) {
-        for (const container of entry.pwc.containers) {
-          const summary = await deps.trackingUseCases.getContainerSummary(
-            String(container.id),
-            String(container.containerNumber),
-            undefined,
-            now,
-            {
-              includeAcknowledgedAlerts: true,
-            },
-          )
-
-          const latestEvent = getLatestEventFromTimelineItems(summary.timeline.observations)
-          const timelineSummary = command.includeTimelineSummary
-            ? toReportTimelineItem(summary.timeline.observations)
-            : []
-
-          const alertItems = command.includeAlerts ? summary.alerts.map(toReportAlert) : []
-
-          containers.push({
-            id: String(container.id),
-            containerNumber: String(container.containerNumber),
-            carrierCode: container.carrierCode,
-            status: summary.status,
-            eta: summary.operational.eta?.eventTimeIso ?? null,
-            latestEvent,
-            latestTrackingUpdate: summary.observations.at(-1)?.created_at ?? null,
-            hasConflict: deriveContainerConflictSignal(summary.timeline.observations),
-            uncertainty:
-              summary.operational.dataIssue === true ? 'tracking_summary_data_issue' : null,
-            alerts: alertItems,
-            timelineSummary,
-          })
+        return {
+          id: String(entry.pwc.process.id),
+          reference: entry.pwc.process.reference,
+          carrier: entry.pwc.process.carrier,
+          origin: entry.pwc.process.origin,
+          destination: entry.pwc.process.destination,
+          processStatus: entry.summary.process_status,
+          alertCount: entry.summary.alerts_count,
+          highestAlertSeverity: entry.summary.highest_alert_severity,
+          eta: entry.summary.eta,
+          lastEventAt: entry.summary.last_event_at,
+          lastSyncAt: entry.sync.lastSyncAt,
+          lastSyncStatus: entry.sync.lastSyncStatus,
+          containers,
         }
-      }
-
-      reportProcesses.push({
-        id: String(entry.pwc.process.id),
-        reference: entry.pwc.process.reference,
-        carrier: entry.pwc.process.carrier,
-        origin: entry.pwc.process.origin,
-        destination: entry.pwc.process.destination,
-        processStatus: entry.summary.process_status,
-        alertCount: entry.summary.alerts_count,
-        highestAlertSeverity: entry.summary.highest_alert_severity,
-        eta: entry.summary.eta,
-        lastEventAt: entry.summary.last_event_at,
-        lastSyncAt: entry.sync.lastSyncAt,
-        lastSyncStatus: entry.sync.lastSyncStatus,
-        containers,
-      })
-    }
+      },
+    )
 
     const processCount = reportProcesses.length
     const containerCount = reportProcesses.reduce(

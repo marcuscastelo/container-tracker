@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   IMPORT_REQUIRES_EMPTY_DATABASE,
   ImportRequiresEmptyDatabaseError,
+  ProcessNotFoundError,
 } from '~/capabilities/export-import/application/export-import.errors'
 import type { ExportImportUseCases } from '~/capabilities/export-import/application/export-import.usecases'
 import { createExportImportControllers } from '~/capabilities/export-import/interface/http/export-import.controllers'
@@ -91,5 +92,27 @@ describe('export import controllers', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Disposition')).toContain('attachment; filename=')
     expect(response.headers.get('Content-Type')).toContain('application/json')
+  })
+
+  it('returns not-found when report export targets a missing process', async () => {
+    vi.mocked(useCases.exportReport).mockRejectedValueOnce(
+      new ProcessNotFoundError('Process not found for report export'),
+    )
+
+    const response = await controllers.exportReport({
+      request: new Request('http://localhost/api/export-import/report/export', {
+        method: 'POST',
+        body: JSON.stringify({
+          scope: 'single_process',
+          processId: 'missing-process',
+          format: 'json',
+        }),
+      }),
+    })
+
+    const payload = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(payload.error).toContain('Process not found')
   })
 })
