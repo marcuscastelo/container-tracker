@@ -169,6 +169,18 @@ function createControllers(
       updateProcess: vi.fn(async () => ({ process: processWithContainers })),
       findProcessById: vi.fn(async () => ({ process })),
       deleteProcess: vi.fn(async () => ({ deleted: true as const })),
+      normalizeAutoCarriers: vi.fn(async () => ({
+        ok: true as const,
+        process_id: 'process-1',
+        normalized: false,
+        reason: 'no_changes_required' as const,
+        target_carrier_code: null,
+        before_summary: 'UNKNOWN' as const,
+        after_summary: 'UNKNOWN' as const,
+        updated_auto_containers: 0,
+        skipped_manual_containers: 0,
+        already_aligned_auto_containers: 0,
+      })),
     },
     trackingUseCases: {
       getContainerSummary,
@@ -537,6 +549,7 @@ describe('process controllers', () => {
         updateProcess: vi.fn(async () => ({ process: processWithContainers })),
         findProcessById: vi.fn(async () => ({ process })),
         deleteProcess: deleteProcessSpy,
+        normalizeAutoCarriers: vi.fn(async () => null),
       },
       trackingUseCases: {
         getContainerSummary: vi.fn<GetContainerSummaryMock>(
@@ -575,5 +588,158 @@ describe('process controllers', () => {
     expect(response.status).toBe(200)
     expect(typeof body.generated_at).toBe('string')
     expect(Array.isArray(body.processes)).toBe(true)
+  })
+
+  it('normalizes only AUTO containers and preserves MANUAL assignments', async () => {
+    const process = createProcessEntity({
+      id: toProcessId('process-1'),
+      reference: toProcessReference('REF-1'),
+      origin: 'Shanghai',
+      destination: 'Santos',
+      carrier: toCarrierCode('msc'),
+      billOfLading: null,
+      bookingNumber: null,
+      importerName: null,
+      exporterName: null,
+      referenceImporter: null,
+      product: null,
+      redestinationNumber: null,
+      source: toProcessSource('manual'),
+      createdAt: new Date('2026-02-01T10:00:00.000Z'),
+      updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+    })
+    const normalizeAutoCarriers = vi.fn(async () => ({
+      ok: true as const,
+      process_id: 'process-1',
+      normalized: true,
+      reason: 'normalized' as const,
+      target_carrier_code: 'msc',
+      before_summary: 'MIXED' as const,
+      after_summary: 'MIXED' as const,
+      updated_auto_containers: 1,
+      skipped_manual_containers: 1,
+      already_aligned_auto_containers: 1,
+    }))
+
+    const controllers = createProcessControllers({
+      processUseCases: {
+        listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
+        createProcess: vi.fn(async () => ({ process, containers: [], warnings: [] })),
+        findProcessByIdWithContainers: vi.fn(async () => ({ process: null })),
+        updateProcess: vi.fn(async () => ({ process: null })),
+        findProcessById: vi.fn(async () => ({ process })),
+        deleteProcess: vi.fn(async () => ({ deleted: true as const })),
+        normalizeAutoCarriers,
+      },
+      trackingUseCases: {
+        getContainerSummary: vi.fn<GetContainerSummaryMock>(
+          async (containerId: string, containerNumber: string) => {
+            return createSummary(
+              containerId,
+              containerNumber,
+              createTrackingOperationalSummaryFallback(false),
+            )
+          },
+        ),
+        getContainersSyncMetadata: vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      },
+    })
+
+    const response = await controllers.normalizeAutoCarriersByProcessId({
+      params: { id: 'process-1' },
+    })
+    const body = (await response.json()) as {
+      readonly ok: boolean
+      readonly normalized: boolean
+      readonly target_carrier_code: string
+      readonly updated_auto_containers: number
+      readonly skipped_manual_containers: number
+      readonly after_summary: string
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.normalized).toBe(true)
+    expect(body.target_carrier_code).toBe('msc')
+    expect(body.updated_auto_containers).toBe(1)
+    expect(body.skipped_manual_containers).toBe(1)
+    expect(body.after_summary).toBe('MIXED')
+    expect(normalizeAutoCarriers).toHaveBeenCalledWith({ processId: 'process-1' })
+  })
+
+  it('returns no-op when normalize target carrier cannot be resolved deterministically', async () => {
+    const process = createProcessEntity({
+      id: toProcessId('process-1'),
+      reference: toProcessReference('REF-1'),
+      origin: 'Shanghai',
+      destination: 'Santos',
+      carrierMode: 'AUTO',
+      defaultCarrierCode: null,
+      carrier: null,
+      billOfLading: null,
+      bookingNumber: null,
+      importerName: null,
+      exporterName: null,
+      referenceImporter: null,
+      product: null,
+      redestinationNumber: null,
+      source: toProcessSource('manual'),
+      createdAt: new Date('2026-02-01T10:00:00.000Z'),
+      updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+    })
+
+    const updateCarrier = vi.fn(async () => undefined)
+    const normalizeAutoCarriers = vi.fn(async () => ({
+      ok: true as const,
+      process_id: 'process-1',
+      normalized: false,
+      reason: 'target_carrier_not_resolved' as const,
+      target_carrier_code: null,
+      before_summary: 'MIXED' as const,
+      after_summary: 'MIXED' as const,
+      updated_auto_containers: 0,
+      skipped_manual_containers: 0,
+      already_aligned_auto_containers: 2,
+    }))
+
+    const controllers = createProcessControllers({
+      processUseCases: {
+        listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
+        createProcess: vi.fn(async () => ({ process, containers: [], warnings: [] })),
+        findProcessByIdWithContainers: vi.fn(async () => ({ process: null })),
+        updateProcess: vi.fn(async () => ({ process: null })),
+        findProcessById: vi.fn(async () => ({ process })),
+        deleteProcess: vi.fn(async () => ({ deleted: true as const })),
+        normalizeAutoCarriers,
+      },
+      trackingUseCases: {
+        getContainerSummary: vi.fn<GetContainerSummaryMock>(
+          async (containerId: string, containerNumber: string) => {
+            return createSummary(
+              containerId,
+              containerNumber,
+              createTrackingOperationalSummaryFallback(false),
+            )
+          },
+        ),
+        getContainersSyncMetadata: vi.fn<GetContainersSyncMetadataMock>(async () => []),
+      },
+    })
+
+    const response = await controllers.normalizeAutoCarriersByProcessId({
+      params: { id: 'process-1' },
+    })
+    const body = (await response.json()) as {
+      readonly ok: boolean
+      readonly normalized: boolean
+      readonly reason: string
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.normalized).toBe(false)
+    expect(body.reason).toBe('target_carrier_not_resolved')
+    expect(updateCarrier).not.toHaveBeenCalled()
+    expect(normalizeAutoCarriers).toHaveBeenCalledWith({ processId: 'process-1' })
   })
 })

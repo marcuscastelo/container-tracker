@@ -348,10 +348,15 @@ describe('sync controllers', () => {
     const body = DetectProcessCarrierResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({
+    expect(body).toMatchObject({
       detected: true,
       carrier: 'MSC',
+      run_id: null,
+      status: null,
+      resolved_provider: null,
+      confidence: null,
     })
+    expect(body.attempts).toEqual([])
     expect(detectProcessCarrier).toHaveBeenCalledWith({
       tenantId: 'tenant-a',
       processId: 'process-1',

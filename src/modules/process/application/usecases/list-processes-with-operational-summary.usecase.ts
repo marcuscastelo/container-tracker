@@ -484,7 +484,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
         const summary = aggregateOperationalSummary(
           process.id,
           process.reference ?? null,
-          process.carrier ?? null,
+          process.defaultCarrierCode ?? process.carrier ?? null,
           containers.length,
           summaries,
           now,

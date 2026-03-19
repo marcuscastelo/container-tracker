@@ -24,7 +24,7 @@ type ReconcileContainersResult = {
   added: {
     id: string
     containerNumber: string
-    carrierCode: string
+    carrierCode: string | null
   }[]
   removed: string[] // container IDs
   warnings: string[]
@@ -43,7 +43,7 @@ export function createReconcileContainersUseCase(deps: { repository: ContainerRe
       warnings.push(...validateContainerWithWarnings(normalized))
       return {
         containerNumber: normalized,
-        carrierCode: i.carrierCode ?? '',
+        carrierCode: i.carrierCode ?? null,
       }
     })
 
@@ -68,6 +68,9 @@ export function createReconcileContainersUseCase(deps: { repository: ContainerRe
           processId: command.processId,
           containerNumber: inc.containerNumber,
           carrierCode: inc.carrierCode,
+          carrierAssignmentMode: 'AUTO',
+          carrierDetectionSource: inc.carrierCode ? 'process-seed' : null,
+          carrierDetectedAt: null,
         })
 
         added.push(container)

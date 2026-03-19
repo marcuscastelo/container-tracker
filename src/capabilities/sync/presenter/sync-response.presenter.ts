@@ -77,9 +77,27 @@ export function toProcessRefreshResponse(result: RefreshProcessResult) {
 export function toDetectProcessCarrierResponse(result: {
   readonly detected: boolean
   readonly carrier: string | null
+  readonly runId?: string | null
+  readonly status?: 'RESOLVED' | 'FAILED' | 'RATE_LIMITED' | null
+  readonly resolvedProvider?: string | null
+  readonly confidence?: 'HIGH' | 'LOW' | 'UNKNOWN' | null
+  readonly attempts?: readonly {
+    readonly provider: string
+    readonly status: 'FOUND' | 'NOT_FOUND' | 'ERROR'
+    readonly errorCode: string | null
+  }[]
 }) {
   return {
     detected: result.detected,
     carrier: result.carrier,
+    run_id: result.runId ?? null,
+    status: result.status ?? null,
+    resolved_provider: result.resolvedProvider ?? null,
+    confidence: result.confidence ?? null,
+    attempts: (result.attempts ?? []).map((attempt) => ({
+      provider: attempt.provider,
+      status: attempt.status,
+      error_code: attempt.errorCode,
+    })),
   }
 }

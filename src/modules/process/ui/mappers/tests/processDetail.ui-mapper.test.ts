@@ -11,7 +11,11 @@ describe('toShipmentDetailVM', () => {
       destination: { display_name: 'Santos' },
       carrier: 'maersk',
       carrier_mode: 'MANUAL',
+      default_carrier_code: 'maersk',
+      last_resolved_carrier_code: 'maersk',
+      carrier_resolved_at: '2026-02-01T10:00:00.000Z',
       effective_carrier_summary: 'SINGLE',
+      effective_carrier_codes: ['cmacgm'],
       bill_of_lading: null,
       booking_number: null,
       source: 'api',
@@ -86,6 +90,9 @@ describe('toShipmentDetailVM', () => {
     expect(result.containers[0].etaChipVm.state).toBe('UNAVAILABLE')
     expect(result.containers[0].dataIssueChipVm.visible).toBe(false)
     expect(result.carrierMode).toBe('MANUAL')
+    expect(result.defaultCarrierCode).toBe('maersk')
+    expect(result.lastResolvedCarrierCode).toBe('maersk')
+    expect(result.effectiveCarrierCodes).toEqual(['cmacgm'])
     expect(result.effectiveCarrierSummary).toBe('SINGLE')
     expect(result.processEtaSecondaryVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.total).toBe(1)

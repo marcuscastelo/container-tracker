@@ -25,6 +25,7 @@ type SyncContainerResult = {
 }
 
 type SyncContainerRecord = {
+  readonly containerId?: string
   readonly processId: string
   readonly containerNumber: string
   readonly carrierCode: string | null
@@ -40,6 +41,53 @@ export type SyncContainerDeps = {
   readonly sleep?: (delayMs: number) => Promise<void>
   readonly timeoutMs?: number
   readonly pollIntervalMs?: number
+}
+
+function toDetectionRunStatus(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'RESOLVED' | 'FAILED' | 'RATE_LIMITED' {
+  if (detectionResult.detected) return 'RESOLVED'
+  if (detectionResult.reason === 'rate_limited') return 'RATE_LIMITED'
+  return 'FAILED'
+}
+
+function toDetectionConfidence(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'HIGH' | 'LOW' | 'UNKNOWN' {
+  if (detectionResult.detected) return 'HIGH'
+  if (detectionResult.reason === 'rate_limited') return 'UNKNOWN'
+  return 'LOW'
+}
+
+function toDetectionAttempts(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+) {
+  if (detectionResult.attempts && detectionResult.attempts.length > 0) {
+    return detectionResult.attempts.map((attempt) => ({
+      provider: attempt.provider,
+      status: attempt.status,
+      errorCode: attempt.errorCode,
+      rawResultRef: attempt.rawResultRef,
+    }))
+  }
+
+  if (detectionResult.detected) {
+    return [
+      {
+        provider: detectionResult.provider,
+        status: 'FOUND' as const,
+        errorCode: null,
+        rawResultRef: null,
+      },
+    ]
+  }
+
+  return detectionResult.attemptedProviders.map((provider) => ({
+    provider,
+    status: 'NOT_FOUND' as const,
+    errorCode: detectionResult.error,
+    rawResultRef: null,
+  }))
 }
 
 function dedupeTargets(targets: readonly ResolvedSyncTarget[]): readonly ResolvedSyncTarget[] {
@@ -111,6 +159,23 @@ async function detectCarrierAndRetry(command: {
   })
 
   if (!detectionResult.detected) {
+    for (const record of command.records) {
+      if (command.deps.carrierDetectionWritePort.recordDetectionRun) {
+        await command.deps.carrierDetectionWritePort.recordDetectionRun({
+          processId: record.processId,
+          containerNumber: command.containerNumber,
+          containerId: record.containerId,
+          candidateProviders:
+            detectionResult.candidateProviders ?? detectionResult.attemptedProviders,
+          attempts: toDetectionAttempts(detectionResult),
+          status: toDetectionRunStatus(detectionResult),
+          resolvedProvider: null,
+          confidence: toDetectionConfidence(detectionResult),
+          errorCode: detectionResult.error,
+        })
+      }
+    }
+
     throw new HttpError(
       `sync_container_failed:${detectionResult.error ?? detectionResult.reason}`,
       502,
@@ -119,11 +184,31 @@ async function detectCarrierAndRetry(command: {
 
   const persistedCarrierCode = toPersistedCarrierCode(detectionResult.provider)
   for (const record of command.records) {
-    await command.deps.carrierDetectionWritePort.persistDetectedCarrier({
-      processId: record.processId,
-      containerNumber: command.containerNumber,
-      carrierCode: persistedCarrierCode,
-    })
+    const run = command.deps.carrierDetectionWritePort.recordDetectionRun
+      ? await command.deps.carrierDetectionWritePort.recordDetectionRun({
+          processId: record.processId,
+          containerNumber: command.containerNumber,
+          containerId: record.containerId,
+          candidateProviders:
+            detectionResult.candidateProviders ?? detectionResult.attemptedProviders,
+          attempts: toDetectionAttempts(detectionResult),
+          status: toDetectionRunStatus(detectionResult),
+          resolvedProvider: detectionResult.detected ? detectionResult.provider : null,
+          confidence: toDetectionConfidence(detectionResult),
+          errorCode: detectionResult.error,
+        })
+      : { runId: '00000000-0000-0000-0000-000000000000', won: true }
+
+    if (run.won) {
+      await command.deps.carrierDetectionWritePort.persistDetectedCarrier({
+        processId: record.processId,
+        runId: run.runId,
+        containerNumber: command.containerNumber,
+        carrierCode: persistedCarrierCode,
+        confidence: toDetectionConfidence(detectionResult),
+        detectionSource: 'auto-detect',
+      })
+    }
   }
 
   return executeSyncTargets({
@@ -159,6 +244,7 @@ export function createSyncContainerUseCase(deps: SyncContainerDeps) {
     const containerNumber = normalizeContainerNumber(command.scope.containerNumber)
     const lookupResult = await deps.targetReadPort.findContainersByNumber({ containerNumber })
     const records = lookupResult.containers.map((record) => ({
+      containerId: record.id,
       processId: record.processId,
       containerNumber: normalizeContainerNumber(record.containerNumber),
       carrierCode: record.carrierCode,

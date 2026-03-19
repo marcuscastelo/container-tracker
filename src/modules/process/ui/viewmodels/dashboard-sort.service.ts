@@ -162,7 +162,11 @@ function compareBySortField(
         'directional',
       )
     case 'provider':
-      return compareNullableStringValues(left.carrier, right.carrier, direction)
+      return compareNullableStringValues(
+        left.effectiveCarrierLabel ?? left.carrier,
+        right.effectiveCarrierLabel ?? right.carrier,
+        direction,
+      )
   }
 }
 

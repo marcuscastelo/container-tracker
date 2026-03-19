@@ -20,13 +20,17 @@ describe('carrier-detection.engine', () => {
       containerNumber: 'MSCU1234567',
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       detected: true,
       provider: 'maersk',
       attemptedProviders: ['msc', 'maersk'],
       reason: 'found',
       error: null,
     })
+    expect(result.attempts).toEqual([
+      { provider: 'msc', status: 'NOT_FOUND', errorCode: null, rawResultRef: null },
+      { provider: 'maersk', status: 'FOUND', errorCode: null, rawResultRef: null },
+    ])
     expect(probeProvider).toHaveBeenCalledTimes(2)
   })
 
@@ -47,13 +51,22 @@ describe('carrier-detection.engine', () => {
       containerNumber: 'MSCU1234567',
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       detected: false,
       provider: null,
       attemptedProviders: ['msc', 'maersk'],
       reason: 'provider_error',
       error: 'provider_unavailable',
     })
+    expect(result.attempts).toEqual([
+      { provider: 'msc', status: 'NOT_FOUND', errorCode: null, rawResultRef: null },
+      {
+        provider: 'maersk',
+        status: 'ERROR',
+        errorCode: 'provider_unavailable',
+        rawResultRef: null,
+      },
+    ])
     expect(probeProvider).toHaveBeenCalledTimes(2)
   })
 
@@ -81,12 +94,13 @@ describe('carrier-detection.engine', () => {
       containerNumber: 'MSCU1234567',
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       detected: false,
       provider: null,
       attemptedProviders: [],
       reason: 'rate_limited',
       error: 'carrier_detection_rate_limited',
     })
+    expect(result.attempts).toEqual([])
   })
 })

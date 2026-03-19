@@ -56,11 +56,22 @@ export const supabaseContainerRepository: ContainerRepository = {
   },
 
   async updateCarrierCode(command): Promise<ContainerEntity> {
+    const updatePayload: Database['public']['Tables']['containers']['Update'] = {
+      carrier_code: command.carrierCode,
+      ...(command.carrierAssignmentMode !== undefined
+        ? { carrier_assignment_mode: command.carrierAssignmentMode }
+        : {}),
+      ...(command.carrierDetectedAt !== undefined
+        ? { carrier_detected_at: command.carrierDetectedAt }
+        : {}),
+      ...(command.carrierDetectionSource !== undefined
+        ? { carrier_detection_source: command.carrierDetectionSource }
+        : {}),
+    }
+
     const result = await supabase
       .from(TABLE_NAME)
-      .update({
-        carrier_code: command.carrierCode,
-      })
+      .update(updatePayload)
       .eq('id', command.id)
       .select()
       .single()

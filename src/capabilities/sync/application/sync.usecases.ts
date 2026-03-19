@@ -114,24 +114,28 @@ export function createSyncUseCases(deps: CreateSyncUseCasesDeps) {
       if (!status) {
         return {
           kind: 'not_found',
+          rawResultRef: enqueueResult.id,
         }
       }
 
       if (status.status === 'DONE') {
         return {
           kind: 'found',
+          rawResultRef: enqueueResult.id,
         }
       }
 
       if (isContainerNotFoundLikeStatus(status)) {
         return {
           kind: 'not_found',
+          rawResultRef: enqueueResult.id,
         }
       }
 
       return {
         kind: 'error',
         error: status.lastError ?? `carrier_probe_${status.status.toLowerCase()}`,
+        rawResultRef: enqueueResult.id,
       }
     },
   })

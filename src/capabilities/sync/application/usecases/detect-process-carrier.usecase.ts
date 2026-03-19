@@ -18,6 +18,15 @@ export type DetectProcessCarrierCommand = {
 export type DetectProcessCarrierResult = {
   readonly detected: boolean
   readonly carrier: string | null
+  readonly runId?: string | null
+  readonly status?: 'RESOLVED' | 'FAILED' | 'RATE_LIMITED' | null
+  readonly resolvedProvider?: string | null
+  readonly confidence?: 'HIGH' | 'LOW' | 'UNKNOWN' | null
+  readonly attempts?: readonly {
+    readonly provider: string
+    readonly status: 'FOUND' | 'NOT_FOUND' | 'ERROR'
+    readonly errorCode: string | null
+  }[]
 }
 
 export type DetectProcessCarrierDeps = {
@@ -27,6 +36,53 @@ export type DetectProcessCarrierDeps = {
   >
   readonly carrierDetectionEngine: CarrierDetectionEngine
   readonly carrierDetectionWritePort: CarrierDetectionWritePort
+}
+
+function toDetectionRunStatus(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'RESOLVED' | 'FAILED' | 'RATE_LIMITED' {
+  if (detectionResult.detected) return 'RESOLVED'
+  if (detectionResult.reason === 'rate_limited') return 'RATE_LIMITED'
+  return 'FAILED'
+}
+
+function toDetectionConfidence(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'HIGH' | 'LOW' | 'UNKNOWN' {
+  if (detectionResult.detected) return 'HIGH'
+  if (detectionResult.reason === 'rate_limited') return 'UNKNOWN'
+  return 'LOW'
+}
+
+function toDetectionAttempts(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+) {
+  if (detectionResult.attempts && detectionResult.attempts.length > 0) {
+    return detectionResult.attempts.map((attempt) => ({
+      provider: attempt.provider,
+      status: attempt.status,
+      errorCode: attempt.errorCode,
+      rawResultRef: attempt.rawResultRef,
+    }))
+  }
+
+  if (detectionResult.detected) {
+    return [
+      {
+        provider: detectionResult.provider,
+        status: 'FOUND' as const,
+        errorCode: null,
+        rawResultRef: null,
+      },
+    ]
+  }
+
+  return detectionResult.attemptedProviders.map((provider) => ({
+    provider,
+    status: 'NOT_FOUND' as const,
+    errorCode: detectionResult.error,
+    rawResultRef: null,
+  }))
 }
 
 export function createDetectProcessCarrierUseCase(deps: DetectProcessCarrierDeps) {
@@ -67,25 +123,59 @@ export function createDetectProcessCarrierUseCase(deps: DetectProcessCarrierDeps
         excludeProviders: currentProvider ? [currentProvider] : [],
       })
 
+      const run = deps.carrierDetectionWritePort.recordDetectionRun
+        ? await deps.carrierDetectionWritePort.recordDetectionRun({
+            processId,
+            containerNumber: normalizeContainerNumber(container.containerNumber),
+            containerId: container.id,
+            candidateProviders:
+              detectionResult.candidateProviders ?? detectionResult.attemptedProviders,
+            attempts: toDetectionAttempts(detectionResult),
+            status: toDetectionRunStatus(detectionResult),
+            resolvedProvider: detectionResult.detected ? detectionResult.provider : null,
+            confidence: toDetectionConfidence(detectionResult),
+            errorCode: detectionResult.error,
+          })
+        : { runId: '00000000-0000-0000-0000-000000000000', won: true }
+
       if (!detectionResult.detected) {
         continue
       }
 
-      await deps.carrierDetectionWritePort.persistDetectedCarrier({
-        processId,
-        containerNumber: normalizeContainerNumber(container.containerNumber),
-        carrierCode: toPersistedCarrierCode(detectionResult.provider),
-      })
+      if (run.won) {
+        await deps.carrierDetectionWritePort.persistDetectedCarrier({
+          processId,
+          runId: run.runId,
+          containerNumber: normalizeContainerNumber(container.containerNumber),
+          carrierCode: toPersistedCarrierCode(detectionResult.provider),
+          confidence: toDetectionConfidence(detectionResult),
+          detectionSource: 'auto-detect',
+        })
+      }
 
       return {
         detected: true,
         carrier: toDisplayCarrierCode(detectionResult.provider),
+        runId: run.runId,
+        status: toDetectionRunStatus(detectionResult),
+        resolvedProvider: detectionResult.provider,
+        confidence: toDetectionConfidence(detectionResult),
+        attempts: toDetectionAttempts(detectionResult).map((attempt) => ({
+          provider: attempt.provider,
+          status: attempt.status,
+          errorCode: attempt.errorCode,
+        })),
       }
     }
 
     return {
       detected: false,
       carrier: null,
+      runId: null,
+      status: null,
+      resolvedProvider: null,
+      confidence: null,
+      attempts: [],
     }
   }
 }

@@ -6,22 +6,33 @@ import {
 } from '~/capabilities/sync/carrier-detection/carrier-detection.providers'
 
 export type CarrierProbeResult =
-  | { readonly kind: 'found' }
-  | { readonly kind: 'not_found' }
-  | { readonly kind: 'error'; readonly error: string }
+  | { readonly kind: 'found'; readonly rawResultRef?: string | null }
+  | { readonly kind: 'not_found'; readonly rawResultRef?: string | null }
+  | { readonly kind: 'error'; readonly error: string; readonly rawResultRef?: string | null }
+
+export type CarrierDetectionAttempt = {
+  readonly provider: SupportedSyncProvider
+  readonly status: 'FOUND' | 'NOT_FOUND' | 'ERROR'
+  readonly errorCode: string | null
+  readonly rawResultRef: string | null
+}
 
 export type CarrierDetectionResult =
   | {
       readonly detected: true
       readonly provider: SupportedSyncProvider
+      readonly candidateProviders?: readonly SupportedSyncProvider[]
       readonly attemptedProviders: readonly SupportedSyncProvider[]
+      readonly attempts?: readonly CarrierDetectionAttempt[]
       readonly reason: 'found'
       readonly error: null
     }
   | {
       readonly detected: false
       readonly provider: null
+      readonly candidateProviders?: readonly SupportedSyncProvider[]
       readonly attemptedProviders: readonly SupportedSyncProvider[]
+      readonly attempts?: readonly CarrierDetectionAttempt[]
       readonly reason: 'not_found' | 'provider_error' | 'rate_limited'
       readonly error: string | null
     }
@@ -59,7 +70,9 @@ export function createCarrierDetectionEngine(deps: {
         const result: CarrierDetectionResult = {
           detected: false,
           provider: null,
+          candidateProviders: [],
           attemptedProviders: [],
+          attempts: [],
           reason: 'rate_limited',
           error: 'carrier_detection_rate_limited',
         }
@@ -78,6 +91,7 @@ export function createCarrierDetectionEngine(deps: {
         excludeProviders: command.excludeProviders,
       }).slice(0, decision.maxProviders)
       const attemptedProviders: SupportedSyncProvider[] = []
+      const attempts: CarrierDetectionAttempt[] = []
 
       for (const provider of candidateProviders) {
         attemptedProviders.push(provider)
@@ -88,11 +102,19 @@ export function createCarrierDetectionEngine(deps: {
         })
 
         if (probeResult.kind === 'found') {
+          attempts.push({
+            provider,
+            status: 'FOUND',
+            errorCode: null,
+            rawResultRef: probeResult.rawResultRef ?? null,
+          })
           const durationMs = Math.max(0, nowMs() - startedAtMs)
           const result: CarrierDetectionResult = {
             detected: true,
             provider,
+            candidateProviders,
             attemptedProviders,
+            attempts,
             reason: 'found',
             error: null,
           }
@@ -107,11 +129,19 @@ export function createCarrierDetectionEngine(deps: {
         }
 
         if (probeResult.kind === 'error') {
+          attempts.push({
+            provider,
+            status: 'ERROR',
+            errorCode: probeResult.error,
+            rawResultRef: probeResult.rawResultRef ?? null,
+          })
           const durationMs = Math.max(0, nowMs() - startedAtMs)
           const result: CarrierDetectionResult = {
             detected: false,
             provider: null,
+            candidateProviders,
             attemptedProviders,
+            attempts,
             reason: 'provider_error',
             error: probeResult.error,
           }
@@ -125,13 +155,22 @@ export function createCarrierDetectionEngine(deps: {
           })
           return result
         }
+
+        attempts.push({
+          provider,
+          status: 'NOT_FOUND',
+          errorCode: null,
+          rawResultRef: probeResult.rawResultRef ?? null,
+        })
       }
 
       const durationMs = Math.max(0, nowMs() - startedAtMs)
       const result: CarrierDetectionResult = {
         detected: false,
         provider: null,
+        candidateProviders,
         attemptedProviders,
+        attempts,
         reason: 'not_found',
         error: 'carrier_detection_not_found',
       }

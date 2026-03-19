@@ -13,6 +13,10 @@ import type {
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
 
+function toProcessCarrierMode(value: string | null | undefined): 'AUTO' | 'MANUAL' {
+  return value === 'MANUAL' ? 'MANUAL' : 'AUTO'
+}
+
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
   rowToProcess(row: ProcessRow): ProcessEntity {
@@ -21,7 +25,15 @@ export const processMappers = {
       reference: row.reference ? toProcessReference(row.reference) : null,
       origin: row.origin == null ? null : String(row.origin),
       destination: row.destination == null ? null : String(row.destination),
-      carrier: row.carrier ? toCarrierCode(row.carrier) : null,
+      carrierMode: toProcessCarrierMode(row.carrier_mode),
+      defaultCarrierCode: row.default_carrier_code ? toCarrierCode(row.default_carrier_code) : null,
+      lastResolvedCarrierCode: row.last_resolved_carrier_code
+        ? toCarrierCode(row.last_resolved_carrier_code)
+        : null,
+      carrierResolvedAt: row.carrier_resolved_at ? new Date(String(row.carrier_resolved_at)) : null,
+      carrier: (row.default_carrier_code ?? row.carrier)
+        ? toCarrierCode(String(row.default_carrier_code ?? row.carrier))
+        : null,
       billOfLading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
       bookingNumber: row.booking_number == null ? null : String(row.booking_number),
       importerName: row.importer_name == null ? null : String(row.importer_name),
@@ -41,6 +53,10 @@ export const processMappers = {
       reference: record.reference,
       origin: record.origin ?? null,
       destination: record.destination ?? null,
+      carrier_mode: record.carrier_mode,
+      default_carrier_code: record.default_carrier_code,
+      last_resolved_carrier_code: record.last_resolved_carrier_code ?? null,
+      carrier_resolved_at: record.carrier_resolved_at ?? null,
       carrier: record.carrier,
       bill_of_lading: record.bill_of_lading,
       booking_number: record.booking_number,
@@ -60,6 +76,16 @@ export const processMappers = {
       ...(record.reference !== undefined ? { reference: record.reference } : {}),
       ...(record.origin !== undefined ? { origin: record.origin ?? null } : {}),
       ...(record.destination !== undefined ? { destination: record.destination ?? null } : {}),
+      ...(record.carrier_mode !== undefined ? { carrier_mode: record.carrier_mode } : {}),
+      ...(record.default_carrier_code !== undefined
+        ? { default_carrier_code: record.default_carrier_code }
+        : {}),
+      ...(record.last_resolved_carrier_code !== undefined
+        ? { last_resolved_carrier_code: record.last_resolved_carrier_code }
+        : {}),
+      ...(record.carrier_resolved_at !== undefined
+        ? { carrier_resolved_at: record.carrier_resolved_at }
+        : {}),
       ...(record.carrier !== undefined ? { carrier: record.carrier } : {}),
       ...(record.bill_of_lading !== undefined ? { bill_of_lading: record.bill_of_lading } : {}),
       ...(record.booking_number !== undefined ? { booking_number: record.booking_number } : {}),

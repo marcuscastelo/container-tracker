@@ -5,6 +5,9 @@ export type ProcessContainerRecord = Readonly<{
   processId: string
   containerNumber: string
   carrierCode: string | null
+  carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+  carrierDetectedAt?: Date | null
+  carrierDetectionSource?: 'process-seed' | 'auto-detect' | 'manual-user' | 'legacy-backfill' | null
 }>
 
 export type ProcessWithContainers = Readonly<{

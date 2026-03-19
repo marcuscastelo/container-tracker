@@ -85,12 +85,22 @@ async function resolveDashboardTargets(
   for (const processId of processIds) {
     const containers = containersByProcessId.get(processId) ?? []
     for (const container of containers) {
-      targets.push(
-        toResolvedTarget({
-          container,
-          unsupportedErrorPrefix: 'unsupported_sync_provider_for_container',
-        }),
-      )
+      try {
+        targets.push(
+          toResolvedTarget({
+            container,
+            unsupportedErrorPrefix: 'unsupported_sync_provider_for_container',
+          }),
+        )
+      } catch (error) {
+        if (
+          error instanceof HttpError &&
+          String(error.message).startsWith('unsupported_sync_provider_for_container:')
+        ) {
+          continue
+        }
+        throw error
+      }
     }
   }
 

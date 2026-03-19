@@ -278,7 +278,21 @@
     "containers": {
       "title": "Containers",
       "selectionHint": "Select a container to view its timeline.",
-      "internalReference": "Internal Ref"
+      "internalReference": "Internal Ref",
+      "carrierUnknown": "Unknown",
+      "assignmentAuto": "AUTO",
+      "assignmentManual": "MANUAL"
+    },
+    "mixedBanner": {
+      "title": "Containers use different carriers",
+      "description": "Mixed carrier state detected ({{carriers}}). Automatic batch propagation is paused.",
+      "keepMixed": "Keep mixed",
+      "reviewContainers": "Review containers",
+      "normalizeAutoContainers": "Normalize AUTO containers",
+      "normalizing": "Normalizing...",
+      "normalizeSuccess": "AUTO containers normalized to {{carrier}}. Retrying sync.",
+      "normalizeNoop": "No AUTO container needed normalization.",
+      "normalizeFailed": "Unable to normalize AUTO containers right now."
     },
     "currentStatus": {
       "title": "Current Status",

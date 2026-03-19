@@ -128,9 +128,17 @@ export function isContainerNotFoundLikeStatus(status: SyncRequestStatusItem): bo
     return false
   }
 
-  return (
-    lastError.includes('not_found') ||
-    lastError.includes('container_not_found') ||
-    lastError.startsWith('no container found for ')
-  )
+  if (lastError === 'container_not_found') {
+    return true
+  }
+
+  if (lastError.startsWith('container_not_found:')) {
+    return true
+  }
+
+  if (lastError.includes(':container_not_found')) {
+    return true
+  }
+
+  return lastError.startsWith('no container found for ')
 }

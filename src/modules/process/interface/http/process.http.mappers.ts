@@ -37,11 +37,16 @@ import type {
 
 export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRecord {
   const carrier = dto.carrier === 'unknown' ? null : dto.carrier
+  const carrierMode = carrier === null ? 'AUTO' : 'MANUAL'
 
   return {
     reference: dto.reference ?? null,
     origin: dto.origin?.display_name,
     destination: dto.destination?.display_name,
+    carrier_mode: carrierMode,
+    default_carrier_code: carrier,
+    last_resolved_carrier_code: null,
+    carrier_resolved_at: null,
     carrier,
     bill_of_lading: dto.bill_of_lading ?? null,
     booking_number: dto.booking_number ?? null,
@@ -56,6 +61,7 @@ export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRec
 
 export function toUpdateProcessRecord(dto: Partial<CreateProcessInput>): UpdateProcessRecord {
   const carrier = dto.carrier === 'unknown' ? null : dto.carrier
+  const nowIso = new Date().toISOString()
 
   return {
     ...(dto.reference !== undefined ? { reference: dto.reference ?? null } : {}),
@@ -63,7 +69,15 @@ export function toUpdateProcessRecord(dto: Partial<CreateProcessInput>): UpdateP
     ...(dto.destination !== undefined
       ? { destination: dto.destination?.display_name ?? null }
       : {}),
-    ...(dto.carrier !== undefined ? { carrier } : {}),
+    ...(dto.carrier !== undefined
+      ? {
+          carrier,
+          carrier_mode: carrier === null ? 'AUTO' : 'MANUAL',
+          default_carrier_code: carrier,
+          last_resolved_carrier_code: carrier,
+          carrier_resolved_at: carrier === null ? null : nowIso,
+        }
+      : {}),
     ...(dto.bill_of_lading !== undefined ? { bill_of_lading: dto.bill_of_lading ?? null } : {}),
     ...(dto.booking_number !== undefined ? { booking_number: dto.booking_number ?? null } : {}),
     ...(dto.importer_name !== undefined ? { importer_name: dto.importer_name ?? null } : {}),
@@ -87,15 +101,7 @@ export function toContainerInputs(
   }))
 }
 
-function toCarrierMode(carrier: string | null): 'AUTO' | 'MANUAL' {
-  if (carrier === null) return 'AUTO'
-  const normalizedCarrier = carrier.trim().toLowerCase()
-  if (normalizedCarrier.length === 0 || normalizedCarrier === 'unknown') return 'AUTO'
-  return 'MANUAL'
-}
-
 function toEffectiveCarrierSummary(
-  processCarrier: string | null,
   containerCarrierCodes: readonly (string | null)[],
 ): 'UNKNOWN' | 'SINGLE' | 'MIXED' {
   const normalizedContainerCarriers = containerCarrierCodes
@@ -103,20 +109,25 @@ function toEffectiveCarrierSummary(
     .filter((carrierCode) => carrierCode.length > 0 && carrierCode.toLowerCase() !== 'unknown')
 
   if (normalizedContainerCarriers.length === 0) {
-    const normalizedProcessCarrier = (processCarrier ?? '').trim()
-    if (
-      normalizedProcessCarrier.length === 0 ||
-      normalizedProcessCarrier.toLowerCase() === 'unknown'
-    ) {
-      return 'UNKNOWN'
-    }
-    return 'SINGLE'
+    return 'UNKNOWN'
   }
 
   return new Set(normalizedContainerCarriers.map((carrierCode) => carrierCode.toLowerCase()))
     .size === 1
     ? 'SINGLE'
     : 'MIXED'
+}
+
+function toEffectiveCarrierCodes(containerCarrierCodes: readonly (string | null)[]): string[] {
+  const uniqueCodes = new Set<string>()
+  for (const carrierCode of containerCarrierCodes) {
+    const normalized = (carrierCode ?? '').trim()
+    if (normalized.length === 0 || normalized.toLowerCase() === 'unknown') {
+      continue
+    }
+    uniqueCodes.add(normalized.toUpperCase())
+  }
+  return [...uniqueCodes]
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +180,9 @@ function toContainerResponse(c: ProcessContainerRecord) {
     id: String(c.id),
     container_number: String(c.containerNumber),
     carrier_code: c.carrierCode == null ? null : String(c.carrierCode),
+    carrier_assignment_mode: c.carrierAssignmentMode,
+    carrier_detected_at: c.carrierDetectedAt ? c.carrierDetectedAt.toISOString() : null,
+    carrier_detection_source: c.carrierDetectionSource,
   }
 }
 
@@ -178,8 +192,11 @@ function processToResponseFields(p: ProcessEntity) {
     reference: p.reference ?? null,
     origin: p.origin ? { display_name: p.origin } : null,
     destination: p.destination ? { display_name: p.destination } : null,
-    carrier: p.carrier ?? null,
-    carrier_mode: toCarrierMode(p.carrier ?? null),
+    carrier: p.defaultCarrierCode ?? p.carrier ?? null,
+    carrier_mode: p.carrierMode,
+    default_carrier_code: p.defaultCarrierCode ?? p.carrier ?? null,
+    last_resolved_carrier_code: p.lastResolvedCarrierCode ?? null,
+    carrier_resolved_at: p.carrierResolvedAt ? p.carrierResolvedAt.toISOString() : null,
     bill_of_lading: p.billOfLading ?? null,
     booking_number: p.bookingNumber ?? null,
     importer_name: p.importerName ?? null,
@@ -198,10 +215,8 @@ export function toProcessResponse(pwc: ProcessWithContainers) {
 
   return {
     ...processToResponseFields(pwc.process),
-    effective_carrier_summary: toEffectiveCarrierSummary(
-      pwc.process.carrier ?? null,
-      containerCarrierCodes,
-    ),
+    effective_carrier_summary: toEffectiveCarrierSummary(containerCarrierCodes),
+    effective_carrier_codes: toEffectiveCarrierCodes(containerCarrierCodes),
     containers: pwc.containers.map(toContainerResponse),
   }
 }
@@ -215,10 +230,8 @@ export function toProcessResponseWithSummary(
 
   return {
     ...processToResponseFields(pwc.process),
-    effective_carrier_summary: toEffectiveCarrierSummary(
-      pwc.process.carrier ?? null,
-      containerCarrierCodes,
-    ),
+    effective_carrier_summary: toEffectiveCarrierSummary(containerCarrierCodes),
+    effective_carrier_codes: toEffectiveCarrierCodes(containerCarrierCodes),
     containers: pwc.containers.map(toContainerResponse),
     process_status: summary.process_status,
     highest_container_status: summary.highest_container_status,
@@ -521,7 +534,9 @@ export function toProcessDetailResponse(
   return {
     ...processToResponseFields(pwc.process),
     effective_carrier_summary: toEffectiveCarrierSummary(
-      pwc.process.carrier ?? null,
+      containers.map((container) => container.carrier_code),
+    ),
+    effective_carrier_codes: toEffectiveCarrierCodes(
       containers.map((container) => container.carrier_code),
     ),
     containers,

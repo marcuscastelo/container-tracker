@@ -15,7 +15,7 @@ function createInsertedEntity(record: InsertContainerRecord, id: string) {
   return createContainerEntity({
     id: toContainerId(id),
     processId: toProcessId(record.processId),
-    carrierCode: toCarrierCode(record.carrierCode),
+    carrierCode: record.carrierCode ? toCarrierCode(record.carrierCode) : null,
     containerNumber: toContainerNumber(record.containerNumber),
     createdAt: new Date('2026-03-09T10:00:00.000Z'),
   })
@@ -72,6 +72,9 @@ describe('reconcile-containers.usecase', () => {
         processId: 'process-1',
         containerNumber: 'MSCU3333333',
         carrierCode: 'MSC',
+        carrierAssignmentMode: 'AUTO',
+        carrierDetectedAt: null,
+        carrierDetectionSource: 'process-seed',
       },
     ])
     expect(deleted).toEqual(['container-b'])
@@ -107,6 +110,9 @@ describe('reconcile-containers.usecase', () => {
         processId: 'process-1',
         containerNumber: 'MSCU2222222',
         carrierCode: 'MSC',
+        carrierAssignmentMode: 'AUTO',
+        carrierDetectedAt: null,
+        carrierDetectionSource: 'process-seed',
       },
     ])
   })

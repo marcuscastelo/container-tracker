@@ -15,6 +15,7 @@ function createDeps(overrides: Partial<SyncProcessDeps> = {}): {
   readonly deps: SyncProcessDeps
   readonly getSyncRequestStatuses: ReturnType<typeof vi.fn>
   readonly persistDetectedCarrier: ReturnType<typeof vi.fn>
+  readonly recordDetectionRun: ReturnType<typeof vi.fn>
 } {
   let now = 0
   const nowMs = () => now
@@ -42,6 +43,10 @@ function createDeps(overrides: Partial<SyncProcessDeps> = {}): {
     ],
   }))
   const persistDetectedCarrier = vi.fn(async () => undefined)
+  const recordDetectionRun = vi.fn(async () => ({
+    runId: 'run-1',
+    won: true,
+  }))
 
   const deps: SyncProcessDeps = {
     targetReadPort: {
@@ -89,6 +94,7 @@ function createDeps(overrides: Partial<SyncProcessDeps> = {}): {
       })),
     },
     carrierDetectionWritePort: {
+      recordDetectionRun,
       persistDetectedCarrier,
     },
     sleep,
@@ -100,6 +106,7 @@ function createDeps(overrides: Partial<SyncProcessDeps> = {}): {
     deps,
     getSyncRequestStatuses,
     persistDetectedCarrier,
+    recordDetectionRun,
   }
 }
 
@@ -253,11 +260,13 @@ describe('sync-process.usecase', () => {
       processId: 'process-1',
       syncedContainers: 2,
     })
-    expect(persistDetectedCarrier).toHaveBeenCalledWith({
-      processId: 'process-1',
-      containerNumber: 'MRKU7654321',
-      carrierCode: 'maersk',
-    })
+    expect(persistDetectedCarrier).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processId: 'process-1',
+        containerNumber: 'MRKU7654321',
+        carrierCode: 'maersk',
+      }),
+    )
   })
 
   it('recovers from wrong carrier by detecting after a not-found-like failure', async () => {
@@ -319,11 +328,64 @@ describe('sync-process.usecase', () => {
     })
 
     expect(result.syncedContainers).toBe(1)
-    expect(persistDetectedCarrier).toHaveBeenCalledWith({
-      processId: 'process-1',
-      containerNumber: 'MSCU1234567',
-      carrierCode: 'msc',
+    expect(persistDetectedCarrier).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processId: 'process-1',
+        containerNumber: 'MSCU1234567',
+        carrierCode: 'msc',
+      }),
+    )
+  })
+
+  it('records detection but skips persisted promotion when run claim is not won', async () => {
+    const persistDetectedCarrier = vi.fn(async () => undefined)
+    const recordDetectionRun = vi.fn(async () => ({
+      runId: 'run-1',
+      won: false,
+    }))
+    const { deps, getSyncRequestStatuses } = createDeps({
+      targetReadPort: {
+        fetchProcessById: vi.fn(async () => ({ id: 'process-1' })),
+        listContainersByProcessId: vi.fn(async () => ({
+          containers: [
+            {
+              id: 'container-1',
+              processId: 'process-1',
+              containerNumber: 'MSCU1234567',
+              carrierCode: null,
+            },
+          ],
+        })),
+      },
+      carrierDetectionWritePort: {
+        recordDetectionRun,
+        persistDetectedCarrier,
+      },
     })
+
+    getSyncRequestStatuses.mockResolvedValueOnce({
+      allTerminal: true,
+      requests: [
+        {
+          syncRequestId: 'sync-1',
+          status: 'DONE',
+          lastError: null,
+          updatedAt: '2026-03-06T10:01:00.000Z',
+          refValue: 'MSCU1234567',
+        },
+      ],
+    })
+
+    const execute = createSyncProcessUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'process', processId: 'process-1' },
+      mode: 'manual',
+    })
+
+    expect(result.syncedContainers).toBe(1)
+    expect(recordDetectionRun).toHaveBeenCalledTimes(1)
+    expect(persistDetectedCarrier).not.toHaveBeenCalled()
   })
 
   it('fails with 502 when process sync reaches a non-detectable FAILED status', async () => {

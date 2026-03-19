@@ -192,7 +192,10 @@ export type Database = {
       }
       containers: {
         Row: {
-          carrier_code: string
+          carrier_assignment_mode: string
+          carrier_code: string | null
+          carrier_detected_at: string | null
+          carrier_detection_source: string | null
           container_number: string
           container_size: string | null
           container_type: string | null
@@ -202,7 +205,10 @@ export type Database = {
           removed_at: string | null
         }
         Insert: {
-          carrier_code: string
+          carrier_assignment_mode?: string
+          carrier_code?: string | null
+          carrier_detected_at?: string | null
+          carrier_detection_source?: string | null
           container_number: string
           container_size?: string | null
           container_type?: string | null
@@ -212,7 +218,10 @@ export type Database = {
           removed_at?: string | null
         }
         Update: {
-          carrier_code?: string
+          carrier_assignment_mode?: string
+          carrier_code?: string | null
+          carrier_detected_at?: string | null
+          carrier_detection_source?: string | null
           container_number?: string
           container_size?: string | null
           container_type?: string | null
@@ -231,6 +240,110 @@ export type Database = {
           },
         ]
       }
+      carrier_detection_attempts: {
+        Row: {
+          attempted_at: string
+          error_code: string | null
+          finished_at: string | null
+          id: string
+          provider: string
+          raw_result_ref: string | null
+          run_id: string
+          status: string
+        }
+        Insert: {
+          attempted_at?: string
+          error_code?: string | null
+          finished_at?: string | null
+          id?: string
+          provider: string
+          raw_result_ref?: string | null
+          run_id: string
+          status: string
+        }
+        Update: {
+          attempted_at?: string
+          error_code?: string | null
+          finished_at?: string | null
+          id?: string
+          provider?: string
+          raw_result_ref?: string | null
+          run_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'carrier_detection_attempts_run_id_fkey'
+            columns: ['run_id']
+            isOneToOne: false
+            referencedRelation: 'carrier_detection_runs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      carrier_detection_runs: {
+        Row: {
+          attempted_providers: Json
+          candidate_providers: Json
+          confidence: string | null
+          container_id: string
+          created_at: string
+          error_code: string | null
+          id: string
+          process_id: string
+          resolved_at: string | null
+          resolved_provider: string | null
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempted_providers?: Json
+          candidate_providers?: Json
+          confidence?: string | null
+          container_id: string
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          process_id: string
+          resolved_at?: string | null
+          resolved_provider?: string | null
+          started_at?: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          attempted_providers?: Json
+          candidate_providers?: Json
+          confidence?: string | null
+          container_id?: string
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          process_id?: string
+          resolved_at?: string | null
+          resolved_provider?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'carrier_detection_runs_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'carrier_detection_runs_process_id_fkey'
+            columns: ['process_id']
+            isOneToOne: false
+            referencedRelation: 'processes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       processes: {
         Row: {
           archived_at: string | null
@@ -238,13 +351,17 @@ export type Database = {
           booking_number: string | null
           booking_reference: string | null
           carrier: string | null
+          carrier_mode: string
+          carrier_resolved_at: string | null
           client_id: string | null
           created_at: string | null
+          default_carrier_code: string | null
           deleted_at: string | null
           destination: Json | null
           exporter_name: string | null
           id: string
           importer_name: string | null
+          last_resolved_carrier_code: string | null
           origin: Json | null
           product: string | null
           redestination_number: string | null
@@ -259,13 +376,17 @@ export type Database = {
           booking_number?: string | null
           booking_reference?: string | null
           carrier?: string | null
+          carrier_mode?: string
+          carrier_resolved_at?: string | null
           client_id?: string | null
           created_at?: string | null
+          default_carrier_code?: string | null
           deleted_at?: string | null
           destination?: Json | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
+          last_resolved_carrier_code?: string | null
           origin?: Json | null
           product?: string | null
           redestination_number?: string | null
@@ -280,13 +401,17 @@ export type Database = {
           booking_number?: string | null
           booking_reference?: string | null
           carrier?: string | null
+          carrier_mode?: string
+          carrier_resolved_at?: string | null
           client_id?: string | null
           created_at?: string | null
+          default_carrier_code?: string | null
           deleted_at?: string | null
           destination?: Json | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
+          last_resolved_carrier_code?: string | null
           origin?: Json | null
           product?: string | null
           redestination_number?: string | null

@@ -16,6 +16,7 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
   readonly resolveTargets: ReturnType<typeof vi.fn>
   readonly enqueue: ReturnType<typeof vi.fn>
   readonly detectCarrier: ReturnType<typeof vi.fn>
+  readonly recordDetectionRun: ReturnType<typeof vi.fn>
   readonly persistDetectedCarrier: ReturnType<typeof vi.fn>
 } {
   let now = 0
@@ -80,6 +81,10 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     reason: 'found' as const,
     error: null,
   }))
+  const recordDetectionRun = vi.fn(async () => ({
+    runId: 'run-1',
+    won: true,
+  }))
   const persistDetectedCarrier = vi.fn(async () => undefined)
 
   const deps: SyncDashboardDeps = {
@@ -96,6 +101,7 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
       detectCarrier,
     },
     carrierDetectionWritePort: {
+      recordDetectionRun,
       persistDetectedCarrier,
     },
     nowMs,
@@ -109,6 +115,7 @@ function createDeps(overrides: Partial<SyncDashboardDeps> = {}): {
     resolveTargets,
     enqueue,
     detectCarrier,
+    recordDetectionRun,
     persistDetectedCarrier,
   }
 }
@@ -297,11 +304,13 @@ describe('sync-dashboard.usecase', () => {
       containerNumber: 'MSCU1234567',
       excludeProviders: ['msc'],
     })
-    expect(persistDetectedCarrier).toHaveBeenCalledWith({
-      processId: 'process-a',
-      containerNumber: 'MSCU1234567',
-      carrierCode: 'cmacgm',
-    })
+    expect(persistDetectedCarrier).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processId: 'process-a',
+        containerNumber: 'MSCU1234567',
+        carrierCode: 'cmacgm',
+      }),
+    )
     expect(enqueue).toHaveBeenCalledTimes(2)
   })
 
@@ -350,5 +359,63 @@ describe('sync-dashboard.usecase', () => {
     expect(httpError.status).toBe(502)
     expect(httpError.message).toContain('carrier_detection_not_found')
     expect(detectCarrier).toHaveBeenCalledTimes(1)
+  })
+
+  it('records detection attempts but skips persist when run claim is not won', async () => {
+    const persistDetectedCarrier = vi.fn(async () => undefined)
+    const recordDetectionRun = vi.fn(async () => ({
+      runId: 'run-1',
+      won: false,
+    }))
+    const { deps, getSyncRequestStatuses } = createDeps({
+      carrierDetectionWritePort: {
+        recordDetectionRun,
+        persistDetectedCarrier,
+      },
+    })
+
+    getSyncRequestStatuses
+      .mockResolvedValueOnce({
+        allTerminal: true,
+        requests: [
+          {
+            syncRequestId: 'sync-1',
+            status: 'FAILED',
+            lastError: 'No container found for msc:MSCU1234567',
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+          {
+            syncRequestId: 'sync-2',
+            status: 'DONE',
+            lastError: null,
+            updatedAt: '2026-03-06T10:00:00.000Z',
+            refValue: 'MRKU7654321',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        allTerminal: true,
+        requests: [
+          {
+            syncRequestId: 'sync-1',
+            status: 'DONE',
+            lastError: null,
+            updatedAt: '2026-03-06T10:01:00.000Z',
+            refValue: 'MSCU1234567',
+          },
+        ],
+      })
+
+    const execute = createSyncDashboardUseCase(deps)
+    const result = await execute({
+      tenantId: 'tenant-a',
+      scope: { kind: 'dashboard' },
+      mode: 'manual',
+    })
+
+    expect(result.syncedContainers).toBe(2)
+    expect(recordDetectionRun).toHaveBeenCalledTimes(1)
+    expect(persistDetectedCarrier).not.toHaveBeenCalled()
   })
 })

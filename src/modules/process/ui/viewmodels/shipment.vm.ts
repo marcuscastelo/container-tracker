@@ -75,6 +75,9 @@ export type ContainerDetailVM = {
   readonly id: string
   readonly number: string
   readonly carrierCode: string | null
+  readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+  readonly carrierDetectedAt?: string | null
+  readonly carrierDetectionSource?: 'process-seed' | 'auto-detect' | 'manual-user' | 'legacy-backfill' | null
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
   readonly sync: ContainerSyncVM
@@ -102,8 +105,12 @@ export type ShipmentDetailVM = {
   readonly processRef: string
   readonly reference?: string | null
   readonly carrier?: string | null
+  readonly defaultCarrierCode?: string | null
   readonly carrierMode?: 'AUTO' | 'MANUAL'
+  readonly lastResolvedCarrierCode?: string | null
+  readonly carrierResolvedAt?: string | null
   readonly effectiveCarrierSummary?: 'UNKNOWN' | 'SINGLE' | 'MIXED'
+  readonly effectiveCarrierCodes?: readonly string[]
   readonly bill_of_lading?: string | null
   readonly booking_number?: string | null
   readonly importer_name?: string | null

@@ -39,8 +39,12 @@ export const ProcessResponseSchema = z.object({
   origin: z.object({ display_name: z.string().nullish() }).nullable().optional(),
   destination: z.object({ display_name: z.string().nullish() }).nullable().optional(),
   carrier: z.string().nullish(),
+  default_carrier_code: z.string().nullish(),
   carrier_mode: CarrierModeSchema.optional(),
+  last_resolved_carrier_code: z.string().nullish(),
+  carrier_resolved_at: z.string().nullish(),
   effective_carrier_summary: EffectiveCarrierSummarySchema.optional(),
+  effective_carrier_codes: z.array(z.string()).optional(),
   bill_of_lading: z.string().nullish(),
   booking_number: z.string().nullish(),
   importer_name: z.string().nullish(),
@@ -58,6 +62,11 @@ export const ProcessResponseSchema = z.object({
       id: z.string(),
       container_number: z.string(),
       carrier_code: z.string().nullish(),
+      carrier_assignment_mode: CarrierModeSchema.optional(),
+      carrier_detected_at: z.string().nullish(),
+      carrier_detection_source: z
+        .enum(['process-seed', 'auto-detect', 'manual-user', 'legacy-backfill'])
+        .nullish(),
     }),
   ),
   /** Derived process status (from tracking pipeline aggregation) */
@@ -230,6 +239,11 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       id: z.string(),
       container_number: z.string(),
       carrier_code: z.string().nullish(),
+      carrier_assignment_mode: CarrierModeSchema.optional(),
+      carrier_detected_at: z.string().nullish(),
+      carrier_detection_source: z
+        .enum(['process-seed', 'auto-detect', 'manual-user', 'legacy-backfill'])
+        .nullish(),
       /** Derived container status (from tracking pipeline) */
       status: z.string().optional(),
       /** Observations for this container (ordered by event_time) */

@@ -289,7 +289,21 @@
     "containers": {
       "title": "Contentores",
       "selectionHint": "Selecione um contentor para ver a sua linha temporal.",
-      "internalReference": "Ref. interna"
+      "internalReference": "Ref. interna",
+      "carrierUnknown": "Desconhecido",
+      "assignmentAuto": "AUTO",
+      "assignmentManual": "MANUAL"
+    },
+    "mixedBanner": {
+      "title": "Os contentores usam armadores diferentes",
+      "description": "Estado misto detetado ({{carriers}}). A propagação automática em lote está em pausa.",
+      "keepMixed": "Manter misto",
+      "reviewContainers": "Rever contentores",
+      "normalizeAutoContainers": "Normalizar contentores AUTO",
+      "normalizing": "A normalizar...",
+      "normalizeSuccess": "Contentores AUTO normalizados para {{carrier}}. A repetir sync.",
+      "normalizeNoop": "Nenhum contentor AUTO precisou de normalização.",
+      "normalizeFailed": "Não foi possível normalizar os contentores AUTO agora."
     },
     "currentStatus": {
       "title": "Estado Atual",

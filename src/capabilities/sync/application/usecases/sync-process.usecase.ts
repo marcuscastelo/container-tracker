@@ -24,6 +24,7 @@ type SyncProcessResult = {
 }
 
 type SyncProcessContainerRecord = {
+  readonly containerId?: string
   readonly processId: string
   readonly containerNumber: string
   readonly carrierCode: string | null
@@ -42,6 +43,53 @@ export type SyncProcessDeps = {
   readonly sleep?: (delayMs: number) => Promise<void>
   readonly timeoutMs?: number
   readonly pollIntervalMs?: number
+}
+
+function toDetectionRunStatus(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'RESOLVED' | 'FAILED' | 'RATE_LIMITED' {
+  if (detectionResult.detected) return 'RESOLVED'
+  if (detectionResult.reason === 'rate_limited') return 'RATE_LIMITED'
+  return 'FAILED'
+}
+
+function toDetectionConfidence(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'HIGH' | 'LOW' | 'UNKNOWN' {
+  if (detectionResult.detected) return 'HIGH'
+  if (detectionResult.reason === 'rate_limited') return 'UNKNOWN'
+  return 'LOW'
+}
+
+function toDetectionAttempts(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+) {
+  if (detectionResult.attempts && detectionResult.attempts.length > 0) {
+    return detectionResult.attempts.map((attempt) => ({
+      provider: attempt.provider,
+      status: attempt.status,
+      errorCode: attempt.errorCode,
+      rawResultRef: attempt.rawResultRef,
+    }))
+  }
+
+  if (detectionResult.detected) {
+    return [
+      {
+        provider: detectionResult.provider,
+        status: 'FOUND' as const,
+        errorCode: null,
+        rawResultRef: null,
+      },
+    ]
+  }
+
+  return detectionResult.attemptedProviders.map((provider) => ({
+    provider,
+    status: 'NOT_FOUND' as const,
+    errorCode: detectionResult.error,
+    rawResultRef: null,
+  }))
 }
 
 function dedupeTargets(targets: readonly ResolvedSyncTarget[]): readonly ResolvedSyncTarget[] {
@@ -105,6 +153,7 @@ export function createSyncProcessUseCase(deps: SyncProcessDeps) {
 
     const containersResult = await deps.targetReadPort.listContainersByProcessId({ processId })
     const records = containersResult.containers.map((container) => ({
+      containerId: container.id,
       processId,
       containerNumber: normalizeContainerNumber(container.containerNumber),
       carrierCode: container.carrierCode,
@@ -167,6 +216,21 @@ export function createSyncProcessUseCase(deps: SyncProcessDeps) {
         excludeProviders: supportedProvider ? [supportedProvider] : [],
       })
 
+      const run = deps.carrierDetectionWritePort.recordDetectionRun
+        ? await deps.carrierDetectionWritePort.recordDetectionRun({
+            processId,
+            containerNumber: record.containerNumber,
+            containerId: record.containerId,
+            candidateProviders:
+              detectionResult.candidateProviders ?? detectionResult.attemptedProviders,
+            attempts: toDetectionAttempts(detectionResult),
+            status: toDetectionRunStatus(detectionResult),
+            resolvedProvider: detectionResult.detected ? detectionResult.provider : null,
+            confidence: toDetectionConfidence(detectionResult),
+            errorCode: detectionResult.error,
+          })
+        : { runId: '00000000-0000-0000-0000-000000000000', won: true }
+
       if (!detectionResult.detected) {
         throw new HttpError(
           `sync_process_failed:${processId}:${detectionResult.error ?? detectionResult.reason}`,
@@ -174,11 +238,16 @@ export function createSyncProcessUseCase(deps: SyncProcessDeps) {
         )
       }
 
-      await deps.carrierDetectionWritePort.persistDetectedCarrier({
-        processId,
-        containerNumber: record.containerNumber,
-        carrierCode: toPersistedCarrierCode(detectionResult.provider),
-      })
+      if (run.won) {
+        await deps.carrierDetectionWritePort.persistDetectedCarrier({
+          processId,
+          runId: run.runId,
+          containerNumber: record.containerNumber,
+          carrierCode: toPersistedCarrierCode(detectionResult.provider),
+          confidence: toDetectionConfidence(detectionResult),
+          detectionSource: 'auto-detect',
+        })
+      }
 
       retryTargets.push({
         processId,

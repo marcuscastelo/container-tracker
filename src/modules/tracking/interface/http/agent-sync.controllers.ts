@@ -18,7 +18,7 @@ type AgentAuthIdentity = {
 type ContainerLookupRecord = {
   readonly id: string
   readonly containerNumber: string
-  readonly carrierCode: string
+  readonly carrierCode: string | null
 }
 
 type AgentRuntimeStateUpdate = {
@@ -119,10 +119,6 @@ function getAgentId(request: Request): string {
 
 function normalizeContainerNumber(value: string): string {
   return value.toUpperCase().trim()
-}
-
-function normalizeCarrierCode(value: string): string {
-  return value.toLowerCase().trim()
 }
 
 async function ensureAgentAuth(
@@ -348,10 +344,7 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
 
       const normalizedRefValue = normalizeContainerNumber(body.ref.value)
       const matchingContainers = containerCandidates.filter((container) => {
-        return (
-          normalizeContainerNumber(container.containerNumber) === normalizedRefValue &&
-          normalizeCarrierCode(container.carrierCode) === body.provider
-        )
+        return normalizeContainerNumber(container.containerNumber) === normalizedRefValue
       })
 
       if (matchingContainers.length !== 1) {

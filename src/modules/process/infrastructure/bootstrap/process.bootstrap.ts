@@ -23,6 +23,7 @@ function pickContainerUseCasesForProcess(all: ContainerUseCases): ContainerUseCa
     findByNumbers: all.findByNumbers,
     listByProcessId: all.listByProcessId,
     listByProcessIds: all.listByProcessIds,
+    updateCarrier: all.updateCarrier,
   }
 }
 

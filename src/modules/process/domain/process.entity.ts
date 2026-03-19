@@ -4,11 +4,17 @@ import type { ProcessReference } from '~/modules/process/domain/identity/process
 import type { ProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { type ProcessBrand, toProcessBrand } from '~/modules/process/domain/process.types'
 
+export type ProcessCarrierMode = 'AUTO' | 'MANUAL'
+
 export type ProcessEntityProps = {
   id: ProcessId
   reference: ProcessReference | null
   origin: string | null
   destination: string | null
+  carrierMode?: ProcessCarrierMode
+  defaultCarrierCode?: CarrierCode | null
+  lastResolvedCarrierCode?: CarrierCode | null
+  carrierResolvedAt?: Date | null
   carrier: CarrierCode | null
   billOfLading: string | null
   bookingNumber: string | null
@@ -25,5 +31,15 @@ export type ProcessEntityProps = {
 export type ProcessEntity = ProcessBrand<Readonly<ProcessEntityProps>, 'ProcessEntity'>
 
 export function createProcessEntity(props: ProcessEntityProps): ProcessEntity {
-  return Object.freeze(toProcessBrand<Readonly<ProcessEntityProps>, 'ProcessEntity'>({ ...props }))
+  return Object.freeze(
+    toProcessBrand<Readonly<ProcessEntityProps>, 'ProcessEntity'>({
+      ...props,
+      carrierMode:
+        props.carrierMode ??
+        ((props.defaultCarrierCode ?? props.carrier) === null ? 'AUTO' : 'MANUAL'),
+      defaultCarrierCode: props.defaultCarrierCode ?? props.carrier ?? null,
+      lastResolvedCarrierCode: props.lastResolvedCarrierCode ?? null,
+      carrierResolvedAt: props.carrierResolvedAt ?? null,
+    }),
+  )
 }

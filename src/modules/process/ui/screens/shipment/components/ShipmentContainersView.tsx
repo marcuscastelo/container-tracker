@@ -17,7 +17,12 @@ type ShipmentContainersViewProps = {
   readonly refreshRetry: Accessor<RefreshRetryState | null>
   readonly refreshHint: Accessor<string | null>
   readonly syncNow: Accessor<Date>
-  readonly onTriggerRefresh: () => void
+  readonly onTriggerRefresh: () => Promise<void>
+  readonly onNormalizeAutoContainers: (processId: string) => Promise<{
+    readonly normalized: boolean
+    readonly reason: string
+    readonly targetCarrierCode: string | null
+  }>
   readonly selectedContainerId: Accessor<string>
   readonly onSelectContainer: (id: string) => void
   readonly selectedContainer: Accessor<ShipmentDetailVM['containers'][number] | null>
@@ -44,6 +49,7 @@ export function ShipmentContainersView(props: ShipmentContainersViewProps) {
           refreshHint={props.refreshHint()}
           syncNow={props.syncNow()}
           onTriggerRefresh={props.onTriggerRefresh}
+          onNormalizeAutoContainers={props.onNormalizeAutoContainers}
           onOpenEdit={(focus?: 'reference' | 'carrier' | null | undefined) =>
             props.onOpenEditForShipment(data(), focus)
           }

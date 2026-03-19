@@ -13,6 +13,7 @@ import {
   createListProcessesWithOperationalSummaryUseCase,
   type ListProcessesWithOperationalSummaryDeps,
 } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
+import { createNormalizeAutoCarriersUseCase } from '~/modules/process/application/usecases/normalize-auto-carriers.usecase'
 import { createRemoveContainerFromProcessUseCase } from '~/modules/process/application/usecases/remove-container-from-process.usecase'
 import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
@@ -62,6 +63,10 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     repository: deps.repository,
     containerUseCases: deps.containerUseCases,
   })
+  const normalizeAutoCarriers = createNormalizeAutoCarriersUseCase({
+    repository: deps.repository,
+    containerUseCases: deps.containerUseCases,
+  })
   const searchByText = createSearchProcessesByTextUseCase({
     repository: deps.repository,
   })
@@ -81,6 +86,7 @@ export function createProcessUseCases(deps: CreateProcessUseCasesDeps) {
     createProcess,
     updateProcess,
     updateCarrier,
+    normalizeAutoCarriers,
     deleteProcess,
     removeContainerFromProcess,
     searchByText,

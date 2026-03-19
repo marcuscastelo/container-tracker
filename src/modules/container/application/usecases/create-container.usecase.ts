@@ -7,7 +7,7 @@ import {
 
 type CreateContainerCommand = {
   containerNumber: string
-  carrierCode: string
+  carrierCode: string | null
   processId: string
 }
 
@@ -25,6 +25,9 @@ export function createCreateContainerUseCase(deps: { repository: ContainerReposi
       processId: command.processId,
       containerNumber: normalized,
       carrierCode: command.carrierCode,
+      carrierAssignmentMode: 'AUTO',
+      carrierDetectionSource: command.carrierCode ? 'process-seed' : null,
+      carrierDetectedAt: null,
     })
 
     return {

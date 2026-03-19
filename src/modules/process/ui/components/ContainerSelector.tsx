@@ -14,6 +14,9 @@ type ContainerSelectorItemLabels = {
   readonly etaMissing: string
   readonly dataIssue: string
   readonly etaLabel: string
+  readonly carrierUnknown: string
+  readonly assignmentAuto: string
+  readonly assignmentManual: string
 }
 
 // computeRowDistribution is implemented in a small separate module so it can be
@@ -49,8 +52,17 @@ function ContainerSelectorItem(props: {
       class={`w-full rounded-lg border p-3 text-left transition-colors ${cardClass()}`}
     >
       {/* Row 1 — container number */}
-      <div class="truncate font-mono text-sm-ui font-semibold tracking-wide text-foreground">
-        {props.container.number}
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0 truncate font-mono text-sm-ui font-semibold tracking-wide text-foreground">
+          {props.container.number}
+        </div>
+        <Show when={props.container.carrierAssignmentMode}>
+          {(mode) => (
+            <span class="inline-flex rounded-md border border-border bg-surface-muted px-1.5 py-0.5 text-micro font-semibold text-text-muted">
+              {mode() === 'MANUAL' ? props.labels.assignmentManual : props.labels.assignmentAuto}
+            </span>
+          )}
+        </Show>
       </div>
 
       {/* Row 2 — ETA */}
@@ -75,6 +87,9 @@ function ContainerSelectorItem(props: {
       {/* Row 3 — status + data-issue badge */}
       <div class="mt-2 flex items-center gap-2">
         <StatusBadge variant={props.container.status} label={props.statusLabel} size="micro" />
+        <span class="inline-flex rounded-md border border-border bg-surface px-1.5 py-0.5 text-micro font-medium uppercase text-foreground">
+          {props.container.carrierCode?.toUpperCase() ?? props.labels.carrierUnknown}
+        </span>
         <Show when={props.container.dataIssueChipVm.visible}>
           <span class="inline-flex rounded-md border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-medium text-tone-warning-fg">
             {props.labels.dataIssue}
@@ -99,6 +114,9 @@ export function ContainerSelector(props: {
     etaMissing: t(keys.shipmentView.operational.chips.etaMissing),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
     etaLabel: t(keys.shipmentView.currentStatus.eta),
+    carrierUnknown: t(keys.shipmentView.containers.carrierUnknown),
+    assignmentAuto: t(keys.shipmentView.containers.assignmentAuto),
+    assignmentManual: t(keys.shipmentView.containers.assignmentManual),
   }
 
   // Slice containers into rows according to the distribution algorithm.

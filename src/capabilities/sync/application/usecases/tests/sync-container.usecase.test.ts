@@ -169,11 +169,13 @@ describe('sync-container.usecase', () => {
       containerNumber: 'MSCU1234567',
       syncedContainers: 1,
     })
-    expect(persistDetectedCarrier).toHaveBeenCalledWith({
-      processId: 'process-1',
-      containerNumber: 'MSCU1234567',
-      carrierCode: 'maersk',
-    })
+    expect(persistDetectedCarrier).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processId: 'process-1',
+        containerNumber: 'MSCU1234567',
+        carrierCode: 'maersk',
+      }),
+    )
   })
 
   it('retries with a detected carrier after a not-found-like failure', async () => {
@@ -234,11 +236,13 @@ describe('sync-container.usecase', () => {
     })
 
     expect(result.syncedContainers).toBe(1)
-    expect(persistDetectedCarrier).toHaveBeenCalledWith({
-      processId: 'process-1',
-      containerNumber: 'MSCU1234567',
-      carrierCode: 'msc',
-    })
+    expect(persistDetectedCarrier).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processId: 'process-1',
+        containerNumber: 'MSCU1234567',
+        carrierCode: 'msc',
+      }),
+    )
   })
 
   it('fails with 502 when request reaches a non-detectable FAILED terminal status', async () => {

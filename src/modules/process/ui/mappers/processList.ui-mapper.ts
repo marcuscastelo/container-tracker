@@ -12,8 +12,10 @@ export type ProcessListItemSource = {
   origin?: { display_name?: string | null } | null
   destination?: { display_name?: string | null } | null
   carrier?: string | null
+  default_carrier_code?: string | null
   carrier_mode?: 'AUTO' | 'MANUAL'
   effective_carrier_summary?: 'UNKNOWN' | 'SINGLE' | 'MIXED'
+  effective_carrier_codes?: readonly string[]
   importer_id?: string | null
   importer_name?: string | null
   exporter_name?: string | null
@@ -65,6 +67,30 @@ function toTimestampOrNull(value: string | null | undefined): number | null {
 }
 
 function toEffectiveCarrierProjection(process: ProcessListItemSource): EffectiveCarrierProjection {
+  const declaredCodes =
+    process.effective_carrier_codes?.map((code) => toOptionalNonBlankString(code)) ?? []
+  const normalizedDeclaredCodes = Array.from(
+    new Set(
+      declaredCodes
+        .filter((code): code is string => code !== null)
+        .map((code) => code.trim().toUpperCase()),
+    ),
+  )
+
+  if (normalizedDeclaredCodes.length === 1) {
+    return {
+      summary: process.effective_carrier_summary ?? 'SINGLE',
+      label: normalizedDeclaredCodes[0],
+    }
+  }
+
+  if (normalizedDeclaredCodes.length > 1) {
+    return {
+      summary: process.effective_carrier_summary ?? 'MIXED',
+      label: `${normalizedDeclaredCodes[0]} +${normalizedDeclaredCodes.length - 1}`,
+    }
+  }
+
   const nonBlankContainerCarriers = process.containers
     .map((container) => toOptionalNonBlankString(container.carrier_code))
     .filter((carrier): carrier is string => carrier !== null)
@@ -74,17 +100,9 @@ function toEffectiveCarrierProjection(process: ProcessListItemSource): Effective
   )
 
   if (uniqueUpperContainerCarriers.length === 0) {
-    const processCarrier = toOptionalNonBlankString(process.carrier)?.trim().toUpperCase() ?? null
-    if (!processCarrier || processCarrier === 'UNKNOWN') {
-      return {
-        summary: 'UNKNOWN',
-        label: 'Unknown',
-      }
-    }
-
     return {
-      summary: process.effective_carrier_summary ?? 'SINGLE',
-      label: processCarrier,
+      summary: process.effective_carrier_summary ?? 'UNKNOWN',
+      label: 'Unknown',
     }
   }
 
@@ -139,7 +157,7 @@ export function toProcessSummaryVMs(
       statusRank,
       eta,
       etaMsOrNull: toTimestampOrNull(eta),
-      carrier: toOptionalNonBlankString(process.carrier),
+      carrier: toOptionalNonBlankString(process.default_carrier_code ?? process.carrier),
       carrierMode: process.carrier_mode,
       effectiveCarrierSummary: process.effective_carrier_summary ?? effectiveCarrier.summary,
       effectiveCarrierLabel: effectiveCarrier.label,

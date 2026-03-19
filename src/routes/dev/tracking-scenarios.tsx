@@ -378,7 +378,12 @@ function ShipmentPreview(props: {
               refreshRetry={null}
               refreshHint={null}
               syncNow={new Date()}
-              onTriggerRefresh={() => {}}
+              onTriggerRefresh={async () => {}}
+              onNormalizeAutoContainers={async () => ({
+                normalized: false,
+                reason: 'no_changes_required',
+                targetCarrierCode: null,
+              })}
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}
               selectedContainer={selectedContainer()}

@@ -10,33 +10,66 @@ import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseRes
 
 type ProcessUseCasesDeps = {
   readonly findProcessById: (command: { readonly processId: string }) => Promise<{
-    readonly process: { readonly id: string } | null
+    readonly process: {
+      readonly id: string
+      readonly carrierMode?: 'AUTO' | 'MANUAL'
+      readonly defaultCarrierCode?: string | null
+      readonly lastResolvedCarrierCode?: string | null
+      readonly carrierResolvedAt?: Date | null
+    } | null
   }>
 }
 
 type ContainerUseCasesDeps = {
   readonly listByProcessId: (command: { readonly processId: string }) => Promise<{
     readonly containers: readonly {
+      readonly id: string
       readonly processId: string
       readonly containerNumber: string
       readonly carrierCode: string | null
+      readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+      readonly carrierDetectedAt?: Date | null
+      readonly carrierDetectionSource?:
+        | 'process-seed'
+        | 'auto-detect'
+        | 'manual-user'
+        | 'legacy-backfill'
+        | null
     }[]
   }>
   readonly listByProcessIds: (command: { readonly processIds: readonly string[] }) => Promise<{
     readonly containersByProcessId: ReadonlyMap<
       string,
       readonly {
+        readonly id: string
         readonly processId: string
         readonly containerNumber: string
         readonly carrierCode: string | null
+        readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+        readonly carrierDetectedAt?: Date | null
+        readonly carrierDetectionSource?:
+          | 'process-seed'
+          | 'auto-detect'
+          | 'manual-user'
+          | 'legacy-backfill'
+          | null
       }[]
     >
   }>
   readonly findByNumbers: (command: { readonly containerNumbers: string[] }) => Promise<{
     readonly containers: readonly {
+      readonly id: string
       readonly processId: string
       readonly containerNumber: string
       readonly carrierCode: string | null
+      readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+      readonly carrierDetectedAt?: Date | null
+      readonly carrierDetectionSource?:
+        | 'process-seed'
+        | 'auto-detect'
+        | 'manual-user'
+        | 'legacy-backfill'
+        | null
     }[]
   }>
 }
@@ -111,6 +144,12 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
 
       return {
         id: result.process.id,
+        carrierMode: result.process.carrierMode,
+        defaultCarrierCode: result.process.defaultCarrierCode,
+        lastResolvedCarrierCode: result.process.lastResolvedCarrierCode,
+        carrierResolvedAt: result.process.carrierResolvedAt
+          ? result.process.carrierResolvedAt.toISOString()
+          : null,
       }
     },
 
@@ -137,9 +176,15 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
 
       return {
         containers: result.containers.map((container) => ({
+          id: String(container.id),
           processId: String(container.processId),
           containerNumber: String(container.containerNumber),
           carrierCode: container.carrierCode ? String(container.carrierCode) : null,
+          carrierAssignmentMode: container.carrierAssignmentMode,
+          carrierDetectedAt: container.carrierDetectedAt
+            ? container.carrierDetectedAt.toISOString()
+            : null,
+          carrierDetectionSource: container.carrierDetectionSource ?? null,
         })),
       }
     },
@@ -152,9 +197,18 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
       const containersByProcessId = new Map<
         string,
         readonly {
+          readonly id: string
           readonly processId: string
           readonly containerNumber: string
           readonly carrierCode: string | null
+          readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+          readonly carrierDetectedAt?: string | null
+          readonly carrierDetectionSource?:
+            | 'process-seed'
+            | 'auto-detect'
+            | 'manual-user'
+            | 'legacy-backfill'
+            | null
         }[]
       >()
 
@@ -162,9 +216,15 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
         containersByProcessId.set(
           processId,
           containers.map((container) => ({
+            id: String(container.id),
             processId,
             containerNumber: String(container.containerNumber),
             carrierCode: container.carrierCode ? String(container.carrierCode) : null,
+            carrierAssignmentMode: container.carrierAssignmentMode,
+            carrierDetectedAt: container.carrierDetectedAt
+              ? container.carrierDetectedAt.toISOString()
+              : null,
+            carrierDetectionSource: container.carrierDetectionSource ?? null,
           })),
         )
       }
@@ -179,9 +239,15 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
 
       return {
         containers: result.containers.map((container) => ({
+          id: String(container.id),
           processId: String(container.processId),
           containerNumber: String(container.containerNumber),
           carrierCode: container.carrierCode ? String(container.carrierCode) : null,
+          carrierAssignmentMode: container.carrierAssignmentMode,
+          carrierDetectedAt: container.carrierDetectedAt
+            ? container.carrierDetectedAt.toISOString()
+            : null,
+          carrierDetectionSource: container.carrierDetectionSource ?? null,
         })),
       }
     },

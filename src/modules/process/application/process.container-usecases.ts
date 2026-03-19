@@ -9,4 +9,5 @@ export type ContainerUseCasesForProcess = Pick<
   | 'findByNumbers'
   | 'listByProcessId'
   | 'listByProcessIds'
+  | 'updateCarrier'
 >

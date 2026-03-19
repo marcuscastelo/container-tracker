@@ -31,6 +31,7 @@ type ProcessControllerDeps = {
     | 'updateProcess'
     | 'findProcessById'
     | 'deleteProcess'
+    | 'normalizeAutoCarriers'
   >
   readonly trackingUseCases: Pick<
     TrackingUseCases,
@@ -233,6 +234,29 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     }
   }
 
+  async function normalizeAutoCarriersByProcessId({
+    params,
+  }: {
+    readonly params: { readonly id?: string }
+  }): Promise<Response> {
+    try {
+      const processId = params.id?.trim()
+      if (!processId) {
+        return jsonResponse({ error: 'Process ID is required' }, 400)
+      }
+
+      const result = await processUseCases.normalizeAutoCarriers({ processId })
+      if (!result) {
+        return jsonResponse({ error: 'Process not found' }, 404)
+      }
+
+      return jsonResponse(result)
+    } catch (err) {
+      console.error('POST /api/processes/[id]/normalize-auto-carriers error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
   return {
     listProcesses,
     listProcessesV2,
@@ -240,5 +264,6 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     getProcessById,
     updateProcessById,
     deleteProcessById,
+    normalizeAutoCarriersByProcessId,
   }
 }

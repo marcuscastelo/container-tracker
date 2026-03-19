@@ -2,6 +2,7 @@ import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
 import {
+  normalizeAutoCarriersRequest,
   prefetchDashboardGlobalAlertsSummary,
   prefetchDashboardProcessSummaries,
 } from '~/modules/process/ui/api/process.api'
@@ -156,6 +157,15 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
           refreshHint={refresh.refreshHint}
           syncNow={refresh.syncNow}
           onTriggerRefresh={refresh.triggerRefresh}
+          onNormalizeAutoContainers={async (targetProcessId: string) => {
+            const result = await normalizeAutoCarriersRequest(targetProcessId)
+            await resource.reconcileTrackingView()
+            if (result.normalized) {
+              await refresh.triggerRefresh()
+              await resource.reconcileTrackingView()
+            }
+            return result
+          }}
           selectedContainerId={selection.selectedContainerId}
           onSelectContainer={(id: string) => selection.setSelectedContainerId(String(id))}
           selectedContainer={selection.selectedContainer}

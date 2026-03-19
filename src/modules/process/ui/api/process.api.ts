@@ -27,6 +27,19 @@ const AlertActionResponseSchema = z.object({
   action: z.enum(['acknowledge', 'unacknowledge']),
 })
 
+const NormalizeAutoCarriersResponseSchema = z.object({
+  ok: z.literal(true),
+  process_id: z.string(),
+  normalized: z.boolean(),
+  reason: z.string(),
+  target_carrier_code: z.string().nullable(),
+  before_summary: z.enum(['UNKNOWN', 'SINGLE', 'MIXED']),
+  after_summary: z.enum(['UNKNOWN', 'SINGLE', 'MIXED']),
+  updated_auto_containers: z.number().int().nonnegative(),
+  skipped_manual_containers: z.number().int().nonnegative(),
+  already_aligned_auto_containers: z.number().int().nonnegative(),
+})
+
 type DashboardProcessFiltersQuery = {
   readonly provider?: readonly string[]
   readonly status?: readonly ProcessStatusCode[]
@@ -277,6 +290,27 @@ export async function deleteProcessRequest(processId: string): Promise<void> {
   const message =
     parsed.success && parsed.data.error ? parsed.data.error : 'Failed to delete process'
   throw new Error(message)
+}
+
+export async function normalizeAutoCarriersRequest(processId: string): Promise<{
+  readonly normalized: boolean
+  readonly reason: string
+  readonly targetCarrierCode: string | null
+}> {
+  const result = await typedFetch(
+    `/api/processes/${encodeURIComponent(processId)}/normalize-auto-carriers`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    },
+    NormalizeAutoCarriersResponseSchema,
+  )
+
+  return {
+    normalized: result.normalized,
+    reason: result.reason,
+    targetCarrierCode: result.target_carrier_code,
+  }
 }
 
 async function runTrackingAlertActionRequest(

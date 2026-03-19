@@ -47,4 +47,17 @@ export const SyncContainerResponseSchema = z.object({
 export const DetectProcessCarrierResponseSchema = z.object({
   detected: z.boolean(),
   carrier: z.string().nullable(),
+  run_id: z.string().uuid().nullable().optional(),
+  status: z.enum(['RESOLVED', 'FAILED', 'RATE_LIMITED']).nullable().optional(),
+  resolved_provider: z.string().nullable().optional(),
+  confidence: z.enum(['HIGH', 'LOW', 'UNKNOWN']).nullable().optional(),
+  attempts: z
+    .array(
+      z.object({
+        provider: z.string(),
+        status: z.enum(['FOUND', 'NOT_FOUND', 'ERROR']),
+        error_code: z.string().nullable(),
+      }),
+    )
+    .optional(),
 })

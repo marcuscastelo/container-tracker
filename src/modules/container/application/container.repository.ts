@@ -4,13 +4,19 @@ import type { ContainerEntity } from '~/modules/container/domain/container.entit
 export type InsertContainerRecord = {
   processId: string
   containerNumber: string
-  carrierCode: string
+  carrierCode: string | null
+  carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+  carrierDetectedAt?: string | null
+  carrierDetectionSource?: 'process-seed' | 'auto-detect' | 'manual-user' | 'legacy-backfill' | null
 }
 
 export type UpdateContainerRecord = {
   id: string
   containerNumber: string
-  carrierCode: string
+  carrierCode: string | null
+  carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+  carrierDetectedAt?: string | null
+  carrierDetectionSource?: 'process-seed' | 'auto-detect' | 'manual-user' | 'legacy-backfill' | null
 }
 
 export type ContainerRepository = {
@@ -18,7 +24,15 @@ export type ContainerRepository = {
   insertMany(records: InsertContainerRecord[]): Promise<ContainerEntity[]>
   updateCarrierCode(command: {
     readonly id: string
-    readonly carrierCode: string
+    readonly carrierCode: string | null
+    readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+    readonly carrierDetectedAt?: string | null
+    readonly carrierDetectionSource?:
+      | 'process-seed'
+      | 'auto-detect'
+      | 'manual-user'
+      | 'legacy-backfill'
+      | null
   }): Promise<ContainerEntity>
   delete(id: string): Promise<void>
   existsMany(numbers: string[]): Promise<Map<string, boolean>>

@@ -47,6 +47,53 @@ export type SyncDashboardDeps = {
   readonly pollIntervalMs?: number
 }
 
+function toDetectionRunStatus(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'RESOLVED' | 'FAILED' | 'RATE_LIMITED' {
+  if (detectionResult.detected) return 'RESOLVED'
+  if (detectionResult.reason === 'rate_limited') return 'RATE_LIMITED'
+  return 'FAILED'
+}
+
+function toDetectionConfidence(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+): 'HIGH' | 'LOW' | 'UNKNOWN' {
+  if (detectionResult.detected) return 'HIGH'
+  if (detectionResult.reason === 'rate_limited') return 'UNKNOWN'
+  return 'LOW'
+}
+
+function toDetectionAttempts(
+  detectionResult: Awaited<ReturnType<CarrierDetectionEngine['detectCarrier']>>,
+) {
+  if (detectionResult.attempts && detectionResult.attempts.length > 0) {
+    return detectionResult.attempts.map((attempt) => ({
+      provider: attempt.provider,
+      status: attempt.status,
+      errorCode: attempt.errorCode,
+      rawResultRef: attempt.rawResultRef,
+    }))
+  }
+
+  if (detectionResult.detected) {
+    return [
+      {
+        provider: detectionResult.provider,
+        status: 'FOUND' as const,
+        errorCode: null,
+        rawResultRef: null,
+      },
+    ]
+  }
+
+  return detectionResult.attemptedProviders.map((provider) => ({
+    provider,
+    status: 'NOT_FOUND' as const,
+    errorCode: detectionResult.error,
+    rawResultRef: null,
+  }))
+}
+
 function toFirstError(statuses: readonly SyncRequestStatusItem[], fallback: string): string {
   const firstFailure = statuses.find((status) => status.status !== 'DONE')
   if (!firstFailure) return fallback
@@ -160,6 +207,39 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
         excludeProviders,
       })
 
+      const processIds = Array.from(new Set(relatedTargets.map((target) => target.processId))).filter(
+        (processId): processId is string => typeof processId === 'string',
+      )
+
+      for (const processId of processIds) {
+        const run = deps.carrierDetectionWritePort.recordDetectionRun
+          ? await deps.carrierDetectionWritePort.recordDetectionRun({
+              processId,
+              containerNumber,
+              candidateProviders:
+                detectionResult.candidateProviders ?? detectionResult.attemptedProviders,
+              attempts: toDetectionAttempts(detectionResult),
+              status: toDetectionRunStatus(detectionResult),
+              resolvedProvider: detectionResult.detected ? detectionResult.provider : null,
+              confidence: toDetectionConfidence(detectionResult),
+              errorCode: detectionResult.error,
+            })
+          : { runId: '00000000-0000-0000-0000-000000000000', won: true }
+
+        if (!detectionResult.detected || !run.won) {
+          continue
+        }
+
+        await deps.carrierDetectionWritePort.persistDetectedCarrier({
+          processId,
+          runId: run.runId,
+          containerNumber,
+          carrierCode: toPersistedCarrierCode(detectionResult.provider),
+          confidence: toDetectionConfidence(detectionResult),
+          detectionSource: 'auto-detect',
+        })
+      }
+
       if (!detectionResult.detected) {
         throw new HttpError(
           `sync_global_failed:${detectionResult.error ?? detectionResult.reason}`,
@@ -167,13 +247,8 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
         )
       }
 
-      const processIds = Array.from(new Set(relatedTargets.map((target) => target.processId)))
-      for (const processId of processIds) {
-        await deps.carrierDetectionWritePort.persistDetectedCarrier({
-          processId,
-          containerNumber,
-          carrierCode: toPersistedCarrierCode(detectionResult.provider),
-        })
+      if (processIds.length === 0) {
+        throw new HttpError(`sync_global_failed:process_not_resolved_for_${containerNumber}`, 502)
       }
 
       retryTargets.push({

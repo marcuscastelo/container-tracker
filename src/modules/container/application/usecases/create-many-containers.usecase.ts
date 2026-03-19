@@ -31,7 +31,7 @@ export function createCreateManyContainersUseCase(deps: { repository: ContainerR
 
       return {
         containerNumber,
-        carrierCode: input.carrierCode ?? '',
+        carrierCode: input.carrierCode ?? null,
       }
     })
 
@@ -56,6 +56,9 @@ export function createCreateManyContainersUseCase(deps: { repository: ContainerR
         processId: params.processId,
         containerNumber: item.containerNumber,
         carrierCode: item.carrierCode,
+        carrierAssignmentMode: 'AUTO',
+        carrierDetectionSource: item.carrierCode ? 'process-seed' : null,
+        carrierDetectedAt: null,
       })),
     )
 

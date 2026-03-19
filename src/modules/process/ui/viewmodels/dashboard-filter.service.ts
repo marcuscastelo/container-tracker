@@ -127,7 +127,7 @@ export function deriveDashboardProviderFilterOptions(
   const countsByProvider = new Map<string, number>()
 
   for (const process of processes) {
-    const provider = toOptionalNonBlankString(process.carrier)
+    const provider = toOptionalNonBlankString(process.effectiveCarrierLabel ?? process.carrier)
     if (!provider) continue
 
     const currentCount = countsByProvider.get(provider) ?? 0
@@ -278,8 +278,11 @@ export function filterDashboardProcesses(
   return processes.filter((process) => {
     const matchesProvider =
       !hasProviderFilters ||
-      (process.carrier !== null &&
-        filterSelection.providers.some((provider) => provider === process.carrier))
+      (() => {
+        const processProvider = process.effectiveCarrierLabel ?? process.carrier
+        if (processProvider === null || processProvider === undefined) return false
+        return filterSelection.providers.some((provider) => provider === processProvider)
+      })()
 
     const matchesStatus =
       !hasStatusFilters ||

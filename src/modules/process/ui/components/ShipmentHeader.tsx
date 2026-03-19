@@ -16,7 +16,7 @@ type Props = {
     readonly total: number
   } | null
   refreshHint: string | null
-  onTriggerRefresh: () => void
+  onTriggerRefresh: () => Promise<void>
   onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
 }
 
