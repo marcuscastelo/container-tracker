@@ -115,6 +115,7 @@ function observationTemporalColumnsToDomain(row: TrackingObservationRow): Tempor
   if (temporal_kind === null) {
     if (event_time_instant === null && event_date === null) {
       // TODO: just return null instead of using event_time. For now, we are using the deprecated event_time column
+      // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/242
       if (row.event_time !== null) {
         return instantValue(
           Instant.fromIso(requireTimestamp(row.event_time, 'observation.event_time')),
