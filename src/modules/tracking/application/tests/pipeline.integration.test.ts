@@ -111,7 +111,9 @@ class InMemoryObservationRepository implements ObservationRepository {
  */
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts: Map<string, TrackingAlert> = new Map()
-
+  async findAlertDerivationStateByContainerId(containerId: string): Promise<any> {
+    return null
+  }
   async insertMany(newAlerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     const inserted: TrackingAlert[] = []
     for (const alert of newAlerts) {

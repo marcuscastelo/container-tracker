@@ -87,7 +87,9 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   constructor(initialAlerts: readonly TrackingAlert[] = []) {
     this.alerts.push(...initialAlerts)
   }
-
+  async findAlertDerivationStateByContainerId(containerId: string): Promise<any> {
+    return null
+  }
   async insertMany(newAlerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     const created = newAlerts.map((alert) => ({
       ...alert,
