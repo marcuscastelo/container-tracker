@@ -277,6 +277,13 @@ async function buildReportContainerEntry(
     : []
   const alertItems = command.includeAlerts ? summary.alerts.map(toReportAlert) : []
 
+  const latestTrackingUpdate =
+    summary.observations.length > 0
+      ? summary.observations.reduce((latest, observation) =>
+          observation.created_at > latest.created_at ? observation : latest,
+        ).created_at
+      : null
+
   return {
     id: String(container.id),
     containerNumber: String(container.containerNumber),
@@ -285,7 +292,7 @@ async function buildReportContainerEntry(
     eta: summary.operational.eta?.eventTimeIso ?? null,
     latestEvent: latestObservation.eventTime ?? latestEvent,
     latestEventLabel: latestObservation.eventLabel,
-    latestTrackingUpdate: summary.observations.at(-1)?.created_at ?? null,
+    latestTrackingUpdate,
     vesselName: latestObservation.vesselName,
     hasConflict: deriveContainerConflictSignal(summary.timeline.observations),
     uncertainty: summary.operational.dataIssue === true ? 'tracking_summary_data_issue' : null,
