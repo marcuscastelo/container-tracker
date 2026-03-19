@@ -582,7 +582,8 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
       })
       await copyToClipboard(markdown)
       toast.success(t(keys.exportImport.copyTrelloSuccess))
-    } catch {
+    } catch (error) {
+      console.error('Failed to copy Trello export', error)
       toast.error(t(keys.exportImport.copyTrelloError))
     }
   }

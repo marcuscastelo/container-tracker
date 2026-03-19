@@ -23,7 +23,10 @@ function toFieldLine(label: string, value: string): string {
 }
 
 function toSafeFilenameSegment(value: string): string {
-  const normalized = value.replaceAll(/[^A-Za-z0-9._-]+/g, '-').replaceAll(/^-+|-+$/g, '')
+  const normalized = value
+    .replaceAll(/[^A-Za-z0-9._-]+/g, '-')
+    .replaceAll(/-+/g, '-')
+    .replaceAll(/^-+|-+$/g, '')
   return normalized.length > 0 ? normalized : 'process'
 }
 
@@ -70,14 +73,21 @@ function resolveContainersLine(processEntry: ReportProcessEntry): string {
 function resolveLatestEventLabel(processEntry: ReportProcessEntry): string {
   let latestEventLabel = ''
   let latestEventAt = Number.NEGATIVE_INFINITY
+  let latestTrackingUpdateAt = Number.NEGATIVE_INFINITY
 
   for (const container of processEntry.containers) {
     if (container.latestEvent === null) continue
     const timestamp = Date.parse(container.latestEvent)
-    if (Number.isNaN(timestamp) || timestamp < latestEventAt) continue
+    const trackingUpdateAt = container.latestTrackingUpdate
+      ? Date.parse(container.latestTrackingUpdate)
+      : Number.NEGATIVE_INFINITY
+    if (Number.isNaN(timestamp)) continue
+    if (timestamp < latestEventAt) continue
+    if (timestamp === latestEventAt && trackingUpdateAt <= latestTrackingUpdateAt) continue
 
     const nextLabel = toSingleLine(container.latestEventLabel)
     latestEventAt = timestamp
+    latestTrackingUpdateAt = trackingUpdateAt
     latestEventLabel = nextLabel.length > 0 ? nextLabel : toSingleLine(container.latestEvent)
   }
 
