@@ -117,6 +117,17 @@ export const GetLatestSnapshotRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
 
+export const GetTrackingTimeTravelRequestSchema = z.object({
+  containerId: z.string().min(1, 'containerId is required'),
+  now: z.string().optional(),
+})
+
+export const GetTrackingReplayDebugRequestSchema = z.object({
+  containerId: z.string().min(1, 'containerId is required'),
+  snapshotId: z.string().min(1, 'snapshotId is required'),
+  now: z.string().optional(),
+})
+
 // ---------------------------------------------------------------------------
 // Snapshots — Response DTOs
 // ---------------------------------------------------------------------------
@@ -134,3 +145,163 @@ export const SnapshotResponseDtoSchema = z.object({
   parse_error: z.string().nullable().optional(),
 })
 export type SnapshotResponseDto = z.infer<typeof SnapshotResponseDtoSchema>
+
+const ReplayObservationResponseDtoSchema = z.object({
+  id: z.string(),
+  fingerprint: z.string(),
+  type: z.string(),
+  carrier_label: z.string().nullable(),
+  event_time: z.string().nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  is_empty: z.boolean().nullable(),
+  confidence: z.string(),
+  provider: z.string(),
+  created_from_snapshot_id: z.string(),
+  retroactive: z.boolean(),
+  created_at: z.string(),
+})
+
+const ReplayTimelineSeriesItemResponseDtoSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  event_time: z.string().nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  created_at: z.string(),
+  series_label: z.enum([
+    'ACTIVE',
+    'EXPIRED',
+    'REDUNDANT_AFTER_ACTUAL',
+    'SUPERSEDED_EXPECTED',
+    'CONFIRMED',
+    'CONFLICTING_ACTUAL',
+  ]),
+})
+
+const ReplaySeriesResponseDtoSchema = z.object({
+  key: z.string(),
+  primary: z.object({
+    id: z.string(),
+    type: z.string(),
+    event_time: z.string().nullable(),
+    event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  }),
+  has_actual_conflict: z.boolean(),
+  items: z.array(ReplayTimelineSeriesItemResponseDtoSchema),
+})
+
+export const TrackingTimelineItemResponseDtoSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  carrier_label: z.string().nullable(),
+  location: z.string().nullable(),
+  event_time_iso: z.string().nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  series_history: z
+    .object({
+      has_actual_conflict: z.boolean(),
+      classified: z.array(ReplayTimelineSeriesItemResponseDtoSchema),
+    })
+    .nullable(),
+})
+
+export const TrackingOperationalEtaResponseDtoSchema = z.object({
+  event_time: z.string(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
+  type: z.string(),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+})
+
+const ReplayStateResponseDtoSchema = z.object({
+  observations: z.array(ReplayObservationResponseDtoSchema),
+  series: z.array(ReplaySeriesResponseDtoSchema),
+  timeline: z.array(TrackingTimelineItemResponseDtoSchema),
+  status: z.string(),
+  alerts: z.array(AlertResponseDtoSchema),
+})
+
+export const TrackingReplayStepResponseDtoSchema = z.object({
+  step_index: z.number().int().positive(),
+  snapshot_id: z.string().nullable(),
+  observation_id: z.string().nullable(),
+  stage: z.enum(['SNAPSHOT', 'OBSERVATION', 'SERIES', 'TIMELINE', 'STATUS', 'ALERT']),
+  input: z.unknown(),
+  output: z.unknown(),
+  timestamp: z.string(),
+  state: ReplayStateResponseDtoSchema,
+})
+
+const TrackingTimeTravelDiffComparisonResponseDtoSchema = z.object({
+  kind: z.literal('comparison'),
+  status_changed: z.boolean(),
+  previous_status: z.string(),
+  current_status: z.string(),
+  timeline_changed: z.boolean(),
+  added_timeline_item_ids: z.array(z.string()),
+  removed_timeline_item_ids: z.array(z.string()),
+  alerts_changed: z.boolean(),
+  new_alert_fingerprints: z.array(z.string()),
+  resolved_alert_fingerprints: z.array(z.string()),
+  eta_changed: z.boolean(),
+  previous_eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  current_eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  actual_conflict_appeared: z.boolean(),
+  actual_conflict_resolved: z.boolean(),
+})
+
+export const TrackingTimeTravelDiffResponseDtoSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('initial'),
+  }),
+  TrackingTimeTravelDiffComparisonResponseDtoSchema,
+])
+export type TrackingTimeTravelDiffResponseDto = z.infer<
+  typeof TrackingTimeTravelDiffResponseDtoSchema
+>
+
+export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
+  snapshot_id: z.string(),
+  fetched_at: z.string(),
+  position: z.number().int().positive(),
+  timeline: z.array(TrackingTimelineItemResponseDtoSchema),
+  status: z.string(),
+  alerts: z.array(AlertResponseDtoSchema),
+  eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  diff_from_previous: TrackingTimeTravelDiffResponseDtoSchema,
+  debug_available: z.literal(true),
+})
+export type TrackingTimeTravelCheckpointResponseDto = z.infer<
+  typeof TrackingTimeTravelCheckpointResponseDtoSchema
+>
+
+export const TrackingTimeTravelResponseDtoSchema = z.object({
+  container_id: z.string(),
+  container_number: z.string().nullable(),
+  reference_now: z.string(),
+  selected_snapshot_id: z.string().nullable(),
+  sync_count: z.number().int().nonnegative(),
+  syncs: z.array(TrackingTimeTravelCheckpointResponseDtoSchema),
+})
+export type TrackingTimeTravelResponseDto = z.infer<typeof TrackingTimeTravelResponseDtoSchema>
+
+export const TrackingReplayDebugResponseDtoSchema = z.object({
+  container_id: z.string(),
+  container_number: z.string().nullable(),
+  snapshot_id: z.string(),
+  fetched_at: z.string(),
+  position: z.number().int().positive(),
+  reference_now: z.string(),
+  total_observations: z.number().int().nonnegative(),
+  total_steps: z.number().int().nonnegative(),
+  steps: z.array(TrackingReplayStepResponseDtoSchema),
+  checkpoint: TrackingTimeTravelCheckpointResponseDtoSchema,
+})
+export type TrackingReplayDebugResponseDto = z.infer<typeof TrackingReplayDebugResponseDtoSchema>

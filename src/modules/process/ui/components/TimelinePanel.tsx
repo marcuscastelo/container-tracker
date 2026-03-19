@@ -26,6 +26,7 @@ import type {
   ContainerDetailVM,
   ContainerObservationVM,
 } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
@@ -35,6 +36,21 @@ type Props = {
   carrier?: string | null
   nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   alerts?: readonly AlertDisplayVM[]
+}
+
+export type TrackingTimelinePanelContainerContext = Pick<
+  ContainerDetailVM,
+  'number' | 'status' | 'statusCode' | 'transshipment'
+>
+
+type TrackingTimelinePanelContentProps = {
+  readonly title: string
+  readonly container: TrackingTimelinePanelContainerContext | null
+  readonly timeline: readonly TrackingTimelineItem[]
+  readonly observations?: readonly ContainerObservationVM[]
+  readonly carrier?: string | null
+  readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
+  readonly alerts?: readonly AlertDisplayVM[]
 }
 
 /** Maps alert types to related observation type prefixes for visual linking */
@@ -61,7 +77,7 @@ function buildHighlightedEventTypes(alerts: readonly AlertDisplayVM[]): Readonly
   return types
 }
 
-function derivePortsRoute(container: ContainerDetailVM | null): string | null {
+function derivePortsRoute(container: TrackingTimelinePanelContainerContext | null): string | null {
   if (!container) return null
   const ports = container.transshipment.ports
   if (ports.length === 0) return null
@@ -69,30 +85,31 @@ function derivePortsRoute(container: ContainerDetailVM | null): string | null {
 }
 
 function buildObservationsById(
-  container: ContainerDetailVM | null,
+  observations: readonly ContainerObservationVM[],
 ): ReadonlyMap<string, ContainerObservationVM> {
-  if (!container) return new Map<string, ContainerObservationVM>()
   const observationsById = new Map<string, ContainerObservationVM>()
-  for (const observation of container.observations) {
+  for (const observation of observations) {
     observationsById.set(observation.id, observation)
   }
   return observationsById
 }
 
-export function TimelinePanel(props: Props): JSX.Element {
-  const timeline = () => props.selectedContainer?.timeline ?? []
+export function TrackingTimelinePanelContent(
+  props: TrackingTimelinePanelContentProps,
+): JSX.Element {
   const { t, keys } = useTranslation()
+  const timeline = () => props.timeline
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
-  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(timeline()))
-  const portsRoute = createMemo(() => derivePortsRoute(props.selectedContainer))
-  const observationsById = createMemo(() => buildObservationsById(props.selectedContainer))
+  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.timeline))
+  const portsRoute = createMemo(() => derivePortsRoute(props.container))
+  const observationsById = createMemo(() => buildObservationsById(props.observations ?? []))
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 
   return (
-    <Panel title={t(keys.shipmentView.timeline.title)} class="rounded-xl" bodyClass="px-3 py-3">
+    <Panel title={props.title} class="rounded-xl" bodyClass="px-3 py-3">
       <div>
         {/* Phase 6 — Timeline Header: Selected Container Context */}
-        <Show when={props.selectedContainer}>
+        <Show when={props.container}>
           {(container) => (
             <ContainerContextHeader
               container={container()}
@@ -112,7 +129,7 @@ export function TimelinePanel(props: Props): JSX.Element {
           <TimelineBlockList
             renderList={renderList()}
             carrier={props.carrier}
-            containerNumber={props.selectedContainer?.number}
+            containerNumber={props.container?.number}
             nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
             highlightedTypes={highlightedTypes()}
             observationById={observationsById()}
@@ -124,7 +141,7 @@ export function TimelinePanel(props: Props): JSX.Element {
 }
 
 type ContainerContextHeaderProps = {
-  container: ContainerDetailVM
+  container: TrackingTimelinePanelContainerContext
   currentVessel: string | null
   portsRoute: string | null
 }
@@ -166,6 +183,22 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
         )}
       </Show>
     </div>
+  )
+}
+
+export function TimelinePanel(props: Props): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <TrackingTimelinePanelContent
+      title={t(keys.shipmentView.timeline.title)}
+      container={props.selectedContainer}
+      timeline={props.selectedContainer?.timeline ?? []}
+      observations={props.selectedContainer?.observations ?? []}
+      carrier={props.carrier}
+      nonMappedIndicatorVariant={props.nonMappedIndicatorVariant}
+      alerts={props.alerts}
+    />
   )
 }
 

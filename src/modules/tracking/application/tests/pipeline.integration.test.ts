@@ -112,6 +112,7 @@ class InMemoryObservationRepository implements ObservationRepository {
  */
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts: Map<string, TrackingAlert> = new Map()
+
   private findByContainerIdCalls = 0
   private findAlertDerivationStateByContainerIdCalls = 0
 

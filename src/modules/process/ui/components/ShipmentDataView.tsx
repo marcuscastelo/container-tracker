@@ -1,11 +1,18 @@
 import type { JSX } from 'solid-js'
-import { ErrorBoundary } from 'solid-js'
+import { ErrorBoundary, Show } from 'solid-js'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ShipmentCurrentStatus } from '~/modules/process/ui/components/ShipmentCurrentStatus'
 import { ShipmentHeader } from '~/modules/process/ui/components/ShipmentHeader'
 import { ShipmentInfoCard } from '~/modules/process/ui/components/ShipmentInfoCard'
 import { TimelinePanel } from '~/modules/process/ui/components/TimelinePanel'
+import { TrackingTimeTravelAlertsPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelAlertsPanel'
+import { TrackingTimeTravelBar } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelBar'
+import { TrackingTimeTravelDebugPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelDebugPanel'
+import { TrackingTimeTravelDiffSummary } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelDiffSummary'
+import { TrackingTimeTravelStatusPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelStatusPanel'
+import { TrackingTimeTravelTimelinePanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelTimelinePanel'
+import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -27,10 +34,149 @@ type ShipmentDataViewProps = {
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void
   readonly selectedContainer: ShipmentDetailVM['containers'][number] | null
+  readonly trackingTimeTravel: TrackingTimeTravelControllerResult
+}
+
+type ShipmentCurrentAlertsSectionProps = Pick<
+  ShipmentDataViewProps,
+  | 'activeAlerts'
+  | 'archivedAlerts'
+  | 'busyAlertIds'
+  | 'collapsingAlertIds'
+  | 'onAcknowledgeAlert'
+  | 'onUnacknowledgeAlert'
+>
+
+function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <div class="mb-3">
+      <ErrorBoundary
+        fallback={(err) => {
+          console.error('Alerts panel render failure:', err)
+          return (
+            <div class="rounded-lg border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs-ui text-tone-warning-fg">
+              {t(keys.app.unexpectedRenderError)}
+            </div>
+          )
+        }}
+      >
+        <AlertsPanel
+          activeAlerts={props.activeAlerts}
+          archivedAlerts={props.archivedAlerts}
+          busyAlertIds={props.busyAlertIds}
+          collapsingAlertIds={props.collapsingAlertIds}
+          onAcknowledge={props.onAcknowledgeAlert}
+          onUnacknowledge={props.onUnacknowledgeAlert}
+        />
+      </ErrorBoundary>
+    </div>
+  )
+}
+
+type ShipmentTimelineRegionProps = Pick<
+  ShipmentDataViewProps,
+  'data' | 'activeAlerts' | 'selectedContainer' | 'trackingTimeTravel'
+>
+
+function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <Show when={props.selectedContainer}>
+      {(container) => (
+        <section id="shipment-timeline" class="scroll-mt-30 space-y-3">
+          <ErrorBoundary
+            fallback={(err) => {
+              console.error('Timeline panel render failure:', err)
+              return (
+                <div class="rounded-lg border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-xs-ui text-tone-danger-fg">
+                  {t(keys.app.unexpectedRenderError)}
+                </div>
+              )
+            }}
+          >
+            <Show
+              when={props.trackingTimeTravel.isActive()}
+              fallback={
+                <TimelinePanel
+                  selectedContainer={props.selectedContainer}
+                  carrier={props.data.carrier}
+                  alerts={props.activeAlerts}
+                />
+              }
+            >
+              <TrackingTimeTravelTimelinePanel
+                containerNumber={container().number}
+                carrier={props.data.carrier}
+                selectedSync={props.trackingTimeTravel.selectedSync()}
+              />
+            </Show>
+          </ErrorBoundary>
+
+          <Show
+            when={props.trackingTimeTravel.isActive() && props.trackingTimeTravel.isDebugOpen()}
+          >
+            <TrackingTimeTravelDebugPanel
+              containerNumber={container().number}
+              loading={props.trackingTimeTravel.isDebugLoading()}
+              errorMessage={props.trackingTimeTravel.debugErrorMessage()}
+              debug={props.trackingTimeTravel.debugValue()}
+              debugPayload={props.trackingTimeTravel.debugPayload()}
+            />
+          </Show>
+        </section>
+      )}
+    </Show>
+  )
+}
+
+type ShipmentSidebarRegionProps = Pick<
+  ShipmentDataViewProps,
+  'data' | 'selectedContainer' | 'syncNow' | 'trackingTimeTravel'
+>
+
+function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
+  return (
+    <div class="space-y-4">
+      <ShipmentInfoCard data={props.data} />
+      <Show
+        when={props.trackingTimeTravel.isActive()}
+        fallback={
+          <section id="shipment-current-status" class="scroll-mt-30">
+            <ShipmentCurrentStatus
+              selectedContainer={props.selectedContainer}
+              syncNow={props.syncNow}
+            />
+          </section>
+        }
+      >
+        <section id="shipment-historical-status" class="scroll-mt-30">
+          <TrackingTimeTravelStatusPanel
+            containerNumber={props.selectedContainer?.number ?? null}
+            selectedSync={props.trackingTimeTravel.selectedSync()}
+          />
+        </section>
+        <section id="shipment-historical-alerts" class="scroll-mt-30">
+          <TrackingTimeTravelAlertsPanel
+            alerts={props.trackingTimeTravel.selectedSync()?.alerts ?? []}
+            referenceNowIso={props.trackingTimeTravel.value()?.referenceNowIso ?? null}
+          />
+        </section>
+        <section id="shipment-historical-diff" class="scroll-mt-30">
+          <TrackingTimeTravelDiffSummary
+            diff={props.trackingTimeTravel.selectedSync()?.diff ?? null}
+          />
+        </section>
+      </Show>
+    </div>
+  )
 }
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const isHistoricalMode = () => props.trackingTimeTravel.isActive()
 
   return (
     <div class="space-y-4">
@@ -43,27 +189,45 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         onOpenEdit={props.onOpenEdit}
       />
 
-      {/* Alertas Operacionais — global ao shipment, sempre visíveis no topo */}
-      <div class="mb-3">
-        <ErrorBoundary
-          fallback={(err) => {
-            console.error('Alerts panel render failure:', err)
-            return (
-              <div class="rounded-lg border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs-ui text-tone-warning-fg">
-                {t(keys.app.unexpectedRenderError)}
-              </div>
-            )
-          }}
+      <Show when={!isHistoricalMode()}>
+        <ShipmentCurrentAlertsSection
+          activeAlerts={props.activeAlerts}
+          archivedAlerts={props.archivedAlerts}
+          busyAlertIds={props.busyAlertIds}
+          collapsingAlertIds={props.collapsingAlertIds}
+          onAcknowledgeAlert={props.onAcknowledgeAlert}
+          onUnacknowledgeAlert={props.onUnacknowledgeAlert}
+        />
+      </Show>
+
+      <div class="sticky top-4 z-30">
+        <Show
+          when={isHistoricalMode()}
+          fallback={
+            <div class="flex justify-end">
+              <button
+                type="button"
+                class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
+                onClick={() => props.trackingTimeTravel.open()}
+              >
+                {t(keys.shipmentView.timeTravel.open)}
+              </button>
+            </div>
+          }
         >
-          <AlertsPanel
-            activeAlerts={props.activeAlerts}
-            archivedAlerts={props.archivedAlerts}
-            busyAlertIds={props.busyAlertIds}
-            collapsingAlertIds={props.collapsingAlertIds}
-            onAcknowledge={props.onAcknowledgeAlert}
-            onUnacknowledge={props.onUnacknowledgeAlert}
+          <TrackingTimeTravelBar
+            isLoading={props.trackingTimeTravel.isLoading()}
+            errorMessage={props.trackingTimeTravel.errorMessage()}
+            syncs={props.trackingTimeTravel.value()?.syncs ?? []}
+            selectedSync={props.trackingTimeTravel.selectedSync()}
+            isDebugOpen={props.trackingTimeTravel.isDebugOpen()}
+            onClose={props.trackingTimeTravel.close}
+            onToggleDebug={props.trackingTimeTravel.toggleDebug}
+            onSelectSnapshot={props.trackingTimeTravel.selectSnapshot}
+            onPrevious={props.trackingTimeTravel.selectPrevious}
+            onNext={props.trackingTimeTravel.selectNext}
           />
-        </ErrorBoundary>
+        </Show>
       </div>
 
       <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -76,34 +240,20 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
             />
           </section>
 
-          <section id="shipment-timeline" class="scroll-mt-30">
-            <ErrorBoundary
-              fallback={(err) => {
-                console.error('Timeline panel render failure:', err)
-                return (
-                  <div class="rounded-lg border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-xs-ui text-tone-danger-fg">
-                    {t(keys.app.unexpectedRenderError)}
-                  </div>
-                )
-              }}
-            >
-              <TimelinePanel
-                selectedContainer={props.selectedContainer}
-                carrier={props.data.carrier}
-                alerts={props.activeAlerts}
-              />
-            </ErrorBoundary>
-          </section>
+          <ShipmentTimelineRegion
+            data={props.data}
+            activeAlerts={props.activeAlerts}
+            selectedContainer={props.selectedContainer}
+            trackingTimeTravel={props.trackingTimeTravel}
+          />
         </div>
-        <div class="space-y-4">
-          <ShipmentInfoCard data={props.data} />
-          <section id="shipment-current-status" class="scroll-mt-30">
-            <ShipmentCurrentStatus
-              selectedContainer={props.selectedContainer}
-              syncNow={props.syncNow}
-            />
-          </section>
-        </div>
+
+        <ShipmentSidebarRegion
+          data={props.data}
+          selectedContainer={props.selectedContainer}
+          syncNow={props.syncNow}
+          trackingTimeTravel={props.trackingTimeTravel}
+        />
       </div>
     </div>
   )

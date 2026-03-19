@@ -37,6 +37,18 @@ import {
 } from '~/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase'
 import { unacknowledgeAlert } from '~/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase'
 import type { TrackingAlertAckSource } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  type GetTrackingReplayDebugCommand,
+  getTrackingReplayDebug,
+} from '~/modules/tracking/features/replay/application/get-tracking-replay-debug.usecase'
+import {
+  type GetTrackingTimeTravelCommand,
+  getTrackingTimeTravel,
+} from '~/modules/tracking/features/replay/application/get-tracking-time-travel.usecase'
+import type {
+  TrackingReplayDebugResult,
+  TrackingTimeTravelResult,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.
@@ -210,6 +222,18 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
       return getLatestSnapshot(deps, { containerId })
+    },
+
+    async getTrackingTimeTravel(
+      command: GetTrackingTimeTravelCommand,
+    ): Promise<TrackingTimeTravelResult> {
+      return getTrackingTimeTravel(deps, command)
+    },
+
+    async getTrackingReplayDebug(
+      command: GetTrackingReplayDebugCommand,
+    ): Promise<TrackingReplayDebugResult> {
+      return getTrackingReplayDebug(deps, command)
     },
 
     /**

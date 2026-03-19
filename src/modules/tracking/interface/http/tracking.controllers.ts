@@ -8,12 +8,18 @@ import type { TrackingUseCases } from '~/modules/tracking/application/tracking.u
 import {
   toAlertResponseDto,
   toSnapshotResponseDto,
+  toTrackingReplayDebugResponseDto,
+  toTrackingTimeTravelResponseDto,
 } from '~/modules/tracking/interface/http/tracking.http.mappers'
 import {
   AlertActionBodySchema,
   GetLatestSnapshotRequestSchema,
   GetSnapshotsForContainerRequestSchema,
+  GetTrackingReplayDebugRequestSchema,
+  GetTrackingTimeTravelRequestSchema,
   ListAlertsQuerySchema,
+  TrackingReplayDebugResponseDtoSchema,
+  TrackingTimeTravelResponseDtoSchema,
 } from '~/modules/tracking/interface/http/tracking.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
@@ -140,21 +146,116 @@ function createSnapshotsController(trackingUseCases: TrackingUseCases) {
   return { getSnapshotsForContainer, getLatestSnapshot }
 }
 
+function parseReferenceNow(rawNow: string | undefined): Date | null {
+  if (typeof rawNow !== 'string' || rawNow.trim().length === 0) return new Date()
+  const parsed = new Date(rawNow)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed
+}
+
+function createTimeTravelController(trackingUseCases: TrackingUseCases) {
+  async function getTimeTravel({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTrackingTimeTravelRequestSchema.safeParse({
+        containerId: params.containerId,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReferenceNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.getTrackingTimeTravel({
+        containerId: parsed.data.containerId,
+        now: referenceNow,
+      })
+
+      return jsonResponse(
+        toTrackingTimeTravelResponseDto(replay),
+        200,
+        TrackingTimeTravelResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error('GET /api/tracking/containers/:containerId/time-travel error:', err)
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getReplayDebug({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTrackingReplayDebugRequestSchema.safeParse({
+        containerId: params.containerId,
+        snapshotId: params.snapshotId,
+        now: url.searchParams.get('now') ?? undefined,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReferenceNow(parsed.data.now)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const replay = await trackingUseCases.getTrackingReplayDebug({
+        containerId: parsed.data.containerId,
+        snapshotId: parsed.data.snapshotId,
+        now: referenceNow,
+      })
+
+      return jsonResponse(
+        toTrackingReplayDebugResponseDto(replay),
+        200,
+        TrackingReplayDebugResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error(
+        'GET /api/tracking/containers/:containerId/time-travel/:snapshotId/debug error:',
+        err,
+      )
+      return mapErrorToResponse(err)
+    }
+  }
+
+  return { getTimeTravel, getReplayDebug }
+}
+
 // ---------------------------------------------------------------------------
 // Aggregated controllers
 // ---------------------------------------------------------------------------
 
 export type AlertsController = ReturnType<typeof createAlertsController>
 export type SnapshotsController = ReturnType<typeof createSnapshotsController>
+export type TimeTravelController = ReturnType<typeof createTimeTravelController>
 
 export type TrackingControllers = {
   readonly alerts: AlertsController
   readonly snapshots: SnapshotsController
+  readonly timeTravel: TimeTravelController
 }
 
 export function createTrackingControllers(deps: TrackingControllersDeps): TrackingControllers {
   return {
     alerts: createAlertsController(deps.trackingUseCases),
     snapshots: createSnapshotsController(deps.trackingUseCases),
+    timeTravel: createTimeTravelController(deps.trackingUseCases),
   }
 }

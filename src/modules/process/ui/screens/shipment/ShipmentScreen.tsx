@@ -15,6 +15,7 @@ import { useShipmentDialogsController } from '~/modules/process/ui/screens/shipm
 import { useShipmentRefreshController } from '~/modules/process/ui/screens/shipment/hooks/useShipmentRefreshController'
 import { useShipmentScreenResource } from '~/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource'
 import { useShipmentSelectedContainer } from '~/modules/process/ui/screens/shipment/hooks/useShipmentSelectedContainer'
+import { useTrackingTimeTravelController } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
@@ -52,6 +53,10 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   const selection = useShipmentSelectedContainer({
     shipment: resource.shipment,
     preferredContainerNumber,
+  })
+
+  const trackingTimeTravel = useTrackingTimeTravelController({
+    selectedContainer: selection.selectedContainer,
   })
 
   // ── Refresh controller ─────────────────────────────────────────────────────
@@ -159,6 +164,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
           selectedContainerId={selection.selectedContainerId}
           onSelectContainer={(id: string) => selection.setSelectedContainerId(String(id))}
           selectedContainer={selection.selectedContainer}
+          trackingTimeTravel={trackingTimeTravel}
           onOpenEditForShipment={dialogs.openEditForShipment}
         />
       }
