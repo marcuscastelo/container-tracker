@@ -116,7 +116,7 @@ export const ReportExportRequestSchema = z
   .object({
     scope: ScopeSchema,
     processId: z.string().nullish(),
-    format: z.enum(['json', 'csv', 'xlsx', 'markdown', 'pdf']),
+    format: z.enum(['json', 'csv', 'xlsx', 'markdown', 'pdf', 'trello']),
     includeContainers: z.boolean().optional(),
     includeAlerts: z.boolean().optional(),
     includeTimelineSummary: z.boolean().optional(),
