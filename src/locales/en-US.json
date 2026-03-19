@@ -38,6 +38,49 @@
       "switchToDark": "Switch to dark theme"
     }
   },
+  "exportImport": {
+    "exportButton": "Export",
+    "importButton": "Import",
+    "moreActions": "More actions",
+    "dialog": {
+      "title": "Export data",
+      "description": "Choose export type, format and options.",
+      "exportType": "Export type",
+      "typePortable": "Portable Export (Importable)",
+      "typeReport": "Operational Snapshot Report",
+      "format": "Format",
+      "includeContainers": "Include containers",
+      "includeAlerts": "Include alerts",
+      "includeTimelineSummary": "Include timeline summary",
+      "includeExecutiveSummary": "Include executive summary",
+      "cancel": "Cancel",
+      "confirmExport": "Export",
+      "exporting": "Exporting..."
+    },
+    "importDialog": {
+      "title": "Import portable bundle",
+      "description": "Symmetric import v1 is big-bang and requires an empty database.",
+      "warning": "This import does not merge data. Existing processes must be removed before execution.",
+      "selectBundle": "Bundle file (JSON)",
+      "runDryRun": "Run dry-run validation",
+      "validating": "Validating...",
+      "executeImport": "Execute import",
+      "importing": "Importing...",
+      "databaseNotEmpty": "Import is blocked: database is not empty.",
+      "invalidBundleJson": "Invalid bundle JSON file.",
+      "importSuccess": "Imported {{processes}} process(es) and {{containers}} container(s).",
+      "validation": {
+        "schemaVersion": "Schema version",
+        "processes": "Processes",
+        "containers": "Containers",
+        "documents": "Documents",
+        "databaseEmpty": "Database empty",
+        "yes": "yes",
+        "no": "no",
+        "valueUnavailable": "—"
+      }
+    }
+  },
   "dashboard": {
     "header": {
       "title": "Dashboard"

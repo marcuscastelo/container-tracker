@@ -5,6 +5,7 @@ import {
   prefetchDashboardGlobalAlertsSummary,
   prefetchDashboardProcessSummaries,
 } from '~/modules/process/ui/api/process.api'
+import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
 import { ShipmentDialogsHost } from '~/modules/process/ui/screens/shipment/components/ShipmentDialogsHost'
@@ -119,6 +120,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       onOpenCreateProcess={dialogs.openCreateDialog}
       onDashboardIntent={handleDashboardIntent}
       searchSlot={props.searchSlot}
+      actionsSlot={<ExportImportActions processId={processId()} showImport={false} />}
       banners={
         <>
           <ShipmentRefreshStatusView

@@ -13,6 +13,7 @@ type Props = {
   readonly onCreateProcess?: () => void
   readonly searchSlot?: JSX.Element
   readonly syncSlot?: JSX.Element
+  readonly actionsSlot?: JSX.Element
 }
 
 const OUTLINE_BUTTON_CLASS =
@@ -166,6 +167,7 @@ function ThemeToggleButton(): JSX.Element {
 
 function HeaderActions(props: {
   readonly syncSlot?: JSX.Element
+  readonly actionsSlot?: JSX.Element
   readonly createProcessLabel: string
   readonly onCreateProcess?: () => void
 }): JSX.Element {
@@ -174,7 +176,6 @@ function HeaderActions(props: {
       <Show when={props.syncSlot}>
         {(syncSlot) => <div class="flex items-center">{syncSlot()}</div>}
       </Show>
-
       <CreateProcessButton
         label={props.createProcessLabel}
         onCreateProcess={props.onCreateProcess}
@@ -185,6 +186,9 @@ function HeaderActions(props: {
         <LanguageSwitch />
       </div>
       <ThemeToggleButton />
+      <Show when={props.actionsSlot}>
+        {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}
+      </Show>
     </div>
   )
 }
@@ -210,6 +214,7 @@ export function AppHeader(props: Props): JSX.Element {
         <div class="max-[1023px]:justify-self-end">
           <HeaderActions
             syncSlot={props.syncSlot}
+            actionsSlot={props.actionsSlot}
             createProcessLabel={t(keys.header.createProcess)}
             onCreateProcess={props.onCreateProcess}
           />

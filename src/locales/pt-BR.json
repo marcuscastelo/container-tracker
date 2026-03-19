@@ -38,6 +38,49 @@
       "switchToDark": "Alternar para tema escuro"
     }
   },
+  "exportImport": {
+    "exportButton": "Exportar",
+    "importButton": "Importar",
+    "moreActions": "Mais ações",
+    "dialog": {
+      "title": "Exportar dados",
+      "description": "Escolha tipo, formato e opções de exportação.",
+      "exportType": "Tipo de exportação",
+      "typePortable": "Export Portável (Importável)",
+      "typeReport": "Relatório de Snapshot Operacional",
+      "format": "Formato",
+      "includeContainers": "Incluir containers",
+      "includeAlerts": "Incluir alertas",
+      "includeTimelineSummary": "Incluir resumo da timeline",
+      "includeExecutiveSummary": "Incluir resumo executivo",
+      "cancel": "Cancelar",
+      "confirmExport": "Exportar",
+      "exporting": "Exportando..."
+    },
+    "importDialog": {
+      "title": "Importar bundle portável",
+      "description": "O import simétrico v1 é big-bang e exige banco vazio.",
+      "warning": "Este import não faz merge. Remova processos existentes antes de executar.",
+      "selectBundle": "Arquivo do bundle (JSON)",
+      "runDryRun": "Executar validação dry-run",
+      "validating": "Validando...",
+      "executeImport": "Executar importação",
+      "importing": "Importando...",
+      "databaseNotEmpty": "Importação bloqueada: o banco não está vazio.",
+      "invalidBundleJson": "Arquivo JSON do bundle inválido.",
+      "importSuccess": "{{processes}} processo(s) e {{containers}} container(s) importados.",
+      "validation": {
+        "schemaVersion": "Versão do schema",
+        "processes": "Processos",
+        "containers": "Containers",
+        "documents": "Documentos",
+        "databaseEmpty": "Banco de dados vazio",
+        "yes": "sim",
+        "no": "não",
+        "valueUnavailable": "—"
+      }
+    }
+  },
   "app": {
     "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes."
   },

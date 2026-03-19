@@ -14,6 +14,7 @@ type ShipmentScreenLayoutProps = {
   readonly onOpenCreateProcess: () => void
   readonly onDashboardIntent: () => void
   readonly searchSlot?: JSX.Element
+  readonly actionsSlot?: JSX.Element
   readonly banners: JSX.Element
   readonly dialogs: JSX.Element
   readonly content: JSX.Element
@@ -43,7 +44,11 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         class="pointer-events-none fixed inset-0 z-0 h-full w-full select-none object-cover opacity-[0.04]"
       />
       <div class="relative z-10">
-        <AppHeader onCreateProcess={props.onOpenCreateProcess} searchSlot={props.searchSlot} />
+        <AppHeader
+          onCreateProcess={props.onOpenCreateProcess}
+          searchSlot={props.searchSlot}
+          actionsSlot={props.actionsSlot}
+        />
 
         {props.banners}
         {props.dialogs}
