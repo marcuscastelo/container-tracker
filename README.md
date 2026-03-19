@@ -1,195 +1,447 @@
 # Container Tracker
 
-Painel operacional para rastreio marítimo com foco em consistência de domínio, auditabilidade e visibilidade de exceções.
+Operational maritime tracking platform focused on **determinism, auditability, and timeline-first visibility**.
 
-## Screenshots
+---
 
-### Desktop
+# 1. Overview
 
-![Dashboard desktop](./public/screenshots/dashboard-desktop.png)
+Container Tracker consolidates heterogeneous carrier data and transforms it into a **reliable, explainable operational timeline**.
 
-### Mobile
+The system:
 
-![Dashboard mobile](./public/screenshots/dashboard-mobile.png)
+- Ingests raw carrier data (snapshots)
+- Normalizes into canonical observations
+- Derives timeline, status, and alerts deterministically
+- Preserves full historical audit trail
+- Surfaces operational exceptions early
 
-## Fase 1: Como um despachante usaria
+> The system prioritizes correctness and auditability over convenience.
 
-1. Acessa o painel e busca um processo de embarque pelo número de referência ou container.
-2. Visualiza o status atual derivado automaticamente (ex.: em trânsito, descarregado, entregue), sem precisar reconciliar manualmente dados de múltiplos carriers.
-3. Consulta a timeline do processo para entender o que já aconteceu (ACTUAL) e o que era esperado (EXPECTED), incluindo mudanças de previsão.
-4. Recebe alertas operacionais para agir cedo em risco de atraso, conflitos de informação ou ausência de atualização.
-5. Usa o histórico preservado para auditoria: cada atualização é rastreável ao snapshot bruto recebido do carrier.
+Reference:
+- :contentReference[oaicite:0]{index=0}
 
-## Fase 2: Como funciona em termos leigos
+---
 
-1. O sistema coleta atualizações de transportadoras diferentes.
-2. Cada atualização original é guardada exatamente como veio, sem sobrescrever histórico.
-3. Depois, essas atualizações são convertidas em fatos padronizados (observações).
-4. A partir desses fatos, o sistema calcula status, timeline e alertas.
-5. Se houver incerteza ou conflito, isso é mostrado explicitamente em vez de ser escondido.
+# 2. Core Principles
 
-Resumo: o sistema não “chuta” estado. Ele deriva estado a partir de eventos reais e preserva todo o histórico para explicar qualquer decisão.
+## 2.1 Domain Truth
 
-## Fase 3: Pitch técnico para dev sênior + instalação
+All domain truth is derived **only inside bounded contexts**, primarily `tracking`.
 
-### Por que a arquitetura é boa
+Pipeline:
 
-- Bounded Contexts claros em `src/modules/*`:
-  - `process`: agrupamento/logística de processo
-  - `container`: identidade e associação de container
-  - `tracking`: snapshots, observações e derivações (status/timeline/alerts)
-- Capabilities em `src/capabilities/*` orquestram casos cross-context sem capturar semântica de domínio.
-- Regras de dependência evitam acoplamento acidental: módulo não depende de capability; UI não define verdade de domínio.
-- Invariantes fortes de rastreio:
-  - snapshot imutável
-  - observação append-only
-  - status sempre derivado
-  - conflito/incerteza expostos
-- Contratos e fronteiras documentados em:
-  - `docs/MASTER_v2.md`
-  - `docs/TYPE_ARCHITECTURE.md`
-  - `docs/BOUNDARIES.md`
-  - `docs/TRACKING_INVARIANTS.md`
-  - `docs/TRACKING_EVENT_SERIES.md`
-  - `docs/ALERT_POLICY.md`
-
-### Stack
-
-- Node.js `>= 22`
-- TypeScript
-- SolidStart/SolidJS (Vinxi)
-- Zod para validação
-- Vitest para testes
-- Biome + ESLint para qualidade de código
-
-### Instalação e execução
-
-```bash
-pnpm install
-pnpm run dev
+```
+Snapshot → Observation → Timeline → Status → Alerts
 ```
 
-Aplicação em desenvolvimento via `vinxi dev`.
+- Snapshots are immutable
+- Observations are append-only
+- Status is derived (never stored)
+- Alerts are derived and idempotent
 
-### Scripts úteis
+Reference:
+- :contentReference[oaicite:1]{index=1}
 
-```bash
-pnpm run build       # build de produção
-pnpm run start       # sobe build de produção
-pnpm run test        # testes (vitest)
-pnpm run type-check  # checagem de tipos
-pnpm run lint        # lint + regras
-pnpm run check       # fix/lint + type-check + test
-pnpm run i18n:check  # valida chaves de i18n
-pnpm run maersk:smoke:puppeteer # smoke técnico de launch headless do Puppeteer
+---
+
+## 2.2 Determinism
+
+Given the same observations:
+
+- timeline is deterministic
+- status is deterministic
+- alerts are deterministic
+
+No layer may reinterpret or override domain results.
+
+---
+
+## 2.3 Auditability
+
+- No fact is deleted
+- No history is rewritten
+- Conflicts are exposed, not hidden
+
+Reference:
+- :contentReference[oaicite:2]{index=2}
+
+---
+
+## 2.4 Timeline-First UX
+
+Shipment view is **timeline-first**.
+
+- Chronology is the primary artifact
+- Metadata is secondary (sidebar)
+- Grouped operational blocks must be preserved
+
+Reference:
+- :contentReference[oaicite:3]{index=3}
+
+---
+
+# 3. Domain Model
+
+## 3.1 Process (Shipment)
+
+Logical grouping of containers.
+
+Contains:
+
+- reference
+- origin / destination
+- containers[]
+
+Does **not** own tracking logic.
+
+---
+
+## 3.2 Container
+
+Represents a physical container.
+
+Contains:
+
+- container number
+- carrier code
+
+Does **not** derive:
+
+- timeline
+- status
+- alerts
+
+---
+
+## 3.3 Tracking (Core Domain)
+
+Event-driven domain responsible for:
+
+- snapshot ingestion
+- observation normalization
+- event-series grouping
+- timeline derivation
+- status derivation
+- alert derivation
+
+Reference:
+- :contentReference[oaicite:4]{index=4}
+
+---
+
+# 4. Event Model
+
+## 4.1 Observations
+
+Normalized facts derived from snapshots.
+
+Fields:
+
+- type
+- location
+- event_time
+- event_time_type: ACTUAL | EXPECTED
+
+Properties:
+
+- immutable
+- append-only
+- idempotent (fingerprint)
+
+---
+
+## 4.2 Event Series
+
+Observations are grouped into **series** (semantic milestones).
+
+Example:
+
+```
+EXPECTED LOAD
+EXPECTED LOAD (update)
+ACTUAL LOAD
 ```
 
-### Smoke técnico Puppeteer (devcontainer)
+All belong to the same series.
 
-Use este comando para validar rapidamente se o browser do devcontainer está compatível com launch headless:
+---
 
-```bash
-pnpm run maersk:smoke:puppeteer
+## 4.3 Safe-First Rule
+
+Primary event selection:
+
+1. If ACTUAL exists → latest ACTUAL
+2. Else → latest active EXPECTED
+
+---
+
+## 4.4 Derived States
+
+- ACTUAL
+- ACTIVE_EXPECTED
+- EXPIRED_EXPECTED
+
+EXPECTED after ACTUAL = redundant
+
+Conflicts (multiple ACTUAL) must be exposed.
+
+Reference:
+- :contentReference[oaicite:5]{index=5}
+
+---
+
+# 5. Container Status
+
+Status is derived from timeline.
+
+Examples:
+
+- BOOKED
+- GATE_IN
+- LOADED_ON_VESSEL
+- IN_TRANSIT
+- ARRIVED_AT_POD
+- DELIVERED
+- EMPTY_RETURNED
+
+Rules:
+
+- never stored as truth
+- monotonic when possible
+
+Reference:
+- :contentReference[oaicite:6]{index=6}
+
+---
+
+# 6. Alerts
+
+Alerts are derived from domain state.
+
+Categories:
+
+- eta
+- movement
+- customs
+- status
+- data
+
+Types:
+
+- Fact alerts → based on history
+- Monitoring alerts → based on "now"
+
+Properties:
+
+- idempotent
+- deterministic
+- never suppress facts
+
+Reference:
+- :contentReference[oaicite:7]{index=7}
+
+---
+
+# 7. Architecture
+
+## 7.1 Structure
+
 ```
-
-Saída esperada em sucesso: `[maersk-smoke] PASS`.
-
-Em falha, o comando classifica a causa com hints acionáveis:
-
-- `missing_browser_binary`: Chrome/Chromium não encontrado no ambiente.
-- `invalid_chrome_path`: `CHROME_PATH` definido para caminho inválido/não executável.
-- `launch_incompatibility`: browser encontrado, mas `puppeteer.launch(...)` falhou.
-
-### Smoke da rota `/api/refresh-maersk/:container` (devcontainer)
-
-Procedimento reproduzível para validar que o browser deixou de ser o bloqueio principal:
-
-1. Em um terminal no devcontainer, valide primeiro o launch técnico:
-
-```bash
-pnpm run maersk:smoke:puppeteer
-```
-
-2. Suba a aplicação local:
-
-```bash
-pnpm run dev
-```
-
-3. Em outro terminal, chame o endpoint Maersk:
-
-```bash
-CONTAINER=MRKU1234567
-curl -sS "http://localhost:3000/api/refresh-maersk/${CONTAINER}?headless=1&hold=0&timeout=70000" \
-  | tee /tmp/maersk-refresh-smoke.json
-```
-
-4. Verifique o critério mínimo de sucesso:
-
-```bash
-if grep -q "Browser launch failed" /tmp/maersk-refresh-smoke.json; then
-  echo "FAIL: browser launch ainda bloqueando o endpoint"
-else
-  echo "PASS: browser launch não é o bloqueio atual"
-fi
-```
-
-Regras de avaliação:
-
-- Critério mínimo: a saída do endpoint não pode conter `Browser launch failed`.
-- Erros externos do provider (por exemplo `403 Access Denied by Akamai` ou `502 No API response captured`) não reprovam este smoke, desde que o erro de launch não apareça.
-- Se aparecer `Browser launch failed`, revise `CHROME_PATH` e repita `pnpm run maersk:smoke:puppeteer` antes de depurar integração Maersk.
-
-### Política de versão do Chromium (devcontainer)
-
-- A versão do browser é controlada explicitamente em `.devcontainer/devcontainer.json` via `build.args.CHROMIUM_VERSION`.
-- O build instala `chromium=$CHROMIUM_VERSION` em `.devcontainer/Dockerfile` e aplica `apt-mark hold chromium` para evitar drift acidental.
-- Não existe etapa de auto-update de Chromium em `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh` ou nos fluxos de refresh da aplicação.
-
-#### Processo manual de bump (somente via PR explícito)
-
-1. Identifique a versão alvo disponível para Debian Bookworm:
-
-```bash
-apt-cache madison chromium
-```
-
-2. Atualize o valor de `build.args.CHROMIUM_VERSION` em `.devcontainer/devcontainer.json`.
-3. Abra uma PR explícita de bump de versão (ex.: `chore(devcontainer): bump chromium to <version>`).
-4. Rebuild do devcontainer e valide:
-
-```bash
-pnpm run maersk:smoke:puppeteer
-pnpm run check
-```
-
-### Loop autônomo com Codex (Ralph + Devcontainer)
-
-Guia completo de setup, comandos `ai:loop:*`, fluxo container/host e troubleshooting:
-
-- `docs/AI_LOOP_CODEX.md`
-
-### Quality Gate (CI)
-
-- Workflow obrigatório: `.github/workflows/quality.yml`
-- Checks executados em `pull_request` e `push` para `main`:
-  - `pnpm run lint`
-  - `pnpm run type-check`
-  - `pnpm run test`
-- Recomenda-se branch protection exigindo os três checks acima antes de merge.
-
-### Estrutura rápida do código
-
-```text
 src/
-  modules/       # contexto de domínio
-  capabilities/  # orquestração cross-context
-  routes/        # camada de interface web
-  shared/        # utilitários e infraestrutura compartilhada
+  modules/        # Bounded Contexts (source of truth)
+  capabilities/   # Cross-BC orchestration
+  routes/         # Thin adapters
+  shared/         # Infra/utilities only
 ```
 
-### Princípio central
+Reference:
+- :contentReference[oaicite:8]{index=8}
 
-Estados são derivados de eventos.  
-Eventos são derivados de snapshots.  
-Snapshots nunca são descartados.
+---
+
+## 7.2 Bounded Contexts
+
+- process
+- container
+- tracking
+
+Rules:
+
+- BC owns its domain
+- no cross-BC domain imports
+- domain never depends on UI or HTTP
+
+Reference:
+- :contentReference[oaicite:9]{index=9}
+
+---
+
+## 7.3 Capabilities
+
+Capabilities:
+
+- orchestrate multiple BCs
+- compose read models
+- do NOT define domain rules
+
+Example:
+
+```
+capabilities/sync
+```
+
+Reference:
+- :contentReference[oaicite:10]{index=10}
+
+---
+
+## 7.4 Type Architecture (Mandatory)
+
+Each boundary changes type:
+
+```
+Row → Entity → Result → Response DTO → ViewModel
+```
+
+Rules:
+
+- Entity is backend-only
+- UI never consumes Entity
+- Repository returns Entity and throws errors
+
+Reference:
+- :contentReference[oaicite:11]{index=11}
+
+---
+
+# 8. UI Architecture
+
+## 8.1 Shipment Screen
+
+Canonical layout:
+
+```
+Main:
+  - Container selector
+  - Timeline
+
+Sidebar:
+  - Shipment info
+  - Current status
+  - Alerts
+```
+
+Rules:
+
+- timeline is primary
+- sidebar supports, never interrupts
+
+---
+
+## 8.2 UI Responsibilities
+
+UI may:
+
+- map DTO → ViewModel
+- format dates / labels
+- handle interaction
+
+UI must NOT:
+
+- derive timeline
+- derive status
+- derive alerts
+- reinterpret ACTUAL vs EXPECTED
+
+Reference:
+- :contentReference[oaicite:12]{index=12}
+
+---
+
+# 9. Tracking Pipeline
+
+```
+Carrier API
+   ↓
+Snapshot (immutable)
+   ↓
+Observation (normalized)
+   ↓
+Series (grouped)
+   ↓
+Timeline (derived)
+   ↓
+Status (derived)
+   ↓
+Alerts (derived)
+```
+
+---
+
+# 10. Operational Guarantees
+
+- append-only history
+- deterministic derivation
+- explicit conflict visibility
+- no hidden corrections
+- explainable state at any point in time
+
+---
+
+# 11. Non-Goals
+
+The system does NOT:
+
+- mutate historical facts
+- simplify timeline to “last event”
+- hide inconsistencies
+- derive domain truth in UI
+- centralize domain logic in shared/
+
+---
+
+# 12. Development Guidelines
+
+## Must
+
+- respect BC boundaries
+- keep domain logic inside tracking
+- use explicit mappers between layers
+- preserve auditability
+
+## Must NOT
+
+- use `Partial<Entity>`
+- re-derive status in UI
+- create implicit shared kernel
+- flatten timeline semantics
+
+---
+
+# 13. Key References
+
+- Product & Domain → `docs/MASTER_v2.md`
+- Architecture → `docs/ARCHITECTURE.md`
+- Type System → `docs/TYPE_ARCHITECTURE.md`
+- Boundaries → `docs/BOUNDARIES.md`
+- Tracking Invariants → `docs/TRACKING_INVARIANTS.md`
+- Event Series → `docs/TRACKING_EVENT_SERIES.md`
+- Alert Policy → `docs/ALERT_POLICY.md`
+- UI Philosophy → `docs/UI_PHILOSOPHY.md`
+
+---
+
+# 14. Summary
+
+Container Tracker is:
+
+- event-driven
+- append-only
+- deterministic
+- audit-first
+- timeline-first
+
+> The domain defines truth.  
+> The UI exposes it.  
+> Nothing else is allowed to reinterpret it.
