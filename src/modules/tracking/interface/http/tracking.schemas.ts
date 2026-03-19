@@ -1,5 +1,6 @@
 import z from 'zod/v4'
 import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
+import { ISO_INSTANT_PATTERN } from '~/shared/time/instant'
 
 // ---------------------------------------------------------------------------
 // Alerts — Request DTOs
@@ -118,15 +119,17 @@ export const GetLatestSnapshotRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
 
+const IsoInstantQuerySchema = z.string().regex(ISO_INSTANT_PATTERN)
+
 export const GetTrackingTimeTravelRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
-  now: z.string().optional(),
+  now: IsoInstantQuerySchema.optional(),
 })
 
 export const GetTrackingReplayDebugRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
   snapshotId: z.string().min(1, 'snapshotId is required'),
-  now: z.string().optional(),
+  now: IsoInstantQuerySchema.optional(),
 })
 
 // ---------------------------------------------------------------------------

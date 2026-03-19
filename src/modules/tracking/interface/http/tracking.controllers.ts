@@ -150,7 +150,7 @@ function createSnapshotsController(trackingUseCases: TrackingUseCases) {
 }
 
 function parseReferenceNow(rawNow: string | undefined): Instant | null {
-  if (typeof rawNow !== 'string' || rawNow.trim().length === 0) return systemClock.now()
+  if (rawNow === undefined) return systemClock.now()
   return parseInstantFromIso(rawNow)
 }
 

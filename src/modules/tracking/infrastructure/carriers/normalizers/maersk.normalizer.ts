@@ -68,6 +68,21 @@ function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeTy
   return 'EXPECTED'
 }
 
+const MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN = /(Z|[+-]\d{2}:\d{2})$/u
+
+function parseMaerskEventTime(
+  eventTime: string | null | undefined,
+): ObservationDraft['event_time'] {
+  if (typeof eventTime !== 'string') return null
+
+  const trimmed = eventTime.trim()
+  if (trimmed.length === 0) return null
+
+  const normalized = MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN.test(trimmed) ? trimmed : `${trimmed}Z`
+  const parsedInstant = parseInstantFromIso(normalized)
+  return parsedInstant ? instantValue(parsedInstant) : null
+}
+
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
   // Preserve the original provider text for audit/UI transparency.
@@ -111,13 +126,7 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
 
       for (const event of events) {
         const type = mapMaerskActivity(event.activity)
-        const eventTime =
-          typeof event.event_time === 'string'
-            ? (() => {
-                const parsedInstant = parseInstantFromIso(event.event_time)
-                return parsedInstant ? instantValue(parsedInstant) : null
-              })()
-            : null
+        const eventTime = parseMaerskEventTime(event.event_time)
         const locationCode = event.locationCode ?? location.location_code ?? null
         const locationDisplay =
           [location.city, location.country_code].filter(Boolean).join(', ') || null

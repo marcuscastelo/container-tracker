@@ -1,32 +1,24 @@
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { TrackingSearchObservationProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
-import { compareTrackingTemporalValues } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import {
   observationRowToDomain,
   observationToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mappers'
 import { supabase } from '~/shared/supabase/supabase'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
-import { Instant } from '~/shared/time/instant'
 
 const TABLE = 'container_observations' as const
 const CONTAINERS_TABLE = 'containers' as const
 
 function compareObservationChronology(left: Observation, right: Observation): number {
-  const eventTimeCompare = compareTrackingTemporalValues(left.event_time, right.event_time)
-  if (eventTimeCompare !== 0) {
-    return eventTimeCompare
-  }
-
-  const createdAtCompare = Instant.fromIso(left.created_at).compare(
-    Instant.fromIso(right.created_at),
-  )
-  if (createdAtCompare !== 0) {
-    return createdAtCompare
+  const chronologyCompare = compareObservationsChronologically(left, right)
+  if (chronologyCompare !== 0) {
+    return chronologyCompare
   }
 
   return left.id.localeCompare(right.id)

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer'
 import fullPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
@@ -149,6 +150,12 @@ describe('normalizeMaerskSnapshot', () => {
       const gateIn = drafts.find((d) => d.type === 'GATE_IN')
       expect(gateIn?.vessel_name).toBeNull()
       expect(gateIn?.voyage).toBeNull()
+    })
+
+    it('should normalize timezone-less event_time values as UTC instants', () => {
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
+
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe('2026-01-13T20:15:00.000Z')
     })
   })
 

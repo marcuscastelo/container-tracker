@@ -273,6 +273,21 @@ describe('tracking controllers', () => {
     expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
   })
 
+  it('time-travel endpoint rejects now values without timezone', async () => {
+    const containerId = 'container-replay-invalid-now'
+    const { controllers } = createControllers()
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel?now=2026-02-03T15:00:00.000`,
+    )
+    const response = await controllers.timeTravel.getTimeTravel({
+      params: { containerId },
+      request,
+    })
+
+    expect(response.status).toBe(400)
+  })
+
   it('time-travel debug endpoint returns selected snapshot debug payload', async () => {
     const containerId = 'container-replay-debug'
     const { controllers } = createControllers({

@@ -15,6 +15,9 @@ import {
  *  - ISO / RFC string representations
  */
 export function normalizeTimestamptz(value: unknown): string | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString()
+  }
   if (typeof value === 'number') {
     const d = parseDateFromNumber(value)
     return d ? d.toIsoString() : null
