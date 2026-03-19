@@ -21,6 +21,8 @@ import { createAgentScheduler } from './agent.scheduler.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { computeBackoffDelayMs } from './backoff.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { createAgentLogForwarder } from './log-forwarder.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { drainPendingActivityEvents } from './pending-activity.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
@@ -741,6 +743,7 @@ async function sendHeartbeat(command: {
       updater_last_checked_at: command.state.updaterLastCheckedAt,
       active_jobs: command.state.activeJobs,
       capabilities: resolveAgentCapabilities(command.config),
+      logs_supported: true,
       interval_sec: command.config.INTERVAL_SEC,
       queue_lag_seconds: command.state.queueLagSeconds,
       last_error: command.state.lastError,
@@ -1399,6 +1402,15 @@ async function main(): Promise<void> {
     updaterLastCheckedAt: null,
   }
 
+  const logForwarder = createAgentLogForwarder({
+    backendUrl: runtimeConfig.BACKEND_URL,
+    agentToken: runtimeConfig.AGENT_TOKEN,
+    agentId: runtimeConfig.AGENT_ID,
+    logsDir: agentLayout.logsDir,
+    statePath: path.join(agentLayout.dataDir, 'agent-log-forwarder-state.json'),
+  })
+  logForwarder.start()
+
   const pendingActivities = drainPendingActivityEvents(supervisorPaths.pendingActivityPath).map(
     toRuntimeActivityFromPending,
   )
@@ -1486,9 +1498,9 @@ async function main(): Promise<void> {
         })
         scheduler?.stop()
         realtimeSubscription?.unsubscribe()
-        setTimeout(() => {
+        void logForwarder.stop().finally(() => {
           process.exit(EXIT_UPDATE_RESTART)
-        }, 0)
+        })
       }
     },
     onRunError({ reason, error }) {
@@ -1581,6 +1593,9 @@ async function main(): Promise<void> {
     })
     realtimeSubscription?.unsubscribe()
     scheduler?.stop()
+    void logForwarder.stop().catch((error) => {
+      console.warn(`[agent] log forwarder stop failed: ${toErrorMessage(error)}`)
+    })
     supervisorControl.clearSupervisorControl(supervisorPaths.controlPath)
   }
 

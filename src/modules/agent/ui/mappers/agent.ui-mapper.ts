@@ -232,6 +232,7 @@ export function toAgentListItemVM(dto: AgentSummaryPayload, now: Date): AgentLis
     agentId: dto.agentId,
     tenantName: dto.tenantName,
     hostname: dto.hostname,
+    os: dto.os,
     version: dto.version,
     currentVersion: dto.currentVersion,
     desiredVersionDisplay: dto.desiredVersion ?? '—',
@@ -252,6 +253,8 @@ export function toAgentListItemVM(dto: AgentSummaryPayload, now: Date): AgentLis
     capabilitiesDisplay: dto.capabilities.join(', '),
     realtimeLabel: realtimeLabel(dto.realtimeState),
     realtimeTone: realtimeTone(dto.realtimeState),
+    logsSupported: dto.logsSupported,
+    lastLogAtDisplay: formatDateTime(dto.lastLogAt),
     isProblematic: isProblematic(dto),
   }
 }
@@ -396,6 +399,7 @@ export function toAgentDetailVM(dto: AgentDetailPayload, now: Date): AgentDetail
     currentVersion: dto.currentVersion,
     desiredVersion: dto.desiredVersion,
     updateChannel: dto.updateChannel,
+    os: dto.os,
     updaterStateLabel: updaterStateLabel(dto.updaterState),
     updateAvailable: dto.updateAvailable,
     restartRequired: dto.restartRequired,
@@ -426,6 +430,8 @@ export function toAgentDetailVM(dto: AgentDetailPayload, now: Date): AgentDetail
     intervalDisplay: dto.intervalSec !== null ? `${dto.intervalSec}s` : '—',
     updaterLastCheckedDisplay: formatDateTime(dto.updaterLastCheckedAt),
     capabilities: dto.capabilities,
+    logsSupported: dto.logsSupported,
+    lastLogAtDisplay: formatDateTime(dto.lastLogAt),
 
     lastError: dto.lastError,
     diagnosticFlags: buildDiagnosticFlags(dto),

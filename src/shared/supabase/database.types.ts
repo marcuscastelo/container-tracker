@@ -297,6 +297,50 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_log_events: {
+        Row: {
+          agent_id: string
+          channel: string
+          created_at: string
+          id: string
+          message: string
+          occurred_at: string
+          sequence: number
+          tenant_id: string
+          truncated: boolean
+        }
+        Insert: {
+          agent_id: string
+          channel: string
+          created_at?: string
+          id?: string
+          message: string
+          occurred_at?: string
+          sequence: number
+          tenant_id: string
+          truncated?: boolean
+        }
+        Update: {
+          agent_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          message?: string
+          occurred_at?: string
+          sequence?: number
+          tenant_id?: string
+          truncated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'agent_log_events_agent_id_fkey'
+            columns: ['agent_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_agents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       sync_requests: {
         Row: {
           attempts: number
@@ -406,8 +450,10 @@ export type Database = {
           interval_sec: number
           last_enrolled_at: string
           last_error: string | null
+          last_log_at: string | null
           last_seen_at: string | null
           lease_health: string
+          logs_supported: boolean
           machine_fingerprint: string
           maersk_enabled: boolean
           maersk_headless: boolean
@@ -448,8 +494,10 @@ export type Database = {
           interval_sec?: number
           last_enrolled_at?: string
           last_error?: string | null
+          last_log_at?: string | null
           last_seen_at?: string | null
           lease_health?: string
+          logs_supported?: boolean
           machine_fingerprint: string
           maersk_enabled?: boolean
           maersk_headless?: boolean
@@ -490,8 +538,10 @@ export type Database = {
           interval_sec?: number
           last_enrolled_at?: string
           last_error?: string | null
+          last_log_at?: string | null
           last_seen_at?: string | null
           lease_health?: string
+          logs_supported?: boolean
           machine_fingerprint?: string
           maersk_enabled?: boolean
           maersk_headless?: boolean

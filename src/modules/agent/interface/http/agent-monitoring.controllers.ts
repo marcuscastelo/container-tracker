@@ -1,6 +1,8 @@
 import type { AgentMonitoringUseCases } from '~/modules/agent/application/agent-monitoring.usecases'
 import {
   toAgentDetailCommand,
+  toAgentLogIngestCommand,
+  toAgentLogsCommand,
   toHeartbeatActivityCommands,
   toHeartbeatCommand,
   toListAgentsCommand,
@@ -11,6 +13,10 @@ import {
   AgentHeartbeatResponseSchema,
   AgentListQuerySchema,
   AgentListResponseSchema,
+  AgentLogIngestBodySchema,
+  AgentLogIngestResponseSchema,
+  AgentLogsQuerySchema,
+  AgentLogsResponseSchema,
   AgentRequestOperationResponseSchema,
   AgentRequestUpdateBodySchema,
   AgentUpdateManifestResponseSchema,
@@ -24,8 +30,10 @@ type AgentMonitoringControllersDeps = {
     AgentMonitoringUseCases,
     | 'listAgents'
     | 'getAgentDetail'
+    | 'getAgentLogs'
     | 'authenticateAgentToken'
     | 'touchHeartbeat'
+    | 'ingestAgentLogs'
     | 'recordActivity'
     | 'requestAgentUpdate'
     | 'requestAgentRestart'
@@ -114,6 +122,55 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
     }
   }
 
+  async function getAgentLogs({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    try {
+      const agentId = params.id
+      if (!agentId) {
+        return jsonResponse({ error: 'Agent ID is required' }, 400)
+      }
+
+      const url = new URL(request.url)
+      const parsedQuery = AgentLogsQuerySchema.safeParse({
+        channel: url.searchParams.get('channel') ?? undefined,
+        tail: url.searchParams.get('tail') ?? undefined,
+      })
+      if (!parsedQuery.success) {
+        return jsonResponse({ error: `Invalid query: ${parsedQuery.error.message}` }, 400)
+      }
+
+      const result = await deps.agentMonitoringUseCases.getAgentLogs(
+        toAgentLogsCommand({
+          tenantId: deps.defaultTenantId,
+          agentId,
+          query: parsedQuery.data,
+        }),
+      )
+      if (!result) {
+        return jsonResponse({ error: 'Agent not found' }, 404)
+      }
+
+      return jsonResponse(
+        {
+          agentId: result.agentId,
+          os: result.os,
+          logsSupported: result.logsSupported,
+          lastLogAt: result.lastLogAt,
+          lines: result.lines.map((line) => ({ ...line })),
+        },
+        200,
+        AgentLogsResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
   async function heartbeat({ request }: { readonly request: Request }): Promise<Response> {
     try {
       const providedToken = getBearerToken(request.headers.get('authorization'))
@@ -163,6 +220,49 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
         },
         200,
         AgentHeartbeatResponseSchema,
+      )
+    } catch (error) {
+      return mapErrorToResponse(error)
+    }
+  }
+
+  async function ingestLogs({ request }: { readonly request: Request }): Promise<Response> {
+    try {
+      const providedToken = getBearerToken(request.headers.get('authorization'))
+      if (!providedToken) {
+        return jsonResponse({ error: 'Unauthorized' }, 401)
+      }
+
+      const auth = await deps.agentMonitoringUseCases.authenticateAgentToken({
+        token: providedToken,
+      })
+      if (!auth) {
+        return jsonResponse({ error: 'Unauthorized' }, 401)
+      }
+
+      const rawBody: unknown = await request.json().catch(() => ({}))
+      const parsedBody = AgentLogIngestBodySchema.safeParse(rawBody)
+      if (!parsedBody.success) {
+        return jsonResponse({ error: `Invalid request: ${parsedBody.error.message}` }, 400)
+      }
+
+      const result = await deps.agentMonitoringUseCases.ingestAgentLogs(
+        toAgentLogIngestCommand({
+          tenantId: auth.tenantId,
+          agentId: auth.agentId,
+          payload: parsedBody.data,
+        }),
+      )
+
+      return jsonResponse(
+        {
+          ok: true,
+          accepted: result.accepted,
+          persisted: result.persisted,
+          updatedAt: new Date().toISOString(),
+        },
+        200,
+        AgentLogIngestResponseSchema,
       )
     } catch (error) {
       return mapErrorToResponse(error)
@@ -321,7 +421,9 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
   return {
     listAgents,
     getAgentById,
+    getAgentLogs,
     heartbeat,
+    ingestLogs,
     getUpdateManifest,
     requestAgentUpdate,
     requestAgentRestart,
