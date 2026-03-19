@@ -72,15 +72,18 @@ type DebugStepNavigatorProps = {
 
 function DebugStepNavigator(props: DebugStepNavigatorProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const stepPositionId = 'tracking-time-travel-step-position'
+  const stepPositionText = () =>
+    t(keys.shipmentView.timeTravel.stepPosition, {
+      current: props.selectedStepIndex + 1,
+      total: props.debug.steps.length,
+    })
 
   return (
     <div class="space-y-2 rounded-md border border-border/70 bg-surface p-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="text-xs-ui font-medium text-foreground">
-          {t(keys.shipmentView.timeTravel.stepPosition, {
-            current: props.selectedStepIndex + 1,
-            total: props.debug.steps.length,
-          })}
+        <div id={stepPositionId} class="text-xs-ui font-medium text-foreground">
+          {stepPositionText()}
         </div>
         <div class="text-xs-ui text-text-muted">
           {t(keys.shipmentView.timeTravel.debugStage, {
@@ -114,6 +117,8 @@ function DebugStepNavigator(props: DebugStepNavigatorProps): JSX.Element {
         max={String(props.debug.steps.length)}
         value={String(props.selectedStepIndex + 1)}
         class="w-full"
+        aria-labelledby={stepPositionId}
+        aria-valuetext={stepPositionText()}
         onInput={(event) => props.onSelectStep(Math.max(0, Number(event.currentTarget.value) - 1))}
       />
 

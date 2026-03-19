@@ -12,6 +12,9 @@ export async function getTrackingTimeTravel(
   deps: TrackingUseCasesDeps,
   command: GetTrackingTimeTravelCommand,
 ): Promise<TrackingTimeTravelResult> {
-  const run = await runTrackingReplay(deps, command)
+  const run = await runTrackingReplay(deps, {
+    ...command,
+    recordSteps: false,
+  })
   return buildTrackingTimeTravelReadModel(run)
 }

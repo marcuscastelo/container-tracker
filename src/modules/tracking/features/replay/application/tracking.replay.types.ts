@@ -4,12 +4,13 @@ import type { Observation } from '~/modules/tracking/features/observation/domain
 import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { HttpError } from '~/shared/errors/httpErrors'
 
 export const MAX_TRACKING_REPLAY_STEPS = 5000
 
-export class TrackingReplayStepLimitError extends Error {
+export class TrackingReplayStepLimitError extends HttpError {
   constructor(message: string) {
-    super(message)
+    super(message, 422)
     this.name = 'TrackingReplayStepLimitError'
   }
 }
@@ -84,6 +85,7 @@ export type RunTrackingReplayCommand = {
   readonly containerId: string
   readonly now?: Date
   readonly stopAfterSnapshotId?: string
+  readonly recordSteps?: boolean
 }
 
 export type TrackingTimeTravelDiff =

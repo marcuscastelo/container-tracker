@@ -115,14 +115,14 @@ function applyReplayAlertTransitions(
 }
 
 function toReplayAlertId(
-  stepIndex: number,
+  sequence: number,
   alertIndex: number,
   alertFingerprint: string | null,
 ): string {
   if (typeof alertFingerprint === 'string' && alertFingerprint.trim().length > 0) {
     return `replay-alert-${alertFingerprint}`
   }
-  return `replay-alert-${stepIndex}-${alertIndex}`
+  return `replay-alert-${sequence}-${alertIndex}`
 }
 
 function toReplayState(
@@ -221,6 +221,7 @@ export async function runTrackingReplay(
   command: RunTrackingReplayCommand,
 ): Promise<TrackingReplayRunResult> {
   const referenceNow = command.now ?? new Date()
+  const recordSteps = command.recordSteps ?? true
   const snapshots = [
     ...(await deps.snapshotRepository.findAllByContainerId(command.containerId)),
   ].sort(compareSnapshotsChronologically)
@@ -229,6 +230,7 @@ export async function runTrackingReplay(
   const observations: Observation[] = []
   let alerts: readonly TrackingAlert[] = []
   let observationSequence = 0
+  let replayAlertSequence = 0
 
   for (const snapshot of snapshots) {
     const snapshotNow = new Date(snapshot.fetched_at)
@@ -236,24 +238,26 @@ export async function runTrackingReplay(
     const containerNumber =
       resolveReplayContainerNumber(observations) ?? drafts[0]?.container_number ?? null
 
-    pushReplayStep({
-      steps,
-      containerId: command.containerId,
-      containerNumber,
-      observations,
-      alerts,
-      now: snapshotNow,
-      stage: 'SNAPSHOT',
-      timestamp: snapshot.fetched_at,
-      snapshotId: snapshot.id,
-      observationId: null,
-      input: {
-        snapshot,
-      },
-      output: {
-        drafts,
-      },
-    })
+    if (recordSteps) {
+      pushReplayStep({
+        steps,
+        containerId: command.containerId,
+        containerNumber,
+        observations,
+        alerts,
+        now: snapshotNow,
+        stage: 'SNAPSHOT',
+        timestamp: snapshot.fetched_at,
+        snapshotId: snapshot.id,
+        observationId: null,
+        input: {
+          snapshot,
+        },
+        output: {
+          drafts,
+        },
+      })
+    }
 
     const existingFingerprints = new Set(observations.map((observation) => observation.fingerprint))
     const newObservations = diffObservations(existingFingerprints, drafts, command.containerId)
@@ -306,7 +310,7 @@ export async function runTrackingReplay(
       )
       const createdAlerts = alertTransitions.newAlerts.map((alert, alertIndex) => ({
         ...alert,
-        id: toReplayAlertId(steps.length + 1, alertIndex, alert.alert_fingerprint),
+        id: toReplayAlertId(++replayAlertSequence, alertIndex, alert.alert_fingerprint),
       }))
       alerts = applyReplayAlertTransitions(
         alerts,
@@ -314,110 +318,113 @@ export async function runTrackingReplay(
         alertTransitions.monitoringAutoResolutions,
         snapshotNow.toISOString(),
       )
-      const currentState = toReplayState(
-        observations,
-        alerts,
-        command.containerId,
-        containerNumberAfterObservation,
-        snapshotNow,
-      )
 
-      pushReplayStep({
-        steps,
-        containerId: command.containerId,
-        containerNumber: containerNumberAfterObservation,
-        observations,
-        alerts,
-        now: snapshotNow,
-        stage: 'OBSERVATION',
-        timestamp: snapshot.fetched_at,
-        snapshotId: snapshot.id,
-        observationId: insertedObservation?.id ?? null,
-        input: {
-          draft,
-          fingerprint,
-        },
-        output:
-          insertedObservation === null
-            ? {
-                kind: 'discarded',
-                fingerprint,
-                reason: duplicateReason,
-              }
-            : {
-                kind: 'persisted',
-                observation: insertedObservation,
-              },
-      })
-      pushReplayStep({
-        steps,
-        containerId: command.containerId,
-        containerNumber: containerNumberAfterObservation,
-        observations,
-        alerts,
-        now: snapshotNow,
-        stage: 'SERIES',
-        timestamp: snapshot.fetched_at,
-        snapshotId: snapshot.id,
-        observationId: insertedObservation?.id ?? null,
-        input: {
+      if (recordSteps) {
+        const currentState = toReplayState(
+          observations,
+          alerts,
+          command.containerId,
+          containerNumberAfterObservation,
+          snapshotNow,
+        )
+
+        pushReplayStep({
+          steps,
+          containerId: command.containerId,
+          containerNumber: containerNumberAfterObservation,
+          observations,
+          alerts,
+          now: snapshotNow,
+          stage: 'OBSERVATION',
+          timestamp: snapshot.fetched_at,
+          snapshotId: snapshot.id,
           observationId: insertedObservation?.id ?? null,
-          fingerprint,
-        },
-        output: currentState.series,
-      })
-      pushReplayStep({
-        steps,
-        containerId: command.containerId,
-        containerNumber: containerNumberAfterObservation,
-        observations,
-        alerts,
-        now: snapshotNow,
-        stage: 'TIMELINE',
-        timestamp: snapshot.fetched_at,
-        snapshotId: snapshot.id,
-        observationId: insertedObservation?.id ?? null,
-        input: {
+          input: {
+            draft,
+            fingerprint,
+          },
+          output:
+            insertedObservation === null
+              ? {
+                  kind: 'discarded',
+                  fingerprint,
+                  reason: duplicateReason,
+                }
+              : {
+                  kind: 'persisted',
+                  observation: insertedObservation,
+                },
+        })
+        pushReplayStep({
+          steps,
+          containerId: command.containerId,
+          containerNumber: containerNumberAfterObservation,
+          observations,
+          alerts,
+          now: snapshotNow,
+          stage: 'SERIES',
+          timestamp: snapshot.fetched_at,
+          snapshotId: snapshot.id,
           observationId: insertedObservation?.id ?? null,
-        },
-        output: currentState.timeline,
-      })
-      pushReplayStep({
-        steps,
-        containerId: command.containerId,
-        containerNumber: containerNumberAfterObservation,
-        observations,
-        alerts,
-        now: snapshotNow,
-        stage: 'STATUS',
-        timestamp: snapshot.fetched_at,
-        snapshotId: snapshot.id,
-        observationId: insertedObservation?.id ?? null,
-        input: {
+          input: {
+            observationId: insertedObservation?.id ?? null,
+            fingerprint,
+          },
+          output: currentState.series,
+        })
+        pushReplayStep({
+          steps,
+          containerId: command.containerId,
+          containerNumber: containerNumberAfterObservation,
+          observations,
+          alerts,
+          now: snapshotNow,
+          stage: 'TIMELINE',
+          timestamp: snapshot.fetched_at,
+          snapshotId: snapshot.id,
           observationId: insertedObservation?.id ?? null,
-        },
-        output: currentState.status,
-      })
-      pushReplayStep({
-        steps,
-        containerId: command.containerId,
-        containerNumber: containerNumberAfterObservation,
-        observations,
-        alerts,
-        now: snapshotNow,
-        stage: 'ALERT',
-        timestamp: snapshot.fetched_at,
-        snapshotId: snapshot.id,
-        observationId: insertedObservation?.id ?? null,
-        input: {
+          input: {
+            observationId: insertedObservation?.id ?? null,
+          },
+          output: currentState.timeline,
+        })
+        pushReplayStep({
+          steps,
+          containerId: command.containerId,
+          containerNumber: containerNumberAfterObservation,
+          observations,
+          alerts,
+          now: snapshotNow,
+          stage: 'STATUS',
+          timestamp: snapshot.fetched_at,
+          snapshotId: snapshot.id,
           observationId: insertedObservation?.id ?? null,
-        },
-        output: {
-          newAlerts: createdAlerts,
-          autoResolutions: alertTransitions.monitoringAutoResolutions,
-          activeAlerts: currentState.alerts,
-        },
-      })
+          input: {
+            observationId: insertedObservation?.id ?? null,
+          },
+          output: currentState.status,
+        })
+        pushReplayStep({
+          steps,
+          containerId: command.containerId,
+          containerNumber: containerNumberAfterObservation,
+          observations,
+          alerts,
+          now: snapshotNow,
+          stage: 'ALERT',
+          timestamp: snapshot.fetched_at,
+          snapshotId: snapshot.id,
+          observationId: insertedObservation?.id ?? null,
+          input: {
+            observationId: insertedObservation?.id ?? null,
+          },
+          output: {
+            newAlerts: createdAlerts,
+            autoResolutions: alertTransitions.monitoringAutoResolutions,
+            activeAlerts: currentState.alerts,
+          },
+        })
+      }
     }
 
     checkpoints.push(
