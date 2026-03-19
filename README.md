@@ -11,11 +11,6 @@ Operational maritime tracking platform focused on **domain consistency, auditabi
 <img width="1904" height="1020" alt="image" src="https://github.com/user-attachments/assets/9907ff8c-941f-4187-8736-f45c136d03c0" />
 <img width="1904" height="1985" alt="image" src="https://github.com/user-attachments/assets/5a168dac-8028-43af-af84-90120c36887a" />
 
-### Mobile
-
-<img width="484" height="1223" alt="image" src="https://github.com/user-attachments/assets/1115f00a-0b1b-49c9-8369-6781b602ce8b" />
-<img width="484" height="3604" alt="image" src="https://github.com/user-attachments/assets/336b5161-b21b-4fbd-b5fa-8170642bd849" />
-
 ---
 
 # Phase 1: How an operator uses it
