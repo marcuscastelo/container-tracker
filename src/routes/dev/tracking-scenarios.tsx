@@ -375,6 +375,17 @@ function ShipmentPreview(props: {
     return selected ?? shipment.containers[0] ?? null
   })
 
+  const devOnTriggerRefresh = async () => {}
+  const devOnNormalizeAutoContainers = async (): Promise<{
+    normalized: false
+    reason: 'no_changes_required'
+    targetCarrierCode: string | null
+  }> => ({
+    normalized: false,
+    reason: 'no_changes_required',
+    targetCarrierCode: null,
+  })
+
   return (
     <div class="rounded-xl border border-slate-200 bg-white p-4">
       <h2 class="text-sm-ui font-semibold text-slate-900">Shipment Preview</h2>
@@ -401,12 +412,8 @@ function ShipmentPreview(props: {
               isRefreshing={false}
               refreshRetry={null}
               refreshHint={null}
-              onTriggerRefresh={async () => {}}
-              onNormalizeAutoContainers={async () => ({
-                normalized: false,
-                reason: 'no_changes_required',
-                targetCarrierCode: null,
-              })}
+              onTriggerRefresh={devOnTriggerRefresh}
+              onNormalizeAutoContainers={devOnNormalizeAutoContainers}
               syncNow={systemClock.now()}
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}

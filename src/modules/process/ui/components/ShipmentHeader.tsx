@@ -238,7 +238,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
       setShowUnknownCarrierDialog(true)
       return
     }
-    props.onTriggerRefresh()
+    void props.onTriggerRefresh()
   }
 
   return (

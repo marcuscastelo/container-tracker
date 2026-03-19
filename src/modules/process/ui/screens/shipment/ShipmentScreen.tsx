@@ -113,6 +113,16 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  const normalizeAutoContainersHandler = async (targetProcessId: string) => {
+    const result = await normalizeAutoCarriersRequest(targetProcessId)
+    await resource.reconcileTrackingView()
+    if (result.normalized) {
+      await refresh.triggerRefresh()
+      await resource.reconcileTrackingView()
+    }
+    return result
+  }
+
   return (
     <ShipmentScreenLayout
       shipmentData={resource.shipment}
@@ -164,15 +174,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
           refreshHint={refresh.refreshHint}
           syncNow={refresh.syncNow}
           onTriggerRefresh={refresh.triggerRefresh}
-          onNormalizeAutoContainers={async (targetProcessId: string) => {
-            const result = await normalizeAutoCarriersRequest(targetProcessId)
-            await resource.reconcileTrackingView()
-            if (result.normalized) {
-              await refresh.triggerRefresh()
-              await resource.reconcileTrackingView()
-            }
-            return result
-          }}
+          onNormalizeAutoContainers={normalizeAutoContainersHandler}
           selectedContainerId={selection.selectedContainerId}
           onSelectContainer={(id: string) => selection.setSelectedContainerId(String(id))}
           selectedContainer={selection.selectedContainer}

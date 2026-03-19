@@ -25,13 +25,13 @@ export type ContainerEntityProps = {
 
 export type ContainerEntity = ContainerBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>
 
-export function createContainerEntity(props: ContainerEntityProps): ContainerEntity {
+export function createContainerEntity(input: ContainerEntityProps): ContainerEntity {
   return Object.freeze(
     toContainerBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>({
-      ...props,
-      carrierAssignmentMode: props.carrierAssignmentMode ?? 'AUTO',
-      carrierDetectedAt: props.carrierDetectedAt ?? null,
-      carrierDetectionSource: props.carrierDetectionSource ?? null,
+      ...input,
+      carrierAssignmentMode: input.carrierAssignmentMode ?? 'AUTO',
+      carrierDetectedAt: input.carrierDetectedAt ?? null,
+      carrierDetectionSource: input.carrierDetectionSource ?? null,
     }),
   )
 }

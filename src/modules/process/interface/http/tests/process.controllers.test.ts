@@ -656,7 +656,7 @@ describe('process controllers', () => {
     const response = await controllers.normalizeAutoCarriersByProcessId({
       params: { id: 'process-1' },
     })
-    const body = (await response.json()) as {
+    const body = (await response.json()) satisfies {
       readonly ok: boolean
       readonly normalized: boolean
       readonly target_carrier_code: string
@@ -737,7 +737,7 @@ describe('process controllers', () => {
     const response = await controllers.normalizeAutoCarriersByProcessId({
       params: { id: 'process-1' },
     })
-    const body = (await response.json()) as {
+    const body = (await response.json()) satisfies {
       readonly ok: boolean
       readonly normalized: boolean
       readonly reason: string

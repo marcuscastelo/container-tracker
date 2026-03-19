@@ -1,9 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createContainerEntity } from '~/modules/container/domain/container.entity'
-import { toCarrierCode as toContainerCarrierCode } from '~/modules/container/domain/identity/carrier-code.vo'
-import { toContainerId } from '~/modules/container/domain/identity/container-id.vo'
-import { toContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
-import { toProcessId as toContainerProcessId } from '~/modules/container/domain/identity/process-id.vo'
 import { createNormalizeAutoCarriersUseCase } from '~/modules/process/application/usecases/normalize-auto-carriers.usecase'
 import { toCarrierCode } from '~/modules/process/domain/identity/carrier-code.vo'
 import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
@@ -19,14 +14,15 @@ function makeContainer(command: {
   readonly carrierCode: string | null
   readonly carrierAssignmentMode: 'AUTO' | 'MANUAL'
 }) {
-  return createContainerEntity({
-    id: toContainerId(command.id),
-    processId: toContainerProcessId(command.processId),
-    containerNumber: toContainerNumber(command.containerNumber),
-    carrierCode: command.carrierCode ? toContainerCarrierCode(command.carrierCode) : null,
+  // Use a plain test fixture object instead of importing cross-BC domain constructors
+  return {
+    id: command.id,
+    processId: command.processId,
+    containerNumber: command.containerNumber,
+    carrierCode: command.carrierCode ?? null,
     carrierAssignmentMode: command.carrierAssignmentMode,
     createdAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
-  })
+  }
 }
 
 describe('normalize-auto-carriers.usecase', () => {

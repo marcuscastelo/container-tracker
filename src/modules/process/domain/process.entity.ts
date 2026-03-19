@@ -31,16 +31,16 @@ export type ProcessEntityProps = {
 
 export type ProcessEntity = ProcessBrand<Readonly<ProcessEntityProps>, 'ProcessEntity'>
 
-export function createProcessEntity(props: ProcessEntityProps): ProcessEntity {
+export function createProcessEntity(input: ProcessEntityProps): ProcessEntity {
   return Object.freeze(
     toProcessBrand<Readonly<ProcessEntityProps>, 'ProcessEntity'>({
-      ...props,
+      ...input,
       carrierMode:
-        props.carrierMode ??
-        ((props.defaultCarrierCode ?? props.carrier) === null ? 'AUTO' : 'MANUAL'),
-      defaultCarrierCode: props.defaultCarrierCode ?? props.carrier ?? null,
-      lastResolvedCarrierCode: props.lastResolvedCarrierCode ?? null,
-      carrierResolvedAt: props.carrierResolvedAt ?? null,
+        input.carrierMode ??
+        ((input.defaultCarrierCode ?? input.carrier) === null ? 'AUTO' : 'MANUAL'),
+      defaultCarrierCode: input.defaultCarrierCode ?? input.carrier ?? null,
+      lastResolvedCarrierCode: input.lastResolvedCarrierCode ?? null,
+      carrierResolvedAt: input.carrierResolvedAt ?? null,
     }),
   )
 }
