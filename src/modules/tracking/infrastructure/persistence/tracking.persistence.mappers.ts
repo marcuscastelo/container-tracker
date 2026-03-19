@@ -119,12 +119,8 @@ function observationTemporalColumnsToDomain(row: TrackingObservationRow): Tempor
         return instantValue(
           Instant.fromIso(requireTimestamp(row.event_time, 'observation.event_time')),
         )
-      } else {
-        throw new Error(
-          'tracking persistence mapper: observation with null temporal_kind must have event_time populated for backward compatibility',
-        )
       }
-      // return null
+      return null
     }
 
     throw new Error(

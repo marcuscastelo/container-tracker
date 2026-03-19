@@ -87,6 +87,7 @@ describe('observationRowToDomain', () => {
       temporal_kind: null,
       event_time_instant: null,
       event_date: null,
+      event_time: null,
     })
     expect(result.event_time).toBeNull()
   })
