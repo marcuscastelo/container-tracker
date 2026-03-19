@@ -12,6 +12,7 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertDerivationState,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
@@ -94,8 +95,21 @@ class InMemoryObservationRepository implements ObservationRepository {
 
 class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   private alerts = new Map<string, TrackingAlert>()
-  async findAlertDerivationStateByContainerId(containerId: string): Promise<any> {
-    return null
+  async findAlertDerivationStateByContainerId(
+    containerId: string,
+  ): Promise<readonly TrackingAlertDerivationState[]> {
+    return [...this.alerts.values().filter((alert) => alert.container_id === containerId)].map(
+      (alert) => ({
+        id: alert.id,
+        type: alert.type,
+        category: alert.category,
+        source_observation_fingerprints: alert.source_observation_fingerprints,
+        alert_fingerprint: alert.alert_fingerprint,
+        active: resolveAlertLifecycleState(alert) === 'ACTIVE',
+        acked_at: alert.acked_at,
+        message_params: alert.message_params,
+      }),
+    )
   }
   async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     return alerts.map((alert) => {
