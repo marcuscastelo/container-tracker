@@ -612,10 +612,12 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
     }
   }
 
+  const IMPORT_DISABLED = true // TODO: enable button when import functionality is tested with stage database
+
   return (
     <>
       <ExportImportMenu
-        showImport={props.showImport}
+        showImport={props.showImport && !IMPORT_DISABLED}
         onOpenExport={() => setIsExportDialogOpen(true)}
         onOpenImport={() => setIsImportDialogOpen(true)}
       />
