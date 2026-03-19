@@ -2,6 +2,7 @@ import {
   readErrorFromJsonBody,
   toReadableErrorMessage,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentError.presenter'
+import type { RefreshRetryState } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'

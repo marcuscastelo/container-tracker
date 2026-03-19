@@ -26,7 +26,8 @@
       "!.output",
       "!.agent-runtime",
       "!packaging/arch/src/agent-app",
-      "!packaging/arch/pkg"
+      "!packaging/arch/pkg",
+      "!packaging/arch/src"
     ]
   },
   "linter": {

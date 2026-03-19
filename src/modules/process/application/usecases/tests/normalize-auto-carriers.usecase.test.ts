@@ -13,7 +13,7 @@ function makeContainer(command: {
   readonly containerNumber: string
   readonly carrierCode: string | null
   readonly carrierAssignmentMode: 'AUTO' | 'MANUAL'
-}) {
+}): any {
   // Use a plain test fixture object instead of importing cross-BC domain constructors
   return {
     id: command.id,
@@ -97,16 +97,19 @@ describe('normalize-auto-carriers.usecase', () => {
       if (index >= 0) {
         stateContainers[index] = updated
       }
+      // return a plain test fixture (typed as any) to satisfy the usecase contract
       return updated
     })
 
     const execute = createNormalizeAutoCarriersUseCase({
       repository,
       containerUseCases: {
-        listByProcessId: vi.fn(async () => ({ containers: stateContainers })),
+        listByProcessId: vi.fn(async () => ({
+          containers: stateContainers,
+        })),
         updateCarrier,
       },
-    })
+    } satisfies Parameters<typeof createNormalizeAutoCarriersUseCase>[0])
 
     const result = await execute({ processId: 'process-1' })
 
@@ -200,7 +203,7 @@ describe('normalize-auto-carriers.usecase', () => {
         })),
         updateCarrier,
       },
-    })
+    } satisfies Parameters<typeof createNormalizeAutoCarriersUseCase>[0])
 
     const result = await execute({ processId: 'process-2' })
 
@@ -278,7 +281,7 @@ describe('normalize-auto-carriers.usecase', () => {
         })),
         updateCarrier,
       },
-    })
+    } satisfies Parameters<typeof createNormalizeAutoCarriersUseCase>[0])
 
     const result = await execute({ processId: 'process-3' })
 
