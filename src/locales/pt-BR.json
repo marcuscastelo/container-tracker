@@ -41,6 +41,7 @@
   "exportImport": {
     "exportButton": "Exportar",
     "importButton": "Importar",
+    "moreActions": "Mais ações",
     "dialog": {
       "title": "Exportar dados",
       "description": "Escolha tipo, formato e opções de exportação.",

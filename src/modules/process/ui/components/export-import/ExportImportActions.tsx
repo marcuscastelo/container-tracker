@@ -1,5 +1,6 @@
+import { Download, Upload } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import {
   executeSymmetricImportBundle,
   type ReportFormat,
@@ -30,8 +31,11 @@ type ImportValidationState = {
   readonly warnings: readonly string[]
 }
 
-const HEADER_OUTLINE_BUTTON_CLASS =
-  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] items-center justify-center gap-2 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-3 text-sm-ui font-medium text-text-muted transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+const HEADER_MENU_BUTTON_CLASS =
+  'inline-flex h-[var(--dashboard-control-height)] min-h-[var(--dashboard-control-height)] cursor-pointer list-none items-center justify-center gap-1.5 rounded-[var(--dashboard-control-radius)] border border-border bg-surface px-2.5 text-sm-ui font-medium text-text-muted transition-colors select-none hover:border-border-strong hover:bg-surface-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
+
+const HEADER_MENU_ITEM_CLASS =
+  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm-ui font-medium text-foreground transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none'
 
 function readBundleFromFile(file: File): Promise<unknown> {
   return file.text().then((text) => JSON.parse(text))
@@ -67,6 +71,123 @@ function parseReportFormat(value: string): ReportFormat {
 function parsePortableFormat(value: string): PortableFormat {
   if (value === 'zip') return 'zip'
   return 'json'
+}
+
+type ExportImportMenuProps = {
+  readonly showImport: boolean
+  readonly onOpenExport: () => void
+  readonly onOpenImport: () => void
+}
+
+function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
+  const { t, keys } = useTranslation()
+  const [isMenuOpen, setIsMenuOpen] = createSignal(false)
+  let menuRef: HTMLDetailsElement | undefined
+
+  const closeMenu = (): void => {
+    if (!menuRef) {
+      setIsMenuOpen(false)
+      return
+    }
+    menuRef.open = false
+  }
+
+  const handleExportClick = (): void => {
+    closeMenu()
+    props.onOpenExport()
+  }
+
+  const handleImportClick = (): void => {
+    closeMenu()
+    props.onOpenImport()
+  }
+
+  onMount(() => {
+    const onDocClick: EventListener = (ev) => {
+      if (!menuRef) return
+      if (!menuRef.open) return
+      const target = ev.target
+      if (target instanceof Node && menuRef.contains(target)) return
+      menuRef.open = false
+    }
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (!menuRef?.open) return
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      menuRef.open = false
+    }
+
+    const onOtherOpened: EventListener = (ev) => {
+      if (!menuRef) return
+      if (!(ev instanceof CustomEvent)) return
+      if (ev.detail !== menuRef) {
+        menuRef.open = false
+      }
+    }
+
+    const onToggle: EventListener = () => {
+      if (!menuRef) return
+      setIsMenuOpen(menuRef.open)
+      if (menuRef.open) {
+        window.dispatchEvent(new CustomEvent('unified-dropdown-opened', { detail: menuRef }))
+      }
+    }
+
+    document.addEventListener('click', onDocClick)
+    document.addEventListener('keydown', onEscape)
+    window.addEventListener('unified-dropdown-opened', onOtherOpened)
+    menuRef?.addEventListener('toggle', onToggle)
+
+    onCleanup(() => {
+      document.removeEventListener('click', onDocClick)
+      document.removeEventListener('keydown', onEscape)
+      window.removeEventListener('unified-dropdown-opened', onOtherOpened)
+      menuRef?.removeEventListener('toggle', onToggle)
+    })
+  })
+
+  return (
+    <details
+      ref={(el) => {
+        if (el instanceof HTMLDetailsElement) menuRef = el
+        else menuRef = undefined
+      }}
+      class="group relative"
+      data-testid="export-import-actions-menu"
+    >
+      <summary
+        aria-haspopup="menu"
+        aria-label={t(keys.exportImport.moreActions)}
+        title={t(keys.exportImport.moreActions)}
+        data-state={isMenuOpen() ? 'open' : 'closed'}
+        class={HEADER_MENU_BUTTON_CLASS}
+      >
+        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="12" cy="5" r="1.75" />
+          <circle cx="12" cy="12" r="1.75" />
+          <circle cx="12" cy="19" r="1.75" />
+        </svg>
+        <span class="sr-only">{t(keys.exportImport.moreActions)}</span>
+      </summary>
+
+      <div class="absolute right-0 top-full z-20 mt-1 min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-lg">
+        <div class="divide-y divide-border py-1">
+          <Show when={props.showImport}>
+            <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={handleImportClick}>
+              <Upload class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+              {t(keys.exportImport.importButton)}
+            </button>
+          </Show>
+
+          <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={handleExportClick}>
+            <Download class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+            {t(keys.exportImport.exportButton)}
+          </button>
+        </div>
+      </div>
+    </details>
+  )
 }
 
 function ImportValidationPanel(props: {
@@ -493,23 +614,11 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
 
   return (
     <>
-      <button
-        type="button"
-        class={HEADER_OUTLINE_BUTTON_CLASS}
-        onClick={() => setIsExportDialogOpen(true)}
-      >
-        {t(keys.exportImport.exportButton)}
-      </button>
-
-      <Show when={props.showImport}>
-        <button
-          type="button"
-          class={HEADER_OUTLINE_BUTTON_CLASS}
-          onClick={() => setIsImportDialogOpen(true)}
-        >
-          {t(keys.exportImport.importButton)}
-        </button>
-      </Show>
+      <ExportImportMenu
+        showImport={props.showImport}
+        onOpenExport={() => setIsExportDialogOpen(true)}
+        onOpenImport={() => setIsImportDialogOpen(true)}
+      />
 
       <ExportDialog
         open={isExportDialogOpen()}

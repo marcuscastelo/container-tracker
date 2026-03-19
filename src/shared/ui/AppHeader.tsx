@@ -176,10 +176,6 @@ function HeaderActions(props: {
       <Show when={props.syncSlot}>
         {(syncSlot) => <div class="flex items-center">{syncSlot()}</div>}
       </Show>
-      <Show when={props.actionsSlot}>
-        {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}
-      </Show>
-
       <CreateProcessButton
         label={props.createProcessLabel}
         onCreateProcess={props.onCreateProcess}
@@ -190,6 +186,9 @@ function HeaderActions(props: {
         <LanguageSwitch />
       </div>
       <ThemeToggleButton />
+      <Show when={props.actionsSlot}>
+        {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}
+      </Show>
     </div>
   )
 }
