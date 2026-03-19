@@ -32,9 +32,10 @@ export const processMappers = {
         ? toCarrierCode(row.last_resolved_carrier_code)
         : null,
       carrierResolvedAt: row.carrier_resolved_at ? new Date(String(row.carrier_resolved_at)) : null,
-      carrier: (row.default_carrier_code ?? row.carrier)
-        ? toCarrierCode(String(row.default_carrier_code ?? row.carrier))
-        : null,
+      carrier:
+        (row.default_carrier_code ?? row.carrier)
+          ? toCarrierCode(String(row.default_carrier_code ?? row.carrier))
+          : null,
       billOfLading: row.bill_of_lading == null ? null : String(row.bill_of_lading),
       bookingNumber: row.booking_number == null ? null : String(row.booking_number),
       importerName: row.importer_name == null ? null : String(row.importer_name),

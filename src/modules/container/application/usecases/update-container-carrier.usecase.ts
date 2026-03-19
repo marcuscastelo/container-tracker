@@ -5,7 +5,12 @@ type UpdateContainerCarrierCommand = {
   readonly carrierCode: string | null
   readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
   readonly carrierDetectedAt?: string | null
-  readonly carrierDetectionSource?: 'process-seed' | 'auto-detect' | 'manual-user' | 'legacy-backfill' | null
+  readonly carrierDetectionSource?:
+    | 'process-seed'
+    | 'auto-detect'
+    | 'manual-user'
+    | 'legacy-backfill'
+    | null
 }
 
 export function createUpdateContainerCarrierUseCase(deps: { repository: ContainerRepository }) {

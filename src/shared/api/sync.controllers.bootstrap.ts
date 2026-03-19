@@ -57,7 +57,9 @@ function toCarrierSummary(carrierCodes: readonly (string | null)[]): EffectiveCa
   return 'MIXED'
 }
 
-function uniqueProviders(providers: readonly SupportedSyncProvider[]): readonly SupportedSyncProvider[] {
+function uniqueProviders(
+  providers: readonly SupportedSyncProvider[],
+): readonly SupportedSyncProvider[] {
   return [...new Set(providers)]
 }
 
@@ -109,9 +111,7 @@ async function getOrCreateRunningDetectionRun(command: {
     return running
   }
 
-  throw new Error(
-    `carrier_detection_run_not_available:${command.processId}:${command.containerId}`,
-  )
+  throw new Error(`carrier_detection_run_not_available:${command.processId}:${command.containerId}`)
 }
 
 async function resolveContainerIdForDetectionRun(command: {
@@ -363,8 +363,7 @@ const carrierDetectionWritePort = {
       })
     }
 
-    const shouldSeedPendingAutoContainers =
-      shouldPromoteProcess && summaryBeforeSeed === 'SINGLE'
+    const shouldSeedPendingAutoContainers = shouldPromoteProcess && summaryBeforeSeed === 'SINGLE'
 
     if (!shouldSeedPendingAutoContainers) {
       return

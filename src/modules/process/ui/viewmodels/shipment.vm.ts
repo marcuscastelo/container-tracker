@@ -78,7 +78,12 @@ export type ContainerDetailVM = {
   readonly carrierCode: string | null
   readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
   readonly carrierDetectedAt?: string | null
-  readonly carrierDetectionSource?: 'process-seed' | 'auto-detect' | 'manual-user' | 'legacy-backfill' | null
+  readonly carrierDetectionSource?:
+    | 'process-seed'
+    | 'auto-detect'
+    | 'manual-user'
+    | 'legacy-backfill'
+    | null
   readonly status: StatusVariant
   readonly statusCode: TrackingStatusCode
   readonly sync: ContainerSyncVM
