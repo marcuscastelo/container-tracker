@@ -4,6 +4,7 @@ import type {
   OperationalSnapshotReport,
   ReportFormat,
 } from '~/capabilities/export-import/application/export-import.models'
+import { buildTrelloMarkdownFiles } from '~/capabilities/export-import/infrastructure/serializers/report-trello-markdown.serializer'
 import type { TemporalValueDto } from '~/shared/time/dto'
 
 type SerializedExportFile = {
@@ -307,6 +308,42 @@ async function archiveXlsx(rows: readonly string[][]): Promise<Uint8Array> {
   })
 }
 
+async function archiveTextFiles(command: {
+  readonly files: readonly { readonly name: string; readonly content: string }[]
+}): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const archive = archiver('zip', {
+      zlib: { level: 9 },
+    })
+    const output = new PassThrough()
+    const chunks: Buffer[] = []
+
+    output.on('data', (chunk: Buffer) => {
+      chunks.push(chunk)
+    })
+
+    output.on('error', (error: Error) => {
+      reject(error)
+    })
+
+    output.on('end', () => {
+      resolve(Buffer.concat(chunks))
+    })
+
+    archive.on('error', (error: Error) => {
+      reject(error)
+    })
+
+    archive.pipe(output)
+
+    for (const file of command.files) {
+      archive.append(file.content, { name: file.name })
+    }
+
+    void archive.finalize()
+  })
+}
+
 export async function serializeReportExport(command: {
   readonly report: OperationalSnapshotReport
   readonly format: ReportFormat
@@ -345,5 +382,24 @@ export async function serializeReportExport(command: {
         contentType: 'application/pdf',
         content: serializeSimplePdf(command.report),
       }
+    case 'trello': {
+      const trelloFiles = buildTrelloMarkdownFiles(command.report)
+      if (command.report.scope === 'single_process') {
+        const firstFile = trelloFiles[0]
+        return {
+          filename: firstFile?.name ?? `snapshot-process-${datePart}.md`,
+          contentType: 'text/markdown; charset=utf-8',
+          content: Buffer.from(firstFile?.content ?? '', 'utf-8'),
+        }
+      }
+
+      return {
+        filename: `trello-export-${datePart}.zip`,
+        contentType: 'application/zip',
+        content: await archiveTextFiles({
+          files: trelloFiles,
+        }),
+      }
+    }
   }
 }

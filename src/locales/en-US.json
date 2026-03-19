@@ -42,6 +42,9 @@
     "exportButton": "Export",
     "importButton": "Import",
     "moreActions": "More actions",
+    "copyTrelloAction": "Copy for Trello",
+    "copyTrelloSuccess": "✓ Trello markdown copied to clipboard",
+    "copyTrelloError": "Unable to generate Trello export",
     "dialog": {
       "title": "Export data",
       "description": "Choose export type, format and options.",
@@ -49,6 +52,7 @@
       "typePortable": "Portable Export (Importable)",
       "typeReport": "Operational Snapshot Report",
       "format": "Format",
+      "formatTrello": "Trello",
       "includeContainers": "Include containers",
       "includeAlerts": "Include alerts",
       "includeTimelineSummary": "Include timeline summary",

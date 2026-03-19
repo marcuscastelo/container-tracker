@@ -58,4 +58,13 @@ describe('export-import request schemas', () => {
       }).success,
     ).toBe(true)
   })
+
+  it('accepts trello as a report export format', () => {
+    expect(
+      ReportExportRequestSchema.safeParse({
+        scope: 'all_processes',
+        format: 'trello',
+      }).success,
+    ).toBe(true)
+  })
 })

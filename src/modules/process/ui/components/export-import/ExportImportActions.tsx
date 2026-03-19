@@ -1,15 +1,18 @@
-import { Download, Upload } from 'lucide-solid'
+import { Copy, Download, Upload } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import toast from 'solid-toast'
 import {
   executeSymmetricImportBundle,
   type ReportFormat,
   requestOperationalReportExport,
+  requestOperationalReportExportText,
   requestPortableExport,
   validateSymmetricImportBundle,
 } from '~/modules/process/ui/api/export-import.api'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
+import { copyToClipboard } from '~/shared/utils/clipboard'
 
 type ExportImportActionsProps = {
   readonly processId: string | null
@@ -65,6 +68,7 @@ function parseReportFormat(value: string): ReportFormat {
   if (value === 'xlsx') return 'xlsx'
   if (value === 'markdown') return 'markdown'
   if (value === 'pdf') return 'pdf'
+  if (value === 'trello') return 'trello'
   return 'json'
 }
 
@@ -75,8 +79,10 @@ function parsePortableFormat(value: string): PortableFormat {
 
 type ExportImportMenuProps = {
   readonly showImport: boolean
+  readonly showCopyTrello: boolean
   readonly onOpenExport: () => void
   readonly onOpenImport: () => void
+  readonly onCopyTrello: () => void
 }
 
 function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
@@ -100,6 +106,11 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
   const handleImportClick = (): void => {
     closeMenu()
     props.onOpenImport()
+  }
+
+  const handleCopyTrelloClick = (): void => {
+    closeMenu()
+    props.onCopyTrello()
   }
 
   onMount(() => {
@@ -173,6 +184,13 @@ function ExportImportMenu(props: ExportImportMenuProps): JSX.Element {
 
       <div class="absolute right-0 top-full z-20 mt-1 min-w-56 overflow-hidden rounded-md border border-border bg-surface shadow-lg">
         <div class="divide-y divide-border py-1">
+          <Show when={props.showCopyTrello}>
+            <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={handleCopyTrelloClick}>
+              <Copy class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+              {t(keys.exportImport.copyTrelloAction)}
+            </button>
+          </Show>
+
           <Show when={props.showImport}>
             <button type="button" class={HEADER_MENU_ITEM_CLASS} onClick={handleImportClick}>
               <Upload class="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
@@ -270,6 +288,7 @@ type ExportDialogProps = {
 
 function ExportDialog(props: ExportDialogProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const isTrelloFormat = () => props.exportType === 'report' && props.reportFormat === 'trello'
 
   return (
     <Dialog
@@ -306,6 +325,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
                 <option value="xlsx">XLSX</option>
                 <option value="markdown">Markdown</option>
                 <option value="pdf">PDF</option>
+                <option value="trello">{t(keys.exportImport.dialog.formatTrello)}</option>
               </select>
             </label>
           }
@@ -323,7 +343,7 @@ function ExportDialog(props: ExportDialogProps): JSX.Element {
           </label>
         </Show>
 
-        <Show when={props.exportType === 'report'}>
+        <Show when={props.exportType === 'report' && !isTrelloFormat()}>
           <div class="space-y-2 rounded-md border border-border bg-surface-muted p-2 text-sm-ui text-foreground">
             <label class="flex items-center gap-2">
               <input
@@ -525,14 +545,15 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
       if (exportType() === 'portable') {
         await requestPortableExport({ scope: scope(), format: portableFormat() })
       } else {
+        const isTrelloFormat = reportFormat() === 'trello'
         await requestOperationalReportExport({
           scope: scope(),
           format: reportFormat(),
           options: {
-            includeContainers: includeContainers(),
-            includeAlerts: includeAlerts(),
-            includeTimelineSummary: includeTimelineSummary(),
-            includeExecutiveSummary: includeExecutiveSummary(),
+            includeContainers: isTrelloFormat ? true : includeContainers(),
+            includeAlerts: isTrelloFormat ? true : includeAlerts(),
+            includeTimelineSummary: isTrelloFormat ? true : includeTimelineSummary(),
+            includeExecutiveSummary: isTrelloFormat ? true : includeExecutiveSummary(),
           },
         })
       }
@@ -542,6 +563,28 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
       setExportError(error instanceof Error ? error.message : 'Export failed')
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  const handleCopyTrello = async () => {
+    if (props.processId === null) return
+
+    try {
+      const markdown = await requestOperationalReportExportText({
+        scope: scope(),
+        format: 'trello',
+        options: {
+          includeContainers: true,
+          includeAlerts: true,
+          includeTimelineSummary: true,
+          includeExecutiveSummary: true,
+        },
+      })
+      await copyToClipboard(markdown)
+      toast.success(t(keys.exportImport.copyTrelloSuccess))
+    } catch (error) {
+      console.error('Failed to copy Trello export', error)
+      toast.error(t(keys.exportImport.copyTrelloError))
     }
   }
 
@@ -619,8 +662,10 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
     <>
       <ExportImportMenu
         showImport={props.showImport && !IMPORT_DISABLED}
+        showCopyTrello={props.processId !== null}
         onOpenExport={() => setIsExportDialogOpen(true)}
         onOpenImport={() => setIsImportDialogOpen(true)}
+        onCopyTrello={() => void handleCopyTrello()}
       />
 
       <ExportDialog

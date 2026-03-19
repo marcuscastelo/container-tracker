@@ -77,6 +77,68 @@ function getLatestEventFromTimelineItems(
   return latest === null ? null : toTemporalValueDto(latest)
 }
 
+type ReportContainerObservation = {
+  readonly type: string
+  readonly event_time: string | null
+  readonly carrier_label?: string | null
+  readonly vessel_name?: string | null
+  readonly created_at: string
+}
+
+function toTimestampOrNegativeInfinity(value: string | null): number {
+  if (!value) return Number.NEGATIVE_INFINITY
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+}
+
+function getLatestObservationInfo(observations: readonly ReportContainerObservation[]): {
+  readonly eventTime: string | null
+  readonly eventLabel: string | null
+  readonly vesselName: string | null
+} {
+  let latestObservation: ReportContainerObservation | null = null
+  let latestEventTime = Number.NEGATIVE_INFINITY
+  let latestCreatedAt = Number.NEGATIVE_INFINITY
+
+  for (const observation of observations) {
+    const eventTime = toTimestampOrNegativeInfinity(observation.event_time)
+    const createdAt = toTimestampOrNegativeInfinity(observation.created_at)
+
+    if (latestObservation === null) {
+      latestObservation = observation
+      latestEventTime = eventTime
+      latestCreatedAt = createdAt
+      continue
+    }
+
+    if (
+      eventTime > latestEventTime ||
+      (eventTime === latestEventTime && createdAt > latestCreatedAt)
+    ) {
+      latestObservation = observation
+      latestEventTime = eventTime
+      latestCreatedAt = createdAt
+    }
+  }
+
+  if (latestObservation === null) {
+    return {
+      eventTime: null,
+      eventLabel: null,
+      vesselName: null,
+    }
+  }
+
+  const carrierLabel = latestObservation.carrier_label?.trim() ?? ''
+  const vesselName = latestObservation.vessel_name?.trim() ?? ''
+
+  return {
+    eventTime: latestObservation.event_time,
+    eventLabel: carrierLabel.length > 0 ? carrierLabel : latestObservation.type,
+    vesselName: vesselName.length > 0 ? vesselName : null,
+  }
+}
+
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
   concurrency: number,
@@ -225,10 +287,18 @@ async function buildReportContainerEntry(
   )
 
   const latestEvent = getLatestEventFromTimelineItems(summary.timeline.observations)
+  const latestObservation = getLatestObservationInfo(summary.observations)
   const timelineSummary = command.includeTimelineSummary
     ? toReportTimelineItem(summary.timeline.observations)
     : []
   const alertItems = command.includeAlerts ? summary.alerts.map(toReportAlert) : []
+
+  const latestTrackingUpdate =
+    summary.observations.length > 0
+      ? summary.observations.reduce((latest, observation) =>
+          observation.created_at > latest.created_at ? observation : latest,
+        ).created_at
+      : null
 
   return {
     id: String(container.id),
@@ -237,7 +307,9 @@ async function buildReportContainerEntry(
     status: summary.status,
     eta: summary.operational.eta?.eventTime ?? null,
     latestEvent,
-    latestTrackingUpdate: summary.observations.at(-1)?.created_at ?? null,
+    latestEventLabel: latestObservation.eventLabel,
+    latestTrackingUpdate,
+    vesselName: latestObservation.vesselName,
     hasConflict: deriveContainerConflictSignal(summary.timeline.observations),
     uncertainty: summary.operational.dataIssue === true ? 'tracking_summary_data_issue' : null,
     alerts: alertItems,
@@ -492,6 +564,11 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
           carrier: entry.pwc.process.carrier,
           origin: entry.pwc.process.origin,
           destination: entry.pwc.process.destination,
+          billOfLading: entry.pwc.process.billOfLading,
+          importerName: entry.pwc.process.importerName,
+          exporterName: entry.pwc.process.exporterName,
+          product: entry.pwc.process.product,
+          redestinationNumber: entry.pwc.process.redestinationNumber,
           processStatus: entry.summary.process_status,
           alertCount: entry.summary.alerts_count,
           highestAlertSeverity: entry.summary.highest_alert_severity,

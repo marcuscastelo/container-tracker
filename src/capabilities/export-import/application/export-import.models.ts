@@ -82,7 +82,7 @@ export type SymmetricImportExecutionResult = {
   readonly importedDocuments: number
 }
 
-export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'markdown' | 'pdf'
+export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'markdown' | 'pdf' | 'trello'
 
 export type ReportAlertEntry = {
   readonly id: string
@@ -107,7 +107,9 @@ export type ReportContainerEntry = {
   readonly status: string
   readonly eta: TemporalValueDto | null
   readonly latestEvent: TemporalValueDto | null
+  readonly latestEventLabel: string | null
   readonly latestTrackingUpdate: string | null
+  readonly vesselName: string | null
   readonly hasConflict: boolean
   readonly uncertainty: string | null
   readonly alerts: readonly ReportAlertEntry[]
@@ -120,6 +122,11 @@ export type ReportProcessEntry = {
   readonly carrier: string | null
   readonly origin: string | null
   readonly destination: string | null
+  readonly billOfLading: string | null
+  readonly importerName: string | null
+  readonly exporterName: string | null
+  readonly product: string | null
+  readonly redestinationNumber: string | null
   readonly processStatus: string
   readonly alertCount: number
   readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null

@@ -7,9 +7,9 @@ import { systemClock } from '~/shared/time/clock'
 
 export type ExportType = 'portable' | 'report'
 export type PortableFormat = 'json' | 'zip'
-export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'markdown' | 'pdf'
+export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'markdown' | 'pdf' | 'trello'
 
-export type ExportScope =
+type ExportScope =
   | {
       readonly scope: 'all_processes'
       readonly processId: null
@@ -19,7 +19,7 @@ export type ExportScope =
       readonly processId: string
     }
 
-export type ReportExportOptions = {
+type ReportExportOptions = {
   readonly includeContainers: boolean
   readonly includeAlerts: boolean
   readonly includeTimelineSummary: boolean
@@ -92,6 +92,24 @@ async function requestDownload(command: {
   downloadBlob({ blob, filename })
 }
 
+async function requestTextExport(command: {
+  readonly endpoint: string
+  readonly payload: Record<string, unknown>
+}): Promise<string> {
+  const response = await fetch(command.endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(command.payload),
+  })
+
+  if (!response.ok) {
+    const payload = parseErrorPayload(await response.json().catch(() => null))
+    throw new Error(payload?.error ?? resolveHttpErrorFallback(response.status))
+  }
+
+  return response.text()
+}
+
 export async function requestPortableExport(command: {
   readonly scope: ExportScope
   readonly format: PortableFormat
@@ -116,8 +134,14 @@ export async function requestOperationalReportExport(command: {
   readonly options: ReportExportOptions
 }): Promise<void> {
   const date = systemClock.now().toCalendarDate('UTC').toIsoDate()
-  const extension = command.format === 'markdown' ? 'md' : command.format
-  const fallbackFilename = `processes-report-${date}.${extension}`
+  let fallbackFilename = `processes-report-${date}.${command.format === 'markdown' ? 'md' : command.format}`
+
+  if (command.format === 'trello') {
+    fallbackFilename =
+      command.scope.scope === 'all_processes'
+        ? `trello-export-${date}.zip`
+        : `snapshot-process-${date}.md`
+  }
 
   await requestDownload({
     endpoint: '/api/export-import/report/export',
@@ -131,6 +155,25 @@ export async function requestOperationalReportExport(command: {
       includeExecutiveSummary: command.options.includeExecutiveSummary,
     },
     fallbackFilename,
+  })
+}
+
+export async function requestOperationalReportExportText(command: {
+  readonly scope: ExportScope
+  readonly format: Extract<ReportFormat, 'trello'>
+  readonly options: ReportExportOptions
+}): Promise<string> {
+  return requestTextExport({
+    endpoint: '/api/export-import/report/export',
+    payload: {
+      scope: command.scope.scope,
+      processId: command.scope.processId,
+      format: command.format,
+      includeContainers: command.options.includeContainers,
+      includeAlerts: command.options.includeAlerts,
+      includeTimelineSummary: command.options.includeTimelineSummary,
+      includeExecutiveSummary: command.options.includeExecutiveSummary,
+    },
   })
 }
 
