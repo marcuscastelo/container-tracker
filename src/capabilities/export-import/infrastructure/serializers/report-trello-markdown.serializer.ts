@@ -127,7 +127,7 @@ export function serializeTrelloProcessMarkdown(command: {
     toFieldLine('ORIGEM', toSingleLine(processEntry.origin)),
     'PROFORMA:',
     'INVOICE COMERCIAL:',
-    'DEPOSITARIO:',
+    toFieldLine('DEPOSITARIO', toSingleLine(processEntry.destination)),
     toFieldLine('REDESTINACAO', toSingleLine(processEntry.redestinationNumber)),
     '```',
     '',
