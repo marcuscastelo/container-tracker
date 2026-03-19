@@ -31,6 +31,7 @@ function createControllers(options?: {
     const alerts = options?.activeAlerts ?? []
     return alerts.filter((alert) => alert.container_id === containerId)
   })
+  const findAllObservationsByContainerId = vi.fn(async () => [])
   const findContainerNumbersByIds = vi.fn(async (containerIds: readonly string[]) => {
     const map = new Map<string, string>()
     const source = options?.containerNumberByContainerId ?? new Map<string, string>()
@@ -56,7 +57,7 @@ function createControllers(options?: {
     },
     observationRepository: {
       insertMany: vi.fn(async () => []),
-      findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerId: findAllObservationsByContainerId,
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations: vi.fn(async () => []),
     },
@@ -65,6 +66,7 @@ function createControllers(options?: {
       listActiveAlertReadModel: vi.fn(async () => []),
       findActiveByContainerId,
       findByContainerId: vi.fn(async () => []),
+      findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds,
       findActiveTypesByContainerId: vi.fn(async () => new Set<string>()),
       acknowledge,
@@ -85,6 +87,7 @@ function createControllers(options?: {
     unacknowledge,
     autoResolveMany,
     findActiveByContainerId,
+    findAllObservationsByContainerId,
     findContainerNumbersByIds,
   }
 }
@@ -117,7 +120,12 @@ describe('tracking controllers', () => {
       },
     ]
 
-    const { controllers, findActiveByContainerId, findContainerNumbersByIds } = createControllers({
+    const {
+      controllers,
+      findActiveByContainerId,
+      findAllObservationsByContainerId,
+      findContainerNumbersByIds,
+    } = createControllers({
       activeAlerts,
       containerNumberByContainerId: new Map([[containerId, 'MRSU8798130']]),
     })
@@ -152,6 +160,7 @@ describe('tracking controllers', () => {
     ])
     expect(findActiveByContainerId).toHaveBeenCalledWith(containerId)
     expect(findContainerNumbersByIds).toHaveBeenCalledWith([containerId])
+    expect(findAllObservationsByContainerId).not.toHaveBeenCalled()
   })
 
   it('acknowledge action sends null metadata when fields are omitted', async () => {

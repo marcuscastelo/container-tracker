@@ -3,6 +3,7 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertDerivationState,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
@@ -18,6 +19,11 @@ export type TrackingAlertRepository = {
 
   /** Fetch all alerts for a container (active + acknowledged). */
   findByContainerId(containerId: string): Promise<readonly TrackingAlert[]>
+
+  /** Fetch lightweight alert state required by snapshot-time derivation/dedup. */
+  findAlertDerivationStateByContainerId(
+    containerId: string,
+  ): Promise<readonly TrackingAlertDerivationState[]>
 
   /** Resolve container numbers for container ids. */
   findContainerNumbersByIds(containerIds: readonly string[]): Promise<ReadonlyMap<string, string>>

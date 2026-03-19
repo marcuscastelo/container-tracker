@@ -21,6 +21,7 @@ import type { Confidence } from '~/modules/tracking/features/observation/domain/
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import {
+  alertRowToDerivationState as mapAlertRowToDerivationState,
   alertRowToDomain as mapAlertRowToDomain,
   alertToInsertRow as mapAlertToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.alert.persistence.mappers'
@@ -171,6 +172,23 @@ export function snapshotToInsertRow(snapshot: NewSnapshot): InsertTrackingSnapsh
 
 export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
   return mapAlertRowToDomain(row)
+}
+
+export function alertRowToDerivationState(
+  row: Pick<
+    TrackingAlertRow,
+    | 'id'
+    | 'category'
+    | 'type'
+    | 'message_key'
+    | 'message_params'
+    | 'source_observation_fingerprints'
+    | 'alert_fingerprint'
+    | 'acked_at'
+    | 'resolved_at'
+  >,
+) {
+  return mapAlertRowToDerivationState(row)
 }
 
 export function alertToInsertRow(alert: NewTrackingAlert): InsertTrackingAlertRow {

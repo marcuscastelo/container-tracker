@@ -56,8 +56,41 @@ describe('buildTimelineRenderList', () => {
 
     if (tsBlocks[0].type === 'transshipment-block') {
       expect(tsBlocks[0].block.port).toBe('B')
+      expect(tsBlocks[0].block.reason).toBe('Vessel and voyage change')
       expect(tsBlocks[0].block.fromVessel).toBe('V1')
       expect(tsBlocks[0].block.toVessel).toBe('V2')
+    }
+  })
+
+  it('sets transshipment reason to voyage change when vessel is unchanged', () => {
+    const events = [
+      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'A' }),
+      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V1', voyage: 'VY2', location: 'B' }),
+      makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
+    ]
+    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
+
+    expect(tsBlocks).toHaveLength(1)
+    if (tsBlocks[0].type === 'transshipment-block') {
+      expect(tsBlocks[0].block.reason).toBe('Voyage change')
+    }
+  })
+
+  it('sets transshipment reason to vessel change when voyage is unchanged', () => {
+    const events = [
+      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'A' }),
+      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V2', voyage: 'VY1', location: 'B' }),
+      makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
+    ]
+    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
+
+    expect(tsBlocks).toHaveLength(1)
+    if (tsBlocks[0].type === 'transshipment-block') {
+      expect(tsBlocks[0].block.reason).toBe('Vessel change')
     }
   })
 
@@ -66,6 +99,19 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'A' }),
       makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
       makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'B' }),
+      makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
+    ]
+    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+
+    const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
+    expect(tsBlocks).toHaveLength(0)
+  })
+
+  it('does NOT insert transshipment when vessel differs only by casing or whitespace', () => {
+    const events = [
+      makeEvent({ id: 'e1', type: 'LOAD', vesselName: ' MAERSK ', voyage: 'VY1', location: 'A' }),
+      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'maersk', voyage: 'VY1', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
     ]
     const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))

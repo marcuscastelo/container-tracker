@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createMemo, For, Show } from 'solid-js'
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
@@ -48,12 +48,10 @@ function ContainerSelectorItem(props: {
       onClick={() => props.onSelect(props.container.id)}
       class={`w-full rounded-lg border p-3 text-left transition-colors ${cardClass()}`}
     >
-      {/* Row 1 — container number */}
       <div class="truncate font-mono text-sm-ui font-semibold tracking-wide text-foreground">
         {props.container.number}
       </div>
 
-      {/* Row 2 — ETA */}
       <div class="mt-2 flex items-center gap-1 text-xs-ui text-text-muted">
         <svg
           class="h-3 w-3 shrink-0"
@@ -72,7 +70,6 @@ function ContainerSelectorItem(props: {
         <span class="truncate">{etaValue()}</span>
       </div>
 
-      {/* Row 3 — status + data-issue badge */}
       <div class="mt-2 flex items-center gap-2">
         <StatusBadge variant={props.container.status} label={props.statusLabel} size="micro" />
         <Show when={props.container.dataIssueChipVm.visible}>
@@ -101,16 +98,56 @@ export function ContainerSelector(props: {
     etaLabel: t(keys.shipmentView.currentStatus.eta),
   }
 
-  // Slice containers into rows according to the distribution algorithm.
+  const [maxPerRow, setMaxPerRow] = createSignal(1)
+
+  onMount(() => {
+    const mobile = window.matchMedia('(max-width: 639px)')
+    const tablet = window.matchMedia('(min-width: 640px) and (max-width: 1023px)')
+    const desktop = window.matchMedia('(min-width: 1024px)')
+
+    const updateMaxPerRow = () => {
+      if (mobile.matches) {
+        setMaxPerRow(1)
+        return
+      }
+
+      if (tablet.matches) {
+        setMaxPerRow(2)
+        return
+      }
+
+      if (desktop.matches) {
+        setMaxPerRow(4)
+        return
+      }
+
+      setMaxPerRow(1)
+    }
+
+    updateMaxPerRow()
+
+    mobile.addEventListener('change', updateMaxPerRow)
+    tablet.addEventListener('change', updateMaxPerRow)
+    desktop.addEventListener('change', updateMaxPerRow)
+
+    onCleanup(() => {
+      mobile.removeEventListener('change', updateMaxPerRow)
+      tablet.removeEventListener('change', updateMaxPerRow)
+      desktop.removeEventListener('change', updateMaxPerRow)
+    })
+  })
+
   const rows = createMemo<ContainerDetailVM[][]>(() => {
-    const dist = computeRowDistribution(props.containers.length)
+    const dist = computeRowDistribution(props.containers.length, maxPerRow())
     const result: ContainerDetailVM[][] = []
     let idx = 0
+
     for (const count of dist) {
       const row = props.containers.slice(idx, idx + count)
       result.push(row)
       idx += count
     }
+
     return result
   })
 

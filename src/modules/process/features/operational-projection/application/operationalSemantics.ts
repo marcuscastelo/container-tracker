@@ -13,6 +13,7 @@ export type ProcessAggregatedStatus =
   | 'UNKNOWN'
   | 'BOOKED'
   | 'IN_TRANSIT'
+  | 'ARRIVED_AT_POD'
   | 'DISCHARGED'
   | 'DELIVERED'
   | 'AWAITING_DATA'

@@ -11,6 +11,7 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
   TrackingAlertAckSource,
+  TrackingAlertDerivationState,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
@@ -107,6 +108,12 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   }
 
   async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
+    return this.alerts.filter((alert) => alert.container_id === containerId)
+  }
+
+  async findAlertDerivationStateByContainerId(
+    containerId: string,
+  ): Promise<readonly TrackingAlertDerivationState[]> {
     return this.alerts.filter((alert) => alert.container_id === containerId)
   }
 
