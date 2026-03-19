@@ -1,6 +1,7 @@
 import { Router } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import { ErrorBoundary, Suspense } from 'solid-js'
+import { Toaster } from 'solid-toast'
 import '~/app.css'
 import { useTranslation } from '~/shared/localization/i18n'
 
@@ -22,6 +23,7 @@ export default function App() {
           >
             <Suspense>{props.children}</Suspense>
           </ErrorBoundary>
+          <Toaster position="top-right" />
         </div>
       )}
     >
