@@ -114,7 +114,17 @@ function observationTemporalColumnsToDomain(row: TrackingObservationRow): Tempor
 
   if (temporal_kind === null) {
     if (event_time_instant === null && event_date === null) {
-      return null
+      // TODO: just return null instead of using event_time. For now, we are using the deprecated event_time column
+      if (row.event_time !== null) {
+        return instantValue(
+          Instant.fromIso(requireTimestamp(row.event_time, 'observation.event_time')),
+        )
+      } else {
+        throw new Error(
+          'tracking persistence mapper: observation with null temporal_kind must have event_time populated for backward compatibility',
+        )
+      }
+      // return null
     }
 
     throw new Error(
