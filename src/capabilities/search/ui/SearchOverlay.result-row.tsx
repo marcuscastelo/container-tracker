@@ -1,6 +1,8 @@
 import type { JSX } from 'solid-js'
 import { MatchSourceIcon } from '~/capabilities/search/ui/SearchOverlay.icons'
 import type { SearchResultItemVm } from '~/capabilities/search/ui/search.vm'
+import { getBrowserLocale } from '~/shared/time/browser-locale'
+import { formatTemporalDate } from '~/shared/time/temporal-formatters'
 
 function formatNullableText(value: string | null, fallbackText: string): string {
   if (value === null) return fallbackText
@@ -16,17 +18,7 @@ function formatContainers(value: readonly string[], fallbackText: string): strin
 
 function formatEta(value: string | null, fallbackText: string): string {
   if (value === null) return fallbackText
-
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return value
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  }).format(parsed)
+  return formatTemporalDate(value, getBrowserLocale('en-US')) || value
 }
 
 export type SearchResultRowLabels = {

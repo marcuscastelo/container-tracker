@@ -21,6 +21,7 @@ import type {
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 function processAggregatedStatusToVariant(status: ProcessAggregatedStatus) {
@@ -223,7 +224,7 @@ export function toShipmentDetailVM(
   data: ProcessDetailResponse,
   locale: string = DEFAULT_LOCALE,
 ): ShipmentDetailVM {
-  const referenceNow = new Date()
+  const referenceNow = systemClock.now()
   const syncByContainerNumber = new Map(
     data.containersSync.map((containerSync) => [
       normalizeContainerNumber(containerSync.containerNumber),

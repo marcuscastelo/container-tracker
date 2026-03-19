@@ -7,6 +7,7 @@ import { refreshShipmentTracking } from '~/modules/process/ui/screens/shipment/u
 import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-realtime-coordinator'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { Instant } from '~/shared/time/instant'
 
 type UseShipmentRefreshControllerCommand = {
   readonly shipment: Resource<ShipmentDetailVM | null | undefined>
@@ -18,7 +19,7 @@ type ShipmentRefreshControllerResult = {
   readonly refreshRetry: Accessor<RefreshRetryState | null>
   readonly refreshError: Accessor<string | null>
   readonly refreshHint: Accessor<string | null>
-  readonly syncNow: Accessor<Date>
+  readonly syncNow: Accessor<Instant>
   readonly triggerRefresh: () => Promise<void>
   readonly clearRefreshError: () => void
   readonly resetRefreshState: () => void

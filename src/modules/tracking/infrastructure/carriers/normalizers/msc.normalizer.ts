@@ -7,6 +7,7 @@ import type {
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
 /**
@@ -188,31 +189,18 @@ function determineEventTimeType(
   if (!parsedEventDate) return 'EXPECTED'
 
   // Determine reference date (current date from payload or snapshot fetch time)
-  let referenceDate: Date
+  let referenceDate = currentDate ? parseDateDDMMYYYYString(currentDate) : null
   if (currentDate) {
-    const parsedCurrentDate = parseDateDDMMYYYYString(currentDate)
-    if (parsedCurrentDate) {
-      referenceDate = parsedCurrentDate
-    } else {
-      referenceDate = new Date(snapshotFetchedAt)
-    }
-  } else {
-    referenceDate = new Date(snapshotFetchedAt)
+    referenceDate = parseDateDDMMYYYYString(currentDate)
   }
 
-  // Compare dates (normalize to date-only to avoid time-of-day issues)
-  const eventDateOnly = new Date(
-    parsedEventDate.getUTCFullYear(),
-    parsedEventDate.getUTCMonth(),
-    parsedEventDate.getUTCDate(),
-  )
-  const referenceDateOnly = new Date(
-    referenceDate.getUTCFullYear(),
-    referenceDate.getUTCMonth(),
-    referenceDate.getUTCDate(),
-  )
+  if (!referenceDate) {
+    const fetchedAt = parseInstantFromIso(snapshotFetchedAt)
+    if (!fetchedAt) return 'EXPECTED'
+    referenceDate = fetchedAt.toCalendarDate('UTC')
+  }
 
-  if (eventDateOnly <= referenceDateOnly) {
+  if (parsedEventDate.compare(referenceDate) <= 0) {
     return 'ACTUAL'
   }
 
@@ -256,7 +244,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       for (const event of events) {
         const type = mapMscDescription(event.Description)
         const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
-        const eventTime = parsedDate ? parsedDate.toISOString() : null
+        const eventTime = parsedDate ? parsedDate.toIsoDate() : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
         const parsedDetail = parseMscDetail(type, event.Detail, event.Vessel)
@@ -302,7 +290,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
             const etaDraft: ObservationDraft = {
               container_number: containerNumber,
               type: 'ARRIVAL', // ETA implies arrival at POD
-              event_time: parsedEta.toISOString(),
+              event_time: parsedEta.toIsoDate(),
               event_time_type: 'EXPECTED',
               location_code: podLocationCode,
               location_display: podLocation,

@@ -3,6 +3,8 @@ import { toContainerSummaryRowVMs } from '~/modules/process/ui/mappers/container
 import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type ContainerOverrides = {
   readonly number?: string
@@ -57,7 +59,7 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
 
 function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
   const { keys } = useTranslation()
-  const now = new Date('2026-03-07T10:00:00.000Z')
+  const now = Instant.fromIso('2026-03-07T10:00:00.000Z')
   const locale = 'en-US'
 
   return {
@@ -127,7 +129,7 @@ describe('toContainerSummaryRowVMs', () => {
     const rows = toContainerSummaryRowVMs(command)
 
     const expectedRelative = formatRelativeTime(
-      withSyncTime.sync.relativeTimeAt ?? '',
+      parseInstantFromIso(withSyncTime.sync.relativeTimeAt ?? '') ?? command.now,
       command.now,
       command.locale,
     )

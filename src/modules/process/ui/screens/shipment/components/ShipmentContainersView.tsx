@@ -5,6 +5,7 @@ import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/sc
 import type { RefreshRetryState } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { Instant } from '~/shared/time/instant'
 
 type ShipmentContainersViewProps = {
   readonly shipmentData: Resource<ShipmentDetailVM | null | undefined>
@@ -17,7 +18,7 @@ type ShipmentContainersViewProps = {
   readonly isRefreshing: Accessor<boolean>
   readonly refreshRetry: Accessor<RefreshRetryState | null>
   readonly refreshHint: Accessor<string | null>
-  readonly syncNow: Accessor<Date>
+  readonly syncNow: Accessor<Instant>
   readonly onTriggerRefresh: () => void
   readonly selectedContainerId: Accessor<string>
   readonly onSelectContainer: (id: string) => void

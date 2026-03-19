@@ -87,17 +87,17 @@ function parseCmaCgmDate(
   // Try DateString first (human-readable ISO/RFC) — many CMA-CGM endpoints provide ISO strings here
   if (dateStringField) {
     const d = parseIsoOrRfcString(dateStringField)
-    if (d) return d.toISOString()
+    if (d) return d.toIsoString()
   }
 
   // Try MS date format: /Date(1234567890000)/
   if (dateField) {
     const ms = parseMsDateString(dateField)
-    if (ms) return ms.toISOString()
+    if (ms) return ms.toIsoString()
 
     // Fallback: try ISO/RFC parsing on the field
     const d = parseIsoOrRfcString(dateField)
-    if (d) return d.toISOString()
+    if (d) return d.toIsoString()
   }
 
   return null

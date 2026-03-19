@@ -384,6 +384,7 @@ describe('normalizeMscSnapshot', () => {
 
       const etaDraft = drafts.find((d) => d.type === 'ARRIVAL' && d.event_time_type === 'EXPECTED')
       expect(etaDraft).toBeDefined()
+      expect(etaDraft?.event_time).toBe('2026-02-15')
       expect(etaDraft?.location_display).toBe('ITAPOA, BR')
       expect(etaDraft?.confidence).toBe('medium')
     })

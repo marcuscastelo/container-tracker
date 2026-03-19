@@ -15,16 +15,15 @@ import {
  *  - ISO / RFC string representations
  */
 export function normalizeTimestamptz(value: unknown): string | null {
-  if (value instanceof Date) return value.toISOString()
   if (typeof value === 'number') {
     const d = parseDateFromNumber(value)
-    return d ? d.toISOString() : null
+    return d ? d.toIsoString() : null
   }
   if (typeof value === 'string') {
     const ms = parseMsDateString(value)
-    if (ms) return ms.toISOString()
+    if (ms) return ms.toIsoString()
     const iso = parseIsoOrRfcString(value)
-    if (iso) return iso.toISOString()
+    if (iso) return iso.toIsoString()
     return null
   }
   return null

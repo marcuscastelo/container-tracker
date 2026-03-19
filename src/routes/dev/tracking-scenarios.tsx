@@ -17,6 +17,7 @@ import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboa
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
 
 const SCENARIO_LAB_ENABLED = import.meta.env.DEV
 
@@ -397,7 +398,7 @@ function ShipmentPreview(props: {
               isRefreshing={false}
               refreshRetry={null}
               refreshHint={null}
-              syncNow={new Date()}
+              syncNow={systemClock.now()}
               onTriggerRefresh={() => {}}
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}
