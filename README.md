@@ -2,6 +2,28 @@
 
 Operational maritime tracking platform focused on **domain consistency, auditability, and exception visibility**.
 
+## TLDR
+
+Container Tracker is an **event-driven maritime tracking system**.
+
+- Ingests carrier data as immutable snapshots  
+- Converts them into normalized observations (facts)  
+- Derives timeline, status, and alerts deterministically  
+- Preserves full history (append-only, audit-safe)  
+- Exposes uncertainty and conflicts instead of hiding them  
+
+**Key idea:**
+
+```
+Snapshot → Observation → Timeline → Status → Alerts
+```
+
+- `tracking` owns domain truth  
+- UI only renders (never derives)  
+- Status is computed, not stored  
+
+> The system does not guess state — it explains it.
+
 ---
 
 ## Screenshots
