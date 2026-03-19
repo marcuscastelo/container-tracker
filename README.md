@@ -1,374 +1,88 @@
 # Container Tracker
 
-Operational maritime tracking platform focused on **determinism, auditability, and timeline-first visibility**.
+Operational maritime tracking platform focused on **domain consistency, auditability, and exception visibility**.
 
 ---
 
-# 1. Overview
+## Screenshots
 
-Container Tracker consolidates heterogeneous carrier data and transforms it into a **reliable, explainable operational timeline**.
+### Desktop
 
-The system:
+![Dashboard desktop](./public/screenshots/dashboard-desktop.png)
 
-- Ingests raw carrier data (snapshots)
-- Normalizes into canonical observations
-- Derives timeline, status, and alerts deterministically
-- Preserves full historical audit trail
-- Surfaces operational exceptions early
+### Mobile
 
-> The system prioritizes correctness and auditability over convenience.
-
-Reference:
-- :contentReference[oaicite:0]{index=0}
+![Dashboard mobile](./public/screenshots/dashboard-mobile.png)
 
 ---
 
-# 2. Core Principles
+# Phase 1: How an operator uses it
 
-## 2.1 Domain Truth
-
-All domain truth is derived **only inside bounded contexts**, primarily `tracking`.
-
-Pipeline:
-
-```
-Snapshot → Observation → Timeline → Status → Alerts
-```
-
-- Snapshots are immutable
-- Observations are append-only
-- Status is derived (never stored)
-- Alerts are derived and idempotent
-
-Reference:
-- :contentReference[oaicite:1]{index=1}
+1. Opens the dashboard and searches for a shipment by reference or container number.
+2. Sees the current status automatically derived (e.g. in transit, discharged, delivered) without manually reconciling multiple carriers.
+3. Reads the timeline to understand what actually happened (ACTUAL) and what was predicted (EXPECTED), including changes over time.
+4. Receives operational alerts to act early on delays, inconsistencies, or missing updates.
+5. Uses the preserved history for audit: every change is traceable back to the original carrier snapshot.
 
 ---
 
-## 2.2 Determinism
+# Phase 2: How it works (plain language)
 
-Given the same observations:
+1. The system collects updates from different carriers.
+2. Each raw update is stored exactly as received (never overwritten).
+3. These updates are converted into standardized facts (observations).
+4. From these facts, the system derives timeline, status, and alerts.
+5. If there is uncertainty or conflict, it is explicitly shown instead of hidden.
 
-- timeline is deterministic
-- status is deterministic
-- alerts are deterministic
-
-No layer may reinterpret or override domain results.
-
----
-
-## 2.3 Auditability
-
-- No fact is deleted
-- No history is rewritten
-- Conflicts are exposed, not hidden
-
-Reference:
-- :contentReference[oaicite:2]{index=2}
+**Summary:** the system does not “guess” state.  
+It derives state from real events and preserves full history to explain any outcome.
 
 ---
 
-## 2.4 Timeline-First UX
+# Phase 3: Technical pitch + setup
 
-Shipment view is **timeline-first**.
+## Why the architecture works
 
-- Chronology is the primary artifact
-- Metadata is secondary (sidebar)
-- Grouped operational blocks must be preserved
+- Clear Bounded Contexts in `src/modules/*`:
+  - `process`: shipment grouping and operational context
+  - `container`: container identity and association
+  - `tracking`: snapshots, observations, and all derivations (timeline, status, alerts)
 
-Reference:
-- :contentReference[oaicite:3]{index=3}
+- Capabilities in `src/capabilities/*` orchestrate cross-context flows without owning domain semantics.
 
----
+- Strict dependency rules:
+  - modules do not depend on capabilities
+  - domain does not depend on UI or HTTP
+  - UI never defines domain truth
 
-# 3. Domain Model
-
-## 3.1 Process (Shipment)
-
-Logical grouping of containers.
-
-Contains:
-
-- reference
-- origin / destination
-- containers[]
-
-Does **not** own tracking logic.
+- Strong tracking invariants:
+  - snapshots are immutable
+  - observations are append-only
+  - status is always derived
+  - conflicts and uncertainty are exposed
 
 ---
 
-## 3.2 Container
+## Operational principles
 
-Represents a physical container.
+- History is preserved (append-only)
+- No data is overwritten or deleted
+- Status is always derived, never stored as truth
+- Conflicts and inconsistencies are exposed, not hidden
+- The full timeline is the primary source of understanding
 
-Contains:
-
-- container number
-- carrier code
-
-Does **not** derive:
-
-- timeline
-- status
-- alerts
+The system prioritizes **correctness and explainability over visual simplification**.
 
 ---
 
-## 3.3 Tracking (Core Domain)
-
-Event-driven domain responsible for:
-
-- snapshot ingestion
-- observation normalization
-- event-series grouping
-- timeline derivation
-- status derivation
-- alert derivation
-
-Reference:
-- :contentReference[oaicite:4]{index=4}
-
----
-
-# 4. Event Model
-
-## 4.1 Observations
-
-Normalized facts derived from snapshots.
-
-Fields:
-
-- type
-- location
-- event_time
-- event_time_type: ACTUAL | EXPECTED
-
-Properties:
-
-- immutable
-- append-only
-- idempotent (fingerprint)
-
----
-
-## 4.2 Event Series
-
-Observations are grouped into **series** (semantic milestones).
-
-Example:
-
-```
-EXPECTED LOAD
-EXPECTED LOAD (update)
-ACTUAL LOAD
-```
-
-All belong to the same series.
-
----
-
-## 4.3 Safe-First Rule
-
-Primary event selection:
-
-1. If ACTUAL exists → latest ACTUAL
-2. Else → latest active EXPECTED
-
----
-
-## 4.4 Derived States
-
-- ACTUAL
-- ACTIVE_EXPECTED
-- EXPIRED_EXPECTED
-
-EXPECTED after ACTUAL = redundant
-
-Conflicts (multiple ACTUAL) must be exposed.
-
-Reference:
-- :contentReference[oaicite:5]{index=5}
-
----
-
-# 5. Container Status
-
-Status is derived from timeline.
-
-Examples:
-
-- BOOKED
-- GATE_IN
-- LOADED_ON_VESSEL
-- IN_TRANSIT
-- ARRIVED_AT_POD
-- DELIVERED
-- EMPTY_RETURNED
-
-Rules:
-
-- never stored as truth
-- monotonic when possible
-
-Reference:
-- :contentReference[oaicite:6]{index=6}
-
----
-
-# 6. Alerts
-
-Alerts are derived from domain state.
-
-Categories:
-
-- eta
-- movement
-- customs
-- status
-- data
-
-Types:
-
-- Fact alerts → based on history
-- Monitoring alerts → based on "now"
-
-Properties:
-
-- idempotent
-- deterministic
-- never suppress facts
-
-Reference:
-- :contentReference[oaicite:7]{index=7}
-
----
-
-# 7. Architecture
-
-## 7.1 Structure
-
-```
-src/
-  modules/        # Bounded Contexts (source of truth)
-  capabilities/   # Cross-BC orchestration
-  routes/         # Thin adapters
-  shared/         # Infra/utilities only
-```
-
-Reference:
-- :contentReference[oaicite:8]{index=8}
-
----
-
-## 7.2 Bounded Contexts
-
-- process
-- container
-- tracking
-
-Rules:
-
-- BC owns its domain
-- no cross-BC domain imports
-- domain never depends on UI or HTTP
-
-Reference:
-- :contentReference[oaicite:9]{index=9}
-
----
-
-## 7.3 Capabilities
-
-Capabilities:
-
-- orchestrate multiple BCs
-- compose read models
-- do NOT define domain rules
-
-Example:
-
-```
-capabilities/sync
-```
-
-Reference:
-- :contentReference[oaicite:10]{index=10}
-
----
-
-## 7.4 Type Architecture (Mandatory)
-
-Each boundary changes type:
-
-```
-Row → Entity → Result → Response DTO → ViewModel
-```
-
-Rules:
-
-- Entity is backend-only
-- UI never consumes Entity
-- Repository returns Entity and throws errors
-
-Reference:
-- :contentReference[oaicite:11]{index=11}
-
----
-
-# 8. UI Architecture
-
-## 8.1 Shipment Screen
-
-Canonical layout:
-
-```
-Main:
-  - Container selector
-  - Timeline
-
-Sidebar:
-  - Shipment info
-  - Current status
-  - Alerts
-```
-
-Rules:
-
-- timeline is primary
-- sidebar supports, never interrupts
-
----
-
-## 8.2 UI Responsibilities
-
-UI may:
-
-- map DTO → ViewModel
-- format dates / labels
-- handle interaction
-
-UI must NOT:
-
-- derive timeline
-- derive status
-- derive alerts
-- reinterpret ACTUAL vs EXPECTED
-
-Reference:
-- :contentReference[oaicite:12]{index=12}
-
----
-
-# 9. Tracking Pipeline
+## Canonical tracking pipeline
 
 ```
 Carrier API
    ↓
 Snapshot (immutable)
    ↓
-Observation (normalized)
-   ↓
-Series (grouped)
+Observation (normalized fact)
    ↓
 Timeline (derived)
    ↓
@@ -377,62 +91,185 @@ Status (derived)
 Alerts (derived)
 ```
 
----
-
-# 10. Operational Guarantees
-
-- append-only history
-- deterministic derivation
-- explicit conflict visibility
-- no hidden corrections
-- explainable state at any point in time
+This pipeline is deterministic and reproducible.
 
 ---
 
-# 11. Non-Goals
+## ACTUAL vs EXPECTED
 
-The system does NOT:
+Events can be:
 
-- mutate historical facts
-- simplify timeline to “last event”
-- hide inconsistencies
-- derive domain truth in UI
-- centralize domain logic in shared/
+- **ACTUAL** → confirmed real-world event  
+- **EXPECTED** → carrier prediction
 
----
+The system:
 
-# 12. Development Guidelines
+- preserves all historical predictions
+- selects a single “primary” event using a safe-first rule
+- marks expired predictions
+- never removes inconsistencies
 
-## Must
-
-- respect BC boundaries
-- keep domain logic inside tracking
-- use explicit mappers between layers
-- preserve auditability
-
-## Must NOT
-
-- use `Partial<Entity>`
-- re-derive status in UI
-- create implicit shared kernel
-- flatten timeline semantics
+This makes it possible to understand **how predictions evolved over time**.
 
 ---
 
-# 13. Key References
+## UI golden rule
 
-- Product & Domain → `docs/MASTER_v2.md`
-- Architecture → `docs/ARCHITECTURE.md`
-- Type System → `docs/TYPE_ARCHITECTURE.md`
-- Boundaries → `docs/BOUNDARIES.md`
-- Tracking Invariants → `docs/TRACKING_INVARIANTS.md`
-- Event Series → `docs/TRACKING_EVENT_SERIES.md`
-- Alert Policy → `docs/ALERT_POLICY.md`
-- UI Philosophy → `docs/UI_PHILOSOPHY.md`
+The UI:
+
+- renders timeline, status, and alerts
+- formats and organizes information
+
+The UI **does NOT**:
+
+- derive status
+- interpret events
+- recalculate timeline
+- resolve conflicts
+
+All domain semantics belong to the `tracking` context.
 
 ---
 
-# 14. Summary
+## TLDR architecture
+
+- `tracking` → domain truth (timeline, status, alerts)
+- `process` → operational grouping
+- `container` → physical identity
+- `capabilities` → orchestration layer
+- UI → presentation only
+
+Each boundary changes the type:
+
+```
+Row → Entity → Result → DTO → ViewModel
+```
+
+---
+
+# Stack
+
+- Node.js `>= 22`
+- TypeScript
+- SolidStart / SolidJS (Vinxi)
+- Zod (validation)
+- Vitest (testing)
+- Biome + ESLint (code quality)
+
+---
+
+# Installation
+
+```bash
+pnpm install
+pnpm run dev
+```
+
+---
+
+# Scripts
+
+```bash
+pnpm run build
+pnpm run start
+pnpm run test
+pnpm run type-check
+pnpm run lint
+pnpm run check
+pnpm run i18n:check
+pnpm run maersk:smoke:puppeteer
+```
+
+---
+
+# Puppeteer Smoke Test (devcontainer)
+
+```bash
+pnpm run maersk:smoke:puppeteer
+```
+
+Expected output:
+
+```
+[maersk-smoke] PASS
+```
+
+Failure classifications:
+
+- `missing_browser_binary`
+- `invalid_chrome_path`
+- `launch_incompatibility`
+
+---
+
+# API Smoke Test (`/api/refresh-maersk/:container`)
+
+```bash
+CONTAINER=MRKU1234567
+curl -sS "http://localhost:3000/api/refresh-maersk/${CONTAINER}?headless=1&hold=0&timeout=70000" \
+  | tee /tmp/maersk-refresh-smoke.json
+```
+
+```bash
+if grep -q "Browser launch failed" /tmp/maersk-refresh-smoke.json; then
+  echo "FAIL: browser launch still blocking"
+else
+  echo "PASS: browser launch is not the blocker"
+fi
+```
+
+Rules:
+
+- Must not contain `Browser launch failed`
+- Provider errors (403, 502, etc.) do not fail this test
+
+---
+
+# Chromium Version Policy (devcontainer)
+
+- Controlled via `.devcontainer/devcontainer.json`
+- Installed via Dockerfile with version pinning
+- No automatic updates
+
+### Manual bump process
+
+```bash
+apt-cache madison chromium
+```
+
+1. Update version in devcontainer config
+2. Open PR
+3. Rebuild container
+4. Validate:
+
+```bash
+pnpm run maersk:smoke:puppeteer
+pnpm run check
+```
+
+---
+
+# Code structure
+
+```
+src/
+  modules/       # bounded contexts (source of truth)
+  capabilities/  # cross-context orchestration
+  routes/        # thin adapters
+  shared/        # infra and utilities
+```
+
+---
+
+# Core principle
+
+States are derived from events.  
+Events are derived from snapshots.  
+Snapshots are never discarded.
+
+---
+
+# Summary
 
 Container Tracker is:
 
