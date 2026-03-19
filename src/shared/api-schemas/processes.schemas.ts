@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
+import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
 const CarrierModeSchema = z.enum(['AUTO', 'MANUAL'])
@@ -81,7 +82,7 @@ export const ProcessResponseSchema = z.object({
   final_delivery_complete: z.boolean().optional(),
   full_logistics_complete: z.boolean().optional(),
   /** Earliest future ETA across containers */
-  eta: z.string().nullish(),
+  eta: TemporalValueDtoSchema.nullish(),
   eta_coverage: z
     .object({
       total: z.number(),
@@ -98,7 +99,7 @@ export const ProcessResponseSchema = z.object({
   /** Whether any container has a transshipment alert */
   has_transshipment: z.boolean().optional(),
   /** Latest event time across all container timelines */
-  last_event_at: z.string().nullish(),
+  last_event_at: TemporalValueDtoSchema.nullish(),
   /** Last process sync status derived from sync_requests */
   last_sync_status: ProcessLastSyncStatusSchema.optional(),
   /** Timestamp of latest known process sync activity */
@@ -121,7 +122,7 @@ const ObservationResponseSchema = z.object({
   fingerprint: z.string(),
   type: z.string(),
   carrier_label: z.string().nullable().optional(),
-  event_time: z.string().nullable(),
+  event_time: TemporalValueDtoSchema.nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   location_code: z.string().nullable(),
   location_display: z.string().nullable(),
@@ -138,7 +139,7 @@ const ObservationResponseSchema = z.object({
 const TrackingAlertResponseSchema = AlertResponseDtoSchema
 
 const OperationalEtaResponseSchema = z.object({
-  event_time: z.string(),
+  event_time: TemporalValueDtoSchema,
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   type: z.string(),
@@ -199,7 +200,7 @@ const TrackingSeriesLabelSchema = z.enum([
 const TrackingTimelineSeriesItemResponseSchema = z.object({
   id: z.string(),
   type: z.string(),
-  event_time: z.string().nullable(),
+  event_time: TemporalValueDtoSchema.nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   created_at: z.string(),
   series_label: TrackingSeriesLabelSchema,
@@ -215,7 +216,7 @@ const TrackingTimelineItemResponseSchema = z.object({
   type: z.string(),
   carrier_label: z.string().nullable(),
   location: z.string().nullable(),
-  event_time_iso: z.string().nullable(),
+  event_time: TemporalValueDtoSchema.nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   vessel_name: z.string().nullable(),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { toShipmentDetailVM } from '~/modules/process/ui/mappers/processDetail.ui-mapper'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('toShipmentDetailVM', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
@@ -32,7 +33,7 @@ describe('toShipmentDetailVM', () => {
               id: 'obs-1',
               fingerprint: 'abc123',
               type: 'LOAD',
-              event_time: new Date().toISOString(),
+              event_time: temporalDtoFromCanonical('2026-02-01T10:00:00.000Z'),
               event_time_type: 'ACTUAL',
               location_code: 'CNSHA',
               location_display: 'Shanghai',
@@ -52,7 +53,7 @@ describe('toShipmentDetailVM', () => {
               type: 'LOAD',
               carrier_label: 'Loaded',
               location: 'Shanghai',
-              event_time_iso: '2026-02-01T10:00:00.000Z',
+              event_time: temporalDtoFromCanonical('2026-02-01T10:00:00.000Z'),
               event_time_type: 'ACTUAL',
               derived_state: 'ACTUAL',
               vessel_name: 'MAERSK SEVILLE',
@@ -300,7 +301,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           operational: {
             status: 'IN_TRANSIT',
             eta: {
-              event_time: '2026-02-20T10:00:00.000Z',
+              event_time: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
               event_time_type: 'EXPECTED',
               state: 'EXPIRED_EXPECTED',
               type: 'ARRIVAL',
@@ -326,7 +327,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           operational: {
             status: 'IN_TRANSIT',
             eta: {
-              event_time: '2026-02-25T10:00:00.000Z',
+              event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
               event_time_type: 'EXPECTED',
               state: 'ACTIVE_EXPECTED',
               type: 'DISCHARGE',
@@ -347,7 +348,7 @@ describe('toShipmentDetailVM operational mapping', () => {
       process_operational: {
         derived_status: 'IN_TRANSIT',
         eta_max: {
-          event_time: '2026-02-25T10:00:00.000Z',
+          event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
           event_time_type: 'EXPECTED',
           state: 'ACTIVE_EXPECTED',
           type: 'DISCHARGE',
@@ -433,7 +434,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           operational: {
             status: 'IN_TRANSIT',
             eta: {
-              event_time: '2026-03-05T10:00:00.000Z',
+              event_time: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
               event_time_type: 'EXPECTED',
               state: 'ACTIVE_EXPECTED',
               type: 'ARRIVAL',
@@ -456,7 +457,7 @@ describe('toShipmentDetailVM operational mapping', () => {
           operational: {
             status: 'IN_TRANSIT',
             eta: {
-              event_time: '2026-03-10T10:00:00.000Z',
+              event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
               event_time_type: 'EXPECTED',
               state: 'ACTIVE_EXPECTED',
               type: 'ARRIVAL',
@@ -477,7 +478,7 @@ describe('toShipmentDetailVM operational mapping', () => {
       process_operational: {
         derived_status: 'IN_TRANSIT',
         eta_max: {
-          event_time: '2026-03-10T10:00:00.000Z',
+          event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
           event_time_type: 'EXPECTED',
           state: 'ACTIVE_EXPECTED',
           type: 'ARRIVAL',

@@ -5,6 +5,7 @@ import {
 } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type ProcessesProjection = Awaited<
   ReturnType<
@@ -176,7 +177,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
             {
               status: 'IN_TRANSIT',
               eta: {
-                eventTimeIso: '2026-03-24T00:00:00.000Z',
+                eventTime: temporalDtoFromCanonical('2026-03-24T00:00:00.000Z'),
                 eventTimeType: 'EXPECTED',
                 state: 'ACTIVE_EXPECTED',
                 type: 'ARRIVAL',

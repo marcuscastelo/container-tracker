@@ -2,15 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createTrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
 
 function createControllers(options?: {
   readonly activeAlerts?: readonly TrackingAlert[]
   readonly containerNumberByContainerId?: ReadonlyMap<string, string>
+  readonly snapshots?: readonly Snapshot[]
 }) {
   const acknowledge = vi.fn(
     async (
@@ -49,7 +52,7 @@ function createControllers(options?: {
         throw new Error('not used')
       }),
       findLatestByContainerId: vi.fn(async () => null),
-      findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerId: vi.fn(async () => options?.snapshots ?? []),
       findByIds: vi.fn(async () => []),
     },
     observationRepository: {
@@ -237,5 +240,113 @@ describe('tracking controllers', () => {
     expect(acknowledge).not.toHaveBeenCalled()
     expect(unacknowledge).toHaveBeenCalledTimes(1)
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
+  })
+
+  it('time-travel endpoint returns snapshot checkpoints', async () => {
+    const containerId = 'container-replay'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel`,
+    )
+    const response = await controllers.timeTravel.getTimeTravel({
+      params: { containerId },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.sync_count).toBe(1)
+    expect(body.selected_snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
+  })
+
+  it('time-travel endpoint rejects now values without timezone', async () => {
+    const containerId = 'container-replay-invalid-now'
+    const { controllers } = createControllers()
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel?now=2026-02-03T15:00:00.000`,
+    )
+    const response = await controllers.timeTravel.getTimeTravel({
+      params: { containerId },
+      request,
+    })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('time-travel debug endpoint returns selected snapshot debug payload', async () => {
+    const containerId = 'container-replay-debug'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel/snapshot-1/debug`,
+    )
+    const response = await controllers.timeTravel.getReplayDebug({
+      params: { containerId, snapshotId: 'snapshot-1' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.container_id).toBe(containerId)
+    expect(body.snapshot_id).toBe('snapshot-1')
+    expect(body.total_steps).toBeGreaterThan(0)
+    expect(body.checkpoint.snapshot_id).toBe('snapshot-1')
+    expect(
+      body.steps.every(
+        (step: { readonly snapshot_id: string | null }) => step.snapshot_id === 'snapshot-1',
+      ),
+    ).toBe(true)
+  })
+
+  it('time-travel debug endpoint returns 404 for unknown snapshot id', async () => {
+    const containerId = 'container-replay-missing-debug'
+    const { controllers } = createControllers({
+      snapshots: [
+        {
+          id: 'snapshot-1',
+          container_id: containerId,
+          provider: 'maersk',
+          fetched_at: '2026-02-03T15:00:00.000Z',
+          payload: maerskPayload,
+        },
+      ],
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/time-travel/unknown/debug`,
+    )
+    const response = await controllers.timeTravel.getReplayDebug({
+      params: { containerId, snapshotId: 'unknown' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(404)
+    expect(body.error).toBe('Replay snapshot not found')
   })
 })

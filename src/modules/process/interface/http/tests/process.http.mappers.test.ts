@@ -13,6 +13,7 @@ import {
 } from '~/modules/process/interface/http/process.http.mappers'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
 import { ProcessResponseSchema } from '~/shared/api-schemas/processes.schemas'
+import { Instant } from '~/shared/time/instant'
 
 function createProcessWithContainers() {
   const process = createProcessEntity({
@@ -29,8 +30,8 @@ function createProcessWithContainers() {
     product: null,
     redestinationNumber: null,
     source: toProcessSource('manual'),
-    createdAt: new Date('2026-03-10T10:00:00.000Z'),
-    updatedAt: new Date('2026-03-10T10:00:00.000Z'),
+    createdAt: Instant.fromIso('2026-03-10T10:00:00.000Z'),
+    updatedAt: Instant.fromIso('2026-03-10T10:00:00.000Z'),
   })
 
   return {

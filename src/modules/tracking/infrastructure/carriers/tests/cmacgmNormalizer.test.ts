@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer'
 import fullPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/cmacgm/cmacgm_full.json'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
@@ -93,7 +94,7 @@ describe('normalizeCmaCgmSnapshot', () => {
       const first = drafts[0]
       expect(first?.event_time).toBeDefined()
       // /Date(1764659520000)/ → 2025-12-02T08:12:00.000Z
-      expect(first?.event_time).toContain('2025-12-02')
+      expect(temporalCanonicalText(first?.event_time ?? null)).toContain('2025-12-02')
     })
 
     it('should set provider and snapshot_id on all drafts', () => {

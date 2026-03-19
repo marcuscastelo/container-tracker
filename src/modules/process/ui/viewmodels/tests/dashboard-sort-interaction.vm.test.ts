@@ -6,11 +6,14 @@ import {
 } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { temporalDtoFromCanonical, temporalValueFromDto } from '~/shared/time/tests/helpers'
 
-function toTimestampOrNull(value: string | null): number | null {
+function toTimestampOrNull(value: ProcessSummaryVM['eta']): number | null {
   if (!value) return null
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? null : parsed
+  const temporal = temporalValueFromDto(value)
+  if (temporal === null) return null
+  if (temporal.kind === 'instant') return temporal.value.toEpochMs()
+  return null
 }
 
 function createProcess(
@@ -22,9 +25,9 @@ function createProcess(
     readonly status?: ProcessSummaryVM['status']
     readonly statusCode?: ProcessSummaryVM['statusCode']
     readonly statusRank?: number
-    readonly eta?: string | null
+    readonly eta?: ProcessSummaryVM['eta']
     readonly etaMsOrNull?: number | null
-    readonly lastEventAt?: string | null
+    readonly lastEventAt?: ProcessSummaryVM['lastEventAt']
     readonly dominantAlertCreatedAt?: string | null
   },
 ): ProcessSummaryVM {
@@ -64,31 +67,31 @@ function createImporterTieBreakProcesses(): readonly ProcessSummaryVM[] {
       id: 'proc-04',
       importerName: 'Same',
       reference: null,
-      lastEventAt: '2025-03-01T00:00:00.000Z',
+      lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
     }),
     createProcess({
       id: 'proc-03',
       importerName: 'Same',
       reference: null,
-      lastEventAt: '2025-03-01T00:00:00.000Z',
+      lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
     }),
     createProcess({
       id: 'proc-02',
       importerName: 'Same',
       reference: 'PROC-20',
-      lastEventAt: '2025-03-01T00:00:00.000Z',
+      lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
     }),
     createProcess({
       id: 'proc-01',
       importerName: 'Same',
       reference: 'PROC-10',
-      lastEventAt: '2025-03-01T00:00:00.000Z',
+      lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
     }),
     createProcess({
       id: 'proc-00',
       importerName: 'Same',
       reference: 'PROC-10',
-      lastEventAt: '2025-03-01T00:00:00.000Z',
+      lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
     }),
   ] as const
 }
@@ -180,9 +183,9 @@ describe('dashboard sort interactions', () => {
 
   it('sorts created date using timestamp order', () => {
     const baseline = [
-      createProcess({ id: 'A', lastEventAt: '2025-03-01T00:00:00.000Z' }),
-      createProcess({ id: 'B', lastEventAt: '2025-01-01T00:00:00.000Z' }),
-      createProcess({ id: 'C', lastEventAt: '2025-02-01T00:00:00.000Z' }),
+      createProcess({ id: 'A', lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z') }),
+      createProcess({ id: 'B', lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z') }),
+      createProcess({ id: 'C', lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z') }),
     ] as const
 
     const descResult = sortDashboardProcesses(baseline, { field: 'createdAt', direction: 'desc' })
@@ -197,17 +200,17 @@ describe('dashboard sort interactions', () => {
       // lastEventAt intentionally differs to ensure dominantAlertCreatedAt takes precedence
       createProcess({
         id: 'A',
-        lastEventAt: '2025-03-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
         dominantAlertCreatedAt: '2025-01-01T00:00:00.000Z',
       }),
       createProcess({
         id: 'B',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
         dominantAlertCreatedAt: '2025-03-01T00:00:00.000Z',
       }),
       createProcess({
         id: 'C',
-        lastEventAt: '2025-02-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
         dominantAlertCreatedAt: '2025-02-01T00:00:00.000Z',
       }),
     ] as const
@@ -236,9 +239,17 @@ describe('dashboard sort interactions', () => {
 
   it('sorts ETA by etaMsOrNull and keeps null values at the end in both directions', () => {
     const baseline = [
-      createProcess({ id: 'A', eta: '2025-03-01T00:00:00.000Z', etaMsOrNull: 1740787200000 }),
+      createProcess({
+        id: 'A',
+        eta: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
+        etaMsOrNull: 1740787200000,
+      }),
       createProcess({ id: 'B', eta: null, etaMsOrNull: null }),
-      createProcess({ id: 'C', eta: '2025-02-01T00:00:00.000Z', etaMsOrNull: 1738368000000 }),
+      createProcess({
+        id: 'C',
+        eta: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
+        etaMsOrNull: 1738368000000,
+      }),
     ] as const
 
     const ascResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'asc' })
@@ -253,17 +264,17 @@ describe('dashboard sort interactions', () => {
       createProcess({
         id: 'A',
         importerName: 'Same',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'B',
         importerName: 'Same',
-        lastEventAt: '2025-03-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'C',
         importerName: 'Same',
-        lastEventAt: '2025-02-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
       }),
     ] as const
 

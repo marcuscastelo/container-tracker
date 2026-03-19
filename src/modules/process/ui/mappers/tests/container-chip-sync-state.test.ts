@@ -4,6 +4,7 @@ import {
   toContainerSyncVM,
 } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
+import { Instant } from '~/shared/time/instant'
 
 type ContainerSyncRecord = ProcessDetailResponse['containersSync'][number]
 
@@ -37,7 +38,7 @@ describe('container sync state mapping', () => {
         lastSuccessAt: '2026-03-01T10:00:00.000Z',
         lastErrorAt: '2026-03-02T10:00:00.000Z',
       }),
-      new Date('2026-03-03T10:00:00.000Z'),
+      Instant.fromIso('2026-03-03T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('syncing')
@@ -50,14 +51,14 @@ describe('container sync state mapping', () => {
         lastSuccessAt: '2026-03-01T10:00:00.000Z',
         lastErrorAt: '2026-03-02T10:00:00.000Z',
       }),
-      new Date('2026-03-03T10:00:00.000Z'),
+      Instant.fromIso('2026-03-03T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('error')
     expect(vm.relativeTimeAt).toBe('2026-03-02T10:00:00.000Z')
     expect(
       toContainerSyncLabel(vm, labelMessages, {
-        now: new Date('2026-03-03T10:00:00.000Z'),
+        now: Instant.fromIso('2026-03-03T10:00:00.000Z'),
         locale: 'en-US',
       }).startsWith('failed '),
     ).toBe(true)
@@ -69,21 +70,21 @@ describe('container sync state mapping', () => {
         lastSuccessAt: '2026-03-02T10:00:00.000Z',
         lastErrorAt: '2026-03-01T10:00:00.000Z',
       }),
-      new Date('2026-03-03T10:00:00.000Z'),
+      Instant.fromIso('2026-03-03T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('ok')
     expect(vm.relativeTimeAt).toBe('2026-03-02T10:00:00.000Z')
     expect(
       toContainerSyncLabel(vm, labelMessages, {
-        now: new Date('2026-03-03T10:00:00.000Z'),
+        now: Instant.fromIso('2026-03-03T10:00:00.000Z'),
         locale: 'en-US',
       }).startsWith('updated '),
     ).toBe(true)
   })
 
   it('maps never when there is no success nor error history', () => {
-    const vm = toContainerSyncVM(makeSyncRecord(), new Date('2026-03-03T10:00:00.000Z'))
+    const vm = toContainerSyncVM(makeSyncRecord(), Instant.fromIso('2026-03-03T10:00:00.000Z'))
 
     expect(vm.state).toBe('never')
     expect(vm.relativeTimeAt).toBeNull()
@@ -95,7 +96,7 @@ describe('container sync state mapping', () => {
       makeSyncRecord({
         lastSuccessAt: '2026-03-01T09:59:59.000Z',
       }),
-      new Date('2026-03-02T10:00:00.000Z'),
+      Instant.fromIso('2026-03-02T10:00:00.000Z'),
     )
 
     expect(vm.state).toBe('ok')
@@ -107,15 +108,15 @@ describe('container sync state mapping', () => {
       makeSyncRecord({
         lastSuccessAt: '2026-03-03T10:00:00.000Z',
       }),
-      new Date('2026-03-03T10:00:00.000Z'),
+      Instant.fromIso('2026-03-03T10:00:00.000Z'),
     )
 
     const labelAtZero = toContainerSyncLabel(vm, labelMessages, {
-      now: new Date('2026-03-03T10:00:00.000Z'),
+      now: Instant.fromIso('2026-03-03T10:00:00.000Z'),
       locale: 'en-US',
     })
     const labelAtOneMinute = toContainerSyncLabel(vm, labelMessages, {
-      now: new Date('2026-03-03T10:01:00.000Z'),
+      now: Instant.fromIso('2026-03-03T10:01:00.000Z'),
       locale: 'en-US',
     })
 

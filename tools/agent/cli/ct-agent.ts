@@ -524,14 +524,26 @@ async function runLogsCommand(runCommand: CommandRunner): Promise<number> {
   }
 
   const layout = resolveAgentPathLayout()
-  const logPath = path.join(layout.logsDir, 'supervisor.log')
-  if (!fs.existsSync(logPath)) {
-    console.error(`[ct-agent] local log file not found: ${logPath}`)
+  const outLogPath = path.join(layout.logsDir, 'agent.out.log')
+  const errLogPath = path.join(layout.logsDir, 'agent.err.log')
+  const localLogs = [outLogPath, errLogPath].filter((candidate) => fs.existsSync(candidate))
+
+  if (localLogs.length === 0) {
+    const fallbackLogPath = path.join(layout.logsDir, 'supervisor.log')
+    if (fs.existsSync(fallbackLogPath)) {
+      localLogs.push(fallbackLogPath)
+    }
+  }
+
+  if (localLogs.length === 0) {
+    console.error(
+      `[ct-agent] local log files not found: ${outLogPath}, ${errLogPath}, supervisor.log`,
+    )
     return EXIT_FATAL
   }
 
   try {
-    const tailExitCode = await runCommand('tail', ['-n', JOURNAL_TAIL_LINES, '-F', logPath])
+    const tailExitCode = await runCommand('tail', ['-n', JOURNAL_TAIL_LINES, '-F', ...localLogs])
     return tailExitCode === EXIT_OK ? EXIT_OK : EXIT_FATAL
   } catch (error) {
     console.error(`[ct-agent] could not stream local logs: ${toErrorMessage(error)}`)

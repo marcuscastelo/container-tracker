@@ -3,6 +3,7 @@ import type { CarrierCode } from '~/modules/container/domain/identity/carrier-co
 import type { ContainerId } from '~/modules/container/domain/identity/container-id.vo'
 import type { ContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
 import type { ProcessId } from '~/modules/container/domain/identity/process-id.vo'
+import type { Instant } from '~/shared/time/instant'
 
 export type ContainerCarrierAssignmentMode = 'AUTO' | 'MANUAL'
 export type ContainerCarrierDetectionSource =
@@ -19,7 +20,7 @@ export type ContainerEntityProps = {
   carrierDetectedAt?: Date | null
   carrierDetectionSource?: ContainerCarrierDetectionSource | null
   containerNumber: ContainerNumber
-  createdAt: Date
+  createdAt: Instant
 }
 
 export type ContainerEntity = ContainerBrand<Readonly<ContainerEntityProps>, 'ContainerEntity'>

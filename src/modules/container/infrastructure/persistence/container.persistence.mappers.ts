@@ -17,6 +17,7 @@ import type {
   ContainerRow,
   ContainerUpdate,
 } from '~/modules/container/infrastructure/persistence/container.row'
+import { Instant } from '~/shared/time/instant'
 
 function toCarrierAssignmentMode(value: string | null | undefined): ContainerCarrierAssignmentMode {
   return value === 'MANUAL' ? 'MANUAL' : 'AUTO'
@@ -42,7 +43,7 @@ export const containerMappers = {
       carrierDetectedAt: row.carrier_detected_at ? new Date(row.carrier_detected_at) : null,
       carrierDetectionSource: toCarrierDetectionSource(row.carrier_detection_source),
       processId: toProcessId(row.process_id),
-      createdAt: new Date(row.created_at),
+      createdAt: Instant.fromIso(row.created_at),
     }),
 
   toInsert: (container: InsertContainerRecord): ContainerInsert => ({

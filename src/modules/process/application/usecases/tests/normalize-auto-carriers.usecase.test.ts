@@ -4,12 +4,13 @@ import { toCarrierCode as toContainerCarrierCode } from '~/modules/container/dom
 import { toContainerId } from '~/modules/container/domain/identity/container-id.vo'
 import { toContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
 import { toProcessId as toContainerProcessId } from '~/modules/container/domain/identity/process-id.vo'
+import { createNormalizeAutoCarriersUseCase } from '~/modules/process/application/usecases/normalize-auto-carriers.usecase'
 import { toCarrierCode } from '~/modules/process/domain/identity/carrier-code.vo'
 import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import { toProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import { toProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { createProcessEntity } from '~/modules/process/domain/process.entity'
-import { createNormalizeAutoCarriersUseCase } from '~/modules/process/application/usecases/normalize-auto-carriers.usecase'
+import { Instant } from '~/shared/time/instant'
 
 function makeContainer(command: {
   readonly id: string
@@ -24,7 +25,7 @@ function makeContainer(command: {
     containerNumber: toContainerNumber(command.containerNumber),
     carrierCode: command.carrierCode ? toContainerCarrierCode(command.carrierCode) : null,
     carrierAssignmentMode: command.carrierAssignmentMode,
-    createdAt: new Date('2026-03-01T10:00:00.000Z'),
+    createdAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
   })
 }
 
@@ -46,8 +47,8 @@ describe('normalize-auto-carriers.usecase', () => {
       product: null,
       redestinationNumber: null,
       source: toProcessSource('manual'),
-      createdAt: new Date('2026-03-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-03-01T10:00:00.000Z'),
+      createdAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
+      updatedAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
     })
 
     const stateContainers = [
@@ -159,8 +160,8 @@ describe('normalize-auto-carriers.usecase', () => {
       product: null,
       redestinationNumber: null,
       source: toProcessSource('manual'),
-      createdAt: new Date('2026-03-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-03-01T10:00:00.000Z'),
+      createdAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
+      updatedAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
     })
 
     const repository = {
@@ -237,8 +238,8 @@ describe('normalize-auto-carriers.usecase', () => {
       product: null,
       redestinationNumber: null,
       source: toProcessSource('manual'),
-      createdAt: new Date('2026-03-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-03-01T10:00:00.000Z'),
+      createdAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
+      updatedAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
     })
 
     const repository = {

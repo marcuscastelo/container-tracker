@@ -11,6 +11,11 @@ import {
   toOperationalStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
+import { systemClock } from '~/shared/time/clock'
+import { compareTemporal } from '~/shared/time/compare-temporal'
+import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
+import { parseInstantFromIso, parseTemporalValue } from '~/shared/time/parsing'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 /**
  * Minimal tracking summary needed for process-level aggregation.
@@ -20,7 +25,7 @@ type ContainerTrackingSummary = {
   readonly status: string
   readonly operational?: {
     readonly eta: {
-      readonly eventTimeIso: string
+      readonly eventTime: TemporalValueDto
     } | null
     readonly etaApplicable?: boolean
     readonly lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
@@ -31,7 +36,7 @@ type ContainerTrackingSummary = {
     readonly triggered_at: string
   }[]
   readonly timeline: {
-    readonly observations: readonly { readonly event_time: string | null }[]
+    readonly observations: readonly { readonly event_time: TemporalValue | null }[]
   }
 }
 
@@ -82,8 +87,29 @@ function normalizeContainerNumber(value: string): string {
 
 function toTimestampOrNegativeInfinity(value: string | null): number {
   if (!value) return Number.NEGATIVE_INFINITY
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+  return parseInstantFromIso(value)?.toEpochMs() ?? Number.NEGATIVE_INFINITY
+}
+
+const PROCESS_SUMMARY_ETA_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
+
+function compareNullableTemporalValues(
+  left: TemporalValueDto | null,
+  right: TemporalValueDto | null,
+): number {
+  if (left === null && right === null) return 0
+  if (left === null) return 1
+  if (right === null) return -1
+
+  const leftTemporal = parseTemporalValue(left)
+  const rightTemporal = parseTemporalValue(right)
+  if (leftTemporal && rightTemporal) {
+    return compareTemporal(leftTemporal, rightTemporal, PROCESS_SUMMARY_ETA_COMPARE_OPTIONS)
+  }
+
+  return JSON.stringify(left).localeCompare(JSON.stringify(right))
 }
 
 function pickMostRecentTimestamp(current: string | null, candidate: string | null): string | null {
@@ -128,16 +154,16 @@ function shouldPreferAlertByTriggeredAt(
   candidate: { readonly triggered_at: string },
   current: { readonly triggered_at: string },
 ): boolean {
-  const candidateTimestamp = Date.parse(candidate.triggered_at)
-  const currentTimestamp = Date.parse(current.triggered_at)
+  const candidateTimestamp = parseInstantFromIso(candidate.triggered_at)?.toEpochMs()
+  const currentTimestamp = parseInstantFromIso(current.triggered_at)?.toEpochMs()
 
-  if (!Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+  if (candidateTimestamp !== undefined && currentTimestamp !== undefined) {
     if (candidateTimestamp !== currentTimestamp) {
       return candidateTimestamp > currentTimestamp
     }
-  } else if (!Number.isNaN(candidateTimestamp) && Number.isNaN(currentTimestamp)) {
+  } else if (candidateTimestamp !== undefined && currentTimestamp === undefined) {
     return true
-  } else if (Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+  } else if (candidateTimestamp === undefined && currentTimestamp !== undefined) {
     return false
   }
 
@@ -288,7 +314,7 @@ export function aggregateOperationalSummary(
   carrier: string | null,
   containerCount: number,
   summaries: readonly ContainerTrackingSummary[],
-  now?: string,
+  now?: TemporalValueDto,
 ): ProcessOperationalSummary {
   // --- Process Status ---
   const statuses: OperationalStatus[] = summaries.map((summary) =>
@@ -311,8 +337,8 @@ export function aggregateOperationalSummary(
 
   // --- ETA ---
   // Select earliest future ETA among ETA-eligible containers.
-  const nowIso = now ?? new Date().toISOString()
-  let eta: string | null = null
+  const nowTemporal = now ?? { kind: 'instant', value: systemClock.now().toIsoString() }
+  let eta: TemporalValueDto | null = null
   let etaEligibleTotal = 0
   let etaWithValue = 0
   for (let index = 0; index < summaries.length; index += 1) {
@@ -322,13 +348,13 @@ export function aggregateOperationalSummary(
     if (!etaApplicable) continue
 
     etaEligibleTotal += 1
-    const etaIso = summary.operational?.eta?.eventTimeIso ?? null
-    if (etaIso === null) continue
+    const etaTemporal = summary.operational?.eta?.eventTime ?? null
+    if (etaTemporal === null) continue
     etaWithValue += 1
 
-    if (etaIso > nowIso) {
-      if (eta === null || etaIso < eta) {
-        eta = etaIso
+    if (compareNullableTemporalValues(etaTemporal, nowTemporal) > 0) {
+      if (eta === null || compareNullableTemporalValues(etaTemporal, eta) < 0) {
+        eta = etaTemporal
       }
     }
   }
@@ -389,10 +415,14 @@ export function aggregateOperationalSummary(
   const hasTransshipment = allActiveAlerts.some((a) => a.type === 'TRANSSHIPMENT')
 
   // --- Last Event ---
-  let lastEventAt: string | null = null
+  let lastEventAt: TemporalValue | null = null
   for (const s of summaries) {
     for (const obs of s.timeline.observations) {
-      if (obs.event_time && (lastEventAt === null || obs.event_time > lastEventAt)) {
+      if (
+        obs.event_time &&
+        (lastEventAt === null ||
+          compareTemporal(obs.event_time, lastEventAt, PROCESS_SUMMARY_ETA_COMPARE_OPTIONS) > 0)
+      ) {
         lastEventAt = obs.event_time
       }
     }
@@ -421,7 +451,7 @@ export function aggregateOperationalSummary(
     highest_alert_severity: highestAlertSeverity,
     dominant_alert_created_at: dominantAlertCreatedAt,
     has_transshipment: hasTransshipment,
-    last_event_at: lastEventAt,
+    last_event_at: lastEventAt ? toTemporalValueDto(lastEventAt) : null,
   }
 }
 
@@ -445,7 +475,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
     })
 
     // Calculate 'now' once for consistent ETA comparison across all processes
-    const now = new Date().toISOString()
+    const now = { kind: 'instant', value: systemClock.now().toIsoString() } as const
 
     const processes: ProcessWithOperationalSummary[] = await Promise.all(
       allProcesses.map(async (process) => {

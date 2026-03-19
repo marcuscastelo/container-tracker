@@ -1,5 +1,6 @@
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 /**
  * EventTimeType — differentiates between confirmed facts and predictions.
@@ -29,8 +30,8 @@ export type ObservationDraft = {
   /** Semantic type of observation */
   type: ObservationType
 
-  /** When the event occurred (UTC ISO), null if unknown */
-  event_time: string | null
+  /** When the event occurred, as an explicit temporal semantic value. */
+  event_time: TemporalValue | null
 
   /**
    * Whether this is an ACTUAL (confirmed) or EXPECTED (predicted) event.

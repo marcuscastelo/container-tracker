@@ -6,6 +6,7 @@ import {
   DashboardKpisResponseSchema,
   DashboardOperationalSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('dashboard controllers - boundary behavior', () => {
   it('returns operational summary including process exceptions in backend order', async () => {
@@ -33,7 +34,7 @@ describe('dashboard controllers - boundary behavior', () => {
           origin: 'Ningbo',
           destination: 'Antwerp',
           status: 'IN_TRANSIT',
-          eta: '2026-03-10T10:00:00.000Z',
+          eta: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
           dominantSeverity: 'danger',
           dominantAlertCreatedAt: '2026-03-10T09:30:00.000Z',
           activeAlertsCount: 2,
@@ -81,7 +82,7 @@ describe('dashboard controllers - boundary behavior', () => {
       origin: 'Ningbo',
       destination: 'Antwerp',
       derived_status: 'IN_TRANSIT',
-      eta_current: '2026-03-10T10:00:00.000Z',
+      eta_current: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
       dominant_severity: 'danger',
       dominant_alert_created_at: '2026-03-10T09:30:00.000Z',
       active_alert_count: 2,

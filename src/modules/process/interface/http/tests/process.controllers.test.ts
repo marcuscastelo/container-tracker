@@ -15,12 +15,14 @@ import {
   ProcessDetailResponseSchema,
   ProcessesV2ResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+import { Instant } from '~/shared/time/instant'
+import { temporalValueFromDto } from '~/shared/time/tests/helpers'
 
 type GetContainerSummaryMock = (
   containerId: string,
   containerNumber: string,
   podLocationCode?: string | null,
-  now?: Date,
+  now?: Instant,
   options?: { readonly includeAcknowledgedAlerts?: boolean },
 ) => Promise<GetContainerSummaryResult>
 
@@ -61,8 +63,8 @@ function createProcessWithContainers(destination: string) {
     product: null,
     redestinationNumber: null,
     source: toProcessSource('manual'),
-    createdAt: new Date('2026-02-01T10:00:00.000Z'),
-    updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+    createdAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
+    updatedAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
   })
 
   const processWithContainers = {
@@ -106,7 +108,7 @@ function createSummary(
         container_id: containerId,
         container_number: containerNumber,
         type: 'ARRIVAL',
-        event_time: operational.eta?.eventTimeIso ?? null,
+        event_time: temporalValueFromDto(operational.eta?.eventTime ?? null),
         event_time_type: operational.eta?.eventTimeType ?? 'EXPECTED',
         location_code: operational.eta?.locationCode ?? null,
         location_display: operational.eta?.locationDisplay ?? null,
@@ -271,7 +273,7 @@ describe('process controllers', () => {
     const containerOneSummary: TrackingOperationalSummary = {
       status: 'IN_TRANSIT',
       eta: {
-        eventTimeIso: '2026-03-10T12:00:00.000Z',
+        eventTime: { kind: 'instant', value: '2026-03-10T12:00:00.000Z' },
         eventTimeType: 'EXPECTED',
         state: 'ACTIVE_EXPECTED',
         type: 'ARRIVAL',
@@ -309,9 +311,15 @@ describe('process controllers', () => {
 
     expect(response.status).toBe(200)
     expect(body.containers).toHaveLength(2)
-    expect(body.containers[0]?.operational?.eta?.event_time).toBe('2026-03-10T12:00:00.000Z')
+    expect(body.containers[0]?.operational?.eta?.event_time).toEqual({
+      kind: 'instant',
+      value: '2026-03-10T12:00:00.000Z',
+    })
     expect(body.containers[1]?.operational?.data_issue).toBe(true)
-    expect(body.process_operational?.eta_max?.event_time).toBe('2026-03-10T12:00:00.000Z')
+    expect(body.process_operational?.eta_max?.event_time).toEqual({
+      kind: 'instant',
+      value: '2026-03-10T12:00:00.000Z',
+    })
     expect(body.process_operational?.coverage.total).toBe(2)
     expect(body.process_operational?.coverage.with_eta).toBe(1)
     expect(body.containersSync).toHaveLength(2)
@@ -464,7 +472,7 @@ describe('process controllers', () => {
       'container-1',
       'MSCU1234567',
       null,
-      expect.any(Date),
+      expect.anything(),
       { includeAcknowledgedAlerts: true },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
@@ -472,7 +480,7 @@ describe('process controllers', () => {
       'container-2',
       'MSCU7654321',
       null,
-      expect.any(Date),
+      expect.anything(),
       { includeAcknowledgedAlerts: true },
     )
   })
@@ -493,7 +501,7 @@ describe('process controllers', () => {
       'container-1',
       'MSCU1234567',
       'ESBCN07',
-      expect.any(Date),
+      expect.anything(),
       { includeAcknowledgedAlerts: true },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
@@ -501,7 +509,7 @@ describe('process controllers', () => {
       'container-2',
       'MSCU7654321',
       'ESBCN07',
-      expect.any(Date),
+      expect.anything(),
       { includeAcknowledgedAlerts: true },
     )
   })
@@ -605,8 +613,8 @@ describe('process controllers', () => {
       product: null,
       redestinationNumber: null,
       source: toProcessSource('manual'),
-      createdAt: new Date('2026-02-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+      createdAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
+      updatedAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
     })
     const normalizeAutoCarriers = vi.fn(async () => ({
       ok: true as const,
@@ -684,8 +692,8 @@ describe('process controllers', () => {
       product: null,
       redestinationNumber: null,
       source: toProcessSource('manual'),
-      createdAt: new Date('2026-02-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-02-01T10:00:00.000Z'),
+      createdAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
+      updatedAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
     })
 
     const updateCarrier = vi.fn(async () => undefined)

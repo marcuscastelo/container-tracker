@@ -4,10 +4,14 @@ import type { AgentMonitoringUseCases } from '~/modules/agent/application/agent-
 import type {
   AgentHeartbeatBodySchema,
   AgentListQuerySchema,
+  AgentLogIngestBodySchema,
+  AgentLogsQuerySchema,
 } from '~/modules/agent/interface/http/agent-monitoring.schemas'
 
 type ListAgentsInput = z.infer<typeof AgentListQuerySchema>
 type HeartbeatInput = z.infer<typeof AgentHeartbeatBodySchema>
+type AgentLogsQueryInput = z.infer<typeof AgentLogsQuerySchema>
+type AgentLogIngestBodyInput = z.infer<typeof AgentLogIngestBodySchema>
 type HeartbeatActivityCommand = {
   readonly agentId: string
   readonly tenantId: string
@@ -84,6 +88,7 @@ export function toHeartbeatCommand(command: {
     leaseHealth: command.payload.lease_health,
     activeJobs: command.payload.active_jobs,
     capabilities: command.payload.capabilities,
+    logsSupported: command.payload.logs_supported,
     intervalSec: command.payload.interval_sec,
     queueLagSeconds: command.payload.queue_lag_seconds,
     lastError: command.payload.last_error,
@@ -106,4 +111,35 @@ export function toHeartbeatActivityCommands(command: {
     metadata: activity.metadata,
     occurredAt: activity.occurred_at,
   }))
+}
+
+export function toAgentLogsCommand(command: {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly query: AgentLogsQueryInput
+}): Parameters<AgentMonitoringUseCases['getAgentLogs']>[0] {
+  return {
+    tenantId: command.tenantId,
+    agentId: command.agentId,
+    channel: command.query.channel,
+    tail: command.query.tail,
+  }
+}
+
+export function toAgentLogIngestCommand(command: {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly payload: AgentLogIngestBodyInput
+}): Parameters<AgentMonitoringUseCases['ingestAgentLogs']>[0] {
+  return {
+    tenantId: command.tenantId,
+    agentId: command.agentId,
+    lines: command.payload.lines.map((line) => ({
+      sequence: line.sequence,
+      channel: line.channel,
+      message: line.message,
+      occurredAt: line.occurred_at,
+      truncated: line.truncated,
+    })),
+  }
 }

@@ -1,4 +1,5 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
+import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import type { DerivedObservationState } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
 import { deriveObservationState } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
@@ -8,11 +9,14 @@ import {
   buildSeriesKey,
   compareObservationsChronologically,
 } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { systemClock } from '~/shared/time/clock'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 
 export type TrackingSeriesHistoryItem = {
   readonly id: string
   readonly type: string
-  readonly event_time: string | null
+  readonly event_time: TemporalValueDto | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly created_at: string
   readonly seriesLabel: SeriesLabel
@@ -28,8 +32,8 @@ export type TrackingTimelineItem = {
   readonly type: TrackingObservationProjection['type']
   readonly carrierLabel?: string
   readonly location?: string
-  /** ISO timestamp coming from obs.event_time */
-  readonly eventTimeIso: string | null
+  /** Explicit temporal payload coming from obs.event_time. */
+  readonly eventTime: TemporalValueDto | null
   /** ACTUAL or EXPECTED */
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
   /** Derived state for safe-first rendering */
@@ -62,7 +66,7 @@ function observationToTrackingTimelineItem(
     type: obs.type,
     carrierLabel: obs.carrier_label ?? undefined,
     location,
-    eventTimeIso: obs.event_time ?? null,
+    eventTime: trackingTemporalValueToDto(obs.event_time),
     eventTimeType,
     derivedState,
     vesselName: obs.vessel_name ?? null,
@@ -95,7 +99,7 @@ function timelineItemToTrackingItem(
  */
 export function deriveTimelineWithSeriesReadModel(
   observations: readonly TrackingObservationProjection[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): TrackingTimelineItem[] {
   if (observations.length === 0) return []
 
@@ -125,7 +129,7 @@ export function deriveTimelineWithSeriesReadModel(
               classified: classification.classified.map((observation) => ({
                 id: observation.id,
                 type: observation.type,
-                event_time: observation.event_time,
+                event_time: trackingTemporalValueToDto(observation.event_time),
                 event_time_type: observation.event_time_type,
                 created_at: observation.created_at,
                 seriesLabel: observation.seriesLabel,

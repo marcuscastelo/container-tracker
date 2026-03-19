@@ -4,6 +4,8 @@ import { AlertIcon } from '~/modules/process/ui/components/Icons'
 import { resolveLifecycleState } from '~/modules/process/ui/screens/shipment/lib/alert-lifecycle'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { systemClock } from '~/shared/time/clock'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type AlertCategoryChipType = 'delay' | 'customs' | 'missing-eta' | 'transshipment' | 'info'
 type AlertsListMode = 'active' | 'archived'
@@ -59,9 +61,9 @@ function formatAlertAge(
   t: ReturnType<typeof useTranslation>['t'],
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  const date = new Date(triggeredAtIso)
-  if (Number.isNaN(date.getTime())) return ''
-  const diff = Date.now() - date.getTime()
+  const triggeredAt = parseInstantFromIso(triggeredAtIso)
+  if (triggeredAt === null) return ''
+  const diff = systemClock.now().diffMs(triggeredAt)
   const s = Math.floor(diff / 1000)
   if (s < 60) return t(keys.shipmentView.alerts.aging.now)
   const m = Math.floor(s / 60)

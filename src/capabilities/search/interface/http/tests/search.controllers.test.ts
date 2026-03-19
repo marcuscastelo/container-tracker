@@ -8,6 +8,7 @@ import { SearchHttpResponseSchema } from '~/capabilities/search/interface/http/s
 import type { ContainerSearchProjection } from '~/modules/container/application/container.readmodels'
 import type { ProcessSearchProjection } from '~/modules/process/application/process.readmodels'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type SearchDeps = {
   readonly searchByText: ReturnType<
@@ -109,7 +110,7 @@ function createTypicalSearchFixture(processCount: number): TypicalSearchFixture 
       processId: processMatch.processId,
       vesselName: `MV Atlas ${index}`,
       latestDerivedStatus: 'IN_TRANSIT',
-      latestEta: '2026-03-10T00:00:00.000Z',
+      latestEta: temporalDtoFromCanonical('2026-03-10T00:00:00.000Z'),
     }))
 
   const statusMatches: TrackingSearchProjection[] = processMatches
@@ -118,7 +119,7 @@ function createTypicalSearchFixture(processCount: number): TypicalSearchFixture 
       processId: processMatch.processId,
       vesselName: `MV Boreal ${index}`,
       latestDerivedStatus: 'ARRIVED_AT_POD',
-      latestEta: '2026-03-12T00:00:00.000Z',
+      latestEta: temporalDtoFromCanonical('2026-03-12T00:00:00.000Z'),
     }))
 
   return {
@@ -176,13 +177,13 @@ describe('search controllers', () => {
         processId: 'process-00',
         vesselName: 'Maersk A',
         latestDerivedStatus: 'IN_TRANSIT',
-        latestEta: '2026-03-04T00:00:00.000Z',
+        latestEta: temporalDtoFromCanonical('2026-03-04T00:00:00.000Z'),
       },
       {
         processId: 'process-10',
         vesselName: 'Maersk B',
         latestDerivedStatus: 'ARRIVED_AT_POD',
-        latestEta: '2026-03-05T00:00:00.000Z',
+        latestEta: temporalDtoFromCanonical('2026-03-05T00:00:00.000Z'),
       },
     ]
 
@@ -191,13 +192,13 @@ describe('search controllers', () => {
         processId: 'process-20',
         vesselName: 'Maersk C',
         latestDerivedStatus: 'IN_TRANSIT',
-        latestEta: '2026-03-06T00:00:00.000Z',
+        latestEta: temporalDtoFromCanonical('2026-03-06T00:00:00.000Z'),
       },
       {
         processId: 'process-21',
         vesselName: 'Maersk D',
         latestDerivedStatus: 'ARRIVED_AT_POD',
-        latestEta: '2026-03-07T00:00:00.000Z',
+        latestEta: temporalDtoFromCanonical('2026-03-07T00:00:00.000Z'),
       },
     ]
 
@@ -295,13 +296,13 @@ describe('search controllers', () => {
           processId: 'process-01',
           vesselName: 'Ocean Runner',
           latestDerivedStatus: 'IN_TRANSIT',
-          latestEta: '2026-03-15T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-03-15T00:00:00.000Z'),
         },
         {
           processId: 'process-02',
           vesselName: 'Ocean Star',
           latestDerivedStatus: 'ARRIVED_AT_POD',
-          latestEta: '2026-03-18T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-03-18T00:00:00.000Z'),
         },
       ]),
       searchByDerivedStatusText: vi.fn(async () => [
@@ -309,7 +310,7 @@ describe('search controllers', () => {
           processId: 'process-01',
           vesselName: 'Ocean Runner',
           latestDerivedStatus: 'IN_TRANSIT',
-          latestEta: '2026-03-15T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-03-15T00:00:00.000Z'),
         },
       ]),
     })

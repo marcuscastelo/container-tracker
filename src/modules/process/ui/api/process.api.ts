@@ -16,6 +16,7 @@ import {
   ProcessListResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+import { systemClock } from '~/shared/time/clock'
 
 const DASHBOARD_PROCESSES_ENDPOINT = '/api/processes'
 const DASHBOARD_OPERATIONAL_SUMMARY_ENDPOINT = '/api/dashboard/operational-summary'
@@ -75,6 +76,10 @@ const inFlightDashboardProcessSummariesByPath = new Map<
 let dashboardGlobalAlertsCache: DashboardGlobalAlertsCacheRecord | null = null
 let inFlightDashboardGlobalAlerts: Promise<DashboardGlobalAlertsVM> | null = null
 
+function nowMs(): number {
+  return systemClock.now().toEpochMs()
+}
+
 function appendNonBlankQueryValues(
   searchParams: URLSearchParams,
   key: string,
@@ -125,7 +130,7 @@ function toDashboardProcessesPath(query?: DashboardProcessSummariesQuery): strin
 function readFreshDashboardProcessSummariesCache(path: string): readonly ProcessSummaryVM[] | null {
   const cached = dashboardProcessSummariesCacheByPath.get(path)
   if (!cached) return null
-  if (cached.expiresAtMs <= Date.now()) {
+  if (cached.expiresAtMs <= nowMs()) {
     dashboardProcessSummariesCacheByPath.delete(path)
     return null
   }
@@ -138,13 +143,13 @@ function writeDashboardProcessSummariesCache(
 ): void {
   dashboardProcessSummariesCacheByPath.set(path, {
     value,
-    expiresAtMs: Date.now() + DASHBOARD_PREFETCH_TTL_MS,
+    expiresAtMs: nowMs() + DASHBOARD_PREFETCH_TTL_MS,
   })
 }
 
 function readFreshDashboardGlobalAlertsCache(): DashboardGlobalAlertsVM | null {
   if (!dashboardGlobalAlertsCache) return null
-  if (dashboardGlobalAlertsCache.expiresAtMs <= Date.now()) {
+  if (dashboardGlobalAlertsCache.expiresAtMs <= nowMs()) {
     dashboardGlobalAlertsCache = null
     return null
   }
@@ -154,7 +159,7 @@ function readFreshDashboardGlobalAlertsCache(): DashboardGlobalAlertsVM | null {
 function writeDashboardGlobalAlertsCache(value: DashboardGlobalAlertsVM): void {
   dashboardGlobalAlertsCache = {
     value,
-    expiresAtMs: Date.now() + DASHBOARD_PREFETCH_TTL_MS,
+    expiresAtMs: nowMs() + DASHBOARD_PREFETCH_TTL_MS,
   }
 }
 

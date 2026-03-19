@@ -37,6 +37,20 @@ import {
 } from '~/modules/tracking/features/alerts/application/usecases/list-active-alert-read-model.usecase'
 import { unacknowledgeAlert } from '~/modules/tracking/features/alerts/application/usecases/unacknowledge-alert.usecase'
 import type { TrackingAlertAckSource } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import {
+  type GetTrackingReplayDebugCommand,
+  getTrackingReplayDebug,
+} from '~/modules/tracking/features/replay/application/get-tracking-replay-debug.usecase'
+import {
+  type GetTrackingTimeTravelCommand,
+  getTrackingTimeTravel,
+} from '~/modules/tracking/features/replay/application/get-tracking-time-travel.usecase'
+import type {
+  TrackingReplayDebugResult,
+  TrackingTimeTravelResult,
+} from '~/modules/tracking/features/replay/application/tracking.replay.types'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 /**
  * Backward-compatible result shape for fetchAndProcess.
@@ -117,7 +131,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       containerId: string,
       containerNumber: string,
       podLocationCode?: string | null,
-      now: Date = new Date(),
+      now: Instant = systemClock.now(),
       options?: { readonly includeAcknowledgedAlerts?: boolean },
     ): Promise<GetContainerSummaryResult> {
       return getContainerSummary(deps, {
@@ -137,7 +151,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getContainersSummary(
       containers: GetContainersSummaryCommand['containers'],
-      now: Date = new Date(),
+      now: Instant = systemClock.now(),
     ): Promise<Map<string, TrackingOperationalSummary>> {
       return getContainersSummaryUseCase(deps, { containers, now })
     },
@@ -160,7 +174,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       query: string,
       limit: number,
     ): Promise<readonly TrackingSearchProjection[]> {
-      return searchTrackingByVesselName(deps, { query, limit, now: new Date() })
+      return searchTrackingByVesselName(deps, { query, limit, now: systemClock.now() })
     },
 
     /**
@@ -170,7 +184,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       query: string,
       limit: number,
     ): Promise<readonly TrackingSearchProjection[]> {
-      return searchTrackingByDerivedStatusText(deps, { query, limit, now: new Date() })
+      return searchTrackingByDerivedStatusText(deps, { query, limit, now: systemClock.now() })
     },
 
     /**
@@ -185,7 +199,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     ): Promise<void> {
       await acknowledgeAlert(deps, {
         alertId,
-        ackedAt: new Date().toISOString(),
+        ackedAt: systemClock.now().toIsoString(),
         ackedBy: metadata?.ackedBy ?? null,
         ackedSource: metadata?.ackedSource ?? null,
       })
@@ -210,6 +224,18 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
      */
     async getLatestSnapshot(containerId: string): Promise<Snapshot | null> {
       return getLatestSnapshot(deps, { containerId })
+    },
+
+    async getTrackingTimeTravel(
+      command: GetTrackingTimeTravelCommand,
+    ): Promise<TrackingTimeTravelResult> {
+      return getTrackingTimeTravel(deps, command)
+    },
+
+    async getTrackingReplayDebug(
+      command: GetTrackingReplayDebugCommand,
+    ): Promise<TrackingReplayDebugResult> {
+      return getTrackingReplayDebug(deps, command)
     },
 
     /**

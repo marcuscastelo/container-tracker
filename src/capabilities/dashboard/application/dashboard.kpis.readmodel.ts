@@ -1,4 +1,6 @@
 import type { DashboardProcessUseCases } from '~/capabilities/dashboard/application/dashboard.processes.projection'
+import { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 export type DashboardKpisReadModelDeps = {
   readonly processUseCases: DashboardProcessUseCases
@@ -13,9 +15,7 @@ export type DashboardKpisReadModel = {
 
 function toValidTimestampMs(value: string | null): number | null {
   if (value === null) return null
-  const timestamp = Date.parse(value)
-  if (Number.isNaN(timestamp)) return null
-  return timestamp
+  return parseInstantFromIso(value)?.toEpochMs() ?? null
 }
 
 export function createDashboardKpisReadModelUseCase(deps: DashboardKpisReadModelDeps) {
@@ -53,7 +53,9 @@ export function createDashboardKpisReadModelUseCase(deps: DashboardKpisReadModel
       trackedContainers,
       processesWithAlerts,
       lastSyncAt:
-        latestSyncTimestampMs === null ? null : new Date(latestSyncTimestampMs).toISOString(),
+        latestSyncTimestampMs === null
+          ? null
+          : Instant.fromEpochMs(latestSyncTimestampMs).toIsoString(),
     }
   }
 }

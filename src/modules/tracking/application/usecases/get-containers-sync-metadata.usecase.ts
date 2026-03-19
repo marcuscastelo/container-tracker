@@ -1,4 +1,5 @@
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 import { normalizeContainerNumber as normalizeTrackingContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 export type ContainerSyncRecord = {
@@ -30,8 +31,7 @@ type MutableContainerSyncRecord = {
 }
 
 function toTimestampOrNegativeInfinity(value: string): number {
-  const timestamp = Date.parse(value)
-  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY
+  return parseInstantFromIso(value)?.toEpochMs() ?? Number.NEGATIVE_INFINITY
 }
 
 function isMoreRecent(candidate: string, current: string | null): boolean {

@@ -7,6 +7,7 @@ import type {
   AgentLeaseHealth,
   AgentListSortDirection,
   AgentListSortField,
+  AgentLogChannel,
   AgentMonitoringRecord,
   AgentMonitoringRepository,
   AgentProcessingState,
@@ -27,6 +28,7 @@ type AgentSummaryReadModel = {
   readonly tenantId: string
   readonly tenantName: string
   readonly hostname: string
+  readonly os: string
   readonly version: string
   readonly currentVersion: string
   readonly desiredVersion: string | null
@@ -47,6 +49,8 @@ type AgentSummaryReadModel = {
   readonly queueLagSeconds: number | null
   readonly capabilities: string[]
   readonly realtimeState: AgentRealtimeState
+  readonly logsSupported: boolean
+  readonly lastLogAt: string | null
 }
 
 type AgentActivityReadModel = {
@@ -67,6 +71,16 @@ type AgentDetailReadModel = AgentSummaryReadModel & {
   readonly updaterLastCheckedAt: string | null
   readonly restartRequestedAt: string | null
   readonly recentActivity: AgentActivityReadModel[]
+}
+
+type AgentLogReadModel = {
+  readonly id: string
+  readonly agentId: string
+  readonly channel: AgentLogChannel
+  readonly timestamp: string
+  readonly message: string
+  readonly sequence: number
+  readonly truncated: boolean
 }
 
 type AgentFleetSummaryReadModel = {
@@ -115,6 +129,8 @@ type UpdateRuntimeStateCommand = {
   readonly lastError?: string | null
   readonly lastSeenAt?: string
   readonly status?: AgentStatus
+  readonly logsSupported?: boolean
+  readonly lastLogAt?: string | null
 }
 
 type HeartbeatCommand = UpdateRuntimeStateCommand & {
@@ -136,6 +152,25 @@ type GetAgentDetailCommand = {
   readonly tenantId: string
   readonly agentId: string
   readonly now?: Date
+}
+
+type GetAgentLogsCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly channel: AgentLogChannel | 'both'
+  readonly tail: number
+}
+
+type IngestAgentLogsCommand = {
+  readonly tenantId: string
+  readonly agentId: string
+  readonly lines: readonly {
+    readonly sequence: number
+    readonly channel: AgentLogChannel
+    readonly message: string
+    readonly occurredAt?: string
+    readonly truncated?: boolean
+  }[]
 }
 
 type RequestAgentUpdateCommand = {
@@ -392,6 +427,7 @@ function toSummaryReadModel(command: {
     // lookups and is deferred for a follow-up issue: keep ID here to avoid breaking types.
     tenantName: command.record.tenantId,
     hostname: command.record.hostname,
+    os: command.record.os,
     version: command.record.version,
     currentVersion: command.record.currentVersion,
     desiredVersion: command.record.desiredVersion,
@@ -412,6 +448,8 @@ function toSummaryReadModel(command: {
     queueLagSeconds: command.queueLagSeconds ?? command.record.queueLagSeconds,
     capabilities: [...command.record.capabilities],
     realtimeState: command.record.realtimeState,
+    logsSupported: command.record.logsSupported,
+    lastLogAt: command.record.lastLogAt,
   }
 }
 
@@ -636,6 +674,45 @@ export function createAgentMonitoringUseCases(deps: {
     }
   }
 
+  const getAgentLogs = async (
+    command: GetAgentLogsCommand,
+  ): Promise<{
+    readonly agentId: string
+    readonly os: string
+    readonly logsSupported: boolean
+    readonly lastLogAt: string | null
+    readonly lines: readonly AgentLogReadModel[]
+  } | null> => {
+    const record = await deps.repository.getAgentDetailForTenant({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+    })
+    if (!record) return null
+
+    const lines = await deps.repository.listRecentLogsForAgent({
+      tenantId: command.tenantId,
+      agentId: command.agentId,
+      channel: command.channel,
+      tail: command.tail,
+    })
+
+    return {
+      agentId: record.agentId,
+      os: record.os,
+      logsSupported: record.logsSupported,
+      lastLogAt: record.lastLogAt,
+      lines: lines.map((line) => ({
+        id: line.id,
+        agentId: line.agentId,
+        channel: line.channel,
+        timestamp: line.occurredAt,
+        message: line.message,
+        sequence: line.sequence,
+        truncated: line.truncated,
+      })),
+    }
+  }
+
   const updateRuntimeState = async (command: UpdateRuntimeStateCommand): Promise<void> => {
     const derivedStatus = deriveRuntimeStatus({
       status: command.status,
@@ -673,6 +750,32 @@ export function createAgentMonitoringUseCases(deps: {
         occurredAt,
       },
     ])
+  }
+
+  const ingestAgentLogs = async (
+    command: IngestAgentLogsCommand,
+  ): Promise<{
+    readonly accepted: number
+    readonly persisted: number
+  }> => {
+    if (command.lines.length === 0) {
+      return {
+        accepted: 0,
+        persisted: 0,
+      }
+    }
+
+    const normalized = command.lines.map((line) => ({
+      agentId: command.agentId,
+      tenantId: command.tenantId,
+      channel: line.channel,
+      message: line.message,
+      sequence: line.sequence,
+      truncated: line.truncated ?? false,
+      occurredAt: line.occurredAt ?? new Date().toISOString(),
+    }))
+
+    return deps.repository.insertLogEvents(normalized)
   }
 
   const recordActivity = async (
@@ -771,8 +874,10 @@ export function createAgentMonitoringUseCases(deps: {
   return {
     listAgents,
     getAgentDetail,
+    getAgentLogs,
     updateRuntimeState,
     touchHeartbeat,
+    ingestAgentLogs,
     recordActivity,
     authenticateAgentToken,
     requestAgentUpdate,

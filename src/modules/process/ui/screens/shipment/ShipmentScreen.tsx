@@ -6,6 +6,7 @@ import {
   prefetchDashboardGlobalAlertsSummary,
   prefetchDashboardProcessSummaries,
 } from '~/modules/process/ui/api/process.api'
+import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
 import { ShipmentDialogsHost } from '~/modules/process/ui/screens/shipment/components/ShipmentDialogsHost'
@@ -16,6 +17,7 @@ import { useShipmentDialogsController } from '~/modules/process/ui/screens/shipm
 import { useShipmentRefreshController } from '~/modules/process/ui/screens/shipment/hooks/useShipmentRefreshController'
 import { useShipmentScreenResource } from '~/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource'
 import { useShipmentSelectedContainer } from '~/modules/process/ui/screens/shipment/hooks/useShipmentSelectedContainer'
+import { useTrackingTimeTravelController } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
@@ -53,6 +55,10 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   const selection = useShipmentSelectedContainer({
     shipment: resource.shipment,
     preferredContainerNumber,
+  })
+
+  const trackingTimeTravel = useTrackingTimeTravelController({
+    selectedContainer: selection.selectedContainer,
   })
 
   // ── Refresh controller ─────────────────────────────────────────────────────
@@ -115,6 +121,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       onOpenCreateProcess={dialogs.openCreateDialog}
       onDashboardIntent={handleDashboardIntent}
       searchSlot={props.searchSlot}
+      actionsSlot={<ExportImportActions processId={processId()} showImport={false} />}
       banners={
         <>
           <ShipmentRefreshStatusView
@@ -169,6 +176,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
           selectedContainerId={selection.selectedContainerId}
           onSelectContainer={(id: string) => selection.setSelectedContainerId(String(id))}
           selectedContainer={selection.selectedContainer}
+          trackingTimeTravel={trackingTimeTravel}
           onOpenEditForShipment={dialogs.openEditForShipment}
         />
       }

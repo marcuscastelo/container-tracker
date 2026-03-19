@@ -3,6 +3,8 @@ import {
   type ProcessListItemSource,
   toProcessSummaryVMs,
 } from '~/modules/process/ui/mappers/processList.ui-mapper'
+import { Instant } from '~/shared/time/instant'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function makeSource(overrides: Partial<ProcessListItemSource> = {}): ProcessListItemSource {
   return {
@@ -63,12 +65,12 @@ describe('toProcessSummaryVMs', () => {
           status: 'DISCHARGED',
           count: 2,
         },
-        eta: '2025-06-01T00:00:00Z',
+        eta: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
         alerts_count: 2,
         highest_alert_severity: 'warning',
         dominant_alert_created_at: '2025-04-29T08:00:00Z',
         has_transshipment: true,
-        last_event_at: '2025-05-01T00:00:00Z',
+        last_event_at: temporalDtoFromCanonical('2025-05-01T00:00:00Z'),
         last_sync_status: 'DONE',
         last_sync_at: '2025-05-01T11:00:00Z',
       },
@@ -82,13 +84,13 @@ describe('toProcessSummaryVMs', () => {
       count: 2,
     })
     expect(result[0].statusRank).toBeGreaterThan(0)
-    expect(result[0].eta).toBe('2025-06-01T00:00:00Z')
+    expect(result[0].eta).toEqual(temporalDtoFromCanonical('2025-06-01T00:00:00Z'))
     expect(result[0].etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
     expect(result[0].alertsCount).toBe(2)
     expect(result[0].highestAlertSeverity).toBe('warning')
     expect(result[0].dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
     expect(result[0].hasTransshipment).toBe(true)
-    expect(result[0].lastEventAt).toBe('2025-05-01T00:00:00Z')
+    expect(result[0].lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
     expect(result[0].syncStatus).toBe('idle')
     expect(result[0].lastSyncAt).toBe('2025-05-01T11:00:00Z')
   })
@@ -164,10 +166,15 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0].statusMicrobadge).toBeNull()
   })
 
-  it('maps invalid eta string to etaMsOrNull = null', () => {
-    const result = toProcessSummaryVMs([makeSource({ id: 'p7', eta: 'not-a-date' })])
-    expect(result[0].eta).toBe('not-a-date')
-    expect(result[0].etaMsOrNull).toBeNull()
+  it('maps date-only eta to a UTC start-of-day comparable timestamp', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p7',
+        eta: temporalDtoFromCanonical('2025-06-01'),
+      }),
+    ])
+    expect(result[0].eta).toEqual(temporalDtoFromCanonical('2025-06-01'))
+    expect(result[0].etaMsOrNull).toBe(Instant.fromIso('2025-06-01T00:00:00.000Z').toEpochMs())
   })
 
   it('normalizes blank importer_name to null', () => {

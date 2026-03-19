@@ -207,9 +207,9 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
         excludeProviders,
       })
 
-      const processIds = Array.from(new Set(relatedTargets.map((target) => target.processId))).filter(
-        (processId): processId is string => typeof processId === 'string',
-      )
+      const processIds = Array.from(
+        new Set(relatedTargets.map((target) => target.processId)),
+      ).filter((processId): processId is string => typeof processId === 'string')
 
       for (const processId of processIds) {
         const run = deps.carrierDetectionWritePort.recordDetectionRun

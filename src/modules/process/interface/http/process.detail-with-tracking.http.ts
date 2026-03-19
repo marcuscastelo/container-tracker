@@ -15,6 +15,7 @@ import {
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { Instant } from '~/shared/time/instant'
 import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
 type ProcessTrackingDeps = Pick<
@@ -111,7 +112,7 @@ async function resolveContainerSyncMetadata(
 export async function resolveProcessDetailTracking(
   processWithContainers: ProcessWithContainers,
   deps: ProcessTrackingDeps,
-  now: Date,
+  now: Instant,
 ): Promise<ProcessTrackingResult> {
   // Destination can be a canonical code or a serialized location payload.
   // If we cannot extract a canonical POD code, tracking falls back safely.

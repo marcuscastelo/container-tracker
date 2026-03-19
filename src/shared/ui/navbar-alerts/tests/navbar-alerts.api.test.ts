@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 import {
   clearNavbarAlertsSummaryCache,
   fetchNavbarAlertsSummary,
@@ -25,7 +26,7 @@ function mockNavbarAlertsFetch() {
                   container_id: 'container-1',
                   container_number: 'MSCU1111111',
                   status: 'IN_TRANSIT',
-                  eta: '2026-03-21T00:00:00.000Z',
+                  eta: temporalDtoFromCanonical('2026-03-21T00:00:00.000Z'),
                   active_alerts_count: 1,
                   dominant_severity: 'warning',
                   latest_alert_at: '2026-03-12T10:00:00.000Z',

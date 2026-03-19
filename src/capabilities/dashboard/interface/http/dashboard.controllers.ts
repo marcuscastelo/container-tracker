@@ -11,6 +11,7 @@ import {
   type NavbarAlertsSummaryResponse,
   NavbarAlertsSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
+import { systemClock } from '~/shared/time/clock'
 
 type DashboardControllersDeps = {
   readonly dashboardUseCases: Pick<
@@ -146,7 +147,7 @@ function toNavbarAlertsSummaryResponse(
   summary: Awaited<ReturnType<DashboardUseCases['getNavbarAlertsSummaryReadModel']>>,
 ): NavbarAlertsSummaryResponse {
   return {
-    generated_at: new Date().toISOString(),
+    generated_at: systemClock.now().toIsoString(),
     total_active_alerts: summary.totalActiveAlerts,
     processes: summary.processes.map(
       (process): NavbarProcessResponse => ({
@@ -182,7 +183,7 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
   async function getOperationalSummary(): Promise<Response> {
     try {
       const result = await dashboardUseCases.getOperationalSummaryReadModel()
-      const generatedAt = new Date().toISOString()
+      const generatedAt = systemClock.now().toIsoString()
       const response = {
         generated_at: generatedAt,
         ...toDashboardGlobalAlertsResponse(result.globalAlerts),

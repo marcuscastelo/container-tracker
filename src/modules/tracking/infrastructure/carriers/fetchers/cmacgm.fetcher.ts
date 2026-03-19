@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
+import { systemClock } from '~/shared/time/clock'
 
 /**
  * Fetch tracking data from CMA-CGM's public tracking endpoint.
@@ -54,7 +55,7 @@ export async function fetchCmaCgmStatus(containerNumber: string): Promise<FetchR
   return {
     provider: 'cmacgm',
     payload,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: systemClock.now().toIsoString(),
   }
 }
 

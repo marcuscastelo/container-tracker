@@ -14,6 +14,7 @@ export type AgentListItemVM = {
   readonly agentId: string
   readonly tenantName: string
   readonly hostname: string
+  readonly os: string
   readonly version: string
   readonly currentVersion: string
   readonly desiredVersionDisplay: string
@@ -34,6 +35,8 @@ export type AgentListItemVM = {
   readonly capabilitiesDisplay: string
   readonly realtimeLabel: string
   readonly realtimeTone: AgentStatusTone
+  readonly logsSupported: boolean
+  readonly lastLogAtDisplay: string
   readonly isProblematic: boolean
 }
 
@@ -68,6 +71,7 @@ export type AgentDetailVM = {
   readonly updateReadyVersion: string | null
   readonly bootStatusLabel: string
   readonly tenantId: string
+  readonly os: string
 
   // Status & Health
   readonly status: string
@@ -95,6 +99,8 @@ export type AgentDetailVM = {
   readonly intervalDisplay: string
   readonly updaterLastCheckedDisplay: string
   readonly capabilities: readonly string[]
+  readonly logsSupported: boolean
+  readonly lastLogAtDisplay: string
 
   // Diagnostics
   readonly lastError: string | null

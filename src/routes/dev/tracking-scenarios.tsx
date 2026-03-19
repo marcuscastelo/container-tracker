@@ -7,6 +7,7 @@ import { DashboardProcessTable } from '~/modules/process/ui/components/Dashboard
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
+import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import {
   toSortedActiveAlerts,
   toSortedArchivedAlerts,
@@ -16,6 +17,10 @@ import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboa
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import { toTemporalValueDto } from '~/shared/time/dto'
+import { parseTemporalValueFromCanonicalString } from '~/shared/time/parsing'
 
 const SCENARIO_LAB_ENABLED = import.meta.env.DEV
 
@@ -67,6 +72,25 @@ const ScenarioLoadResponseSchema = z.object({
 type ScenarioCatalogResponse = z.infer<typeof ScenarioCatalogResponseSchema>
 type ScenarioSummary = z.infer<typeof ScenarioSummarySchema>
 type ScenarioLoadResult = z.infer<typeof ScenarioLoadResponseSchema>['result']
+
+const DISABLED_TIME_TRAVEL_CONTROLLER: TrackingTimeTravelControllerResult = {
+  isActive: () => false,
+  isLoading: () => false,
+  errorMessage: () => null,
+  value: () => null,
+  selectedSync: () => null,
+  isDebugOpen: () => false,
+  isDebugLoading: () => false,
+  debugErrorMessage: () => null,
+  debugValue: () => null,
+  debugPayload: () => null,
+  open: () => undefined,
+  close: () => undefined,
+  toggleDebug: () => undefined,
+  selectSnapshot: () => undefined,
+  selectPrevious: () => undefined,
+  selectNext: () => undefined,
+}
 
 async function fetchScenarioCatalog(): Promise<ScenarioCatalogResponse> {
   return typedFetch('/api/dev/scenarios/catalog', undefined, ScenarioCatalogResponseSchema)
@@ -377,16 +401,17 @@ function ShipmentPreview(props: {
               isRefreshing={false}
               refreshRetry={null}
               refreshHint={null}
-              syncNow={new Date()}
               onTriggerRefresh={async () => {}}
               onNormalizeAutoContainers={async () => ({
                 normalized: false,
                 reason: 'no_changes_required',
                 targetCarrierCode: null,
               })}
+              syncNow={systemClock.now()}
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}
               selectedContainer={selectedContainer()}
+              trackingTimeTravel={DISABLED_TIME_TRAVEL_CONTROLLER}
             />
           </div>
         )}
@@ -505,8 +530,24 @@ export default function TrackingScenariosPage(): JSX.Element {
         statusCode: shipment.statusCode,
         statusMicrobadge: shipment.statusMicrobadge ?? null,
         statusRank: processStatusToRank(shipment.statusCode),
-        eta: shipment.eta ?? null,
-        etaMsOrNull: shipment.eta ? Date.parse(shipment.eta) : null,
+        eta:
+          shipment.eta === null
+            ? null
+            : (() => {
+                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+                return temporalValue ? toTemporalValueDto(temporalValue) : null
+              })(),
+        etaMsOrNull:
+          shipment.eta === null
+            ? null
+            : (() => {
+                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+                if (!temporalValue) return null
+                return toComparableInstant(temporalValue, {
+                  timezone: 'UTC',
+                  strategy: 'start-of-day',
+                }).toEpochMs()
+              })(),
         carrier: shipment.carrier ?? null,
         alertsCount: shipment.alerts.length,
         highestAlertSeverity: highestSeverity,

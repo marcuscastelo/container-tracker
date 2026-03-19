@@ -1,6 +1,7 @@
 import type { Json } from '~/shared/supabase/database.types'
 
 export type AgentStatus = 'CONNECTED' | 'DEGRADED' | 'DISCONNECTED' | 'UNKNOWN'
+export type AgentLogChannel = 'stdout' | 'stderr'
 
 export type AgentRealtimeState =
   | 'SUBSCRIBED'
@@ -64,6 +65,7 @@ export type AgentMonitoringRecord = {
   readonly agentId: string
   readonly tenantId: string
   readonly hostname: string
+  readonly os: string
   readonly version: string
   readonly currentVersion: string
   readonly desiredVersion: string | null
@@ -87,6 +89,8 @@ export type AgentMonitoringRecord = {
   readonly intervalSec: number | null
   readonly lastError: string | null
   readonly queueLagSeconds: number | null
+  readonly logsSupported: boolean
+  readonly lastLogAt: string | null
 }
 
 export type AgentAuthenticatedIdentity = {
@@ -132,6 +136,8 @@ export type AgentRuntimeStateUpdate = {
   readonly intervalSec?: number
   readonly queueLagSeconds?: number | null
   readonly lastError?: string | null
+  readonly logsSupported?: boolean
+  readonly lastLogAt?: string | null
 }
 
 export type AgentActivityInsertRecord = {
@@ -141,6 +147,27 @@ export type AgentActivityInsertRecord = {
   readonly message: string
   readonly severity: AgentActivitySeverity
   readonly metadata: Json
+  readonly occurredAt: string
+}
+
+export type AgentLogEventRecord = {
+  readonly id: string
+  readonly agentId: string
+  readonly tenantId: string
+  readonly channel: AgentLogChannel
+  readonly message: string
+  readonly sequence: number
+  readonly truncated: boolean
+  readonly occurredAt: string
+}
+
+export type AgentLogInsertRecord = {
+  readonly agentId: string
+  readonly tenantId: string
+  readonly channel: AgentLogChannel
+  readonly message: string
+  readonly sequence: number
+  readonly truncated: boolean
   readonly occurredAt: string
 }
 
@@ -164,6 +191,12 @@ export type AgentMonitoringRepository = {
     readonly agentId: string
     readonly limit: number
   }) => Promise<readonly AgentActivityEventRecord[]>
+  readonly listRecentLogsForAgent: (command: {
+    readonly tenantId: string
+    readonly agentId: string
+    readonly channel: AgentLogChannel | 'both'
+    readonly tail: number
+  }) => Promise<readonly AgentLogEventRecord[]>
   readonly getTenantQueueLagSeconds: (command: {
     readonly tenantId: string
   }) => Promise<number | null>
@@ -186,4 +219,8 @@ export type AgentMonitoringRepository = {
     readonly requestedAt: string
   }) => Promise<AgentMonitoringRecord | null>
   readonly insertActivityEvents: (events: readonly AgentActivityInsertRecord[]) => Promise<void>
+  readonly insertLogEvents: (events: readonly AgentLogInsertRecord[]) => Promise<{
+    readonly accepted: number
+    readonly persisted: number
+  }>
 }

@@ -3,6 +3,7 @@ import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type EtaChipState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED' | 'UNAVAILABLE'
@@ -55,7 +56,7 @@ export type ContainerSyncVM = {
 export type ContainerObservationVM = {
   readonly id: string
   readonly type: string
-  readonly eventTime: string | null
+  readonly eventTime: TemporalValueDto | null
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
   readonly locationCode: string | null
   readonly locationDisplay: string | null

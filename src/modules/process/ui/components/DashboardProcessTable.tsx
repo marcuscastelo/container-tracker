@@ -156,7 +156,7 @@ function displayRoute(process: ProcessSummaryVM): { origin: string; destination:
   }
 }
 
-function displayEta(eta: string | null): string {
+function displayEta(eta: CellContext['process']['eta']): string {
   if (!eta) return '—'
   return formatDateForLocale(eta)
 }

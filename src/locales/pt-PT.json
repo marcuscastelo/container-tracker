@@ -38,6 +38,53 @@
       "switchToDark": "Mudar para tema escuro"
     }
   },
+  "exportImport": {
+    "exportButton": "Exportar",
+    "importButton": "Importar",
+    "moreActions": "Mais ações",
+    "copyTrelloAction": "Copiar para Trello",
+    "copyTrelloSuccess": "✓ Markdown do Trello copiado para a área de transferência",
+    "copyTrelloError": "Não foi possível gerar a exportação do Trello",
+    "dialog": {
+      "title": "Exportar dados",
+      "description": "Escolha o tipo, formato e opções de exportação.",
+      "exportType": "Tipo de exportação",
+      "typePortable": "Exportação Portátil (Importável)",
+      "typeReport": "Relatório de Snapshot Operacional",
+      "format": "Formato",
+      "formatTrello": "Trello",
+      "includeContainers": "Incluir contentores",
+      "includeAlerts": "Incluir alertas",
+      "includeTimelineSummary": "Incluir resumo da timeline",
+      "includeExecutiveSummary": "Incluir resumo executivo",
+      "cancel": "Cancelar",
+      "confirmExport": "Exportar",
+      "exporting": "A exportar..."
+    },
+    "importDialog": {
+      "title": "Importar bundle portátil",
+      "description": "A importação simétrica v1 é big-bang e exige base de dados vazia.",
+      "warning": "Esta importação não faz merge. Remova processos existentes antes de executar.",
+      "selectBundle": "Ficheiro do bundle (JSON)",
+      "runDryRun": "Executar validação dry-run",
+      "validating": "A validar...",
+      "executeImport": "Executar importação",
+      "importing": "A importar...",
+      "databaseNotEmpty": "Importação bloqueada: a base de dados não está vazia.",
+      "invalidBundleJson": "Ficheiro JSON do bundle inválido.",
+      "importSuccess": "{{processes}} processo(s) e {{containers}} contentor(es) importados.",
+      "validation": {
+        "schemaVersion": "Versão do esquema",
+        "processes": "Processos",
+        "containers": "Contentores",
+        "documents": "Documentos",
+        "databaseEmpty": "Base de dados vazia",
+        "yes": "sim",
+        "no": "não",
+        "valueUnavailable": "—"
+      }
+    }
+  },
   "app": {
     "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique a consola para mais detalhes."
   },
@@ -440,6 +487,52 @@
         "danger": "CRÍTICO",
         "warning": "ATENÇÃO",
         "info": "INFO"
+      }
+    },
+    "timeTravel": {
+      "open": "Abrir time travel",
+      "close": "Sair do modo histórico",
+      "badge": "Time Travel",
+      "syncPosition": "Sync {{current}}/{{total}}",
+      "syncSelector": "Syncs",
+      "syncAt": "Sync em",
+      "previous": "Anterior",
+      "next": "Seguinte",
+      "openDebug": "Abrir debug",
+      "closeDebug": "Fechar debug",
+      "loading": "A carregar histórico de syncs...",
+      "error": "Falha ao carregar histórico de syncs",
+      "empty": "Ainda não existem syncs históricos disponíveis para este contentor.",
+      "statusTitle": "Estado Histórico",
+      "alertsTitle": "Alertas Históricos",
+      "alertsEmpty": "Nenhum alerta estava ativo neste sync.",
+      "diffTitle": "O Que Mudou",
+      "initialCheckpoint": "Checkpoint inicial. Não existe sync anterior para comparação.",
+      "debugTitle": "Debug Histórico",
+      "exportDebug": "Exportar JSON do sync selecionado",
+      "debugLoading": "A carregar debug do sync...",
+      "debugError": "Falha ao carregar debug do sync",
+      "debugEmpty": "Abra o debug para inspecionar o sync selecionado.",
+      "stepPosition": "Step {{current}} / {{total}}",
+      "debugStage": "Stage: {{stage}}",
+      "debugInput": "Input",
+      "debugOutput": "Output",
+      "debugTimeline": "Linha Temporal Derivada",
+      "debugState": "Estado Derivado",
+      "debugMetrics": {
+        "observations": "Observations",
+        "steps": "Steps",
+        "status": "Status",
+        "snapshot": "Snapshot"
+      },
+      "diff": {
+        "statusChanged": "O estado mudou de {{from}} para {{to}}.",
+        "timelineChanged": "A linha temporal mudou: +{{added}} itens, -{{removed}} itens.",
+        "alertsChanged": "Os alertas mudaram: +{{added}} ativos, -{{removed}} resolvidos.",
+        "etaChanged": "A ETA mudou neste sync.",
+        "conflictAppeared": "Um conflito de ACTUAL apareceu neste sync.",
+        "conflictResolved": "Um conflito de ACTUAL foi resolvido neste sync.",
+        "noChanges": "Nenhuma mudança derivada face ao sync anterior."
       }
     },
     "transshipment": {

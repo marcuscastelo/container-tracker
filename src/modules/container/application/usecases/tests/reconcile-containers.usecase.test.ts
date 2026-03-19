@@ -10,6 +10,7 @@ import { toContainerId } from '~/modules/container/domain/identity/container-id.
 import { toContainerNumber } from '~/modules/container/domain/identity/container-number.vo'
 import { toProcessId } from '~/modules/container/domain/identity/process-id.vo'
 import { DuplicateContainersError } from '~/shared/errors/container-process.errors'
+import { Instant } from '~/shared/time/instant'
 
 function createInsertedEntity(record: InsertContainerRecord, id: string) {
   return createContainerEntity({
@@ -17,7 +18,7 @@ function createInsertedEntity(record: InsertContainerRecord, id: string) {
     processId: toProcessId(record.processId),
     carrierCode: record.carrierCode ? toCarrierCode(record.carrierCode) : null,
     containerNumber: toContainerNumber(record.containerNumber),
-    createdAt: new Date('2026-03-09T10:00:00.000Z'),
+    createdAt: Instant.fromIso('2026-03-09T10:00:00.000Z'),
   })
 }
 

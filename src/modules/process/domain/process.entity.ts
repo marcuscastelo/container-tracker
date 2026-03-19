@@ -3,6 +3,7 @@ import type { ProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import type { ProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import type { ProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { type ProcessBrand, toProcessBrand } from '~/modules/process/domain/process.types'
+import type { Instant } from '~/shared/time/instant'
 
 export type ProcessCarrierMode = 'AUTO' | 'MANUAL'
 
@@ -24,8 +25,8 @@ export type ProcessEntityProps = {
   product: string | null
   redestinationNumber: string | null
   source: ProcessSource
-  createdAt: Date
-  updatedAt: Date
+  createdAt: Instant
+  updatedAt: Instant
 }
 
 export type ProcessEntity = ProcessBrand<Readonly<ProcessEntityProps>, 'ProcessEntity'>

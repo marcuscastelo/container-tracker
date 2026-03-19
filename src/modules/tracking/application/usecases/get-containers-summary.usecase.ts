@@ -8,6 +8,7 @@ import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/d
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import type { Instant } from '~/shared/time/instant'
 
 export type GetContainersSummaryCommand = {
   readonly containers: readonly {
@@ -15,7 +16,7 @@ export type GetContainersSummaryCommand = {
     readonly containerNumber: string
     readonly podLocationCode?: string | null
   }[]
-  readonly now: Date
+  readonly now: Instant
 }
 
 export async function getContainersSummary(

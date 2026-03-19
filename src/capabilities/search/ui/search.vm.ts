@@ -9,7 +9,7 @@ export type SearchResultItemVm = {
   readonly vesselName: string | null
   readonly bl: string | null
   readonly derivedStatus: string | null
-  readonly eta: string | null
+  readonly eta: SearchHttpResultItemDto['eta']
   readonly matchSource: SearchHttpResultItemDto['matchSource']
 }
 

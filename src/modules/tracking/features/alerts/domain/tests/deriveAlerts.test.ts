@@ -10,19 +10,32 @@ import {
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'CXDU2058677'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2025-11-17T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
+
   return {
     id: '00000000-0000-0000-0000-000000000010',
     fingerprint: 'test-fingerprint',
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
-    event_time: '2025-11-17T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'ACTUAL', // Default to ACTUAL for tests (confirmed events)
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -33,7 +46,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'msc',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2025-11-17T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -814,7 +827,7 @@ describe('deriveAlerts', () => {
 
   describe('NO_MOVEMENT alert (monitoring)', () => {
     it('emits NO_MOVEMENT(5) when the first breakpoint is crossed', () => {
-      const now = new Date('2025-11-07T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-07T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
@@ -842,7 +855,7 @@ describe('deriveAlerts', () => {
     })
 
     it('emits NO_MOVEMENT(10) when escalation threshold is crossed', () => {
-      const now = new Date('2025-11-12T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-12T00:00:00.000Z')
       const cycleAnchorFingerprint = 'fp-breakpoint-10'
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
@@ -894,7 +907,7 @@ describe('deriveAlerts', () => {
     })
 
     it('does not re-emit when the highest crossed breakpoint was already emitted in this cycle', () => {
-      const now = new Date('2025-11-13T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-13T00:00:00.000Z')
       const cycleAnchorFingerprint = 'fp-breakpoint-12'
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
@@ -960,7 +973,7 @@ describe('deriveAlerts', () => {
     })
 
     it('does not re-emit after ACK + resync for legacy 7-day NO_MOVEMENT alerts', () => {
-      const now = new Date('2026-03-09T00:00:00.000Z')
+      const now = instantFromIsoText('2026-03-09T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
@@ -1003,7 +1016,7 @@ describe('deriveAlerts', () => {
     })
 
     it('does not re-emit when there are 0 active alerts and 1 acknowledged alert for the same cycle anchor fingerprint', () => {
-      const now = new Date('2026-03-09T00:00:00.000Z')
+      const now = instantFromIsoText('2026-03-09T00:00:00.000Z')
       const cycleAnchorFingerprint = 'fp-cycle-current-anchor'
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
@@ -1047,7 +1060,7 @@ describe('deriveAlerts', () => {
     })
 
     it('restarts from NO_MOVEMENT(5) after a new ACTUAL movement event', () => {
-      const now = new Date('2025-11-21T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-21T00:00:00.000Z')
       const oldCycleAnchor = 'fp-old-cycle'
       const newCycleAnchor = 'fp-new-cycle'
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
@@ -1107,7 +1120,7 @@ describe('deriveAlerts', () => {
     })
 
     it('should NOT create NO_MOVEMENT alert during backfill', () => {
-      const now = new Date('2025-11-20T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
@@ -1123,7 +1136,7 @@ describe('deriveAlerts', () => {
     })
 
     it('should NOT create NO_MOVEMENT alert for DELIVERED containers', () => {
-      const now = new Date('2025-11-20T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'DELIVERY',
@@ -1139,7 +1152,7 @@ describe('deriveAlerts', () => {
     })
 
     it('should NOT create NO_MOVEMENT alert for EMPTY_RETURNED containers', () => {
-      const now = new Date('2025-11-20T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'EMPTY_RETURN',
@@ -1155,7 +1168,7 @@ describe('deriveAlerts', () => {
     })
 
     it('should keep alerts empty for a closed lifecycle DISCHARGED -> DELIVERY -> EMPTY_RETURN', () => {
-      const now = new Date('2026-03-20T00:00:00.000Z')
+      const now = instantFromIsoText('2026-03-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'DISCHARGE',
@@ -1185,7 +1198,7 @@ describe('deriveAlerts', () => {
     })
 
     it('should NOT create NO_MOVEMENT alert when no breakpoint is crossed', () => {
-      const now = new Date('2025-11-20T00:00:00.000Z')
+      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',

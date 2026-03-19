@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft {
   return {
     container_number: 'CXDU2058677',
     type: 'LOAD',
-    event_time: '2025-11-26T00:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2025-11-26T00:00:00.000Z'),
+    ),
     event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -67,16 +71,24 @@ describe('computeFingerprint', () => {
     expect(fp1).not.toBe(fp2)
   })
 
-  it('should differ when event_time date changes', () => {
-    const fp1 = computeFingerprint(makeDraft({ event_time: '2025-11-26T00:00:00.000Z' }))
-    const fp2 = computeFingerprint(makeDraft({ event_time: '2025-11-27T00:00:00.000Z' }))
+  it('should differ when event_time canonical value changes', () => {
+    const fp1 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-26T00:00:00.000Z', null) }),
+    )
+    const fp2 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-27T00:00:00.000Z', null) }),
+    )
     expect(fp1).not.toBe(fp2)
   })
 
-  it('should NOT differ when only the time portion changes (same date)', () => {
-    const fp1 = computeFingerprint(makeDraft({ event_time: '2025-11-26T00:00:00.000Z' }))
-    const fp2 = computeFingerprint(makeDraft({ event_time: '2025-11-26T12:30:00.000Z' }))
-    expect(fp1).toBe(fp2)
+  it('should differ when only the time portion changes for an instant', () => {
+    const fp1 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-26T00:00:00.000Z', null) }),
+    )
+    const fp2 = computeFingerprint(
+      makeDraft({ event_time: resolveTemporalValue('2025-11-26T12:30:00.000Z', null) }),
+    )
+    expect(fp1).not.toBe(fp2)
   })
 
   it('should differ when location_code changes', () => {

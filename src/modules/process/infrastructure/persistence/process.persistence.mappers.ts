@@ -12,6 +12,7 @@ import type {
   ProcessRow,
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
+import { Instant } from '~/shared/time/instant'
 
 function toProcessCarrierMode(value: string | null | undefined): 'AUTO' | 'MANUAL' {
   return value === 'MANUAL' ? 'MANUAL' : 'AUTO'
@@ -43,8 +44,8 @@ export const processMappers = {
       redestinationNumber:
         row.redestination_number == null ? null : String(row.redestination_number),
       source: toProcessSource(row.source),
-      createdAt: new Date(String(row.created_at)),
-      updatedAt: new Date(String(row.updated_at)),
+      createdAt: Instant.fromIso(String(row.created_at)),
+      updatedAt: Instant.fromIso(String(row.updated_at)),
     })
   },
 

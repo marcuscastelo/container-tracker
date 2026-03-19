@@ -9,11 +9,12 @@ import {
 } from '~/modules/process/ui/utils/current-tracking-context'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { Instant } from '~/shared/time/instant'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 
 type Props = {
   readonly container: ContainerDetailVM
-  readonly syncNow: Date
+  readonly syncNow: Instant
 }
 
 type StatusFieldProps = {

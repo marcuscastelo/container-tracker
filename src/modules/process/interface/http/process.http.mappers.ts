@@ -30,6 +30,10 @@ import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { compareTemporal } from '~/shared/time/compare-temporal'
+import { toTemporalValueDto } from '~/shared/time/dto'
+import { parseTemporalValue } from '~/shared/time/parsing'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record
@@ -139,7 +143,7 @@ type TrackingObservationRecord = {
   readonly fingerprint: string
   readonly type: string
   readonly carrier_label?: string | null
-  readonly event_time: string | null
+  readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
   readonly location_display: string | null
@@ -205,8 +209,8 @@ function processToResponseFields(p: ProcessEntity) {
     product: p.product ?? null,
     redestination_number: p.redestinationNumber ?? null,
     source: p.source,
-    created_at: p.createdAt.toISOString(),
-    updated_at: p.updatedAt.toISOString(),
+    created_at: p.createdAt.toIsoString(),
+    updated_at: p.updatedAt.toIsoString(),
   }
 }
 
@@ -267,7 +271,7 @@ function toObservationResponse(obs: TrackingObservationRecord) {
     fingerprint: obs.fingerprint,
     type: obs.type,
     carrier_label: obs.carrier_label ?? null,
-    event_time: obs.event_time,
+    event_time: obs.event_time === null ? null : toTemporalValueDto(obs.event_time),
     event_time_type: obs.event_time_type,
     location_code: obs.location_code,
     location_display: obs.location_display,
@@ -322,7 +326,7 @@ function toTimelineItemResponse(item: TrackingTimelineItem) {
     type: item.type,
     carrier_label: item.carrierLabel ?? null,
     location: item.location ?? null,
-    event_time_iso: item.eventTimeIso,
+    event_time: item.eventTime,
     event_time_type: item.eventTimeType,
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
@@ -384,13 +388,31 @@ export function toContainerWithTrackingFallback(c: ProcessContainerRecord) {
 function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
   if (!eta) return null
   return {
-    event_time: eta.eventTimeIso,
+    event_time: eta.eventTime,
     event_time_type: eta.eventTimeType,
     state: eta.state,
     type: eta.type,
     location_code: eta.locationCode,
     location_display: eta.locationDisplay,
   }
+}
+
+const PROCESS_ETA_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
+
+function isEtaAfter(
+  candidate: NonNullable<TrackingOperationalSummary['eta']>,
+  current: NonNullable<TrackingOperationalSummary['eta']>,
+): boolean {
+  const candidateTemporal = parseTemporalValue(candidate.eventTime)
+  const currentTemporal = parseTemporalValue(current.eventTime)
+  if (candidateTemporal && currentTemporal) {
+    return compareTemporal(candidateTemporal, currentTemporal, PROCESS_ETA_COMPARE_OPTIONS) > 0
+  }
+
+  return JSON.stringify(candidate.eventTime) > JSON.stringify(current.eventTime)
 }
 
 function toOperationalTransshipmentResponse(
@@ -463,7 +485,7 @@ function toProcessOperationalResponse(summaries: readonly TrackingOperationalSum
 
   let etaMax: NonNullable<TrackingOperationalSummary['eta']> | null = null
   for (const eta of etaCandidates) {
-    if (!etaMax || eta.eventTimeIso > etaMax.eventTimeIso) {
+    if (!etaMax || isEtaAfter(eta, etaMax)) {
       etaMax = eta
     }
   }

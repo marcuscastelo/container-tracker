@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { groupVoyageSegments } from '~/modules/tracking/application/projection/voyageSegments'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function makeEvent(
   overrides: Partial<TrackingTimelineItem> & Pick<TrackingTimelineItem, 'type'>,
 ): TrackingTimelineItem {
   return {
     id: `evt-${Math.random().toString(36).slice(2, 8)}`,
-    eventTimeIso: '2026-03-01T00:00:00Z',
+    eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
     eventTimeType: 'ACTUAL',
     derivedState: 'ACTUAL',
     ...overrides,

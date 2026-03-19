@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
 
 const DashboardGlobalAlertsBySeverityResponseSchema = z.object({
   danger: z.number(),
@@ -36,7 +37,7 @@ const DashboardProcessExceptionResponseSchema = z.object({
   origin: z.string().nullable(),
   destination: z.string().nullable(),
   derived_status: z.string(),
-  eta_current: z.string().nullable(),
+  eta_current: TemporalValueDtoSchema.nullable(),
   dominant_severity: DashboardProcessExceptionSeverityResponseSchema,
   dominant_alert_created_at: z.string().nullable(),
   active_alert_count: z.number(),
@@ -109,7 +110,7 @@ const NavbarContainerAlertGroupResponseSchema = z.object({
   container_id: z.string(),
   container_number: z.string(),
   status: z.string().nullable(),
-  eta: z.string().nullable(),
+  eta: TemporalValueDtoSchema.nullable(),
   active_alerts_count: z.number(),
   dominant_severity: DashboardProcessExceptionSeverityResponseSchema,
   latest_alert_at: z.string().nullable(),

@@ -5,6 +5,8 @@ import type {
 } from '~/capabilities/dashboard/application/dashboard.processes.projection'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 
 export type DashboardNavbarSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
@@ -18,7 +20,7 @@ export type DashboardTrackingUseCases = {
       readonly containerNumber: string
       readonly podLocationCode?: string | null
     }[],
-    now?: Date,
+    now?: Instant,
   ): Promise<Map<string, TrackingOperationalSummary>>
 }
 
@@ -80,7 +82,7 @@ export type NavbarContainerAlertGroupReadModel = {
   readonly containerId: string
   readonly containerNumber: string
   readonly status: string | null
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly activeAlertsCount: number
   readonly dominantSeverity: DashboardNavbarSeverity
   readonly latestAlertAt: string | null
@@ -112,7 +114,7 @@ export type MutableContainerAccumulator = {
   readonly containerId: string
   readonly containerNumber: string
   readonly status: string | null
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly alerts: NavbarAlertItemReadModel[]
 }
 

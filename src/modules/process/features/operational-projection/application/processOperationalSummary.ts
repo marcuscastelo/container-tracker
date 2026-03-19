@@ -8,6 +8,7 @@ import type {
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 /**
  * Process-level operational summary — Application-layer read model.
@@ -30,7 +31,7 @@ export type ProcessOperationalSummary = {
   readonly status_counts: OperationalStatusCounts
   readonly status_microbadge: ProcessStatusMicrobadge | null
   readonly has_status_dispersion: boolean
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly lifecycle_bucket: TrackingLifecycleBucket
   readonly final_delivery_complete: boolean
   readonly full_logistics_complete: boolean
@@ -45,5 +46,5 @@ export type ProcessOperationalSummary = {
   readonly dominant_alert_created_at: string | null
 
   readonly has_transshipment: boolean
-  readonly last_event_at: string | null
+  readonly last_event_at: TemporalValueDto | null
 }

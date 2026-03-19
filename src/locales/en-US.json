@@ -38,6 +38,53 @@
       "switchToDark": "Switch to dark theme"
     }
   },
+  "exportImport": {
+    "exportButton": "Export",
+    "importButton": "Import",
+    "moreActions": "More actions",
+    "copyTrelloAction": "Copy for Trello",
+    "copyTrelloSuccess": "✓ Trello markdown copied to clipboard",
+    "copyTrelloError": "Unable to generate Trello export",
+    "dialog": {
+      "title": "Export data",
+      "description": "Choose export type, format and options.",
+      "exportType": "Export type",
+      "typePortable": "Portable Export (Importable)",
+      "typeReport": "Operational Snapshot Report",
+      "format": "Format",
+      "formatTrello": "Trello",
+      "includeContainers": "Include containers",
+      "includeAlerts": "Include alerts",
+      "includeTimelineSummary": "Include timeline summary",
+      "includeExecutiveSummary": "Include executive summary",
+      "cancel": "Cancel",
+      "confirmExport": "Export",
+      "exporting": "Exporting..."
+    },
+    "importDialog": {
+      "title": "Import portable bundle",
+      "description": "Symmetric import v1 is big-bang and requires an empty database.",
+      "warning": "This import does not merge data. Existing processes must be removed before execution.",
+      "selectBundle": "Bundle file (JSON)",
+      "runDryRun": "Run dry-run validation",
+      "validating": "Validating...",
+      "executeImport": "Execute import",
+      "importing": "Importing...",
+      "databaseNotEmpty": "Import is blocked: database is not empty.",
+      "invalidBundleJson": "Invalid bundle JSON file.",
+      "importSuccess": "Imported {{processes}} process(es) and {{containers}} container(s).",
+      "validation": {
+        "schemaVersion": "Schema version",
+        "processes": "Processes",
+        "containers": "Containers",
+        "documents": "Documents",
+        "databaseEmpty": "Database empty",
+        "yes": "yes",
+        "no": "no",
+        "valueUnavailable": "—"
+      }
+    }
+  },
   "dashboard": {
     "header": {
       "title": "Dashboard"
@@ -429,6 +476,52 @@
         "danger": "CRITICAL",
         "warning": "WARNING",
         "info": "INFO"
+      }
+    },
+    "timeTravel": {
+      "open": "Open time travel",
+      "close": "Exit historical mode",
+      "badge": "Time Travel",
+      "syncPosition": "Sync {{current}}/{{total}}",
+      "syncSelector": "Syncs",
+      "syncAt": "Sync at",
+      "previous": "Previous",
+      "next": "Next",
+      "openDebug": "Open debug",
+      "closeDebug": "Close debug",
+      "loading": "Loading sync history...",
+      "error": "Failed to load sync history",
+      "empty": "No historical syncs are available for this container yet.",
+      "statusTitle": "Historical Status",
+      "alertsTitle": "Historical Alerts",
+      "alertsEmpty": "No alerts were active in this sync.",
+      "diffTitle": "What Changed",
+      "initialCheckpoint": "Initial checkpoint. There is no previous sync for comparison.",
+      "debugTitle": "Historical Debug",
+      "exportDebug": "Export selected sync JSON",
+      "debugLoading": "Loading sync debug...",
+      "debugError": "Failed to load sync debug",
+      "debugEmpty": "Open debug to inspect the selected sync.",
+      "stepPosition": "Step {{current}} / {{total}}",
+      "debugStage": "Stage: {{stage}}",
+      "debugInput": "Input",
+      "debugOutput": "Output",
+      "debugTimeline": "Derived Timeline",
+      "debugState": "Derived State",
+      "debugMetrics": {
+        "observations": "Observations",
+        "steps": "Steps",
+        "status": "Status",
+        "snapshot": "Snapshot"
+      },
+      "diff": {
+        "statusChanged": "Status changed from {{from}} to {{to}}.",
+        "timelineChanged": "Timeline changed: +{{added}} items, -{{removed}} items.",
+        "alertsChanged": "Alerts changed: +{{added}} active, -{{removed}} resolved.",
+        "etaChanged": "ETA changed in this sync.",
+        "conflictAppeared": "An ACTUAL conflict appeared in this sync.",
+        "conflictResolved": "An ACTUAL conflict was resolved in this sync.",
+        "noChanges": "No derived changes compared with the previous sync."
       }
     },
     "transshipment": {

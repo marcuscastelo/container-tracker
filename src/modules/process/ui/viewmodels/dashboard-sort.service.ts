@@ -4,6 +4,8 @@ import type {
   DashboardSortSelection,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import { parseInstantFromIso, parseTemporalValue } from '~/shared/time/parsing'
 
 const PT_BR_COLLATOR =
   typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined'
@@ -99,8 +101,16 @@ function toCreatedAtSortValue(process: ProcessSummaryVM): number | null {
   // Prefer dominantAlertCreatedAt (alert age basis). Fall back to lastEventAt for compatibility.
   const ts = process.dominantAlertCreatedAt ?? process.lastEventAt
   if (!ts) return null
-  const parsed = Date.parse(ts)
-  return Number.isNaN(parsed) ? null : parsed
+  if (typeof ts === 'string') {
+    return parseInstantFromIso(ts)?.toEpochMs() ?? null
+  }
+
+  const parsedTemporal = parseTemporalValue(ts)
+  if (parsedTemporal === null) return null
+  return toComparableInstant(parsedTemporal, {
+    timezone: 'UTC',
+    strategy: 'start-of-day',
+  }).toEpochMs()
 }
 
 function toProcessNumberSortValue(process: ProcessSummaryVM): string | null {

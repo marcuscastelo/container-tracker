@@ -1,4 +1,5 @@
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 /**
  * Timeline — ordered sequence of Observations for a single container.
@@ -9,10 +10,10 @@ import type { Observation } from '~/modules/tracking/features/observation/domain
  * @see docs/master-consolidated-0209.md §2.5
  */
 export type TimelineHole = {
-  /** Start of the gap (ISO datetime, null if from beginning) */
-  from: string | null
-  /** End of the gap (ISO datetime, null if to present) */
-  to: string | null
+  /** Start of the gap, preserving instant/date semantics explicitly. */
+  from: TemporalValueDto | null
+  /** End of the gap, preserving instant/date semantics explicitly. */
+  to: TemporalValueDto | null
   /** Reason for the gap */
   reason: 'missing_data' | 'gap' | 'missing_eta'
 }

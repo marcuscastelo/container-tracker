@@ -1,3 +1,8 @@
+import { isTrackingTemporalValueExpired } from '~/modules/tracking/domain/temporal/tracking-temporal'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
+import type { TemporalValue } from '~/shared/time/temporal-value'
+
 /**
  * Derived observation state — runtime-only classification for timeline rendering.
  *
@@ -17,7 +22,7 @@ export type DerivedObservationState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EX
  */
 type ObservationLike = {
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
-  readonly event_time: string | null
+  readonly event_time: TemporalValue | null
   readonly type: string
   readonly location_code: string | null
   readonly vessel_name: string | null
@@ -65,7 +70,7 @@ function isSemanticEquivalent(a: ObservationLike, b: ObservationLike): boolean {
 export function isExpiredExpected(
   observation: ObservationLike,
   allObservations: readonly ObservationLike[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): boolean {
   // Only EXPECTED observations can be expired
   if (observation.event_time_type !== 'EXPECTED') return false
@@ -74,8 +79,7 @@ export function isExpiredExpected(
   if (observation.event_time === null) return false
 
   // Event time must be in the past
-  const eventTime = new Date(observation.event_time)
-  if (eventTime >= now) return false
+  if (!isTrackingTemporalValueExpired(observation.event_time, now)) return false
 
   // Check if any ACTUAL equivalent exists
   const hasActualEquivalent = allObservations.some(
@@ -96,7 +100,7 @@ export function isExpiredExpected(
 export function deriveObservationState(
   observation: ObservationLike,
   allObservations: readonly ObservationLike[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): DerivedObservationState {
   if (observation.event_time_type === 'ACTUAL') return 'ACTUAL'
   if (isExpiredExpected(observation, allObservations, now)) return 'EXPIRED_EXPECTED'

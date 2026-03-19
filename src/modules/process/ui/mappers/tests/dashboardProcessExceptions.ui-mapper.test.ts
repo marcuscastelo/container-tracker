@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toDashboardProcessExceptionVMs } from '~/modules/process/ui/mappers/dashboardProcessExceptions.ui-mapper'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('toDashboardProcessExceptionVMs', () => {
   it('maps process exceptions while preserving backend order', () => {
@@ -26,7 +27,7 @@ describe('toDashboardProcessExceptionVMs', () => {
           origin: 'Ningbo',
           destination: 'Antwerp',
           derived_status: 'IN_TRANSIT',
-          eta_current: '2026-03-10T10:00:00.000Z',
+          eta_current: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
           dominant_severity: 'danger',
           dominant_alert_created_at: '2026-03-10T09:30:00.000Z',
           active_alert_count: 2,
@@ -53,7 +54,7 @@ describe('toDashboardProcessExceptionVMs', () => {
         destination: 'Antwerp',
         statusCode: 'IN_TRANSIT',
         status: 'blue-500',
-        etaCurrent: '2026-03-10T10:00:00.000Z',
+        etaCurrent: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
         dominantSeverity: 'danger',
         activeAlertCount: 2,
         dominantAlertCreatedAt: '2026-03-10T09:30:00.000Z',

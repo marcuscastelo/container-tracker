@@ -1,8 +1,18 @@
+import {
+  compareTrackingTemporalValues,
+  isTrackingTemporalValueExpired,
+  TRACKING_CHRONOLOGY_COMPARE_OPTIONS,
+  trackingTemporalValueToDto,
+} from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type {
   Timeline,
   TimelineHole,
 } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { systemClock } from '~/shared/time/clock'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { Instant } from '~/shared/time/instant'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 /**
  * Compute a semantic group key for reconciliation.
@@ -60,12 +70,12 @@ export function buildSeriesKey(obs: {
  */
 export function compareObservationsChronologically(
   a: {
-    readonly event_time: string | null
+    readonly event_time: TemporalValue | null
     readonly event_time_type: 'ACTUAL' | 'EXPECTED'
     readonly created_at: string
   },
   b: {
-    readonly event_time: string | null
+    readonly event_time: TemporalValue | null
     readonly event_time_type: 'ACTUAL' | 'EXPECTED'
     readonly created_at: string
   },
@@ -77,8 +87,7 @@ export function compareObservationsChronologically(
   if (a.event_time === null) return 1
   if (b.event_time === null) return -1
 
-  // Compare by event_time
-  const timeCmp = a.event_time.localeCompare(b.event_time)
+  const timeCmp = compareTrackingTemporalValues(a.event_time, b.event_time)
   if (timeCmp !== 0) return timeCmp
 
   // Equal times: ACTUAL before EXPECTED
@@ -113,7 +122,7 @@ export function compareObservationsChronologically(
  */
 export function reconcileForDisplay(
   sorted: readonly Observation[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): Observation[] {
   // Group observations by semantic identity
   const groups = new Map<string, Observation[]>()
@@ -139,10 +148,12 @@ export function reconcileForDisplay(
     // Find the latest ACTUAL event_time in this group (may be undefined)
     const latestActualTime =
       actuals.length > 0
-        ? actuals.reduce<string | null>((latest, a) => {
-            if (a.event_time === null) return latest
-            if (latest === null) return a.event_time
-            return a.event_time > latest ? a.event_time : latest
+        ? actuals.reduce<TemporalValue | null>((latest, current) => {
+            if (current.event_time === null) return latest
+            if (latest === null) return current.event_time
+            return compareTrackingTemporalValues(current.event_time, latest) > 0
+              ? current.event_time
+              : latest
           }, null)
         : null
 
@@ -153,7 +164,7 @@ export function reconcileForDisplay(
       if (
         latestActualTime !== null &&
         exp.event_time !== null &&
-        exp.event_time <= latestActualTime
+        compareTrackingTemporalValues(exp.event_time, latestActualTime) <= 0
       ) {
         coveredByActual.push(exp)
       } else {
@@ -168,11 +179,10 @@ export function reconcileForDisplay(
 
     // For remaining EXPECTED (not covered by ACTUAL):
     // Separate into expired and active
-    const nowIso = now.toISOString()
     const expired: Observation[] = []
     const active: Observation[] = []
     for (const exp of notCoveredByActual) {
-      if (exp.event_time !== null && exp.event_time < nowIso) {
+      if (isTrackingTemporalValueExpired(exp.event_time, now)) {
         expired.push(exp)
       } else {
         active.push(exp)
@@ -226,27 +236,12 @@ export function deriveTimeline(
   containerId: string,
   containerNumber: string,
   observations: readonly Observation[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): Timeline {
   // Sort: event_time ascending, nulls last.
   // For equal times: ACTUAL before EXPECTED (visual precedence).
   // For ties: use created_at.
-  const sorted = [...observations].sort((a, b) => {
-    if (a.event_time === null && b.event_time === null) {
-      return a.created_at.localeCompare(b.created_at)
-    }
-    if (a.event_time === null) return 1
-    if (b.event_time === null) return -1
-    const cmp = a.event_time.localeCompare(b.event_time)
-    if (cmp !== 0) return cmp
-
-    // Times are equal — ACTUAL comes before EXPECTED
-    if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
-    if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
-
-    // Both are ACTUAL or both are EXPECTED — use created_at
-    return a.created_at.localeCompare(b.created_at)
-  })
+  const sorted = [...observations].sort(compareObservationsChronologically)
 
   // Reconcile: collapse redundant EXPECTED observations for display
   const reconciled = reconcileForDisplay(sorted, now)
@@ -259,12 +254,12 @@ export function deriveTimeline(
     const prev = reconciled[i - 1]
     const curr = reconciled[i]
     if (prev?.event_time && curr?.event_time) {
-      const prevTime = new Date(prev.event_time).getTime()
-      const currTime = new Date(curr.event_time).getTime()
-      if (currTime - prevTime > GAP_THRESHOLD_MS) {
+      const prevTime = toComparableInstant(prev.event_time, TRACKING_CHRONOLOGY_COMPARE_OPTIONS)
+      const currTime = toComparableInstant(curr.event_time, TRACKING_CHRONOLOGY_COMPARE_OPTIONS)
+      if (currTime.diffMs(prevTime) > GAP_THRESHOLD_MS) {
         holes.push({
-          from: prev.event_time,
-          to: curr.event_time,
+          from: trackingTemporalValueToDto(prev.event_time),
+          to: trackingTemporalValueToDto(curr.event_time),
           reason: 'gap',
         })
       }
@@ -284,7 +279,7 @@ export function deriveTimeline(
     container_id: containerId,
     container_number: containerNumber,
     observations: reconciled,
-    derived_at: new Date().toISOString(),
+    derived_at: systemClock.now().toIsoString(),
     holes,
   }
 }

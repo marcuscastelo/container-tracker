@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { NavbarAlertsSummaryReadModel } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
 import { createDashboardControllersHarness } from '~/capabilities/dashboard/interface/http/tests/dashboard.controllers.test.helpers'
 import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('dashboard controllers - navbar message contract behavior', () => {
   it('returns navbar alerts summary grouped by process and container', async () => {
@@ -21,7 +22,7 @@ describe('dashboard controllers - navbar message contract behavior', () => {
               containerId: 'container-1',
               containerNumber: 'MSCU1111111',
               status: 'IN_TRANSIT',
-              eta: '2026-03-21T00:00:00.000Z',
+              eta: temporalDtoFromCanonical('2026-03-21T00:00:00.000Z'),
               activeAlertsCount: 2,
               dominantSeverity: 'danger',
               latestAlertAt: '2026-03-11T10:00:00.000Z',

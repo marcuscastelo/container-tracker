@@ -3,11 +3,12 @@ import { Show } from 'solid-js'
 import { ShipmentCurrentStatusDetails } from '~/modules/process/ui/components/ShipmentCurrentStatusDetails'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { Instant } from '~/shared/time/instant'
 import { Panel } from '~/shared/ui/layout/Panel'
 
 type Props = {
   readonly selectedContainer: ContainerDetailVM | null
-  readonly syncNow: Date
+  readonly syncNow: Instant
 }
 
 export function ShipmentCurrentStatus(props: Props): JSX.Element {

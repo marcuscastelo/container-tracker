@@ -4,6 +4,7 @@ import {
   type DashboardOperationalSummaryReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type ProcessesProjection = Awaited<
   ReturnType<
@@ -56,7 +57,7 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         },
         summary: {
           process_status: 'BOOKED',
-          eta: '2026-03-10T10:00:00.000Z',
+          eta: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
         },
       },
       {
@@ -98,7 +99,7 @@ describe('createDashboardOperationalSummaryReadModelUseCase', () => {
         origin: 'Santos',
         destination: 'Rotterdam',
         status: 'BOOKED',
-        eta: '2026-03-10T10:00:00.000Z',
+        eta: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
         dominantSeverity: 'danger',
         dominantAlertCreatedAt: '2026-03-03T00:00:00.000Z',
         activeAlertsCount: 3,

@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import {
-  computeRowDistribution,
-  MAX_PER_ROW,
-} from '~/modules/process/ui/components/container-distribution'
+import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
+
+const MAX_PER_ROW = 4
 
 describe('computeRowDistribution', () => {
   it('returns empty array for non-positive counts', () => {
-    expect(computeRowDistribution(0)).toEqual([])
-    expect(computeRowDistribution(-3)).toEqual([])
+    expect(computeRowDistribution(0, MAX_PER_ROW)).toEqual([])
+    expect(computeRowDistribution(-3, MAX_PER_ROW)).toEqual([])
   })
 
   it('respects MAX_PER_ROW', () => {
@@ -40,7 +39,7 @@ describe('computeRowDistribution', () => {
 
     for (const [k, v] of Object.entries(cases)) {
       const n = Number(k)
-      expect(computeRowDistribution(n)).toEqual(v)
+      expect(computeRowDistribution(n, MAX_PER_ROW)).toEqual(v)
     }
   })
 })

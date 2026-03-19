@@ -4,13 +4,18 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalDtoFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 type ObservationParams = Readonly<{
   id: string
   containerId: string
   containerNumber: string
   type: Observation['type']
-  eventTime: string | null
+  eventTime: string | Observation['event_time']
   eventTimeType: Observation['event_time_type']
   vesselName: string | null
   createdAt: string
@@ -23,7 +28,7 @@ function makeObservation(params: ObservationParams): Observation {
     container_id: params.containerId,
     container_number: params.containerNumber,
     type: params.type,
-    event_time: params.eventTime,
+    event_time: resolveTemporalValue(params.eventTime, null),
     event_time_type: params.eventTimeType,
     location_code: 'BRSSZ',
     location_display: 'Santos',
@@ -133,7 +138,7 @@ describe('searchTrackingByDerivedStatusText', () => {
     const result = await searchTrackingByDerivedStatusText(deps, {
       query: '  in_transit ',
       limit: 30,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(result).toEqual([
@@ -141,7 +146,7 @@ describe('searchTrackingByDerivedStatusText', () => {
         processId: 'process-1',
         vesselName: 'ALPHA VESSEL',
         latestDerivedStatus: 'IN_TRANSIT',
-        latestEta: '2026-03-30T00:00:00.000Z',
+        latestEta: temporalDtoFromCanonical('2026-03-30T00:00:00.000Z'),
       },
     ])
   })
@@ -166,7 +171,7 @@ describe('searchTrackingByDerivedStatusText', () => {
     const result = await searchTrackingByDerivedStatusText(deps, {
       query: 'transit',
       limit: 30,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(result).toEqual([])
@@ -206,7 +211,7 @@ describe('searchTrackingByDerivedStatusText', () => {
     const emptyQuery = await searchTrackingByDerivedStatusText(deps, {
       query: '   ',
       limit: 30,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(emptyQuery).toEqual([])
@@ -215,7 +220,7 @@ describe('searchTrackingByDerivedStatusText', () => {
     const limited = await searchTrackingByDerivedStatusText(deps, {
       query: 'delivered',
       limit: 1,
-      now: new Date('2026-03-01T00:00:00.000Z'),
+      now: instantFromIsoText('2026-03-01T00:00:00.000Z'),
     })
 
     expect(limited).toHaveLength(1)

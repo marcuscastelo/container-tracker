@@ -1,6 +1,7 @@
 import zlib from 'node:zlib'
 import axios from 'axios'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
+import { systemClock } from '~/shared/time/clock'
 
 export type FetchResult = {
   readonly provider: Provider
@@ -56,7 +57,7 @@ export async function fetchMscStatus(containerNumber: string): Promise<FetchResu
   return {
     provider: 'msc',
     payload,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: systemClock.now().toIsoString(),
   }
 }
 
