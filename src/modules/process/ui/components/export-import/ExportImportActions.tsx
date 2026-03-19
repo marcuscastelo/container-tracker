@@ -613,6 +613,7 @@ export function ExportImportActions(props: ExportImportActionsProps): JSX.Elemen
   }
 
   const IMPORT_DISABLED = true // TODO: enable button when import functionality is tested with stage database
+                               // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/239
 
   return (
     <>
