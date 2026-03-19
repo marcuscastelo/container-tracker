@@ -25,7 +25,7 @@ set -euo pipefail
 APPLY=0
 DELETE_BRANCH=0
 VERBOSE=0
-BASE_REF=""
+BASE_REF="develop"
 
 while [ $# -gt 0 ]; do
   case "$1" in
