@@ -252,12 +252,12 @@
       "linter": {
         "rules": {
           "a11y": {
-            "noAriaUnsupportedElements": "warn",
-            "useAltText": "warn",
-            "useAriaPropsForRole": "warn",
-            "useAriaPropsSupportedByRole": "warn",
-            "useValidAriaProps": "warn",
-            "useValidAriaValues": "warn"
+            "noAriaUnsupportedElements": "error",
+            "useAltText": "error",
+            "useAriaPropsForRole": "error",
+            "useAriaPropsSupportedByRole": "error",
+            "useValidAriaProps": "error",
+            "useValidAriaValues": "error"
           },
           "complexity": {
             "noAdjacentSpacesInRegex": "error",
@@ -305,9 +305,7 @@
             "noCatchAssign": "error",
             "noClassAssign": "error",
             "noCompareNegZero": "error",
-            "noConsole": "off",
             "noConstantBinaryExpressions": "error",
-            "noControlCharactersInRegex": "off",
             "noDebugger": "error",
             "noDoubleEquals": "error",
             "noDuplicateCase": "error",
@@ -315,7 +313,6 @@
             "noDuplicateElseIf": "error",
             "noDuplicateObjectKeys": "error",
             "noDuplicateParameters": "error",
-            "noEmptyBlockStatements": "off",
             "noExplicitAny": "error",
             "noExtraNonNullAssertion": "error",
             "noFallthroughSwitchClause": "error",
@@ -327,7 +324,6 @@
             "noMisleadingInstantiator": "error",
             "noNonNullAssertedOptionalChain": "error",
             "noPrototypeBuiltins": "error",
-            "noReactSpecificProps": "warn",
             "noRedeclare": "error",
             "noShadowRestrictedNames": "error",
             "noSparseArray": "error",
