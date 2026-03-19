@@ -6,6 +6,11 @@ import {
 } from '~/capabilities/export-import/application/export-import.errors'
 import type { ExportImportUseCases } from '~/capabilities/export-import/application/export-import.usecases'
 import { createExportImportControllers } from '~/capabilities/export-import/interface/http/export-import.controllers'
+import type { TemporalValueDto } from '~/shared/time/dto'
+
+function instant(s: string | null): TemporalValueDto | null {
+  return s === null ? null : { kind: 'instant', value: s }
+}
 
 function createUseCasesMock(): ExportImportUseCases {
   return {
@@ -150,8 +155,8 @@ describe('export import controllers', () => {
           processStatus: 'ARRIVED_AT_POD',
           alertCount: 0,
           highestAlertSeverity: null,
-          eta: '2026-04-30T00:00:00.000Z',
-          lastEventAt: '2026-04-20T16:18:00.000Z',
+          eta: instant('2026-04-30T00:00:00.000Z'),
+          lastEventAt: instant('2026-04-20T16:18:00.000Z'),
           lastSyncAt: '2026-04-20T16:18:00.000Z',
           lastSyncStatus: 'DONE',
           containers: [
@@ -160,8 +165,8 @@ describe('export import controllers', () => {
               containerNumber: 'FCIU2000205',
               carrierCode: 'MSC',
               status: 'IN_TRANSIT',
-              eta: '2026-04-30T00:00:00.000Z',
-              latestEvent: '2026-04-20T16:18:00.000Z',
+              eta: instant('2026-04-30T00:00:00.000Z'),
+              latestEvent: instant('2026-04-20T16:18:00.000Z'),
               latestEventLabel: 'Discharged at destination port',
               latestTrackingUpdate: '2026-04-20T16:18:00.000Z',
               vesselName: 'MSC BIANCA SILVIA',

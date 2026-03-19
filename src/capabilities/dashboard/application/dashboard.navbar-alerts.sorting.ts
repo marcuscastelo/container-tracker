@@ -5,6 +5,7 @@ import type {
   NavbarProcessAlertGroupReadModel,
 } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel.shared'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 const DASHBOARD_NAVBAR_SEVERITY_ORDER: Readonly<Record<DashboardNavbarSeverity, number>> = {
   none: 0,
@@ -22,8 +23,7 @@ export function toRouteSummary(origin: string | null, destination: string | null
 
 function toTimestampOrNegativeInfinity(value: string | null | undefined): number {
   if (!value) return Number.NEGATIVE_INFINITY
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+  return parseInstantFromIso(value)?.toEpochMs() ?? Number.NEGATIVE_INFINITY
 }
 
 export function compareIsoDesc(left: string | null, right: string | null): number {

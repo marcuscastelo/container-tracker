@@ -5,6 +5,9 @@ import {
   RefreshStatusResponseSchema,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentRefresh.schemas'
 import type { SyncRequestRealtimeEvent } from '~/shared/api/sync-requests.realtime.client'
+import { systemClock } from '~/shared/time/clock'
+import { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 export { RefreshPostResponseSchema, RefreshStatusResponseSchema }
 export type { RefreshStatusRequest, RefreshStatusResponse }
@@ -75,19 +78,19 @@ export function toRefreshStatusResponseFromMap(
   }
 }
 
-export function toLatestDoneAtOrNow(requests: readonly RefreshStatusRequest[]): Date {
+export function toLatestDoneAtOrNow(requests: readonly RefreshStatusRequest[]): Instant {
   const doneTimestamps = requests
     .map((request) => {
       if (request.status !== 'DONE' || request.updatedAt === null) {
         return Number.NaN
       }
-      return Date.parse(request.updatedAt)
+      return parseInstantFromIso(request.updatedAt)?.toEpochMs() ?? Number.NaN
     })
     .filter((value) => Number.isFinite(value))
 
   if (doneTimestamps.length === 0) {
-    return new Date()
+    return systemClock.now()
   }
 
-  return new Date(Math.max(...doneTimestamps))
+  return Instant.fromEpochMs(Math.max(...doneTimestamps))
 }

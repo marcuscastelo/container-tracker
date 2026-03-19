@@ -3,6 +3,7 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import { TypedFetchError, typedFetch } from '~/shared/api/typedFetch'
 import { ProcessDetailResponseSchema } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
 
 const PROCESS_PREFETCH_TTL_MS = 15_000
 
@@ -26,6 +27,10 @@ const inFlightProcessRequests = new Map<string, Promise<ShipmentDetailVM | null>
 // captured an older generation will skip writing the cache when it resolves.
 const processRequestGeneration = new Map<string, number>()
 
+function nowMs(): number {
+  return systemClock.now().toEpochMs()
+}
+
 function toProcessCacheKey(id: string, locale: string): string {
   return `${id}::${locale}`
 }
@@ -33,7 +38,7 @@ function toProcessCacheKey(id: string, locale: string): string {
 function readFreshCachedProcess(key: string): ShipmentDetailVM | null | undefined {
   const cached = processCache.get(key)
   if (!cached) return undefined
-  if (cached.expiresAtMs <= Date.now()) {
+  if (cached.expiresAtMs <= nowMs()) {
     processCache.delete(key)
     return undefined
   }
@@ -46,7 +51,7 @@ function writeCachedProcess(key: string, value: ShipmentDetailVM | null): void {
 
   processCache.set(key, {
     value,
-    expiresAtMs: Date.now() + PROCESS_PREFETCH_TTL_MS,
+    expiresAtMs: nowMs() + PROCESS_PREFETCH_TTL_MS,
   })
 
   // Keep the cache bounded to avoid unbounded memory growth in long sessions.
@@ -62,7 +67,7 @@ function writeCachedProcess(key: string, value: ShipmentDetailVM | null): void {
 }
 
 function pruneExpiredCacheEntries(): void {
-  const now = Date.now()
+  const now = nowMs()
   for (const [key, record] of processCache.entries()) {
     if (record.expiresAtMs <= now) processCache.delete(key)
   }

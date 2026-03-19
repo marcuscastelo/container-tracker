@@ -3,11 +3,12 @@ import { runTrackingReplay } from '~/modules/tracking/features/replay/applicatio
 import type { TrackingReplayDebugResult } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { buildTrackingTimeTravelReadModel } from '~/modules/tracking/features/replay/application/tracking-time-travel.readmodel'
 import { HttpError } from '~/shared/errors/httpErrors'
+import type { Instant } from '~/shared/time/instant'
 
 export type GetTrackingReplayDebugCommand = {
   readonly containerId: string
   readonly snapshotId: string
-  readonly now?: Date
+  readonly now?: Instant
 }
 
 export async function getTrackingReplayDebug(

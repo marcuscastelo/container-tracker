@@ -5,6 +5,8 @@ import {
   type SyncRequestRealtimeEvent,
   subscribeToSyncRequestsRealtimeByContainerRefs,
 } from '~/shared/api/sync-requests.realtime.client'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 const AUTO_SYNC_DEBOUNCE_MS = 800
 const AUTO_SYNC_FALLBACK_INTERVAL_MS = 10_000
@@ -32,8 +34,8 @@ export function useSyncRealtimeCoordinator(command: {
   readonly isRefreshing: Accessor<boolean>
   readonly refreshTrackingData: () => Promise<void>
   readonly isDisposed: () => boolean
-}): Accessor<Date> {
-  const [syncNow, setSyncNow] = createSignal(new Date())
+}): Accessor<Instant> {
+  const [syncNow, setSyncNow] = createSignal(systemClock.now())
   const [isPageVisible, setIsPageVisible] = createSignal(true)
   const [isRealtimeDegraded, setIsRealtimeDegraded] = createSignal(false)
   let activeContainerRealtimeCleanup: (() => void) | null = null
@@ -108,7 +110,7 @@ export function useSyncRealtimeCoordinator(command: {
   createEffect(() => {
     if (typeof window === 'undefined') return
 
-    const intervalId = setInterval(() => setSyncNow(new Date()), AUTO_SYNC_LABEL_TICK_MS)
+    const intervalId = setInterval(() => setSyncNow(systemClock.now()), AUTO_SYNC_LABEL_TICK_MS)
     onCleanup(() => clearInterval(intervalId))
   })
 

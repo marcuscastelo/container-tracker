@@ -4,6 +4,7 @@ import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import {
   observationRowToDomain,
   observationToInsertRow,
@@ -13,6 +14,15 @@ import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseRes
 
 const TABLE = 'container_observations' as const
 const CONTAINERS_TABLE = 'containers' as const
+
+function compareObservationChronology(left: Observation, right: Observation): number {
+  const chronologyCompare = compareObservationsChronologically(left, right)
+  if (chronologyCompare !== 0) {
+    return chronologyCompare
+  }
+
+  return left.id.localeCompare(right.id)
+}
 
 export const supabaseObservationRepository: ObservationRepository = {
   async insertMany(observations: readonly NewObservation[]): Promise<readonly Observation[]> {
@@ -32,14 +42,15 @@ export const supabaseObservationRepository: ObservationRepository = {
       .from(TABLE)
       .select('*')
       .eq('container_id', containerId)
-      .order('event_time', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findAllByContainerId',
       table: TABLE,
     })
 
-    return (data ?? []).map(observationRowToDomain)
+    return (data ?? []).map(observationRowToDomain).sort(compareObservationChronology)
   },
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -61,8 +72,8 @@ export const supabaseObservationRepository: ObservationRepository = {
       .from(TABLE)
       .select('*')
       .order('container_id', { ascending: true })
-      .order('event_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
 
     const observationRows =
       unwrapSupabaseResultOrThrow(observationsResult, {
@@ -103,6 +114,15 @@ export const supabaseObservationRepository: ObservationRepository = {
       })
     }
 
-    return projections
+    return projections.sort((left, right) => {
+      const containerCompare = left.observation.container_id.localeCompare(
+        right.observation.container_id,
+      )
+      if (containerCompare !== 0) {
+        return containerCompare
+      }
+
+      return compareObservationChronology(left.observation, right.observation)
+    })
   },
 }

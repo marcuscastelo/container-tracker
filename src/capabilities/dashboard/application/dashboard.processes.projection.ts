@@ -1,4 +1,6 @@
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 
 export type DashboardProcessRecordProjection = {
   readonly id: string
@@ -6,7 +8,7 @@ export type DashboardProcessRecordProjection = {
   readonly origin?: string | null
   readonly destination?: string | null
   readonly carrier?: string | null
-  readonly createdAt?: Date | string | null
+  readonly createdAt?: Instant | string | null
 }
 
 export type DashboardContainerRecordProjection = {
@@ -21,7 +23,7 @@ export type DashboardProcessWithContainersProjection = {
 
 export type DashboardProcessOperationalSummaryProjection = {
   readonly process_status?: ProcessAggregatedStatus
-  readonly eta?: string | null
+  readonly eta?: TemporalValueDto | null
   readonly full_logistics_complete?: boolean
   readonly alerts_count?: number
 }

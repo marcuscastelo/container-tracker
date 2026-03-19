@@ -12,6 +12,7 @@ import type {
   TrackingObservationRow,
   TrackingSnapshotRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.row'
+import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 // ---------------------------------------------------------------------------
 // Observation mappers
@@ -25,7 +26,10 @@ describe('observationRowToDomain', () => {
     container_number: 'MSKU1234567',
     event_time_type: 'ACTUAL',
     type: 'LOAD',
+    temporal_kind: 'instant',
+    event_time_instant: '2026-01-15T10:00:00.000Z',
     event_time: '2026-01-15T10:00:00.000Z',
+    event_date: null,
     location_code: 'USNYC',
     location_display: 'New York',
     vessel_name: 'MSC Fantasy',
@@ -79,7 +83,13 @@ describe('observationRowToDomain', () => {
   })
 
   it('should handle null event_time', () => {
-    const result = observationRowToDomain({ ...validRow, event_time: null })
+    const result = observationRowToDomain({
+      ...validRow,
+      temporal_kind: null,
+      event_time_instant: null,
+      event_date: null,
+      event_time: null,
+    })
     expect(result.event_time).toBeNull()
   })
 })
@@ -92,7 +102,7 @@ describe('observationToInsertRow', () => {
       container_number: 'MSKU1234567',
       event_time_type: 'ACTUAL' as const,
       type: 'LOAD' as const,
-      event_time: '2026-01-15T10:00:00.000Z',
+      event_time: temporalValueFromCanonical('2026-01-15T10:00:00.000Z'),
       location_code: 'USNYC',
       location_display: 'New York',
       vessel_name: 'MSC Fantasy',

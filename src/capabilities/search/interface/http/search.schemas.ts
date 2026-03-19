@@ -4,6 +4,7 @@
 // Input validation + response shape definition.
 
 import z from 'zod/v4'
+import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
 
 /**
  * Query parameter schema for GET /api/search?q=...
@@ -33,7 +34,7 @@ export const SearchHttpResultItemSchema = z.object({
   vesselName: z.string().nullable(),
   bl: z.string().nullable(),
   derivedStatus: z.string().nullable(),
-  eta: z.string().nullable(),
+  eta: TemporalValueDtoSchema.nullable(),
   matchSource: SearchHttpMatchSourceSchema,
 })
 

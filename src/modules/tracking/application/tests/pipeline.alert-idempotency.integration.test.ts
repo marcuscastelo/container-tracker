@@ -18,6 +18,9 @@ import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { Instant } from '~/shared/time/instant'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 class InMemorySnapshotRepository implements SnapshotRepository {
   private readonly snapshots: Snapshot[] = []
@@ -54,10 +57,11 @@ class InMemoryObservationRepository implements ObservationRepository {
   }
 
   async insertMany(newObservations: readonly NewObservation[]): Promise<readonly Observation[]> {
-    const created = newObservations.map((observation) => ({
+    const baseCreatedAt = Instant.fromIso('2026-03-09T12:00:00.000Z').toEpochMs()
+    const created = newObservations.map((observation, index) => ({
       ...observation,
       id: randomUUID(),
-      created_at: new Date().toISOString(),
+      created_at: Instant.fromEpochMs(baseCreatedAt + index).toIsoString(),
     }))
     this.observations.push(...created)
     return created
@@ -66,7 +70,7 @@ class InMemoryObservationRepository implements ObservationRepository {
   async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
     return [...this.observations]
       .filter((observation) => observation.container_id === containerId)
-      .sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? ''))
+      .sort(compareObservationsChronologically)
   }
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -226,7 +230,10 @@ function makeObservation(
     container_id: containerId,
     container_number: containerNumber,
     type: 'OTHER',
-    event_time: '2025-11-01T00:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2025-11-01T00:00:00.000Z'),
+    ),
     event_time_type: 'ACTUAL',
     location_code: 'SGSIN',
     location_display: 'SINGAPORE, SG',
@@ -251,7 +258,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'LOAD',
       fingerprint: 'fp-origin-load',
-      event_time: '2025-10-15T00:00:00.000Z',
+      event_time: temporalValueFromCanonical('2025-10-15T00:00:00.000Z'),
       location_code: 'CNSHA',
       location_display: 'SHANGHAI, CN',
       vessel_name: 'Vessel A',
@@ -259,7 +266,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'DISCHARGE',
       fingerprint: dischargeFingerprint,
-      event_time: '2025-12-01T00:00:00.000Z',
+      event_time: temporalValueFromCanonical('2025-12-01T00:00:00.000Z'),
       location_code: 'SGSIN',
       location_display: 'SINGAPORE, SG',
       vessel_name: 'Vessel A',
@@ -267,7 +274,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'LOAD',
       fingerprint: loadFingerprint,
-      event_time: '2025-12-03T00:00:00.000Z',
+      event_time: temporalValueFromCanonical('2025-12-03T00:00:00.000Z'),
       location_code: 'SGSIN',
       location_display: 'SINGAPORE, SG',
       vessel_name: 'Vessel B',
@@ -275,7 +282,7 @@ function makeTransshipmentObservations(
     makeObservation(containerId, containerNumber, {
       type: 'ARRIVAL',
       fingerprint: 'fp-recent-arrival',
-      event_time: '2099-01-01T00:00:00.000Z',
+      event_time: temporalValueFromCanonical('2099-01-01T00:00:00.000Z'),
       location_code: 'BRSSZ',
       location_display: 'SANTOS, BR',
       vessel_name: 'Vessel B',

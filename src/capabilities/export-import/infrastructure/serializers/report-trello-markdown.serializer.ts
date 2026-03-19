@@ -2,20 +2,29 @@ import type {
   OperationalSnapshotReport,
   ReportProcessEntry,
 } from '~/capabilities/export-import/application/export-import.models'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 export type TrelloMarkdownFile = {
   readonly name: string
   readonly content: string
 }
 
-function toIsoDatePart(isoString: string | null): string {
-  if (!isoString) return ''
-  return isoString.slice(0, 10)
+function temporalValueToString(value: TemporalValueDto | string | null): string | null {
+  if (value === null) return null
+  if (typeof value === 'string') return value
+  return value.value
 }
 
-function toSingleLine(value: string | null): string {
+function toIsoDatePart(isoString: TemporalValueDto | string | null): string {
+  const s = temporalValueToString(isoString)
+  if (!s) return ''
+  return s.slice(0, 10)
+}
+
+function toSingleLine(value: string | TemporalValueDto | null): string {
   if (value === null) return ''
-  return value.replaceAll(/\s+/g, ' ').trim()
+  const s = typeof value === 'string' ? value : value.value
+  return s.replaceAll(/\s+/g, ' ').trim()
 }
 
 function toFieldLine(label: string, value: string): string {
@@ -77,7 +86,9 @@ function resolveLatestEventLabel(processEntry: ReportProcessEntry): string {
 
   for (const container of processEntry.containers) {
     if (container.latestEvent === null) continue
-    const timestamp = Date.parse(container.latestEvent)
+    const latestEventString = temporalValueToString(container.latestEvent)
+    if (!latestEventString) continue
+    const timestamp = Date.parse(latestEventString)
     const trackingUpdateAt = container.latestTrackingUpdate
       ? Date.parse(container.latestTrackingUpdate)
       : Number.NEGATIVE_INFINITY

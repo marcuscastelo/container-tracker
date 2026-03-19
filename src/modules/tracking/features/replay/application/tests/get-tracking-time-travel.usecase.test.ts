@@ -23,6 +23,8 @@ import type {
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
+import { Instant } from '~/shared/time/instant'
+import { instantFromIsoText } from '~/shared/time/tests/helpers'
 
 class InMemorySnapshotRepository implements SnapshotRepository {
   private snapshots = new Map<string, Snapshot>()
@@ -62,12 +64,12 @@ class InMemoryObservationRepository implements ObservationRepository {
   private observations = new Map<string, Observation>()
 
   async insertMany(observations: readonly NewObservation[]): Promise<readonly Observation[]> {
-    const createdAt = new Date('2026-02-03T12:00:00.000Z')
+    const createdAt = instantFromIsoText('2026-02-03T12:00:00.000Z')
     return observations.map((observation, index) => {
       const created: Observation = {
         ...observation,
         id: randomUUID(),
-        created_at: new Date(createdAt.getTime() + index).toISOString(),
+        created_at: Instant.fromEpochMs(createdAt.toEpochMs() + index).toIsoString(),
       }
       this.observations.set(created.id, created)
       return created
@@ -212,7 +214,7 @@ function normalizeTimelineForParity(
     type: item.type,
     carrierLabel: item.carrierLabel ?? null,
     location: item.location ?? null,
-    eventTimeIso: item.eventTimeIso,
+    eventTime: item.eventTime,
     eventTimeType: item.eventTimeType,
     derivedState: item.derivedState,
     vesselName: item.vesselName ?? null,
@@ -237,7 +239,7 @@ describe('getTrackingTimeTravel', () => {
     const containerId = randomUUID()
     const deps = createDeps()
     const trackingUseCases = createTrackingUseCases(deps)
-    const referenceNow = new Date('2026-02-03T18:30:00.000Z')
+    const referenceNow = instantFromIsoText('2026-02-03T18:30:00.000Z')
 
     const laterSnapshot = await trackingUseCases.saveAndProcess(
       containerId,
@@ -269,7 +271,7 @@ describe('getTrackingTimeTravel', () => {
 
     expect(timeTravel.syncCount).toBe(2)
     expect(timeTravel.selectedSnapshotId).toBe(laterSnapshot.snapshot.id)
-    expect(timeTravel.referenceNow).toBe(referenceNow.toISOString())
+    expect(timeTravel.referenceNow).toBe(referenceNow.toIsoString())
     expect(timeTravel.syncs[0]?.snapshotId).toBe(earlierSnapshot.snapshot.id)
     expect(timeTravel.syncs[0]?.diffFromPrevious.kind).toBe('initial')
     expect(timeTravel.syncs[1]?.diffFromPrevious.kind).toBe('comparison')
@@ -321,7 +323,7 @@ describe('getTrackingTimeTravel', () => {
     const debug = await trackingUseCases.getTrackingReplayDebug({
       containerId,
       snapshotId: laterSnapshot.snapshot.id,
-      now: new Date('2026-02-03T18:30:00.000Z'),
+      now: instantFromIsoText('2026-02-03T18:30:00.000Z'),
     })
 
     expect(debug.snapshotId).toBe(laterSnapshot.snapshot.id)

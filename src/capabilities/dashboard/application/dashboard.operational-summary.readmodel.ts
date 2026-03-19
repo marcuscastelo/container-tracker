@@ -10,6 +10,8 @@ import {
   type TrackingOperationalAlertCategory,
   toTrackingOperationalAlertCategory,
 } from '~/modules/tracking/features/alerts/application/projection/tracking.operational-alert-category.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type DashboardDominantSeverity = 'danger' | 'warning' | 'info' | 'success' | 'none'
 
@@ -74,7 +76,7 @@ type DashboardOperationalProcessReadModel = {
   readonly origin: string | null
   readonly destination: string | null
   readonly status: ProcessAggregatedStatus
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly dominantSeverity: DashboardDominantSeverity
   readonly dominantAlertCreatedAt: string | null
   readonly activeAlertsCount: number
@@ -107,16 +109,16 @@ function isAlertGeneratedAfter(
   candidate: TrackingActiveAlertReadModel,
   current: TrackingActiveAlertReadModel,
 ): boolean {
-  const candidateTimestamp = Date.parse(candidate.generated_at)
-  const currentTimestamp = Date.parse(current.generated_at)
+  const candidateTimestamp = parseInstantFromIso(candidate.generated_at)?.toEpochMs()
+  const currentTimestamp = parseInstantFromIso(current.generated_at)?.toEpochMs()
 
-  if (!Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+  if (candidateTimestamp !== undefined && currentTimestamp !== undefined) {
     if (candidateTimestamp !== currentTimestamp) {
       return candidateTimestamp > currentTimestamp
     }
-  } else if (!Number.isNaN(candidateTimestamp) && Number.isNaN(currentTimestamp)) {
+  } else if (candidateTimestamp !== undefined && currentTimestamp === undefined) {
     return true
-  } else if (Number.isNaN(candidateTimestamp) && !Number.isNaN(currentTimestamp)) {
+  } else if (candidateTimestamp === undefined && currentTimestamp !== undefined) {
     return false
   }
 
@@ -332,9 +334,9 @@ function buildDashboardActiveAlertsPanel(
 ): readonly DashboardOperationalAlertReadModel[] {
   return [...alerts]
     .sort((left, right) => {
-      const rightTimestamp = Date.parse(right.generated_at)
-      const leftTimestamp = Date.parse(left.generated_at)
-      if (!Number.isNaN(rightTimestamp) && !Number.isNaN(leftTimestamp)) {
+      const rightTimestamp = parseInstantFromIso(right.generated_at)?.toEpochMs()
+      const leftTimestamp = parseInstantFromIso(left.generated_at)?.toEpochMs()
+      if (rightTimestamp !== undefined && leftTimestamp !== undefined) {
         const byTimestamp = rightTimestamp - leftTimestamp
         if (byTimestamp !== 0) {
           return byTimestamp

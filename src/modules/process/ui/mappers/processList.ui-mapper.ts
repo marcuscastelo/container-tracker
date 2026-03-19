@@ -5,6 +5,9 @@ import {
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseTemporalValue } from '~/shared/time/parsing'
 
 export type ProcessListItemSource = {
   id: string
@@ -30,12 +33,12 @@ export type ProcessListItemSource = {
     status?: string | null
     count?: number | null
   } | null
-  eta?: string | null
+  eta?: TemporalValueDto | null
   alerts_count?: number
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null
   dominant_alert_created_at?: string | null
   has_transshipment?: boolean
-  last_event_at?: string | null
+  last_event_at?: TemporalValueDto | null
   redestination_number?: string | null
   last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
   last_sync_at?: string | null
@@ -51,10 +54,11 @@ function normalizeContainerNumber(containerNumber: string): string {
   return containerNumber.trim().toUpperCase()
 }
 
-function toTimestampOrNull(value: string | null | undefined): number | null {
+function toTimestampOrNull(value: TemporalValueDto | null | undefined): number | null {
   if (!value) return null
-  const parsed = Date.parse(value)
-  return Number.isNaN(parsed) ? null : parsed
+  const parsed = parseTemporalValue(value)
+  if (parsed === null) return null
+  return toComparableInstant(parsed, { timezone: 'UTC', strategy: 'start-of-day' }).toEpochMs()
 }
 
 function toProcessSyncStatus(

@@ -3,6 +3,7 @@ import path from 'node:path'
 import type { Browser } from 'puppeteer'
 import puppeteerExtra from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import { systemClock } from '~/shared/time/clock'
 
 /** Helper for delays (Puppeteer doesn't have page.waitForTimeout) */
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -467,7 +468,7 @@ export function createMaerskCaptureService(): MaerskCaptureService {
                     cookies,
                     userAgent,
                     telemetry,
-                    timestamp: new Date().toISOString(),
+                    timestamp: systemClock.now().toIsoString(),
                   }
                   captureState.score = candidateScore
                 }

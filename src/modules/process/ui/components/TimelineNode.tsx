@@ -11,6 +11,7 @@ import { timelineEventIcon } from '~/modules/process/ui/timeline/timelineEventIc
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
 import { copyToClipboard } from '~/shared/utils/clipboard'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -18,12 +19,12 @@ import { formatDateForLocale } from '~/shared/utils/formatDate'
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
 
 type DateLabelProps = {
-  readonly actualDateIso: string | null
-  readonly expectedDateIso: string | null
+  readonly actualDateIso: TemporalValueDto | null
+  readonly expectedDateIso: TemporalValueDto | null
   readonly locale: string
   readonly expectedLabel: string
   readonly actualLabel: string
-  readonly toTooltip: (iso?: string | null) => string | undefined
+  readonly toTooltip: (iso?: TemporalValueDto | null) => string | undefined
 }
 
 type CarrierLinkProps = {
@@ -32,11 +33,9 @@ type CarrierLinkProps = {
   readonly label: string
 }
 
-function toIsoTooltip(iso?: string | null): string | undefined {
+function toIsoTooltip(iso?: TemporalValueDto | null): string | undefined {
   if (!iso) return undefined
-  const matched = iso.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/)
-  if (matched) return matched[1]
-  return iso.replace(/\.\d+Z?$/, '').replace(/Z$/, '')
+  return iso.value
 }
 
 function DateLabel(props: DateLabelProps): JSX.Element | null {
@@ -203,10 +202,10 @@ export function TimelineNode(props: {
   })
 
   const actualDateIso = createMemo(() =>
-    props.event.eventTimeType === 'ACTUAL' ? props.event.eventTimeIso : null,
+    props.event.eventTimeType === 'ACTUAL' ? props.event.eventTime : null,
   )
   const expectedDateIso = createMemo(() =>
-    props.event.eventTimeType === 'EXPECTED' ? props.event.eventTimeIso : null,
+    props.event.eventTimeType === 'EXPECTED' ? props.event.eventTime : null,
   )
   const eventIcon = createMemo<JSX.Element | null>(() => {
     const Icon = timelineEventIcon(props.event.type)

@@ -1,4 +1,6 @@
 import z from 'zod/v4'
+import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
+import { ISO_INSTANT_PATTERN } from '~/shared/time/instant'
 
 // ---------------------------------------------------------------------------
 // Alerts — Request DTOs
@@ -117,15 +119,17 @@ export const GetLatestSnapshotRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
 
+const IsoInstantQuerySchema = z.string().regex(ISO_INSTANT_PATTERN)
+
 export const GetTrackingTimeTravelRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
-  now: z.string().optional(),
+  now: IsoInstantQuerySchema.optional(),
 })
 
 export const GetTrackingReplayDebugRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
   snapshotId: z.string().min(1, 'snapshotId is required'),
-  now: z.string().optional(),
+  now: IsoInstantQuerySchema.optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -151,7 +155,7 @@ const ReplayObservationResponseDtoSchema = z.object({
   fingerprint: z.string(),
   type: z.string(),
   carrier_label: z.string().nullable(),
-  event_time: z.string().nullable(),
+  event_time: TemporalValueDtoSchema.nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   location_code: z.string().nullable(),
   location_display: z.string().nullable(),
@@ -168,7 +172,7 @@ const ReplayObservationResponseDtoSchema = z.object({
 const ReplayTimelineSeriesItemResponseDtoSchema = z.object({
   id: z.string(),
   type: z.string(),
-  event_time: z.string().nullable(),
+  event_time: TemporalValueDtoSchema.nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   created_at: z.string(),
   series_label: z.enum([
@@ -186,7 +190,7 @@ const ReplaySeriesResponseDtoSchema = z.object({
   primary: z.object({
     id: z.string(),
     type: z.string(),
-    event_time: z.string().nullable(),
+    event_time: TemporalValueDtoSchema.nullable(),
     event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   }),
   has_actual_conflict: z.boolean(),
@@ -198,7 +202,7 @@ export const TrackingTimelineItemResponseDtoSchema = z.object({
   type: z.string(),
   carrier_label: z.string().nullable(),
   location: z.string().nullable(),
-  event_time_iso: z.string().nullable(),
+  event_time: TemporalValueDtoSchema.nullable(),
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   vessel_name: z.string().nullable(),
@@ -212,7 +216,7 @@ export const TrackingTimelineItemResponseDtoSchema = z.object({
 })
 
 export const TrackingOperationalEtaResponseDtoSchema = z.object({
-  event_time: z.string(),
+  event_time: TemporalValueDtoSchema,
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   type: z.string(),

@@ -4,6 +4,8 @@ import { AlertIcon } from '~/modules/process/ui/components/Icons'
 import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTime'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { systemClock } from '~/shared/time/clock'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 import { Panel } from '~/shared/ui/layout/Panel'
 
 type Props = {
@@ -55,7 +57,8 @@ function HistoricalAlertCard(props: HistoricalAlertCardProps): JSX.Element {
 
 export function TrackingTimeTravelAlertsPanel(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
-  const referenceNow = () => (props.referenceNowIso ? new Date(props.referenceNowIso) : new Date())
+  const referenceNow = () =>
+    (props.referenceNowIso ? parseInstantFromIso(props.referenceNowIso) : null) ?? systemClock.now()
 
   return (
     <Panel
@@ -71,16 +74,18 @@ export function TrackingTimeTravelAlertsPanel(props: Props): JSX.Element {
       >
         <div class="space-y-2">
           <For each={props.alerts}>
-            {(alert) => (
-              <HistoricalAlertCard
-                alert={alert}
-                relativeTriggeredAt={formatRelativeTime(
-                  alert.triggeredAtIso,
-                  referenceNow(),
-                  locale(),
-                )}
-              />
-            )}
+            {(alert) => {
+              const triggeredAt = parseInstantFromIso(alert.triggeredAtIso)
+
+              return (
+                <HistoricalAlertCard
+                  alert={alert}
+                  relativeTriggeredAt={
+                    triggeredAt ? formatRelativeTime(triggeredAt, referenceNow(), locale()) : ''
+                  }
+                />
+              )
+            }}
           </For>
         </div>
       </Show>

@@ -7,6 +7,8 @@ import type {
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MaerskApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/maersk.api.schema'
+import { parseInstantFromIso } from '~/shared/time/parsing'
+import { instantValue } from '~/shared/time/temporal-value'
 
 /**
  * Maps Maersk event `activity` strings to canonical ObservationType.
@@ -66,6 +68,21 @@ function mapEventTimeType(eventTimeType: string | null | undefined): EventTimeTy
   return 'EXPECTED'
 }
 
+const MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN = /(Z|[+-]\d{2}:\d{2})$/u
+
+function parseMaerskEventTime(
+  eventTime: string | null | undefined,
+): ObservationDraft['event_time'] {
+  if (typeof eventTime !== 'string') return null
+
+  const trimmed = eventTime.trim()
+  if (trimmed.length === 0) return null
+
+  const normalized = MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN.test(trimmed) ? trimmed : `${trimmed}Z`
+  const parsedInstant = parseInstantFromIso(normalized)
+  return parsedInstant ? instantValue(parsedInstant) : null
+}
+
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   if (typeof label !== 'string') return null
   // Preserve the original provider text for audit/UI transparency.
@@ -74,7 +91,7 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
 }
 
 function computeConfidence(
-  eventTime: string | null,
+  eventTime: ObservationDraft['event_time'],
   eventTimeType: string | null | undefined,
   locationCode: string | null | undefined,
 ): Confidence {
@@ -109,7 +126,7 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
 
       for (const event of events) {
         const type = mapMaerskActivity(event.activity)
-        const eventTime = event.event_time ?? null
+        const eventTime = parseMaerskEventTime(event.event_time)
         const locationCode = event.locationCode ?? location.location_code ?? null
         const locationDisplay =
           [location.city, location.country_code].filter(Boolean).join(', ') || null

@@ -29,7 +29,7 @@ function toTimelineItem(
     type: item.type,
     carrierLabel: item.carrier_label ?? undefined,
     location: item.location ?? undefined,
-    eventTimeIso: item.event_time_iso,
+    eventTime: item.event_time,
     eventTimeType: item.event_time_type,
     derivedState: item.derived_state,
     vesselName: item.vessel_name,

@@ -1,6 +1,10 @@
 import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import {
+  compareTrackingTemporalValues,
+  TRACKING_CHRONOLOGY_COMPARE_OPTIONS,
+} from '~/modules/tracking/domain/temporal/tracking-temporal'
+import {
   computeAlertFingerprint,
   computeNoMovementAlertFingerprint,
 } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
@@ -18,6 +22,9 @@ import type { Observation } from '~/modules/tracking/features/observation/domain
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { systemClock } from '~/shared/time/clock'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { Instant } from '~/shared/time/instant'
 
 /**
  * Internal representation of a confirmed transshipment event.
@@ -58,7 +65,18 @@ function toLatestActualEventWithTime(timeline: Timeline): Observation | undefine
     .filter(
       (observation) => observation.event_time !== null && observation.event_time_type === 'ACTUAL',
     )
-    .sort((a, b) => (b.event_time ?? '').localeCompare(a.event_time ?? ''))[0]
+    .sort((a, b) => compareTrackingTemporalValues(b.event_time, a.event_time))[0]
+}
+
+function toDetectedAtIso(value: Observation['event_time'], fallback: Instant): string {
+  if (value === null) return fallback.toIsoString()
+  return toComparableInstant(value, TRACKING_CHRONOLOGY_COMPARE_OPTIONS).toIsoString()
+}
+
+function toUtcCalendarDateString(value: Observation['event_time']): string | null {
+  if (value === null) return null
+  if (value.kind === 'date') return value.value.toIsoDate()
+  return value.value.toCalendarDate('UTC').toIsoDate()
 }
 
 function isNoMovementAlertDerivationState(
@@ -229,11 +247,11 @@ export function deriveAlertTransitions(
   status: ContainerStatus,
   existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): DerivedAlertTransitions {
   const alerts: NewTrackingAlert[] = []
   const monitoringAutoResolutions: MonitoringAutoResolution[] = []
-  const nowIso = now.toISOString()
+  const nowIso = now.toIsoString()
 
   // Build deduplication set for FACT alerts.
   // Monitoring alerts with breakpoint semantics are handled with dedicated cycle-aware checks.
@@ -256,7 +274,7 @@ export function deriveAlertTransitions(
     // Deduplicate by fingerprint — same DISCHARGE+LOAD pair must not create duplicate alerts
     if (!existingFactFingerprints.has(alertFingerprint)) {
       // detected_at = time the LOAD onto the new vessel was confirmed
-      const detectedAt = pair.loadObs.event_time ?? nowIso
+      const detectedAt = toDetectedAtIso(pair.loadObs.event_time, now)
 
       alerts.push({
         lifecycle_state: 'ACTIVE',
@@ -308,7 +326,7 @@ export function deriveAlertTransitions(
         message_params: {
           location: locationText,
         },
-        detected_at: firstHold?.event_time ?? nowIso,
+        detected_at: toDetectedAtIso(firstHold?.event_time ?? null, now),
         triggered_at: nowIso,
         source_observation_fingerprints: fingerprints,
         alert_fingerprint: alertFingerprint,
@@ -338,8 +356,11 @@ export function deriveAlertTransitions(
       const lastActualEvent = toLatestActualEventWithTime(timeline)
 
       if (lastActualEvent?.event_time) {
-        const lastEventDate = new Date(lastActualEvent.event_time)
-        const daysSinceLastEvent = (now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24)
+        const lastEventInstant = toComparableInstant(
+          lastActualEvent.event_time,
+          TRACKING_CHRONOLOGY_COMPARE_OPTIONS,
+        )
+        const daysSinceLastEvent = now.diffMs(lastEventInstant) / (1000 * 60 * 60 * 24)
         const daysWithoutMovement = Math.floor(daysSinceLastEvent)
         const highestCrossedBreakpoint = classifyNoMovementBreakpoint(daysWithoutMovement)
 
@@ -358,51 +379,52 @@ export function deriveAlertTransitions(
           // cycle emission checks. This keeps deterministic fingerprints
           // compatible with existing expectations while also allowing us to
           // detect anchor changes via the stronger observation fingerprint.
-          const cycleAnchorDate = lastActualEvent.event_time.slice(0, 10)
+          const cycleAnchorDate = toUtcCalendarDateString(lastActualEvent.event_time)
+          if (cycleAnchorDate !== null) {
+            const monitoringFingerprint = computeNoMovementAlertFingerprint(
+              timeline.container_id,
+              highestCrossedBreakpoint,
+              cycleAnchorDate,
+            )
 
-          const monitoringFingerprint = computeNoMovementAlertFingerprint(
-            timeline.container_id,
-            highestCrossedBreakpoint,
-            cycleAnchorDate,
-          )
+            const alreadyEmittedForCycle = hasNoMovementBreakpointBeenEmittedForCurrentCycle(
+              existingAlerts,
+              highestCrossedBreakpoint,
+              // keep legacy date param for backward compatibility checks inside
+              // the helper; the helper also considers source observation
+              // fingerprints when available
+              cycleAnchorDate,
+              cycleAnchorObservationFingerprint,
+            )
 
-          const alreadyEmittedForCycle = hasNoMovementBreakpointBeenEmittedForCurrentCycle(
-            existingAlerts,
-            highestCrossedBreakpoint,
-            // keep legacy date param for backward compatibility checks inside
-            // the helper; the helper also considers source observation
-            // fingerprints when available
-            cycleAnchorDate,
-            cycleAnchorObservationFingerprint,
-          )
-
-          if (!alreadyEmittedForCycle) {
-            alerts.push({
-              lifecycle_state: 'ACTIVE',
-              container_id: timeline.container_id,
-              category: 'monitoring',
-              type: 'NO_MOVEMENT',
-              severity: 'warning',
-              message_key: 'alerts.noMovementDetected',
-              message_params: {
-                threshold_days: highestCrossedBreakpoint,
-                days_without_movement: daysWithoutMovement,
-                // Keep `days` for compatibility with current UI translation keys.
-                days: daysWithoutMovement,
-                lastEventDate: cycleAnchorDate,
-              },
-              detected_at: nowIso,
-              triggered_at: nowIso,
-              source_observation_fingerprints: [cycleAnchorObservationFingerprint],
-              alert_fingerprint: monitoringFingerprint,
-              retroactive: false,
-              provider: null,
-              acked_at: null,
-              acked_by: null,
-              acked_source: null,
-              resolved_at: null,
-              resolved_reason: null,
-            })
+            if (!alreadyEmittedForCycle) {
+              alerts.push({
+                lifecycle_state: 'ACTIVE',
+                container_id: timeline.container_id,
+                category: 'monitoring',
+                type: 'NO_MOVEMENT',
+                severity: 'warning',
+                message_key: 'alerts.noMovementDetected',
+                message_params: {
+                  threshold_days: highestCrossedBreakpoint,
+                  days_without_movement: daysWithoutMovement,
+                  // Keep `days` for compatibility with current UI translation keys.
+                  days: daysWithoutMovement,
+                  lastEventDate: cycleAnchorDate,
+                },
+                detected_at: nowIso,
+                triggered_at: nowIso,
+                source_observation_fingerprints: [cycleAnchorObservationFingerprint],
+                alert_fingerprint: monitoringFingerprint,
+                retroactive: false,
+                provider: null,
+                acked_at: null,
+                acked_by: null,
+                acked_source: null,
+                resolved_at: null,
+                resolved_reason: null,
+              })
+            }
           }
         }
       }
@@ -429,7 +451,7 @@ export function deriveAlerts(
   status: ContainerStatus,
   existingAlerts: readonly TrackingAlertDerivationState[],
   isBackfill: boolean = false,
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): readonly NewTrackingAlert[] {
   return deriveAlertTransitions(timeline, status, existingAlerts, isBackfill, now).newAlerts
 }

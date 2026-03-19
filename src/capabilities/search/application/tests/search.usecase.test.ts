@@ -6,6 +6,7 @@ import {
 import type { ContainerSearchProjection } from '~/modules/container/application/container.readmodels'
 import type { ProcessSearchProjection } from '~/modules/process/application/process.readmodels'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type SearchDepsOverrides = {
   readonly processResults?: readonly ProcessSearchProjection[]
@@ -120,7 +121,7 @@ describe('createSearchUseCase', () => {
           processId: 'process-1',
           vesselName: 'Ever Prime',
           latestDerivedStatus: 'IN_TRANSIT',
-          latestEta: '2026-04-15T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-04-15T00:00:00.000Z'),
         },
       ],
       statusResults: [
@@ -128,7 +129,7 @@ describe('createSearchUseCase', () => {
           processId: 'process-2',
           vesselName: 'Ocean Wind',
           latestDerivedStatus: 'ARRIVED_AT_POD',
-          latestEta: '2026-04-20T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-04-20T00:00:00.000Z'),
         },
       ],
     })
@@ -148,7 +149,7 @@ describe('createSearchUseCase', () => {
       vesselName: 'Ever Prime',
       bl: 'BL-001',
       derivedStatus: 'IN_TRANSIT',
-      eta: '2026-04-15T00:00:00.000Z',
+      eta: temporalDtoFromCanonical('2026-04-15T00:00:00.000Z'),
       matchSource: 'container',
     })
 
@@ -162,7 +163,7 @@ describe('createSearchUseCase', () => {
       vesselName: 'Ocean Wind',
       bl: null,
       derivedStatus: 'ARRIVED_AT_POD',
-      eta: '2026-04-20T00:00:00.000Z',
+      eta: temporalDtoFromCanonical('2026-04-20T00:00:00.000Z'),
       matchSource: 'container',
     })
   })
@@ -175,13 +176,13 @@ describe('createSearchUseCase', () => {
           processId: 'process-1',
           vesselName: 'MV Newest',
           latestDerivedStatus: 'ARRIVED_AT_POD',
-          latestEta: '2026-05-20T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-05-20T00:00:00.000Z'),
         },
         {
           processId: 'process-1',
           vesselName: 'MV Older',
           latestDerivedStatus: 'IN_TRANSIT',
-          latestEta: '2026-05-10T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-05-10T00:00:00.000Z'),
         },
       ],
       statusResults: [
@@ -202,7 +203,7 @@ describe('createSearchUseCase', () => {
       processId: 'process-1',
       vesselName: 'MV Newest',
       derivedStatus: 'ARRIVED_AT_POD',
-      eta: '2026-05-20T00:00:00.000Z',
+      eta: temporalDtoFromCanonical('2026-05-20T00:00:00.000Z'),
     })
   })
 
@@ -233,7 +234,7 @@ describe('createSearchUseCase', () => {
           processId: 'process-vessel',
           vesselName: 'MV Match-key',
           latestDerivedStatus: 'IN_TRANSIT',
-          latestEta: '2026-05-01T00:00:00.000Z',
+          latestEta: temporalDtoFromCanonical('2026-05-01T00:00:00.000Z'),
         },
       ],
       statusResults: [

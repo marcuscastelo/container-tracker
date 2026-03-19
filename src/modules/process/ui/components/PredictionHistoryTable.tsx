@@ -7,6 +7,9 @@ import {
 } from '~/modules/process/ui/mappers/seriesLabel.ui-mapper'
 import type { TrackingSeriesHistoryItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseTemporalValue } from '~/shared/time/parsing'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type Props = {
@@ -20,20 +23,26 @@ type RowProps = {
   readonly deltaDays: number | null
 }
 
-function calculateDelta(current: string, previous: string | null): number | null {
+const PREDICTION_DELTA_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
+
+function calculateDelta(
+  current: TemporalValueDto,
+  previous: TemporalValueDto | null,
+): number | null {
   if (!previous) return null
+  const currentTemporal = parseTemporalValue(current)
+  const previousTemporal = parseTemporalValue(previous)
 
-  const currentDate = new Date(current)
-  const previousDate = new Date(previous)
-
-  const currentTime = currentDate.getTime()
-  const previousTime = previousDate.getTime()
-
-  if (Number.isNaN(currentTime) || Number.isNaN(previousTime)) {
+  if (!currentTemporal || !previousTemporal) {
     return null
   }
 
-  const diffMs = currentTime - previousTime
+  const currentInstant = toComparableInstant(currentTemporal, PREDICTION_DELTA_COMPARE_OPTIONS)
+  const previousInstant = toComparableInstant(previousTemporal, PREDICTION_DELTA_COMPARE_OPTIONS)
+  const diffMs = currentInstant.diffMs(previousInstant)
   return Math.round(diffMs / (1000 * 60 * 60 * 24))
 }
 

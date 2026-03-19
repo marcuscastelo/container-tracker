@@ -77,6 +77,50 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_log_events: {
+        Row: {
+          agent_id: string
+          channel: string
+          created_at: string
+          id: string
+          message: string
+          occurred_at: string
+          sequence: number
+          tenant_id: string
+          truncated: boolean
+        }
+        Insert: {
+          agent_id: string
+          channel: string
+          created_at?: string
+          id?: string
+          message: string
+          occurred_at?: string
+          sequence: number
+          tenant_id: string
+          truncated?: boolean
+        }
+        Update: {
+          agent_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          message?: string
+          occurred_at?: string
+          sequence?: number
+          tenant_id?: string
+          truncated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'agent_log_events_agent_id_fkey'
+            columns: ['agent_id']
+            isOneToOne: false
+            referencedRelation: 'tracking_agents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       container_observations: {
         Row: {
           carrier_label: string | null
@@ -85,7 +129,12 @@ export type Database = {
           container_number: string
           created_at: string
           created_from_snapshot_id: string | null
+          event_date: string | null
+          /**
+           * @deprecated
+           */
           event_time: string | null
+          event_time_instant: string | null
           event_time_type: string
           fingerprint: string
           id: string
@@ -94,6 +143,7 @@ export type Database = {
           location_display: string | null
           provider: string
           retroactive: boolean
+          temporal_kind: string | null
           type: string
           vessel_name: string | null
           voyage: string | null
@@ -105,7 +155,9 @@ export type Database = {
           container_number: string
           created_at?: string
           created_from_snapshot_id?: string | null
+          event_date?: string | null
           event_time?: string | null
+          event_time_instant?: string | null
           event_time_type: string
           fingerprint: string
           id?: string
@@ -114,6 +166,7 @@ export type Database = {
           location_display?: string | null
           provider: string
           retroactive?: boolean
+          temporal_kind?: string | null
           type: string
           vessel_name?: string | null
           voyage?: string | null
@@ -125,7 +178,9 @@ export type Database = {
           container_number?: string
           created_at?: string
           created_from_snapshot_id?: string | null
+          event_date?: string | null
           event_time?: string | null
+          event_time_instant?: string | null
           event_time_type?: string
           fingerprint?: string
           id?: string
@@ -134,6 +189,7 @@ export type Database = {
           location_display?: string | null
           provider?: string
           retroactive?: boolean
+          temporal_kind?: string | null
           type?: string
           vessel_name?: string | null
           voyage?: string | null
@@ -297,50 +353,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_log_events: {
-        Row: {
-          agent_id: string
-          channel: string
-          created_at: string
-          id: string
-          message: string
-          occurred_at: string
-          sequence: number
-          tenant_id: string
-          truncated: boolean
-        }
-        Insert: {
-          agent_id: string
-          channel: string
-          created_at?: string
-          id?: string
-          message: string
-          occurred_at?: string
-          sequence: number
-          tenant_id: string
-          truncated?: boolean
-        }
-        Update: {
-          agent_id?: string
-          channel?: string
-          created_at?: string
-          id?: string
-          message?: string
-          occurred_at?: string
-          sequence?: number
-          tenant_id?: string
-          truncated?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'agent_log_events_agent_id_fkey'
-            columns: ['agent_id']
-            isOneToOne: false
-            referencedRelation: 'tracking_agents'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       sync_requests: {
         Row: {
           attempts: number
@@ -444,7 +456,7 @@ export type Database = {
           current_version: string
           desired_version: string | null
           enrolled_at: string
-          enrollment_method: string
+          enrollment_method: string | null
           hostname: string
           id: string
           interval_sec: number
@@ -488,7 +500,7 @@ export type Database = {
           current_version?: string
           desired_version?: string | null
           enrolled_at?: string
-          enrollment_method?: string
+          enrollment_method?: string | null
           hostname: string
           id?: string
           interval_sec?: number
@@ -532,7 +544,7 @@ export type Database = {
           current_version?: string
           desired_version?: string | null
           enrolled_at?: string
-          enrollment_method?: string
+          enrollment_method?: string | null
           hostname?: string
           id?: string
           interval_sec?: number
@@ -650,6 +662,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      enqueue_container_sync_batch: {
+        Args: {
+          p_due_window?: string
+          p_limit_per_provider?: number
+          p_recent_window?: string
+        }
+        Returns: {
+          deduped_open_count: number
+          enqueued_new_count: number
+          provider: string
+          selected_count: number
+        }[]
+      }
       enqueue_sync_request: {
         Args: {
           p_priority?: number
@@ -693,6 +718,9 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      prune_agent_log_events: { Args: never; Returns: number }
+      prune_sync_requests: { Args: never; Returns: number }
+      prune_tracking_agent_activity_events: { Args: never; Returns: number }
     }
     Enums: {
       sync_request_status: 'PENDING' | 'LEASED' | 'DONE' | 'FAILED'

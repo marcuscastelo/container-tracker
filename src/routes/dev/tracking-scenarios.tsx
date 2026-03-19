@@ -17,6 +17,10 @@ import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboa
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
+import { systemClock } from '~/shared/time/clock'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import { toTemporalValueDto } from '~/shared/time/dto'
+import { parseTemporalValueFromCanonicalString } from '~/shared/time/parsing'
 
 const SCENARIO_LAB_ENABLED = import.meta.env.DEV
 
@@ -397,7 +401,7 @@ function ShipmentPreview(props: {
               isRefreshing={false}
               refreshRetry={null}
               refreshHint={null}
-              syncNow={new Date()}
+              syncNow={systemClock.now()}
               onTriggerRefresh={() => {}}
               selectedContainerId={selectedContainer()?.id ?? ''}
               onSelectContainer={props.onSelectContainer}
@@ -521,8 +525,24 @@ export default function TrackingScenariosPage(): JSX.Element {
         statusCode: shipment.statusCode,
         statusMicrobadge: shipment.statusMicrobadge ?? null,
         statusRank: processStatusToRank(shipment.statusCode),
-        eta: shipment.eta ?? null,
-        etaMsOrNull: shipment.eta ? Date.parse(shipment.eta) : null,
+        eta:
+          shipment.eta === null
+            ? null
+            : (() => {
+                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+                return temporalValue ? toTemporalValueDto(temporalValue) : null
+              })(),
+        etaMsOrNull:
+          shipment.eta === null
+            ? null
+            : (() => {
+                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+                if (!temporalValue) return null
+                return toComparableInstant(temporalValue, {
+                  timezone: 'UTC',
+                  strategy: 'start-of-day',
+                }).toEpochMs()
+              })(),
         carrier: shipment.carrier ?? null,
         alertsCount: shipment.alerts.length,
         highestAlertSeverity: highestSeverity,

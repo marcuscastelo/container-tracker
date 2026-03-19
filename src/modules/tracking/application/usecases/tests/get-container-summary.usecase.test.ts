@@ -11,13 +11,18 @@ import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/a
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 type ObservationOverrides = {
   readonly type?: Observation['type']
   readonly fingerprint?: string
   readonly carrierLabel?: string | null
   readonly createdFromSnapshotId?: string
-  readonly eventTime?: string | null
+  readonly eventTime?: string | Observation['event_time']
   readonly eventTimeType?: Observation['event_time_type']
   readonly locationCode?: string | null
 }
@@ -29,7 +34,10 @@ function makeObservation(overrides: ObservationOverrides = {}): Observation {
     container_id: 'container-1',
     container_number: 'MSCU1234567',
     type: overrides.type ?? 'LOAD',
-    event_time: overrides.eventTime ?? '2026-02-10T10:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.eventTime,
+      temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+    ),
     event_time_type: overrides.eventTimeType ?? 'ACTUAL',
     location_code: overrides.locationCode ?? 'BRSSZ',
     location_display: 'Santos, BR',
@@ -138,7 +146,7 @@ function makeCommand(): GetContainerSummaryCommand {
     containerId: 'container-1',
     containerNumber: 'MSCU1234567',
     podLocationCode: 'BRSSZ',
-    now: new Date('2026-02-12T00:00:00.000Z'),
+    now: instantFromIsoText('2026-02-12T00:00:00.000Z'),
   }
 }
 
@@ -165,7 +173,7 @@ describe('getContainerSummary', () => {
     const legacyOtherDraft: ObservationDraft = {
       container_number: 'MSCU1234567',
       type: 'OTHER',
-      event_time: '2026-02-10T10:00:00.000Z',
+      event_time: resolveTemporalValue('2026-02-10T10:00:00.000Z', null),
       event_time_type: 'ACTUAL',
       location_code: 'BRSSZ',
       location_display: 'Santos, BR',

@@ -1,3 +1,5 @@
+import type { TemporalValueDto } from '~/shared/time/dto'
+
 export type SymmetricExportType = 'PORTABLE_SYMMETRIC'
 
 export type SymmetricBundleSchemaVersion = '1.0'
@@ -94,7 +96,7 @@ export type ReportAlertEntry = {
 
 export type ReportTimelineEntry = {
   readonly type: string
-  readonly eventTime: string | null
+  readonly eventTime: TemporalValueDto | null
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
 }
 
@@ -103,8 +105,8 @@ export type ReportContainerEntry = {
   readonly containerNumber: string
   readonly carrierCode: string | null
   readonly status: string
-  readonly eta: string | null
-  readonly latestEvent: string | null
+  readonly eta: TemporalValueDto | null
+  readonly latestEvent: TemporalValueDto | null
   readonly latestEventLabel: string | null
   readonly latestTrackingUpdate: string | null
   readonly vesselName: string | null
@@ -128,8 +130,8 @@ export type ReportProcessEntry = {
   readonly processStatus: string
   readonly alertCount: number
   readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
-  readonly eta: string | null
-  readonly lastEventAt: string | null
+  readonly eta: TemporalValueDto | null
+  readonly lastEventAt: TemporalValueDto | null
   readonly lastSyncAt: string | null
   readonly lastSyncStatus: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
   readonly containers: readonly ReportContainerEntry[]

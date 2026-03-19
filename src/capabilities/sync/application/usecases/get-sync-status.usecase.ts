@@ -3,6 +3,7 @@ import {
   createSyncStatusAggregationService,
   type SyncStatusAggregationService,
 } from '~/capabilities/sync/application/services/sync-status-aggregation.service'
+import { type Clock, systemClock } from '~/shared/time/clock'
 
 export type ProcessSyncState = 'idle' | 'syncing' | 'completed' | 'failed'
 
@@ -27,7 +28,7 @@ export type GetSyncStatusResult = {
 export type GetSyncStatusDeps = {
   readonly statusReadPort: SyncStatusReadPort
   readonly statusAggregationService?: SyncStatusAggregationService
-  readonly nowFactory?: () => Date
+  readonly clock?: Clock
 }
 
 export type GetSyncStatusCommand = {
@@ -35,7 +36,7 @@ export type GetSyncStatusCommand = {
 }
 
 export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
-  const nowFactory = deps.nowFactory ?? (() => new Date())
+  const clock = deps.clock ?? systemClock
   const aggregationService = deps.statusAggregationService ?? createSyncStatusAggregationService()
 
   return async function execute(command: GetSyncStatusCommand = {}): Promise<GetSyncStatusResult> {
@@ -44,7 +45,7 @@ export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
     })
     if (candidates.length === 0) {
       return {
-        generatedAt: nowFactory().toISOString(),
+        generatedAt: clock.now().toIsoString(),
         processes: [],
       }
     }
@@ -100,7 +101,7 @@ export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
     }
 
     return {
-      generatedAt: nowFactory().toISOString(),
+      generatedAt: clock.now().toIsoString(),
       processes,
     }
   }

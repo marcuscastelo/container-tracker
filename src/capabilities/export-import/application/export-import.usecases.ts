@@ -18,6 +18,12 @@ import type {
 } from '~/capabilities/export-import/application/export-import.models'
 import type { ProcessUseCases } from '~/modules/process/application/process.usecases'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
+import { systemClock } from '~/shared/time/clock'
+import { compareTemporal } from '~/shared/time/compare-temporal'
+import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 // 24 hours in milliseconds — threshold for considering process sync as recent.
 const FRESH_SYNC_WINDOW_MS = 1000 * 60 * 60 * 24
@@ -49,16 +55,26 @@ function isSymmetricImportKeyDuplicate(
 }
 
 function getLatestEventFromTimelineItems(
-  timelineItems: readonly { readonly event_time: string | null }[],
-): string | null {
-  let latest: string | null = null
+  timelineItems: readonly { readonly event_time: TemporalValue | null }[],
+): TemporalValueDto | null {
+  let latest: TemporalValue | null = null
   for (const item of timelineItems) {
     if (item.event_time === null) continue
-    if (latest === null || item.event_time > latest) {
+    if (latest === null) {
+      latest = item.event_time
+      continue
+    }
+
+    if (
+      compareTemporal(item.event_time, latest, {
+        timezone: 'UTC',
+        strategy: 'start-of-day',
+      }) > 0
+    ) {
       latest = item.event_time
     }
   }
-  return latest
+  return latest === null ? null : toTemporalValueDto(latest)
 }
 
 type ReportContainerObservation = {
@@ -183,13 +199,13 @@ function toReportAlert(alert: ContainerSummaryAlert): ReportAlertEntry {
 function toReportTimelineItem(
   timelineItems: readonly {
     readonly type: string
-    readonly event_time: string | null
+    readonly event_time: TemporalValue | null
     readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   }[],
 ): readonly ReportTimelineEntry[] {
   return timelineItems.slice(-5).map((item) => ({
     type: item.type,
-    eventTime: item.event_time,
+    eventTime: item.event_time === null ? null : toTemporalValueDto(item.event_time),
     eventTimeType: item.event_time_type,
   }))
 }
@@ -257,7 +273,7 @@ async function buildReportContainerEntry(
     readonly containerNumber: string
     readonly carrierCode: string | null
   },
-  now: Date,
+  now: Instant,
   command: Pick<ReportExportCommand, 'includeAlerts' | 'includeTimelineSummary'>,
 ): Promise<ReportContainerEntry> {
   const summary = await deps.trackingUseCases.getContainerSummary(
@@ -271,7 +287,15 @@ async function buildReportContainerEntry(
   )
 
   const latestEvent = getLatestEventFromTimelineItems(summary.timeline.observations)
-  const latestObservation = getLatestObservationInfo(summary.observations)
+  const latestObservation = getLatestObservationInfo(
+    summary.observations.map((o) => ({
+      type: o.type,
+      event_time: o.event_time ? toTemporalValueDto(o.event_time).value : null,
+      carrier_label: o.carrier_label ?? null,
+      vessel_name: o.vessel_name ?? null,
+      created_at: o.created_at,
+    })),
+  )
   const timelineSummary = command.includeTimelineSummary
     ? toReportTimelineItem(summary.timeline.observations)
     : []
@@ -289,8 +313,8 @@ async function buildReportContainerEntry(
     containerNumber: String(container.containerNumber),
     carrierCode: container.carrierCode,
     status: summary.status,
-    eta: summary.operational.eta?.eventTimeIso ?? null,
-    latestEvent: latestObservation.eventTime ?? latestEvent,
+    eta: summary.operational.eta?.eventTime ?? null,
+    latestEvent,
     latestEventLabel: latestObservation.eventLabel,
     latestTrackingUpdate,
     vesselName: latestObservation.vesselName,
@@ -385,7 +409,7 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
     assertNonEmptyProcessIdWhenSingleScope(command)
 
     const processes = await resolveProcessesForSymmetricExport(deps, command)
-    const exportedAt = new Date().toISOString()
+    const exportedAt = systemClock.now().toIsoString()
 
     const processEntries = processes.map((entry) => {
       const processImportKey = String(entry.process.id)
@@ -403,8 +427,8 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
         product: entry.process.product,
         redestinationNumber: entry.process.redestinationNumber,
         source: entry.process.source,
-        createdAt: entry.process.createdAt.toISOString(),
-        updatedAt: entry.process.updatedAt.toISOString(),
+        createdAt: entry.process.createdAt.toIsoString(),
+        updatedAt: entry.process.updatedAt.toIsoString(),
         containers: entry.containers.map((container) => ({
           importKey: String(container.id),
           processImportKey,
@@ -522,8 +546,8 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
   async function exportReport(command: ReportExportCommand): Promise<OperationalSnapshotReport> {
     assertNonEmptyProcessIdWhenSingleScope(command)
 
-    const now = new Date()
-    const exportedAt = now.toISOString()
+    const now = systemClock.now()
+    const exportedAt = now.toIsoString()
     const entries = await resolveProcessesForReport(deps, command)
 
     const reportProcesses: ReportProcessEntry[] = await mapWithConcurrency(
@@ -571,7 +595,7 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
       0,
     )
     const executiveSource = command.includeExecutiveSummary ? reportProcesses : []
-    const nowMs = now.getTime()
+    const nowMs = now.toEpochMs()
 
     return {
       exportType: 'OPERATIONAL_SNAPSHOT',
@@ -599,8 +623,8 @@ export function createExportImportUseCases(deps: ExportImportUseCasesDeps) {
         ).length,
         processesWithoutRecentSync: executiveSource.filter((processEntry) => {
           if (processEntry.lastSyncAt === null) return true
-          const syncAtMs = Date.parse(processEntry.lastSyncAt)
-          if (Number.isNaN(syncAtMs)) return true
+          const syncAtMs = parseInstantFromIso(processEntry.lastSyncAt)?.toEpochMs()
+          if (syncAtMs === undefined) return true
           return nowMs - syncAtMs > FRESH_SYNC_WINDOW_MS
         }).length,
       },

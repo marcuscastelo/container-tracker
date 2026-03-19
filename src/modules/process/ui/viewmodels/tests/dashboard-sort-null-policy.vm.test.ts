@@ -5,15 +5,16 @@ import type {
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function createProcess(
   input: Pick<ProcessSummaryVM, 'id'> & {
     readonly reference?: string | null
     readonly importerName?: string | null
     readonly carrier?: string | null
-    readonly eta?: string | null
+    readonly eta?: ProcessSummaryVM['eta']
     readonly etaMsOrNull?: number | null
-    readonly lastEventAt?: string | null
+    readonly lastEventAt?: ProcessSummaryVM['lastEventAt']
   },
 ): ProcessSummaryVM {
   return {
@@ -58,25 +59,25 @@ describe('dashboard sort null and empty policies', () => {
         id: 'missing-null',
         importerName: null,
         reference: 'REF-30',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'filled-beta',
         importerName: 'Beta',
         reference: 'REF-20',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'missing-empty',
         importerName: '',
         reference: 'REF-10',
-        lastEventAt: '2025-02-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'filled-alpha',
         importerName: 'Alpha',
         reference: 'REF-40',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
     ] as const
 
@@ -93,25 +94,25 @@ describe('dashboard sort null and empty policies', () => {
         id: 'missing-null',
         carrier: null,
         reference: 'REF-30',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'filled-zeta',
         carrier: 'Zeta',
         reference: 'REF-20',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'missing-empty',
         carrier: '   ',
         reference: 'REF-10',
-        lastEventAt: '2025-02-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'filled-alpha',
         carrier: 'Alpha',
         reference: 'REF-40',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
     ] as const
 
@@ -127,22 +128,22 @@ describe('dashboard sort null and empty policies', () => {
       createProcess({
         id: 'missing-null',
         reference: null,
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'filled-p20',
         reference: 'P-20',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'missing-empty',
         reference: '',
-        lastEventAt: '2025-02-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-02-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'filled-p11',
         reference: 'P-11',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
     ] as const
 
@@ -159,12 +160,12 @@ describe('dashboard sort null and empty policies', () => {
       createProcess({
         id: 'created-old',
         reference: 'REF-2',
-        lastEventAt: '2025-01-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-01-01T00:00:00.000Z'),
       }),
       createProcess({
         id: 'created-new',
         reference: 'REF-3',
-        lastEventAt: '2025-03-01T00:00:00.000Z',
+        lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
       }),
     ] as const
 

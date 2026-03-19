@@ -9,6 +9,8 @@ import {
   type VoyageBlock as TrackingVoyageBlock,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 export type GapMarker = TrackingGapMarker
 export type PortRiskMarker = TrackingPortRiskMarker
@@ -20,7 +22,7 @@ export type VoyageBlock = TrackingVoyageBlock
 
 export function buildTimelineRenderList(
   events: readonly TrackingTimelineItem[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): readonly TimelineRenderItem[] {
   return buildTimelineRenderListFromTracking(events, now)
 }

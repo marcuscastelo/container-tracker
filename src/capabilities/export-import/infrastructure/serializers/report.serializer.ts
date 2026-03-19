@@ -5,6 +5,7 @@ import type {
   ReportFormat,
 } from '~/capabilities/export-import/application/export-import.models'
 import { buildTrelloMarkdownFiles } from '~/capabilities/export-import/infrastructure/serializers/report-trello-markdown.serializer'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 type SerializedExportFile = {
   readonly filename: string
@@ -23,6 +24,10 @@ function escapeCsvCell(value: string): string {
     return `"${value.replaceAll('"', '""')}"`
   }
   return value
+}
+
+function stringifyTemporalValue(value: TemporalValueDto | null): string {
+  return value?.value ?? ''
 }
 
 function toFlatRows(report: OperationalSnapshotReport): readonly string[][] {
@@ -54,8 +59,8 @@ function toFlatRows(report: OperationalSnapshotReport): readonly string[][] {
         processEntry.destination ?? '',
         processEntry.processStatus,
         String(processEntry.alertCount),
-        processEntry.eta ?? '',
-        processEntry.lastEventAt ?? '',
+        stringifyTemporalValue(processEntry.eta),
+        stringifyTemporalValue(processEntry.lastEventAt),
         processEntry.lastSyncAt ?? '',
         '',
         '',
@@ -74,13 +79,13 @@ function toFlatRows(report: OperationalSnapshotReport): readonly string[][] {
         processEntry.destination ?? '',
         processEntry.processStatus,
         String(processEntry.alertCount),
-        processEntry.eta ?? '',
-        processEntry.lastEventAt ?? '',
+        stringifyTemporalValue(processEntry.eta),
+        stringifyTemporalValue(processEntry.lastEventAt),
         processEntry.lastSyncAt ?? '',
         container.containerNumber,
         container.status,
-        container.eta ?? '',
-        container.latestEvent ?? '',
+        stringifyTemporalValue(container.eta),
+        stringifyTemporalValue(container.latestEvent),
         container.hasConflict ? 'true' : 'false',
       ])
     }
@@ -119,7 +124,7 @@ function serializeMarkdown(report: OperationalSnapshotReport): Uint8Array {
 
   for (const processEntry of report.processes) {
     lines.push(
-      `| ${processEntry.reference ?? '-'} | ${processEntry.processStatus} | ${processEntry.containers.length} | ${processEntry.alertCount} | ${processEntry.eta ?? '-'} | ${processEntry.lastEventAt ?? '-'} | ${processEntry.lastSyncAt ?? '-'} |`,
+      `| ${processEntry.reference ?? '-'} | ${processEntry.processStatus} | ${processEntry.containers.length} | ${processEntry.alertCount} | ${stringifyTemporalValue(processEntry.eta) || '-'} | ${stringifyTemporalValue(processEntry.lastEventAt) || '-'} | ${processEntry.lastSyncAt ?? '-'} |`,
     )
   }
 

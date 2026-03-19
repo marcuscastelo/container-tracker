@@ -9,6 +9,7 @@ import type {
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { Instant } from '~/shared/time/instant'
 
 type TrackingTimeTravelCheckpointBase = Omit<TrackingTimeTravelCheckpoint, 'diffFromPrevious'>
 
@@ -19,7 +20,7 @@ function normalizeTimelineForDiff(timeline: TrackingTimeTravelCheckpoint['timeli
       type: item.type,
       carrierLabel: item.carrierLabel ?? null,
       location: item.location ?? null,
-      eventTimeIso: item.eventTimeIso,
+      eventTime: item.eventTime,
       eventTimeType: item.eventTimeType,
       derivedState: item.derivedState,
       vesselName: item.vesselName ?? null,
@@ -74,8 +75,8 @@ function buildCheckpointState(command: {
   // shipment detail. The latest checkpoint intentionally uses replay.finalState so the
   // selected default sync has exact semantic parity with live tracking for the same referenceNow.
   const effectiveNow = command.isLatest
-    ? new Date(command.run.referenceNow)
-    : new Date(command.rawCheckpoint.fetchedAt)
+    ? Instant.fromIso(command.run.referenceNow)
+    : Instant.fromIso(command.rawCheckpoint.fetchedAt)
   const containerNumber =
     command.rawCheckpoint.containerNumber ?? command.run.containerNumber ?? 'UNKNOWN'
   const state = command.isLatest ? command.run.finalState : command.rawCheckpoint.state

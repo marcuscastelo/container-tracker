@@ -5,14 +5,27 @@ import {
   type ObservationLike,
   type SeriesLabel,
 } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 // Test helper to create minimal observation
-function makeObs(overrides: Partial<ObservationLike> = {}): ObservationLike {
+type ObservationLikeOverrides = Omit<Partial<ObservationLike>, 'event_time'> & {
+  readonly event_time?: string | ObservationLike['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2026-01-15T00:00:00.000Z')
+
+function makeObs(overrides: ObservationLikeOverrides = {}): ObservationLike {
+  const { event_time, ...rest } = overrides
+
   return {
-    event_time: '2026-01-15T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'EXPECTED',
     created_at: '2026-01-01T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -22,7 +35,7 @@ function extractLabels(classified: readonly ClassifiedObservation[]): SeriesLabe
 }
 
 describe('Event Series Classification', () => {
-  const now = new Date('2026-02-01T00:00:00.000Z')
+  const now = instantFromIsoText('2026-02-01T00:00:00.000Z')
 
   describe('Empty and single observation cases', () => {
     it('should handle empty series', () => {

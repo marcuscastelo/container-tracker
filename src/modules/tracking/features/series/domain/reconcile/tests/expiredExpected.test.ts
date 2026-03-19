@@ -4,19 +4,32 @@ import {
   deriveObservationState,
   isExpiredExpected,
 } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'TEST-CONTAINER-123'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2025-11-17T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
+
   return {
     id: '00000000-0000-0000-0000-000000000010',
     fingerprint: 'test-fingerprint',
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
-    event_time: '2025-11-17T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -27,12 +40,12 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'msc',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2025-11-17T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
 describe('isExpiredExpected', () => {
-  const now = new Date('2026-01-15T00:00:00.000Z')
+  const now = instantFromIsoText('2026-01-15T00:00:00.000Z')
 
   describe('Case A: EXPECTED in future → not expired', () => {
     it('should return false for EXPECTED event in the future', () => {
@@ -209,7 +222,7 @@ describe('isExpiredExpected', () => {
 })
 
 describe('deriveObservationState', () => {
-  const now = new Date('2026-01-15T00:00:00.000Z')
+  const now = instantFromIsoText('2026-01-15T00:00:00.000Z')
 
   it('should return ACTUAL for ACTUAL observations', () => {
     const obs = makeObs({ event_time_type: 'ACTUAL' })

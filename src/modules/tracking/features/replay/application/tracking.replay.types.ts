@@ -5,6 +5,8 @@ import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reco
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { HttpError } from '~/shared/errors/httpErrors'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 
 export const MAX_TRACKING_REPLAY_STEPS = 5000
 
@@ -28,14 +30,14 @@ export type TrackingReplaySeries = {
   readonly primary: {
     readonly id: string
     readonly type: string
-    readonly eventTime: string | null
+    readonly eventTime: TemporalValueDto | null
     readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
   }
   readonly hasActualConflict: boolean
   readonly items: readonly {
     readonly id: string
     readonly type: string
-    readonly eventTime: string | null
+    readonly eventTime: TemporalValueDto | null
     readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
     readonly createdAt: string
     readonly seriesLabel: SeriesLabel
@@ -83,7 +85,7 @@ export type TrackingReplayRunResult = {
 
 export type RunTrackingReplayCommand = {
   readonly containerId: string
-  readonly now?: Date
+  readonly now?: Instant
   readonly stopAfterSnapshotId?: string
   readonly recordSteps?: boolean
 }

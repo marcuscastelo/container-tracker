@@ -16,6 +16,7 @@ import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/sc
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { Instant } from '~/shared/time/instant'
 
 type ShipmentDataViewProps = {
   readonly data: ShipmentDetailVM
@@ -29,7 +30,7 @@ type ShipmentDataViewProps = {
   readonly isRefreshing: boolean
   readonly refreshRetry: { readonly current: number; readonly total: number } | null
   readonly refreshHint: string | null
-  readonly syncNow: Date
+  readonly syncNow: Instant
   readonly onTriggerRefresh: () => void
   readonly selectedContainerId: string
   readonly onSelectContainer: (containerId: string) => void

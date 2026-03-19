@@ -4,6 +4,11 @@ import {
 } from '~/modules/tracking/application/projection/voyageSegments'
 import { normalizeVesselName } from '~/modules/tracking/domain/identity/normalizeVesselName'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { systemClock } from '~/shared/time/clock'
+import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
+import { parseTemporalValue } from '~/shared/time/parsing'
 
 export type TerminalSegmentKind = 'pre-carriage' | 'transshipment-terminal' | 'post-carriage'
 
@@ -239,23 +244,33 @@ function isTransitGap(fromType: string, toType: string): boolean {
   return TRANSIT_GAP_PAIRS.has(`${fromType}->${toType}`)
 }
 
+const TIMELINE_BLOCK_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
+
+function toTimelineInstant(value: TemporalValueDto | null): Instant | null {
+  if (value === null) return null
+  const temporalValue = parseTemporalValue(value)
+  if (temporalValue === null) return null
+  return toComparableInstant(temporalValue, TIMELINE_BLOCK_COMPARE_OPTIONS)
+}
+
 function computeGapMarkers(events: readonly TrackingTimelineItem[]): readonly GapMarker[] {
   const markers: GapMarker[] = []
 
   // Filter to events with actual timestamps for gap computation
-  const datedEvents = events.filter((e) => e.eventTimeIso !== null)
+  const datedEvents = events.filter((event) => toTimelineInstant(event.eventTime) !== null)
 
   for (let i = 0; i < datedEvents.length - 1; i++) {
     const current = datedEvents[i]
     const next = datedEvents[i + 1]
 
-    const currentIso = current.eventTimeIso
-    const nextIso = next.eventTimeIso
-    if (!currentIso || !nextIso) continue
+    const currentTime = toTimelineInstant(current.eventTime)
+    const nextTime = toTimelineInstant(next.eventTime)
+    if (!currentTime || !nextTime) continue
 
-    const currentTime = new Date(currentIso).getTime()
-    const nextTime = new Date(nextIso).getTime()
-    const deltaMs = Math.abs(nextTime - currentTime)
+    const deltaMs = Math.abs(nextTime.diffMs(currentTime))
 
     if (deltaMs >= GAP_THRESHOLD_MS) {
       const durationDays = Math.round(deltaMs / (24 * 60 * 60 * 1000))
@@ -290,23 +305,22 @@ function portRiskSeverity(days: number): 'info' | 'warning' | 'danger' {
 
 function computePortRiskMarkers(
   events: readonly TrackingTimelineItem[],
-  now: Date,
+  now: Instant,
 ): readonly { readonly marker: PortRiskMarker; readonly afterEventId: string }[] {
   const markers: { marker: PortRiskMarker; afterEventId: string }[] = []
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i]
     if (!PORT_ARRIVAL_TYPES.has(event.type)) continue
-    if (!event.eventTimeIso) continue
-
-    const arrivalTime = new Date(event.eventTimeIso).getTime()
+    const arrivalTime = toTimelineInstant(event.eventTime)
+    if (!arrivalTime) continue
 
     // Look forward for an exit event
-    let exitTime: number | null = null
+    let exitTime: Instant | null = null
     for (let j = i + 1; j < events.length; j++) {
-      const exitIso = events[j].eventTimeIso
-      if (PORT_EXIT_TYPES.has(events[j].type) && exitIso) {
-        exitTime = new Date(exitIso).getTime()
+      const exitTimeValue = toTimelineInstant(events[j].eventTime)
+      if (PORT_EXIT_TYPES.has(events[j].type) && exitTimeValue) {
+        exitTime = exitTimeValue
         break
       }
     }
@@ -315,10 +329,10 @@ function computePortRiskMarkers(
     let ongoing: boolean
 
     if (exitTime !== null) {
-      durationMs = exitTime - arrivalTime
+      durationMs = exitTime.diffMs(arrivalTime)
       ongoing = false
     } else {
-      durationMs = now.getTime() - arrivalTime
+      durationMs = now.diffMs(arrivalTime)
       ongoing = true
     }
 
@@ -373,7 +387,7 @@ export type TimelineRenderItem =
  */
 export function buildTimelineRenderList(
   events: readonly TrackingTimelineItem[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): readonly TimelineRenderItem[] {
   if (events.length === 0) return []
 
@@ -390,16 +404,15 @@ export function buildTimelineRenderList(
   // Map gap markers by position: keyed by "fromEventId" for placement
   const gapsByFromEvent = new Map<string, GapMarker>()
   {
-    const datedEvents = events.filter((e) => e.eventTimeIso !== null)
+    const datedEvents = events.filter((event) => toTimelineInstant(event.eventTime) !== null)
     let gapIdx = 0
     for (let i = 0; i < datedEvents.length - 1 && gapIdx < gapMarkers.length; i++) {
       const current = datedEvents[i]
       const next = datedEvents[i + 1]
-      const curIso = current.eventTimeIso ?? ''
-      const nxtIso = next.eventTimeIso ?? ''
-      const currentTime = new Date(curIso).getTime()
-      const nextTime = new Date(nxtIso).getTime()
-      const deltaMs = Math.abs(nextTime - currentTime)
+      const currentTime = toTimelineInstant(current.eventTime)
+      const nextTime = toTimelineInstant(next.eventTime)
+      if (!currentTime || !nextTime) continue
+      const deltaMs = Math.abs(nextTime.diffMs(currentTime))
 
       if (deltaMs >= GAP_THRESHOLD_MS) {
         // Phase 19: skip if this gap overlaps a port risk marker

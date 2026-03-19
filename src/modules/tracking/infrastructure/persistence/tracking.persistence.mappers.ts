@@ -26,7 +26,6 @@ import {
   alertToInsertRow as mapAlertToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.alert.persistence.mappers'
 import {
-  optionalTimestamp,
   requireProvider,
   requireString,
   requireTimestamp,
@@ -39,7 +38,9 @@ import type {
   TrackingObservationRow,
   TrackingSnapshotRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.row'
-import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
+import { CalendarDate } from '~/shared/time/calendar-date'
+import { Instant } from '~/shared/time/instant'
+import { calendarDateValue, instantValue, type TemporalValue } from '~/shared/time/temporal-value'
 
 const OBSERVATION_TYPE_MAP: Record<string, ObservationType> = {
   GATE_IN: 'GATE_IN',
@@ -65,6 +66,91 @@ const CONFIDENCE_MAP: Record<string, Confidence> = {
   high: 'high',
   medium: 'medium',
   low: 'low',
+}
+
+type ObservationTemporalColumns = {
+  readonly temporal_kind: 'instant' | 'date' | null
+  readonly event_time_instant: string | null
+  readonly event_date: string | null
+}
+
+function encodeTemporalValueForPersistence(
+  value: TemporalValue | null,
+): ObservationTemporalColumns {
+  if (value === null) {
+    return {
+      temporal_kind: null,
+      event_time_instant: null,
+      event_date: null,
+    }
+  }
+
+  if (value.kind === 'instant') {
+    return {
+      temporal_kind: 'instant',
+      event_time_instant: value.value.toIsoString(),
+      event_date: null,
+    }
+  }
+
+  return {
+    temporal_kind: 'date',
+    event_time_instant: null,
+    event_date: value.value.toIsoDate(),
+  }
+}
+
+function requireTemporalKind(value: unknown, field: string): 'instant' | 'date' {
+  const kind = requireString(value, field)
+  if (kind === 'instant' || kind === 'date') {
+    return kind
+  }
+
+  throw new Error(`tracking persistence mapper: ${field} is not a valid temporal kind: ${kind}`)
+}
+
+function observationTemporalColumnsToDomain(row: TrackingObservationRow): TemporalValue | null {
+  const { temporal_kind, event_time_instant, event_date } = row
+
+  if (temporal_kind === null) {
+    if (event_time_instant === null && event_date === null) {
+      // TODO: just return null instead of using event_time. For now, we are using the deprecated event_time column
+      if (row.event_time !== null) {
+        return instantValue(
+          Instant.fromIso(requireTimestamp(row.event_time, 'observation.event_time')),
+        )
+      }
+      return null
+    }
+
+    throw new Error(
+      'tracking persistence mapper: observation temporal columns are inconsistent (missing temporal_kind)',
+    )
+  }
+
+  const kind = requireTemporalKind(temporal_kind, 'observation.temporal_kind')
+
+  if (kind === 'instant') {
+    if (event_date !== null) {
+      throw new Error(
+        'tracking persistence mapper: instant observation cannot persist event_date together with event_time_instant',
+      )
+    }
+
+    return instantValue(
+      Instant.fromIso(requireTimestamp(event_time_instant, 'observation.event_time_instant')),
+    )
+  }
+
+  if (event_time_instant !== null) {
+    throw new Error(
+      'tracking persistence mapper: date observation cannot persist event_time_instant together with event_date',
+    )
+  }
+
+  return calendarDateValue(
+    CalendarDate.fromIsoDate(requireString(event_date, 'observation.event_date')),
+  )
 }
 
 function requireObservationType(value: unknown, field: string): ObservationType {
@@ -106,7 +192,7 @@ export function observationRowToDomain(row: TrackingObservationRow): Observation
     container_number: requireString(row.container_number, 'observation.container_number'),
     event_time_type: requireEventTimeType(row.event_time_type, 'observation.event_time_type'),
     type: requireObservationType(row.type, 'observation.type'),
-    event_time: optionalTimestamp(row.event_time),
+    event_time: observationTemporalColumnsToDomain(row),
     location_code: row.location_code,
     location_display: row.location_display,
     vessel_name: row.vessel_name,
@@ -125,12 +211,16 @@ export function observationRowToDomain(row: TrackingObservationRow): Observation
 }
 
 export function observationToInsertRow(obs: NewObservation): InsertTrackingObservationRow {
+  const temporalColumns = encodeTemporalValueForPersistence(obs.event_time)
+
   return {
     fingerprint: obs.fingerprint,
     container_id: obs.container_id,
     container_number: obs.container_number,
     type: obs.type,
-    event_time: obs.event_time == null ? null : normalizeTimestamptz(obs.event_time),
+    temporal_kind: temporalColumns.temporal_kind,
+    event_time_instant: temporalColumns.event_time_instant,
+    event_date: temporalColumns.event_date,
     location_code: obs.location_code,
     location_display: obs.location_display,
     vessel_name: obs.vessel_name,

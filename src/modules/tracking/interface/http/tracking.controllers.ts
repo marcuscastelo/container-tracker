@@ -23,6 +23,9 @@ import {
 } from '~/modules/tracking/interface/http/tracking.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 // ---------------------------------------------------------------------------
 // Dependency types
@@ -146,11 +149,9 @@ function createSnapshotsController(trackingUseCases: TrackingUseCases) {
   return { getSnapshotsForContainer, getLatestSnapshot }
 }
 
-function parseReferenceNow(rawNow: string | undefined): Date | null {
-  if (typeof rawNow !== 'string' || rawNow.trim().length === 0) return new Date()
-  const parsed = new Date(rawNow)
-  if (Number.isNaN(parsed.getTime())) return null
-  return parsed
+function parseReferenceNow(rawNow: string | undefined): Instant | null {
+  if (rawNow === undefined) return systemClock.now()
+  return parseInstantFromIso(rawNow)
 }
 
 function createTimeTravelController(trackingUseCases: TrackingUseCases) {

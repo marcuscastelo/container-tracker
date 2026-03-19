@@ -5,6 +5,7 @@ import {
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { systemClock } from '~/shared/time/clock'
 
 /**
  * Command to save a pre-fetched payload as a snapshot and run the full pipeline.
@@ -42,7 +43,7 @@ export async function saveAndProcess(
   const newSnapshot: NewSnapshot = {
     container_id: cmd.containerId,
     provider: cmd.provider,
-    fetched_at: cmd.fetchedAt ?? new Date().toISOString(),
+    fetched_at: cmd.fetchedAt ?? systemClock.now().toIsoString(),
     payload: cmd.payload,
     parse_error: cmd.parseError ?? null,
   }

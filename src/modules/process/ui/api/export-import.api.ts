@@ -3,12 +3,13 @@ import {
   ExecuteSymmetricImportResponseSchema,
   SymmetricImportValidationResponseSchema,
 } from '~/shared/api-schemas/export-import.schemas'
+import { systemClock } from '~/shared/time/clock'
 
 export type ExportType = 'portable' | 'report'
 export type PortableFormat = 'json' | 'zip'
 export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'markdown' | 'pdf' | 'trello'
 
-export type ExportScope =
+type ExportScope =
   | {
       readonly scope: 'all_processes'
       readonly processId: null
@@ -18,7 +19,7 @@ export type ExportScope =
       readonly processId: string
     }
 
-export type ReportExportOptions = {
+type ReportExportOptions = {
   readonly includeContainers: boolean
   readonly includeAlerts: boolean
   readonly includeTimelineSummary: boolean
@@ -113,7 +114,7 @@ export async function requestPortableExport(command: {
   readonly scope: ExportScope
   readonly format: PortableFormat
 }): Promise<void> {
-  const date = new Date().toISOString().slice(0, 10)
+  const date = systemClock.now().toCalendarDate('UTC').toIsoDate()
   const fallbackFilename = `portable-export-${date}.${command.format}`
 
   await requestDownload({
@@ -132,7 +133,7 @@ export async function requestOperationalReportExport(command: {
   readonly format: ReportFormat
   readonly options: ReportExportOptions
 }): Promise<void> {
-  const date = new Date().toISOString().slice(0, 10)
+  const date = systemClock.now().toCalendarDate('UTC').toIsoDate()
   let fallbackFilename = `processes-report-${date}.${command.format === 'markdown' ? 'md' : command.format}`
 
   if (command.format === 'trello') {

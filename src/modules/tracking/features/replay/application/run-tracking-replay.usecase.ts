@@ -25,6 +25,7 @@ import {
   type TrackingTimelineItem,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { Instant } from '~/shared/time/instant'
 
 function compareSnapshotsChronologically(a: Snapshot, b: Snapshot): number {
   const fetchedAtCompare = a.fetched_at.localeCompare(b.fetched_at)
@@ -33,12 +34,11 @@ function compareSnapshotsChronologically(a: Snapshot, b: Snapshot): number {
 }
 
 function toReplayCreatedAt(referenceIso: string, sequence: number): string {
-  const referenceMs = Date.parse(referenceIso)
-  if (Number.isNaN(referenceMs)) {
+  try {
+    return Instant.fromEpochMs(Instant.fromIso(referenceIso).toEpochMs() + sequence).toIsoString()
+  } catch {
     return referenceIso
   }
-
-  return new Date(referenceMs + sequence).toISOString()
 }
 
 function resolveReplayContainerNumber(observations: readonly Observation[]): string | null {
@@ -61,7 +61,7 @@ function buildReplaySeries(
         primary: {
           id: item.id,
           type: item.type,
-          eventTime: item.eventTimeIso,
+          eventTime: item.eventTime,
           eventTimeType: item.eventTimeType,
         },
         hasActualConflict: seriesHistory.hasActualConflict,
@@ -130,7 +130,7 @@ function toReplayState(
   alerts: readonly TrackingAlert[],
   containerId: string,
   containerNumber: string | null,
-  now: Date,
+  now: Instant,
 ): TrackingReplayState {
   const resolvedContainerNumber = containerNumber ?? 'UNKNOWN'
   const timelineDomain = deriveTimeline(containerId, resolvedContainerNumber, observations, now)
@@ -157,7 +157,7 @@ function pushReplayStep(command: {
   readonly containerNumber: string | null
   readonly observations: readonly Observation[]
   readonly alerts: readonly TrackingAlert[]
-  readonly now: Date
+  readonly now: Instant
   readonly stage: TrackingReplayStage
   readonly timestamp: string
   readonly snapshotId: string | null
@@ -198,7 +198,7 @@ function buildCheckpoint(command: {
   readonly observations: readonly Observation[]
   readonly alerts: readonly TrackingAlert[]
 }): TrackingReplayRunCheckpoint {
-  const now = new Date(command.fetchedAt)
+  const now = Instant.fromIso(command.fetchedAt)
   const containerNumber = resolveReplayContainerNumber(command.observations)
 
   return {
@@ -220,7 +220,7 @@ export async function runTrackingReplay(
   deps: TrackingUseCasesDeps,
   command: RunTrackingReplayCommand,
 ): Promise<TrackingReplayRunResult> {
-  const referenceNow = command.now ?? new Date()
+  const referenceNow = command.now ?? Instant.now()
   const recordSteps = command.recordSteps ?? true
   const snapshots = [
     ...(await deps.snapshotRepository.findAllByContainerId(command.containerId)),
@@ -233,7 +233,7 @@ export async function runTrackingReplay(
   let replayAlertSequence = 0
 
   for (const snapshot of snapshots) {
-    const snapshotNow = new Date(snapshot.fetched_at)
+    const snapshotNow = Instant.fromIso(snapshot.fetched_at)
     const drafts = normalizeSnapshot(snapshot)
     const containerNumber =
       resolveReplayContainerNumber(observations) ?? drafts[0]?.container_number ?? null
@@ -316,7 +316,7 @@ export async function runTrackingReplay(
         alerts,
         createdAlerts,
         alertTransitions.monitoringAutoResolutions,
-        snapshotNow.toISOString(),
+        snapshotNow.toIsoString(),
       )
 
       if (recordSteps) {
@@ -455,7 +455,7 @@ export async function runTrackingReplay(
   return {
     containerId: command.containerId,
     containerNumber,
-    referenceNow: referenceNow.toISOString(),
+    referenceNow: referenceNow.toIsoString(),
     totalSnapshots: checkpoints.length,
     totalObservations: observations.length,
     totalSteps: steps.length,

@@ -1,16 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { buildTimelineRenderList } from '~/modules/process/ui/timeline/timelineBlockModel'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import {
+  instantFromIsoText,
+  resolveTemporalDto,
+  temporalDtoFromCanonical,
+} from '~/shared/time/tests/helpers'
 
-function makeEvent(
-  overrides: Partial<TrackingTimelineItem> & Pick<TrackingTimelineItem, 'type'>,
-): TrackingTimelineItem {
+type TimelineItemOverrides = Omit<Partial<TrackingTimelineItem>, 'eventTime'> &
+  Pick<TrackingTimelineItem, 'type'> & {
+    readonly eventTime?: string | TrackingTimelineItem['eventTime']
+  }
+
+function makeEvent(overrides: TimelineItemOverrides): TrackingTimelineItem {
+  const { eventTime, ...rest } = overrides
+
   return {
     id: overrides.id ?? `evt-${Math.random().toString(36).slice(2, 8)}`,
-    eventTimeIso: '2026-03-01T00:00:00Z',
+    eventTime: resolveTemporalDto(eventTime, temporalDtoFromCanonical('2026-03-01T00:00:00Z')),
     eventTimeType: 'ACTUAL',
     derivedState: 'ACTUAL',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -29,7 +39,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e3', type: 'ARRIVAL', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'B' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
 
     const voyageBlocks = renderList.filter((r) => r.type === 'voyage-block')
     expect(voyageBlocks).toHaveLength(1)
@@ -49,7 +62,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V2', voyage: 'VY2', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
 
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
     expect(tsBlocks).toHaveLength(1)
@@ -69,7 +85,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V1', voyage: 'VY2', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
 
     expect(tsBlocks).toHaveLength(1)
@@ -85,7 +104,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V2', voyage: 'VY1', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
 
     expect(tsBlocks).toHaveLength(1)
@@ -101,7 +123,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
 
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
     expect(tsBlocks).toHaveLength(0)
@@ -114,7 +139,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e3', type: 'LOAD', vesselName: 'maersk', voyage: 'VY1', location: 'B' }),
       makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'C' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
 
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
     expect(tsBlocks).toHaveLength(0)
@@ -126,7 +154,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e2', type: 'LOAD', vesselName: 'V1', location: 'Port A' }),
       makeEvent({ id: 'e3', type: 'DISCHARGE', location: 'Port B' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
 
     const termBlocks = renderList.filter((r) => r.type === 'terminal-block')
     expect(termBlocks).toHaveLength(1)
@@ -141,7 +172,10 @@ describe('buildTimelineRenderList', () => {
       makeEvent({ id: 'e1', type: 'GATE_IN', location: 'T1' }),
       makeEvent({ id: 'e2', type: 'GATE_OUT', location: 'T1' }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-02'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
 
     const termBlocks = renderList.filter((r) => r.type === 'terminal-block')
     expect(termBlocks.length).toBeGreaterThanOrEqual(1)
@@ -157,17 +191,20 @@ describe('gap markers', () => {
       makeEvent({
         id: 'e1',
         type: 'DEPARTURE',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
         location: 'A',
       }),
       makeEvent({
         id: 'e2',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-04T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-04T00:00:00Z'),
         location: 'B',
       }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-05'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-05T00:00:00.000Z'),
+    )
 
     const gaps = renderList.filter((r) => r.type === 'gap-marker')
     expect(gaps).toHaveLength(1)
@@ -183,17 +220,20 @@ describe('gap markers', () => {
       makeEvent({
         id: 'e1',
         type: 'GATE_IN',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
         location: 'T',
       }),
       makeEvent({
         id: 'e2',
         type: 'GATE_OUT',
-        eventTimeIso: '2026-03-04T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-04T00:00:00Z'),
         location: 'T',
       }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-05'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-05T00:00:00.000Z'),
+    )
 
     const gaps = renderList.filter((r) => r.type === 'gap-marker')
     expect(gaps).toHaveLength(1)
@@ -208,15 +248,18 @@ describe('gap markers', () => {
       makeEvent({
         id: 'e1',
         type: 'GATE_IN',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
       }),
       makeEvent({
         id: 'e2',
         type: 'GATE_OUT',
-        eventTimeIso: '2026-03-02T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-02T00:00:00Z'),
       }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-03'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-03T00:00:00.000Z'),
+    )
 
     const gaps = renderList.filter((r) => r.type === 'gap-marker')
     expect(gaps).toHaveLength(0)
@@ -232,17 +275,20 @@ describe('port risk markers', () => {
       makeEvent({
         id: 'e1',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
         location: 'Port X',
       }),
       makeEvent({
         id: 'e2',
         type: 'DISCHARGE',
-        eventTimeIso: '2026-03-04T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-04T00:00:00Z'),
         location: 'Port X',
       }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-05'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-05T00:00:00.000Z'),
+    )
 
     const risks = renderList.filter((r) => r.type === 'port-risk-marker')
     expect(risks).toHaveLength(1)
@@ -259,11 +305,11 @@ describe('port risk markers', () => {
       makeEvent({
         id: 'e1',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
         location: 'Port Y',
       }),
     ]
-    const now = new Date('2026-03-06T00:00:00Z')
+    const now = instantFromIsoText('2026-03-06T00:00:00.000Z')
     const renderList = buildTimelineRenderList(events, now)
 
     const risks = renderList.filter((r) => r.type === 'port-risk-marker')
@@ -282,17 +328,18 @@ describe('port risk markers', () => {
       makeEvent({
         id: 'e1',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
       }),
       makeEvent({
         id: 'e2',
         type: 'DISCHARGE',
-        eventTimeIso: '2026-03-03T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-03T00:00:00Z'),
       }),
     ]
-    const risks2d = buildTimelineRenderList(events2d, new Date('2026-03-04')).filter(
-      (r) => r.type === 'port-risk-marker',
-    )
+    const risks2d = buildTimelineRenderList(
+      events2d,
+      instantFromIsoText('2026-03-04T00:00:00.000Z'),
+    ).filter((r) => r.type === 'port-risk-marker')
     expect(risks2d).toHaveLength(1)
     if (risks2d[0].type === 'port-risk-marker') {
       expect(risks2d[0].marker.severity).toBe('warning')
@@ -303,17 +350,18 @@ describe('port risk markers', () => {
       makeEvent({
         id: 'e3',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
       }),
       makeEvent({
         id: 'e4',
         type: 'DISCHARGE',
-        eventTimeIso: '2026-03-05T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-05T00:00:00Z'),
       }),
     ]
-    const risks4d = buildTimelineRenderList(events4d, new Date('2026-03-06')).filter(
-      (r) => r.type === 'port-risk-marker',
-    )
+    const risks4d = buildTimelineRenderList(
+      events4d,
+      instantFromIsoText('2026-03-06T00:00:00.000Z'),
+    ).filter((r) => r.type === 'port-risk-marker')
     expect(risks4d).toHaveLength(1)
     if (risks4d[0].type === 'port-risk-marker') {
       expect(risks4d[0].marker.severity).toBe('danger')
@@ -325,17 +373,20 @@ describe('port risk markers', () => {
       makeEvent({
         id: 'e1',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
         location: 'Port',
       }),
       makeEvent({
         id: 'e2',
         type: 'DISCHARGE',
-        eventTimeIso: '2026-03-04T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-04T00:00:00Z'),
         location: 'Port',
       }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-05'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-05T00:00:00.000Z'),
+    )
 
     const gaps = renderList.filter((r) => r.type === 'gap-marker')
     const risks = renderList.filter((r) => r.type === 'port-risk-marker')
@@ -350,15 +401,18 @@ describe('port risk markers', () => {
       makeEvent({
         id: 'e1',
         type: 'ARRIVAL',
-        eventTimeIso: '2026-03-01T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
       }),
       makeEvent({
         id: 'e2',
         type: 'DISCHARGE',
-        eventTimeIso: '2026-03-02T00:00:00Z',
+        eventTime: temporalDtoFromCanonical('2026-03-02T00:00:00Z'),
       }),
     ]
-    const renderList = buildTimelineRenderList(events, new Date('2026-03-03'))
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-03T00:00:00.000Z'),
+    )
 
     const risks = renderList.filter((r) => r.type === 'port-risk-marker')
     expect(risks).toHaveLength(0)

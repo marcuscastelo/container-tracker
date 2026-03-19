@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateOperationalSummary } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { OperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import { resolveTemporalValue, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type TrackingAlertLike = {
   readonly id: string
@@ -25,18 +26,18 @@ function makeSummary(
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
     operational?: {
-      etaEventTimeIso?: string | null
+      etaEventTime?: string | null
       etaApplicable?: boolean
       lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
     }
   } = {},
 ) {
-  const etaEventTimeIso = overrides.operational?.etaEventTimeIso
+  const etaEventTime = overrides.operational?.etaEventTime
   const operational = overrides.operational
     ? {
         eta:
-          typeof etaEventTimeIso === 'string' && etaEventTimeIso.length > 0
-            ? { eventTimeIso: etaEventTimeIso }
+          typeof etaEventTime === 'string' && etaEventTime.length > 0
+            ? { eventTime: temporalDtoFromCanonical(etaEventTime) }
             : null,
         etaApplicable: overrides.operational.etaApplicable,
         lifecycleBucket: overrides.operational.lifecycleBucket,
@@ -48,7 +49,10 @@ function makeSummary(
     operational,
     alerts: overrides.alerts ?? [],
     timeline: {
-      observations: overrides.observations ?? [],
+      observations:
+        overrides.observations?.map((observation) => ({
+          event_time: resolveTemporalValue(observation.event_time, null),
+        })) ?? [],
     },
   }
 }
@@ -210,7 +214,7 @@ describe('aggregateOperationalSummary', () => {
       makeSummary({
         status: 'IN_TRANSIT',
         operational: {
-          etaEventTimeIso: futureDate2,
+          etaEventTime: futureDate2,
           etaApplicable: true,
           lifecycleBucket: 'pre_arrival',
         },
@@ -219,7 +223,7 @@ describe('aggregateOperationalSummary', () => {
       makeSummary({
         status: 'IN_TRANSIT',
         operational: {
-          etaEventTimeIso: futureDate1,
+          etaEventTime: futureDate1,
           etaApplicable: true,
           lifecycleBucket: 'pre_arrival',
         },
@@ -229,7 +233,7 @@ describe('aggregateOperationalSummary', () => {
 
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
-    expect(result.eta).toBe(futureDate1)
+    expect(result.eta).toEqual(temporalDtoFromCanonical(futureDate1))
   })
 
   it('returns null ETA when no future events', () => {
@@ -239,7 +243,7 @@ describe('aggregateOperationalSummary', () => {
       makeSummary({
         status: 'IN_TRANSIT',
         operational: {
-          etaEventTimeIso: pastDate,
+          etaEventTime: pastDate,
           etaApplicable: true,
           lifecycleBucket: 'pre_arrival',
         },
@@ -394,7 +398,7 @@ describe('aggregateOperationalSummary', () => {
 
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
-    expect(result.last_event_at).toBe(date2)
+    expect(result.last_event_at).toEqual(temporalDtoFromCanonical(date2))
   })
 
   it('skips null event_times for last_event_at', () => {
@@ -404,7 +408,7 @@ describe('aggregateOperationalSummary', () => {
 
     const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
 
-    expect(result.last_event_at).toBe(date1)
+    expect(result.last_event_at).toEqual(temporalDtoFromCanonical(date1))
   })
 
   it('preserves process metadata', () => {

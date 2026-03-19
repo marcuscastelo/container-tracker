@@ -1,11 +1,12 @@
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import { listTrackingSearchProjections } from '~/modules/tracking/application/usecases/list-tracking-search-projections.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import type { Instant } from '~/shared/time/instant'
 
 type SearchTrackingByDerivedStatusTextCommand = Readonly<{
   query: string
   limit: number
-  now?: Date
+  now?: Instant
 }>
 
 function normalizeStatusText(value: string): string {

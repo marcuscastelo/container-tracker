@@ -3,21 +3,38 @@ import {
   deriveTrackingOperationalSummary,
   type TrackingObservationForOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalCanonicalText,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
+
+type ObservationOverrides = Omit<
+  Partial<TrackingObservationForOperationalSummary>,
+  'event_time'
+> & {
+  readonly event_time?: string | TrackingObservationForOperationalSummary['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2026-02-20T10:00:00.000Z')
 
 function makeObservation(
-  overrides: Partial<TrackingObservationForOperationalSummary> = {},
+  overrides: ObservationOverrides = {},
 ): TrackingObservationForOperationalSummary {
+  const { event_time, ...rest } = overrides
+
   return {
     id: 'obs-1',
     type: 'ARRIVAL',
-    event_time: '2026-02-20T10:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'EXPECTED',
     location_code: 'BRSSZ',
     location_display: 'Santos',
     vessel_name: null,
     voyage: null,
     created_at: '2026-02-10T10:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -32,7 +49,7 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: [],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-15T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
     expect(summary.eta?.state).toBe('ACTIVE_EXPECTED')
@@ -56,7 +73,7 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: [],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-15T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
     expect(summary.eta?.state).toBe('EXPIRED_EXPECTED')
@@ -85,12 +102,12 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: [],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-19T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-19T00:00:00.000Z'),
     })
 
     expect(summary.eta?.eventTimeType).toBe('ACTUAL')
     expect(summary.eta?.state).toBe('ACTUAL')
-    expect(summary.eta?.eventTimeIso).toBe('2026-02-18T08:00:00.000Z')
+    expect(temporalCanonicalText(summary.eta?.eventTime ?? null)).toBe('2026-02-18T08:00:00.000Z')
   })
 
   it('forces eta=null at and after ARRIVED_AT_POD', () => {
@@ -112,7 +129,7 @@ describe('deriveTrackingOperationalSummary', () => {
           ports: [],
         },
         podLocationCode: 'BRSSZ',
-        now: new Date('2026-02-15T00:00:00.000Z'),
+        now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
       })
 
       expect(summary.eta).toBeNull()
@@ -139,11 +156,11 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: [],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-15T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
     expect(summary.eta?.type).toBe('DISCHARGE')
-    expect(summary.eta?.eventTimeIso).toBe('2026-02-22T10:00:00.000Z')
+    expect(temporalCanonicalText(summary.eta?.eventTime ?? null)).toBe('2026-02-22T10:00:00.000Z')
   })
 
   it('returns null ETA when no arrival/discharge/delivery series exist', () => {
@@ -163,7 +180,7 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: [],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-15T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
     expect(summary.eta).toBeNull()
@@ -207,7 +224,7 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: ['CNSHA', 'ITLIV', 'BRSSZ'],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-20T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-20T00:00:00.000Z'),
     })
 
     expect(summary.transshipment.hasTransshipment).toBe(true)
@@ -244,11 +261,11 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: ['ESBCN07'],
       },
       podLocationCode: 'BRSSZBT',
-      now: new Date('2026-02-20T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-20T00:00:00.000Z'),
     })
 
     expect(summary.eta).not.toBeNull()
-    expect(summary.eta?.eventTimeIso).toBe('2026-03-08T10:00:00.000Z')
+    expect(temporalCanonicalText(summary.eta?.eventTime ?? null)).toBe('2026-03-08T10:00:00.000Z')
     expect(summary.eta?.eventTimeType).toBe('EXPECTED')
     expect(summary.eta?.state).toBe('ACTIVE_EXPECTED')
     expect(summary.eta?.locationCode).toBe('BRSSZBT')
@@ -274,11 +291,11 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: [],
       },
       podLocationCode: 'BRSSZ',
-      now: new Date('2026-02-20T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-20T00:00:00.000Z'),
     })
 
     expect(summary.eta).not.toBeNull()
-    expect(summary.eta?.eventTimeIso).toBe('2026-03-08T10:00:00.000Z')
+    expect(temporalCanonicalText(summary.eta?.eventTime ?? null)).toBe('2026-03-08T10:00:00.000Z')
     expect(summary.eta?.locationCode).toBe('BRSSZBT')
   })
 
@@ -311,11 +328,11 @@ describe('deriveTrackingOperationalSummary', () => {
         ports: ['ESBCN07'],
       },
       podLocationCode: null,
-      now: new Date('2026-02-20T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-20T00:00:00.000Z'),
     })
 
     expect(summary.eta).not.toBeNull()
-    expect(summary.eta?.eventTimeIso).toBe('2026-03-08T10:00:00.000Z')
+    expect(temporalCanonicalText(summary.eta?.eventTime ?? null)).toBe('2026-03-08T10:00:00.000Z')
     expect(summary.eta?.eventTimeType).toBe('EXPECTED')
     expect(summary.eta?.state).toBe('ACTIVE_EXPECTED')
     expect(summary.eta?.locationCode).toBe('BRSSZBT')

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import type { DashboardOperationalSummaryReadModelDeps } from '~/capabilities/dashboard/application/dashboard.operational-summary.readmodel'
 import { createDashboardUseCases } from '~/capabilities/dashboard/application/dashboard.usecases'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { resolveTemporalDto } from '~/shared/time/tests/helpers'
 
 type ProcessesProjection = Awaited<
   ReturnType<
@@ -21,7 +23,7 @@ type ProcessFixture = {
     readonly containerNumber: string
   }[]
   readonly status: ProcessWithOperationalSummaryProjection['summary']['process_status']
-  readonly eta: string | null
+  readonly eta: string | TemporalValueDto | null
 }
 
 function makeProcessWithSummary(args: ProcessFixture): ProcessWithOperationalSummaryProjection {
@@ -37,7 +39,7 @@ function makeProcessWithSummary(args: ProcessFixture): ProcessWithOperationalSum
     },
     summary: {
       process_status: args.status,
-      eta: args.eta,
+      eta: resolveTemporalDto(args.eta, null),
     },
   }
 }
@@ -545,7 +547,7 @@ describe('dashboard operational summary read model integration', () => {
         origin: process.origin,
         destination: process.destination,
         status: process.status,
-        eta: process.eta,
+        eta: process.eta?.value ?? null,
         dominantSeverity: process.dominantSeverity,
         dominantAlertCreatedAt: process.dominantAlertCreatedAt,
         activeAlertsCount: process.activeAlertsCount,

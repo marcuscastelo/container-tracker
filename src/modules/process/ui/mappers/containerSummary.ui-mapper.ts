@@ -4,10 +4,12 @@ import { formatRelativeTime } from '~/modules/process/ui/utils/formatRelativeTim
 import type { ContainerSummaryRowVM } from '~/modules/process/ui/viewmodels/containerSummary.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
+import type { Instant } from '~/shared/time/instant'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 
 type ContainerSummaryMapperCommand = {
   readonly containers: readonly ContainerDetailVM[]
-  readonly now: Date
+  readonly now: Instant
   readonly locale: string
   readonly t: (key: string, params?: Record<string, unknown>) => string
   readonly keys: TranslationKeys
@@ -35,7 +37,12 @@ function toContainerSummaryRowVM(
   const relativeTimeAt = container.sync.relativeTimeAt
   const updatedAgoLabel =
     relativeTimeAt !== null
-      ? command.updatedLabel(formatRelativeTime(relativeTimeAt, command.now, command.locale))
+      ? (() => {
+          const relativeInstant = parseInstantFromIso(relativeTimeAt)
+          return relativeInstant
+            ? command.updatedLabel(formatRelativeTime(relativeInstant, command.now, command.locale))
+            : null
+        })()
       : null
 
   return {

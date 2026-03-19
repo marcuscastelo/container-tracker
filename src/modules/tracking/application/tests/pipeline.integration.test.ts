@@ -17,7 +17,10 @@ import type {
   NewObservation,
   Observation,
 } from '~/modules/tracking/features/observation/domain/model/observation'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
+import { Instant } from '~/shared/time/instant'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 // Note: repositories now throw on infra errors and return direct types.
 
@@ -61,11 +64,12 @@ class InMemoryObservationRepository implements ObservationRepository {
 
   async insertMany(newObservations: readonly NewObservation[]): Promise<readonly Observation[]> {
     const inserted: Observation[] = []
-    for (const obs of newObservations) {
+    const baseCreatedAt = Instant.fromIso('2026-02-03T20:00:00.000Z').toEpochMs()
+    for (const [index, obs] of newObservations.entries()) {
       const newObs: Observation = {
         ...obs,
         id: randomUUID(),
-        created_at: new Date().toISOString(),
+        created_at: Instant.fromEpochMs(baseCreatedAt + index).toIsoString(),
       }
       this.observations.set(newObs.id, newObs)
       inserted.push(newObs)
@@ -76,21 +80,7 @@ class InMemoryObservationRepository implements ObservationRepository {
   async findAllByContainerId(containerId: string): Promise<readonly Observation[]> {
     const list = Array.from(this.observations.values())
       .filter((o) => o.container_id === containerId)
-      .sort((a, b) => {
-        // Same sort logic as deriveTimeline
-        if (a.event_time === null && b.event_time === null) {
-          return a.created_at.localeCompare(b.created_at)
-        }
-        if (a.event_time === null) return 1
-        if (b.event_time === null) return -1
-        const cmp = a.event_time.localeCompare(b.event_time)
-        if (cmp !== 0) return cmp
-
-        if (a.event_time_type === 'ACTUAL' && b.event_time_type === 'EXPECTED') return -1
-        if (a.event_time_type === 'EXPECTED' && b.event_time_type === 'ACTUAL') return 1
-
-        return a.created_at.localeCompare(b.created_at)
-      })
+      .sort(compareObservationsChronologically)
     return list
   }
 
@@ -292,14 +282,11 @@ describe('Pipeline Integration Tests - Maersk', () => {
     // Assert - Timeline is sorted by event_time
     const times = result.timeline.observations
       .filter((o) => o.event_time !== null)
-      .map((o) => o.event_time)
+      .map((o) => temporalCanonicalText(o.event_time) ?? '')
     for (let i = 1; i < times.length; i++) {
       const current = times[i]
       const previous = times[i - 1]
-      if (current !== null && previous !== null) {
-        // Use string comparison for ISO datetime strings
-        expect(current >= previous).toBe(true)
-      }
+      expect(current >= previous).toBe(true)
     }
 
     // Assert - Status was derived
@@ -438,6 +425,16 @@ describe('Pipeline Integration Tests - Maersk', () => {
     const actualEvents = result.timeline.observations.filter((o) => o.event_time_type === 'ACTUAL')
     expect(actualEvents.length).toBeGreaterThan(0)
     for (const event of actualEvents) {
+      if (event.event_time === null) {
+        expect(event.confidence).toBe('low')
+        continue
+      }
+
+      if (event.location_code === null) {
+        expect(event.confidence).toBe('medium')
+        continue
+      }
+
       expect(event.confidence).toBe('high')
     }
 
@@ -446,7 +443,7 @@ describe('Pipeline Integration Tests - Maersk', () => {
       (o) => o.event_time_type === 'EXPECTED',
     )
     for (const event of expectedEvents) {
-      expect(event.confidence).toBe('medium')
+      expect(event.confidence).toBe(event.event_time === null ? 'low' : 'medium')
     }
   })
 
