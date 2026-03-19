@@ -192,9 +192,9 @@ function resolveEmptyState(props: {
   readonly agentStatus: string
 }): EmptyStateKind {
   if (props.hasLines) return 'none'
+  if (props.isLoading) return 'loading'
   if (!props.logsSupported) return 'not_supported'
   if (props.agentStatus === 'Disconnected') return 'offline'
-  if (props.isLoading) return 'loading'
   return 'empty'
 }
 
