@@ -2,7 +2,7 @@ import {
   parseCalendarDateFromDdMmYyyy,
   parseInstantFromMsDate,
   parseInstantFromNumber,
-  parseInstantFromText,
+  parseInstantFromTimestampText,
 } from '~/shared/time/parsing'
 
 export function parseDateDDMMYYYYString(input: string) {
@@ -14,7 +14,7 @@ export function parseMsDateString(input: string) {
 }
 
 export function parseIsoOrRfcString(input: string) {
-  return parseInstantFromText(input)
+  return parseInstantFromTimestampText(input)
 }
 
 export function parseDateFromNumber(input: number) {

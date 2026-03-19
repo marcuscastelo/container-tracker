@@ -7,10 +7,9 @@ import type { Instant } from '~/shared/time/instant'
 import { parseTemporalValue } from '~/shared/time/parsing'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
-type FormatterInput = TemporalValue | TemporalValueDto | string
+type FormatterInput = TemporalValue | TemporalValueDto
 
 function toTemporalValue(input: FormatterInput): TemporalValue | null {
-  if (typeof input === 'string') return parseTemporalValue(input)
   if (isTemporalValue(input)) return input
   if (isTemporalValueDto(input)) return parseTemporalValue(input)
   return null
@@ -21,7 +20,7 @@ function formatCalendarDateUtcDate(date: CalendarDate): Date {
   const year = Number(yearStr)
   const month = Number(monthStr)
   const day = Number(dayStr)
-  return new Date(Date.UTC(year, month - 1, day, 12))
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0))
 }
 
 export function formatInstantDate(
@@ -71,6 +70,21 @@ export function formatTemporalDate(
 
   if (parsed.kind === 'instant') {
     return formatInstantDate(parsed.value, locale, timezone)
+  }
+
+  return formatCalendarDate(parsed.value, locale)
+}
+
+export function formatTemporalDateTime(
+  input: FormatterInput,
+  locale: string,
+  timezone: string = getBrowserTimezone(),
+): string {
+  const parsed = toTemporalValue(input)
+  if (!parsed) return ''
+
+  if (parsed.kind === 'instant') {
+    return formatInstantDateTime(parsed.value, locale, timezone)
   }
 
   return formatCalendarDate(parsed.value, locale)

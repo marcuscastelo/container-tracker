@@ -8,6 +8,8 @@ import {
   compareObservationsChronologically,
   deriveTimeline,
 } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 
 export type TrackingSearchObservationProjection = Readonly<{
   processId: string
@@ -18,12 +20,12 @@ export type TrackingSearchProjection = Readonly<{
   processId: string
   vesselName: string | null
   latestDerivedStatus: ContainerStatus
-  latestEta: string | null
+  latestEta: TemporalValueDto | null
 }>
 
 type DeriveTrackingSearchProjectionsArgs = Readonly<{
   observations: readonly TrackingSearchObservationProjection[]
-  now: Date
+  now: Instant
 }>
 
 type ContainerObservationGroup = {
@@ -105,7 +107,7 @@ export function deriveTrackingSearchProjections(
       processId: group.processId,
       vesselName: deriveLatestVesselName(group.observations),
       latestDerivedStatus,
-      latestEta: operational.eta?.eventTimeIso ?? null,
+      latestEta: operational.eta?.eventTime ?? null,
     })
   }
 

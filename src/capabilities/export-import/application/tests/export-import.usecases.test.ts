@@ -4,6 +4,8 @@ import {
   ProcessNotFoundError,
 } from '~/capabilities/export-import/application/export-import.errors'
 import { createExportImportUseCases } from '~/capabilities/export-import/application/export-import.usecases'
+import { Instant } from '~/shared/time/instant'
+import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 function createReportProcessEntry(overrides: {
   readonly processId: string
@@ -81,7 +83,7 @@ function createContainerSummary(overrides: {
       observations: [
         {
           type: 'LOAD',
-          event_time: overrides.eventTime,
+          event_time: temporalValueFromCanonical(overrides.eventTime),
           event_time_type: 'ACTUAL',
           seriesHistory: {
             hasActualConflict: overrides.hasActualConflict,
@@ -133,8 +135,8 @@ describe('export-import usecases', () => {
             product: 'Coffee',
             redestinationNumber: null,
             source: 'manual',
-            createdAt: new Date('2026-03-15T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-15T00:00:00.000Z'),
+            createdAt: Instant.fromIso('2026-03-15T00:00:00.000Z'),
+            updatedAt: Instant.fromIso('2026-03-15T00:00:00.000Z'),
           },
           containers: [
             {

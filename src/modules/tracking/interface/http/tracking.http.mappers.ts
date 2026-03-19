@@ -1,4 +1,5 @@
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
+import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertDisplayReadModels } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
@@ -75,7 +76,7 @@ function toObservationResponseDto(observation: Observation) {
     fingerprint: observation.fingerprint,
     type: observation.type,
     carrier_label: observation.carrier_label ?? null,
-    event_time: observation.event_time,
+    event_time: trackingTemporalValueToDto(observation.event_time),
     event_time_type: observation.event_time_type,
     location_code: observation.location_code,
     location_display: observation.location_display,
@@ -117,7 +118,7 @@ function toReplayTimelineItemResponseDto(item: TrackingTimelineItem) {
     type: item.type,
     carrier_label: item.carrierLabel ?? null,
     location: item.location ?? null,
-    event_time_iso: item.eventTimeIso,
+    event_time: item.eventTime,
     event_time_type: item.eventTimeType,
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
@@ -173,7 +174,7 @@ function toTrackingOperationalEtaResponseDto(eta: TrackingTimeTravelCheckpoint['
   if (eta === null) return null
 
   return {
-    event_time: eta.eventTimeIso,
+    event_time: eta.eventTime,
     event_time_type: eta.eventTimeType,
     state: eta.state,
     type: eta.type,

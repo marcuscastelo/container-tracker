@@ -4,6 +4,12 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import {
+  instantFromIsoText,
+  resolveTemporalValue,
+  temporalCanonicalText,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 function makeObservation(
   containerId: string,
@@ -16,7 +22,10 @@ function makeObservation(
     container_id: containerId,
     container_number: containerNumber,
     type: 'ARRIVAL',
-    event_time: '2026-02-20T10:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2026-02-20T10:00:00.000Z'),
+    ),
     event_time_type: 'EXPECTED',
     location_code: 'BRSSZ',
     location_display: 'Santos',
@@ -74,7 +83,7 @@ describe('getContainersSummary', () => {
       }
       return [
         makeObservation('c2', 'MSCU2222222', {
-          event_time: '2026-02-22T10:00:00.000Z',
+          event_time: temporalValueFromCanonical('2026-02-22T10:00:00.000Z'),
         }),
       ]
     })
@@ -84,13 +93,17 @@ describe('getContainersSummary', () => {
         { containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' },
         { containerId: 'c2', containerNumber: 'MSCU2222222', podLocationCode: 'BRSSZ' },
       ],
-      now: new Date('2026-02-15T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
     expect(summaries.size).toBe(2)
     expect(summaries.get('c1')?.status).toBe('IN_PROGRESS')
-    expect(summaries.get('c1')?.eta?.eventTimeIso).toBe('2026-02-20T10:00:00.000Z')
-    expect(summaries.get('c2')?.eta?.eventTimeIso).toBe('2026-02-22T10:00:00.000Z')
+    expect(temporalCanonicalText(summaries.get('c1')?.eta?.eventTime ?? null)).toBe(
+      '2026-02-20T10:00:00.000Z',
+    )
+    expect(temporalCanonicalText(summaries.get('c2')?.eta?.eventTime ?? null)).toBe(
+      '2026-02-22T10:00:00.000Z',
+    )
   })
 
   it('keeps partial success and marks dataIssue=true for failed containers', async () => {
@@ -106,7 +119,7 @@ describe('getContainersSummary', () => {
         { containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' },
         { containerId: 'c2', containerNumber: 'MSCU2222222', podLocationCode: 'BRSSZ' },
       ],
-      now: new Date('2026-02-15T00:00:00.000Z'),
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
     expect(summaries.size).toBe(2)

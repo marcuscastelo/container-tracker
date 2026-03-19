@@ -21,6 +21,7 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { systemClock } from '~/shared/time/clock'
 
 /**
  * Result of processing a single snapshot through the pipeline.
@@ -125,7 +126,7 @@ export async function processSnapshot(
       }
     }
 
-    const resolvedAt = new Date().toISOString()
+    const resolvedAt = systemClock.now().toIsoString()
     for (const [reason, alertIds] of idsByReason) {
       if (reason === 'condition_cleared' || reason === 'terminal_state') {
         await deps.trackingAlertRepository.autoResolveMany({

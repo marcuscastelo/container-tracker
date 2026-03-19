@@ -1,6 +1,7 @@
 import { typedFetch } from '~/shared/api/typedFetch'
 import type { NavbarAlertsSummaryResponse } from '~/shared/api-schemas/dashboard.schemas'
 import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
+import { systemClock } from '~/shared/time/clock'
 
 const NAVBAR_ALERTS_SUMMARY_ENDPOINT = '/api/alerts/navbar-summary'
 const NAVBAR_ALERTS_CACHE_TTL_MS = 15_000
@@ -13,9 +14,13 @@ type NavbarAlertsCacheRecord = {
 let navbarAlertsCache: NavbarAlertsCacheRecord | null = null
 let inFlightNavbarAlerts: Promise<NavbarAlertsSummaryResponse> | null = null
 
+function nowMs(): number {
+  return systemClock.now().toEpochMs()
+}
+
 function readFreshNavbarAlertsCache(): NavbarAlertsSummaryResponse | null {
   if (!navbarAlertsCache) return null
-  if (navbarAlertsCache.expiresAtMs <= Date.now()) {
+  if (navbarAlertsCache.expiresAtMs <= nowMs()) {
     navbarAlertsCache = null
     return null
   }
@@ -25,7 +30,7 @@ function readFreshNavbarAlertsCache(): NavbarAlertsSummaryResponse | null {
 function writeNavbarAlertsCache(value: NavbarAlertsSummaryResponse): void {
   navbarAlertsCache = {
     value,
-    expiresAtMs: Date.now() + NAVBAR_ALERTS_CACHE_TTL_MS,
+    expiresAtMs: nowMs() + NAVBAR_ALERTS_CACHE_TTL_MS,
   }
 }
 

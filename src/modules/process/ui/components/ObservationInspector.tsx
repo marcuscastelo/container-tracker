@@ -3,6 +3,7 @@ import type { JSX } from 'solid-js'
 import { createMemo, For } from 'solid-js'
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
@@ -34,6 +35,8 @@ export function ObservationInspector(props: Props): JSX.Element {
 
   const asValue = (value: string | null): string =>
     value ?? t(keys.shipmentView.timeline.observationInspector.values.unavailable)
+  const asTemporalValue = (value: TemporalValueDto | null): string =>
+    value?.value ?? t(keys.shipmentView.timeline.observationInspector.values.unavailable)
 
   const rows = createMemo<readonly InspectorRow[]>(() => [
     {
@@ -43,7 +46,7 @@ export function ObservationInspector(props: Props): JSX.Element {
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.eventTime),
-      value: asValue(props.observation.eventTime),
+      value: asTemporalValue(props.observation.eventTime),
       tone: 'technical',
     },
     {

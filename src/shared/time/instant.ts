@@ -2,13 +2,27 @@ import type { CalendarDate } from '~/shared/time/calendar-date'
 import { calendarDateFromInstant } from '~/shared/time/calendar-date'
 import type { Clock } from '~/shared/time/clock'
 
-const ISO_INSTANT_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/
+export const ISO_INSTANT_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+const ISO_INSTANT_CAPTURE_PATTERN =
+  /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/
 
 function compareNumbers(a: number, b: number): number {
   if (a < b) return -1
   if (a > b) return 1
   return 0
+}
+
+function normalizeIsoInstant(iso: string): string {
+  const match = iso.match(ISO_INSTANT_CAPTURE_PATTERN)
+  if (!match || match[1] === undefined || match[3] === undefined) {
+    throw new Error(`Invalid ISO instant: ${iso}`)
+  }
+
+  const fraction = match[2] ?? ''
+  const normalizedFraction = `${fraction}000`.slice(0, 3)
+
+  return `${match[1]}.${normalizedFraction}${match[3]}`
 }
 
 export class Instant {
@@ -27,7 +41,7 @@ export class Instant {
       throw new Error(`Invalid ISO instant: ${iso}`)
     }
 
-    const parsedMs = Date.parse(iso)
+    const parsedMs = Date.parse(normalizeIsoInstant(iso))
     if (!Number.isFinite(parsedMs)) {
       throw new Error(`Invalid ISO instant: ${iso}`)
     }

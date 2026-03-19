@@ -5,12 +5,13 @@ import {
   shouldHideCurrentVesselForCompletedLeg,
 } from '~/modules/process/ui/utils/current-tracking-context'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { resolveTemporalDto, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function createTimelineEvent(
   overrides: {
     readonly id?: string
     readonly type?: TrackingTimelineItem['type']
-    readonly eventTimeIso?: string | null
+    readonly eventTime?: string | null
     readonly eventTimeType?: TrackingTimelineItem['eventTimeType']
     readonly derivedState?: TrackingTimelineItem['derivedState']
     readonly location?: string | null
@@ -23,7 +24,10 @@ function createTimelineEvent(
   return {
     id: overrides.id ?? 'evt-1',
     type: overrides.type ?? 'SYSTEM_CREATED',
-    eventTimeIso: overrides.eventTimeIso ?? '2026-03-09T00:00:00Z',
+    eventTime: resolveTemporalDto(
+      overrides.eventTime,
+      temporalDtoFromCanonical('2026-03-09T00:00:00Z'),
+    ),
     eventTimeType: overrides.eventTimeType ?? 'EXPECTED',
     derivedState: overrides.derivedState ?? 'ACTIVE_EXPECTED',
     location: overrides.location ?? undefined,

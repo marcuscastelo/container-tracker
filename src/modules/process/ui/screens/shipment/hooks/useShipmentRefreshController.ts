@@ -7,6 +7,7 @@ import { refreshShipmentTracking } from '~/modules/process/ui/screens/shipment/u
 import { useSyncRealtimeCoordinator } from '~/modules/process/ui/utils/sync-realtime-coordinator'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'
 
 type UseShipmentRefreshControllerCommand = {
@@ -35,7 +36,7 @@ export function useShipmentRefreshController(
   const [refreshRetry, setRefreshRetry] = createSignal<RefreshRetryState | null>(null)
   const [refreshError, setRefreshError] = createSignal<string | null>(null)
   const [refreshHint, setRefreshHint] = createSignal<string | null>(null)
-  const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Date | null>(null)
+  const [lastRefreshDoneAt, setLastRefreshDoneAt] = createSignal<Instant | null>(null)
 
   let disposed = false
   let activeRealtimeCleanup: (() => void) | null = null
@@ -58,7 +59,7 @@ export function useShipmentRefreshController(
   const triggerRefresh = async () => {
     const doneAt = lastRefreshDoneAt()
     if (doneAt) {
-      const elapsedMs = Date.now() - doneAt.getTime()
+      const elapsedMs = systemClock.now().diffMs(doneAt)
       if (elapsedMs < REFRESH_SOFT_BLOCK_WINDOW_MS) {
         setRefreshError(null)
         setRefreshHint(

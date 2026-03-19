@@ -5,8 +5,6 @@ import { Instant } from '~/shared/time/instant'
 import { calendarDateValue, instantValue, type TemporalValue } from '~/shared/time/temporal-value'
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-const ISO_INSTANT_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/
 const MS_DATE_PATTERN = /\/Date\((-?\d+)\)\//
 const DD_MM_YYYY_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
 
@@ -19,11 +17,10 @@ function parseWithFactory<T>(factory: () => T): T | null {
 }
 
 export function parseInstantFromIso(input: string): Instant | null {
-  if (!ISO_INSTANT_PATTERN.test(input)) return null
   return parseWithFactory(() => Instant.fromIso(input))
 }
 
-export function parseInstantFromText(input: string): Instant | null {
+export function parseInstantFromTimestampText(input: string): Instant | null {
   const parsedIso = parseInstantFromIso(input)
   if (parsedIso) return parsedIso
 
@@ -83,21 +80,17 @@ export function parseTemporalValueDto(input: TemporalValueDto): TemporalValue | 
   return calendarDate ? calendarDateValue(calendarDate) : null
 }
 
-export function parseLegacyTemporalValue(input: string): TemporalValue | null {
+export function parseTemporalValueFromCanonicalString(input: string): TemporalValue | null {
   const calendarDate = parseCalendarDateFromIso(input)
   if (calendarDate) return calendarDateValue(calendarDate)
 
-  const instant = parseInstantFromText(input)
+  const instant = parseInstantFromIso(input)
   if (instant) return instantValue(instant)
 
   return null
 }
 
-export function parseTemporalValue(input: string | TemporalValueDto): TemporalValue | null {
-  if (typeof input === 'string') {
-    return parseLegacyTemporalValue(input)
-  }
-
+export function parseTemporalValue(input: TemporalValueDto): TemporalValue | null {
   if (!isTemporalValueDto(input)) return null
   return parseTemporalValueDto(input)
 }

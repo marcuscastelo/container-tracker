@@ -85,7 +85,8 @@ export type Database = {
           container_number: string
           created_at: string
           created_from_snapshot_id: string | null
-          event_time: string | null
+          event_date: string | null
+          event_time_instant: string | null
           event_time_type: string
           fingerprint: string
           id: string
@@ -94,6 +95,7 @@ export type Database = {
           location_display: string | null
           provider: string
           retroactive: boolean
+          temporal_kind: string | null
           type: string
           vessel_name: string | null
           voyage: string | null
@@ -105,7 +107,8 @@ export type Database = {
           container_number: string
           created_at?: string
           created_from_snapshot_id?: string | null
-          event_time?: string | null
+          event_date?: string | null
+          event_time_instant?: string | null
           event_time_type: string
           fingerprint: string
           id?: string
@@ -114,6 +117,7 @@ export type Database = {
           location_display?: string | null
           provider: string
           retroactive?: boolean
+          temporal_kind?: string | null
           type: string
           vessel_name?: string | null
           voyage?: string | null
@@ -125,7 +129,8 @@ export type Database = {
           container_number?: string
           created_at?: string
           created_from_snapshot_id?: string | null
-          event_time?: string | null
+          event_date?: string | null
+          event_time_instant?: string | null
           event_time_type?: string
           fingerprint?: string
           id?: string
@@ -134,6 +139,7 @@ export type Database = {
           location_display?: string | null
           provider?: string
           retroactive?: boolean
+          temporal_kind?: string | null
           type?: string
           vessel_name?: string | null
           voyage?: string | null

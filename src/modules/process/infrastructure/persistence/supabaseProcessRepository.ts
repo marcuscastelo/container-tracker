@@ -11,6 +11,7 @@ import {
   unwrapSupabaseResultOrThrow,
   unwrapSupabaseSingleOrNull,
 } from '~/shared/supabase/unwrapSupabaseResult'
+import { systemClock } from '~/shared/time/clock'
 
 // src/modules/process/infrastructure/persistence/supabaseProcessRepository.ts
 const PROCESSES_TABLE = 'processes'
@@ -38,7 +39,7 @@ export const supabaseProcessRepository: ProcessRepository = {
   },
 
   async create(record: InsertProcessRecord): Promise<ProcessEntity> {
-    const now = new Date().toISOString()
+    const now = systemClock.now().toIsoString()
 
     const insertRow = processMappers.insertRecordToRow(record, now)
 
@@ -49,7 +50,7 @@ export const supabaseProcessRepository: ProcessRepository = {
   },
 
   async update(processId: string, record: UpdateProcessRecord): Promise<ProcessEntity> {
-    const now = new Date().toISOString()
+    const now = systemClock.now().toIsoString()
 
     const updateRow = processMappers.updateRecordToRow(record, now)
 

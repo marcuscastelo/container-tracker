@@ -8,6 +8,7 @@ import {
 import type { TrackingSeriesHistoryItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { toComparableInstant } from '~/shared/time/compare-temporal'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -27,7 +28,10 @@ const PREDICTION_DELTA_COMPARE_OPTIONS = {
   strategy: 'start-of-day',
 } as const
 
-function calculateDelta(current: string, previous: string | null): number | null {
+function calculateDelta(
+  current: TemporalValueDto,
+  previous: TemporalValueDto | null,
+): number | null {
   if (!previous) return null
   const currentTemporal = parseTemporalValue(current)
   const previousTemporal = parseTemporalValue(previous)

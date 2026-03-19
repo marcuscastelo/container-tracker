@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
@@ -10,7 +11,10 @@ function makeDraft(overrides: Partial<ObservationDraft> = {}): ObservationDraft 
   return {
     container_number: 'CXDU2058677',
     type: 'LOAD',
-    event_time: '2025-11-26T00:00:00.000Z',
+    event_time: resolveTemporalValue(
+      overrides.event_time,
+      temporalValueFromCanonical('2025-11-26T00:00:00.000Z'),
+    ),
     event_time_type: 'ACTUAL',
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',

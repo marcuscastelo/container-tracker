@@ -1,5 +1,6 @@
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type ProcessSyncStatus = 'idle' | 'syncing' | 'success' | 'error'
@@ -18,7 +19,7 @@ export type ProcessSummaryVM = {
   readonly statusCode: ProcessStatusCode
   readonly statusMicrobadge: ProcessStatusMicrobadgeVM | null
   readonly statusRank: number
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly etaMsOrNull: number | null
   readonly carrier: string | null
   readonly alertsCount: number
@@ -26,7 +27,7 @@ export type ProcessSummaryVM = {
   readonly dominantAlertCreatedAt: string | null
   readonly redestinationNumber?: string | null
   readonly hasTransshipment: boolean
-  readonly lastEventAt: string | null
+  readonly lastEventAt: TemporalValueDto | null
   readonly syncStatus: ProcessSyncStatus
   readonly lastSyncAt: string | null
 }

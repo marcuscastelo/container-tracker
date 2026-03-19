@@ -7,6 +7,8 @@ import type {
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MaerskApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/maersk.api.schema'
+import { parseInstantFromIso } from '~/shared/time/parsing'
+import { instantValue } from '~/shared/time/temporal-value'
 
 /**
  * Maps Maersk event `activity` strings to canonical ObservationType.
@@ -74,7 +76,7 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
 }
 
 function computeConfidence(
-  eventTime: string | null,
+  eventTime: ObservationDraft['event_time'],
   eventTimeType: string | null | undefined,
   locationCode: string | null | undefined,
 ): Confidence {
@@ -109,7 +111,13 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
 
       for (const event of events) {
         const type = mapMaerskActivity(event.activity)
-        const eventTime = event.event_time ?? null
+        const eventTime =
+          typeof event.event_time === 'string'
+            ? (() => {
+                const parsedInstant = parseInstantFromIso(event.event_time)
+                return parsedInstant ? instantValue(parsedInstant) : null
+              })()
+            : null
         const locationCode = event.locationCode ?? location.location_code ?? null
         const locationDisplay =
           [location.city, location.country_code].filter(Boolean).join(', ') || null

@@ -7,6 +7,8 @@ import type {
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
+import { systemClock } from '~/shared/time/clock'
+import { instantValue } from '~/shared/time/temporal-value'
 import { parseIsoOrRfcString, parseMsDateString } from '~/shared/utils/parseDate'
 
 /**
@@ -83,28 +85,28 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
 function parseCmaCgmDate(
   dateField: string | null | undefined,
   dateStringField: string | null | undefined,
-): string | null {
+): ObservationDraft['event_time'] {
   // Try DateString first (human-readable ISO/RFC) — many CMA-CGM endpoints provide ISO strings here
   if (dateStringField) {
     const d = parseIsoOrRfcString(dateStringField)
-    if (d) return d.toIsoString()
+    if (d) return instantValue(d)
   }
 
   // Try MS date format: /Date(1234567890000)/
   if (dateField) {
     const ms = parseMsDateString(dateField)
-    if (ms) return ms.toIsoString()
+    if (ms) return instantValue(ms)
 
     // Fallback: try ISO/RFC parsing on the field
     const d = parseIsoOrRfcString(dateField)
-    if (d) return d.toIsoString()
+    if (d) return instantValue(d)
   }
 
   return null
 }
 
 function computeConfidence(
-  eventTime: string | null,
+  eventTime: ObservationDraft['event_time'],
   state: string | null | undefined,
   locationCode: string | null | undefined,
 ): Confidence {
@@ -124,7 +126,7 @@ function computeConfidence(
  */
 function mapCmaCgmEventTimeType(
   state?: string | null | undefined,
-  eventTime?: string | null,
+  eventTime?: ObservationDraft['event_time'],
 ): EventTimeType {
   // CMA-CGM doesn't provide an explicit enum for ACTUAL vs EXPECTED, but
   // the payload _does_ contain a `State` field with values like
@@ -143,13 +145,12 @@ function mapCmaCgmEventTimeType(
 
   // Fallback: if the event time is in the past (<= now) consider it ACTUAL,
   // otherwise EXPECTED. This helps when carriers omit the State field.
-  try {
-    const d = new Date(eventTime)
-    if (!Number.isNaN(d.getTime())) {
-      if (d.getTime() <= Date.now()) return 'ACTUAL'
-    }
-  } catch (_e) {
-    // ignore and fallthrough to default
+  if (eventTime?.kind === 'instant') {
+    if (eventTime.value.compare(systemClock.now()) <= 0) return 'ACTUAL'
+  }
+
+  if (eventTime?.kind === 'date') {
+    if (eventTime.value.compare(systemClock.now().toCalendarDate('UTC')) <= 0) return 'ACTUAL'
   }
 
   return 'EXPECTED'

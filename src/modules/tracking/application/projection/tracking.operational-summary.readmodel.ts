@@ -1,15 +1,20 @@
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
+import { isTrackingTemporalValueExpired } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import { classifySeries } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import {
   buildSeriesKey,
   compareObservationsChronologically,
 } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { toTemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
+import type { TemporalValue } from '~/shared/time/temporal-value'
 
 type TrackingOperationalEtaState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
 export type TrackingLifecycleBucket = 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
 
 export type TrackingOperationalEta = {
-  readonly eventTimeIso: string
+  readonly eventTime: TemporalValueDto
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
   readonly state: TrackingOperationalEtaState
   readonly type: string
@@ -31,7 +36,7 @@ export type TrackingOperationalTransshipment = {
 export type TrackingObservationForOperationalSummary = {
   readonly id: string
   readonly type: string
-  readonly event_time: string | null
+  readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly location_code: string | null
   readonly location_display: string | null
@@ -54,7 +59,7 @@ type DeriveTrackingOperationalSummaryArgs = {
   readonly status: string
   readonly transshipment: TransshipmentInfo
   readonly podLocationCode?: string | null
-  readonly now: Date
+  readonly now: Instant
   readonly dataIssue?: boolean
 }
 
@@ -84,7 +89,7 @@ function latestObservation(
 
 function derivePrimarySeriesObservations(
   observations: readonly TrackingObservationForOperationalSummary[],
-  now: Date,
+  now: Instant,
 ): readonly TrackingObservationForOperationalSummary[] {
   const groups = new Map<string, TrackingObservationForOperationalSummary[]>()
 
@@ -124,23 +129,23 @@ function derivePrimarySeriesObservations(
 
 function toEtaState(
   observation: TrackingObservationForOperationalSummary,
-  now: Date,
+  now: Instant,
 ): TrackingOperationalEtaState | null {
   if (observation.event_time_type === 'ACTUAL') return 'ACTUAL'
   if (observation.event_time === null) return null
-  if (observation.event_time < now.toISOString()) return 'EXPIRED_EXPECTED'
+  if (isTrackingTemporalValueExpired(observation.event_time, now)) return 'EXPIRED_EXPECTED'
   return 'ACTIVE_EXPECTED'
 }
 
 function toTrackingOperationalEta(
   observation: TrackingObservationForOperationalSummary,
-  now: Date,
+  now: Instant,
 ): TrackingOperationalEta | null {
   const state = toEtaState(observation, now)
   if (state === null || observation.event_time === null) return null
 
   return {
-    eventTimeIso: observation.event_time,
+    eventTime: toTemporalValueDto(observation.event_time),
     eventTimeType: observation.event_time_type,
     state,
     type: observation.type,
@@ -152,7 +157,7 @@ function toTrackingOperationalEta(
 function deriveEtaFromSeries(
   observations: readonly TrackingObservationForOperationalSummary[],
   podLocationCode: string | null | undefined,
-  now: Date,
+  now: Instant,
 ): TrackingOperationalEta | null {
   if (observations.length === 0) return null
 

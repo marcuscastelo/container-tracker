@@ -1,6 +1,7 @@
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
 export type TrackingTimeTravelEtaVM = {
@@ -60,7 +61,7 @@ export type TrackingReplayDebugStateVM = {
     readonly fingerprint: string
     readonly type: string
     readonly carrierLabel: string | null
-    readonly eventTime: string | null
+    readonly eventTime: TemporalValueDto | null
     readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
     readonly locationCode: string | null
     readonly locationDisplay: string | null
@@ -78,14 +79,14 @@ export type TrackingReplayDebugStateVM = {
     readonly primary: {
       readonly id: string
       readonly type: string
-      readonly eventTime: string | null
+      readonly eventTime: TemporalValueDto | null
       readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
     }
     readonly hasActualConflict: boolean
     readonly items: readonly {
       readonly id: string
       readonly type: string
-      readonly eventTime: string | null
+      readonly eventTime: TemporalValueDto | null
       readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
       readonly createdAt: string
       readonly seriesLabel: string

@@ -20,6 +20,8 @@ import {
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { subscribeToSyncRequestsRealtimeByIds } from '~/shared/api/sync-requests.realtime.client'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 // ── API helpers ──────────────────────────────────────────────────────────────
 
@@ -53,7 +55,7 @@ async function fetchRefreshSyncStatuses(syncRequestIds: readonly string[]) {
   for (const syncRequestId of syncRequestIds) {
     params.append('sync_request_id', syncRequestId)
   }
-  params.set('_ts', String(Date.now()))
+  params.set('_ts', String(systemClock.now().toEpochMs()))
 
   const response = await fetch(`/api/refresh/status?${params.toString()}`, {
     cache: 'no-store',
@@ -211,7 +213,7 @@ export type RefreshShipmentTrackingCommand = {
   readonly setRefreshError: (value: string | null) => void
   readonly setRefreshHint: (value: string | null) => void
   readonly setRefreshRetry: (value: RefreshRetryState | null) => void
-  readonly setLastRefreshDoneAt: (value: Date | null) => void
+  readonly setLastRefreshDoneAt: (value: Instant | null) => void
   readonly setRealtimeCleanup: (cleanup: (() => void) | null) => void
   readonly refreshTrackingData: () => Promise<void> // i18n-enforce-ignore
   readonly isDisposed: () => boolean

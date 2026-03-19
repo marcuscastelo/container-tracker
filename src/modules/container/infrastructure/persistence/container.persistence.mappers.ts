@@ -15,6 +15,7 @@ import type {
   ContainerRow,
   ContainerUpdate,
 } from '~/modules/container/infrastructure/persistence/container.row'
+import { Instant } from '~/shared/time/instant'
 
 export const containerMappers = {
   fromRow: (row: ContainerRow): ContainerEntity =>
@@ -23,7 +24,7 @@ export const containerMappers = {
       containerNumber: toContainerNumber(row.container_number),
       carrierCode: toCarrierCode(row.carrier_code),
       processId: toProcessId(row.process_id),
-      createdAt: new Date(row.created_at),
+      createdAt: Instant.fromIso(row.created_at),
     }),
 
   toInsert: (container: InsertContainerRecord): ContainerInsert => ({

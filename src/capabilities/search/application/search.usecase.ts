@@ -1,6 +1,9 @@
 import type { ContainerSearchProjection } from '~/modules/container/application/container.readmodels'
 import type { ProcessSearchProjection } from '~/modules/process/application/process.readmodels'
 import type { TrackingSearchProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
+import { compareTemporal } from '~/shared/time/compare-temporal'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { parseTemporalValue } from '~/shared/time/parsing'
 
 export type SearchMatchSource =
   | 'container'
@@ -24,7 +27,7 @@ export type SearchResultItem = {
   readonly vesselName: string | null
   readonly bl: string | null
   readonly derivedStatus: string | null
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly matchSource: SearchMatchSource
 }
 
@@ -121,7 +124,7 @@ type MutableSearchResultItem = {
   vesselName: string | null
   bl: string | null
   derivedStatus: string | null
-  eta: string | null
+  eta: TemporalValueDto | null
   matchSource: SearchMatchSource
   hasExactContainerMatch: boolean
   hasPartialContainerMatch: boolean
@@ -196,18 +199,33 @@ function toSortableReference(reference: string | null): string {
   return toSortableNullableText(reference)
 }
 
-function compareNullableIsoDesc(left: string | null, right: string | null): number {
+const SEARCH_ETA_COMPARE_OPTIONS = {
+  timezone: 'UTC',
+  strategy: 'start-of-day',
+} as const
+
+function compareNullableTemporalDesc(
+  left: TemporalValueDto | null,
+  right: TemporalValueDto | null,
+): number {
   if (left === null && right === null) return 0
   if (left === null) return 1
   if (right === null) return -1
-  return compareStringAsc(right, left)
+
+  const leftTemporal = parseTemporalValue(left)
+  const rightTemporal = parseTemporalValue(right)
+  if (leftTemporal && rightTemporal) {
+    return compareTemporal(rightTemporal, leftTemporal, SEARCH_ETA_COMPARE_OPTIONS)
+  }
+
+  return compareStringAsc(JSON.stringify(right), JSON.stringify(left))
 }
 
 function compareTrackingProjectionPriority(
   left: TrackingSearchProjection,
   right: TrackingSearchProjection,
 ): number {
-  const etaCompare = compareNullableIsoDesc(left.latestEta, right.latestEta)
+  const etaCompare = compareNullableTemporalDesc(left.latestEta, right.latestEta)
   if (etaCompare !== 0) return etaCompare
 
   const statusCompare = compareStringAsc(left.latestDerivedStatus, right.latestDerivedStatus)

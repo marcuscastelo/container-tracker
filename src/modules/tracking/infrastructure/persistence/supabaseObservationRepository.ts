@@ -1,5 +1,6 @@
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { TrackingSearchObservationProjection } from '~/modules/tracking/application/projection/tracking.search.readmodel'
+import { compareTrackingTemporalValues } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type {
   NewObservation,
   Observation,
@@ -10,9 +11,26 @@ import {
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mappers'
 import { supabase } from '~/shared/supabase/supabase'
 import { unwrapSupabaseResultOrThrow } from '~/shared/supabase/unwrapSupabaseResult'
+import { Instant } from '~/shared/time/instant'
 
 const TABLE = 'container_observations' as const
 const CONTAINERS_TABLE = 'containers' as const
+
+function compareObservationChronology(left: Observation, right: Observation): number {
+  const eventTimeCompare = compareTrackingTemporalValues(left.event_time, right.event_time)
+  if (eventTimeCompare !== 0) {
+    return eventTimeCompare
+  }
+
+  const createdAtCompare = Instant.fromIso(left.created_at).compare(
+    Instant.fromIso(right.created_at),
+  )
+  if (createdAtCompare !== 0) {
+    return createdAtCompare
+  }
+
+  return left.id.localeCompare(right.id)
+}
 
 export const supabaseObservationRepository: ObservationRepository = {
   async insertMany(observations: readonly NewObservation[]): Promise<readonly Observation[]> {
@@ -32,14 +50,15 @@ export const supabaseObservationRepository: ObservationRepository = {
       .from(TABLE)
       .select('*')
       .eq('container_id', containerId)
-      .order('event_time', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findAllByContainerId',
       table: TABLE,
     })
 
-    return (data ?? []).map(observationRowToDomain)
+    return (data ?? []).map(observationRowToDomain).sort(compareObservationChronology)
   },
 
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -61,8 +80,8 @@ export const supabaseObservationRepository: ObservationRepository = {
       .from(TABLE)
       .select('*')
       .order('container_id', { ascending: true })
-      .order('event_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
 
     const observationRows =
       unwrapSupabaseResultOrThrow(observationsResult, {
@@ -103,6 +122,15 @@ export const supabaseObservationRepository: ObservationRepository = {
       })
     }
 
-    return projections
+    return projections.sort((left, right) => {
+      const containerCompare = left.observation.container_id.localeCompare(
+        right.observation.container_id,
+      )
+      if (containerCompare !== 0) {
+        return containerCompare
+      }
+
+      return compareObservationChronology(left.observation, right.observation)
+    })
   },
 }

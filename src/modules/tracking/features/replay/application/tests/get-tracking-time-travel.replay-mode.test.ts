@@ -4,6 +4,7 @@ import type { TrackingReplayRunResult } from '~/modules/tracking/features/replay
 import { TrackingReplayStepLimitError } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { HttpError } from '~/shared/errors/httpErrors'
+import { instantFromIsoText } from '~/shared/time/tests/helpers'
 
 vi.mock('~/modules/tracking/features/replay/application/run-tracking-replay.usecase', () => ({
   runTrackingReplay: vi.fn(),
@@ -49,7 +50,7 @@ function createNoopDeps(): TrackingUseCasesDeps {
 describe('getTrackingTimeTravel replay mode', () => {
   it('disables step recording when building historical checkpoints', async () => {
     const deps = createNoopDeps()
-    const referenceNow = new Date('2026-02-03T18:30:00.000Z')
+    const referenceNow = instantFromIsoText('2026-02-03T18:30:00.000Z')
     const state = {
       observations: [],
       series: [],
@@ -60,7 +61,7 @@ describe('getTrackingTimeTravel replay mode', () => {
     const runResult = {
       containerId: 'container-1',
       containerNumber: 'MNBU3094033',
-      referenceNow: referenceNow.toISOString(),
+      referenceNow: referenceNow.toIsoString(),
       totalSnapshots: 1,
       totalObservations: 0,
       totalSteps: 0,

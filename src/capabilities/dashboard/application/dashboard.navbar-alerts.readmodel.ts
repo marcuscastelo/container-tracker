@@ -20,6 +20,7 @@ import {
   resolveLatestAlertAt,
 } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.sorting'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import { systemClock } from '~/shared/time/clock'
 
 export type {
   DashboardNavbarAlertsReadModelDeps,
@@ -49,7 +50,10 @@ export function createDashboardNavbarAlertsReadModelUseCase(
     const containerOperationalById =
       containerSummaryCommand.length === 0
         ? new Map<string, TrackingOperationalSummary>()
-        : await deps.trackingUseCases.getContainersSummary(containerSummaryCommand, new Date())
+        : await deps.trackingUseCases.getContainersSummary(
+            containerSummaryCommand,
+            systemClock.now(),
+          )
 
     const processAccumulatorsById = new Map<string, MutableProcessAccumulator>()
 
@@ -66,7 +70,7 @@ export function createDashboardNavbarAlertsReadModelUseCase(
         alert,
         context,
         status: containerSummary?.status ?? null,
-        eta: containerSummary?.eta?.eventTimeIso ?? null,
+        eta: containerSummary?.eta?.eventTime ?? null,
       })
 
       containerAccumulator.alerts.push(toAlertItemReadModel(alert))

@@ -9,6 +9,7 @@ import type {
   DashboardProcessWithOperationalSummaryProjection,
 } from '~/capabilities/dashboard/application/dashboard.processes.projection'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 export function indexProcessContextById(
   processes: readonly DashboardProcessWithOperationalSummaryProjection[],
@@ -102,7 +103,7 @@ export function upsertContainerAccumulator(params: {
   readonly alert: TrackingActiveAlertReadModel
   readonly context: ProcessContext | undefined
   readonly status: string | null
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
 }): MutableContainerAccumulator {
   const existing = params.processAccumulator.containersById.get(params.alert.container_id)
   if (existing) return existing

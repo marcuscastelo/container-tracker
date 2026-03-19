@@ -3,9 +3,11 @@ import {
   type TrackingSearchProjection,
 } from '~/modules/tracking/application/projection/tracking.search.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 type ListTrackingSearchProjectionsCommand = Readonly<{
-  now?: Date
+  now?: Instant
 }>
 
 export async function listTrackingSearchProjections(
@@ -15,6 +17,6 @@ export async function listTrackingSearchProjections(
   const observations = await deps.observationRepository.listSearchObservations()
   return deriveTrackingSearchProjections({
     observations,
-    now: cmd.now ?? new Date(),
+    now: cmd.now ?? systemClock.now(),
   })
 }

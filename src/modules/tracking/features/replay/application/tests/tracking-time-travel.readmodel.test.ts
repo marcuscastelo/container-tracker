@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TrackingReplayRunResult } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { buildTrackingTimeTravelReadModel } from '~/modules/tracking/features/replay/application/tracking-time-travel.readmodel'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('buildTrackingTimeTravelReadModel', () => {
   it('marks ETA and ACTUAL conflict changes in diffFromPrevious as read-model deltas', () => {
@@ -26,7 +27,7 @@ describe('buildTrackingTimeTravelReadModel', () => {
                 id: 'eta-1',
                 type: 'ARRIVAL',
                 location: 'SANTOS, BR',
-                eventTimeIso: '2026-03-05T12:00:00.000Z',
+                eventTime: temporalDtoFromCanonical('2026-03-05T12:00:00.000Z'),
                 eventTimeType: 'EXPECTED',
                 derivedState: 'ACTIVE_EXPECTED',
               },
@@ -48,7 +49,7 @@ describe('buildTrackingTimeTravelReadModel', () => {
                 id: 'eta-2',
                 type: 'ARRIVAL',
                 location: 'SANTOS, BR',
-                eventTimeIso: '2026-03-06T12:00:00.000Z',
+                eventTime: temporalDtoFromCanonical('2026-03-06T12:00:00.000Z'),
                 eventTimeType: 'EXPECTED',
                 derivedState: 'ACTIVE_EXPECTED',
                 seriesHistory: {
@@ -70,7 +71,7 @@ describe('buildTrackingTimeTravelReadModel', () => {
             id: 'eta-2',
             type: 'ARRIVAL',
             location: 'SANTOS, BR',
-            eventTimeIso: '2026-03-06T12:00:00.000Z',
+            eventTime: temporalDtoFromCanonical('2026-03-06T12:00:00.000Z'),
             eventTimeType: 'EXPECTED',
             derivedState: 'ACTIVE_EXPECTED',
             seriesHistory: {

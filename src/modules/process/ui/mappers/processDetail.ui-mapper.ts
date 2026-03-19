@@ -22,6 +22,8 @@ import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 import { systemClock } from '~/shared/time/clock'
+import { toInstantDto } from '~/shared/time/dto'
+import { Instant } from '~/shared/time/instant'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 function processAggregatedStatusToVariant(status: ProcessAggregatedStatus) {
@@ -87,7 +89,7 @@ function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
     type: item.type,
     carrierLabel: item.carrier_label ?? undefined,
     location: item.location ?? undefined,
-    eventTimeIso: item.event_time_iso,
+    eventTime: item.event_time,
     eventTimeType: item.event_time_type,
     derivedState: item.derived_state,
     vesselName: item.vessel_name,
@@ -241,7 +243,7 @@ export function toShipmentDetailVM(
         id: 'system-created',
         type: 'SYSTEM_CREATED',
         location: undefined,
-        eventTimeIso: data.created_at,
+        eventTime: toInstantDto(Instant.fromIso(data.created_at)),
         eventTimeType: 'ACTUAL',
         derivedState: 'ACTUAL',
       })

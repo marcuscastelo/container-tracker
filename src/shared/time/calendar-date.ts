@@ -119,7 +119,7 @@ function validateDateParts(year: number, month: number, day: number): void {
     throw new Error('CalendarDate parts must be integers')
   }
 
-  const candidate = new Date(Date.UTC(year, month - 1, day, 12))
+  const candidate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0))
   if (
     candidate.getUTCFullYear() !== year ||
     candidate.getUTCMonth() !== month - 1 ||
@@ -183,7 +183,7 @@ export class CalendarDate {
   }
 
   private addDays(days: number): CalendarDate {
-    const base = new Date(Date.UTC(this.year, this.month - 1, this.day + days, 12))
+    const base = new Date(Date.UTC(this.year, this.month - 1, this.day + days, 0, 0, 0))
     return CalendarDate.fromIsoDate(
       `${String(base.getUTCFullYear()).padStart(4, '0')}-${pad(base.getUTCMonth() + 1)}-${pad(
         base.getUTCDate(),

@@ -1,4 +1,5 @@
 import type { NavbarAlertsSummaryResponse } from '~/shared/api-schemas/dashboard.schemas'
+import type { TemporalValueDto } from '~/shared/time/dto'
 
 type NavbarAlertDto =
   NavbarAlertsSummaryResponse['processes'][number]['containers'][number]['alerts'][number]
@@ -17,7 +18,7 @@ export type NavbarContainerAlertGroupVM = {
   readonly containerId: string
   readonly containerNumber: string
   readonly status: string | null
-  readonly eta: string | null
+  readonly eta: TemporalValueDto | null
   readonly activeAlertsCount: number
   readonly dominantSeverity: NavbarAlertsSummaryResponse['processes'][number]['containers'][number]['dominant_severity']
   readonly latestAlertAt: string | null

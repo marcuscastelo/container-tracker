@@ -2,6 +2,7 @@ import type { JSX } from 'solid-js'
 import { MatchSourceIcon } from '~/capabilities/search/ui/SearchOverlay.icons'
 import type { SearchResultItemVm } from '~/capabilities/search/ui/search.vm'
 import { getBrowserLocale } from '~/shared/time/browser-locale'
+import type { TemporalValueDto } from '~/shared/time/dto'
 import { formatTemporalDate } from '~/shared/time/temporal-formatters'
 
 function formatNullableText(value: string | null, fallbackText: string): string {
@@ -16,9 +17,9 @@ function formatContainers(value: readonly string[], fallbackText: string): strin
   return value.join(', ')
 }
 
-function formatEta(value: string | null, fallbackText: string): string {
+function formatEta(value: TemporalValueDto | null, fallbackText: string): string {
   if (value === null) return fallbackText
-  return formatTemporalDate(value, getBrowserLocale('en-US')) || value
+  return formatTemporalDate(value, getBrowserLocale('en-US')) || value.value
 }
 
 export type SearchResultRowLabels = {

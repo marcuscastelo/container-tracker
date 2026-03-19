@@ -3,6 +3,7 @@ import {
   createDashboardProcessesCreatedByMonthReadModelUseCase,
   type DashboardProcessesCreatedByMonthReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.processes-created-by-month.readmodel'
+import { Instant } from '~/shared/time/instant'
 
 type ProcessesProjection = Awaited<
   ReturnType<
@@ -22,35 +23,38 @@ describe('createDashboardProcessesCreatedByMonthReadModelUseCase', () => {
     const processes: ProcessesProjection = [
       {
         pwc: {
-          process: { id: 'process-1', createdAt: new Date('2025-12-02T10:00:00.000Z') },
+          process: { id: 'process-1', createdAt: Instant.fromIso('2025-12-02T10:00:00.000Z') },
           containers: [],
         },
         summary: { process_status: 'IN_TRANSIT', eta: null },
       },
       {
         pwc: {
-          process: { id: 'process-2', createdAt: new Date('2026-01-08T10:00:00.000Z') },
+          process: { id: 'process-2', createdAt: Instant.fromIso('2026-01-08T10:00:00.000Z') },
           containers: [],
         },
         summary: { process_status: 'IN_TRANSIT', eta: null },
       },
       {
         pwc: {
-          process: { id: 'process-3', createdAt: new Date('2026-03-09T10:00:00.000Z') },
+          process: { id: 'process-3', createdAt: Instant.fromIso('2026-03-09T10:00:00.000Z') },
           containers: [],
         },
         summary: { process_status: 'IN_TRANSIT', eta: null },
       },
       {
         pwc: {
-          process: { id: 'process-future', createdAt: new Date('2026-05-20T10:00:00.000Z') },
+          process: {
+            id: 'process-future',
+            createdAt: Instant.fromIso('2026-05-20T10:00:00.000Z'),
+          },
           containers: [],
         },
         summary: { process_status: 'IN_TRANSIT', eta: null },
       },
       {
         pwc: {
-          process: { id: 'process-4', createdAt: new Date('2025-10-02T10:00:00.000Z') },
+          process: { id: 'process-4', createdAt: Instant.fromIso('2025-10-02T10:00:00.000Z') },
           containers: [],
         },
         summary: { process_status: 'IN_TRANSIT', eta: null },

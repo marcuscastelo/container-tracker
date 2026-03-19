@@ -2,19 +2,28 @@ import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000502'
 const CONTAINER_NUMBER = 'CA08325GATEOUT'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000501'
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2026-02-01T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
+
   return {
     id: '00000000-0000-0000-0000-000000000599',
     fingerprint: 'fp-base',
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
-    event_time: '2026-02-01T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'ACTUAL',
     location_code: 'BRSSZ',
     location_display: 'SANTOS, BR',
@@ -25,7 +34,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'maersk',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2026-02-01T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 

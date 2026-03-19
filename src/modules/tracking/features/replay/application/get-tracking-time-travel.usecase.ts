@@ -2,10 +2,11 @@ import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecas
 import { runTrackingReplay } from '~/modules/tracking/features/replay/application/run-tracking-replay.usecase'
 import type { TrackingTimeTravelResult } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { buildTrackingTimeTravelReadModel } from '~/modules/tracking/features/replay/application/tracking-time-travel.readmodel'
+import type { Instant } from '~/shared/time/instant'
 
 export type GetTrackingTimeTravelCommand = {
   readonly containerId: string
-  readonly now?: Date
+  readonly now?: Instant
 }
 
 export async function getTrackingTimeTravel(

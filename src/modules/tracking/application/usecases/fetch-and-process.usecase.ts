@@ -7,6 +7,7 @@ import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
 import { getRestFetcher } from '~/modules/tracking/infrastructure/carriers/fetchers/rest.fetchers'
+import { systemClock } from '~/shared/time/clock'
 
 /**
  * Command to fetch tracking data from a carrier and run the full pipeline.
@@ -62,7 +63,7 @@ export async function fetchAndProcess(
     const errorSnapshot: NewSnapshot = {
       container_id: cmd.containerId,
       provider: cmd.provider,
-      fetched_at: new Date().toISOString(),
+      fetched_at: systemClock.now().toIsoString(),
       payload: { _error: true, message: errorMessage },
       parse_error: `Fetch failed: ${errorMessage}`,
     }

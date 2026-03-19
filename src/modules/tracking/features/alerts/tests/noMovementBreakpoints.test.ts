@@ -4,6 +4,7 @@ import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/a
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { instantFromIsoText, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000301'
 const CONTAINER_NUMBER = 'MSCU3013010'
@@ -21,7 +22,7 @@ function makeActualObservation(params: {
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: params.type ?? 'LOAD',
-    event_time: params.eventTime,
+    event_time: temporalValueFromCanonical(params.eventTime),
     event_time_type: 'ACTUAL',
     location_code: 'BRSSZ',
     location_display: 'Santos, BR',
@@ -93,7 +94,7 @@ describe('no movement breakpoints', () => {
       }),
     ])
 
-    const now = new Date('2025-11-07T00:00:00.000Z')
+    const now = instantFromIsoText('2025-11-07T00:00:00.000Z')
     const alerts = deriveAlerts(timeline, 'LOADED', [], false, now)
     const noMovement = expectNoMovementAlert(alerts.find((alert) => alert.type === 'NO_MOVEMENT'))
 
@@ -111,7 +112,7 @@ describe('no movement breakpoints', () => {
       }),
     ])
 
-    const now = new Date('2025-11-12T00:00:00.000Z')
+    const now = instantFromIsoText('2025-11-12T00:00:00.000Z')
     const existingAlerts = [
       makeNoMovementAlert({
         id: 'alert-5',
@@ -139,7 +140,7 @@ describe('no movement breakpoints', () => {
       }),
     ])
 
-    const now = new Date('2025-11-13T00:00:00.000Z')
+    const now = instantFromIsoText('2025-11-13T00:00:00.000Z')
     const existingAlerts = [
       makeNoMovementAlert({
         id: 'alert-5-cycle-3',
@@ -189,7 +190,7 @@ describe('no movement breakpoints', () => {
       }),
     ]
 
-    const now = new Date('2025-11-21T00:00:00.000Z')
+    const now = instantFromIsoText('2025-11-21T00:00:00.000Z')
     const alerts = deriveAlerts(timeline, 'DISCHARGED', existingAlerts, false, now)
     const noMovement = expectNoMovementAlert(alerts.find((alert) => alert.type === 'NO_MOVEMENT'))
 

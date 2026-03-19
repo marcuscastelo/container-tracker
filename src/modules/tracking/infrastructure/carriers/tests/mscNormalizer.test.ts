@@ -5,6 +5,7 @@ import delivered from '~/modules/tracking/infrastructure/carriers/tests/fixtures
 import dischargePod from '~/modules/tracking/infrastructure/carriers/tests/fixtures/msc/msc_discharge_pod.json'
 import initialLoad from '~/modules/tracking/infrastructure/carriers/tests/fixtures/msc/msc_initial_load.json'
 import transshipment from '~/modules/tracking/infrastructure/carriers/tests/fixtures/msc/msc_transshipment.json'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
@@ -384,7 +385,7 @@ describe('normalizeMscSnapshot', () => {
 
       const etaDraft = drafts.find((d) => d.type === 'ARRIVAL' && d.event_time_type === 'EXPECTED')
       expect(etaDraft).toBeDefined()
-      expect(etaDraft?.event_time).toBe('2026-02-15')
+      expect(temporalCanonicalText(etaDraft?.event_time ?? null)).toBe('2026-02-15')
       expect(etaDraft?.location_display).toBe('ITAPOA, BR')
       expect(etaDraft?.confidence).toBe('medium')
     })

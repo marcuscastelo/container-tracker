@@ -1,19 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { Instant } from '~/shared/time/instant'
+import {
+  resolveTemporalValue,
+  temporalCanonicalText,
+  temporalValueFromCanonical,
+} from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000002'
 const CONTAINER_NUMBER = 'CXDU2058677'
 const SNAPSHOT_ID = '00000000-0000-0000-0000-000000000001'
 
-function makeObs(overrides: Partial<Observation> = {}): Observation {
+type ObservationOverrides = Omit<Partial<Observation>, 'event_time'> & {
+  readonly event_time?: string | Observation['event_time']
+}
+
+const DEFAULT_EVENT_TIME = temporalValueFromCanonical('2025-11-17T00:00:00.000Z')
+
+function makeObs(overrides: ObservationOverrides = {}): Observation {
+  const { event_time, ...rest } = overrides
+
   return {
     id: '00000000-0000-0000-0000-000000000010',
     fingerprint: 'test-fingerprint',
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'OTHER',
-    event_time: '2025-11-17T00:00:00.000Z',
+    event_time: resolveTemporalValue(event_time, DEFAULT_EVENT_TIME),
     event_time_type: 'ACTUAL', // Default to ACTUAL for tests (confirmed events)
     location_code: 'ITNAP',
     location_display: 'NAPLES, IT',
@@ -24,7 +38,7 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
     provider: 'msc',
     created_from_snapshot_id: SNAPSHOT_ID,
     created_at: '2025-11-17T00:00:00.000Z',
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -55,9 +69,15 @@ describe('deriveTimeline', () => {
       }),
     ]
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, obs)
-    expect(timeline.observations[0]?.event_time).toBe('2025-11-17T00:00:00.000Z')
-    expect(timeline.observations[1]?.event_time).toBe('2025-11-26T00:00:00.000Z')
-    expect(timeline.observations[2]?.event_time).toBe('2026-01-07T00:00:00.000Z')
+    expect(temporalCanonicalText(timeline.observations[0]?.event_time ?? null)).toBe(
+      '2025-11-17T00:00:00.000Z',
+    )
+    expect(temporalCanonicalText(timeline.observations[1]?.event_time ?? null)).toBe(
+      '2025-11-26T00:00:00.000Z',
+    )
+    expect(temporalCanonicalText(timeline.observations[2]?.event_time ?? null)).toBe(
+      '2026-01-07T00:00:00.000Z',
+    )
   })
 
   it('should place observations with null event_time last', () => {
@@ -70,7 +90,9 @@ describe('deriveTimeline', () => {
       }),
     ]
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, obs)
-    expect(timeline.observations[0]?.event_time).toBe('2025-11-17T00:00:00.000Z')
+    expect(temporalCanonicalText(timeline.observations[0]?.event_time ?? null)).toBe(
+      '2025-11-17T00:00:00.000Z',
+    )
     expect(timeline.observations[1]?.event_time).toBeNull()
   })
 
@@ -90,8 +112,8 @@ describe('deriveTimeline', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, obs)
     expect(timeline.holes).toHaveLength(1)
     expect(timeline.holes[0]?.reason).toBe('gap')
-    expect(timeline.holes[0]?.from).toBe('2025-11-17T00:00:00.000Z')
-    expect(timeline.holes[0]?.to).toBe('2025-12-10T00:00:00.000Z')
+    expect(temporalCanonicalText(timeline.holes[0]?.from ?? null)).toBe('2025-11-17T00:00:00.000Z')
+    expect(temporalCanonicalText(timeline.holes[0]?.to ?? null)).toBe('2025-12-10T00:00:00.000Z')
   })
 
   it('should NOT detect gaps <= 14 days', () => {
@@ -119,7 +141,7 @@ describe('deriveTimeline', () => {
 
   it('should set derived_at as a valid ISO string', () => {
     const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [])
-    expect(() => new Date(timeline.derived_at)).not.toThrow()
+    expect(() => Instant.fromIso(timeline.derived_at)).not.toThrow()
   })
 
   it('should use created_at as tiebreaker when event_times are equal', () => {

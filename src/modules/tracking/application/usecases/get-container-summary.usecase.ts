@@ -15,6 +15,8 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
 
 /**
  * Command to retrieve the full tracking summary for a container.
@@ -23,7 +25,7 @@ export type GetContainerSummaryCommand = {
   readonly containerId: string
   readonly containerNumber: string
   readonly podLocationCode?: string | null
-  readonly now?: Date
+  readonly now?: Instant
   readonly includeAcknowledgedAlerts?: boolean
 }
 
@@ -157,7 +159,7 @@ export async function getContainerSummary(
   deps: TrackingUseCasesDeps,
   cmd: GetContainerSummaryCommand,
 ): Promise<GetContainerSummaryResult> {
-  const referenceNow = cmd.now ?? new Date()
+  const referenceNow = cmd.now ?? systemClock.now()
   const includeAcknowledgedAlerts = cmd.includeAcknowledgedAlerts ?? false
   const [observationsRaw, alerts] = await Promise.all([
     deps.observationRepository.findAllByContainerId(cmd.containerId),

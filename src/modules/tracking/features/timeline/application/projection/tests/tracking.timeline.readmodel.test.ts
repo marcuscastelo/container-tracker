@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { toTrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import { instantFromIsoText, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('tracking observation carrier label metadata', () => {
   it('maps carrier_label to carrierLabel in tracking observation projection', () => {
@@ -8,7 +9,7 @@ describe('tracking observation carrier label metadata', () => {
       id: 'obs-1',
       type: 'OTHER',
       carrier_label: 'Custom Carrier Event',
-      event_time: '2026-02-10T10:00:00.000Z',
+      event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
       event_time_type: 'ACTUAL',
       location_code: null,
       location_display: null,
@@ -25,7 +26,7 @@ describe('tracking observation carrier label metadata', () => {
       id: 'obs-1',
       type: 'OTHER',
       carrier_label: null,
-      event_time: '2026-02-10T10:00:00.000Z',
+      event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
       event_time_type: 'ACTUAL',
       location_code: null,
       location_display: null,
@@ -44,7 +45,7 @@ describe('tracking observation carrier label metadata', () => {
           id: 'obs-1',
           type: 'OTHER',
           carrier_label: 'Evento nao mapeado',
-          event_time: '2026-02-10T10:00:00.000Z',
+          event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
           event_time_type: 'ACTUAL',
           location_code: null,
           location_display: null,
@@ -53,7 +54,7 @@ describe('tracking observation carrier label metadata', () => {
           created_at: '2026-02-10T10:00:00.000Z',
         },
       ],
-      new Date('2026-02-11T10:00:00.000Z'),
+      instantFromIsoText('2026-02-11T10:00:00.000Z'),
     )
 
     expect(timeline).toHaveLength(1)

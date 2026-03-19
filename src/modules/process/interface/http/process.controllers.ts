@@ -17,6 +17,7 @@ import {
   ProcessesV2ResponseSchema,
   ProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+import { systemClock } from '~/shared/time/clock'
 
 // ---------------------------------------------------------------------------
 // Dependency types
@@ -68,7 +69,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     try {
       const result = await processUseCases.listProcessesWithOperationalSummary()
       const response = {
-        generated_at: new Date().toISOString(),
+        generated_at: systemClock.now().toIsoString(),
         processes: result.processes.map((p) =>
           toProcessResponseWithSummary(p.pwc, p.summary, p.sync),
         ),
@@ -133,7 +134,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       }
 
       const pwc = result.process
-      const now = new Date()
+      const now = systemClock.now()
       const { containersWithTracking, allAlerts, operationalByContainerId, containersSync } =
         await resolveProcessDetailTracking(pwc, trackingUseCases, now)
 
@@ -221,7 +222,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
 
       await processUseCases.deleteProcess({ processId })
 
-      const deletedAtIso = new Date().toISOString()
+      const deletedAtIso = systemClock.now().toIsoString()
       console.info(
         `[process] PROCESS_DELETED process_id=${processId} reference=${processReference ?? 'null'} container_count=${deletedContainerCount} timestamp=${deletedAtIso}`,
       )

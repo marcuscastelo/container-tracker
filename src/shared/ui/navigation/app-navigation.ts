@@ -1,3 +1,5 @@
+import { systemClock } from '~/shared/time/clock'
+
 type NavigateOptions = {
   readonly replace?: boolean
   readonly scroll?: boolean
@@ -130,7 +132,7 @@ function shouldThrottleDashboardIntent(nowMs: number): boolean {
 }
 
 export function prefetchProcessIntent(command: PrefetchProcessIntentCommand): void {
-  const nowMs = command.nowMs ?? Date.now()
+  const nowMs = command.nowMs ?? systemClock.now().toEpochMs()
   if (shouldThrottleProcessIntent(command.processId, nowMs)) return
 
   rememberProcessIntent(command.processId, nowMs)
@@ -143,7 +145,7 @@ export function prefetchProcessIntent(command: PrefetchProcessIntentCommand): vo
 }
 
 export function prefetchDashboardIntent(command: PrefetchDashboardIntentCommand): void {
-  const nowMs = command.nowMs ?? Date.now()
+  const nowMs = command.nowMs ?? systemClock.now().toEpochMs()
   if (shouldThrottleDashboardIntent(nowMs)) return
 
   lastDashboardIntentAtMs = nowMs

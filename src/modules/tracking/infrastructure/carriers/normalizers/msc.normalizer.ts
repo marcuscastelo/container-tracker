@@ -8,6 +8,7 @@ import type { ObservationType } from '~/modules/tracking/features/observation/do
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema'
 import { parseInstantFromIso } from '~/shared/time/parsing'
+import { calendarDateValue } from '~/shared/time/temporal-value'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
 /**
@@ -149,7 +150,7 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
 }
 
 function computeConfidence(
-  eventTime: string | null,
+  eventTime: ObservationDraft['event_time'],
   locationCode: string | null | undefined,
   type: ObservationType,
   eventTimeType: EventTimeType,
@@ -244,7 +245,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       for (const event of events) {
         const type = mapMscDescription(event.Description)
         const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
-        const eventTime = parsedDate ? parsedDate.toIsoDate() : null
+        const eventTime = parsedDate ? calendarDateValue(parsedDate) : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
         const parsedDetail = parseMscDetail(type, event.Detail, event.Vessel)
@@ -290,7 +291,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
             const etaDraft: ObservationDraft = {
               container_number: containerNumber,
               type: 'ARRIVAL', // ETA implies arrival at POD
-              event_time: parsedEta.toIsoDate(),
+              event_time: calendarDateValue(parsedEta),
               event_time_type: 'EXPECTED',
               location_code: podLocationCode,
               location_display: podLocation,

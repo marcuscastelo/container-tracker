@@ -7,6 +7,7 @@ import {
   toNoMovementDedupKeysFromAlert,
   toNoMovementDedupKeysFromRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.alert-no-movement.dedup'
+import { instantFromIsoText, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 const CONTAINER_ID = '00000000-0000-0000-0000-000000000401'
 const CONTAINER_NUMBER = 'MSCU4014010'
@@ -23,7 +24,7 @@ function makeActualObservation(params: {
     container_id: CONTAINER_ID,
     container_number: CONTAINER_NUMBER,
     type: 'LOAD',
-    event_time: params.eventTime,
+    event_time: temporalValueFromCanonical(params.eventTime),
     event_time_type: 'ACTUAL',
     location_code: 'BRSSZ',
     location_display: 'Santos, BR',
@@ -49,7 +50,13 @@ describe('NO_MOVEMENT dedup policy alignment', () => {
       }),
     ])
 
-    const alerts = deriveAlerts(timeline, 'LOADED', [], false, new Date('2025-11-08T00:00:00.000Z'))
+    const alerts = deriveAlerts(
+      timeline,
+      'LOADED',
+      [],
+      false,
+      instantFromIsoText('2025-11-08T00:00:00.000Z'),
+    )
     const noMovement = alerts.find((alert) => alert.type === 'NO_MOVEMENT')
 
     expect(noMovement).toBeDefined()

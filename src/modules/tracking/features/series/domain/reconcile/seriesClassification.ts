@@ -1,3 +1,11 @@
+import {
+  compareTrackingTemporalValues,
+  isTrackingTemporalValueExpired,
+} from '~/modules/tracking/domain/temporal/tracking-temporal'
+import { systemClock } from '~/shared/time/clock'
+import type { Instant } from '~/shared/time/instant'
+import type { TemporalValue } from '~/shared/time/temporal-value'
+
 /**
  * Event Series Classification (Projection-Only)
  *
@@ -30,7 +38,7 @@ export type SeriesLabel =
  * Minimal shape required for series classification.
  */
 export type ObservationLike = {
-  readonly event_time: string | null
+  readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly created_at: string
 }
@@ -71,7 +79,7 @@ type SeriesClassification<T extends ObservationLike = ObservationLike> = {
  */
 export function classifySeries<T extends ObservationLike>(
   series: readonly T[],
-  now: Date = new Date(),
+  now: Instant = systemClock.now(),
 ): SeriesClassification<T> {
   if (series.length === 0) {
     return {
@@ -81,8 +89,6 @@ export function classifySeries<T extends ObservationLike>(
       conflictingActualCount: 0,
     }
   }
-
-  const nowIso = now.toISOString()
 
   // Separate ACTUAL and EXPECTED observations
   const actuals = series.filter((o) => o.event_time_type === 'ACTUAL')
@@ -95,20 +101,12 @@ export function classifySeries<T extends ObservationLike>(
   // Safe-first primary selection
   let primaryActual: T | null = null
   if (actuals.length > 0) {
-    // Select ACTUAL with max(event_time), tie-breaker: created_at
     primaryActual = actuals.reduce((latest, current) => {
-      // Handle null event_time: use created_at only
-      if (current.event_time === null && latest.event_time === null) {
-        return current.created_at > latest.created_at ? current : latest
-      }
-      if (current.event_time === null) return latest
-      if (latest.event_time === null) return current
-
-      // Both have event_time: compare
-      if (current.event_time > latest.event_time) return current
-      if (current.event_time < latest.event_time) return latest
-
-      // Equal event_time: use created_at as tiebreaker
+      if (current.event_time === null && latest.event_time !== null) return latest
+      if (current.event_time !== null && latest.event_time === null) return current
+      const eventTimeCompare = compareTrackingTemporalValues(current.event_time, latest.event_time)
+      if (eventTimeCompare > 0) return current
+      if (eventTimeCompare < 0) return latest
       return current.created_at > latest.created_at ? current : latest
     })
   }
@@ -129,15 +127,22 @@ export function classifySeries<T extends ObservationLike>(
 
     // EXPECTED classification
     // Rule E1: EXPECTED after ACTUAL is invalid/redundant
-    if (lastActualTime !== null && obs.event_time !== null && obs.event_time >= lastActualTime) {
+    if (
+      lastActualTime !== null &&
+      obs.event_time !== null &&
+      compareTrackingTemporalValues(obs.event_time, lastActualTime) >= 0
+    ) {
       return { ...obs, seriesLabel: 'REDUNDANT_AFTER_ACTUAL' as const }
     }
 
-    // Check if expired (event_time < now)
-    const isExpired = obs.event_time !== null && obs.event_time < nowIso
+    const isExpired = isTrackingTemporalValueExpired(obs.event_time, now)
 
     // Rule E2: EXPECTED before ACTUAL (but not the latest EXPECTED)
-    if (lastActualTime !== null && obs.event_time !== null && obs.event_time < lastActualTime) {
+    if (
+      lastActualTime !== null &&
+      obs.event_time !== null &&
+      compareTrackingTemporalValues(obs.event_time, lastActualTime) < 0
+    ) {
       return { ...obs, seriesLabel: 'SUPERSEDED_EXPECTED' as const }
     }
 
@@ -145,11 +150,15 @@ export function classifySeries<T extends ObservationLike>(
     // Determine if this is the active forecast
     const activeExpecteds = expecteds.filter((exp) => {
       // Exclude redundant EXPECTED (after ACTUAL)
-      if (lastActualTime !== null && exp.event_time !== null && exp.event_time >= lastActualTime) {
+      if (
+        lastActualTime !== null &&
+        exp.event_time !== null &&
+        compareTrackingTemporalValues(exp.event_time, lastActualTime) >= 0
+      ) {
         return false
       }
       // Exclude expired
-      if (exp.event_time !== null && exp.event_time < nowIso) {
+      if (isTrackingTemporalValueExpired(exp.event_time, now)) {
         return false
       }
       return true

@@ -76,17 +76,64 @@ describe('normalizeMaerskSnapshot', () => {
       expect(gateOut?.location_display).toBe('PORT SAID EAST, EG')
     })
 
-    it('should set EXPECTED events with medium confidence', () => {
-      const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
-      // Last events at TANGER MED and SANTOS have event_time_type=EXPECTED
-      const expected = drafts.filter((d) => d.confidence === 'medium')
-      expect(expected.length).toBeGreaterThanOrEqual(1)
+    it('should set EXPECTED events with medium confidence when time is present', () => {
+      const payload = {
+        containers: [
+          {
+            container_num: 'MNBU3094033',
+            locations: [
+              {
+                city: 'SANTOS',
+                country_code: 'BR',
+                location_code: 'BRSSZ',
+                events: [
+                  {
+                    activity: 'CONTAINER ARRIVAL',
+                    event_time: '2026-02-05T10:00:00.000Z',
+                    event_time_type: 'EXPECTED',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('EXPECTED')
+      expect(drafts[0]?.confidence).toBe('medium')
     })
 
-    it('should set ACTUAL events with high confidence', () => {
-      const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
-      const actual = drafts.filter((d) => d.confidence === 'high')
-      expect(actual.length).toBeGreaterThanOrEqual(3)
+    it('should set ACTUAL events with high confidence when time and location are present', () => {
+      const payload = {
+        containers: [
+          {
+            container_num: 'MNBU3094033',
+            locations: [
+              {
+                city: 'SANTOS',
+                country_code: 'BR',
+                location_code: 'BRSSZ',
+                events: [
+                  {
+                    activity: 'LOAD',
+                    event_time: '2026-02-05T10:00:00.000Z',
+                    event_time_type: 'ACTUAL',
+                    vessel_name: 'MAERSK BROWNSVILLE',
+                    voyage_num: '603S',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }
+
+      const drafts = normalizeMaerskSnapshot(makeSnapshot(payload))
+      expect(drafts).toHaveLength(1)
+      expect(drafts[0]?.event_time_type).toBe('ACTUAL')
+      expect(drafts[0]?.confidence).toBe('high')
     })
 
     it('should set provider and snapshot_id on all drafts', () => {
