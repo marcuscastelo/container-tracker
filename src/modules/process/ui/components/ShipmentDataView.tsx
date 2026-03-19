@@ -87,34 +87,6 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
     <Show when={props.selectedContainer}>
       {(container) => (
         <section id="shipment-timeline" class="scroll-mt-30 space-y-3">
-          <div class="flex justify-end">
-            <Show
-              when={props.trackingTimeTravel.isActive()}
-              fallback={
-                <button
-                  type="button"
-                  class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
-                  onClick={() => props.trackingTimeTravel.open()}
-                >
-                  {t(keys.shipmentView.timeTravel.open)}
-                </button>
-              }
-            >
-              <TrackingTimeTravelBar
-                isLoading={props.trackingTimeTravel.isLoading()}
-                errorMessage={props.trackingTimeTravel.errorMessage()}
-                syncs={props.trackingTimeTravel.value()?.syncs ?? []}
-                selectedSync={props.trackingTimeTravel.selectedSync()}
-                isDebugOpen={props.trackingTimeTravel.isDebugOpen()}
-                onClose={props.trackingTimeTravel.close}
-                onToggleDebug={props.trackingTimeTravel.toggleDebug}
-                onSelectSnapshot={props.trackingTimeTravel.selectSnapshot}
-                onPrevious={props.trackingTimeTravel.selectPrevious}
-                onNext={props.trackingTimeTravel.selectNext}
-              />
-            </Show>
-          </div>
-
           <ErrorBoundary
             fallback={(err) => {
               console.error('Timeline panel render failure:', err)
@@ -203,6 +175,7 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
 }
 
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
+  const { t, keys } = useTranslation()
   const isHistoricalMode = () => props.trackingTimeTravel.isActive()
 
   return (
@@ -226,6 +199,36 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
           onUnacknowledgeAlert={props.onUnacknowledgeAlert}
         />
       </Show>
+
+      <div class="sticky top-4 z-30">
+        <Show
+          when={isHistoricalMode()}
+          fallback={
+            <div class="flex justify-end">
+              <button
+                type="button"
+                class="rounded-md border border-border bg-surface px-3 py-2 text-xs-ui font-medium text-foreground"
+                onClick={() => props.trackingTimeTravel.open()}
+              >
+                {t(keys.shipmentView.timeTravel.open)}
+              </button>
+            </div>
+          }
+        >
+          <TrackingTimeTravelBar
+            isLoading={props.trackingTimeTravel.isLoading()}
+            errorMessage={props.trackingTimeTravel.errorMessage()}
+            syncs={props.trackingTimeTravel.value()?.syncs ?? []}
+            selectedSync={props.trackingTimeTravel.selectedSync()}
+            isDebugOpen={props.trackingTimeTravel.isDebugOpen()}
+            onClose={props.trackingTimeTravel.close}
+            onToggleDebug={props.trackingTimeTravel.toggleDebug}
+            onSelectSnapshot={props.trackingTimeTravel.selectSnapshot}
+            onPrevious={props.trackingTimeTravel.selectPrevious}
+            onNext={props.trackingTimeTravel.selectNext}
+          />
+        </Show>
+      </div>
 
       <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div class="space-y-4">

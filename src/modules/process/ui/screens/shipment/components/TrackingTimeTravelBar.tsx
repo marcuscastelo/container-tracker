@@ -28,7 +28,7 @@ export function TrackingTimeTravelBar(props: TrackingTimeTravelBarProps): JSX.El
   const hasNext = () => selectedIndex() >= 0 && selectedIndex() < props.syncs.length - 1
 
   return (
-    <section class="rounded-xl border border-border/70 bg-surface px-3 py-3 w-full">
+    <section class="w-full rounded-xl border border-border/70 bg-surface-elevated/95 px-3 py-3 shadow-2xl backdrop-blur">
       <div class="flex flex-wrap items-center gap-2">
         <span class="inline-flex rounded-full border border-tone-info-border bg-tone-info-bg px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-tone-info-fg">
           {t(keys.shipmentView.timeTravel.badge)}
