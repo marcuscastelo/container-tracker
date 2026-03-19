@@ -130,6 +130,9 @@ export type Database = {
           created_at: string
           created_from_snapshot_id: string | null
           event_date: string | null
+          /**
+           * @deprecated
+           */
           event_time: string | null
           event_time_instant: string | null
           event_time_type: string
