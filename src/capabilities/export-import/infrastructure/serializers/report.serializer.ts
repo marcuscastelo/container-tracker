@@ -345,7 +345,6 @@ export async function serializeReportExport(command: {
 }): Promise<SerializedExportFile> {
   const datePart = toIsoDatePart(command.report.exportedAt)
   const rows = toFlatRows(command.report)
-  const trelloFiles = buildTrelloMarkdownFiles(command.report)
 
   switch (command.format) {
     case 'json':
@@ -378,7 +377,8 @@ export async function serializeReportExport(command: {
         contentType: 'application/pdf',
         content: serializeSimplePdf(command.report),
       }
-    case 'trello':
+    case 'trello': {
+      const trelloFiles = buildTrelloMarkdownFiles(command.report)
       if (command.report.scope === 'single_process') {
         const firstFile = trelloFiles[0]
         return {
@@ -395,5 +395,6 @@ export async function serializeReportExport(command: {
           files: trelloFiles,
         }),
       }
+    }
   }
 }
