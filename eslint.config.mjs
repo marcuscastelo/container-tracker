@@ -349,12 +349,48 @@ export default [
       'container-tracker': containerTrackerEslintPlugin,
     },
   },
+  // TODO: move to plugin in platform
   {
     files: ['src/modules/**/ui/**/*.{ts,tsx}'],
     rules: {
       'container-tracker/no-iife-in-jsx': 'warn',
     },
   },
+  {
+    files: [
+      'src/modules/*/ui/**/*.tsx',
+      'src/modules/*/features/*/ui/**/*.tsx',
+      'src/capabilities/*/ui/**/*.tsx',
+      'src/shared/ui/**/*.tsx',
+    ],
+    rules: {
+      'container-tracker/no-jsx-short-circuit': 'error',
+      'container-tracker/no-jsx-ternary': 'error',
+    },
+  },
+  {
+    files: ['src/**/*.vm.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportNamedDeclaration > FunctionDeclaration',
+          message: '*.vm.ts files must export shape/type/constants only, not behavioral functions.',
+        },
+        {
+          selector:
+            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='ArrowFunctionExpression']",
+          message: '*.vm.ts files must not export behavioral arrow functions.',
+        },
+        {
+          selector:
+            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='FunctionExpression']",
+          message: '*.vm.ts files must not export behavioral function expressions.',
+        },
+      ],
+    },
+  },
+  // --- App Only --- (DO NOT MOVE TO PLATFORM PLUGIN)
   {
     files: ['src/routes/api/**/*.{ts,tsx}'],
     rules: {
@@ -524,18 +560,6 @@ export default [
     },
   },
   {
-    files: [
-      'src/modules/*/ui/**/*.tsx',
-      'src/modules/*/features/*/ui/**/*.tsx',
-      'src/capabilities/*/ui/**/*.tsx',
-      'src/shared/ui/**/*.tsx',
-    ],
-    rules: {
-      'container-tracker/no-jsx-short-circuit': 'error',
-      'container-tracker/no-jsx-ternary': 'error',
-    },
-  },
-  {
     files: ['src/capabilities/**/*.{ts,tsx}'],
     ignores: ['src/capabilities/*/ui/**/*.{ts,tsx}'],
     rules: {
@@ -552,28 +576,6 @@ export default [
         patterns: domainLayerRestrictedPatterns,
         paths: schemaLibraryPaths,
       }),
-    },
-  },
-  {
-    files: ['src/**/*.vm.ts'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: 'ExportNamedDeclaration > FunctionDeclaration',
-          message: '*.vm.ts files must export shape/type/constants only, not behavioral functions.',
-        },
-        {
-          selector:
-            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='ArrowFunctionExpression']",
-          message: '*.vm.ts files must not export behavioral arrow functions.',
-        },
-        {
-          selector:
-            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='FunctionExpression']",
-          message: '*.vm.ts files must not export behavioral function expressions.',
-        },
-      ],
     },
   },
   {
