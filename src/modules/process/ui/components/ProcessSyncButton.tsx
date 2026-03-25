@@ -5,6 +5,7 @@ type SyncStatus = ProcessSyncStatus
 type LocalSyncFeedback = 'success' | 'error' | null
 
 // TODO: `resolveProcessSyncVisualState` should ideally not be in a .tsx file
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/244
 export function resolveProcessSyncVisualState(command: {
   readonly statusFromServer: SyncStatus
   readonly isSubmitting: boolean
