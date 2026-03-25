@@ -50,7 +50,8 @@
     "rebuild-restart:linux": "pnpm run agent:rebuild-restart:linux",
     "supabase:gen-types": "yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh > src/shared/supabase/database.types.ts && pnpm run fix",
     "knip": "knip",
-    "knip:files": "knip --files --no-progress"
+    "knip:files": "knip --files --no-progress",
+    "deps:marcus:update": "pnpm up \"@marcuscastelo/*\" -r --latest"
   },
   "dependencies": {
     "@msviderok/base-ui-solid": "1.0.0-beta.9",
@@ -69,9 +70,9 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@eslint/js": "^10.0.1",
-    "@marcuscastelo/eslint-config": "^0.2.1",
+    "@marcuscastelo/eslint-config": "^0.2.2",
     "@marcuscastelo/eslint-plugin": "^0.2.1",
-    "@marcuscastelo/tsconfig": "^0.1.1",
+    "@marcuscastelo/tsconfig": "^0.1.2",
     "@tailwindcss/vite": "^4.0.7",
     "@types/i18next": "^13.0.0",
     "@types/node": "^25.2.3",
