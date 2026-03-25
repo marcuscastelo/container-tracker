@@ -70,7 +70,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@eslint/js": "^10.0.1",
-    "@marcuscastelo/eslint-config": "^0.2.2",
+    "@marcuscastelo/eslint-config": "^0.2.3",
     "@marcuscastelo/eslint-plugin": "^0.2.1",
     "@marcuscastelo/tsconfig": "^0.1.2",
     "@tailwindcss/vite": "^4.0.7",
