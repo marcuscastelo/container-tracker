@@ -7,19 +7,27 @@ import { toProcessSource } from '~/modules/process/domain/identity/process-sourc
 import { createProcessEntity } from '~/modules/process/domain/process.entity'
 import { Instant } from '~/shared/time/instant'
 
+type TestContainer = {
+  readonly id: string
+  readonly processId: string
+  readonly containerNumber: string
+  readonly carrierCode: string | null
+  readonly carrierAssignmentMode: 'AUTO' | 'MANUAL'
+  readonly createdAt: Instant
+}
+
 function makeContainer(command: {
   readonly id: string
   readonly processId: string
   readonly containerNumber: string
   readonly carrierCode: string | null
   readonly carrierAssignmentMode: 'AUTO' | 'MANUAL'
-}): Record<string, unknown> {
-  // Use a plain test fixture object instead of importing cross-BC domain constructors
+}): TestContainer {
   return {
     id: command.id,
     processId: command.processId,
     containerNumber: command.containerNumber,
-    carrierCode: command.carrierCode ?? null,
+    carrierCode: command.carrierCode,
     carrierAssignmentMode: command.carrierAssignmentMode,
     createdAt: Instant.fromIso('2026-03-01T10:00:00.000Z'),
   }
@@ -97,7 +105,6 @@ describe('normalize-auto-carriers.usecase', () => {
       if (index >= 0) {
         stateContainers[index] = updated
       }
-      // return a plain test fixture (typed as any) to satisfy the usecase contract
       return updated
     })
 

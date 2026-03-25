@@ -36,6 +36,10 @@ export function loadProjectResources() {
       continue
     }
     const key = match[1]
+    if (!key) {
+      console.warn(`Skipping locale module with empty locale key: ${path}`)
+      continue
+    }
     // modules[path] may be `{ default: {...} }` when using eager import, or the object itself.
     const mod: unknown = modules[path]
     if (mod == null) {
@@ -65,8 +69,10 @@ export function loadProjectResources() {
       const fallback = safeParseOrDefault(defaultExport, z.record(z.string(), z.unknown()), null)
       if (fallback) translation = fallback
     }
-    if (translation) resources[key] = { translation }
-    availableLocales.push(key)
+    if (translation) {
+      resources[key] = { translation }
+      availableLocales.push(key)
+    }
     console.debug(`Loaded locale '${key}' with ${Object.keys(translation ?? {}).length} keys`)
   }
 

@@ -206,6 +206,8 @@ function HeaderMeta(props: {
 
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const translate = (key: string, options?: Record<string, unknown>): string =>
+    options === undefined ? t(key) : t(key, options)
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
 
@@ -217,7 +219,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
           statusCode: props.data.statusCode,
           statusMicrobadge: props.data.statusMicrobadge,
         },
-        t,
+        t: translate,
         keys,
       }).primary,
   )

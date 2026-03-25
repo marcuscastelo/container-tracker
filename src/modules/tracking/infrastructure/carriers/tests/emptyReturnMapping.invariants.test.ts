@@ -61,7 +61,7 @@ describe('empty-return mapping invariants', () => {
       drafts.map((draft, index) => ({
         id: `obs-${index + 1}`,
         type: draft.type,
-        carrier_label: draft.carrier_label ?? undefined,
+        carrier_label: draft.carrier_label ?? null,
         event_time: draft.event_time,
         event_time_type: draft.event_time_type,
         location_code: draft.location_code,
@@ -101,7 +101,7 @@ describe('empty-return mapping invariants', () => {
       confidence: draft.confidence,
       provider: draft.provider,
       created_from_snapshot_id: SNAPSHOT_ID,
-      carrier_label: draft.carrier_label,
+      carrier_label: draft.carrier_label ?? null,
       created_at: temporalCanonicalText(draft.event_time) ?? `2026-02-03T10:00:0${index}.000Z`,
     }))
 

@@ -80,6 +80,14 @@ function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
   }
 }
 
+function requireAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) {
+    throw new Error(`Expected item at index ${index}`)
+  }
+  return item
+}
+
 describe('toContainerSummaryRowVMs', () => {
   it('maps status label from tracking status key', () => {
     const container = makeContainer({
@@ -88,6 +96,7 @@ describe('toContainerSummaryRowVMs', () => {
     })
     const command = makeMapperCommand([container])
     const [row] = toContainerSummaryRowVMs(command)
+    if (!row) throw new Error('Expected row at index 0')
 
     expect(row.statusVariant).toBe('orange-500')
     expect(row.statusLabel).toBe(command.t(command.keys.tracking.status.DISCHARGED))
@@ -111,9 +120,11 @@ describe('toContainerSummaryRowVMs', () => {
       },
     })
     const rows = toContainerSummaryRowVMs(makeMapperCommand([delayed, unavailable]))
+    const delayedRow = requireAt(rows, 0)
+    const unavailableRow = requireAt(rows, 1)
 
-    expect(rows[0].etaLabel).toBe('ETA 2026-03-10 · delayed')
-    expect(rows[1].etaLabel).toBe('ETA —')
+    expect(delayedRow.etaLabel).toBe('ETA 2026-03-10 · delayed')
+    expect(unavailableRow.etaLabel).toBe('ETA —')
   })
 
   it('formats updatedAgoLabel from relative time and keeps null when missing', () => {
@@ -127,6 +138,8 @@ describe('toContainerSummaryRowVMs', () => {
     })
     const command = makeMapperCommand([withSyncTime, withoutSyncTime])
     const rows = toContainerSummaryRowVMs(command)
+    const withSyncRow = requireAt(rows, 0)
+    const withoutSyncRow = requireAt(rows, 1)
 
     const expectedRelative = formatRelativeTime(
       parseInstantFromIso(withSyncTime.sync.relativeTimeAt ?? '') ?? command.now,
@@ -134,7 +147,7 @@ describe('toContainerSummaryRowVMs', () => {
       command.locale,
     )
 
-    expect(rows[0].updatedAgoLabel).toBe(command.updatedLabel(expectedRelative))
-    expect(rows[1].updatedAgoLabel).toBeNull()
+    expect(withSyncRow.updatedAgoLabel).toBe(command.updatedLabel(expectedRelative))
+    expect(withoutSyncRow.updatedAgoLabel).toBeNull()
   })
 })

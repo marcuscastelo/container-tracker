@@ -11,41 +11,44 @@ import { parseTemporalValue } from '~/shared/time/parsing'
 
 export type ProcessListItemSource = {
   id: string
-  reference?: string | null
-  origin?: { display_name?: string | null } | null
-  destination?: { display_name?: string | null } | null
-  carrier?: string | null
-  default_carrier_code?: string | null
-  carrier_mode?: 'AUTO' | 'MANUAL'
-  effective_carrier_summary?: 'UNKNOWN' | 'SINGLE' | 'MIXED'
-  effective_carrier_codes?: readonly string[]
-  importer_id?: string | null
-  importer_name?: string | null
-  exporter_name?: string | null
-  bill_of_lading?: string | null
-  booking_number?: string | null
+  reference?: string | null | undefined
+  origin?: { display_name?: string | null | undefined } | null | undefined
+  destination?: { display_name?: string | null | undefined } | null | undefined
+  carrier?: string | null | undefined
+  default_carrier_code?: string | null | undefined
+  carrier_mode?: 'AUTO' | 'MANUAL' | undefined
+  effective_carrier_summary?: 'UNKNOWN' | 'SINGLE' | 'MIXED' | undefined
+  effective_carrier_codes?: readonly string[] | undefined
+  importer_id?: string | null | undefined
+  importer_name?: string | null | undefined
+  exporter_name?: string | null | undefined
+  bill_of_lading?: string | null | undefined
+  booking_number?: string | null | undefined
   source: string
   created_at: string
   updated_at: string
   containers: Array<{
     id: string
     container_number: string
-    carrier_code?: string | null
+    carrier_code?: string | null | undefined
   }>
-  process_status?: string | null
-  status_microbadge?: {
-    status?: string | null
-    count?: number | null
-  } | null
-  eta?: TemporalValueDto | null
-  alerts_count?: number
-  highest_alert_severity?: 'info' | 'warning' | 'danger' | null
-  dominant_alert_created_at?: string | null
-  has_transshipment?: boolean
-  last_event_at?: TemporalValueDto | null
-  redestination_number?: string | null
-  last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN'
-  last_sync_at?: string | null
+  process_status?: string | null | undefined
+  status_microbadge?:
+    | {
+        status?: string | null | undefined
+        count?: number | null | undefined
+      }
+    | null
+    | undefined
+  eta?: TemporalValueDto | null | undefined
+  alerts_count?: number | undefined
+  highest_alert_severity?: 'info' | 'warning' | 'danger' | null | undefined
+  dominant_alert_created_at?: string | null | undefined
+  has_transshipment?: boolean | undefined
+  last_event_at?: TemporalValueDto | null | undefined
+  redestination_number?: string | null | undefined
+  last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN' | undefined
+  last_sync_at?: string | null | undefined
 }
 
 type EffectiveCarrierProjection = {
@@ -70,6 +73,13 @@ function toTimestampOrNull(value: TemporalValueDto | null | undefined): number |
   return toComparableInstant(parsed, { timezone: 'UTC', strategy: 'start-of-day' }).toEpochMs()
 }
 
+function toOptionalLocationDisplay(
+  value: ProcessListItemSource['origin'] | ProcessListItemSource['destination'],
+): { display_name?: string | null } | null {
+  if (value === null || value === undefined) return null
+  return value.display_name === undefined ? {} : { display_name: value.display_name ?? null }
+}
+
 function toEffectiveCarrierProjection(process: ProcessListItemSource): EffectiveCarrierProjection {
   const declaredCodes =
     process.effective_carrier_codes?.map((code) => toOptionalNonBlankString(code)) ?? []
@@ -82,16 +92,32 @@ function toEffectiveCarrierProjection(process: ProcessListItemSource): Effective
   )
 
   if (normalizedDeclaredCodes.length === 1) {
+    const firstDeclaredCode = normalizedDeclaredCodes[0]
+    if (!firstDeclaredCode) {
+      return {
+        summary: process.effective_carrier_summary ?? 'UNKNOWN',
+        label: 'Unknown',
+      }
+    }
+
     return {
       summary: process.effective_carrier_summary ?? 'SINGLE',
-      label: normalizedDeclaredCodes[0],
+      label: firstDeclaredCode,
     }
   }
 
   if (normalizedDeclaredCodes.length > 1) {
+    const primaryDeclaredCode = normalizedDeclaredCodes[0]
+    if (!primaryDeclaredCode) {
+      return {
+        summary: process.effective_carrier_summary ?? 'UNKNOWN',
+        label: 'Unknown',
+      }
+    }
+
     return {
       summary: process.effective_carrier_summary ?? 'MIXED',
-      label: `${normalizedDeclaredCodes[0]} +${normalizedDeclaredCodes.length - 1}`,
+      label: `${primaryDeclaredCode} +${normalizedDeclaredCodes.length - 1}`,
     }
   }
 
@@ -111,15 +137,31 @@ function toEffectiveCarrierProjection(process: ProcessListItemSource): Effective
   }
 
   if (uniqueUpperContainerCarriers.length === 1) {
+    const primaryContainerCarrier = uniqueUpperContainerCarriers[0]
+    if (!primaryContainerCarrier) {
+      return {
+        summary: process.effective_carrier_summary ?? 'UNKNOWN',
+        label: 'Unknown',
+      }
+    }
+
     return {
       summary: 'SINGLE',
-      label: uniqueUpperContainerCarriers[0],
+      label: primaryContainerCarrier,
+    }
+  }
+
+  const primaryContainerCarrier = uniqueUpperContainerCarriers[0]
+  if (!primaryContainerCarrier) {
+    return {
+      summary: process.effective_carrier_summary ?? 'UNKNOWN',
+      label: 'Unknown',
     }
   }
 
   return {
     summary: 'MIXED',
-    label: `${uniqueUpperContainerCarriers[0]} +${uniqueUpperContainerCarriers.length - 1}`,
+    label: `${primaryContainerCarrier} +${uniqueUpperContainerCarriers.length - 1}`,
   }
 }
 
@@ -146,8 +188,8 @@ export function toProcessSummaryVMs(
     return {
       id: process.id,
       reference: process.reference ?? null,
-      origin: process.origin,
-      destination: process.destination,
+      origin: toOptionalLocationDisplay(process.origin),
+      destination: toOptionalLocationDisplay(process.destination),
       importerId: toOptionalNonBlankString(process.importer_id),
       importerName: toOptionalNonBlankString(process.importer_name),
       exporterName: toOptionalNonBlankString(process.exporter_name),
@@ -162,7 +204,7 @@ export function toProcessSummaryVMs(
       eta,
       etaMsOrNull: toTimestampOrNull(eta),
       carrier: toOptionalNonBlankString(process.default_carrier_code ?? process.carrier),
-      carrierMode: process.carrier_mode,
+      ...(process.carrier_mode === undefined ? {} : { carrierMode: process.carrier_mode }),
       effectiveCarrierSummary: process.effective_carrier_summary ?? effectiveCarrier.summary,
       effectiveCarrierLabel: effectiveCarrier.label,
       alertsCount: process.alerts_count ?? 0,

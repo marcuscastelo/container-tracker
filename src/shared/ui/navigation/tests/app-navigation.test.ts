@@ -42,7 +42,7 @@ describe('app-navigation helpers', () => {
         href: '/shipments/p-123',
       }),
     ).toBe(true)
-    expect(navigate).toHaveBeenCalledWith('/shipments/p-123', { replace: undefined })
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-123', undefined)
 
     navigate.mockClear()
 
@@ -62,7 +62,7 @@ describe('app-navigation helpers', () => {
       processId: 'p-abc',
     })
 
-    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc', { replace: undefined })
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc', undefined)
   })
 
   it('navigates to process container deep-link through canonical helper', () => {
@@ -73,9 +73,7 @@ describe('app-navigation helpers', () => {
       containerNumber: 'mscu7654321',
     })
 
-    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', {
-      replace: undefined,
-    })
+    expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', undefined)
   })
 
   it('prefetches process intent with throttle', async () => {

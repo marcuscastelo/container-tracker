@@ -133,6 +133,45 @@ function getRecentArchivedProcessCutoff(now: Date): string {
   ).toISOString()
 }
 
+function toOptionalIsoString(
+  value: { readonly toISOString: () => string } | null | undefined,
+): string | null | undefined {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  return value.toISOString()
+}
+
+function toSyncTargetContainerRecord(container: {
+  readonly id: string | number
+  readonly processId: string | number
+  readonly containerNumber: string
+  readonly carrierCode: string | null
+  readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL'
+  readonly carrierDetectedAt?: { readonly toISOString: () => string } | null
+  readonly carrierDetectionSource?:
+    | 'process-seed'
+    | 'auto-detect'
+    | 'manual-user'
+    | 'legacy-backfill'
+    | null
+}) {
+  const carrierDetectedAt = toOptionalIsoString(container.carrierDetectedAt)
+
+  return {
+    id: String(container.id),
+    processId: String(container.processId),
+    containerNumber: String(container.containerNumber),
+    carrierCode: container.carrierCode ? String(container.carrierCode) : null,
+    ...(container.carrierAssignmentMode !== undefined
+      ? { carrierAssignmentMode: container.carrierAssignmentMode }
+      : {}),
+    ...(carrierDetectedAt !== undefined ? { carrierDetectedAt } : {}),
+    ...(container.carrierDetectionSource !== undefined
+      ? { carrierDetectionSource: container.carrierDetectionSource ?? null }
+      : {}),
+  }
+}
+
 export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetReadPort {
   return {
     async fetchProcessById(command) {
@@ -142,14 +181,20 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
 
       if (!result.process) return null
 
+      const carrierResolvedAt = toOptionalIsoString(result.process.carrierResolvedAt)
+
       return {
         id: result.process.id,
-        carrierMode: result.process.carrierMode,
-        defaultCarrierCode: result.process.defaultCarrierCode,
-        lastResolvedCarrierCode: result.process.lastResolvedCarrierCode,
-        carrierResolvedAt: result.process.carrierResolvedAt
-          ? result.process.carrierResolvedAt.toISOString()
-          : null,
+        ...(result.process.carrierMode !== undefined
+          ? { carrierMode: result.process.carrierMode }
+          : {}),
+        ...(result.process.defaultCarrierCode !== undefined
+          ? { defaultCarrierCode: result.process.defaultCarrierCode }
+          : {}),
+        ...(result.process.lastResolvedCarrierCode !== undefined
+          ? { lastResolvedCarrierCode: result.process.lastResolvedCarrierCode }
+          : {}),
+        ...(carrierResolvedAt !== undefined ? { carrierResolvedAt } : {}),
       }
     },
 
@@ -175,17 +220,7 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
       })
 
       return {
-        containers: result.containers.map((container) => ({
-          id: String(container.id),
-          processId: String(container.processId),
-          containerNumber: String(container.containerNumber),
-          carrierCode: container.carrierCode ? String(container.carrierCode) : null,
-          carrierAssignmentMode: container.carrierAssignmentMode,
-          carrierDetectedAt: container.carrierDetectedAt
-            ? container.carrierDetectedAt.toISOString()
-            : null,
-          carrierDetectionSource: container.carrierDetectionSource ?? null,
-        })),
+        containers: result.containers.map((container) => toSyncTargetContainerRecord(container)),
       }
     },
 
@@ -215,17 +250,12 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
       for (const [processId, containers] of result.containersByProcessId.entries()) {
         containersByProcessId.set(
           processId,
-          containers.map((container) => ({
-            id: String(container.id),
-            processId,
-            containerNumber: String(container.containerNumber),
-            carrierCode: container.carrierCode ? String(container.carrierCode) : null,
-            carrierAssignmentMode: container.carrierAssignmentMode,
-            carrierDetectedAt: container.carrierDetectedAt
-              ? container.carrierDetectedAt.toISOString()
-              : null,
-            carrierDetectionSource: container.carrierDetectionSource ?? null,
-          })),
+          containers.map((container) =>
+            toSyncTargetContainerRecord({
+              ...container,
+              processId,
+            }),
+          ),
         )
       }
 
@@ -238,17 +268,7 @@ export function createSyncTargetReadPort(deps: CreateSyncPortsDeps): SyncTargetR
       })
 
       return {
-        containers: result.containers.map((container) => ({
-          id: String(container.id),
-          processId: String(container.processId),
-          containerNumber: String(container.containerNumber),
-          carrierCode: container.carrierCode ? String(container.carrierCode) : null,
-          carrierAssignmentMode: container.carrierAssignmentMode,
-          carrierDetectedAt: container.carrierDetectedAt
-            ? container.carrierDetectedAt.toISOString()
-            : null,
-          carrierDetectionSource: container.carrierDetectionSource ?? null,
-        })),
+        containers: result.containers.map((container) => toSyncTargetContainerRecord(container)),
       }
     },
   }
@@ -272,6 +292,9 @@ export function createSyncQueuePort(deps: { readonly defaultTenantId: string }):
 
       const parsed = EnqueueSyncRequestRowsSchema.parse(data)
       const row = parsed[0]
+      if (row === undefined) {
+        throw new Error('enqueue_sync_request returned no rows')
+      }
 
       return {
         id: row.id,

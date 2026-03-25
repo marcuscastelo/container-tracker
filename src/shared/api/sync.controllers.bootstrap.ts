@@ -217,7 +217,7 @@ const carrierDetectionWritePort = {
   async recordDetectionRun(command: {
     readonly processId: string
     readonly containerNumber: string
-    readonly containerId?: string
+    readonly containerId?: string | undefined
     readonly candidateProviders: readonly SupportedSyncProvider[]
     readonly attempts: readonly {
       readonly provider: SupportedSyncProvider
@@ -233,7 +233,7 @@ const carrierDetectionWritePort = {
     const containerId = await resolveContainerIdForDetectionRun({
       processId: command.processId,
       containerNumber: command.containerNumber,
-      providedContainerId: command.containerId,
+      ...(command.containerId !== undefined ? { providedContainerId: command.containerId } : {}),
     })
 
     const run = await getOrCreateRunningDetectionRun({

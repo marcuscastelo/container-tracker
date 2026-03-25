@@ -1,8 +1,89 @@
 // import js from '@eslint/js'
-// biome-ignore lint/performance/noNamespaceImport: This is how ESLint configs are structured
-import * as tsParser from '@typescript-eslint/parser'
-import solid from 'eslint-plugin-solid/configs/typescript'
+
+import platformConfig from '@marcuscastelo/eslint-config/solid'
 import { containerTrackerEslintPlugin } from '#container-tracker-eslint-plugin'
+
+const moduleApplicationFiles = [
+  'src/modules/*/application/**/*.{ts,tsx}',
+  'src/modules/*/features/*/application/**/*.{ts,tsx}',
+]
+
+const trackingModuleApplicationFiles = [
+  'src/modules/tracking/application/**/*.{ts,tsx}',
+  'src/modules/tracking/features/*/application/**/*.{ts,tsx}',
+]
+
+const moduleUiFiles = [
+  'src/modules/*/ui/**/*.{ts,tsx}',
+  'src/modules/*/features/*/ui/**/*.{ts,tsx}',
+]
+
+const trackingModuleUiFiles = [
+  'src/modules/tracking/ui/**/*.{ts,tsx}',
+  'src/modules/tracking/features/*/ui/**/*.{ts,tsx}',
+]
+
+const moduleUiComponentFiles = [
+  'src/modules/*/ui/components/**/*.{ts,tsx}',
+  'src/modules/*/features/*/ui/components/**/*.{ts,tsx}',
+]
+
+const trackingModuleUiComponentFiles = [
+  'src/modules/tracking/ui/components/**/*.{ts,tsx}',
+  'src/modules/tracking/features/*/ui/components/**/*.{ts,tsx}',
+]
+
+const moduleUiPageFiles = [
+  'src/modules/*/ui/screens/**/*.{ts,tsx}',
+  'src/modules/*/ui/routes/**/*.{ts,tsx}',
+  'src/modules/*/ui/pages/**/*.{ts,tsx}',
+  'src/modules/*/ui/*View.tsx',
+  'src/modules/*/ui/*Dialog.tsx',
+  'src/modules/*/ui/**/index.tsx',
+  'src/modules/*/features/*/ui/screens/**/*.{ts,tsx}',
+  'src/modules/*/features/*/ui/routes/**/*.{ts,tsx}',
+  'src/modules/*/features/*/ui/pages/**/*.{ts,tsx}',
+  'src/modules/*/features/*/ui/*View.tsx',
+  'src/modules/*/features/*/ui/*Dialog.tsx',
+  'src/modules/*/features/*/ui/**/index.tsx',
+]
+
+const trackingModuleUiPageFiles = [
+  'src/modules/tracking/ui/screens/**/*.{ts,tsx}',
+  'src/modules/tracking/ui/routes/**/*.{ts,tsx}',
+  'src/modules/tracking/ui/pages/**/*.{ts,tsx}',
+  'src/modules/tracking/ui/*View.tsx',
+  'src/modules/tracking/ui/*Dialog.tsx',
+  'src/modules/tracking/ui/**/index.tsx',
+  'src/modules/tracking/features/*/ui/screens/**/*.{ts,tsx}',
+  'src/modules/tracking/features/*/ui/routes/**/*.{ts,tsx}',
+  'src/modules/tracking/features/*/ui/pages/**/*.{ts,tsx}',
+  'src/modules/tracking/features/*/ui/*View.tsx',
+  'src/modules/tracking/features/*/ui/*Dialog.tsx',
+  'src/modules/tracking/features/*/ui/**/index.tsx',
+]
+
+const nonModuleUiFiles = ['src/capabilities/*/ui/**/*.{ts,tsx}', 'src/shared/ui/**/*.{ts,tsx}']
+
+const nonModuleUiComponentFiles = [
+  'src/capabilities/*/ui/components/**/*.{ts,tsx}',
+  'src/shared/ui/**/*.{ts,tsx}',
+]
+
+const nonModuleUiPageFiles = [
+  'src/capabilities/*/ui/screens/**/*.{ts,tsx}',
+  'src/capabilities/*/ui/routes/**/*.{ts,tsx}',
+  'src/capabilities/*/ui/pages/**/*.{ts,tsx}',
+  'src/capabilities/*/ui/*View.tsx',
+  'src/capabilities/*/ui/*Dialog.tsx',
+  'src/capabilities/*/ui/**/index.tsx',
+  'src/capabilities/search/ui/SearchOverlay.tsx',
+]
+
+const moduleDomainFiles = [
+  'src/modules/*/domain/**/*.{ts,tsx}',
+  'src/modules/*/features/*/domain/**/*.{ts,tsx}',
+]
 
 const schemaLibraryPaths = [
   {
@@ -129,9 +210,131 @@ const trackingReadModelRestrictedPaths = [
   },
 ]
 
+const createRestrictedImportsRule = ({ patterns = [], paths = [] } = {}) => [
+  'error',
+  {
+    ...(patterns.length > 0 ? { patterns } : {}),
+    ...(paths.length > 0 ? { paths } : {}),
+  },
+]
+
+const moduleBoundaryRestrictedPatterns = [
+  {
+    group: ['~/capabilities/**'],
+    message: 'Modules must not depend on capabilities.',
+  },
+]
+
+const apiRouteRestrictedPatterns = [
+  {
+    group: ['~/modules/*/application/**', '~/modules/*/domain/**', '~/modules/*/infrastructure/**'],
+    message: 'API routes must be thin adapters and depend only on interface/http controllers.',
+  },
+  {
+    group: [
+      '~/capabilities/*/application/**',
+      '~/capabilities/*/domain/**',
+      '~/capabilities/*/infrastructure/**',
+      '~/capabilities/*/ui/**',
+    ],
+    message: 'API routes must use capability interface/http adapters instead of internal layers.',
+  },
+]
+
+const applicationLayerRestrictedPatterns = [
+  {
+    group: ['~/shared/ui/**'],
+    message: 'Application layer must not import UI types/components from shared/ui.',
+  },
+  {
+    group: ['~/shared/api-schemas/**'],
+    message: 'Application layer must not depend on HTTP DTO schemas from shared/api-schemas.',
+  },
+]
+
+const moduleApplicationRestrictedPatterns = [
+  ...moduleBoundaryRestrictedPatterns,
+  ...applicationLayerRestrictedPatterns,
+]
+
+const uiValidationRestrictedPattern = {
+  group: [
+    '~/modules/*/ui/validation/**',
+    '~/capabilities/*/ui/validation/**',
+    '../validation/**',
+    '../../validation/**',
+    '../../../validation/**',
+    '../../../../validation/**',
+    '**/*schema*',
+    '**/*validation*',
+  ],
+  message:
+    'Visual components must not import schema/validation modules. Move parsing to ui/validation.',
+}
+
+const uiPageSchemaRestrictedPattern = {
+  group: ['~/shared/api-schemas/**', '**/*schema*'],
+  message: 'Pages-like UI files must delegate schema parsing to ui/validation or interface/http.',
+}
+
+const moduleUiRestrictedPatterns = [
+  ...moduleBoundaryRestrictedPatterns,
+  ...uiCoreRestrictedPatterns,
+]
+
+const moduleUiComponentRestrictedPatterns = [
+  ...moduleUiRestrictedPatterns,
+  uiValidationRestrictedPattern,
+]
+
+const nonModuleUiComponentRestrictedPatterns = [
+  ...uiCoreRestrictedPatterns,
+  uiValidationRestrictedPattern,
+]
+
+const moduleUiPageRestrictedPatterns = [
+  ...moduleUiRestrictedPatterns,
+  uiPageSchemaRestrictedPattern,
+]
+
+const nonModuleUiPageRestrictedPatterns = [
+  ...uiCoreRestrictedPatterns,
+  uiPageSchemaRestrictedPattern,
+]
+
+const capabilityRestrictedPatterns = [
+  {
+    group: ['~/modules/*/domain/**'],
+    message: 'Capabilities can orchestrate modules, but must not import modules domain directly.',
+  },
+  {
+    group: ['~/modules/*/infrastructure/**'],
+    message:
+      'Capabilities must not import module infrastructure directly; compose through application contracts.',
+  },
+]
+
+const domainLayerRestrictedPatterns = [
+  ...moduleBoundaryRestrictedPatterns,
+  {
+    group: ['~/modules/*/interface/**', '~/shared/ui/**', '~/routes/**'],
+    message: 'Domain layer must not depend on interface/http, shared UI, or routes.',
+  },
+  {
+    group: ['~/modules/*/application/**'],
+    message: 'Domain layer must not depend on application layer.',
+  },
+]
+
+const uiTrackingRestrictedPaths = [
+  ...trackingReadModelRestrictedPaths,
+  ...trackingInterpretationRestrictedPaths,
+]
+
 // biome-ignore lint/style/noDefaultExport: ESLint configs use default exports
 export default [
   // Ignore build/output folders from linting
+  ...platformConfig,
   {
     ignores: [
       '.output/**',
@@ -146,21 +349,6 @@ export default [
       'container-tracker': containerTrackerEslintPlugin,
     },
   },
-  // js.configs.recommended,
-  {
-    files: ['**/*.{ts,tsx}'],
-    ...solid,
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        project: 'tsconfig.json',
-      },
-    },
-    rules: {
-      ...(solid.rules ?? {}),
-      'solid/components-return-once': 'error',
-    },
-  },
   {
     files: ['src/modules/**/ui/**/*.{ts,tsx}'],
     rules: {
@@ -170,211 +358,155 @@ export default [
   {
     files: ['src/routes/api/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: [
-                '~/modules/*/application/**',
-                '~/modules/*/domain/**',
-                '~/modules/*/infrastructure/**',
-              ],
-              message:
-                'API routes must be thin adapters and depend only on interface/http controllers.',
-            },
-            {
-              group: [
-                '~/capabilities/*/application/**',
-                '~/capabilities/*/domain/**',
-                '~/capabilities/*/infrastructure/**',
-                '~/capabilities/*/ui/**',
-              ],
-              message:
-                'API routes must use capability interface/http adapters instead of internal layers.',
-            },
-          ],
-          paths: trackingInterpretationRestrictedPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: apiRouteRestrictedPatterns,
+        paths: trackingInterpretationRestrictedPaths,
+      }),
     },
   },
   {
     files: ['src/routes/**/*.{ts,tsx}'],
     ignores: ['src/routes/api/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: trackingInterpretationRestrictedPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        paths: trackingInterpretationRestrictedPaths,
+      }),
     },
   },
   {
     files: ['src/shared/**/*.{ts,tsx}'],
     ignores: ['src/shared/ui/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: trackingInterpretationRestrictedPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        paths: trackingInterpretationRestrictedPaths,
+      }),
     },
   },
   {
     files: ['src/modules/**/*.{ts,tsx}'],
+    ignores: [...moduleApplicationFiles, ...moduleUiFiles, ...moduleDomainFiles],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['~/capabilities/**'],
-              message: 'Modules must not depend on capabilities.',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleBoundaryRestrictedPatterns,
+      }),
     },
   },
   {
-    files: [
-      'src/modules/*/application/**/*.{ts,tsx}',
-      'src/modules/*/features/*/application/**/*.{ts,tsx}',
-    ],
+    files: trackingModuleApplicationFiles,
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['~/shared/ui/**'],
-              message: 'Application layer must not import UI types/components from shared/ui.',
-            },
-            {
-              group: ['~/shared/api-schemas/**'],
-              message:
-                'Application layer must not depend on HTTP DTO schemas from shared/api-schemas.',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleApplicationRestrictedPatterns,
+      }),
     },
   },
   {
-    files: [
-      'src/modules/*/application/**/*.{ts,tsx}',
-      'src/modules/*/features/*/application/**/*.{ts,tsx}',
-    ],
-    ignores: ['src/modules/tracking/**/*.{ts,tsx}'],
+    files: moduleApplicationFiles,
+    ignores: trackingModuleApplicationFiles,
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['~/shared/ui/**'],
-              message: 'Application layer must not import UI types/components from shared/ui.',
-            },
-            {
-              group: ['~/shared/api-schemas/**'],
-              message:
-                'Application layer must not depend on HTTP DTO schemas from shared/api-schemas.',
-            },
-          ],
-          paths: trackingInterpretationRestrictedPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleApplicationRestrictedPatterns,
+        paths: trackingInterpretationRestrictedPaths,
+      }),
     },
   },
   {
-    files: [
-      'src/modules/*/ui/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/**/*.{ts,tsx}',
-      'src/capabilities/*/ui/**/*.{ts,tsx}',
-      'src/shared/ui/**/*.{ts,tsx}',
-    ],
+    files: trackingModuleUiFiles,
+    ignores: [...trackingModuleUiComponentFiles, ...trackingModuleUiPageFiles],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: uiCoreRestrictedPatterns,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleUiRestrictedPatterns,
+      }),
     },
   },
   {
-    files: [
-      'src/modules/*/ui/components/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/components/**/*.{ts,tsx}',
-      'src/shared/ui/**/*.{ts,tsx}',
-    ],
+    files: moduleUiFiles,
+    ignores: [...trackingModuleUiFiles, ...moduleUiComponentFiles, ...moduleUiPageFiles],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            ...uiCoreRestrictedPatterns,
-            {
-              group: [
-                '~/modules/*/ui/validation/**',
-                '~/capabilities/*/ui/validation/**',
-                '../validation/**',
-                '../../validation/**',
-                '../../../validation/**',
-                '../../../../validation/**',
-                '**/*schema*',
-                '**/*validation*',
-              ],
-              message:
-                'Visual components must not import schema/validation modules. Move parsing to ui/validation.',
-            },
-          ],
-          paths: schemaLibraryPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleUiRestrictedPatterns,
+        paths: uiTrackingRestrictedPaths,
+      }),
+    },
+  },
+  {
+    files: nonModuleUiFiles,
+    ignores: [...nonModuleUiComponentFiles, ...nonModuleUiPageFiles],
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: uiCoreRestrictedPatterns,
+        paths: uiTrackingRestrictedPaths,
+      }),
+    },
+  },
+  {
+    files: trackingModuleUiComponentFiles,
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleUiComponentRestrictedPatterns,
+        paths: schemaLibraryPaths,
+      }),
       complexity: ['error', 15],
       'max-depth': ['error', 4],
       'max-nested-callbacks': ['error', 3],
     },
   },
   {
-    files: [
-      'src/modules/*/ui/screens/**/*.{ts,tsx}',
-      'src/modules/*/ui/routes/**/*.{ts,tsx}',
-      'src/modules/*/ui/pages/**/*.{ts,tsx}',
-      'src/modules/*/ui/*View.tsx',
-      'src/modules/*/ui/*Dialog.tsx',
-      'src/modules/*/features/*/ui/screens/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/routes/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/pages/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/*View.tsx',
-      'src/modules/*/features/*/ui/*Dialog.tsx',
-      'src/capabilities/*/ui/screens/**/*.{ts,tsx}',
-      'src/capabilities/*/ui/routes/**/*.{ts,tsx}',
-      'src/capabilities/*/ui/pages/**/*.{ts,tsx}',
-      'src/capabilities/*/ui/*View.tsx',
-      'src/capabilities/*/ui/*Dialog.tsx',
-      'src/**/ui/**/index.tsx',
-      'src/capabilities/search/ui/SearchOverlay.tsx',
-    ],
+    files: moduleUiComponentFiles,
+    ignores: trackingModuleUiComponentFiles,
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            ...uiCoreRestrictedPatterns,
-            {
-              group: ['~/shared/api-schemas/**', '**/*schema*'],
-              message:
-                'Pages-like UI files must delegate schema parsing to ui/validation or interface/http.',
-            },
-          ],
-          paths: schemaLibraryPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleUiComponentRestrictedPatterns,
+        paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
+      }),
+      complexity: ['error', 15],
+      'max-depth': ['error', 4],
+      'max-nested-callbacks': ['error', 3],
+    },
+  },
+  {
+    files: nonModuleUiComponentFiles,
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: nonModuleUiComponentRestrictedPatterns,
+        paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
+      }),
+      complexity: ['error', 15],
+      'max-depth': ['error', 4],
+      'max-nested-callbacks': ['error', 3],
+    },
+  },
+  {
+    files: trackingModuleUiPageFiles,
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleUiPageRestrictedPatterns,
+        paths: schemaLibraryPaths,
+      }),
+      complexity: ['error', 20],
+      'max-depth': ['error', 5],
+      'max-nested-callbacks': ['error', 4],
+    },
+  },
+  {
+    files: moduleUiPageFiles,
+    ignores: trackingModuleUiPageFiles,
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: moduleUiPageRestrictedPatterns,
+        paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
+      }),
+      complexity: ['error', 20],
+      'max-depth': ['error', 5],
+      'max-nested-callbacks': ['error', 4],
+    },
+  },
+  {
+    files: nonModuleUiPageFiles,
+    rules: {
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: nonModuleUiPageRestrictedPatterns,
+        paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
+      }),
       complexity: ['error', 20],
       'max-depth': ['error', 5],
       'max-nested-callbacks': ['error', 4],
@@ -405,68 +537,21 @@ export default [
   },
   {
     files: ['src/capabilities/**/*.{ts,tsx}'],
+    ignores: ['src/capabilities/*/ui/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['~/modules/*/domain/**'],
-              message:
-                'Capabilities can orchestrate modules, but must not import modules domain directly.',
-            },
-            {
-              group: ['~/modules/*/infrastructure/**'],
-              message:
-                'Capabilities must not import module infrastructure directly; compose through application contracts.',
-            },
-          ],
-          paths: trackingInterpretationRestrictedPaths,
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: capabilityRestrictedPatterns,
+        paths: trackingInterpretationRestrictedPaths,
+      }),
     },
   },
   {
-    files: ['src/modules/*/domain/**/*.{ts,tsx}', 'src/modules/*/features/*/domain/**/*.{ts,tsx}'],
+    files: moduleDomainFiles,
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['~/modules/*/interface/**', '~/shared/ui/**', '~/routes/**'],
-              message: 'Domain layer must not depend on interface/http, shared UI, or routes.',
-            },
-            {
-              group: ['~/modules/*/application/**'],
-              message: 'Domain layer must not depend on application layer.',
-            },
-            {
-              group: ['~/capabilities/**'],
-              message: 'Domain layer must not depend on capabilities.',
-            },
-          ],
-          paths: schemaLibraryPaths,
-        },
-      ],
-    },
-  },
-  {
-    files: [
-      'src/modules/*/ui/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/**/*.{ts,tsx}',
-      'src/capabilities/*/ui/**/*.{ts,tsx}',
-      'src/shared/ui/**/*.{ts,tsx}',
-    ],
-    ignores: ['src/modules/tracking/**/*.{ts,tsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: uiCoreRestrictedPatterns,
-          paths: [...trackingReadModelRestrictedPaths, ...trackingInterpretationRestrictedPaths],
-        },
-      ],
+      'no-restricted-imports': createRestrictedImportsRule({
+        patterns: domainLayerRestrictedPatterns,
+        paths: schemaLibraryPaths,
+      }),
     },
   },
   {

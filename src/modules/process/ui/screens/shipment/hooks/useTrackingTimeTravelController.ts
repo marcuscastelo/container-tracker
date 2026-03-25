@@ -1,23 +1,23 @@
-import type { Accessor } from 'solid-js'
-import { createEffect, createMemo, createResource, createSignal } from 'solid-js'
+import { type Accessor, createEffect, createMemo, createResource, createSignal } from 'solid-js'
+import {
+  fetchTrackingReplayDebug,
+  fetchTrackingTimeTravel,
+} from '~/modules/process/ui/api/tracking-time-travel.api'
+import {
+  toTrackingReplayDebugVm,
+  toTrackingTimeTravelVm,
+} from '~/modules/process/ui/mappers/tracking-time-travel.ui-mapper'
 import { toReadableErrorMessage } from '~/modules/process/ui/screens/shipment/lib/shipmentError.presenter'
 import {
   findTrackingTimeTravelSync,
   selectAdjacentTrackingTimeTravelSnapshotId,
 } from '~/modules/process/ui/screens/shipment/lib/tracking-time-travel.selection.service'
-import {
-  toTrackingReplayDebugVm,
-  toTrackingTimeTravelVm,
-} from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.ui-mapper'
 import type {
   TrackingReplayDebugVM,
   TrackingTimeTravelSyncVM,
   TrackingTimeTravelVM,
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
-import { fetchTrackingReplayDebug } from '~/modules/process/ui/screens/shipment/usecases/fetchTrackingReplayDebug.usecase'
-import { fetchTrackingTimeTravel } from '~/modules/process/ui/screens/shipment/usecases/fetchTrackingTimeTravel.usecase'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingReplayDebugResponseDto } from '~/modules/tracking/interface/http/tracking.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
 
 type UseTrackingTimeTravelControllerCommand = {
@@ -34,7 +34,7 @@ export type TrackingTimeTravelControllerResult = {
   readonly isDebugLoading: Accessor<boolean>
   readonly debugErrorMessage: Accessor<string | null>
   readonly debugValue: Accessor<TrackingReplayDebugVM | null>
-  readonly debugPayload: Accessor<TrackingReplayDebugResponseDto | null>
+  readonly debugPayload: Accessor<unknown | null>
   readonly open: () => void
   readonly close: () => void
   readonly toggleDebug: () => void

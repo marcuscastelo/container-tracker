@@ -395,6 +395,9 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       }
 
       const container = matchingContainers[0]
+      if (container === undefined) {
+        return jsonResponse({ error: 'Container resolution failed' }, 422)
+      }
 
       const saveResult = await deps.saveAndProcess({
         containerId: container.id,

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 import {
   clearNavbarAlertsSummaryCache,
   fetchNavbarAlertsSummary,
-} from '~/shared/ui/navbar-alerts/navbar-alerts.api'
+} from '~/shared/api/navbar-alerts/navbar-alerts.api'
+import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 function mockNavbarAlertsFetch() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(

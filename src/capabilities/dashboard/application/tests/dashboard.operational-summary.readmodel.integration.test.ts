@@ -38,8 +38,8 @@ function makeProcessWithSummary(args: ProcessFixture): ProcessWithOperationalSum
       containers: args.containers,
     },
     summary: {
-      process_status: args.status,
       eta: resolveTemporalDto(args.eta, null),
+      ...(args.status === undefined ? {} : { process_status: args.status }),
     },
   }
 }

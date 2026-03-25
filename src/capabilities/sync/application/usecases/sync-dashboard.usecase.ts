@@ -251,8 +251,13 @@ export function createSyncDashboardUseCase(deps: SyncDashboardDeps) {
         throw new HttpError(`sync_global_failed:process_not_resolved_for_${containerNumber}`, 502)
       }
 
+      const retryProcessId = processIds[0]
+      if (retryProcessId === undefined) {
+        throw new HttpError(`sync_global_failed:process_not_resolved_for_${containerNumber}`, 502)
+      }
+
       retryTargets.push({
-        processId: processIds[0],
+        processId: retryProcessId,
         containerNumber,
         provider: detectionResult.provider,
       })

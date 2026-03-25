@@ -45,8 +45,8 @@ export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRec
 
   return {
     reference: dto.reference ?? null,
-    origin: dto.origin?.display_name,
-    destination: dto.destination?.display_name,
+    origin: dto.origin?.display_name ?? null,
+    destination: dto.destination?.display_name ?? null,
     carrier_mode: carrierMode,
     default_carrier_code: carrier,
     last_resolved_carrier_code: null,
@@ -57,8 +57,10 @@ export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRec
     importer_name: dto.importer_name ?? null,
     exporter_name: dto.exporter_name ?? null,
     reference_importer: dto.reference_importer ?? null,
-    product: dto.product ?? undefined,
-    redestination_number: dto.redestination_number ?? undefined,
+    ...(dto.product !== undefined ? { product: dto.product ?? null } : {}),
+    ...(dto.redestination_number !== undefined
+      ? { redestination_number: dto.redestination_number ?? null }
+      : {}),
     source: 'manual',
   }
 }

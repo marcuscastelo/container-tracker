@@ -24,7 +24,7 @@ type SyncContainerResult = {
 }
 
 type SyncContainerRecord = {
-  readonly containerId?: string
+  readonly containerId?: string | undefined
   readonly processId: string
   readonly containerNumber: string
   readonly carrierCode: string | null
@@ -210,12 +210,17 @@ async function detectCarrierAndRetry(command: {
     }
   }
 
+  const primaryRecord = command.records[0]
+  if (primaryRecord === undefined) {
+    throw new HttpError('container_not_found', 404)
+  }
+
   return executeSyncTargets({
     tenantId: command.tenantId,
     mode: 'manual',
     targets: [
       {
-        processId: command.records[0].processId,
+        processId: primaryRecord.processId,
         containerNumber: command.containerNumber,
         provider: detectionResult.provider,
       },

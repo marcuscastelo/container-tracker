@@ -53,20 +53,28 @@ export const processMappers = {
   insertRecordToRow(record: InsertProcessRecord, nowIso: string): ProcessInsertRow {
     return {
       reference: record.reference,
-      origin: record.origin ?? null,
-      destination: record.destination ?? null,
-      carrier_mode: record.carrier_mode,
-      default_carrier_code: record.default_carrier_code,
-      last_resolved_carrier_code: record.last_resolved_carrier_code ?? null,
-      carrier_resolved_at: record.carrier_resolved_at ?? null,
+      ...(record.origin !== undefined ? { origin: record.origin ?? null } : {}),
+      ...(record.destination !== undefined ? { destination: record.destination ?? null } : {}),
+      ...(record.carrier_mode !== undefined ? { carrier_mode: record.carrier_mode } : {}),
+      ...(record.default_carrier_code !== undefined
+        ? { default_carrier_code: record.default_carrier_code }
+        : {}),
+      ...(record.last_resolved_carrier_code !== undefined
+        ? { last_resolved_carrier_code: record.last_resolved_carrier_code ?? null }
+        : {}),
+      ...(record.carrier_resolved_at !== undefined
+        ? { carrier_resolved_at: record.carrier_resolved_at ?? null }
+        : {}),
       carrier: record.carrier,
       bill_of_lading: record.bill_of_lading,
       booking_number: record.booking_number,
       importer_name: record.importer_name,
       exporter_name: record.exporter_name,
       reference_importer: record.reference_importer,
-      product: record.product ?? null,
-      redestination_number: record.redestination_number ?? null,
+      ...(record.product !== undefined ? { product: record.product ?? null } : {}),
+      ...(record.redestination_number !== undefined
+        ? { redestination_number: record.redestination_number ?? null }
+        : {}),
       source: record.source,
       created_at: nowIso,
       updated_at: nowIso,

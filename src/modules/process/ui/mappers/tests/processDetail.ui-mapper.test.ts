@@ -3,6 +3,14 @@ import { toShipmentDetailVM } from '~/modules/process/ui/mappers/processDetail.u
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
+function requireAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) {
+    throw new Error(`Expected item at index ${index}`)
+  }
+  return item
+}
+
 describe('toShipmentDetailVM', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
     const example: ProcessDetailResponse = {
@@ -68,33 +76,31 @@ describe('toShipmentDetailVM', () => {
     }
 
     const result = toShipmentDetailVM(example)
+    const firstContainer = requireAt(result.containers, 0)
+    const firstTimelineItem = requireAt(firstContainer.timeline, 0)
+    const firstObservation = requireAt(firstContainer.observations, 0)
     expect(result).toBeTruthy()
     expect(result.id).toBe('proc-1')
     expect(Array.isArray(result.containers)).toBe(true)
-    expect(result.containers[0].number).toBe('MRKU1234567')
-    expect(result.containers[0].status).toBe('indigo-500')
-    expect(result.containers[0].statusCode).toBe('LOADED')
-    expect(result.containers[0].timeline.length).toBe(1)
-    expect(result.containers[0].timeline[0].type).toBe('LOAD')
-    expect(result.containers[0].timeline[0].vesselName).toBe('MAERSK SEVILLE')
-    expect(result.containers[0].timeline[0].voyage).toBe('123W')
-    expect(result.containers[0].observations.length).toBe(1)
-    expect(result.containers[0].observations[0]).toMatchObject({
+    expect(firstContainer.number).toBe('MRKU1234567')
+    expect(firstContainer.status).toBe('indigo-500')
+    expect(firstContainer.statusCode).toBe('LOADED')
+    expect(firstContainer.timeline.length).toBe(1)
+    expect(firstTimelineItem.type).toBe('LOAD')
+    expect(firstTimelineItem.vesselName).toBe('MAERSK SEVILLE')
+    expect(firstTimelineItem.voyage).toBe('123W')
+    expect(firstContainer.observations.length).toBe(1)
+    expect(firstObservation).toMatchObject({
       id: 'obs-1',
       type: 'LOAD',
       isEmpty: false,
       provider: 'maersk',
       createdFromSnapshotId: 'snapshot-001',
     })
-    expect(result.containers[0].carrierCode).toBe('MAERSK')
-    expect(result.containers[0].sync.state).toBe('never')
-    expect(result.containers[0].etaChipVm.state).toBe('UNAVAILABLE')
-    expect(result.containers[0].dataIssueChipVm.visible).toBe(false)
-    expect(result.carrierMode).toBe('MANUAL')
-    expect(result.defaultCarrierCode).toBe('maersk')
-    expect(result.lastResolvedCarrierCode).toBe('maersk')
-    expect(result.effectiveCarrierCodes).toEqual(['cmacgm'])
-    expect(result.effectiveCarrierSummary).toBe('SINGLE')
+    expect(firstContainer.carrierCode).toBe('MAERSK')
+    expect(firstContainer.sync.state).toBe('never')
+    expect(firstContainer.etaChipVm.state).toBe('UNAVAILABLE')
+    expect(firstContainer.dataIssueChipVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.total).toBe(1)
     expect(Array.isArray(result.alerts)).toBe(true)
@@ -156,6 +162,7 @@ describe('toShipmentDetailVM', () => {
     }
 
     const result = toShipmentDetailVM(example)
+    const firstAlert = requireAt(result.alerts, 0)
     expect(result.status).toBe('blue-500')
     expect(result.statusCode).toBe('IN_TRANSIT')
     expect(result.statusMicrobadge).toEqual({
@@ -163,13 +170,13 @@ describe('toShipmentDetailVM', () => {
       count: 1,
     })
     expect(result.alerts.length).toBe(1)
-    expect(result.alerts[0].type).toBe('transshipment')
-    expect(result.alerts[0].severity).toBe('warning')
-    expect(result.alerts[0].category).toBe('fact')
-    expect(result.alerts[0].triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
-    expect(result.alerts[0].ackedAtIso).toBeNull()
-    expect(result.alerts[0].containerNumber).toBe('MSCU1234567')
-    expect(result.alerts[0].messageKey).toBe('alerts.transshipmentDetected')
+    expect(firstAlert.type).toBe('transshipment')
+    expect(firstAlert.severity).toBe('warning')
+    expect(firstAlert.category).toBe('fact')
+    expect(firstAlert.triggeredAtIso).toBe('2026-02-01T10:00:00.000Z')
+    expect(firstAlert.ackedAtIso).toBeNull()
+    expect(firstAlert.containerNumber).toBe('MSCU1234567')
+    expect(firstAlert.messageKey).toBe('alerts.transshipmentDetected')
   })
 
   it('maps container sync metadata by normalized container number', () => {
@@ -206,8 +213,9 @@ describe('toShipmentDetailVM', () => {
     }
 
     const result = toShipmentDetailVM(example, 'en-US')
-    expect(result.containers[0].sync.state).toBe('error')
-    expect(result.containers[0].sync.carrier).toBe('maersk')
+    const firstContainer = requireAt(result.containers, 0)
+    expect(firstContainer.sync.state).toBe('error')
+    expect(firstContainer.sync.carrier).toBe('maersk')
   })
 })
 
@@ -248,8 +256,9 @@ describe('toShipmentDetailVM fallback mapping', () => {
     }
 
     const result = toShipmentDetailVM(example)
+    const firstAlert = requireAt(result.alerts, 0)
     expect(result.alerts.length).toBe(1)
-    expect(result.alerts[0].ackedAtIso).toBe('2026-03-05T12:00:00.000Z')
+    expect(firstAlert.ackedAtIso).toBe('2026-03-05T12:00:00.000Z')
   })
 
   it('shows placeholder timeline when no observations', () => {
@@ -275,100 +284,220 @@ describe('toShipmentDetailVM fallback mapping', () => {
     }
 
     const result = toShipmentDetailVM(example)
-    expect(result.containers[0].timeline.length).toBe(1)
-    expect(result.containers[0].timeline[0].id).toBe('system-created')
-    expect(result.containers[0].status).toBe('slate-400')
+    const firstContainer = requireAt(result.containers, 0)
+    const firstTimelineItem = requireAt(firstContainer.timeline, 0)
+    expect(firstContainer.timeline.length).toBe(1)
+    expect(firstTimelineItem.id).toBe('system-created')
+    expect(firstContainer.status).toBe('slate-400')
   })
 })
 
-describe('toShipmentDetailVM operational mapping', () => {
-  it('maps ETA and transshipment operational chips for multi-container view', () => {
-    const example: ProcessDetailResponse = {
-      id: 'proc-5',
-      reference: 'OPS-5',
-      origin: { display_name: 'Shanghai' },
-      destination: { display_name: 'Santos' },
-      carrier: 'msc',
-      source: 'api',
-      created_at: '2026-02-01T10:00:00.000Z',
-      updated_at: '2026-02-01T10:00:00.000Z',
-      containers: [
-        {
-          id: 'c5-1',
-          container_number: 'MSCU1111111',
+function createOperationalMultiContainerResponse(): ProcessDetailResponse {
+  return {
+    id: 'proc-5',
+    reference: 'OPS-5',
+    origin: { display_name: 'Shanghai' },
+    destination: { display_name: 'Santos' },
+    carrier: 'msc',
+    source: 'api',
+    created_at: '2026-02-01T10:00:00.000Z',
+    updated_at: '2026-02-01T10:00:00.000Z',
+    containers: [
+      {
+        id: 'c5-1',
+        container_number: 'MSCU1111111',
+        status: 'IN_TRANSIT',
+        observations: [],
+        operational: {
           status: 'IN_TRANSIT',
-          observations: [],
-          operational: {
-            status: 'IN_TRANSIT',
-            eta: {
-              event_time: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
-              event_time_type: 'EXPECTED',
-              state: 'EXPIRED_EXPECTED',
-              type: 'ARRIVAL',
-              location_code: 'BRSSZ',
-              location_display: 'Santos',
-            },
-            transshipment: {
-              has_transshipment: true,
-              count: 2,
-              ports: [
-                { code: 'ESALG', display: 'Algeciras' },
-                { code: 'ITGIT', display: 'Gioia Tauro' },
-              ],
-            },
-            data_issue: true,
+          eta: {
+            event_time: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
+            event_time_type: 'EXPECTED',
+            state: 'EXPIRED_EXPECTED',
+            type: 'ARRIVAL',
+            location_code: 'BRSSZ',
+            location_display: 'Santos',
           },
-        },
-        {
-          id: 'c5-2',
-          container_number: 'MSCU2222222',
-          status: 'IN_TRANSIT',
-          observations: [],
-          operational: {
-            status: 'IN_TRANSIT',
-            eta: {
-              event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
-              event_time_type: 'EXPECTED',
-              state: 'ACTIVE_EXPECTED',
-              type: 'DISCHARGE',
-              location_code: 'BRSSZ',
-              location_display: 'Santos',
-            },
-            transshipment: {
-              has_transshipment: false,
-              count: 0,
-              ports: [],
-            },
-            data_issue: false,
+          transshipment: {
+            has_transshipment: true,
+            count: 2,
+            ports: [
+              { code: 'ESALG', display: 'Algeciras' },
+              { code: 'ITGIT', display: 'Gioia Tauro' },
+            ],
           },
-        },
-      ],
-      containersSync: [],
-      alerts: [],
-      process_operational: {
-        derived_status: 'IN_TRANSIT',
-        eta_max: {
-          event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
-          event_time_type: 'EXPECTED',
-          state: 'ACTIVE_EXPECTED',
-          type: 'DISCHARGE',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-        },
-        coverage: {
-          total: 2,
-          with_eta: 1,
+          data_issue: true,
         },
       },
-    }
+      {
+        id: 'c5-2',
+        container_number: 'MSCU2222222',
+        status: 'IN_TRANSIT',
+        observations: [],
+        operational: {
+          status: 'IN_TRANSIT',
+          eta: {
+            event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
+            event_time_type: 'EXPECTED',
+            state: 'ACTIVE_EXPECTED',
+            type: 'DISCHARGE',
+            location_code: 'BRSSZ',
+            location_display: 'Santos',
+          },
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
+          data_issue: false,
+        },
+      },
+    ],
+    containersSync: [],
+    alerts: [],
+    process_operational: {
+      derived_status: 'IN_TRANSIT',
+      eta_max: {
+        event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        state: 'ACTIVE_EXPECTED',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+      },
+      coverage: {
+        total: 2,
+        with_eta: 1,
+      },
+    },
+  }
+}
 
-    const result = toShipmentDetailVM(example, 'pt-BR')
+function createOperationalHiddenIntResponse(): ProcessDetailResponse {
+  return {
+    id: 'proc-6',
+    reference: 'OPS-6',
+    origin: { display_name: 'Shanghai' },
+    destination: { display_name: 'Santos' },
+    carrier: 'msc',
+    source: 'api',
+    created_at: '2026-02-01T10:00:00.000Z',
+    updated_at: '2026-02-01T10:00:00.000Z',
+    containers: [
+      {
+        id: 'c6-1',
+        container_number: 'MSCU3333333',
+        status: 'IN_TRANSIT',
+        observations: [],
+        operational: {
+          status: 'IN_TRANSIT',
+          eta: null,
+          transshipment: {
+            has_transshipment: false,
+            count: 2,
+            ports: [
+              { code: 'EGPSDTM', display: 'Port Said' },
+              { code: 'ESBCN07', display: 'Barcelona' },
+            ],
+          },
+          data_issue: false,
+        },
+      },
+    ],
+    containersSync: [],
+    alerts: [],
+  }
+}
 
-    expect(result.containers[0].etaChipVm.state).toBe('EXPIRED_EXPECTED')
-    expect(result.containers[0].tsChipVm.visible).toBe(true)
-    expect(result.containers[0].tsChipVm.count).toBe(2)
-    expect(result.containers[0].dataIssueChipVm.visible).toBe(true)
-    expect(result.containers[1].tsChipVm.visible).toBe(false)
+function createOperationalFullCoverageResponse(): ProcessDetailResponse {
+  return {
+    id: 'proc-7',
+    reference: 'OPS-7',
+    origin: { display_name: 'Shanghai' },
+    destination: { display_name: 'Santos' },
+    carrier: 'msc',
+    source: 'api',
+    created_at: '2026-02-01T10:00:00.000Z',
+    updated_at: '2026-02-01T10:00:00.000Z',
+    containers: [
+      {
+        id: 'c7-1',
+        container_number: 'MSCU4444444',
+        status: 'IN_TRANSIT',
+        observations: [],
+        operational: {
+          status: 'IN_TRANSIT',
+          eta: {
+            event_time: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
+            event_time_type: 'EXPECTED',
+            state: 'ACTIVE_EXPECTED',
+            type: 'ARRIVAL',
+            location_code: 'BRSSZ',
+            location_display: 'Santos',
+          },
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
+          data_issue: false,
+        },
+      },
+      {
+        id: 'c7-2',
+        container_number: 'MSCU5555555',
+        status: 'IN_TRANSIT',
+        observations: [],
+        operational: {
+          status: 'IN_TRANSIT',
+          eta: {
+            event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
+            event_time_type: 'EXPECTED',
+            state: 'ACTIVE_EXPECTED',
+            type: 'ARRIVAL',
+            location_code: 'BRSSZ',
+            location_display: 'Santos',
+          },
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
+          data_issue: false,
+        },
+      },
+    ],
+    containersSync: [],
+    alerts: [],
+    process_operational: {
+      derived_status: 'IN_TRANSIT',
+      eta_max: {
+        event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        state: 'ACTIVE_EXPECTED',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+      },
+      coverage: {
+        total: 2,
+        with_eta: 2,
+      },
+    },
+  }
+}
+
+describe('toShipmentDetailVM operational mapping', () => {
+  it('maps ETA and transshipment operational chips for multi-container view', () => {
+    const result = toShipmentDetailVM(createOperationalMultiContainerResponse(), 'pt-BR')
+    const firstContainer = requireAt(result.containers, 0)
+    const secondContainer = requireAt(result.containers, 1)
+
+    expect(firstContainer.etaChipVm.state).toBe('EXPIRED_EXPECTED')
+    expect(firstContainer.tsChipVm.visible).toBe(true)
+    expect(firstContainer.tsChipVm.count).toBe(2)
+    expect(firstContainer.dataIssueChipVm.visible).toBe(true)
+    expect(secondContainer.tsChipVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.visible).toBe(true)
     expect(result.processEtaSecondaryVm.total).toBe(2)
     expect(result.processEtaSecondaryVm.withEta).toBe(1)
@@ -376,123 +505,14 @@ describe('toShipmentDetailVM operational mapping', () => {
   })
 
   it('keeps INT chip hidden when transshipment flag is false even with count > 0', () => {
-    const example: ProcessDetailResponse = {
-      id: 'proc-6',
-      reference: 'OPS-6',
-      origin: { display_name: 'Shanghai' },
-      destination: { display_name: 'Santos' },
-      carrier: 'msc',
-      source: 'api',
-      created_at: '2026-02-01T10:00:00.000Z',
-      updated_at: '2026-02-01T10:00:00.000Z',
-      containers: [
-        {
-          id: 'c6-1',
-          container_number: 'MSCU3333333',
-          status: 'IN_TRANSIT',
-          observations: [],
-          operational: {
-            status: 'IN_TRANSIT',
-            eta: null,
-            transshipment: {
-              has_transshipment: false,
-              count: 2,
-              ports: [
-                { code: 'EGPSDTM', display: 'Port Said' },
-                { code: 'ESBCN07', display: 'Barcelona' },
-              ],
-            },
-            data_issue: false,
-          },
-        },
-      ],
-      containersSync: [],
-      alerts: [],
-    }
-
-    const result = toShipmentDetailVM(example, 'pt-BR')
-    expect(result.containers[0].tsChipVm.visible).toBe(false)
-    expect(result.containers[0].tsChipVm.count).toBe(2)
+    const result = toShipmentDetailVM(createOperationalHiddenIntResponse(), 'pt-BR')
+    const firstContainer = requireAt(result.containers, 0)
+    expect(firstContainer.tsChipVm.visible).toBe(false)
+    expect(firstContainer.tsChipVm.count).toBe(2)
   })
 
   it('marks process ETA coverage as complete when all containers have ETA', () => {
-    const example: ProcessDetailResponse = {
-      id: 'proc-7',
-      reference: 'OPS-7',
-      origin: { display_name: 'Shanghai' },
-      destination: { display_name: 'Santos' },
-      carrier: 'msc',
-      source: 'api',
-      created_at: '2026-02-01T10:00:00.000Z',
-      updated_at: '2026-02-01T10:00:00.000Z',
-      containers: [
-        {
-          id: 'c7-1',
-          container_number: 'MSCU4444444',
-          status: 'IN_TRANSIT',
-          observations: [],
-          operational: {
-            status: 'IN_TRANSIT',
-            eta: {
-              event_time: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
-              event_time_type: 'EXPECTED',
-              state: 'ACTIVE_EXPECTED',
-              type: 'ARRIVAL',
-              location_code: 'BRSSZ',
-              location_display: 'Santos',
-            },
-            transshipment: {
-              has_transshipment: false,
-              count: 0,
-              ports: [],
-            },
-            data_issue: false,
-          },
-        },
-        {
-          id: 'c7-2',
-          container_number: 'MSCU5555555',
-          status: 'IN_TRANSIT',
-          observations: [],
-          operational: {
-            status: 'IN_TRANSIT',
-            eta: {
-              event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
-              event_time_type: 'EXPECTED',
-              state: 'ACTIVE_EXPECTED',
-              type: 'ARRIVAL',
-              location_code: 'BRSSZ',
-              location_display: 'Santos',
-            },
-            transshipment: {
-              has_transshipment: false,
-              count: 0,
-              ports: [],
-            },
-            data_issue: false,
-          },
-        },
-      ],
-      containersSync: [],
-      alerts: [],
-      process_operational: {
-        derived_status: 'IN_TRANSIT',
-        eta_max: {
-          event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
-          event_time_type: 'EXPECTED',
-          state: 'ACTIVE_EXPECTED',
-          type: 'ARRIVAL',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-        },
-        coverage: {
-          total: 2,
-          with_eta: 2,
-        },
-      },
-    }
-
-    const result = toShipmentDetailVM(example, 'pt-BR')
+    const result = toShipmentDetailVM(createOperationalFullCoverageResponse(), 'pt-BR')
     expect(result.processEtaSecondaryVm.visible).toBe(true)
     expect(result.processEtaSecondaryVm.withEta).toBe(2)
     expect(result.processEtaSecondaryVm.total).toBe(2)

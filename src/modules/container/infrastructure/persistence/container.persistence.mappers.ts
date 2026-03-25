@@ -61,9 +61,15 @@ export const containerMappers = {
 
   toUpdate: (container: UpdateContainerRecord): ContainerUpdate => ({
     carrier_code: container.carrierCode,
-    carrier_assignment_mode: container.carrierAssignmentMode,
-    carrier_detected_at: container.carrierDetectedAt,
-    carrier_detection_source: container.carrierDetectionSource,
+    ...(container.carrierAssignmentMode !== undefined
+      ? { carrier_assignment_mode: container.carrierAssignmentMode }
+      : {}),
+    ...(container.carrierDetectedAt !== undefined
+      ? { carrier_detected_at: container.carrierDetectedAt }
+      : {}),
+    ...(container.carrierDetectionSource !== undefined
+      ? { carrier_detection_source: container.carrierDetectionSource }
+      : {}),
     container_number: container.containerNumber,
     container_size: null, // TODO: Implement container size and type inference based on events or external data
     // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/7

@@ -157,7 +157,10 @@ export function SearchOverlay(): JSX.Element {
       event.preventDefault()
       const index = activeIndex()
       if (index >= 0 && index < items.length) {
-        navigateToResult(items[index])
+        const item = items[index]
+        if (item) {
+          navigateToResult(item)
+        }
       }
     }
   }

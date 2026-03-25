@@ -197,7 +197,7 @@ const ReplaySeriesResponseDtoSchema = z.object({
   items: z.array(ReplayTimelineSeriesItemResponseDtoSchema),
 })
 
-export const TrackingTimelineItemResponseDtoSchema = z.object({
+const TrackingTimelineItemResponseDtoSchema = z.object({
   id: z.string(),
   type: z.string(),
   carrier_label: z.string().nullable(),
@@ -215,7 +215,7 @@ export const TrackingTimelineItemResponseDtoSchema = z.object({
     .nullable(),
 })
 
-export const TrackingOperationalEtaResponseDtoSchema = z.object({
+const TrackingOperationalEtaResponseDtoSchema = z.object({
   event_time: TemporalValueDtoSchema,
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
@@ -232,7 +232,7 @@ const ReplayStateResponseDtoSchema = z.object({
   alerts: z.array(AlertResponseDtoSchema),
 })
 
-export const TrackingReplayStepResponseDtoSchema = z.object({
+const TrackingReplayStepResponseDtoSchema = z.object({
   step_index: z.number().int().positive(),
   snapshot_id: z.string().nullable(),
   observation_id: z.string().nullable(),

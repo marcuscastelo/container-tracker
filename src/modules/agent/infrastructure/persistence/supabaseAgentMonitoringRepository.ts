@@ -279,8 +279,8 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
       table: 'agent_log_events',
     })
 
-    if (persistedRows.length > 0) {
-      const sample = events[0]
+    const sample = events[0]
+    if (persistedRows.length > 0 && sample !== undefined) {
       const updateResult = await supabaseServer
         .from('tracking_agents')
         .update({

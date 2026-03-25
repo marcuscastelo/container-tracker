@@ -10,7 +10,7 @@ type DashboardControllersBootstrapOverrides = {
   readonly dashboardControllers?: DashboardControllers
 }
 
-export type DashboardControllersBootstrapDeps = Pick<
+type DashboardControllersBootstrapDeps = Pick<
   DashboardOperationalSummaryReadModelDeps & DashboardNavbarAlertsReadModelDeps,
   'processUseCases' | 'trackingUseCases'
 >

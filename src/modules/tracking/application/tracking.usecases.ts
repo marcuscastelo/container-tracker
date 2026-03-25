@@ -120,7 +120,7 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
         provider,
         payload,
         parseError,
-        fetchedAt,
+        ...(fetchedAt === undefined ? {} : { fetchedAt }),
       })
     },
 
@@ -137,9 +137,9 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       return getContainerSummary(deps, {
         containerId,
         containerNumber,
-        podLocationCode,
         now,
         includeAcknowledgedAlerts: options?.includeAcknowledgedAlerts ?? false,
+        ...(podLocationCode === undefined ? {} : { podLocationCode }),
       })
     },
 

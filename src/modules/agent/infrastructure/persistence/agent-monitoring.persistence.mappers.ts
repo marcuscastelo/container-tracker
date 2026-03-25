@@ -118,8 +118,7 @@ function toAgentUpdaterState(value: string): AgentMonitoringRecord['updaterState
   return 'unknown'
 }
 
-function toNullableInteger(value: number | null | undefined): number | null | undefined {
-  if (value === undefined) return undefined
+function toNullableInteger(value: number | null): number | null {
   if (value === null) return null
   return Math.max(0, Math.round(value))
 }

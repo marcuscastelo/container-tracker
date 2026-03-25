@@ -32,12 +32,15 @@ function parseExistingProcessConflict(value: unknown): ExistingProcessConflict |
   const messageFromBody =
     (isRecord(body) && typeof body.message === 'string' && body.message) ||
     (isRecord(body) && typeof body.error === 'string' && body.error)
+  const processId = toOptionalString(existing.processId ?? existing.process_id)
+  const containerId = toOptionalString(existing.containerId ?? existing.container_id)
+  const containerNumber = toOptionalString(existing.containerNumber ?? existing.container_number)
 
   return {
     message: messageFromBody || 'Container already exists',
-    processId: toOptionalString(existing.processId ?? existing.process_id),
-    containerId: toOptionalString(existing.containerId ?? existing.container_id),
-    containerNumber: toOptionalString(existing.containerNumber ?? existing.container_number),
+    ...(processId === undefined ? {} : { processId }),
+    ...(containerId === undefined ? {} : { containerId }),
+    ...(containerNumber === undefined ? {} : { containerNumber }),
   }
 }
 

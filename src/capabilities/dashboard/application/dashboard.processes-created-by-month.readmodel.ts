@@ -110,6 +110,8 @@ export function createDashboardProcessesCreatedByMonthReadModelUseCase(
       if (monthIndex === undefined) continue
 
       const currentEntry = monthWindow[monthIndex]
+      if (currentEntry === undefined) continue
+
       monthWindow[monthIndex] = {
         ...currentEntry,
         count: currentEntry.count + 1,

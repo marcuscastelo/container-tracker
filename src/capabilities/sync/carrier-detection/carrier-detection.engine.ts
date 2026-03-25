@@ -41,7 +41,7 @@ type CarrierDetectionEngine = {
   readonly detectCarrier: (command: {
     readonly tenantId: string
     readonly containerNumber: string
-    readonly excludeProviders?: readonly SupportedSyncProvider[]
+    readonly excludeProviders?: readonly SupportedSyncProvider[] | undefined
   }) => Promise<CarrierDetectionResult>
 }
 

@@ -30,11 +30,13 @@ function createTimelineEvent(
     ),
     eventTimeType: overrides.eventTimeType ?? 'EXPECTED',
     derivedState: overrides.derivedState ?? 'ACTIVE_EXPECTED',
-    location: overrides.location ?? undefined,
-    vesselName: overrides.vesselName ?? null,
-    carrierLabel: overrides.carrierLabel,
-    voyage: overrides.voyage,
-    seriesHistory: overrides.seriesHistory,
+    ...(overrides.location === undefined || overrides.location === null
+      ? {}
+      : { location: overrides.location }),
+    ...(overrides.vesselName === undefined ? {} : { vesselName: overrides.vesselName }),
+    ...(overrides.carrierLabel === undefined ? {} : { carrierLabel: overrides.carrierLabel }),
+    ...(overrides.voyage === undefined ? {} : { voyage: overrides.voyage }),
+    ...(overrides.seriesHistory === undefined ? {} : { seriesHistory: overrides.seriesHistory }),
   }
 }
 
@@ -76,7 +78,7 @@ describe('current tracking context', () => {
 
   it('returns null when timeline has no vessel or location values', () => {
     const timeline: readonly TrackingTimelineItem[] = [
-      createTimelineEvent({ id: 'evt-1', vesselName: null, location: undefined }),
+      createTimelineEvent({ id: 'evt-1', vesselName: null }),
     ]
 
     expect(deriveCurrentVesselFromTimeline(timeline)).toBeNull()

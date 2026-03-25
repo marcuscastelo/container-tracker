@@ -106,9 +106,9 @@ function toStringMap(value: unknown): Record<string, string> {
 function toCaptureCookie(cookie: unknown): CapturedCookie {
   if (!isRecord(cookie)) return {}
   return {
-    name: typeof cookie.name === 'string' ? cookie.name : undefined,
-    value: typeof cookie.value === 'string' ? cookie.value : undefined,
-    domain: typeof cookie.domain === 'string' ? cookie.domain : undefined,
+    ...(typeof cookie.name === 'string' ? { name: cookie.name } : {}),
+    ...(typeof cookie.value === 'string' ? { value: cookie.value } : {}),
+    ...(typeof cookie.domain === 'string' ? { domain: cookie.domain } : {}),
   }
 }
 
@@ -396,7 +396,7 @@ export function createMaerskCaptureService(): MaerskCaptureService {
               url: request.url,
               method: typeof request.method === 'string' ? request.method : 'GET',
               headers: toStringMap(request.headers),
-              postData: typeof request.postData === 'string' ? request.postData : undefined,
+              ...(typeof request.postData === 'string' ? { postData: request.postData } : {}),
             })
           } catch {
             /* ignore */
@@ -462,13 +462,13 @@ export function createMaerskCaptureService(): MaerskCaptureService {
                     url: responseUrl,
                     method: reqInfo?.method ?? 'GET',
                     headers: reqInfo?.headers ?? {},
-                    postData: reqInfo?.postData,
                     status,
                     body,
                     cookies,
                     userAgent,
                     telemetry,
                     timestamp: systemClock.now().toIsoString(),
+                    ...(reqInfo?.postData === undefined ? {} : { postData: reqInfo.postData }),
                   }
                   captureState.score = candidateScore
                 }

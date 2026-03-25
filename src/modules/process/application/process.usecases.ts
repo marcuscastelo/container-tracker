@@ -19,7 +19,7 @@ import { createSearchProcessesByTextUseCase } from '~/modules/process/applicatio
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
 import { createUpdateProcessCarrierUseCase } from '~/modules/process/application/usecases/update-process-carrier.usecase'
 
-export type CreateProcessUseCasesDeps = {
+type CreateProcessUseCasesDeps = {
   repository: ProcessRepository
   containerUseCases: ContainerUseCasesForProcess
   trackingUseCases: ListProcessesWithOperationalSummaryDeps['trackingUseCases']

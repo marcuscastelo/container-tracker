@@ -4,7 +4,7 @@ import type {
 } from '~/capabilities/export-import/application/export-import.models'
 import type { TemporalValueDto } from '~/shared/time/dto'
 
-export type TrelloMarkdownFile = {
+type TrelloMarkdownFile = {
   readonly name: string
   readonly content: string
 }
@@ -120,7 +120,7 @@ function resolveAlerts(processEntry: ReportProcessEntry): string {
   return JSON.stringify(alertTypes)
 }
 
-export function serializeTrelloProcessMarkdown(command: {
+function serializeTrelloProcessMarkdown(command: {
   readonly report: OperationalSnapshotReport
   readonly processEntry: ReportProcessEntry
 }): string {

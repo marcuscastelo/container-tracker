@@ -69,6 +69,8 @@ export function deriveStatus(timeline: Timeline): ContainerStatus {
   let finalLocation: string | null = null
   for (let i = timeline.observations.length - 1; i >= 0; i--) {
     const o = timeline.observations[i]
+    if (o === undefined) continue
+
     if (o.location_code) {
       if (o.type === 'DISCHARGE' || o.type === 'ARRIVAL' || o.type === 'DELIVERY') {
         finalLocation = o.location_code

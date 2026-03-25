@@ -37,7 +37,7 @@ export function toPersistedCarrierCode(provider: SupportedSyncProvider): string 
 }
 
 export function listCarrierDetectionCandidates(command: {
-  readonly excludeProviders?: readonly SupportedSyncProvider[]
+  readonly excludeProviders?: readonly SupportedSyncProvider[] | undefined
 }): readonly SupportedSyncProvider[] {
   const excluded = new Set(command.excludeProviders ?? [])
   return SUPPORTED_CARRIER_DETECTION_PROVIDERS.filter((provider) => !excluded.has(provider))

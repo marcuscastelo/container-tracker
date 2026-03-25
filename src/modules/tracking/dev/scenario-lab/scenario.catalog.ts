@@ -58,10 +58,6 @@ function toMscDate(iso: string): string {
   return `${day}/${month}/${year}`
 }
 
-function toLabelFromId(id: string): string {
-  return id.replace(/[_.]/g, ' ')
-}
-
 function buildLocationName(city: string, countryCode: string): string {
   return `${city}, ${countryCode}`
 }
@@ -1784,7 +1780,7 @@ const groups: readonly ScenarioCatalogGroup[] = [
   },
 ]
 
-export const trackingScenarioCatalog: ScenarioCatalog = {
+const trackingScenarioCatalog: ScenarioCatalog = {
   scenarios: allScenarios,
   groups,
 }
@@ -1812,10 +1808,4 @@ export function listTrackingScenarioSummaries(): readonly TrackingScenarioSummar
 
 export function getTrackingScenarioById(id: string): TrackingScenario | null {
   return scenarioById.get(id) ?? null
-}
-
-export function getTrackingScenarioStageLabel(stage: ScenarioStage): string {
-  const stageDef = SCENARIO_STAGES.find((item) => item.stage === stage)
-  if (stageDef === undefined) return toLabelFromId(String(stage))
-  return stageDef.title
 }

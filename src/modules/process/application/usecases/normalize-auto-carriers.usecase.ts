@@ -1,4 +1,3 @@
-import type { ContainerUseCasesForProcess } from '~/modules/process/application/process.container-usecases'
 import type { ProcessRepository } from '~/modules/process/application/process.repository'
 
 type EffectiveCarrierSummary = 'UNKNOWN' | 'SINGLE' | 'MIXED'
@@ -14,6 +13,26 @@ export type NormalizeAutoCarriersResult = {
   readonly updated_auto_containers: number
   readonly skipped_manual_containers: number
   readonly already_aligned_auto_containers: number
+}
+
+type NormalizeAutoCarrierContainerRecord = {
+  readonly id: string | number
+  readonly carrierCode: string | null
+  readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL' | undefined
+}
+
+type NormalizeAutoCarrierUpdateCommand = {
+  readonly containerId: string
+  readonly carrierCode: string | null
+  readonly carrierAssignmentMode?: 'AUTO' | 'MANUAL' | undefined
+  readonly carrierDetectedAt?: string | null | undefined
+  readonly carrierDetectionSource?:
+    | 'process-seed'
+    | 'auto-detect'
+    | 'manual-user'
+    | 'legacy-backfill'
+    | null
+    | undefined
 }
 
 function toNormalizedCarrierCode(value: string | null | undefined): string | null {
@@ -83,7 +102,12 @@ function pickNormalizeTargetCarrier(command: {
 
 export function createNormalizeAutoCarriersUseCase(deps: {
   readonly repository: ProcessRepository
-  readonly containerUseCases: Pick<ContainerUseCasesForProcess, 'listByProcessId' | 'updateCarrier'>
+  readonly containerUseCases: {
+    readonly listByProcessId: (command: { readonly processId: string }) => Promise<{
+      readonly containers: readonly NormalizeAutoCarrierContainerRecord[]
+    }>
+    readonly updateCarrier: (command: NormalizeAutoCarrierUpdateCommand) => Promise<unknown>
+  }
 }) {
   return async function execute(command: {
     readonly processId: string

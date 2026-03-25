@@ -13,7 +13,7 @@ export function toInstantDto(value: Instant): InstantDto {
   }
 }
 
-export function toCalendarDateDto(value: CalendarDate): CalendarDateDto {
+function toCalendarDateDto(value: CalendarDate): CalendarDateDto {
   return {
     kind: 'date',
     value: value.toIsoDate(),

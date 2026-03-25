@@ -67,7 +67,7 @@ type ScenarioSeedDeps = Readonly<{
   }) => Promise<void>
 }>
 
-export type ScenarioCatalogResponse = Readonly<{
+type ScenarioCatalogResponse = Readonly<{
   stages: typeof SCENARIO_STAGES
   groups: ReturnType<typeof listTrackingScenarioGroups>
   scenarios: ReturnType<typeof listTrackingScenarioSummaries>

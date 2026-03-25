@@ -34,7 +34,11 @@ import type {
  * This is the only place that shapes alert display data for the HTTP boundary.
  */
 export function toAlertResponseDto(alert: TrackingAlertDisplayReadModel): AlertResponseDto {
-  const lifecycleState = resolveAlertLifecycleState(alert)
+  const lifecycleState = resolveAlertLifecycleState({
+    acked_at: alert.acked_at,
+    ...(alert.lifecycle_state === undefined ? {} : { lifecycle_state: alert.lifecycle_state }),
+    ...(alert.resolved_at === undefined ? {} : { resolved_at: alert.resolved_at }),
+  })
   return {
     id: alert.id,
     container_number: alert.container_number,

@@ -12,7 +12,7 @@ import { HttpError } from '~/shared/errors/httpErrors'
 export type DetectProcessCarrierCommand = {
   readonly tenantId: string
   readonly processId: string
-  readonly containerNumber?: string
+  readonly containerNumber?: string | undefined
 }
 
 export type DetectProcessCarrierResult = {

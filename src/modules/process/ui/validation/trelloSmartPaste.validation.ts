@@ -216,10 +216,10 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
   }
 
   return {
-    reference,
-    importerName,
-    exporterName,
-    product,
+    ...(reference === undefined ? {} : { reference }),
+    ...(importerName === undefined ? {} : { importerName }),
+    ...(exporterName === undefined ? {} : { exporterName }),
+    ...(product === undefined ? {} : { product }),
   }
 }
 
@@ -335,20 +335,34 @@ export function parseTrelloSmartPaste(rawInput: string): ParsedProcessDraft {
   const globalContainers = extractContainerNumbers(normalizedInput)
 
   const mergedContainers = dedupeStrings([...lineFields.containers, ...globalContainers])
+  const reference = titleFields.reference ?? lineFields.scalar.reference
+  const importerName = titleFields.importerName ?? lineFields.scalar.importerName
+  const exporterName = titleFields.exporterName ?? lineFields.scalar.exporterName
+  const product = titleFields.product ?? lineFields.scalar.product
 
   const fields: ParsedProcessDraft['fields'] = {
-    reference: titleFields.reference ?? lineFields.scalar.reference,
-    importerName: titleFields.importerName ?? lineFields.scalar.importerName,
-    exporterName: titleFields.exporterName ?? lineFields.scalar.exporterName,
-    product: titleFields.product ?? lineFields.scalar.product,
-    referenceImporter: lineFields.scalar.referenceImporter,
-    redestinationNumber: lineFields.scalar.redestinationNumber,
-    origin: lineFields.scalar.origin,
-    destination: lineFields.scalar.destination,
-    billOfLading: lineFields.scalar.billOfLading,
-    bookingNumber: lineFields.scalar.bookingNumber,
-    carrier: lineFields.scalar.carrier,
     containers: mergedContainers,
+    ...(reference === undefined ? {} : { reference }),
+    ...(importerName === undefined ? {} : { importerName }),
+    ...(exporterName === undefined ? {} : { exporterName }),
+    ...(product === undefined ? {} : { product }),
+    ...(lineFields.scalar.referenceImporter === undefined
+      ? {}
+      : { referenceImporter: lineFields.scalar.referenceImporter }),
+    ...(lineFields.scalar.redestinationNumber === undefined
+      ? {}
+      : { redestinationNumber: lineFields.scalar.redestinationNumber }),
+    ...(lineFields.scalar.origin === undefined ? {} : { origin: lineFields.scalar.origin }),
+    ...(lineFields.scalar.destination === undefined
+      ? {}
+      : { destination: lineFields.scalar.destination }),
+    ...(lineFields.scalar.billOfLading === undefined
+      ? {}
+      : { billOfLading: lineFields.scalar.billOfLading }),
+    ...(lineFields.scalar.bookingNumber === undefined
+      ? {}
+      : { bookingNumber: lineFields.scalar.bookingNumber }),
+    ...(lineFields.scalar.carrier === undefined ? {} : { carrier: lineFields.scalar.carrier }),
   }
 
   return {

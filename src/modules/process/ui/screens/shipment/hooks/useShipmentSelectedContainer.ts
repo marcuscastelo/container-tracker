@@ -29,8 +29,9 @@ export function useShipmentSelectedContainer(
   // Ensure a default container is selected when data loads
   createEffect(() => {
     const data = command.shipment()
-    if (data && data.containers.length > 0 && !selectedContainerId()) {
-      setSelectedContainerId(String(data.containers[0].id))
+    const firstContainer = data?.containers[0]
+    if (data && firstContainer && !selectedContainerId()) {
+      setSelectedContainerId(String(firstContainer.id))
     }
   })
 
@@ -65,12 +66,14 @@ export function useShipmentSelectedContainer(
     if (!data) return null
     const containers = data.containers
     if (containers.length === 0) return null
+    const firstContainer = containers[0]
+    if (!firstContainer) return null
 
     const selected = selectedContainerId()
     if (selected) {
-      return containers.find((c) => String(c.id) === String(selected)) ?? containers[0]
+      return containers.find((c) => String(c.id) === String(selected)) ?? firstContainer
     }
-    return containers[0]
+    return firstContainer
   })
 
   const selectedContainerEtaVm = createMemo<ContainerEtaDetailVM>(() => {

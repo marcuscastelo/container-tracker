@@ -1,8 +1,8 @@
 import { z } from 'zod/v4'
 
-export const AgentStatusSchema = z.enum(['CONNECTED', 'DEGRADED', 'DISCONNECTED', 'UNKNOWN'])
+const AgentStatusSchema = z.enum(['CONNECTED', 'DEGRADED', 'DISCONNECTED', 'UNKNOWN'])
 
-export const AgentRealtimeStateSchema = z.enum([
+const AgentRealtimeStateSchema = z.enum([
   'SUBSCRIBED',
   'CHANNEL_ERROR',
   'CONNECTING',
@@ -10,7 +10,7 @@ export const AgentRealtimeStateSchema = z.enum([
   'UNKNOWN',
 ])
 
-export const AgentProcessingStateSchema = z.enum([
+const AgentProcessingStateSchema = z.enum([
   'idle',
   'leasing',
   'processing',
@@ -18,11 +18,11 @@ export const AgentProcessingStateSchema = z.enum([
   'unknown',
 ])
 
-export const AgentLeaseHealthSchema = z.enum(['healthy', 'stale', 'conflict', 'unknown'])
+const AgentLeaseHealthSchema = z.enum(['healthy', 'stale', 'conflict', 'unknown'])
 
-export const AgentBootStatusSchema = z.enum(['starting', 'healthy', 'degraded', 'unknown'])
+const AgentBootStatusSchema = z.enum(['starting', 'healthy', 'degraded', 'unknown'])
 
-export const AgentUpdaterStateSchema = z.enum([
+const AgentUpdaterStateSchema = z.enum([
   'idle',
   'checking',
   'downloading',
@@ -35,9 +35,9 @@ export const AgentUpdaterStateSchema = z.enum([
   'unknown',
 ])
 
-export const AgentEnrollmentMethodSchema = z.enum(['bootstrap-token', 'manual', 'unknown'])
+const AgentEnrollmentMethodSchema = z.enum(['bootstrap-token', 'manual', 'unknown'])
 
-export const AgentActivityTypeSchema = z.enum([
+const AgentActivityTypeSchema = z.enum([
   'ENROLLED',
   'HEARTBEAT',
   'LEASED_TARGET',
@@ -57,11 +57,11 @@ export const AgentActivityTypeSchema = z.enum([
   'ROLLBACK_EXECUTED',
 ])
 
-export const AgentActivitySeveritySchema = z.enum(['info', 'warning', 'danger', 'success'])
-export const AgentLogChannelSchema = z.enum(['stdout', 'stderr'])
-export const AgentLogChannelQuerySchema = z.enum(['stdout', 'stderr', 'both'])
+const AgentActivitySeveritySchema = z.enum(['info', 'warning', 'danger', 'success'])
+const AgentLogChannelSchema = z.enum(['stdout', 'stderr'])
+const AgentLogChannelQuerySchema = z.enum(['stdout', 'stderr', 'both'])
 
-export const AgentListSortFieldSchema = z.enum([
+const AgentListSortFieldSchema = z.enum([
   'status',
   'tenant',
   'lastSeen',
@@ -70,7 +70,7 @@ export const AgentListSortFieldSchema = z.enum([
   'activeJobs',
 ])
 
-export const AgentListSortDirectionSchema = z.enum(['asc', 'desc'])
+const AgentListSortDirectionSchema = z.enum(['asc', 'desc'])
 
 export const AgentListQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
@@ -81,7 +81,7 @@ export const AgentListQuerySchema = z.object({
   sort_dir: AgentListSortDirectionSchema.default('asc'),
 })
 
-export const AgentSummaryResponseSchema = z.object({
+const AgentSummaryResponseSchema = z.object({
   agentId: z.string().uuid(),
   tenantId: z.string().uuid(),
   tenantName: z.string().min(1),
@@ -111,7 +111,7 @@ export const AgentSummaryResponseSchema = z.object({
   lastLogAt: z.string().datetime({ offset: true }).nullable(),
 })
 
-export const AgentFleetSummaryResponseSchema = z.object({
+const AgentFleetSummaryResponseSchema = z.object({
   totalAgents: z.number().int().min(0),
   connectedCount: z.number().int().min(0),
   degradedCount: z.number().int().min(0),
@@ -127,7 +127,7 @@ export const AgentListResponseSchema = z.object({
   summary: AgentFleetSummaryResponseSchema,
 })
 
-export const AgentActivityResponseSchema = z.object({
+const AgentActivityResponseSchema = z.object({
   id: z.string().uuid(),
   occurredAt: z.string().datetime({ offset: true }),
   type: AgentActivityTypeSchema,
@@ -194,7 +194,7 @@ export const AgentLogsQuerySchema = z.object({
   tail: z.coerce.number().int().min(1).max(2000).default(500),
 })
 
-export const AgentLogLineResponseSchema = z.object({
+const AgentLogLineResponseSchema = z.object({
   id: z.string().uuid(),
   agentId: z.string().uuid(),
   channel: AgentLogChannelSchema,
@@ -237,8 +237,6 @@ export const AgentRequestUpdateBodySchema = z.object({
   desired_version: z.string().trim().min(1),
   update_channel: z.string().trim().min(1).default('stable'),
 })
-
-export const AgentRequestRestartBodySchema = z.object({}).optional().default({})
 
 export const AgentRequestOperationResponseSchema = z.object({
   ok: z.literal(true),

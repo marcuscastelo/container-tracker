@@ -22,6 +22,14 @@ function createProcessSyncContainerStateMap(
   )
 }
 
+function requireAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) {
+    throw new Error(`Expected item at index ${index}`)
+  }
+  return item
+}
+
 describe('useProcessSyncRealtime helpers', () => {
   it('maps RUNNING-like realtime statuses to syncing', () => {
     expect(toProcessSyncStateFromRealtimeStatus('RUNNING')).toBe('syncing')
@@ -61,8 +69,8 @@ describe('useProcessSyncRealtime helpers', () => {
     ]
 
     const mapped = toProcessSummaryVMs(source)
-    expect(mapped[0].syncStatus).toBe('idle')
-    expect(mapped[1].syncStatus).toBe('idle')
+    expect(requireAt(mapped, 0).syncStatus).toBe('idle')
+    expect(requireAt(mapped, 1).syncStatus).toBe('idle')
   })
 
   it('treats unchanged pruned process sync state as shallowly equal', () => {

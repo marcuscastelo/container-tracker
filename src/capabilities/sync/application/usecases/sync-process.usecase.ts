@@ -24,7 +24,7 @@ type SyncProcessResult = {
 }
 
 type SyncProcessContainerRecord = {
-  readonly containerId?: string
+  readonly containerId?: string | undefined
   readonly processId: string
   readonly containerNumber: string
   readonly carrierCode: string | null

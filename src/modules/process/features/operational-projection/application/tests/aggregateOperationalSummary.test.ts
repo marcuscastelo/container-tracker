@@ -33,20 +33,24 @@ function makeSummary(
   } = {},
 ) {
   const etaEventTime = overrides.operational?.etaEventTime
-  const operational = overrides.operational
-    ? {
-        eta:
-          typeof etaEventTime === 'string' && etaEventTime.length > 0
-            ? { eventTime: temporalDtoFromCanonical(etaEventTime) }
-            : null,
-        etaApplicable: overrides.operational.etaApplicable,
-        lifecycleBucket: overrides.operational.lifecycleBucket,
-      }
-    : undefined
+  const operational =
+    overrides.operational === undefined
+      ? undefined
+      : {
+          eta:
+            typeof etaEventTime === 'string' && etaEventTime.length > 0
+              ? { eventTime: temporalDtoFromCanonical(etaEventTime) }
+              : null,
+          ...(overrides.operational.etaApplicable === undefined
+            ? {}
+            : { etaApplicable: overrides.operational.etaApplicable }),
+          ...(overrides.operational.lifecycleBucket === undefined
+            ? {}
+            : { lifecycleBucket: overrides.operational.lifecycleBucket }),
+        }
 
   return {
     status: overrides.status ?? 'UNKNOWN',
-    operational,
     alerts: overrides.alerts ?? [],
     timeline: {
       observations:
@@ -54,6 +58,7 @@ function makeSummary(
           event_time: resolveTemporalValue(observation.event_time, null),
         })) ?? [],
     },
+    ...(operational === undefined ? {} : { operational }),
   }
 }
 

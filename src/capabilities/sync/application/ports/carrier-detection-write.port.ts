@@ -8,7 +8,7 @@ export type CarrierDetectionWritePort = {
   readonly recordDetectionRun?: (command: {
     readonly processId: string
     readonly containerNumber: string
-    readonly containerId?: string
+    readonly containerId?: string | undefined
     readonly candidateProviders: readonly SupportedSyncProvider[]
     readonly attempts: readonly {
       readonly provider: SupportedSyncProvider

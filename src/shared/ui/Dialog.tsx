@@ -23,7 +23,7 @@ const maxWidthClasses = {
 
 type HeaderProps = {
   readonly title: string
-  readonly description?: string
+  readonly description: string | undefined
   readonly closeLabel: string
   readonly onClose: () => void
 }

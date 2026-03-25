@@ -237,9 +237,10 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
         )
       }
 
-      const result = await dashboardUseCases.getProcessesCreatedByMonthReadModel({
-        windowSize: toDashboardMonthWindowSize(parsedQuery.data.window),
-      })
+      const windowSize = toDashboardMonthWindowSize(parsedQuery.data.window)
+      const result = await dashboardUseCases.getProcessesCreatedByMonthReadModel(
+        windowSize === undefined ? {} : { windowSize },
+      )
       const response = {
         months: result.months.map((item) => ({
           month: item.month,

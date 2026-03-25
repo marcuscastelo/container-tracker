@@ -87,10 +87,10 @@ export async function executeSyncTargets(command: {
   readonly targets: readonly ResolvedSyncTarget[]
   readonly enqueuePolicyService: SyncEnqueuePolicyService
   readonly queuePort: Pick<SyncQueuePort, 'getSyncRequestStatuses'>
-  readonly timeoutMs?: number
-  readonly pollIntervalMs?: number
-  readonly nowMs?: () => number
-  readonly sleep?: (delayMs: number) => Promise<void>
+  readonly timeoutMs?: number | undefined
+  readonly pollIntervalMs?: number | undefined
+  readonly nowMs?: (() => number) | undefined
+  readonly sleep?: ((delayMs: number) => Promise<void>) | undefined
   readonly timeoutErrorMessage: string
 }): Promise<readonly SyncRequestStatusItem[]> {
   if (command.targets.length === 0) {

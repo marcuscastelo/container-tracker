@@ -101,6 +101,12 @@ type SmartPasteProps = {
   readonly onConfirmOverwrite: () => void
 }
 
+function toOptionalErrorProps(
+  error: string | undefined,
+): { readonly error: string } | Record<never, never> {
+  return error === undefined ? {} : { error }
+}
+
 function SmartPasteTrigger(props: { readonly onOpen: () => void }): JSX.Element {
   const { t, keys } = useTranslation()
 
@@ -553,6 +559,8 @@ function ContainerRow(
   props: { container: ContainerInput; index: () => number } & ContainerSectionProps,
 ): JSX.Element {
   const { t, keys } = useTranslation()
+  const error = () =>
+    props.getContainerError(props.container) ?? props.getDuplicateError(props.container)
 
   return (
     <div class="flex items-start gap-3 rounded-lg border border-border bg-surface-muted p-4">
@@ -565,10 +573,8 @@ function ContainerRow(
           onPaste={(event) => props.onContainerPaste(props.container, event)}
           onBlur={() => props.onContainerBlur(props.container)}
           placeholder={t(keys.createProcess.field.containerNumberPlaceholder)}
-          error={
-            props.getContainerError(props.container) ?? props.getDuplicateError(props.container)
-          }
           required
+          {...toOptionalErrorProps(error())}
         />
 
         <Show when={props.getContainerLink(props.container)}>
@@ -763,10 +769,10 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
           />
 
           <ActionsSection
-            mode={props.mode}
             onClose={props.onClose}
             submitDisabled={props.submitDisabled}
             submitTooltip={props.submitTooltip}
+            {...(props.mode === undefined ? {} : { mode: props.mode })}
           />
         </form>
       </Dialog>
