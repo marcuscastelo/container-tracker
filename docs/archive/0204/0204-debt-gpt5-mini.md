@@ -76,7 +76,7 @@ Curto prazo (quick wins — 0.5h a 1 dia)
 
 - Corrigir i18n imediatamente
   - Auditar chaves declaradas em `ShipmentView.tsx`; garantir presença em `src/locales/en-US.json`, `pt-BR.json`, `pt-PT.json` com placeholders curtos.
-  - Rodar o verificador de chaves i18n local: `pnpm i18n:check` (projeto inclui script `scripts/check-i18n-keys.mjs`).
+  - Rodar o verificador de chaves i18n local: `pnpm i18n:check` (projeto inclui script `scripts/lint/check-i18n-keys.mjs`).
 
 Médio prazo (refactor seguro — 1 a 5 dias)
 - Mover parsing/enriquecimento para presenter/adapter

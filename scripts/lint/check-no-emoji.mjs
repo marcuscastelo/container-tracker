@@ -5,7 +5,7 @@
  * replaced by SVG icons (lucide-solid or custom SVGs in shared/ui/icons).
  *
  * Usage:
- *   node scripts/check-no-emoji.mjs
+ *   node scripts/lint/check-no-emoji.mjs
  *   pnpm run check:no-emoji
  *
  * Exit code 1 when violations are found.

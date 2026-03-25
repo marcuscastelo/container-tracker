@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assertNoIifeErrorSmokeResult,
   noIifeErrorSmokeConstants,
-} from '../no-iife-in-jsx-error-smoke.shared.mjs'
+} from '../eslint-plugin/no-iife-in-jsx-error-smoke.shared.mjs'
 
 const { noIifeRuleId, noIifeRuleMessageId } = noIifeErrorSmokeConstants
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * enforce-i18n-no-hardcoded.mjs
+ * scripts/lint/enforce-i18n-no-hardcoded.mjs
  *
  * CI enforcement script that detects hardcoded user-facing strings in TSX/JSX
  * files that should be using the i18n system instead.

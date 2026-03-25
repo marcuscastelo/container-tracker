@@ -18,8 +18,8 @@ Endurecer práticas para evitar componentes gigantes, wrapper-chain sem semânti
 - Escopo determinístico: `docs/plans/ui-complexity-scope.json`
 - Allowlist: `docs/plans/ui-complexity-allowlist.json`
 - Relatório comparativo: `docs/plans/ui-complexity-report.md`
-- Script de baseline/report: `scripts/ui-complexity-report.mjs`
-- Script de no-regression: `scripts/ui-complexity-allowlist-check.mjs`
+- Script de baseline/report: `scripts/lint/ui-complexity-report.mjs`
+- Script de no-regression: `scripts/lint/ui-complexity-allowlist-check.mjs`
 
 ## Baseline Oficial (Fase 1)
 Fonte de verdade: `docs/plans/ui-complexity-baseline.md`.
