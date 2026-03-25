@@ -570,11 +570,16 @@ function toPackageNameSegments(packageName: string): readonly [string, string] |
   }
 
   const segments = packageName.split('/')
-  if (segments.length !== 2 || segments[0].length === 0 || segments[1].length === 0) {
+  const [scope, name] = segments
+  if (segments.length !== 2 || scope === undefined || name === undefined) {
     throw new Error(`invalid scoped package name: ${packageName}`)
   }
 
-  return [segments[0], segments[1]]
+  if (scope.length === 0 || name.length === 0) {
+    throw new Error(`invalid scoped package name: ${packageName}`)
+  }
+
+  return [scope, name]
 }
 
 function resolvePackageEntryPath(nodeModulesDir: string, packageName: string): string {
@@ -634,7 +639,8 @@ function extractPnpmDepId(pnpmStoreDir: string, packageDir: string): string | nu
     return null
   }
 
-  return segments[0]
+  const [depId] = segments
+  return depId ?? null
 }
 
 async function resolvePackageDirFromPnpmStore(

@@ -1,7 +1,5 @@
-import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createSignal, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, type JSX, Show } from 'solid-js'
 import type { TrackingReplayDebugVM } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
-import type { TrackingReplayDebugResponseDto } from '~/modules/tracking/interface/http/tracking.schemas'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
 
@@ -10,7 +8,7 @@ type Props = {
   readonly loading: boolean
   readonly errorMessage: string | null
   readonly debug: TrackingReplayDebugVM | null
-  readonly debugPayload: TrackingReplayDebugResponseDto | null
+  readonly debugPayload: unknown | null
 }
 
 function JsonBlock(props: { readonly title: string; readonly value: unknown }): JSX.Element {

@@ -37,6 +37,6 @@ export function subscribeAgentLogs(command: {
   return subscribeToAgentLogsByAgentId({
     agentId: command.agentId,
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus === undefined ? {} : { onStatus: command.onStatus }),
   })
 }

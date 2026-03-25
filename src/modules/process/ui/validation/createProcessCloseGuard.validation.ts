@@ -13,7 +13,7 @@ export type CreateProcessCloseGuardFormSnapshot = {
   readonly redestinationNumber: string
 }
 
-export type SmartPasteCloseGuardSnapshot = {
+type SmartPasteCloseGuardSnapshot = {
   readonly rawText: string
   readonly hasParsed: boolean
 }

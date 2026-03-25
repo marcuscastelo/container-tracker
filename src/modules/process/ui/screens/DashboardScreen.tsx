@@ -264,8 +264,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           <Show when={createError()}>
             <ExistingProcessError
               message={getCreateErrorMessage(createError())}
-              existing={getCreateErrorExisting(createError())}
               onAcknowledge={() => setCreateError(null)}
+              existing={getCreateErrorExisting(createError()) ?? null}
             />
           </Show>
 

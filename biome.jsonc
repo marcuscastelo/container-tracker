@@ -26,6 +26,7 @@
       "!.output",
       "!.agent-runtime",
       "!packaging/arch/src/agent-app",
+      "!packaging/arch/src",
       "!packaging/arch/pkg"
     ]
   },

@@ -277,7 +277,7 @@ type CellContext = {
   readonly processHref: string
   readonly handleProcessLinkClick: (event: MouseEvent) => void
   readonly triggerProcessIntent: () => void
-  readonly t: ReturnType<typeof useTranslation>['t']
+  readonly t: (key: string, opts?: Record<string, unknown>) => string
   readonly keys: ReturnType<typeof useTranslation>['keys']
   readonly onProcessSync: (processId: string) => Promise<void>
 }
@@ -556,6 +556,8 @@ const CELL_RENDERERS: Record<DashboardColumnId, (ctx: CellContext) => JSX.Elemen
 
 function DashboardProcessRow(props: RowProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const translate = (key: string, options?: Record<string, unknown>): string =>
+    options === undefined ? t(key) : t(key, options)
   const processHref = () => buildProcessHref(props.process.id)
   const dominantSeverity = () => toDominantSeverity(props.process)
 
@@ -607,7 +609,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     processHref: processHref(),
     handleProcessLinkClick,
     triggerProcessIntent,
-    t,
+    t: translate,
     keys,
     onProcessSync: props.onProcessSync,
   })

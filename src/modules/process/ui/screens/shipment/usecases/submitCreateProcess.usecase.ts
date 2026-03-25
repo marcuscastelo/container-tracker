@@ -7,7 +7,7 @@ import {
   parseExistingProcessConflictError,
 } from '~/modules/process/ui/validation/processConflict.validation'
 
-export type SubmitCreateProcessResult =
+type SubmitCreateProcessResult =
   | { readonly kind: 'created'; readonly processId: string }
   | { readonly kind: 'conflict'; readonly error: ExistingProcessConflict }
   | { readonly kind: 'error'; readonly message: string }

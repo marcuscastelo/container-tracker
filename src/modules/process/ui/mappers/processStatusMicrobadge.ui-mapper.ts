@@ -7,10 +7,10 @@ import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
-export type ProcessStatusMicrobadgeSource =
+type ProcessStatusMicrobadgeSource =
   | {
-      readonly status?: string | null
-      readonly count?: number | null
+      readonly status?: string | null | undefined
+      readonly count?: number | null | undefined
     }
   | null
   | undefined
@@ -94,7 +94,7 @@ export function toProcessStatusMicrobadgeVM(
   }
 }
 
-export function processStatusMicrobadgeToVariant(statusCode: ProcessStatusCode): StatusVariant {
+function processStatusMicrobadgeToVariant(statusCode: ProcessStatusCode): StatusVariant {
   return processStatusToVariant(statusCode)
 }
 

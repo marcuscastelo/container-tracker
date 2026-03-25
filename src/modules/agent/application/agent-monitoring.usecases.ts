@@ -561,8 +561,8 @@ export function createAgentMonitoringUseCases(deps: {
 
     const records = await deps.repository.listAgentsForTenant({
       tenantId: command.tenantId,
-      search: command.search,
-      capability: command.capability,
+      ...(command.search === undefined ? {} : { search: command.search }),
+      ...(command.capability === undefined ? {} : { capability: command.capability }),
     })
 
     const queueLagSeconds = await deps.repository.getTenantQueueLagSeconds({
@@ -715,19 +715,56 @@ export function createAgentMonitoringUseCases(deps: {
 
   const updateRuntimeState = async (command: UpdateRuntimeStateCommand): Promise<void> => {
     const derivedStatus = deriveRuntimeStatus({
-      status: command.status,
-      bootStatus: command.bootStatus,
-      updaterState: command.updaterState,
-      realtimeState: command.realtimeState,
-      processingState: command.processingState,
-      leaseHealth: command.leaseHealth,
-      lastError: command.lastError,
-      lastSeenAt: command.lastSeenAt,
+      ...(command.status === undefined ? {} : { status: command.status }),
+      ...(command.bootStatus === undefined ? {} : { bootStatus: command.bootStatus }),
+      ...(command.updaterState === undefined ? {} : { updaterState: command.updaterState }),
+      ...(command.realtimeState === undefined ? {} : { realtimeState: command.realtimeState }),
+      ...(command.processingState === undefined
+        ? {}
+        : { processingState: command.processingState }),
+      ...(command.leaseHealth === undefined ? {} : { leaseHealth: command.leaseHealth }),
+      ...(command.lastError === undefined ? {} : { lastError: command.lastError }),
+      ...(command.lastSeenAt === undefined ? {} : { lastSeenAt: command.lastSeenAt }),
     })
 
     await deps.repository.updateAgentRuntimeState({
-      ...command,
-      status: derivedStatus,
+      agentId: command.agentId,
+      tenantId: command.tenantId,
+      ...(command.hostname === undefined ? {} : { hostname: command.hostname }),
+      ...(command.version === undefined ? {} : { version: command.version }),
+      ...(command.currentVersion === undefined ? {} : { currentVersion: command.currentVersion }),
+      ...(command.desiredVersion === undefined ? {} : { desiredVersion: command.desiredVersion }),
+      ...(command.updateChannel === undefined ? {} : { updateChannel: command.updateChannel }),
+      ...(command.updaterState === undefined ? {} : { updaterState: command.updaterState }),
+      ...(command.updaterLastCheckedAt === undefined
+        ? {}
+        : { updaterLastCheckedAt: command.updaterLastCheckedAt }),
+      ...(command.updaterLastError === undefined
+        ? {}
+        : { updaterLastError: command.updaterLastError }),
+      ...(command.updateReadyVersion === undefined
+        ? {}
+        : { updateReadyVersion: command.updateReadyVersion }),
+      ...(command.restartRequestedAt === undefined
+        ? {}
+        : { restartRequestedAt: command.restartRequestedAt }),
+      ...(command.bootStatus === undefined ? {} : { bootStatus: command.bootStatus }),
+      ...(command.lastSeenAt === undefined ? {} : { lastSeenAt: command.lastSeenAt }),
+      ...(command.realtimeState === undefined ? {} : { realtimeState: command.realtimeState }),
+      ...(command.processingState === undefined
+        ? {}
+        : { processingState: command.processingState }),
+      ...(command.leaseHealth === undefined ? {} : { leaseHealth: command.leaseHealth }),
+      ...(command.activeJobs === undefined ? {} : { activeJobs: command.activeJobs }),
+      ...(command.capabilities === undefined ? {} : { capabilities: command.capabilities }),
+      ...(command.intervalSec === undefined ? {} : { intervalSec: command.intervalSec }),
+      ...(command.queueLagSeconds === undefined
+        ? {}
+        : { queueLagSeconds: command.queueLagSeconds }),
+      ...(command.lastError === undefined ? {} : { lastError: command.lastError }),
+      ...(command.logsSupported === undefined ? {} : { logsSupported: command.logsSupported }),
+      ...(command.lastLogAt === undefined ? {} : { lastLogAt: command.lastLogAt }),
+      ...(derivedStatus === undefined ? {} : { status: derivedStatus }),
     })
   }
 

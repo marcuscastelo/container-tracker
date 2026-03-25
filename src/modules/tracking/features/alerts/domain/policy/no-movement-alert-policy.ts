@@ -1,4 +1,4 @@
-export const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
+const NO_MOVEMENT_BREAKPOINTS_DAYS = [5, 10, 20, 30] as const
 
 export function classifyNoMovementBreakpoint(daysWithoutMovement: number): number | null {
   const eligible = NO_MOVEMENT_BREAKPOINTS_DAYS.filter(

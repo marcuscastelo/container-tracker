@@ -1,6 +1,5 @@
 import { Construction, Hourglass, Repeat, Ship, TriangleAlert, Truck } from 'lucide-solid'
-import type { JSX } from 'solid-js'
-import { Match, Show, Switch } from 'solid-js'
+import { type JSX, Match, Show, Switch } from 'solid-js'
 import type {
   GapMarker,
   PortRiskMarker,
@@ -37,6 +36,7 @@ export function VoyageBlockHeader(props: {
     if (!destination) {
       for (let i = b.events.length - 1; i >= 0; i--) {
         const ev = b.events[i]
+        if (!ev) continue
         if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED' && ev.location) {
           destination = ev.location
           break
@@ -47,6 +47,7 @@ export function VoyageBlockHeader(props: {
     if (!destination) {
       for (let i = b.events.length - 1; i >= 0; i--) {
         const ev = b.events[i]
+        if (!ev) continue
         if (ev.type === 'DISCHARGE' && ev.eventTimeType === 'EXPECTED' && ev.location) {
           destination = ev.location
           break
@@ -57,6 +58,7 @@ export function VoyageBlockHeader(props: {
     if (!destination) {
       for (let i = b.events.length - 1; i >= 0; i--) {
         const ev = b.events[i]
+        if (!ev) continue
         if (ev.location && (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')) {
           destination = ev.location
           break
@@ -301,50 +303,4 @@ export function BlockCard(props: {
  */
 export function EventSeparator(): JSX.Element {
   return <div class="ml-12 border-t border-border/60" />
-}
-
-// ---------------------------------------------------------------------------
-// Continuous Rail — Visual connector between timeline blocks
-// ---------------------------------------------------------------------------
-
-export type RailDotVariant =
-  | 'voyage'
-  | 'terminal'
-  | 'transshipment'
-  | 'gap'
-  | 'risk'
-  | 'event'
-  | 'current-voyage'
-
-/**
- * A dot marker positioned on the outer timeline rail.
- * When placed inside a `relative` wrapper at `pl-5` from the rail container,
- * the dot centers on the rail line at `left: 8px`.
- */
-export function RailDot(props: { readonly variant: RailDotVariant }): JSX.Element {
-  const cls = (): string => {
-    switch (props.variant) {
-      case 'current-voyage':
-        return 'h-3 w-3 bg-tone-info-strong ring-2 ring-tone-info-border shadow-[0_0_4px_rgb(0_0_0_/20%)]'
-      case 'voyage':
-        return 'h-2.5 w-2.5 bg-tone-info-strong ring-2 ring-surface'
-      case 'terminal':
-        return 'h-2 w-2 bg-muted-foreground ring-2 ring-surface'
-      case 'transshipment':
-        return 'h-3 w-3 bg-tone-warning-strong ring-2 ring-surface'
-      case 'gap':
-        return 'h-1.5 w-1.5 bg-border-strong ring-1 ring-surface'
-      case 'risk':
-        return 'h-2 w-2 bg-tone-warning-strong ring-1 ring-surface'
-      case 'event':
-        return 'h-2 w-2 bg-tone-success-strong ring-1 ring-surface'
-    }
-  }
-
-  return (
-    <div
-      class={`absolute top-3 -left-3 -translate-x-1/2 rounded-full z-10 ${cls()}`}
-      aria-hidden="true"
-    />
-  )
 }

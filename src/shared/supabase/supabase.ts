@@ -80,11 +80,19 @@ export function registerSubapabaseRealtimeCallback<T>(
 
     const newRecord = payloadData.new !== null ? validator.safeParse(payloadData.new) : null
 
-    callback({
+    const normalizedEvent: RealtimeEvent<T> = {
       eventType,
-      old: oldRecord?.success ? oldRecord.data : undefined,
-      new: newRecord?.success ? newRecord.data : undefined,
-    })
+    }
+
+    if (oldRecord?.success) {
+      normalizedEvent.old = oldRecord.data
+    }
+
+    if (newRecord?.success) {
+      normalizedEvent.new = newRecord.data
+    }
+
+    callback(normalizedEvent)
   }
 
   supabase

@@ -5,7 +5,7 @@ import {
   optionalFiniteNumber,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mapper-primitives'
 
-export type NoMovementDedupRow = {
+type NoMovementDedupRow = {
   readonly container_id: string
   readonly category: string
   readonly type: string

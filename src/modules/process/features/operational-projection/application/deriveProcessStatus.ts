@@ -20,7 +20,7 @@ export type ProcessStatusMicrobadge = {
   readonly count: number
 }
 
-export type ProcessStatusDispersion = {
+type ProcessStatusDispersion = {
   readonly highest_container_status: OperationalStatus | null
   readonly status_counts: OperationalStatusCounts
   readonly status_microbadge: ProcessStatusMicrobadge | null

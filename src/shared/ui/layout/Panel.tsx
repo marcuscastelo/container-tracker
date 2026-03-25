@@ -1,5 +1,4 @@
-import type { JSX } from 'solid-js'
-import { Show } from 'solid-js'
+import { type JSX, Show } from 'solid-js'
 
 type PanelProps = {
   readonly children: JSX.Element
@@ -10,7 +9,7 @@ type PanelProps = {
   readonly headerSlot?: JSX.Element
 }
 
-function PanelTitle(props: { readonly title?: string }): JSX.Element | null {
+function PanelTitle(props: { readonly title: string | undefined }): JSX.Element | null {
   return (
     <Show when={props.title}>
       <h2 class="text-micro font-semibold uppercase tracking-wider text-text-muted">
@@ -20,7 +19,7 @@ function PanelTitle(props: { readonly title?: string }): JSX.Element | null {
   )
 }
 
-function PanelSubtitle(props: { readonly subtitle?: string }): JSX.Element | null {
+function PanelSubtitle(props: { readonly subtitle: string | undefined }): JSX.Element | null {
   return (
     <Show when={props.subtitle}>
       <p class="mt-px text-micro text-text-muted">{props.subtitle}</p>
@@ -28,21 +27,33 @@ function PanelSubtitle(props: { readonly subtitle?: string }): JSX.Element | nul
   )
 }
 
+function PanelHeader(props: {
+  readonly title: string | undefined
+  readonly subtitle: string | undefined
+  readonly headerSlot: JSX.Element | undefined
+}): JSX.Element {
+  return (
+    <header class="border-b border-border/70 px-2.5 py-2">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <PanelTitle title={props.title} />
+          <PanelSubtitle subtitle={props.subtitle} />
+        </div>
+        {props.headerSlot ?? null}
+      </div>
+    </header>
+  )
+}
+
 export function Panel(props: PanelProps): JSX.Element {
+  const hasHeader = () => props.title || props.subtitle || props.headerSlot
+
   return (
     <section
       class={`rounded-lg border border-border bg-surface shadow-[0_1px_3px_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.04)] ${props.class ?? ''}`.trim()}
     >
-      <Show when={props.title || props.headerSlot}>
-        <header class="border-b border-border/70 px-2.5 py-2">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <PanelTitle title={props.title} />
-              <PanelSubtitle subtitle={props.subtitle} />
-            </div>
-            {props.headerSlot ?? null}
-          </div>
-        </header>
+      <Show when={hasHeader()}>
+        <PanelHeader title={props.title} subtitle={props.subtitle} headerSlot={props.headerSlot} />
       </Show>
       <div class={props.bodyClass ?? ''}>{props.children}</div>
     </section>

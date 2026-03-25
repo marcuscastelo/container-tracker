@@ -42,16 +42,18 @@ import type { TemporalValue } from '~/shared/time/temporal-value'
 export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRecord {
   return {
     reference: dto.reference ?? null,
-    origin: dto.origin?.display_name,
-    destination: dto.destination?.display_name,
+    origin: dto.origin?.display_name ?? null,
+    destination: dto.destination?.display_name ?? null,
     carrier: dto.carrier,
     bill_of_lading: dto.bill_of_lading ?? null,
     booking_number: dto.booking_number ?? null,
     importer_name: dto.importer_name ?? null,
     exporter_name: dto.exporter_name ?? null,
     reference_importer: dto.reference_importer ?? null,
-    product: dto.product ?? undefined,
-    redestination_number: dto.redestination_number ?? undefined,
+    ...(dto.product !== undefined ? { product: dto.product ?? null } : {}),
+    ...(dto.redestination_number !== undefined
+      ? { redestination_number: dto.redestination_number ?? null }
+      : {}),
     source: 'manual',
   }
 }

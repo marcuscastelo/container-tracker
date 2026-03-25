@@ -1,6 +1,9 @@
+import type { NavbarAlertsSummaryData } from '~/shared/api/navbar-alerts/navbar-alerts.contract'
 import { typedFetch } from '~/shared/api/typedFetch'
-import type { NavbarAlertsSummaryResponse } from '~/shared/api-schemas/dashboard.schemas'
-import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
+import {
+  type NavbarAlertsSummaryResponse,
+  NavbarAlertsSummaryResponseSchema,
+} from '~/shared/api-schemas/dashboard.schemas'
 import { systemClock } from '~/shared/time/clock'
 
 const NAVBAR_ALERTS_SUMMARY_ENDPOINT = '/api/alerts/navbar-summary'
@@ -36,7 +39,7 @@ function writeNavbarAlertsCache(value: NavbarAlertsSummaryResponse): void {
 
 export async function fetchNavbarAlertsSummary(options?: {
   readonly preferCached?: boolean
-}): Promise<NavbarAlertsSummaryResponse> {
+}): Promise<NavbarAlertsSummaryData> {
   if (options?.preferCached === true) {
     const cached = readFreshNavbarAlertsCache()
     if (cached !== null) return cached

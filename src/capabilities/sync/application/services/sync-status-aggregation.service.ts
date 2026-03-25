@@ -1,7 +1,7 @@
 import type { SyncRequestRecord } from '~/capabilities/sync/application/ports/sync-status-read.port'
 import { parseInstantFromIso } from '~/shared/time/parsing'
 
-export type SyncStatusDerivedState = {
+type SyncStatusDerivedState = {
   readonly syncStatus: 'idle' | 'syncing' | 'completed' | 'failed'
   readonly startedAt: string | null
   readonly finishedAt: string | null

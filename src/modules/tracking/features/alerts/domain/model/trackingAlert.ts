@@ -9,8 +9,8 @@ import type { Provider } from '~/modules/tracking/domain/model/provider'
  *
  * @see docs/master-consolidated-0209.md §3
  */
-export type TrackingAlertCategory = 'fact' | 'monitoring'
-export type TrackingAlertSeverity = 'info' | 'warning' | 'danger'
+type TrackingAlertCategory = 'fact' | 'monitoring'
+type TrackingAlertSeverity = 'info' | 'warning' | 'danger'
 export type TrackingAlertLifecycleState = 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
 export type TrackingAlertResolvedReason = 'condition_cleared' | 'terminal_state'
 
@@ -76,7 +76,6 @@ export type TrackingAlertMessageContract =
     }
 
 export type TrackingAlertMessageKey = TrackingAlertMessageContract['message_key']
-export type TrackingAlertMessageParams = TrackingAlertMessageContract['message_params']
 
 type TrackingAlertBase = {
   /** Lifecycle state of this alert record */

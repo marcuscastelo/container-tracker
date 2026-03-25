@@ -2,7 +2,7 @@ import type { CalendarDate } from '~/shared/time/calendar-date'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
-export type TemporalBoundaryStrategy = 'start-of-day' | 'end-of-day'
+type TemporalBoundaryStrategy = 'start-of-day' | 'end-of-day'
 
 type CompareTemporalOptions = {
   readonly timezone: string

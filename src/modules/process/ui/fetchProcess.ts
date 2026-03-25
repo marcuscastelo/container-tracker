@@ -61,7 +61,9 @@ function writeCachedProcess(key: string, value: ShipmentDetailVM | null): void {
     const entries = Array.from(processCache.entries())
     entries.sort((a, b) => a[1].expiresAtMs - b[1].expiresAtMs)
     for (let i = 0; processCache.size > CACHE_MAX_ENTRIES && i < entries.length; i++) {
-      processCache.delete(entries[i][0])
+      const entry = entries[i]
+      if (!entry) continue
+      processCache.delete(entry[0])
     }
   }
 }

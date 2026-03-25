@@ -26,7 +26,7 @@ function toTimestampOrNegativeInfinity(value: string | null | undefined): number
   return parseInstantFromIso(value)?.toEpochMs() ?? Number.NEGATIVE_INFINITY
 }
 
-export function compareIsoDesc(left: string | null, right: string | null): number {
+function compareIsoDesc(left: string | null, right: string | null): number {
   const leftTimestamp = toTimestampOrNegativeInfinity(left)
   const rightTimestamp = toTimestampOrNegativeInfinity(right)
   if (leftTimestamp !== rightTimestamp) {
@@ -41,7 +41,7 @@ export function compareIsoDesc(left: string | null, right: string | null): numbe
   return 0
 }
 
-export function toNavbarSeverity(
+function toNavbarSeverity(
   severity: TrackingActiveAlertReadModel['severity'],
 ): DashboardNavbarSeverity {
   if (severity === 'danger') return 'danger'
@@ -50,7 +50,7 @@ export function toNavbarSeverity(
   return 'none'
 }
 
-export function compareSeverityDesc(
+function compareSeverityDesc(
   left: DashboardNavbarSeverity,
   right: DashboardNavbarSeverity,
 ): number {
@@ -73,10 +73,11 @@ export function resolveDominantSeverity(
 }
 
 export function resolveLatestAlertAt(alerts: readonly NavbarAlertItemReadModel[]): string | null {
-  if (alerts.length === 0) return null
+  const [firstAlert, ...remainingAlerts] = alerts
+  if (firstAlert === undefined) return null
 
-  let latest = alerts[0].occurredAt
-  for (const alert of alerts) {
+  let latest = firstAlert.occurredAt
+  for (const alert of remainingAlerts) {
     if (compareIsoDesc(latest, alert.occurredAt) > 0) {
       latest = alert.occurredAt
     }

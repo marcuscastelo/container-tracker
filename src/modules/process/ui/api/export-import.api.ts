@@ -5,8 +5,7 @@ import {
 } from '~/shared/api-schemas/export-import.schemas'
 import { systemClock } from '~/shared/time/clock'
 
-export type ExportType = 'portable' | 'report'
-export type PortableFormat = 'json' | 'zip'
+type PortableFormat = 'json' | 'zip'
 export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'markdown' | 'pdf' | 'trello'
 
 type ExportScope =

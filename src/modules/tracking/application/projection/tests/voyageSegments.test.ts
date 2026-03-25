@@ -15,6 +15,14 @@ function makeEvent(
   }
 }
 
+function requireDefined<T>(value: T | undefined): T {
+  if (value === undefined) {
+    throw new Error('Expected value to be defined in test fixture')
+  }
+
+  return value
+}
+
 describe('groupVoyageSegments', () => {
   it('returns empty array for empty events', () => {
     expect(groupVoyageSegments([])).toEqual([])
@@ -35,11 +43,12 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(1)
-    expect(segments[0].vessel).toBe('MSC PARIS')
-    expect(segments[0].voyage).toBe('MZ546A')
-    expect(segments[0].origin).toBe('Alexandria')
-    expect(segments[0].destination).toBe('Algeciras')
-    expect(segments[0].events).toHaveLength(4)
+    const segment = requireDefined(segments[0])
+    expect(segment.vessel).toBe('MSC PARIS')
+    expect(segment.voyage).toBe('MZ546A')
+    expect(segment.origin).toBe('Alexandria')
+    expect(segment.destination).toBe('Algeciras')
+    expect(segment.events).toHaveLength(4)
   })
 
   it('groups two consecutive voyages (transshipment)', () => {
@@ -66,16 +75,18 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(2)
+    const firstSegment = requireDefined(segments[0])
+    const secondSegment = requireDefined(segments[1])
 
-    expect(segments[0].vessel).toBe('MSC PARIS')
-    expect(segments[0].origin).toBe('Alexandria')
-    expect(segments[0].destination).toBe('Algeciras')
-    expect(segments[0].events).toHaveLength(4)
+    expect(firstSegment.vessel).toBe('MSC PARIS')
+    expect(firstSegment.origin).toBe('Alexandria')
+    expect(firstSegment.destination).toBe('Algeciras')
+    expect(firstSegment.events).toHaveLength(4)
 
-    expect(segments[1].vessel).toBe('MAERSK LAMANAI')
-    expect(segments[1].origin).toBe('Algeciras')
-    expect(segments[1].destination).toBe('Santos')
-    expect(segments[1].events).toHaveLength(4)
+    expect(secondSegment.vessel).toBe('MAERSK LAMANAI')
+    expect(secondSegment.origin).toBe('Algeciras')
+    expect(secondSegment.destination).toBe('Santos')
+    expect(secondSegment.events).toHaveLength(4)
   })
 
   it('collects pre-voyage events in a vesselless segment', () => {
@@ -87,15 +98,17 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(2)
+    const preVoyageSegment = requireDefined(segments[0])
+    const voyageSegment = requireDefined(segments[1])
 
     // Pre-voyage segment
-    expect(segments[0].vessel).toBeNull()
-    expect(segments[0].events).toHaveLength(1)
-    expect(segments[0].events[0].type).toBe('GATE_IN')
+    expect(preVoyageSegment.vessel).toBeNull()
+    expect(preVoyageSegment.events).toHaveLength(1)
+    expect(requireDefined(preVoyageSegment.events[0]).type).toBe('GATE_IN')
 
     // Voyage segment
-    expect(segments[1].vessel).toBe('MSC PARIS')
-    expect(segments[1].events).toHaveLength(2)
+    expect(voyageSegment.vessel).toBe('MSC PARIS')
+    expect(voyageSegment.events).toHaveLength(2)
   })
 
   it('collects post-voyage events in a vesselless segment', () => {
@@ -107,14 +120,16 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(2)
+    const voyageSegment = requireDefined(segments[0])
+    const postVoyageSegment = requireDefined(segments[1])
 
-    expect(segments[0].vessel).toBe('MSC PARIS')
-    expect(segments[0].events).toHaveLength(2)
+    expect(voyageSegment.vessel).toBe('MSC PARIS')
+    expect(voyageSegment.events).toHaveLength(2)
 
     // Post-voyage segment
-    expect(segments[1].vessel).toBeNull()
-    expect(segments[1].events).toHaveLength(1)
-    expect(segments[1].events[0].type).toBe('DELIVERY')
+    expect(postVoyageSegment.vessel).toBeNull()
+    expect(postVoyageSegment.events).toHaveLength(1)
+    expect(requireDefined(postVoyageSegment.events[0]).type).toBe('DELIVERY')
   })
 
   it('handles voyage without DISCHARGE (in-transit)', () => {
@@ -125,9 +140,10 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(1)
-    expect(segments[0].vessel).toBe('MSC PARIS')
-    expect(segments[0].destination).toBeNull()
-    expect(segments[0].events).toHaveLength(2)
+    const segment = requireDefined(segments[0])
+    expect(segment.vessel).toBe('MSC PARIS')
+    expect(segment.destination).toBeNull()
+    expect(segment.events).toHaveLength(2)
   })
 
   it('handles events with no LOAD at all', () => {
@@ -139,8 +155,9 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(1)
-    expect(segments[0].vessel).toBeNull()
-    expect(segments[0].events).toHaveLength(3)
+    const segment = requireDefined(segments[0])
+    expect(segment.vessel).toBeNull()
+    expect(segment.events).toHaveLength(3)
   })
 
   it('handles LOAD without vessel name', () => {
@@ -151,9 +168,10 @@ describe('groupVoyageSegments', () => {
 
     const segments = groupVoyageSegments(events)
     expect(segments).toHaveLength(1)
-    expect(segments[0].vessel).toBeNull()
-    expect(segments[0].origin).toBe('Port A')
-    expect(segments[0].destination).toBe('Port B')
+    const segment = requireDefined(segments[0])
+    expect(segment.vessel).toBeNull()
+    expect(segment.origin).toBe('Port A')
+    expect(segment.destination).toBe('Port B')
   })
 
   it('preserves event order within segments', () => {
@@ -165,7 +183,7 @@ describe('groupVoyageSegments', () => {
     ]
 
     const segments = groupVoyageSegments(events)
-    const ids = segments[0].events.map((e) => e.id)
+    const ids = requireDefined(segments[0]).events.map((e) => e.id)
     expect(ids).toEqual(['e1', 'e2', 'e3', 'e4'])
   })
 })

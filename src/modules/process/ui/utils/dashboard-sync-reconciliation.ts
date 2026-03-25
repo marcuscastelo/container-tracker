@@ -1,6 +1,6 @@
 import type { ProcessSyncStatus } from '~/modules/process/ui/viewmodels/process-summary.vm'
 
-export type DashboardRealtimeSyncStatus = Extract<ProcessSyncStatus, 'syncing'>
+type DashboardRealtimeSyncStatus = Extract<ProcessSyncStatus, 'syncing'>
 export type DashboardLocalSyncStatus = Extract<ProcessSyncStatus, 'syncing' | 'success' | 'error'>
 
 type ResolveDashboardProcessSyncStatusCommand = {

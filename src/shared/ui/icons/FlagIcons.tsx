@@ -1,5 +1,4 @@
-import type { JSX } from 'solid-js'
-import { Match, Switch } from 'solid-js'
+import { type JSX, Match, Switch } from 'solid-js'
 import { BRFlag } from '~/shared/ui/icons/flags/BRFlag'
 import { PTFlag } from '~/shared/ui/icons/flags/PTFlag'
 import { USFlag } from '~/shared/ui/icons/flags/USFlag'
@@ -8,18 +7,19 @@ type FlagProps = { readonly locale: string; readonly class?: string }
 
 export function FlagIcon(props: FlagProps): JSX.Element {
   const code = () => props.locale.slice(0, 2).toUpperCase()
+  const classProps = () => (props.class ? { class: props.class } : {})
 
   // Render a single JSX tree and branch inside to preserve Solid reactivity
   return (
     <Switch>
       <Match when={props.locale === 'en-US'}>
-        <USFlag class={props.class} />
+        <USFlag {...classProps()} />
       </Match>
       <Match when={props.locale === 'pt-BR'}>
-        <BRFlag class={props.class} />
+        <BRFlag {...classProps()} />
       </Match>
       <Match when={props.locale === 'pt-PT'}>
-        <PTFlag class={props.class} />
+        <PTFlag {...classProps()} />
       </Match>
       <Match when={true}>
         <svg class={props.class} viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg">

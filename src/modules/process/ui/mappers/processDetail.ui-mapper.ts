@@ -18,6 +18,7 @@ import type {
   ContainerObservationVM,
   ShipmentDetailVM,
 } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
@@ -84,18 +85,37 @@ function toTimelineSeriesHistory(
 }
 
 function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
+  const seriesHistory = toTimelineSeriesHistory(item.series_history)
+
   return {
     id: item.id,
     type: item.type,
-    carrierLabel: item.carrier_label ?? undefined,
-    location: item.location ?? undefined,
     eventTime: item.event_time,
     eventTimeType: item.event_time_type,
     derivedState: item.derived_state,
-    vesselName: item.vessel_name,
-    voyage: item.voyage,
-    seriesHistory: toTimelineSeriesHistory(item.series_history),
+    ...(item.carrier_label === null || item.carrier_label === undefined
+      ? {}
+      : { carrierLabel: item.carrier_label }),
+    ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
+    ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
+    ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
+}
+
+function toAlertProjectionSources(
+  alerts: ProcessDetailResponse['alerts'] | undefined,
+): readonly TrackingAlertProjectionSource[] {
+  return (alerts ?? []).map((alert) => {
+    const { lifecycle_state, resolved_at, resolved_reason, ...rest } = alert
+
+    return {
+      ...rest,
+      ...(lifecycle_state === undefined ? {} : { lifecycle_state }),
+      ...(resolved_at === undefined ? {} : { resolved_at }),
+      ...(resolved_reason === undefined ? {} : { resolved_reason }),
+    }
+  })
 }
 
 function toContainerObservationVm(item: ObservationResponseItem): ContainerObservationVM {
@@ -242,7 +262,6 @@ export function toShipmentDetailVM(
       timeline.push({
         id: 'system-created',
         type: 'SYSTEM_CREATED',
-        location: undefined,
         eventTime: toInstantDto(Instant.fromIso(data.created_at)),
         eventTimeType: 'ACTUAL',
         derivedState: 'ACTUAL',
@@ -289,15 +308,15 @@ export function toShipmentDetailVM(
   return {
     id: data.id,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
-    reference: data.reference,
+    reference: data.reference ?? null,
     carrier: data.carrier ?? null,
-    bill_of_lading: data.bill_of_lading,
-    booking_number: data.booking_number,
-    importer_name: data.importer_name,
-    exporter_name: data.exporter_name,
-    reference_importer: data.reference_importer,
-    product: data.product,
-    redestination_number: data.redestination_number,
+    bill_of_lading: data.bill_of_lading ?? null,
+    booking_number: data.booking_number ?? null,
+    importer_name: data.importer_name ?? null,
+    exporter_name: data.exporter_name ?? null,
+    reference_importer: data.reference_importer ?? null,
+    product: data.product ?? null,
+    redestination_number: data.redestination_number ?? null,
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),
@@ -306,6 +325,6 @@ export function toShipmentDetailVM(
     eta: processEtaSecondaryVm.date,
     processEtaSecondaryVm,
     containers,
-    alerts: toAlertDisplayVMs(data.alerts ?? [], locale),
+    alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),
   }
 }

@@ -6,7 +6,7 @@ import {
 import { createSearchController } from '~/capabilities/search/interface/http/search.controller'
 import { createSearchControllers } from '~/capabilities/search/interface/http/search.controllers'
 
-export type SearchControllersBootstrapDeps = CreateSearchUseCaseDeps
+type SearchControllersBootstrapDeps = CreateSearchUseCaseDeps
 
 export function bootstrapSearchControllers(deps: SearchControllersBootstrapDeps) {
   const searchUseCase = createSearchUseCase({

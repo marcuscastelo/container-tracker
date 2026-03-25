@@ -138,8 +138,8 @@ export function createSyncContainerUseCase(deps: SyncContainerDeps) {
       return request.status === 'FAILED' || request.status === 'NOT_FOUND'
     })
 
-    if (failures.length > 0) {
-      const firstFailure = failures[0]
+    const firstFailure = failures[0]
+    if (firstFailure !== undefined) {
       const firstError =
         firstFailure.lastError ??
         `${firstFailure.status.toLowerCase()}_${firstFailure.syncRequestId}`

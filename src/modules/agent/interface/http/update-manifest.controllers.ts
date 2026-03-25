@@ -42,11 +42,18 @@ export function createUpdateManifestControllers(deps: UpdateManifestControllersD
       }
 
       const platform = getAgentPlatform(request)
-      const result = await deps.updateManifestService.resolveForAgent({
-        tenantId: auth.tenantId,
-        agentId: auth.agentId,
-        platform,
-      })
+      const result = await deps.updateManifestService.resolveForAgent(
+        platform === undefined
+          ? {
+              tenantId: auth.tenantId,
+              agentId: auth.agentId,
+            }
+          : {
+              tenantId: auth.tenantId,
+              agentId: auth.agentId,
+              platform,
+            },
+      )
 
       if (result.kind === 'agent_not_found') {
         return jsonResponse({ error: 'Agent not found' }, 404)

@@ -118,7 +118,9 @@ export function createSyncControllers(deps: SyncControllersDeps) {
       const result = await syncUseCases.refreshProcess({
         processId,
         mode: parsed.data.mode,
-        containerNumber: parsed.data.container_number,
+        ...(parsed.data.container_number === undefined
+          ? {}
+          : { containerNumber: parsed.data.container_number }),
       })
 
       return jsonResponse(toProcessRefreshResponse(result), 202, ProcessRefreshResponseSchema)

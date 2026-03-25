@@ -286,6 +286,8 @@ describe('Pipeline Integration Tests - Maersk', () => {
     for (let i = 1; i < times.length; i++) {
       const current = times[i]
       const previous = times[i - 1]
+      if (current === undefined || previous === undefined) continue
+
       expect(current >= previous).toBe(true)
     }
 

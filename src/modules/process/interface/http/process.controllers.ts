@@ -8,7 +8,10 @@ import {
   toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
-import { CreateProcessInputSchema } from '~/modules/process/interface/http/process.schemas'
+import {
+  type CreateProcessInput,
+  CreateProcessInputSchema,
+} from '~/modules/process/interface/http/process.schemas'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
@@ -175,14 +178,40 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
         return jsonResponse({ error: `Invalid request: ${parsed.error.message}` }, 400)
       }
 
-      const record = toUpdateProcessRecord(parsed.data)
+      const updateInput = {
+        ...(parsed.data.reference !== undefined ? { reference: parsed.data.reference } : {}),
+        ...(parsed.data.origin !== undefined ? { origin: parsed.data.origin } : {}),
+        ...(parsed.data.destination !== undefined ? { destination: parsed.data.destination } : {}),
+        ...(parsed.data.carrier !== undefined ? { carrier: parsed.data.carrier } : {}),
+        ...(parsed.data.bill_of_lading !== undefined
+          ? { bill_of_lading: parsed.data.bill_of_lading }
+          : {}),
+        ...(parsed.data.booking_number !== undefined
+          ? { booking_number: parsed.data.booking_number }
+          : {}),
+        ...(parsed.data.importer_name !== undefined
+          ? { importer_name: parsed.data.importer_name }
+          : {}),
+        ...(parsed.data.exporter_name !== undefined
+          ? { exporter_name: parsed.data.exporter_name }
+          : {}),
+        ...(parsed.data.reference_importer !== undefined
+          ? { reference_importer: parsed.data.reference_importer }
+          : {}),
+        ...(parsed.data.product !== undefined ? { product: parsed.data.product } : {}),
+        ...(parsed.data.redestination_number !== undefined
+          ? { redestination_number: parsed.data.redestination_number }
+          : {}),
+        ...(parsed.data.containers !== undefined ? { containers: parsed.data.containers } : {}),
+      } satisfies Partial<CreateProcessInput>
+      const record = toUpdateProcessRecord(updateInput)
 
       const result = await processUseCases.updateProcess({
         processId,
         record,
-        containers: parsed.data.containers
-          ? toContainerInputs({ containers: parsed.data.containers })
-          : undefined,
+        ...(updateInput.containers === undefined
+          ? {}
+          : { containers: toContainerInputs({ containers: updateInput.containers }) }),
       })
 
       if (!result.process) {

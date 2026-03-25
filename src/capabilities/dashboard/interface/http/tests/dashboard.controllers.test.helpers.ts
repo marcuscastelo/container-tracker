@@ -19,7 +19,7 @@ type DashboardControllersUseCases = {
 
 type DashboardControllersUseCaseOverrides = Partial<DashboardControllersUseCases>
 
-export function makeEmptyOperationalSummary(): DashboardOperationalSummaryReadModel {
+function makeEmptyOperationalSummary(): DashboardOperationalSummaryReadModel {
   return {
     globalAlerts: {
       totalActiveAlerts: 0,
@@ -42,7 +42,7 @@ export function makeEmptyOperationalSummary(): DashboardOperationalSummaryReadMo
   }
 }
 
-export function makeEmptyKpis(): DashboardKpisReadModel {
+function makeEmptyKpis(): DashboardKpisReadModel {
   return {
     activeProcesses: 0,
     trackedContainers: 0,
@@ -51,13 +51,13 @@ export function makeEmptyKpis(): DashboardKpisReadModel {
   }
 }
 
-export function makeEmptyMonthlyReadModel(): DashboardProcessesCreatedByMonthReadModel {
+function makeEmptyMonthlyReadModel(): DashboardProcessesCreatedByMonthReadModel {
   return {
     months: [],
   }
 }
 
-export const EMPTY_NAVBAR_ALERTS_SUMMARY: NavbarAlertsSummaryReadModel = {
+const EMPTY_NAVBAR_ALERTS_SUMMARY: NavbarAlertsSummaryReadModel = {
   totalActiveAlerts: 0,
   processes: [],
 }

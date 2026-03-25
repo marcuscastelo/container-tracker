@@ -17,7 +17,6 @@ export type AgentSummaryPayload = AgentListResponseDto['agents'][number]
 export type AgentFleetSummary = AgentListResponseDto['summary']
 export type AgentDetailPayload = AgentDetailResponseDto
 export type AgentStatus = AgentSummaryPayload['status']
-export type AgentRealtimeState = AgentSummaryPayload['realtimeState']
 export type AgentActivityType = AgentDetailPayload['recentActivity'][number]['type']
 export type AgentActivitySeverity = AgentDetailPayload['recentActivity'][number]['severity']
 export type AgentActivityEntry = AgentDetailPayload['recentActivity'][number]
@@ -33,7 +32,7 @@ export type AgentListQuery = {
   readonly sortDir?: 'asc' | 'desc'
 }
 
-export type AgentLogsQuery = {
+type AgentLogsQuery = {
   readonly channel?: AgentLogsChannel
   readonly tail?: number
 }

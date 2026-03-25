@@ -163,9 +163,10 @@ function serializeSimplePdf(report: OperationalSnapshotReport): Uint8Array {
     '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
   ]
 
-  const chunks: string[] = ['%PDF-1.4\n']
+  const pdfHeader = '%PDF-1.4\n'
+  const chunks: string[] = [pdfHeader]
   const offsets: number[] = [0]
-  let currentLength = Buffer.byteLength(chunks[0], 'utf-8')
+  let currentLength = Buffer.byteLength(pdfHeader, 'utf-8')
 
   for (const objectContent of objects) {
     offsets.push(currentLength)

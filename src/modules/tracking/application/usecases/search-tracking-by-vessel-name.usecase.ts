@@ -26,7 +26,10 @@ export async function searchTrackingByVesselName(
     return []
   }
 
-  const projections = await listTrackingSearchProjections(deps, { now: cmd.now })
+  const projections = await listTrackingSearchProjections(
+    deps,
+    cmd.now === undefined ? {} : { now: cmd.now },
+  )
   const matches = projections.filter((projection) =>
     hasVesselMatch(projection.vesselName, normalizedQuery),
   )

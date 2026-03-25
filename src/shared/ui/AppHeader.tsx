@@ -178,7 +178,7 @@ function HeaderActions(props: {
       </Show>
       <CreateProcessButton
         label={props.createProcessLabel}
-        onCreateProcess={props.onCreateProcess}
+        {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}
       />
       <NavbarAlertsButton />
 
@@ -213,10 +213,10 @@ export function AppHeader(props: Props): JSX.Element {
 
         <div class="max-[1023px]:justify-self-end">
           <HeaderActions
-            syncSlot={props.syncSlot}
-            actionsSlot={props.actionsSlot}
             createProcessLabel={t(keys.header.createProcess)}
-            onCreateProcess={props.onCreateProcess}
+            {...(props.syncSlot ? { syncSlot: props.syncSlot } : {})}
+            {...(props.actionsSlot ? { actionsSlot: props.actionsSlot } : {})}
+            {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}
           />
         </div>
       </div>

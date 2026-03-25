@@ -5,9 +5,9 @@ import {
 } from '~/capabilities/sync/application/services/sync-status-aggregation.service'
 import { type Clock, systemClock } from '~/shared/time/clock'
 
-export type ProcessSyncState = 'idle' | 'syncing' | 'completed' | 'failed'
+type ProcessSyncState = 'idle' | 'syncing' | 'completed' | 'failed'
 
-export type ProcessSyncVisibility = 'active' | 'archived_in_flight'
+type ProcessSyncVisibility = 'active' | 'archived_in_flight'
 
 export type ProcessSyncStateReadModel = {
   readonly processId: string
@@ -31,7 +31,7 @@ export type GetSyncStatusDeps = {
   readonly clock?: Clock
 }
 
-export type GetSyncStatusCommand = {
+type GetSyncStatusCommand = {
   readonly processIds?: readonly string[]
 }
 
@@ -40,9 +40,9 @@ export function createGetSyncStatusUseCase(deps: GetSyncStatusDeps) {
   const aggregationService = deps.statusAggregationService ?? createSyncStatusAggregationService()
 
   return async function execute(command: GetSyncStatusCommand = {}): Promise<GetSyncStatusResult> {
-    const candidates = await deps.statusReadPort.listProcessSyncCandidates({
-      processIds: command.processIds,
-    })
+    const candidates = await deps.statusReadPort.listProcessSyncCandidates(
+      command.processIds === undefined ? {} : { processIds: command.processIds },
+    )
     if (candidates.length === 0) {
       return {
         generatedAt: clock.now().toIsoString(),

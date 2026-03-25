@@ -12,10 +12,10 @@ import {
   toLatestDoneAtOrNow,
   toRefreshStatusResponseFromMap,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentRefresh.status'
-import type { RefreshRetryState } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import {
   REFRESH_SYNC_INITIAL_DELAY_MS,
   REFRESH_SYNC_MAX_RETRIES,
+  type RefreshRetryState,
 } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
 import { pollRefreshSyncStatus } from '~/modules/process/ui/utils/refresh-sync-polling'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -207,7 +207,7 @@ async function waitForTerminalSyncRequests(
 
 // ── Main refresh usecase ─────────────────────────────────────────────────────
 
-export type RefreshShipmentTrackingCommand = {
+type RefreshShipmentTrackingCommand = {
   readonly data: ShipmentDetailVM | null | undefined
   readonly setIsRefreshing: (value: boolean) => void
   readonly setRefreshError: (value: string | null) => void
@@ -298,7 +298,9 @@ export async function refreshShipmentTracking(
 
     const allErrors = [...enqueueErrors, ...statusErrors]
     if (allErrors.length > 0) {
-      params.setRefreshError(params.toFailedMessage(allErrors.length, allErrors[0]))
+      params.setRefreshError(
+        params.toFailedMessage(allErrors.length, allErrors[0] ?? 'Refresh failed'),
+      )
       return
     }
 
