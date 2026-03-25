@@ -52,8 +52,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.0(jiti@2.6.1))
       '@marcuscastelo/eslint-config':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.3.1
+        version: 0.3.1
       '@marcuscastelo/eslint-plugin':
         specifier: ^0.2.1
         version: 0.2.1
@@ -706,8 +706,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@marcuscastelo/eslint-config@0.3.0':
-    resolution: {integrity: sha512-tXQYmoe/zA7yhe73lpBR6Qdy5Z0Nqe+RL8iJGp5mSNhd3wIdJejQw4NLYDfX81OVD3sik5+QdgdXgFVR8VEO5g==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.3.0/d10e47b6a00ca436f0dc12e5d6ad5df1a5d876cf}
+  '@marcuscastelo/eslint-config@0.3.1':
+    resolution: {integrity: sha512-uk8KbT7ccs24tXg2WvoX7gsWYiie4jqQ8RiJPVw+H2u6r92LpO+WQ/C7zmrI0LmKaee4GflhCq+7BqG8tyF1EA==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.3.1/4cc02632dccd79debe71f8a06e9b473f5b65af50}
 
   '@marcuscastelo/eslint-plugin@0.2.1':
     resolution: {integrity: sha512-yPur5kueezfc0cu3PRWhRq387iLebElT9EsLzWDN2U33eErzkml+jfrg5TXtazzYdoJRo2FukKXju9ob6J2nVw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.2.1/d8331b3b4536e853b80096495fff27658e64e515}
@@ -4996,7 +4996,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@marcuscastelo/eslint-config@0.3.0':
+  '@marcuscastelo/eslint-config@0.3.1':
     dependencies:
       '@marcuscastelo/eslint-plugin': 0.2.1
 
