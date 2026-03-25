@@ -52,8 +52,8 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.0(jiti@2.6.1))
       '@marcuscastelo/eslint-config':
-        specifier: ^0.3.1
-        version: 0.3.1
+        specifier: ^0.4.0
+        version: 0.4.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
       '@marcuscastelo/eslint-plugin':
         specifier: ^0.3.0
         version: 0.3.0
@@ -706,11 +706,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@marcuscastelo/eslint-config@0.3.1':
-    resolution: {integrity: sha512-uk8KbT7ccs24tXg2WvoX7gsWYiie4jqQ8RiJPVw+H2u6r92LpO+WQ/C7zmrI0LmKaee4GflhCq+7BqG8tyF1EA==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.3.1/4cc02632dccd79debe71f8a06e9b473f5b65af50}
-
-  '@marcuscastelo/eslint-plugin@0.2.1':
-    resolution: {integrity: sha512-yPur5kueezfc0cu3PRWhRq387iLebElT9EsLzWDN2U33eErzkml+jfrg5TXtazzYdoJRo2FukKXju9ob6J2nVw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.2.1/d8331b3b4536e853b80096495fff27658e64e515}
+  '@marcuscastelo/eslint-config@0.4.0':
+    resolution: {integrity: sha512-9f3EF0y4BKbbZ+6UqW3ObkoXxum0QJe72oD/vaD9XQHTEy8TkVQ5CUyUYuiiDanRrNg6CL0nnkM22sNKiIkqTw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.4.0/006f0a58ab460e4c8ec2e53b68118460d16b161a}
 
   '@marcuscastelo/eslint-plugin@0.3.0':
     resolution: {integrity: sha512-lVugQTR7dWyo3p9ZWsKnhRFbeKvdNRPA3G4gB2vZlYjSWuH0CGTbHfogXDpa4OmeO6svi7S6pDT6NaEOUnkGLQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.3.0/138022b60bd07d9aeb2bf50f21391c7d773835ce}
@@ -4999,11 +4996,15 @@ snapshots:
       - encoding
       - supports-color
 
-  '@marcuscastelo/eslint-config@0.3.1':
+  '@marcuscastelo/eslint-config@0.4.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
-      '@marcuscastelo/eslint-plugin': 0.2.1
-
-  '@marcuscastelo/eslint-plugin@0.2.1': {}
+      '@marcuscastelo/eslint-plugin': 0.3.0
+      '@typescript-eslint/parser': 8.55.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+      eslint-plugin-solid: 0.14.5(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+    transitivePeerDependencies:
+      - eslint
+      - supports-color
+      - typescript
 
   '@marcuscastelo/eslint-plugin@0.3.0': {}
 
