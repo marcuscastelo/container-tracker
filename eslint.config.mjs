@@ -1,7 +1,6 @@
 // import js from '@eslint/js'
 
 import platformConfig from '@marcuscastelo/eslint-config/solid'
-import { containerTrackerEslintPlugin } from '#container-tracker-eslint-plugin'
 
 const moduleApplicationFiles = [
   'src/modules/*/application/**/*.{ts,tsx}',
@@ -342,32 +341,6 @@ export default [
       '.ralph-loop/**',
       'packaging/arch/src/agent-app/**',
     ],
-  },
-  {
-    plugins: {
-      'container-tracker': containerTrackerEslintPlugin,
-    },
-  },
-
-  // TODO: move to shared plugin + platform config
-  {
-    files: ['src/modules/**/ui/**/*.{ts,tsx}'],
-    rules: {
-      'container-tracker/no-iife-in-jsx': 'warn',
-    },
-  },
-  // TODO: move to shared plugin + platform config
-  {
-    files: [
-      'src/modules/*/ui/**/*.tsx',
-      'src/modules/*/features/*/ui/**/*.tsx',
-      'src/capabilities/*/ui/**/*.tsx',
-      'src/shared/ui/**/*.tsx',
-    ],
-    rules: {
-      'container-tracker/no-jsx-short-circuit': 'error',
-      'container-tracker/no-jsx-ternary': 'error',
-    },
   },
 
   // --- App Only --- (DO NOT MOVE TO PLATFORM)

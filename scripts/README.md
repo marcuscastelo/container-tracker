@@ -17,14 +17,10 @@
 - `check-i18n-keys.mjs` - checks that translation keys exist in locale files. Future destination: `dev-tools`
 - `check-no-emoji.mjs` - flags decorative emoji or symbol characters in source. Future destination: `eslint-config`
 - `enforce-i18n-no-hardcoded.mjs` - CI enforcement for hardcoded user-facing strings. Future destination: `eslint-config`
+- `platform-jsx-rules-smoke.mjs` - verifies the installed platform JSX rules are active in this consumer. Future destination: `local-only`
 - `ui-complexity-allowlist-check.mjs` - validates the UI complexity allowlist against current scope. Future destination: `dev-tools`
 - `ui-complexity-report.mjs` - produces the UI complexity baseline/report. Future destination: `dev-tools`
 - `ui-complexity.shared.mjs` - shared helpers for UI complexity analysis. Future destination: `dev-tools`
-
-## eslint-plugin
-- `eslint-plugin-container-tracker.mjs` - internal ESLint plugin for repo-specific rules. Future destination: `eslint-plugin`
-- `no-iife-in-jsx-error-smoke.mjs` - smoke test runner for the no-IIFE-in-JSX rule. Future destination: `eslint-plugin`
-- `no-iife-in-jsx-error-smoke.shared.mjs` - shared assertions for the no-IIFE-in-JSX smoke tests. Future destination: `eslint-plugin`
 
 ## integration
 - `maersk-puppeteer-smoke.mjs` - browser-launch smoke for Maersk refresh flows. Future destination: `dev-tools`

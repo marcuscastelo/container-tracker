@@ -1,9 +1,6 @@
 {
   "name": "example-with-tailwindcss",
   "type": "module",
-  "imports": {
-    "#container-tracker-eslint-plugin": "./scripts/eslint-plugin/eslint-plugin-container-tracker.mjs"
-  },
   "scripts": {
     "dev": "bash scripts/dev/dev.sh",
     "dev:server": "vinxi dev",
@@ -17,8 +14,8 @@
     "i18n:enforce": "node scripts/lint/enforce-i18n-no-hardcoded.mjs",
     "fix": "pnpm exec biome format --write . --format-with-errors true && pnpm exec biome check . --write --max-diagnostics=1000 --no-errors-on-unmatched",
     "lint": "pnpm exec biome check . --max-diagnostics=1000 --no-errors-on-unmatched && pnpm exec eslint --ext .ts,.tsx . --max-warnings=0",
+    "lint:platform:jsx-smoke": "node scripts/lint/platform-jsx-rules-smoke.mjs",
     "architecture:boundary-scan": "node scripts/lint/architecture-boundary-scan.mjs",
-    "lint:no-iife:error-smoke": "node scripts/eslint-plugin/no-iife-in-jsx-error-smoke.mjs",
     "ui:complexity:report": "node scripts/lint/ui-complexity-report.mjs",
     "ui:complexity:report:write": "node scripts/lint/ui-complexity-report.mjs --write",
     "ui:complexity:lint:soft": "node scripts/lint/ui-complexity-report.mjs",
@@ -71,8 +68,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",
     "@eslint/js": "^10.0.1",
-    "@marcuscastelo/eslint-config": "^0.4.0",
-    "@marcuscastelo/eslint-plugin": "^0.3.0",
+    "@marcuscastelo/eslint-config": "^0.4.1",
+    "@marcuscastelo/eslint-plugin": "^0.3.1",
     "@marcuscastelo/tsconfig": "^0.2.0",
     "@tailwindcss/vite": "^4.0.7",
     "@types/i18next": "^13.0.0",

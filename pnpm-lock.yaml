@@ -52,11 +52,11 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.0(jiti@2.6.1))
       '@marcuscastelo/eslint-config':
-        specifier: ^0.4.0
-        version: 0.4.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+        specifier: ^0.4.1
+        version: 0.4.1(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
       '@marcuscastelo/eslint-plugin':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.3.1
+        version: 0.3.1
       '@marcuscastelo/tsconfig':
         specifier: ^0.2.0
         version: 0.2.0
@@ -706,11 +706,11 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@marcuscastelo/eslint-config@0.4.0':
-    resolution: {integrity: sha512-9f3EF0y4BKbbZ+6UqW3ObkoXxum0QJe72oD/vaD9XQHTEy8TkVQ5CUyUYuiiDanRrNg6CL0nnkM22sNKiIkqTw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.4.0/006f0a58ab460e4c8ec2e53b68118460d16b161a}
+  '@marcuscastelo/eslint-config@0.4.1':
+    resolution: {integrity: sha512-JUnm5FFgCyKi3+Hr/FjmuKWkyewDKhj3G9GIgO2SW4wnXoXAJ/vnqtT6XUoJyVUA9zKpwLYS2tkFRMGETIm5Lg==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.4.1/e540f41d123158d80b864b911111055d5e3037bf}
 
-  '@marcuscastelo/eslint-plugin@0.3.0':
-    resolution: {integrity: sha512-lVugQTR7dWyo3p9ZWsKnhRFbeKvdNRPA3G4gB2vZlYjSWuH0CGTbHfogXDpa4OmeO6svi7S6pDT6NaEOUnkGLQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.3.0/138022b60bd07d9aeb2bf50f21391c7d773835ce}
+  '@marcuscastelo/eslint-plugin@0.3.1':
+    resolution: {integrity: sha512-eIUz+fVFsENPEfj71x+h9KUfu+htnCAxp7NlQ9LvwlwNUSVgN+Ljk3a3lf77+qO2ie+/RfUDSdHBzLN1nMwd6Q==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.3.1/2b1672cb2600cee9e190a1629faae9d25fd4bede}
 
   '@marcuscastelo/tsconfig@0.2.0':
     resolution: {integrity: sha512-CqeWGsDmsitEa3AbEeQHK20yoZ1ZMrc6duXAJb7o6/ArDcWyssG4aZ4yz4uAav7hl4jtDBrh5DTiUCJG3WwQVQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/tsconfig/0.2.0/d098370717df1ed43baffcd7eeda4c0d6e527ca3}
@@ -4996,9 +4996,9 @@ snapshots:
       - encoding
       - supports-color
 
-  '@marcuscastelo/eslint-config@0.4.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)':
+  '@marcuscastelo/eslint-config@0.4.1(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
-      '@marcuscastelo/eslint-plugin': 0.3.0
+      '@marcuscastelo/eslint-plugin': 0.3.1
       '@typescript-eslint/parser': 8.55.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
       eslint-plugin-solid: 0.14.5(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
     transitivePeerDependencies:
@@ -5006,7 +5006,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@marcuscastelo/eslint-plugin@0.3.0': {}
+  '@marcuscastelo/eslint-plugin@0.3.1': {}
 
   '@marcuscastelo/tsconfig@0.2.0': {}
 
