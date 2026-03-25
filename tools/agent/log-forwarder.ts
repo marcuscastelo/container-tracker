@@ -209,7 +209,7 @@ function computeBackoffMs(failures: number): number {
   return Math.max(500, Math.floor(exponential))
 }
 
-export type AgentLogForwarder = {
+type AgentLogForwarder = {
   start: () => void
   stop: () => Promise<void>
 }
@@ -355,7 +355,7 @@ export function createAgentLogForwarder(command: {
               truncated: line.truncated,
             })),
           }),
-          signal: options?.signal,
+          ...(options?.signal === undefined ? {} : { signal: options.signal }),
         })
 
         if (!response.ok) {

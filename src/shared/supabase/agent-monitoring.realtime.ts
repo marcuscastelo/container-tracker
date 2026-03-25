@@ -64,7 +64,7 @@ type DefaultAgentMonitoringRealtimeChannel = {
   ) => DefaultAgentMonitoringRealtimeChannel
 }
 
-export type AgentMonitoringRealtimeClient<
+type AgentMonitoringRealtimeClient<
   TChannel extends
     AgentMonitoringRealtimeChannelLike<TChannel> = DefaultAgentMonitoringRealtimeChannel,
 > = {
@@ -220,7 +220,7 @@ export function subscribeTrackingAgentsByTenant<
     scope: 'tenant_agents',
     filters: [`tenant_id=eq.${tenantId}`],
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -240,7 +240,7 @@ export function subscribeTrackingAgentActivityByAgentId<
     scope: 'agent_activity',
     filters: [`agent_id=eq.${agentId}`],
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -260,6 +260,6 @@ export function subscribeAgentLogsByAgentId<
     scope: 'agent_logs',
     filters: [`agent_id=eq.${agentId}`],
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }

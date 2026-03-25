@@ -6,7 +6,6 @@ import type {
   ScenarioMaerskEventSpec,
   ScenarioMscEventSpec,
   ScenarioSnapshotBlueprint,
-  ScenarioStage,
   ScenarioStepSnapshot,
   TrackingScenario,
 } from '~/modules/tracking/dev/scenario-lab/scenario.types'
@@ -406,18 +405,4 @@ export function buildScenarioProviderByContainerKey(
   }
 
   return map
-}
-
-export function getScenarioLabelForStage(stage: ScenarioStage): string {
-  if (stage === 0) return 'Unknown'
-  if (stage === 1) return 'Booking'
-  if (stage === 2) return 'Pre-Gate'
-  if (stage === 3) return 'Gate In'
-  if (stage === 4) return 'Loaded'
-  if (stage === 5) return 'In Transit'
-  if (stage === 6) return 'Transshipment'
-  if (stage === 7) return 'Arrived POD'
-  if (stage === 8) return 'Discharged'
-  if (stage === 9) return 'Delivery'
-  return 'Empty Return'
 }

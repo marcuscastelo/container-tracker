@@ -23,7 +23,7 @@ function formatCalendarDateUtcDate(date: CalendarDate): Date {
   return new Date(Date.UTC(year, month - 1, day, 0, 0, 0))
 }
 
-export function formatInstantDate(
+function formatInstantDate(
   instant: Instant,
   locale: string,
   timezone: string = getBrowserTimezone(),
@@ -36,7 +36,7 @@ export function formatInstantDate(
   }).format(new Date(instant.toEpochMs()))
 }
 
-export function formatInstantDateTime(
+function formatInstantDateTime(
   instant: Instant,
   locale: string,
   timezone: string = getBrowserTimezone(),
@@ -51,7 +51,7 @@ export function formatInstantDateTime(
   }).format(new Date(instant.toEpochMs()))
 }
 
-export function formatCalendarDate(date: CalendarDate, locale: string): string {
+function formatCalendarDate(date: CalendarDate, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: '2-digit',

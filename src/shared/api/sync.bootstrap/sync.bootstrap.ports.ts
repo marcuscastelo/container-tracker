@@ -206,6 +206,9 @@ export function createSyncQueuePort(deps: { readonly defaultTenantId: string }):
 
       const parsed = EnqueueSyncRequestRowsSchema.parse(data)
       const row = parsed[0]
+      if (row === undefined) {
+        throw new Error('enqueue_sync_request returned no rows')
+      }
 
       return {
         id: row.id,

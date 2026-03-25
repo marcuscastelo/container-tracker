@@ -22,7 +22,10 @@ export async function searchTrackingByDerivedStatusText(
     return []
   }
 
-  const projections = await listTrackingSearchProjections(deps, { now: cmd.now })
+  const projections = await listTrackingSearchProjections(
+    deps,
+    cmd.now === undefined ? {} : { now: cmd.now },
+  )
   const matches = projections.filter(
     (projection) => normalizeStatusText(projection.latestDerivedStatus) === normalizedQuery,
   )

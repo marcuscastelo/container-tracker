@@ -43,14 +43,20 @@ export function AgentsPage(): JSX.Element {
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
   const [isLive] = createSignal(true)
 
-  const listQuery = createMemo<AgentListQuery>(() => ({
-    search: searchText().trim().length > 0 ? searchText().trim() : undefined,
-    status: mapStatusFilter(statusFilter()),
-    capability: capabilityFilter().trim().length > 0 ? capabilityFilter() : undefined,
-    onlyProblematic: onlyProblematic(),
-    sortField: sortField(),
-    sortDir: sortAsc() ? 'asc' : 'desc',
-  }))
+  const listQuery = createMemo<AgentListQuery>(() => {
+    const search = searchText().trim()
+    const capability = capabilityFilter().trim()
+    const status = mapStatusFilter(statusFilter())
+
+    return {
+      onlyProblematic: onlyProblematic(),
+      sortField: sortField(),
+      sortDir: sortAsc() ? 'asc' : 'desc',
+      ...(search.length > 0 ? { search } : {}),
+      ...(status === undefined ? {} : { status }),
+      ...(capability.length > 0 ? { capability } : {}),
+    }
+  })
 
   const [agentsResponse, { refetch }] = createResource(listQuery, (query) => fetchAgentList(query))
 

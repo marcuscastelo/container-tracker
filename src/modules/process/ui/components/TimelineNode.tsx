@@ -1,5 +1,4 @@
-import type { JSX } from 'solid-js'
-import { createMemo, createSignal, Show } from 'solid-js'
+import { createMemo, createSignal, type JSX, Show } from 'solid-js'
 import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
@@ -28,9 +27,42 @@ type DateLabelProps = {
 }
 
 type CarrierLinkProps = {
-  readonly href: string | undefined
+  readonly href?: string
   readonly containerNumber?: string | null
   readonly label: string
+}
+
+function toOptionalTimelineNodeLayoutProps(params: {
+  readonly nonMappedBadgeLabel: string | undefined
+  readonly emptyContainerBadgeLabel: string | undefined
+  readonly location: string | null | undefined
+}): {
+  readonly nonMappedBadgeLabel?: string
+  readonly emptyContainerBadgeLabel?: string
+  readonly location?: string | null
+} {
+  return {
+    ...(params.nonMappedBadgeLabel === undefined
+      ? {}
+      : { nonMappedBadgeLabel: params.nonMappedBadgeLabel }),
+    ...(params.emptyContainerBadgeLabel === undefined
+      ? {}
+      : { emptyContainerBadgeLabel: params.emptyContainerBadgeLabel }),
+    ...(params.location === undefined ? {} : { location: params.location }),
+  }
+}
+
+function toOptionalCarrierLinkProps(params: {
+  readonly href: string | undefined
+  readonly containerNumber: string | null | undefined
+}): {
+  readonly href?: string
+  readonly containerNumber?: string | null
+} {
+  return {
+    ...(params.href === undefined ? {} : { href: params.href }),
+    ...(params.containerNumber === undefined ? {} : { containerNumber: params.containerNumber }),
+  }
 }
 
 function toIsoTooltip(iso?: TemporalValueDto | null): string | undefined {
@@ -176,6 +208,16 @@ export function TimelineNode(props: {
     const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
     return typeof trackUrl === 'string' ? trackUrl : undefined
   })
+  const nonMappedBadgeLabel = createMemo(() =>
+    labelPresentation().showNonMappedIndicator
+      ? labelPresentation().nonMappedIndicatorLabel
+      : undefined,
+  )
+  const emptyContainerBadgeLabel = createMemo(() =>
+    props.observation?.isEmpty === true
+      ? t(keys.shipmentView.timeline.emptyContainerBadge)
+      : undefined,
+  )
 
   const labelPresentation = createMemo(() => {
     const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
@@ -226,11 +268,6 @@ export function TimelineNode(props: {
         label={labelPresentation().label}
         eventIcon={eventIcon()}
         etaChipLabel={etaChipLabel()}
-        nonMappedBadgeLabel={
-          labelPresentation().showNonMappedIndicator
-            ? labelPresentation().nonMappedIndicatorLabel
-            : undefined
-        }
         showPredictionHistoryButton={hasPredictionHistory()}
         onOpenPredictionHistory={() => setShowPredictionHistory(true)}
         predictionHistoryLabel={t(keys.shipmentView.timeline.viewPredictionHistory)}
@@ -241,12 +278,6 @@ export function TimelineNode(props: {
         expiredExpectedTooltip={t(keys.shipmentView.timeline.expiredExpectedTooltip)}
         expectedLabel={t(keys.shipmentView.timeline.expected)}
         predictedTooltip={t(keys.shipmentView.timeline.predictedTooltip)}
-        emptyContainerBadgeLabel={
-          props.observation?.isEmpty === true
-            ? t(keys.shipmentView.timeline.emptyContainerBadge)
-            : undefined
-        }
-        location={props.event.location}
         dateLabel={
           <DateLabel
             actualDateIso={actualDateIso()}
@@ -259,11 +290,18 @@ export function TimelineNode(props: {
         }
         carrierLink={
           <CarrierLinkButton
-            href={href()}
-            containerNumber={props.containerNumber}
             label={t(keys.shipmentView.timeline.viewOnCarrierSite)}
+            {...toOptionalCarrierLinkProps({
+              href: href(),
+              containerNumber: props.containerNumber,
+            })}
           />
         }
+        {...toOptionalTimelineNodeLayoutProps({
+          nonMappedBadgeLabel: nonMappedBadgeLabel(),
+          emptyContainerBadgeLabel: emptyContainerBadgeLabel(),
+          location: props.event.location,
+        })}
       />
 
       <Show when={props.event.seriesHistory}>

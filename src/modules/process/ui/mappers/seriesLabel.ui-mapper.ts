@@ -1,5 +1,9 @@
-import type { SeriesLabel } from '~/modules/tracking/features/series/application/projection/tracking.series.classification'
+import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
+
+function assertUnreachable(value: never): never {
+  throw new Error(`Unhandled series label: ${String(value)}`)
+}
 
 export function seriesLabelToKey(keys: TranslationKeys, label: SeriesLabel): string {
   switch (label) {
@@ -16,6 +20,8 @@ export function seriesLabelToKey(keys: TranslationKeys, label: SeriesLabel): str
     case 'CONFLICTING_ACTUAL':
       return keys.shipmentView.timeline.predictionHistory.conflicting
   }
+
+  return assertUnreachable(label)
 }
 
 export function seriesLabelToClass(label: SeriesLabel): string {
@@ -33,4 +39,6 @@ export function seriesLabelToClass(label: SeriesLabel): string {
     case 'CONFLICTING_ACTUAL':
       return 'bg-tone-danger-bg text-tone-danger-fg'
   }
+
+  return assertUnreachable(label)
 }

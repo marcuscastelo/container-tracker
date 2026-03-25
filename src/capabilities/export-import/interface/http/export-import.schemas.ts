@@ -5,7 +5,7 @@ const ScopeSchema = z.enum(['all_processes', 'single_process'])
 function requireProcessIdForSingleProcessScope(
   data: {
     readonly scope: 'all_processes' | 'single_process'
-    readonly processId?: string | null
+    readonly processId?: string | null | undefined
   },
   ctx: z.RefinementCtx,
 ): void {
@@ -65,7 +65,7 @@ const SymmetricDocumentEntrySchema = z.object({
   storageKey: z.string(),
 })
 
-export const SymmetricBundleSchema = z.object({
+const SymmetricBundleSchema = z.object({
   schemaVersion: z.literal('1.0'),
   exportType: z.literal('PORTABLE_SYMMETRIC'),
   exportedAt: z.string(),

@@ -1,6 +1,5 @@
 import { Copy, Download, Upload } from 'lucide-solid'
-import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js'
 import toast from 'solid-toast'
 import {
   executeSymmetricImportBundle,

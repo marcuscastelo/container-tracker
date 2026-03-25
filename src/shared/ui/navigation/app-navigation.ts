@@ -72,10 +72,17 @@ function rememberProcessIntent(processId: string, nowMs: number): void {
   entries.sort((a, b) => a[1] - b[1])
   let idx = 0
   while (processIntentAtById.size > PROCESS_INTENT_MAX_ENTRIES && idx < entries.length) {
-    const keyToDelete = entries[idx][0]
+    const entry = entries[idx]
+    if (!entry) break
+    const keyToDelete = entry[0]
     processIntentAtById.delete(keyToDelete)
     idx++
   }
+}
+
+function toNavigateOptions(replace?: boolean): NavigateOptions | undefined {
+  if (replace === undefined) return undefined
+  return { replace }
 }
 
 export function buildProcessHref(processId: string): string {
@@ -112,18 +119,19 @@ export function navigateToAppHref(command: NavigateToAppHrefCommand): boolean {
   const internalHref = normalizeInternalHref(command.href)
   if (internalHref === null) return false
 
-  void command.navigate(internalHref, { replace: command.replace })
+  void command.navigate(internalHref, toNavigateOptions(command.replace))
   return true
 }
 
 export function navigateToProcess(command: NavigateToProcessCommand): void {
-  void command.navigate(buildProcessHref(command.processId), { replace: command.replace })
+  void command.navigate(buildProcessHref(command.processId), toNavigateOptions(command.replace))
 }
 
 export function navigateToProcessContainer(command: NavigateToProcessContainerCommand): void {
-  void command.navigate(buildProcessContainerHref(command.processId, command.containerNumber), {
-    replace: command.replace,
-  })
+  void command.navigate(
+    buildProcessContainerHref(command.processId, command.containerNumber),
+    toNavigateOptions(command.replace),
+  )
 }
 
 function shouldThrottleDashboardIntent(nowMs: number): boolean {

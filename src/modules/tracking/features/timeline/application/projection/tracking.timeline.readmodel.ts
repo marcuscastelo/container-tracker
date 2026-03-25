@@ -1,10 +1,14 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
 import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
-import type { DerivedObservationState } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
-import { deriveObservationState } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
-import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
-import { classifySeries } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
+import {
+  type DerivedObservationState,
+  deriveObservationState,
+} from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
+import {
+  classifySeries,
+  type SeriesLabel,
+} from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import {
   buildSeriesKey,
   compareObservationsChronologically,
@@ -64,13 +68,15 @@ function observationToTrackingTimelineItem(
   return {
     id: obs.id ?? `obs-${index}`,
     type: obs.type,
-    carrierLabel: obs.carrier_label ?? undefined,
-    location,
     eventTime: trackingTemporalValueToDto(obs.event_time),
     eventTimeType,
     derivedState,
-    vesselName: obs.vessel_name ?? null,
-    voyage: obs.voyage ?? null,
+    ...(obs.carrier_label === undefined || obs.carrier_label === null
+      ? {}
+      : { carrierLabel: obs.carrier_label }),
+    ...(location === undefined ? {} : { location }),
+    ...(obs.vessel_name === undefined ? {} : { vesselName: obs.vessel_name }),
+    ...(obs.voyage === undefined ? {} : { voyage: obs.voyage }),
   }
 }
 
@@ -84,7 +90,7 @@ function timelineItemToTrackingItem(
 ): TrackingTimelineItem {
   const derivedState = deriveObservationState(item.primary, allObservations)
   const base = observationToTrackingTimelineItem(item.primary, index, derivedState)
-  return { ...base, seriesHistory: item.seriesHistory }
+  return item.seriesHistory === undefined ? base : { ...base, seriesHistory: item.seriesHistory }
 }
 
 /**
@@ -139,7 +145,7 @@ export function deriveTimelineWithSeriesReadModel(
 
       result.push({
         primary: classification.primary,
-        seriesHistory,
+        ...(seriesHistory === undefined ? {} : { seriesHistory }),
       })
     }
   }

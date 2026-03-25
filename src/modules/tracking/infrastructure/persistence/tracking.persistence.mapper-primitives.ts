@@ -54,10 +54,6 @@ export function requireTimestamp(value: unknown, field: string): string {
   return normalized
 }
 
-export function optionalTimestamp(value: unknown): string | null {
-  return normalizeTimestamptz(value)
-}
-
 /**
  * Normalize ISO timestamps that may have offsets or space-separated formats
  * into canonical UTC ISO strings. Used for alert timestamps.

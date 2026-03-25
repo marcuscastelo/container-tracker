@@ -5,7 +5,7 @@ const CONTAINER_SPLIT_REGEX = /[\s,;\n\t]+/
 
 export const MAX_CONTAINERS_PER_PASTE = 100
 
-export type ParsedContainerBulkPaste =
+type ParsedContainerBulkPaste =
   | { readonly type: 'none' }
   | { readonly type: 'single'; readonly value: string }
   | { readonly type: 'multiple'; readonly values: readonly string[] }
@@ -15,13 +15,13 @@ export type ParsedContainerBulkPaste =
       readonly maxAllowed: number
     }
 
-export type MergeBulkPastedContainersInput = {
+type MergeBulkPastedContainersInput = {
   readonly existingContainerNumbers: readonly string[]
   readonly targetIndex: number
   readonly pastedValues: readonly string[]
 }
 
-export type MergeBulkPastedContainersResult = {
+type MergeBulkPastedContainersResult = {
   readonly nextContainerNumbers: readonly string[]
   readonly appliedValues: readonly string[]
 }
@@ -122,10 +122,14 @@ export function mergeBulkPastedContainers(
     return { nextContainerNumbers: current, appliedValues: [] }
   }
 
+  const [firstValue, ...valuesAfterTarget] = valuesToApply
+  if (firstValue === undefined) {
+    return { nextContainerNumbers: current, appliedValues: [] }
+  }
+
   const nextWithTargetReplaced = current.map((value, index) =>
-    index === input.targetIndex ? valuesToApply[0] : value,
+    index === input.targetIndex ? firstValue : value,
   )
-  const valuesAfterTarget = valuesToApply.slice(1)
 
   return {
     nextContainerNumbers: [

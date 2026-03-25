@@ -30,9 +30,11 @@ export function createSyncStatusControllers(deps: SyncStatusControllersDeps) {
         )
       }
 
-      const result = await syncUseCases.getSyncStatus({
-        processIds: parsedQuery.data.processIds,
-      })
+      const result = await syncUseCases.getSyncStatus(
+        parsedQuery.data.processIds === undefined
+          ? {}
+          : { processIds: parsedQuery.data.processIds },
+      )
       const response = toProcessesSyncStatusResponse(result)
       const validated = ProcessesSyncStatusResponseSchema.parse(response)
 

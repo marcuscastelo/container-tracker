@@ -19,7 +19,7 @@ export function subscribeToTrackingAgentsByTenant(command: {
     client: supabase,
     tenantId: command.tenantId,
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -32,7 +32,7 @@ export function subscribeToTrackingAgentActivityByAgentId(command: {
     client: supabase,
     agentId: command.agentId,
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -45,6 +45,6 @@ export function subscribeToAgentLogsByAgentId(command: {
     client: supabase,
     agentId: command.agentId,
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }

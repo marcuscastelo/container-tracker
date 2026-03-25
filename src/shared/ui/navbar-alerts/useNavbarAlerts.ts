@@ -1,6 +1,5 @@
-import type { Accessor } from 'solid-js'
-import { createEffect, createMemo, createResource, createSignal } from 'solid-js'
-import { fetchNavbarAlertsSummary } from '~/shared/ui/navbar-alerts/navbar-alerts.api'
+import { type Accessor, createEffect, createMemo, createResource, createSignal } from 'solid-js'
+import { fetchNavbarAlertsSummary } from '~/shared/api/navbar-alerts/navbar-alerts.api'
 import { toNavbarAlertsVM } from '~/shared/ui/navbar-alerts/navbar-alerts.mapper'
 import {
   EMPTY_NAVBAR_ALERTS_VM,
@@ -11,7 +10,7 @@ type NavbarAlertsState = {
   readonly totalAlerts: number
   readonly processes: NavbarAlertsVM['processes']
   readonly loading: boolean
-  readonly error?: string
+  readonly error: string | null
 }
 
 type UseNavbarAlertsResult = {
@@ -45,7 +44,7 @@ export function useNavbarAlerts(): UseNavbarAlertsResult {
       totalAlerts: vm.totalAlerts,
       processes: vm.processes,
       loading: resource.loading,
-      error: resource.error ? toErrorMessage(resource.error) : undefined,
+      error: resource.error ? toErrorMessage(resource.error) : null,
     }
   })
 

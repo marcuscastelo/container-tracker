@@ -218,7 +218,7 @@ export function subscribeSyncRequestsByIds<
       key: `id=eq.${syncRequestId}`,
     })),
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -257,7 +257,7 @@ export function subscribeSyncRequestsByContainerRefs<
       key: `ref_type=eq.container&ref_value=eq.${containerNumber}`,
     })),
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }
 
@@ -280,6 +280,6 @@ export function subscribeSyncRequestsByTenant<
       },
     ],
     onEvent: command.onEvent,
-    onStatus: command.onStatus,
+    ...(command.onStatus ? { onStatus: command.onStatus } : {}),
   })
 }

@@ -1,5 +1,4 @@
-import type { JSX } from 'solid-js'
-import { For, Show } from 'solid-js'
+import { For, type JSX, Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 import type { NavbarProcessAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 import { ProcessAlertGroup } from '~/shared/ui/navbar-alerts/ProcessAlertGroup'
@@ -9,7 +8,7 @@ type NavbarAlertsPanelProps = {
   readonly totalAlerts: number
   readonly processes: readonly NavbarProcessAlertGroupVM[]
   readonly loading: boolean
-  readonly error?: string
+  readonly error: string | null
   readonly onRetry: () => void
   readonly onClose: () => void
   readonly onOpenDashboard: () => void
@@ -27,7 +26,7 @@ type PanelHeaderProps = {
 type PanelContentProps = {
   readonly processes: readonly NavbarProcessAlertGroupVM[]
   readonly loading: boolean
-  readonly error?: string
+  readonly error: string | null
   readonly onRetry: () => void
   readonly onOpenProcess: (processId: string) => void
   readonly onOpenContainer: (processId: string, containerNumber: string) => void

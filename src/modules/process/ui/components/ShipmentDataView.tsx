@@ -103,15 +103,15 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
               fallback={
                 <TimelinePanel
                   selectedContainer={props.selectedContainer}
-                  carrier={props.data.carrier}
                   alerts={props.activeAlerts}
+                  {...(props.data.carrier === undefined ? {} : { carrier: props.data.carrier })}
                 />
               }
             >
               <TrackingTimeTravelTimelinePanel
                 containerNumber={container().number}
-                carrier={props.data.carrier}
                 selectedSync={props.trackingTimeTravel.selectedSync()}
+                {...(props.data.carrier === undefined ? {} : { carrier: props.data.carrier })}
               />
             </Show>
           </ErrorBoundary>

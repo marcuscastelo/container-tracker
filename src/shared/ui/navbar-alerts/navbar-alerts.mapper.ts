@@ -1,7 +1,7 @@
-import type { NavbarAlertsSummaryResponse } from '~/shared/api-schemas/dashboard.schemas'
+import type { NavbarAlertsSummaryData } from '~/shared/api/navbar-alerts/navbar-alerts.contract'
 import type { NavbarAlertsVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
 
-export function toNavbarAlertsVM(source: NavbarAlertsSummaryResponse): NavbarAlertsVM {
+export function toNavbarAlertsVM(source: NavbarAlertsSummaryData): NavbarAlertsVM {
   return {
     totalAlerts: source.total_active_alerts,
     processes: source.processes.map((process) => ({

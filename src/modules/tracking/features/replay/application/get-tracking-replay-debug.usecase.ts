@@ -17,8 +17,8 @@ export async function getTrackingReplayDebug(
 ): Promise<TrackingReplayDebugResult> {
   const run = await runTrackingReplay(deps, {
     containerId: command.containerId,
-    now: command.now,
     stopAfterSnapshotId: command.snapshotId,
+    ...(command.now === undefined ? {} : { now: command.now }),
   })
   const timeTravel = buildTrackingTimeTravelReadModel(run)
   const checkpoint = timeTravel.syncs.find((entry) => entry.snapshotId === command.snapshotId)

@@ -69,7 +69,8 @@ function groupTerminalSegments(
 
   // Find first and last voyage event indices among original events
   for (let i = 0; i < events.length; i++) {
-    if (voyageEventIds.has(events[i].id)) {
+    const event = events[i]
+    if (event !== undefined && voyageEventIds.has(event.id)) {
       if (firstVoyageIdx === -1) firstVoyageIdx = i
       lastVoyageIdx = i
     }
@@ -79,6 +80,8 @@ function groupTerminalSegments(
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i]
+    if (event === undefined) continue
+
     if (voyageEventIds.has(event.id)) {
       // Flush any accumulated terminal events
       if (currentRun.length > 0) {
@@ -199,6 +202,8 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
   for (let i = 0; i < voyageOnly.length - 1; i++) {
     const current = voyageOnly[i]
     const next = voyageOnly[i + 1]
+    if (current === undefined || next === undefined) continue
+
     const currentVessel = normalizeVesselName(current.seg.vessel)
     const nextVessel = normalizeVesselName(next.seg.vessel)
     const vesselChanged = currentVessel !== nextVessel
@@ -265,6 +270,7 @@ function computeGapMarkers(events: readonly TrackingTimelineItem[]): readonly Ga
   for (let i = 0; i < datedEvents.length - 1; i++) {
     const current = datedEvents[i]
     const next = datedEvents[i + 1]
+    if (current === undefined || next === undefined) continue
 
     const currentTime = toTimelineInstant(current.eventTime)
     const nextTime = toTimelineInstant(next.eventTime)
@@ -311,6 +317,8 @@ function computePortRiskMarkers(
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i]
+    if (event === undefined) continue
+
     if (!PORT_ARRIVAL_TYPES.has(event.type)) continue
     const arrivalTime = toTimelineInstant(event.eventTime)
     if (!arrivalTime) continue
@@ -318,8 +326,11 @@ function computePortRiskMarkers(
     // Look forward for an exit event
     let exitTime: Instant | null = null
     for (let j = i + 1; j < events.length; j++) {
-      const exitTimeValue = toTimelineInstant(events[j].eventTime)
-      if (PORT_EXIT_TYPES.has(events[j].type) && exitTimeValue) {
+      const nextEvent = events[j]
+      if (nextEvent === undefined) continue
+
+      const exitTimeValue = toTimelineInstant(nextEvent.eventTime)
+      if (PORT_EXIT_TYPES.has(nextEvent.type) && exitTimeValue) {
         exitTime = exitTimeValue
         break
       }
@@ -409,15 +420,18 @@ export function buildTimelineRenderList(
     for (let i = 0; i < datedEvents.length - 1 && gapIdx < gapMarkers.length; i++) {
       const current = datedEvents[i]
       const next = datedEvents[i + 1]
+      if (current === undefined || next === undefined) continue
+
       const currentTime = toTimelineInstant(current.eventTime)
       const nextTime = toTimelineInstant(next.eventTime)
       if (!currentTime || !nextTime) continue
       const deltaMs = Math.abs(nextTime.diffMs(currentTime))
 
       if (deltaMs >= GAP_THRESHOLD_MS) {
+        const gapMarker = gapMarkers[gapIdx]
         // Phase 19: skip if this gap overlaps a port risk marker
-        if (!portRiskEventIds.has(current.id)) {
-          gapsByFromEvent.set(current.id, gapMarkers[gapIdx])
+        if (!portRiskEventIds.has(current.id) && gapMarker !== undefined) {
+          gapsByFromEvent.set(current.id, gapMarker)
         }
         gapIdx++
       }
@@ -454,11 +468,14 @@ export function buildTimelineRenderList(
     blockEvents: readonly TrackingTimelineItem[],
     isLastBlock: boolean,
   ): void {
-    const lastOverallEvent = events[events.length - 1]
+    const lastOverallEvent = events[events.length - 1] ?? null
 
     for (let i = 0; i < blockEvents.length; i++) {
       const event = blockEvents[i]
-      const isLastEvent = isLastBlock && event.id === lastOverallEvent.id
+      if (event === undefined) continue
+
+      const isLastEvent =
+        isLastBlock && lastOverallEvent !== null && event.id === lastOverallEvent.id
 
       result.push({ type: 'event', event, isLast: isLastEvent })
 
@@ -496,6 +513,8 @@ export function buildTimelineRenderList(
   // Voyage segments with transshipment markers between them
   for (let segIdx = 0; segIdx < voyageSegments.length; segIdx++) {
     const segment = voyageSegments[segIdx]
+    if (segment === undefined) continue
+
     const isLastSegment =
       segIdx === voyageSegments.length - 1 &&
       terminalSegments.every((ts) => ts.kind !== 'post-carriage')
@@ -527,18 +546,19 @@ export function buildTimelineRenderList(
 
         // Check if this terminal segment's events fall between current and next voyage
         const firstTermEvent = ts.events[0]
-        const _segEventIds = new Set(segment.events.map((e) => e.id))
+        if (firstTermEvent === undefined) continue
+
         const nextVoyageSegment = voyageSegments[segIdx + 1]
         if (!nextVoyageSegment) continue
 
-        const _nextSegEventIds = new Set(nextVoyageSegment.events.map((e) => e.id))
+        const lastCurrentVoyageEvent = segment.events[segment.events.length - 1]
+        const firstNextVoyageEvent = nextVoyageSegment.events[0]
+        if (lastCurrentVoyageEvent === undefined || firstNextVoyageEvent === undefined) continue
 
         // Check if the terminal event is positioned between the two voyages
         const termEventIdx = events.findIndex((e) => e.id === firstTermEvent.id)
-        const lastCurrentVoyageIdx = events.findIndex(
-          (e) => e.id === segment.events[segment.events.length - 1].id,
-        )
-        const firstNextVoyageIdx = events.findIndex((e) => e.id === nextVoyageSegment.events[0].id)
+        const lastCurrentVoyageIdx = events.findIndex((e) => e.id === lastCurrentVoyageEvent.id)
+        const firstNextVoyageIdx = events.findIndex((e) => e.id === firstNextVoyageEvent.id)
 
         if (termEventIdx > lastCurrentVoyageIdx && termEventIdx < firstNextVoyageIdx) {
           usedTerminalKinds.add(`ts-${segIdx}`)

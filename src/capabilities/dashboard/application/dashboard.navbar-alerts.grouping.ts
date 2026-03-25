@@ -32,7 +32,7 @@ export function indexProcessContextById(
   return contextByProcessId
 }
 
-export function resolveCarrier(
+function resolveCarrier(
   process: DashboardProcessWithOperationalSummaryProjection['pwc']['process'] | undefined,
 ): string | null {
   if (!process || !('carrier' in process)) return null

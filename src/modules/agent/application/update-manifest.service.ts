@@ -69,7 +69,7 @@ type AgentUpdateManifestResolved = {
   readonly restartRequestedAt: string | null
 }
 
-export type ResolveAgentUpdateManifestResult =
+type ResolveAgentUpdateManifestResult =
   | {
       readonly kind: 'agent_not_found'
     }

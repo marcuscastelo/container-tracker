@@ -343,6 +343,8 @@ export function aggregateOperationalSummary(
   let etaWithValue = 0
   for (let index = 0; index < summaries.length; index += 1) {
     const summary = summaries[index]
+    if (summary === undefined) continue
+
     const bucket = lifecycleBuckets[index] ?? 'pre_arrival'
     const etaApplicable = resolveEtaApplicable(summary, bucket)
     if (!etaApplicable) continue

@@ -17,6 +17,14 @@ function makeSource(overrides: Partial<ProcessListItemSource> = {}): ProcessList
   }
 }
 
+function requireAt<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+  if (item === undefined) {
+    throw new Error(`Expected item at index ${index}`)
+  }
+  return item
+}
+
 describe('toProcessSummaryVMs', () => {
   it('maps API response to ProcessSummaryVM array', () => {
     const example: ProcessListItemSource[] = [
@@ -38,16 +46,17 @@ describe('toProcessSummaryVMs', () => {
     ]
 
     const result = toProcessSummaryVMs(example)
+    const first = requireAt(result, 0)
     expect(Array.isArray(result)).toBe(true)
-    expect(result[0].id).toBe('p1')
-    expect(result[0].containerCount).toBe(1)
-    expect(result[0].containerNumbers).toEqual(['MRKU1111111'])
-    expect(result[0].carrier).toBe('Maersk')
-    expect(result[0].importerId).toBe('importer-1')
-    expect(result[0].importerName).toBe('Empresa ABC')
-    expect(result[0].syncStatus).toBe('idle')
-    expect(result[0].lastSyncAt).toBeNull()
-    expect(result[0].dominantAlertCreatedAt).toBeNull()
+    expect(first.id).toBe('p1')
+    expect(first.containerCount).toBe(1)
+    expect(first.containerNumbers).toEqual(['MRKU1111111'])
+    expect(first.carrier).toBe('Maersk')
+    expect(first.importerId).toBe('importer-1')
+    expect(first.importerName).toBe('Empresa ABC')
+    expect(first.syncStatus).toBe('idle')
+    expect(first.lastSyncAt).toBeNull()
+    expect(first.dominantAlertCreatedAt).toBeNull()
   })
 
   it('maps process_status from API to status code + StatusVariant', () => {
@@ -77,39 +86,41 @@ describe('toProcessSummaryVMs', () => {
     ]
 
     const result = toProcessSummaryVMs(example)
-    expect(result[0].status).toBe('blue-500')
-    expect(result[0].statusCode).toBe('IN_TRANSIT')
-    expect(result[0].statusMicrobadge).toEqual({
+    const first = requireAt(result, 0)
+    expect(first.status).toBe('blue-500')
+    expect(first.statusCode).toBe('IN_TRANSIT')
+    expect(first.statusMicrobadge).toEqual({
       statusCode: 'DISCHARGED',
       count: 2,
     })
-    expect(result[0].statusRank).toBeGreaterThan(0)
-    expect(result[0].eta).toEqual(temporalDtoFromCanonical('2025-06-01T00:00:00Z'))
-    expect(result[0].etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
-    expect(result[0].alertsCount).toBe(2)
-    expect(result[0].highestAlertSeverity).toBe('warning')
-    expect(result[0].dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
-    expect(result[0].hasTransshipment).toBe(true)
-    expect(result[0].lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
-    expect(result[0].syncStatus).toBe('idle')
-    expect(result[0].lastSyncAt).toBe('2025-05-01T11:00:00Z')
+    expect(first.statusRank).toBeGreaterThan(0)
+    expect(first.eta).toEqual(temporalDtoFromCanonical('2025-06-01T00:00:00Z'))
+    expect(first.etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
+    expect(first.alertsCount).toBe(2)
+    expect(first.highestAlertSeverity).toBe('warning')
+    expect(first.dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
+    expect(first.hasTransshipment).toBe(true)
+    expect(first.lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
+    expect(first.syncStatus).toBe('idle')
+    expect(first.lastSyncAt).toBe('2025-05-01T11:00:00Z')
   })
 
   it('defaults to unknown status when process_status is absent', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p3' })])
-    expect(result[0].status).toBe('slate-400')
-    expect(result[0].statusCode).toBe('UNKNOWN')
-    expect(result[0].statusMicrobadge).toBeNull()
-    expect(result[0].statusRank).toBe(0)
-    expect(result[0].eta).toBeNull()
-    expect(result[0].etaMsOrNull).toBeNull()
-    expect(result[0].alertsCount).toBe(0)
-    expect(result[0].highestAlertSeverity).toBeNull()
-    expect(result[0].dominantAlertCreatedAt).toBeNull()
-    expect(result[0].hasTransshipment).toBe(false)
-    expect(result[0].lastEventAt).toBeNull()
-    expect(result[0].syncStatus).toBe('idle')
-    expect(result[0].lastSyncAt).toBeNull()
+    const first = requireAt(result, 0)
+    expect(first.status).toBe('slate-400')
+    expect(first.statusCode).toBe('UNKNOWN')
+    expect(first.statusMicrobadge).toBeNull()
+    expect(first.statusRank).toBe(0)
+    expect(first.eta).toBeNull()
+    expect(first.etaMsOrNull).toBeNull()
+    expect(first.alertsCount).toBe(0)
+    expect(first.highestAlertSeverity).toBeNull()
+    expect(first.dominantAlertCreatedAt).toBeNull()
+    expect(first.hasTransshipment).toBe(false)
+    expect(first.lastEventAt).toBeNull()
+    expect(first.syncStatus).toBe('idle')
+    expect(first.lastSyncAt).toBeNull()
   })
 
   it('maps sync metadata to dashboard sync visual states', () => {
@@ -123,17 +134,21 @@ describe('toProcessSummaryVMs', () => {
       makeSource({ id: 'p-sync-unknown', last_sync_status: 'UNKNOWN' }),
     ])
 
-    expect(result[0].syncStatus).toBe('syncing')
-    expect(result[0].lastSyncAt).toBe('2026-03-05T10:00:00.000Z')
-    expect(result[1].syncStatus).toBe('idle')
-    expect(result[2].syncStatus).toBe('idle')
+    const first = requireAt(result, 0)
+    const second = requireAt(result, 1)
+    const third = requireAt(result, 2)
+    expect(first.syncStatus).toBe('syncing')
+    expect(first.lastSyncAt).toBe('2026-03-05T10:00:00.000Z')
+    expect(second.syncStatus).toBe('idle')
+    expect(third.syncStatus).toBe('idle')
   })
 
   it('maps DELIVERED status correctly', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p4', process_status: 'DELIVERED' })])
-    expect(result[0].status).toBe('green-600')
-    expect(result[0].statusCode).toBe('DELIVERED')
-    expect(result[0].statusRank).toBeGreaterThan(0)
+    const first = requireAt(result, 0)
+    expect(first.status).toBe('green-600')
+    expect(first.statusCode).toBe('DELIVERED')
+    expect(first.statusRank).toBeGreaterThan(0)
   })
 
   it('maps process-only meta statuses', () => {
@@ -143,12 +158,15 @@ describe('toProcessSummaryVMs', () => {
       makeSource({ id: 'p-sync', process_status: 'NOT_SYNCED' }),
     ])
 
-    expect(result[0].status).toBe('slate-400')
-    expect(result[0].statusCode).toBe('BOOKED')
-    expect(result[1].status).toBe('amber-600')
-    expect(result[1].statusCode).toBe('AWAITING_DATA')
-    expect(result[2].status).toBe('amber-700')
-    expect(result[2].statusCode).toBe('NOT_SYNCED')
+    const first = requireAt(result, 0)
+    const second = requireAt(result, 1)
+    const third = requireAt(result, 2)
+    expect(first.status).toBe('slate-400')
+    expect(first.statusCode).toBe('BOOKED')
+    expect(second.status).toBe('amber-600')
+    expect(second.statusCode).toBe('AWAITING_DATA')
+    expect(third.status).toBe('amber-700')
+    expect(third.statusCode).toBe('NOT_SYNCED')
   })
 
   it('drops microbadge when API status is not operationally meaningful', () => {
@@ -163,7 +181,7 @@ describe('toProcessSummaryVMs', () => {
       }),
     ])
 
-    expect(result[0].statusMicrobadge).toBeNull()
+    expect(requireAt(result, 0).statusMicrobadge).toBeNull()
   })
 
   it('maps date-only eta to a UTC start-of-day comparable timestamp', () => {
@@ -173,37 +191,39 @@ describe('toProcessSummaryVMs', () => {
         eta: temporalDtoFromCanonical('2025-06-01'),
       }),
     ])
-    expect(result[0].eta).toEqual(temporalDtoFromCanonical('2025-06-01'))
-    expect(result[0].etaMsOrNull).toBe(Instant.fromIso('2025-06-01T00:00:00.000Z').toEpochMs())
+    const first = requireAt(result, 0)
+    expect(first.eta).toEqual(temporalDtoFromCanonical('2025-06-01'))
+    expect(first.etaMsOrNull).toBe(Instant.fromIso('2025-06-01T00:00:00.000Z').toEpochMs())
   })
 
   it('normalizes blank importer_name to null', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p5', importer_name: '   ' })])
-    expect(result[0].importerId).toBeNull()
-    expect(result[0].importerName).toBeNull()
+    const first = requireAt(result, 0)
+    expect(first.importerId).toBeNull()
+    expect(first.importerName).toBeNull()
   })
 
   it('preserves leading/trailing whitespace in non-blank importer_name', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p6', importer_name: '  Empresa ABC  ' })])
-    expect(result[0].importerName).toBe('  Empresa ABC  ')
+    expect(requireAt(result, 0).importerName).toBe('  Empresa ABC  ')
   })
 
   it('maps redestination_number to redestinationNumber', () => {
     const result = toProcessSummaryVMs([
       makeSource({ id: 'p-redest', redestination_number: 'RD-12345' }),
     ])
-    expect(result[0].redestinationNumber).toBe('RD-12345')
+    expect(requireAt(result, 0).redestinationNumber).toBe('RD-12345')
   })
 
   it('defaults redestinationNumber to null when absent', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p-no-redest' })])
-    expect(result[0].redestinationNumber).toBeNull()
+    expect(requireAt(result, 0).redestinationNumber).toBeNull()
   })
 
   it('normalizes null redestination_number to null', () => {
     const result = toProcessSummaryVMs([
       makeSource({ id: 'p-null-redest', redestination_number: null }),
     ])
-    expect(result[0].redestinationNumber).toBeNull()
+    expect(requireAt(result, 0).redestinationNumber).toBeNull()
   })
 })

@@ -3,7 +3,7 @@ import {
   type RefreshStatusRequest,
   type RefreshStatusResponse,
   RefreshStatusResponseSchema,
-} from '~/modules/process/ui/screens/shipment/lib/shipmentRefresh.schemas'
+} from '~/modules/process/ui/validation/shipmentRefresh.validation'
 import type { SyncRequestRealtimeEvent } from '~/shared/api/sync-requests.realtime.client'
 import { systemClock } from '~/shared/time/clock'
 import { Instant } from '~/shared/time/instant'

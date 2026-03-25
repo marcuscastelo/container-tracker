@@ -100,8 +100,9 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
   async findAlertDerivationStateByContainerId(
     containerId: string,
   ): Promise<readonly TrackingAlertDerivationState[]> {
-    return [...this.alerts.values().filter((alert) => alert.container_id === containerId)].map(
-      (alert) => ({
+    return Array.from(this.alerts.values())
+      .filter((alert) => alert.container_id === containerId)
+      .map((alert) => ({
         id: alert.id,
         type: alert.type,
         category: alert.category,
@@ -110,8 +111,7 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
         active: resolveAlertLifecycleState(alert) === 'ACTIVE',
         acked_at: alert.acked_at,
         message_params: alert.message_params,
-      }),
-    )
+      }))
   }
   async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     return alerts.map((alert) => {

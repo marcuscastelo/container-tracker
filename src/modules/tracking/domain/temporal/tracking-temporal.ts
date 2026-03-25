@@ -3,14 +3,14 @@ import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import type { Instant } from '~/shared/time/instant'
 import { instantValue, type TemporalValue } from '~/shared/time/temporal-value'
 
-export const TRACKING_UTC_TIMEZONE = 'UTC' as const
+const TRACKING_UTC_TIMEZONE = 'UTC' as const
 
 export const TRACKING_CHRONOLOGY_COMPARE_OPTIONS = {
   timezone: TRACKING_UTC_TIMEZONE,
   strategy: 'start-of-day',
 } as const
 
-export const TRACKING_EXPIRATION_COMPARE_OPTIONS = {
+const TRACKING_EXPIRATION_COMPARE_OPTIONS = {
   timezone: TRACKING_UTC_TIMEZONE,
   strategy: 'end-of-day',
 } as const

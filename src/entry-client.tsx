@@ -92,8 +92,8 @@ function getClientRuntimeState(): ClientRuntimeState | null {
 function disposeRuntime(runtime: ClientRuntimeState): void {
   runtime.disposeApp?.()
   runtime.disposeGlobalHandlers?.()
-  runtime.disposeApp = undefined
-  runtime.disposeGlobalHandlers = undefined
+  delete runtime.disposeApp
+  delete runtime.disposeGlobalHandlers
 }
 
 function mountClientApp(root: HTMLElement): DisposeFn {
@@ -133,10 +133,10 @@ try {
         disposeGlobalHandlers()
 
         if (runtime.disposeApp === disposeApp) {
-          runtime.disposeApp = undefined
+          delete runtime.disposeApp
         }
         if (runtime.disposeGlobalHandlers === disposeGlobalHandlers) {
-          runtime.disposeGlobalHandlers = undefined
+          delete runtime.disposeGlobalHandlers
         }
       })
     }

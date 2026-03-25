@@ -36,8 +36,8 @@ export function ShipmentDialogsHost(props: ShipmentDialogsHostProps) {
       <Show when={props.hasCreateError()}>
         <ExistingProcessError
           message={props.createErrorMessage()}
-          existing={props.createErrorExisting()}
           onAcknowledge={props.onAcknowledgeCreateError}
+          existing={props.createErrorExisting() ?? null}
         />
       </Show>
     </>

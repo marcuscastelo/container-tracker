@@ -1,7 +1,6 @@
 import { useNavigate } from '@solidjs/router'
 import clsx from 'clsx'
-import type { JSX } from 'solid-js'
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, type JSX, onCleanup, Show } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 import { NavbarAlertsPanel } from '~/shared/ui/navbar-alerts/NavbarAlertsPanel'
 import { useNavbarAlerts } from '~/shared/ui/navbar-alerts/useNavbarAlerts'
@@ -48,10 +47,7 @@ export function NavbarAlertsButton(): JSX.Element {
   const togglePanel = () => {
     const nextOpenState = !isOpen()
     setIsOpen(nextOpenState)
-    if (
-      nextOpenState &&
-      (!navbarAlerts.hasResolved() || navbarAlerts.state().error !== undefined)
-    ) {
+    if (nextOpenState && (!navbarAlerts.hasResolved() || navbarAlerts.state().error !== null)) {
       void navbarAlerts.refresh()
     }
   }

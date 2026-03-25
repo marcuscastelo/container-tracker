@@ -2,7 +2,7 @@ import type { SyncMode } from '~/capabilities/sync/application/commands/enqueue-
 import type { SyncQueuePort } from '~/capabilities/sync/application/ports/sync-queue.port'
 import type { ResolvedSyncTarget } from '~/capabilities/sync/application/services/sync-target-resolver.service'
 
-export type QueuedSyncTarget = {
+type QueuedSyncTarget = {
   readonly processId: string | null
   readonly containerNumber: string
   readonly syncRequestId: string

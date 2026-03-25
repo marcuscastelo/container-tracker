@@ -390,9 +390,10 @@ function buildConflictErrors(
     const fieldKey = match
       ? toContainerFieldKey(match.id)
       : toContainerFieldKey(conflict.containerNumber)
+    const link = conflict.link
     errors[fieldKey] = {
       message: conflict.message ?? `Container ${conflict.containerNumber} already exists`,
-      link: conflict.link,
+      ...(link === undefined ? {} : { link }),
     }
   }
   return errors
@@ -411,8 +412,8 @@ function toContainerConflictsFromPayload(payload: unknown): readonly ContainerCo
 
     conflicts.push({
       containerNumber: item.containerNumber,
-      link: typeof item.link === 'string' ? item.link : undefined,
-      message: typeof item.message === 'string' ? item.message : undefined,
+      ...(typeof item.link === 'string' ? { link: item.link } : {}),
+      ...(typeof item.message === 'string' ? { message: item.message } : {}),
     })
   }
 
@@ -847,7 +848,7 @@ function createContainerFeedbackHandlers(params: CreateContainerFeedbackHandlers
       counts[value] = (counts[value] ?? 0) + 1
     }
     const current = normalizeContainerNumber(container.containerNumber)
-    if (current && counts[current] > 1) {
+    if (current && (counts[current] ?? 0) > 1) {
       return `${params.duplicateContainerMessage()} (${current})`
     }
     return undefined
@@ -911,11 +912,13 @@ function createContainerBlurHandler(
 
         if (result.conflicts.length > 0) {
           const conflict = result.conflicts[0]
+          if (!conflict) return
+          const link = conflict.link
           params.setServerErrors((previous) => ({
             ...previous,
             [toContainerFieldKey(container.id)]: {
               message: conflict.message ?? `Container ${conflict.containerNumber} already exists`,
-              link: conflict.link,
+              ...(link === undefined ? {} : { link }),
             },
           }))
         }
@@ -1590,9 +1593,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   createEffect(() => {
     populateFormFromInitialData({
       open: props.open,
-      initialData: props.initialData,
       focus: props.focus,
       setters: formFieldSetters,
+      ...(props.initialData === undefined ? {} : { initialData: props.initialData }),
     })
   })
 

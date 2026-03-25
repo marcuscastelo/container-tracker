@@ -17,7 +17,7 @@ import { createRemoveContainerFromProcessUseCase } from '~/modules/process/appli
 import { createSearchProcessesByTextUseCase } from '~/modules/process/application/usecases/search-processes-by-text.usecase'
 import { createUpdateProcessUseCase } from '~/modules/process/application/usecases/update-process.usecase'
 
-export type CreateProcessUseCasesDeps = {
+type CreateProcessUseCasesDeps = {
   repository: ProcessRepository
   containerUseCases: ContainerUseCasesForProcess
   trackingUseCases: ListProcessesWithOperationalSummaryDeps['trackingUseCases']

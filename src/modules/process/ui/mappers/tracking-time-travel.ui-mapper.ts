@@ -1,3 +1,7 @@
+import type {
+  TrackingReplayDebugResponseDto,
+  TrackingTimeTravelResponseDto,
+} from '~/modules/process/ui/api/tracking-time-travel.api'
 import { toAlertDisplayVMs } from '~/modules/process/ui/mappers/trackingAlert.ui-mapper'
 import {
   toTrackingStatusCode,
@@ -12,30 +16,17 @@ import type {
   TrackingTimeTravelSyncVM,
   TrackingTimeTravelVM,
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
+import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
-import type {
-  TrackingReplayDebugResponseDto,
-  TrackingTimeTravelCheckpointResponseDto,
-  TrackingTimeTravelDiffResponseDto,
-  TrackingTimeTravelResponseDto,
-} from '~/modules/tracking/interface/http/tracking.schemas'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 function toTimelineItem(
-  item: TrackingTimeTravelCheckpointResponseDto['timeline'][number],
+  item: TrackingTimeTravelResponseDto['syncs'][number]['timeline'][number],
 ): TrackingTimelineItem {
-  return {
-    id: item.id,
-    type: item.type,
-    carrierLabel: item.carrier_label ?? undefined,
-    location: item.location ?? undefined,
-    eventTime: item.event_time,
-    eventTimeType: item.event_time_type,
-    derivedState: item.derived_state,
-    vesselName: item.vessel_name,
-    voyage: item.voyage,
-    seriesHistory: item.series_history
-      ? {
+  const seriesHistory =
+    item.series_history === null
+      ? undefined
+      : {
           hasActualConflict: item.series_history.has_actual_conflict,
           classified: item.series_history.classified.map((seriesItem) => ({
             id: seriesItem.id,
@@ -46,8 +37,36 @@ function toTimelineItem(
             seriesLabel: seriesItem.series_label,
           })),
         }
-      : undefined,
+
+  return {
+    id: item.id,
+    type: item.type,
+    eventTime: item.event_time,
+    eventTimeType: item.event_time_type,
+    derivedState: item.derived_state,
+    ...(item.carrier_label === null || item.carrier_label === undefined
+      ? {}
+      : { carrierLabel: item.carrier_label }),
+    ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
+    ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
+    ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
+}
+
+function toAlertProjectionSources(
+  alerts: readonly TrackingTimeTravelResponseDto['syncs'][number]['alerts'][number][],
+): readonly TrackingAlertProjectionSource[] {
+  return alerts.map((alert) => {
+    const { lifecycle_state, resolved_at, resolved_reason, ...rest } = alert
+
+    return {
+      ...rest,
+      ...(lifecycle_state === undefined ? {} : { lifecycle_state }),
+      ...(resolved_at === undefined ? {} : { resolved_at }),
+      ...(resolved_reason === undefined ? {} : { resolved_reason }),
+    }
+  })
 }
 
 function toEtaTone(
@@ -64,7 +83,7 @@ function toEtaTone(
 }
 
 function toEtaVm(
-  eta: TrackingTimeTravelCheckpointResponseDto['eta'],
+  eta: TrackingTimeTravelResponseDto['syncs'][number]['eta'],
   locale: string,
 ): TrackingTimeTravelEtaVM {
   if (!eta) return null
@@ -78,7 +97,7 @@ function toEtaVm(
 }
 
 function toDiffVm(
-  diff: TrackingTimeTravelDiffResponseDto,
+  diff: TrackingTimeTravelResponseDto['syncs'][number]['diff_from_previous'],
   locale: string,
 ): TrackingTimeTravelDiffVM {
   if (diff.kind === 'initial') {
@@ -107,7 +126,7 @@ function toDiffVm(
 }
 
 function toSyncVm(
-  checkpoint: TrackingTimeTravelCheckpointResponseDto,
+  checkpoint: TrackingTimeTravelResponseDto['syncs'][number],
   locale: string,
 ): TrackingTimeTravelSyncVM {
   const statusCode = toTrackingStatusCode(checkpoint.status)
@@ -119,7 +138,7 @@ function toSyncVm(
     statusCode,
     statusVariant: trackingStatusToVariant(statusCode),
     timeline: checkpoint.timeline.map(toTimelineItem),
-    alerts: toAlertDisplayVMs(checkpoint.alerts, locale),
+    alerts: toAlertDisplayVMs(toAlertProjectionSources(checkpoint.alerts), locale),
     eta: toEtaVm(checkpoint.eta, locale),
     diff: toDiffVm(checkpoint.diff_from_previous, locale),
     debugAvailable: checkpoint.debug_available,
@@ -169,7 +188,7 @@ function toDebugStateVm(
     })),
     timeline: state.timeline.map(toTimelineItem),
     status: toTrackingStatusCode(state.status),
-    alerts: toAlertDisplayVMs(state.alerts, locale),
+    alerts: toAlertDisplayVMs(toAlertProjectionSources(state.alerts), locale),
   }
 }
 

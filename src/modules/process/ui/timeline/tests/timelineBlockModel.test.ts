@@ -24,6 +24,14 @@ function makeEvent(overrides: TimelineItemOverrides): TrackingTimelineItem {
   }
 }
 
+function requireDefined<T>(value: T | undefined): T {
+  if (value === undefined) {
+    throw new Error('Expected value to be defined in test fixture')
+  }
+
+  return value
+}
+
 // ---------------------------------------------------------------------------
 // Phase 4-5 — buildTimelineRenderList (block assembly + transshipment)
 // ---------------------------------------------------------------------------
@@ -47,7 +55,7 @@ describe('buildTimelineRenderList', () => {
     const voyageBlocks = renderList.filter((r) => r.type === 'voyage-block')
     expect(voyageBlocks).toHaveLength(1)
 
-    const vb = voyageBlocks[0]
+    const vb = requireDefined(voyageBlocks[0])
     if (vb.type === 'voyage-block') {
       expect(vb.block.vessel).toBe('V1')
       expect(vb.block.origin).toBe('A')
@@ -70,11 +78,12 @@ describe('buildTimelineRenderList', () => {
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
     expect(tsBlocks).toHaveLength(1)
 
-    if (tsBlocks[0].type === 'transshipment-block') {
-      expect(tsBlocks[0].block.port).toBe('B')
-      expect(tsBlocks[0].block.reason).toBe('Vessel and voyage change')
-      expect(tsBlocks[0].block.fromVessel).toBe('V1')
-      expect(tsBlocks[0].block.toVessel).toBe('V2')
+    const transshipmentBlock = requireDefined(tsBlocks[0])
+    if (transshipmentBlock.type === 'transshipment-block') {
+      expect(transshipmentBlock.block.port).toBe('B')
+      expect(transshipmentBlock.block.reason).toBe('Vessel and voyage change')
+      expect(transshipmentBlock.block.fromVessel).toBe('V1')
+      expect(transshipmentBlock.block.toVessel).toBe('V2')
     }
   })
 
@@ -92,8 +101,9 @@ describe('buildTimelineRenderList', () => {
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
 
     expect(tsBlocks).toHaveLength(1)
-    if (tsBlocks[0].type === 'transshipment-block') {
-      expect(tsBlocks[0].block.reason).toBe('Voyage change')
+    const transshipmentBlock = requireDefined(tsBlocks[0])
+    if (transshipmentBlock.type === 'transshipment-block') {
+      expect(transshipmentBlock.block.reason).toBe('Voyage change')
     }
   })
 
@@ -111,8 +121,9 @@ describe('buildTimelineRenderList', () => {
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
 
     expect(tsBlocks).toHaveLength(1)
-    if (tsBlocks[0].type === 'transshipment-block') {
-      expect(tsBlocks[0].block.reason).toBe('Vessel change')
+    const transshipmentBlock = requireDefined(tsBlocks[0])
+    if (transshipmentBlock.type === 'transshipment-block') {
+      expect(transshipmentBlock.block.reason).toBe('Vessel change')
     }
   })
 
@@ -162,8 +173,9 @@ describe('buildTimelineRenderList', () => {
     const termBlocks = renderList.filter((r) => r.type === 'terminal-block')
     expect(termBlocks).toHaveLength(1)
 
-    if (termBlocks[0].type === 'terminal-block') {
-      expect(termBlocks[0].block.kind).toBe('pre-carriage')
+    const terminalBlock = requireDefined(termBlocks[0])
+    if (terminalBlock.type === 'terminal-block') {
+      expect(terminalBlock.block.kind).toBe('pre-carriage')
     }
   })
 
@@ -209,9 +221,10 @@ describe('gap markers', () => {
     const gaps = renderList.filter((r) => r.type === 'gap-marker')
     expect(gaps).toHaveLength(1)
 
-    if (gaps[0].type === 'gap-marker') {
-      expect(gaps[0].marker.kind).toBe('transit')
-      expect(gaps[0].marker.durationDays).toBe(3)
+    const gap = requireDefined(gaps[0])
+    if (gap.type === 'gap-marker') {
+      expect(gap.marker.kind).toBe('transit')
+      expect(gap.marker.durationDays).toBe(3)
     }
   })
 
@@ -238,8 +251,9 @@ describe('gap markers', () => {
     const gaps = renderList.filter((r) => r.type === 'gap-marker')
     expect(gaps).toHaveLength(1)
 
-    if (gaps[0].type === 'gap-marker') {
-      expect(gaps[0].marker.kind).toBe('generic')
+    const gap = requireDefined(gaps[0])
+    if (gap.type === 'gap-marker') {
+      expect(gap.marker.kind).toBe('generic')
     }
   })
 
@@ -293,10 +307,11 @@ describe('port risk markers', () => {
     const risks = renderList.filter((r) => r.type === 'port-risk-marker')
     expect(risks).toHaveLength(1)
 
-    if (risks[0].type === 'port-risk-marker') {
-      expect(risks[0].marker.durationDays).toBe(3)
-      expect(risks[0].marker.ongoing).toBe(false)
-      expect(risks[0].marker.severity).toBe('warning')
+    const risk = requireDefined(risks[0])
+    if (risk.type === 'port-risk-marker') {
+      expect(risk.marker.durationDays).toBe(3)
+      expect(risk.marker.ongoing).toBe(false)
+      expect(risk.marker.severity).toBe('warning')
     }
   })
 
@@ -315,10 +330,11 @@ describe('port risk markers', () => {
     const risks = renderList.filter((r) => r.type === 'port-risk-marker')
     expect(risks).toHaveLength(1)
 
-    if (risks[0].type === 'port-risk-marker') {
-      expect(risks[0].marker.durationDays).toBe(5)
-      expect(risks[0].marker.ongoing).toBe(true)
-      expect(risks[0].marker.severity).toBe('danger')
+    const risk = requireDefined(risks[0])
+    if (risk.type === 'port-risk-marker') {
+      expect(risk.marker.durationDays).toBe(5)
+      expect(risk.marker.ongoing).toBe(true)
+      expect(risk.marker.severity).toBe('danger')
     }
   })
 
@@ -341,8 +357,9 @@ describe('port risk markers', () => {
       instantFromIsoText('2026-03-04T00:00:00.000Z'),
     ).filter((r) => r.type === 'port-risk-marker')
     expect(risks2d).toHaveLength(1)
-    if (risks2d[0].type === 'port-risk-marker') {
-      expect(risks2d[0].marker.severity).toBe('warning')
+    const risk2d = requireDefined(risks2d[0])
+    if (risk2d.type === 'port-risk-marker') {
+      expect(risk2d.marker.severity).toBe('warning')
     }
 
     // 4 days = danger
@@ -363,8 +380,9 @@ describe('port risk markers', () => {
       instantFromIsoText('2026-03-06T00:00:00.000Z'),
     ).filter((r) => r.type === 'port-risk-marker')
     expect(risks4d).toHaveLength(1)
-    if (risks4d[0].type === 'port-risk-marker') {
-      expect(risks4d[0].marker.severity).toBe('danger')
+    const risk4d = requireDefined(risks4d[0])
+    if (risk4d.type === 'port-risk-marker') {
+      expect(risk4d.marker.severity).toBe('danger')
     }
   })
 

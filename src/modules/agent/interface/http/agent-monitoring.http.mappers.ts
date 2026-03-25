@@ -45,12 +45,12 @@ export function toListAgentsCommand(command: {
 }): Parameters<AgentMonitoringUseCases['listAgents']>[0] {
   return {
     tenantId: command.tenantId,
-    search: command.query.search,
-    status: command.query.status,
-    capability: command.query.capability,
     onlyProblematic: command.query.only_problematic,
     sortField: command.query.sort_field,
     sortDirection: command.query.sort_dir,
+    ...(command.query.search === undefined ? {} : { search: command.query.search }),
+    ...(command.query.status === undefined ? {} : { status: command.query.status }),
+    ...(command.query.capability === undefined ? {} : { capability: command.query.capability }),
   }
 }
 
@@ -69,31 +69,69 @@ export function toHeartbeatCommand(command: {
   readonly tenantId: string
   readonly payload: HeartbeatInput
 }): Parameters<AgentMonitoringUseCases['touchHeartbeat']>[0] {
+  const currentVersion = command.payload.current_version ?? command.payload.agent_version
+
   return {
     agentId: command.authenticatedAgentId,
     tenantId: command.tenantId,
-    hostname: command.payload.hostname,
-    version: command.payload.agent_version,
-    currentVersion: command.payload.current_version ?? command.payload.agent_version,
-    desiredVersion: command.payload.desired_version,
-    updateChannel: command.payload.update_channel,
-    updaterState: command.payload.update_state,
-    updaterLastCheckedAt: command.payload.updater_last_checked_at,
-    updaterLastError: command.payload.updater_last_error,
-    updateReadyVersion: command.payload.update_ready_version,
-    restartRequestedAt: command.payload.restart_requested_at,
-    bootStatus: command.payload.boot_status,
-    realtimeState: command.payload.realtime_state,
-    processingState: command.payload.processing_state,
-    leaseHealth: command.payload.lease_health,
-    activeJobs: command.payload.active_jobs,
-    capabilities: command.payload.capabilities,
-    logsSupported: command.payload.logs_supported,
-    intervalSec: command.payload.interval_sec,
-    queueLagSeconds: command.payload.queue_lag_seconds,
-    lastError: command.payload.last_error,
-    status: command.payload.status,
-    occurredAt: command.payload.occurred_at,
+    ...(command.payload.hostname === undefined ? {} : { hostname: command.payload.hostname }),
+    ...(command.payload.agent_version === undefined
+      ? {}
+      : { version: command.payload.agent_version }),
+    ...(currentVersion === undefined ? {} : { currentVersion }),
+    ...(command.payload.desired_version === undefined
+      ? {}
+      : { desiredVersion: command.payload.desired_version }),
+    ...(command.payload.update_channel === undefined
+      ? {}
+      : { updateChannel: command.payload.update_channel }),
+    ...(command.payload.update_state === undefined
+      ? {}
+      : { updaterState: command.payload.update_state }),
+    ...(command.payload.updater_last_checked_at === undefined
+      ? {}
+      : { updaterLastCheckedAt: command.payload.updater_last_checked_at }),
+    ...(command.payload.updater_last_error === undefined
+      ? {}
+      : { updaterLastError: command.payload.updater_last_error }),
+    ...(command.payload.update_ready_version === undefined
+      ? {}
+      : { updateReadyVersion: command.payload.update_ready_version }),
+    ...(command.payload.restart_requested_at === undefined
+      ? {}
+      : { restartRequestedAt: command.payload.restart_requested_at }),
+    ...(command.payload.boot_status === undefined
+      ? {}
+      : { bootStatus: command.payload.boot_status }),
+    ...(command.payload.realtime_state === undefined
+      ? {}
+      : { realtimeState: command.payload.realtime_state }),
+    ...(command.payload.processing_state === undefined
+      ? {}
+      : { processingState: command.payload.processing_state }),
+    ...(command.payload.lease_health === undefined
+      ? {}
+      : { leaseHealth: command.payload.lease_health }),
+    ...(command.payload.active_jobs === undefined
+      ? {}
+      : { activeJobs: command.payload.active_jobs }),
+    ...(command.payload.capabilities === undefined
+      ? {}
+      : { capabilities: command.payload.capabilities }),
+    ...(command.payload.logs_supported === undefined
+      ? {}
+      : { logsSupported: command.payload.logs_supported }),
+    ...(command.payload.interval_sec === undefined
+      ? {}
+      : { intervalSec: command.payload.interval_sec }),
+    ...(command.payload.queue_lag_seconds === undefined
+      ? {}
+      : { queueLagSeconds: command.payload.queue_lag_seconds }),
+    ...(command.payload.last_error === undefined ? {} : { lastError: command.payload.last_error }),
+    ...(command.payload.status === undefined ? {} : { status: command.payload.status }),
+    ...(command.payload.occurred_at === undefined
+      ? {}
+      : { occurredAt: command.payload.occurred_at }),
   }
 }
 
@@ -108,8 +146,8 @@ export function toHeartbeatActivityCommands(command: {
     type: activity.type,
     message: activity.message,
     severity: activity.severity,
-    metadata: activity.metadata,
-    occurredAt: activity.occurred_at,
+    ...(activity.metadata === undefined ? {} : { metadata: activity.metadata }),
+    ...(activity.occurred_at === undefined ? {} : { occurredAt: activity.occurred_at }),
   }))
 }
 
@@ -138,8 +176,8 @@ export function toAgentLogIngestCommand(command: {
       sequence: line.sequence,
       channel: line.channel,
       message: line.message,
-      occurredAt: line.occurred_at,
-      truncated: line.truncated,
+      ...(line.occurred_at === undefined ? {} : { occurredAt: line.occurred_at }),
+      ...(line.truncated === undefined ? {} : { truncated: line.truncated }),
     })),
   }
 }

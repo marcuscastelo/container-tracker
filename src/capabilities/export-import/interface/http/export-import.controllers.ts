@@ -123,5 +123,3 @@ export function createExportImportControllers(deps: ExportImportControllersDeps)
     exportReport,
   }
 }
-
-export type ExportImportControllers = ReturnType<typeof createExportImportControllers>
