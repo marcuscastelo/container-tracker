@@ -333,7 +333,6 @@ const uiTrackingRestrictedPaths = [
 
 // biome-ignore lint/style/noDefaultExport: ESLint configs use default exports
 export default [
-  // Ignore build/output folders from linting
   ...platformConfig,
   {
     ignores: [
@@ -349,13 +348,15 @@ export default [
       'container-tracker': containerTrackerEslintPlugin,
     },
   },
-  // TODO: move to plugin in platform
+
+  // TODO: move to shared plugin + platform config
   {
     files: ['src/modules/**/ui/**/*.{ts,tsx}'],
     rules: {
       'container-tracker/no-iife-in-jsx': 'warn',
     },
   },
+  // TODO: move to shared plugin + platform config
   {
     files: [
       'src/modules/*/ui/**/*.tsx',
@@ -368,29 +369,8 @@ export default [
       'container-tracker/no-jsx-ternary': 'error',
     },
   },
-  {
-    files: ['src/**/*.vm.ts'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: 'ExportNamedDeclaration > FunctionDeclaration',
-          message: '*.vm.ts files must export shape/type/constants only, not behavioral functions.',
-        },
-        {
-          selector:
-            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='ArrowFunctionExpression']",
-          message: '*.vm.ts files must not export behavioral arrow functions.',
-        },
-        {
-          selector:
-            "ExportNamedDeclaration VariableDeclaration > VariableDeclarator[init.type='FunctionExpression']",
-          message: '*.vm.ts files must not export behavioral function expressions.',
-        },
-      ],
-    },
-  },
-  // --- App Only --- (DO NOT MOVE TO PLATFORM PLUGIN)
+
+  // --- App Only --- (DO NOT MOVE TO PLATFORM)
   {
     files: ['src/routes/api/**/*.{ts,tsx}'],
     rules: {
@@ -481,9 +461,6 @@ export default [
         patterns: moduleUiComponentRestrictedPatterns,
         paths: schemaLibraryPaths,
       }),
-      complexity: ['error', 15],
-      'max-depth': ['error', 4],
-      'max-nested-callbacks': ['error', 3],
     },
   },
   {
@@ -494,9 +471,6 @@ export default [
         patterns: moduleUiComponentRestrictedPatterns,
         paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
       }),
-      complexity: ['error', 15],
-      'max-depth': ['error', 4],
-      'max-nested-callbacks': ['error', 3],
     },
   },
   {
@@ -506,9 +480,6 @@ export default [
         patterns: nonModuleUiComponentRestrictedPatterns,
         paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
       }),
-      complexity: ['error', 15],
-      'max-depth': ['error', 4],
-      'max-nested-callbacks': ['error', 3],
     },
   },
   {
@@ -518,9 +489,6 @@ export default [
         patterns: moduleUiPageRestrictedPatterns,
         paths: schemaLibraryPaths,
       }),
-      complexity: ['error', 20],
-      'max-depth': ['error', 5],
-      'max-nested-callbacks': ['error', 4],
     },
   },
   {
@@ -531,9 +499,6 @@ export default [
         patterns: moduleUiPageRestrictedPatterns,
         paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
       }),
-      complexity: ['error', 20],
-      'max-depth': ['error', 5],
-      'max-nested-callbacks': ['error', 4],
     },
   },
   {
@@ -543,20 +508,6 @@ export default [
         patterns: nonModuleUiPageRestrictedPatterns,
         paths: [...schemaLibraryPaths, ...uiTrackingRestrictedPaths],
       }),
-      complexity: ['error', 20],
-      'max-depth': ['error', 5],
-      'max-nested-callbacks': ['error', 4],
-    },
-  },
-  {
-    files: [
-      'src/modules/*/ui/**/*.{ts,tsx}',
-      'src/modules/*/features/*/ui/**/*.{ts,tsx}',
-      'src/capabilities/*/ui/**/*.{ts,tsx}',
-      'src/shared/ui/**/*.{ts,tsx}',
-    ],
-    rules: {
-      'max-lines-per-function': ['error', 220],
     },
   },
   {
@@ -578,6 +529,10 @@ export default [
       }),
     },
   },
+
+  // App-specific residual from a mixed block:
+  // generic navigation restrictions moved to platformConfig;
+  // DTO/entity contract restrictions stay local.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/**/interface/http/**', 'src/shared/api-schemas/**'],
@@ -594,57 +549,6 @@ export default [
             'TSTypeReference[typeName.name=/^(Partial|Pick|Omit)$/] > TSTypeParameterInstantiation > TSTypeReference[typeName.name=/.*Entity$/]',
           message:
             'Partial/Pick/Omit<Entity> is forbidden for contracts; define explicit contract types.',
-        },
-        {
-          selector:
-            "AssignmentExpression[left.type='MemberExpression'][left.object.name='location'][left.property.name='href']",
-          message:
-            'Use router navigation helpers for internal routes. location.href assignment is forbidden.',
-        },
-        {
-          selector: "MemberExpression[object.name='window'][property.name='location']",
-          message:
-            'window.location usage is forbidden in app code. Use router navigation and helper utilities.',
-        },
-        {
-          selector: "MemberExpression[object.name='document'][property.name='location']",
-          message:
-            'document.location usage is forbidden in app code. Use router navigation and helper utilities.',
-        },
-        {
-          selector:
-            "AssignmentExpression[left.type='MemberExpression'][left.object.type='MemberExpression'][left.object.object.name='window'][left.object.property.name='location'][left.property.name='href']",
-          message:
-            'Use router navigation helpers for internal routes. window.location.href assignment is forbidden.',
-        },
-        {
-          selector:
-            "CallExpression[callee.type='MemberExpression'][callee.object.name='location'][callee.property.name=/^(assign|replace|reload)$/]",
-          message:
-            'Use router navigation + targeted refetch/reconcile. location.assign/replace/reload are forbidden.',
-        },
-        {
-          selector:
-            "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.name='window'][callee.object.property.name='location'][callee.property.name=/^(assign|replace|reload)$/]",
-          message:
-            'Use router navigation + targeted refetch/reconcile. window.location.assign/replace/reload are forbidden.',
-        },
-        {
-          selector:
-            "CallExpression[callee.type='MemberExpression'][callee.object.name='window'][callee.property.name='navigate']",
-          message: 'Use router navigation helpers. window.navigate is forbidden.',
-        },
-        {
-          selector:
-            "CallExpression[callee.type='MemberExpression'][callee.object.name='history'][callee.property.name='pushState']",
-          message:
-            'Manual history.pushState is forbidden in app code. Use router navigation helpers.',
-        },
-        {
-          selector:
-            "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.name='window'][callee.object.property.name='history'][callee.property.name='pushState']",
-          message:
-            'Manual window.history.pushState is forbidden in app code. Use router navigation helpers.',
         },
       ],
     },
