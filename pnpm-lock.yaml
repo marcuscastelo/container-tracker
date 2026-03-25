@@ -55,11 +55,11 @@ importers:
         specifier: ^0.3.1
         version: 0.3.1
       '@marcuscastelo/eslint-plugin':
-        specifier: ^0.2.1
-        version: 0.2.1
+        specifier: ^0.3.0
+        version: 0.3.0
       '@marcuscastelo/tsconfig':
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
       '@tailwindcss/vite':
         specifier: ^4.0.7
         version: 4.1.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0))
@@ -712,8 +712,11 @@ packages:
   '@marcuscastelo/eslint-plugin@0.2.1':
     resolution: {integrity: sha512-yPur5kueezfc0cu3PRWhRq387iLebElT9EsLzWDN2U33eErzkml+jfrg5TXtazzYdoJRo2FukKXju9ob6J2nVw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.2.1/d8331b3b4536e853b80096495fff27658e64e515}
 
-  '@marcuscastelo/tsconfig@0.1.2':
-    resolution: {integrity: sha512-JgJ/ec3ff8NmxkLKYcrIGHcWm5kGQuRX1B1M8oh3aYqcRYH0logW+5KBpRzKlmrtpvOQYTIQzvoLGnZileatkw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/tsconfig/0.1.2/681b1fb0e8364202f1553f30cd530837f600749c}
+  '@marcuscastelo/eslint-plugin@0.3.0':
+    resolution: {integrity: sha512-lVugQTR7dWyo3p9ZWsKnhRFbeKvdNRPA3G4gB2vZlYjSWuH0CGTbHfogXDpa4OmeO6svi7S6pDT6NaEOUnkGLQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.3.0/138022b60bd07d9aeb2bf50f21391c7d773835ce}
+
+  '@marcuscastelo/tsconfig@0.2.0':
+    resolution: {integrity: sha512-CqeWGsDmsitEa3AbEeQHK20yoZ1ZMrc6duXAJb7o6/ArDcWyssG4aZ4yz4uAav7hl4jtDBrh5DTiUCJG3WwQVQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/tsconfig/0.2.0/d098370717df1ed43baffcd7eeda4c0d6e527ca3}
 
   '@msviderok/base-ui-solid@1.0.0-beta.9':
     resolution: {integrity: sha512-q7rh7xqm3AldXEx19GlRVaBup/OtqDDDc27AOTRdhEUF2PHmuV5S54RV3GwEiJYdikJIOvnCozVGQD5WADI1vg==}
@@ -5002,7 +5005,9 @@ snapshots:
 
   '@marcuscastelo/eslint-plugin@0.2.1': {}
 
-  '@marcuscastelo/tsconfig@0.1.2': {}
+  '@marcuscastelo/eslint-plugin@0.3.0': {}
+
+  '@marcuscastelo/tsconfig@0.2.0': {}
 
   '@msviderok/base-ui-solid@1.0.0-beta.9(@babel/core@7.29.0)(solid-js@1.9.11)':
     dependencies:
