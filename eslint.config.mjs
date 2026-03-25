@@ -1,4 +1,6 @@
 // import js from '@eslint/js'
+
+import platformConfig from '@marcuscastelo/eslint-config/solid'
 // biome-ignore lint/performance/noNamespaceImport: This is how ESLint configs are structured
 import * as tsParser from '@typescript-eslint/parser'
 import solid from 'eslint-plugin-solid/configs/typescript'
@@ -132,6 +134,7 @@ const trackingReadModelRestrictedPaths = [
 // biome-ignore lint/style/noDefaultExport: ESLint configs use default exports
 export default [
   // Ignore build/output folders from linting
+  ...platformConfig,
   {
     ignores: [
       '.output/**',

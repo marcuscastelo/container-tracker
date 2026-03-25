@@ -51,6 +51,15 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.0(jiti@2.6.1))
+      '@marcuscastelo/eslint-config':
+        specifier: ^0.2.1
+        version: 0.2.1
+      '@marcuscastelo/eslint-plugin':
+        specifier: ^0.2.1
+        version: 0.2.1
+      '@marcuscastelo/tsconfig':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@tailwindcss/vite':
         specifier: ^4.0.7
         version: 4.1.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0))
@@ -696,6 +705,15 @@ packages:
     resolution: {integrity: sha512-uwPAhccfFJlsfCxMYTwOdVfOz3xqyj8xYL3zJj8f0pb30tLohnnFPhLuqp4/qoEz8sNxe4SESZedcBojRefIzg==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@marcuscastelo/eslint-config@0.2.1':
+    resolution: {integrity: sha512-+EIDia9HI7FSFIiNWCG7N7ZkN74rTrQtHP+J4acB3CPgvQpOY8/zgri2Pcoa3B6Y+M80tRdVjKtRghBxoN8mCQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.2.1/0570db38447c4feb1ba27425e0b88e349289903e}
+
+  '@marcuscastelo/eslint-plugin@0.2.1':
+    resolution: {integrity: sha512-yPur5kueezfc0cu3PRWhRq387iLebElT9EsLzWDN2U33eErzkml+jfrg5TXtazzYdoJRo2FukKXju9ob6J2nVw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.2.1/d8331b3b4536e853b80096495fff27658e64e515}
+
+  '@marcuscastelo/tsconfig@0.1.1':
+    resolution: {integrity: sha512-M3cfl8GcWkT68SEbnErHpHfZDjsyzuEZuguvzGWajjOFbIeJ7KsqiMlIwnF4msjstDVSnQ87fH2FW7KCyRZN9Q==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/tsconfig/0.1.1/073205d1e9f86103fdbdb352d80d44adadde2bfd}
 
   '@msviderok/base-ui-solid@1.0.0-beta.9':
     resolution: {integrity: sha512-q7rh7xqm3AldXEx19GlRVaBup/OtqDDDc27AOTRdhEUF2PHmuV5S54RV3GwEiJYdikJIOvnCozVGQD5WADI1vg==}
@@ -4977,6 +4995,14 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  '@marcuscastelo/eslint-config@0.2.1':
+    dependencies:
+      '@marcuscastelo/eslint-plugin': 0.2.1
+
+  '@marcuscastelo/eslint-plugin@0.2.1': {}
+
+  '@marcuscastelo/tsconfig@0.1.1': {}
 
   '@msviderok/base-ui-solid@1.0.0-beta.9(@babel/core@7.29.0)(solid-js@1.9.11)':
     dependencies:
