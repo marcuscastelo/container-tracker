@@ -98,7 +98,31 @@ export function ContainerSelector(props: {
     etaLabel: t(keys.shipmentView.currentStatus.eta),
   }
 
-  const [maxPerRow, setMaxPerRow] = createSignal(1)
+  const getInitialMaxPerRow = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return 1
+    }
+
+    const mobile = window.matchMedia('(max-width: 639px)')
+    const tablet = window.matchMedia('(min-width: 640px) and (max-width: 1023px)')
+    const desktop = window.matchMedia('(min-width: 1024px)')
+
+    if (mobile.matches) {
+      return 1
+    }
+
+    if (tablet.matches) {
+      return 2
+    }
+
+    if (desktop.matches) {
+      return 4
+    }
+
+    return 1
+  }
+
+  const [maxPerRow, setMaxPerRow] = createSignal(getInitialMaxPerRow())
 
   onMount(() => {
     const mobile = window.matchMedia('(max-width: 639px)')

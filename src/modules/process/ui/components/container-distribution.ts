@@ -17,7 +17,10 @@ export function computeRowDistribution(n: number, maxPerRow: number): number[] {
   if (n <= 0) return []
   if (maxPerRow <= 0) return []
 
-  const rowCount = Math.ceil(n / maxPerRow)
+  const normalizedMaxPerRow = Math.floor(maxPerRow)
+  if (!Number.isFinite(normalizedMaxPerRow) || normalizedMaxPerRow < 1) return []
+
+  const rowCount = Math.ceil(n / normalizedMaxPerRow)
   const base = Math.floor(n / rowCount)
   const remainder = n % rowCount
 
