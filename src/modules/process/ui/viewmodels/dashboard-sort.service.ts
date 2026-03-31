@@ -33,6 +33,15 @@ function compareByDirection(baseComparison: number, direction: DashboardSortDire
   return baseComparison * toDirectionMultiplier(direction)
 }
 
+function getDefaultSortDirection(field: DashboardSortField): DashboardSortDirection {
+  if (field === 'eta') return 'asc'
+  return 'desc'
+}
+
+function getOppositeSortDirection(direction: DashboardSortDirection): DashboardSortDirection {
+  return direction === 'asc' ? 'desc' : 'asc'
+}
+
 function normalizeSortableString(value: string | null | undefined): string | null {
   if (!value) return null
   const trimmed = value.trim()
@@ -239,13 +248,14 @@ export function nextDashboardSortSelection(
   field: DashboardSortField,
 ): DashboardSortSelection {
   const currentDirection = getActiveDashboardSortDirection(currentSelection, field)
+  const defaultDirection = getDefaultSortDirection(field)
 
   if (!currentDirection) {
-    return { field, direction: 'desc' }
+    return { field, direction: defaultDirection }
   }
 
-  if (currentDirection === 'desc') {
-    return { field, direction: 'asc' }
+  if (currentDirection === defaultDirection) {
+    return { field, direction: getOppositeSortDirection(defaultDirection) }
   }
 
   return null
