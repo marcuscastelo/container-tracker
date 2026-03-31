@@ -327,8 +327,9 @@ function DashboardPreview(props: {
         <div class="mt-3">
           <DashboardProcessTable
             processes={rows()}
-            loading={props.rowLoading}
-            hasError={Boolean(props.rowError)}
+            initialLoading={props.rowLoading && rows().length === 0}
+            refreshing={props.rowLoading && rows().length > 0}
+            hasError={Boolean(props.rowError) && rows().length === 0}
             hasActiveFilters={false}
             onCreateProcess={() => {}}
             onClearFilters={() => {}}

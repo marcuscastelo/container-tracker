@@ -3,11 +3,14 @@ import { createSignal } from 'solid-js'
 export type UiTheme = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'theme'
+const THEME_TRANSITION_CLASS = 'theme-transitioning'
+const THEME_TRANSITION_DURATION_MS = 220
 
 const DEFAULT_THEME: UiTheme = 'light'
 
 // TODO: Remove signal from lib/theme, and instead use a proper solidjs folder / file dedicated to theme reactivity
 const [themeChangeCounter, setThemeChangeCounter] = createSignal(0)
+let themeTransitionTimeoutId: number | null = null
 
 function isUiTheme(value: string | null): value is UiTheme {
   return value === 'light' || value === 'dark'
@@ -42,12 +45,65 @@ function persistTheme(theme: UiTheme): void {
   }
 }
 
+function clearThemeTransitionTimeout(): void {
+  if (themeTransitionTimeoutId === null || typeof window === 'undefined') {
+    return
+  }
+
+  window.clearTimeout(themeTransitionTimeoutId)
+  themeTransitionTimeoutId = null
+}
+
+function enableThemeTransitionClass(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  clearThemeTransitionTimeout()
+  document.documentElement.classList.add(THEME_TRANSITION_CLASS)
+}
+
+function disableThemeTransitionClass(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  clearThemeTransitionTimeout()
+  document.documentElement.classList.remove(THEME_TRANSITION_CLASS)
+}
+
+function scheduleThemeTransitionCleanup(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  clearThemeTransitionTimeout()
+  themeTransitionTimeoutId = window.setTimeout(() => {
+    disableThemeTransitionClass()
+  }, THEME_TRANSITION_DURATION_MS)
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function applyTheme(theme: UiTheme): void {
   if (typeof document === 'undefined') {
     return
   }
 
   document.documentElement.classList.toggle('dark', theme === 'dark')
+  document.documentElement.style.colorScheme = theme
+}
+
+function commitTheme(theme: UiTheme): void {
+  applyTheme(theme)
+  persistTheme(theme)
+  setThemeChangeCounter((count) => count + 1)
 }
 
 export function getTheme(): UiTheme {
@@ -60,9 +116,15 @@ export function getTheme(): UiTheme {
 }
 
 function setTheme(theme: UiTheme): UiTheme {
-  applyTheme(theme)
-  persistTheme(theme)
-  setThemeChangeCounter(themeChangeCounter() + 1)
+  if (typeof document === 'undefined' || prefersReducedMotion()) {
+    disableThemeTransitionClass()
+    commitTheme(theme)
+    return theme
+  }
+
+  enableThemeTransitionClass()
+  commitTheme(theme)
+  scheduleThemeTransitionCleanup()
   return theme
 }
 

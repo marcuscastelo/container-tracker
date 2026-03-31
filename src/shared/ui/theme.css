@@ -110,6 +110,7 @@
 }
 
 html.dark {
+  color-scheme: dark;
   --color-background: #0a0a0a;
   --color-foreground: #ededed;
   --color-card: #141414;
@@ -192,6 +193,12 @@ html.dark {
 }
 
 @layer base {
+  html {
+    color-scheme: light;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
