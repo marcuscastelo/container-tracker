@@ -27,7 +27,7 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1
       axios:
-        specifier: ^1.14.0
+        specifier: 1.14.0
         version: 1.14.0
       i18next:
         specifier: ^25.8.1
