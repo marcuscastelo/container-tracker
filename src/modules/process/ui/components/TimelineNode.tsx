@@ -208,16 +208,6 @@ export function TimelineNode(props: {
     const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
     return typeof trackUrl === 'string' ? trackUrl : undefined
   })
-  const nonMappedBadgeLabel = createMemo(() =>
-    labelPresentation().showNonMappedIndicator
-      ? labelPresentation().nonMappedIndicatorLabel
-      : undefined,
-  )
-  const emptyContainerBadgeLabel = createMemo(() =>
-    props.observation?.isEmpty === true
-      ? t(keys.shipmentView.timeline.emptyContainerBadge)
-      : undefined,
-  )
 
   const labelPresentation = createMemo(() => {
     const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
@@ -237,6 +227,16 @@ export function TimelineNode(props: {
       label: currentLabel,
     }
   })
+  const nonMappedBadgeLabel = createMemo(() =>
+    labelPresentation().showNonMappedIndicator
+      ? labelPresentation().nonMappedIndicatorLabel
+      : undefined,
+  )
+  const emptyContainerBadgeLabel = createMemo(() =>
+    props.observation?.isEmpty === true
+      ? t(keys.shipmentView.timeline.emptyContainerBadge)
+      : undefined,
+  )
 
   const etaChipLabel = createMemo(() => {
     // ETA chip removed: render expected date on the right instead.
