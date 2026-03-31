@@ -9,7 +9,7 @@ Baselines compared:
 - Cluster inspection reference: `docs/reports/dashboard-navbar-alerts-cluster-inspection-2026-03-13.md`
 
 Generation command:
-- `bash scripts/gen-code-report.sh`
+- `bash scripts/reports/gen-code-report.sh`
 
 ---
 
@@ -100,4 +100,3 @@ Conclusion:
 3. Continue decomposition of `supabaseTrackingAlertRepository.ts`
 4. Start UI complexity extraction in `DashboardScreen.tsx` or `SearchOverlay.panel.tsx`
 5. Regenerate code-report and update this table
-

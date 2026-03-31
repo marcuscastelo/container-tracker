@@ -51,8 +51,8 @@ jobs:
       - name: Run knip files scan
         run: pnpm run knip:files
 
-      - name: Verify no-iife-in-jsx error gate behavior
-        run: pnpm run lint:no-iife:error-smoke
+      - name: Verify platform JSX rules integration
+        run: pnpm run lint:platform:jsx-smoke
 
       - name: Run UI complexity gates
         run: pnpm run ui:complexity:ci

@@ -27,8 +27,8 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1
       axios:
-        specifier: ^1.13.4
-        version: 1.13.5
+        specifier: ^1.14.0
+        version: 1.14.0
       i18next:
         specifier: ^25.8.1
         version: 25.8.4(typescript@5.9.3)
@@ -52,14 +52,14 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.0(jiti@2.6.1))
       '@marcuscastelo/eslint-config':
-        specifier: ^0.2.3
-        version: 0.2.3
+        specifier: ^0.4.1
+        version: 0.4.1(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
       '@marcuscastelo/eslint-plugin':
-        specifier: ^0.2.1
-        version: 0.2.1
+        specifier: ^0.3.1
+        version: 0.3.1
       '@marcuscastelo/tsconfig':
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
       '@tailwindcss/vite':
         specifier: ^4.0.7
         version: 4.1.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0))
@@ -706,14 +706,14 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@marcuscastelo/eslint-config@0.2.3':
-    resolution: {integrity: sha512-WwQ7T56S9QyIHAluc8BBjWYLz7UyKcn12nB17HbhW6aSw5bSp3dc4LeTSE0HFLcNB42t3gCh1wQUxkGo+sX1Xw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.2.3/64004dc9992c4053ef3144f5b55461bd2c554153}
+  '@marcuscastelo/eslint-config@0.4.1':
+    resolution: {integrity: sha512-JUnm5FFgCyKi3+Hr/FjmuKWkyewDKhj3G9GIgO2SW4wnXoXAJ/vnqtT6XUoJyVUA9zKpwLYS2tkFRMGETIm5Lg==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-config/0.4.1/e540f41d123158d80b864b911111055d5e3037bf}
 
-  '@marcuscastelo/eslint-plugin@0.2.1':
-    resolution: {integrity: sha512-yPur5kueezfc0cu3PRWhRq387iLebElT9EsLzWDN2U33eErzkml+jfrg5TXtazzYdoJRo2FukKXju9ob6J2nVw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.2.1/d8331b3b4536e853b80096495fff27658e64e515}
+  '@marcuscastelo/eslint-plugin@0.3.1':
+    resolution: {integrity: sha512-eIUz+fVFsENPEfj71x+h9KUfu+htnCAxp7NlQ9LvwlwNUSVgN+Ljk3a3lf77+qO2ie+/RfUDSdHBzLN1nMwd6Q==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/eslint-plugin/0.3.1/2b1672cb2600cee9e190a1629faae9d25fd4bede}
 
-  '@marcuscastelo/tsconfig@0.1.2':
-    resolution: {integrity: sha512-JgJ/ec3ff8NmxkLKYcrIGHcWm5kGQuRX1B1M8oh3aYqcRYH0logW+5KBpRzKlmrtpvOQYTIQzvoLGnZileatkw==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/tsconfig/0.1.2/681b1fb0e8364202f1553f30cd530837f600749c}
+  '@marcuscastelo/tsconfig@0.2.0':
+    resolution: {integrity: sha512-CqeWGsDmsitEa3AbEeQHK20yoZ1ZMrc6duXAJb7o6/ArDcWyssG4aZ4yz4uAav7hl4jtDBrh5DTiUCJG3WwQVQ==, tarball: https://npm.pkg.github.com/download/@marcuscastelo/tsconfig/0.2.0/d098370717df1ed43baffcd7eeda4c0d6e527ca3}
 
   '@msviderok/base-ui-solid@1.0.0-beta.9':
     resolution: {integrity: sha512-q7rh7xqm3AldXEx19GlRVaBup/OtqDDDc27AOTRdhEUF2PHmuV5S54RV3GwEiJYdikJIOvnCozVGQD5WADI1vg==}
@@ -1623,8 +1623,8 @@ packages:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
 
-  axios@1.13.5:
-    resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
+  axios@1.14.0:
+    resolution: {integrity: sha512-3Y8yrqLSwjuzpXuZ0oIYZ/XGgLwUIBU3uLvbcpb0pidD9ctpShJd43KSlEEkVQg6DS0G9NKyzOvBfUtDKEyHvQ==}
 
   b4a@1.7.3:
     resolution: {integrity: sha512-5Q2mfq2WfGuFp3uS//0s6baOJLMoVduPYVeNmDYxu5OUA1/cBfvr2RIS7vi62LdNj/urk1hfmj867I3qt6uZ7Q==}
@@ -3481,6 +3481,10 @@ packages:
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
 
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
+
   pump@3.0.3:
     resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
 
@@ -4996,13 +5000,19 @@ snapshots:
       - encoding
       - supports-color
 
-  '@marcuscastelo/eslint-config@0.2.3':
+  '@marcuscastelo/eslint-config@0.4.1(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
-      '@marcuscastelo/eslint-plugin': 0.2.1
+      '@marcuscastelo/eslint-plugin': 0.3.1
+      '@typescript-eslint/parser': 8.55.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+      eslint-plugin-solid: 0.14.5(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
+    transitivePeerDependencies:
+      - eslint
+      - supports-color
+      - typescript
 
-  '@marcuscastelo/eslint-plugin@0.2.1': {}
+  '@marcuscastelo/eslint-plugin@0.3.1': {}
 
-  '@marcuscastelo/tsconfig@0.1.2': {}
+  '@marcuscastelo/tsconfig@0.2.0': {}
 
   '@msviderok/base-ui-solid@1.0.0-beta.9(@babel/core@7.29.0)(solid-js@1.9.11)':
     dependencies:
@@ -5945,11 +5955,11 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
-  axios@1.13.5:
+  axios@1.14.0:
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.5
-      proxy-from-env: 1.1.0
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
 
@@ -7985,6 +7995,8 @@ snapshots:
       - supports-color
 
   proxy-from-env@1.1.0: {}
+
+  proxy-from-env@2.1.0: {}
 
   pump@3.0.3:
     dependencies:

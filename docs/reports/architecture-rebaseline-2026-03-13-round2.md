@@ -8,7 +8,7 @@ Baselines compared:
 - Current snapshot: `docs/reports/code-report/code_report_20260313_033126.txt`
 
 Generation command:
-- `bash scripts/gen-code-report.sh`
+- `bash scripts/reports/gen-code-report.sh`
 
 ---
 
@@ -66,4 +66,3 @@ No hotspot got worse in this round.
   2. `SearchOverlay.panel.tsx`
   3. `dashboard.operational-summary.readmodel.integration.test.ts`
   4. `supabaseTrackingAlertRepository.ts`
-
