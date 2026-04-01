@@ -7,12 +7,16 @@ import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  buildShipmentAlertIncidentsReadModel,
+  type ShipmentAlertIncidentsReadModel,
+} from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
-import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import {
   type ContainerSyncRecord,
   createContainerSyncMetadataFallback,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { Instant } from '~/shared/time/instant'
@@ -21,11 +25,13 @@ import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumbe
 type ProcessTrackingDeps = Pick<
   TrackingUseCases,
   'getContainerSummary' | 'getContainersSyncMetadata'
->
+> &
+  Partial<Pick<TrackingUseCases, 'findContainersLeanTrackingProjection'>>
 
 type ProcessTrackingResult = {
   readonly containersWithTracking: readonly ReturnType<typeof toContainerWithTrackingResponse>[]
-  readonly allAlerts: readonly GetContainerSummaryResult['alerts'][number][]
+  readonly activeAlerts: readonly TrackingAlert[]
+  readonly activeAlertIncidents: ShipmentAlertIncidentsReadModel
   readonly operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>
   readonly containersSync: readonly ContainerSyncRecord[]
 }
@@ -39,8 +45,6 @@ function normalizeDirectDestinationCode(value: string): string | null {
   const normalized = value.trim().toUpperCase()
   if (/^[A-Z]{5}$/.test(normalized)) return normalized
 
-  // Free-text destination names are common; only accept suffixes when they contain digits
-  // to avoid classifying generic city names (e.g. "SANTOS") as canonical POD codes.
   if (/^[A-Z]{5}[A-Z0-9]{2,3}$/.test(normalized) && /[0-9]/.test(normalized.slice(5))) {
     return normalized
   }
@@ -109,64 +113,139 @@ async function resolveContainerSyncMetadata(
   return containersSync
 }
 
-export async function resolveProcessDetailTracking(
+async function resolveLegacyProcessDetailTracking(
   processWithContainers: ProcessWithContainers,
   deps: ProcessTrackingDeps,
   now: Instant,
-): Promise<ProcessTrackingResult> {
-  // Destination can be a canonical code or a serialized location payload.
-  // If we cannot extract a canonical POD code, tracking falls back safely.
-  const podLocationCode = extractPodLocationCode(processWithContainers.process.destination)
-
-  const [containersSync, trackingResults] = await Promise.all([
-    resolveContainerSyncMetadata(processWithContainers, deps),
-    Promise.all(
-      processWithContainers.containers.map(async (container) => {
-        try {
-          const summary = await deps.getContainerSummary(
-            String(container.id),
-            String(container.containerNumber),
-            podLocationCode,
-            now,
-            { includeAcknowledgedAlerts: true },
-          )
-          const timeline = deriveTimelineWithSeriesReadModel(
-            toTrackingObservationProjections(summary.observations),
-            now,
-          )
-          return {
-            container: toContainerWithTrackingResponse(container, {
-              status: summary.status,
-              observations: summary.observations,
-              timeline,
-            }),
-            alerts: summary.alerts,
-            operational: summary.operational,
-          }
-        } catch (err) {
-          console.error(
-            `Failed to get tracking summary for container ${String(container.id)}:`,
-            err,
-          )
-          return {
-            container: toContainerWithTrackingFallback(container),
-            alerts: [],
-            operational: createTrackingOperationalSummaryFallback(true),
-          }
+  podLocationCode: string | null,
+): Promise<Omit<ProcessTrackingResult, 'containersSync'>> {
+  const trackingResults = await Promise.all(
+    processWithContainers.containers.map(async (container) => {
+      try {
+        const summary = await deps.getContainerSummary(
+          String(container.id),
+          String(container.containerNumber),
+          podLocationCode,
+          now,
+          { includeAcknowledgedAlerts: false },
+        )
+        const timeline = deriveTimelineWithSeriesReadModel(
+          toTrackingObservationProjections(summary.observations),
+          now,
+          { includeSeriesHistory: false },
+        )
+        return {
+          container: toContainerWithTrackingResponse(container, {
+            status: summary.status,
+            timeline,
+          }),
+          alerts: summary.alerts,
+          operational: summary.operational,
         }
-      }),
-    ),
-  ])
+      } catch (err) {
+        console.error(`Failed to get tracking summary for container ${String(container.id)}:`, err)
+        return {
+          container: toContainerWithTrackingFallback(container),
+          alerts: [],
+          operational: createTrackingOperationalSummaryFallback(true),
+        }
+      }
+    }),
+  )
 
   const operationalByContainerId = new Map<string, TrackingOperationalSummary>()
   for (const resultItem of trackingResults) {
     operationalByContainerId.set(resultItem.container.id, resultItem.operational)
   }
 
+  const activeAlertIncidents = buildShipmentAlertIncidentsReadModel({
+    containers: trackingResults.map((resultItem) => ({
+      containerId: resultItem.container.id,
+      containerNumber: resultItem.container.container_number,
+      alerts: resultItem.alerts,
+    })),
+  })
+
   return {
     containersWithTracking: trackingResults.map((resultItem) => resultItem.container),
-    allAlerts: trackingResults.flatMap((resultItem) => resultItem.alerts),
+    activeAlerts: trackingResults.flatMap((resultItem) => resultItem.alerts),
+    activeAlertIncidents,
     operationalByContainerId,
-    containersSync,
+  }
+}
+
+export async function resolveProcessDetailTracking(
+  processWithContainers: ProcessWithContainers,
+  deps: ProcessTrackingDeps,
+  now: Instant,
+): Promise<ProcessTrackingResult> {
+  const podLocationCode = extractPodLocationCode(processWithContainers.process.destination)
+  const containersSyncPromise = resolveContainerSyncMetadata(processWithContainers, deps)
+
+  if (deps.findContainersLeanTrackingProjection === undefined) {
+    const legacy = await resolveLegacyProcessDetailTracking(
+      processWithContainers,
+      deps,
+      now,
+      podLocationCode,
+    )
+    return {
+      ...legacy,
+      containersSync: await containersSyncPromise,
+    }
+  }
+
+  try {
+    const [containersSync, trackingProjection] = await Promise.all([
+      containersSyncPromise,
+      deps.findContainersLeanTrackingProjection({
+        containers: processWithContainers.containers.map((container) => ({
+          containerId: String(container.id),
+          containerNumber: String(container.containerNumber),
+          ...(podLocationCode === null ? {} : { podLocationCode }),
+        })),
+        now,
+      }),
+    ])
+
+    const operationalByContainerId = new Map<string, TrackingOperationalSummary>()
+    for (const container of trackingProjection.containers) {
+      operationalByContainerId.set(container.containerId, container.operational)
+    }
+
+    const containersWithTracking = processWithContainers.containers.map((container) => {
+      const trackingContainer = trackingProjection.containers.find(
+        (item) => item.containerId === String(container.id),
+      )
+
+      if (trackingContainer === undefined) {
+        return toContainerWithTrackingFallback(container)
+      }
+
+      return toContainerWithTrackingResponse(container, {
+        status: trackingContainer.status,
+        timeline: trackingContainer.timeline,
+      })
+    })
+
+    return {
+      containersWithTracking,
+      activeAlerts: trackingProjection.activeAlerts,
+      activeAlertIncidents: trackingProjection.activeAlertIncidents,
+      operationalByContainerId,
+      containersSync,
+    }
+  } catch (error) {
+    console.error('Failed to resolve lean process detail tracking projection:', error)
+    const legacy = await resolveLegacyProcessDetailTracking(
+      processWithContainers,
+      deps,
+      now,
+      podLocationCode,
+    )
+    return {
+      ...legacy,
+      containersSync: await containersSyncPromise,
+    }
   }
 }

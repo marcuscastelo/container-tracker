@@ -87,7 +87,6 @@ export type ContainerDetailVM = {
   readonly tsChipVm: ContainerTsChipVM
   readonly dataIssueChipVm: ContainerDataIssueChipVM
   readonly transshipment: ContainerTransshipmentVM
-  readonly observations: readonly ContainerObservationVM[]
   readonly timeline: readonly TrackingTimelineItem[]
 }
 
@@ -101,6 +100,7 @@ export type ProcessEtaSecondaryVM = {
 
 export type ShipmentDetailVM = {
   readonly id: string
+  readonly trackingFreshnessToken: string
   readonly processRef: string
   readonly reference?: string | null
   readonly carrier?: string | null

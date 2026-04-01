@@ -1,14 +1,16 @@
 import clsx from 'clsx'
 import type { JSX } from 'solid-js'
-import { createMemo, For } from 'solid-js'
+import { createMemo, For, Show } from 'solid-js'
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
-  readonly observation: ContainerObservationVM
+  readonly observation: ContainerObservationVM | null
   readonly isOpen: boolean
+  readonly loading?: boolean
+  readonly errorMessage?: string | null
   readonly onClose: () => void
 }
 
@@ -41,112 +43,152 @@ export function ObservationInspector(props: Props): JSX.Element {
   const rows = createMemo<readonly InspectorRow[]>(() => [
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.type),
-      value: props.observation.type,
+      value:
+        props.observation?.type ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.eventTime),
-      value: asTemporalValue(props.observation.eventTime),
+      value: asTemporalValue(props.observation?.eventTime ?? null),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.eventTimeType),
-      value: props.observation.eventTimeType,
+      value:
+        props.observation?.eventTimeType ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.locationCode),
-      value: asValue(props.observation.locationCode),
+      value: asValue(props.observation?.locationCode ?? null),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.locationDisplay),
-      value: asValue(props.observation.locationDisplay),
+      value: asValue(props.observation?.locationDisplay ?? null),
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.vesselName),
-      value: asValue(props.observation.vesselName),
+      value: asValue(props.observation?.vesselName ?? null),
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.voyage),
-      value: asValue(props.observation.voyage),
+      value: asValue(props.observation?.voyage ?? null),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.condition),
-      value: conditionValue(props.observation.isEmpty),
+      value: conditionValue(props.observation?.isEmpty ?? null),
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.isEmpty),
-      value: booleanRawValue(props.observation.isEmpty),
+      value: booleanRawValue(props.observation?.isEmpty ?? null),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.provider),
-      value: props.observation.provider,
+      value:
+        props.observation?.provider ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.carrierLabel),
-      value: asValue(props.observation.carrierLabel),
+      value: asValue(props.observation?.carrierLabel ?? null),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.confidence),
-      value: props.observation.confidence,
+      value:
+        props.observation?.confidence ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.retroactive),
-      value: props.observation.retroactive
+      value: props.observation?.retroactive
         ? t(keys.shipmentView.timeline.observationInspector.values.true)
         : t(keys.shipmentView.timeline.observationInspector.values.false),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.fingerprint),
-      value: props.observation.fingerprint,
+      value:
+        props.observation?.fingerprint ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.createdAt),
-      value: props.observation.createdAt,
+      value:
+        props.observation?.createdAt ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.createdFromSnapshotId),
-      value: asValue(props.observation.createdFromSnapshotId),
+      value: asValue(props.observation?.createdFromSnapshotId ?? null),
       tone: 'technical',
     },
   ])
 
   const title = createMemo(() =>
-    t(keys.shipmentView.timeline.observationInspector.title, { type: props.observation.type }),
+    t(keys.shipmentView.timeline.observationInspector.title, {
+      type:
+        props.observation?.type ??
+        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
+    }),
   )
 
   return (
     <Dialog open={props.isOpen} onClose={props.onClose} title={title()} maxWidth="3xl">
       <div class="space-y-3">
-        <dl class="overflow-hidden rounded-md border border-border bg-surface-muted/40">
-          <For each={rows()}>
-            {(row) => (
-              <div class="grid items-start gap-x-3 gap-y-1 border-b border-border/70 px-3 py-2 last:border-b-0 md:grid-cols-[250px_minmax(0,1fr)]">
-                <dt class="min-w-0 whitespace-nowrap text-micro font-semibold uppercase tracking-wide text-text-muted md:pr-2">
-                  {row.label}
-                </dt>
+        <Show when={props.loading === true}>
+          <div class="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm-ui text-text-muted">
+            {t(keys.shipmentView.loading)}
+          </div>
+        </Show>
 
-                <dd
-                  class={clsx('min-w-0 text-sm-ui text-foreground', {
-                    'font-mono text-xs-ui [overflow-wrap:anywhere]': row.tone === 'technical',
-                    'break-words': row.tone !== 'technical',
-                  })}
-                >
-                  {row.value}
-                </dd>
-              </div>
-            )}
-          </For>
-        </dl>
+        <Show when={props.loading !== true && props.errorMessage}>
+          {(errorMessage) => (
+            <div class="rounded-md border border-tone-danger-border bg-tone-danger-bg px-4 py-6 text-center text-sm-ui text-tone-danger-fg">
+              {errorMessage()}
+            </div>
+          )}
+        </Show>
+
+        <Show when={props.loading !== true && props.errorMessage == null && props.observation}>
+          <dl class="overflow-hidden rounded-md border border-border bg-surface-muted/40">
+            <For each={rows()}>
+              {(row) => (
+                <div class="grid items-start gap-x-3 gap-y-1 border-b border-border/70 px-3 py-2 last:border-b-0 md:grid-cols-[250px_minmax(0,1fr)]">
+                  <dt class="min-w-0 whitespace-nowrap text-micro font-semibold uppercase tracking-wide text-text-muted md:pr-2">
+                    {row.label}
+                  </dt>
+
+                  <dd
+                    class={clsx('min-w-0 text-sm-ui text-foreground', {
+                      'font-mono text-xs-ui [overflow-wrap:anywhere]': row.tone === 'technical',
+                      'break-words': row.tone !== 'technical',
+                    })}
+                  >
+                    {row.value}
+                  </dd>
+                </div>
+              )}
+            </For>
+          </dl>
+        </Show>
+
+        <Show
+          when={props.loading !== true && props.errorMessage == null && props.observation === null}
+        >
+          <div class="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm-ui text-text-muted">
+            {t(keys.shipmentView.timeline.observationInspector.values.unavailable)}
+          </div>
+        </Show>
 
         <div class="flex justify-end border-t border-border pt-3">
           <button

@@ -1,5 +1,6 @@
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
+  ProcessesSyncStatusResponseSchema,
   SyncAllProcessesResponseSchema,
   SyncProcessResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
@@ -29,5 +30,23 @@ export async function syncProcessRequest(processId: string): Promise<{
       method: 'POST',
     },
     SyncProcessResponseSchema,
+  )
+}
+
+export async function fetchProcessesSyncStatus(processIds: readonly string[]) {
+  const searchParams = new URLSearchParams()
+  if (processIds.length > 0) {
+    searchParams.set('processIds', processIds.join(','))
+  }
+
+  const query = searchParams.toString()
+  return typedFetch(
+    query.length === 0 ? '/api/processes/sync-status' : `/api/processes/sync-status?${query}`,
+    {
+      headers: {
+        'x-process-read-trigger': 'dashboard_realtime_reconciliation',
+      },
+    },
+    ProcessesSyncStatusResponseSchema,
   )
 }

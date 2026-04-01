@@ -21,6 +21,7 @@ function makeNavigationState(
 function makeShipment(containers: ShipmentDetailVM['containers']): ShipmentDetailVM {
   return {
     id: 'process-1',
+    trackingFreshnessToken: 'token-process-1',
     processRef: 'PROC-1',
     reference: 'PROC-1',
     carrier: 'MSC',
@@ -93,7 +94,6 @@ function makeContainer(id: string, number: string): ShipmentDetailVM['containers
       count: 0,
       ports: [],
     },
-    observations: [],
     timeline: [],
   }
 }

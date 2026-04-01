@@ -17,8 +17,14 @@ export type TrackingAlertRepository = {
   /** Fetch active alerts for a container. */
   findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]>
 
+  /** Fetch active alerts for many containers. */
+  findActiveByContainerIds?(containerIds: readonly string[]): Promise<readonly TrackingAlert[]>
+
   /** Fetch all alerts for a container (active + acknowledged). */
   findByContainerId(containerId: string): Promise<readonly TrackingAlert[]>
+
+  /** Fetch all alerts for many containers (active + acknowledged). */
+  findByContainerIds?(containerIds: readonly string[]): Promise<readonly TrackingAlert[]>
 
   /** Fetch lightweight alert state required by snapshot-time derivation/dedup. */
   findAlertDerivationStateByContainerId(

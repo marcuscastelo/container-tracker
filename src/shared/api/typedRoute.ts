@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import { recordReadResponseMetrics } from '~/shared/observability/readRequestMetrics'
 
 export async function parseBody<T extends z.ZodTypeAny>(
   req: Request,
@@ -14,7 +15,9 @@ export function jsonResponse<T extends z.ZodTypeAny>(
   schema?: T,
 ): Response {
   if (schema) schema.parse(data)
-  return new Response(JSON.stringify(data), {
+  const serialized = JSON.stringify(data)
+  recordReadResponseMetrics(serialized, status)
+  return new Response(serialized, {
     status,
     headers: { 'Content-Type': 'application/json' },
   })

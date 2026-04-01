@@ -42,6 +42,7 @@ type ShipmentCurrentAlertsSectionProps = Pick<
   ShipmentDataViewProps,
   | 'alertIncidents'
   | 'busyAlertIds'
+  | 'data'
   | 'onAcknowledgeAlert'
   | 'onUnacknowledgeAlert'
   | 'onSelectContainer'
@@ -63,6 +64,7 @@ function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps):
         }}
       >
         <AlertsPanel
+          processId={props.data.id}
           alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
           onAcknowledge={props.onAcknowledgeAlert}
@@ -190,6 +192,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
       <Show when={!isHistoricalMode()}>
         <ShipmentCurrentAlertsSection
+          data={props.data}
           alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
           onAcknowledgeAlert={props.onAcknowledgeAlert}

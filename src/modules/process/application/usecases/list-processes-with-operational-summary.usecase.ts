@@ -11,9 +11,12 @@ import {
   toOperationalStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
+import type { FindContainersLeanTrackingProjectionResult } from '~/modules/tracking/application/usecases/find-containers-lean-tracking-projection.usecase'
+import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import { systemClock } from '~/shared/time/clock'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
+import type { Instant } from '~/shared/time/instant'
 import { parseInstantFromIso, parseTemporalValue } from '~/shared/time/parsing'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -35,9 +38,8 @@ type ContainerTrackingSummary = {
     readonly type: string
     readonly triggered_at: string
   }[]
-  readonly timeline: {
-    readonly observations: readonly { readonly event_time: TemporalValue | null }[]
-  }
+  readonly has_observations: boolean
+  readonly last_event_at: TemporalValue | null
 }
 
 type ContainerSyncMetadata = {
@@ -59,7 +61,14 @@ type TrackingFacade = {
   getContainerSummary(
     containerId: string,
     containerNumber: string,
-  ): Promise<ContainerTrackingSummary>
+  ): Promise<GetContainerSummaryResult>
+  findContainersLeanTrackingProjection?(command: {
+    readonly containers: readonly {
+      readonly containerId: string
+      readonly containerNumber: string
+    }[]
+    readonly now: Instant
+  }): Promise<FindContainersLeanTrackingProjectionResult>
   getContainersSyncMetadata(command: {
     readonly containerNumbers: readonly string[]
   }): Promise<readonly ContainerSyncMetadata[]>
@@ -150,6 +159,22 @@ function createFallbackContainerSyncMetadata(containerNumber: string): Container
   }
 }
 
+function toContainerTrackingOperational(command: {
+  readonly eta: { readonly eventTime: TemporalValueDto } | null
+  readonly etaApplicable: boolean | undefined
+  readonly lifecycleBucket:
+    | 'pre_arrival'
+    | 'post_arrival_pre_delivery'
+    | 'final_delivery'
+    | undefined
+}): NonNullable<ContainerTrackingSummary['operational']> {
+  return {
+    eta: command.eta,
+    ...(command.etaApplicable === undefined ? {} : { etaApplicable: command.etaApplicable }),
+    ...(command.lifecycleBucket === undefined ? {} : { lifecycleBucket: command.lifecycleBucket }),
+  }
+}
+
 function shouldPreferAlertByTriggeredAt(
   candidate: { readonly triggered_at: string },
   current: { readonly triggered_at: string },
@@ -211,7 +236,7 @@ function deriveProcessLifecycleBucket(
 }
 
 function hasAnyTrackingObservation(summaries: readonly ContainerTrackingSummary[]): boolean {
-  return summaries.some((summary) => summary.timeline.observations.length > 0)
+  return summaries.some((summary) => summary.has_observations)
 }
 
 function shouldUseNotSyncedStatus(command: {
@@ -419,14 +444,12 @@ export function aggregateOperationalSummary(
   // --- Last Event ---
   let lastEventAt: TemporalValue | null = null
   for (const s of summaries) {
-    for (const obs of s.timeline.observations) {
-      if (
-        obs.event_time &&
-        (lastEventAt === null ||
-          compareTemporal(obs.event_time, lastEventAt, PROCESS_SUMMARY_ETA_COMPARE_OPTIONS) > 0)
-      ) {
-        lastEventAt = obs.event_time
-      }
+    if (
+      s.last_event_at &&
+      (lastEventAt === null ||
+        compareTemporal(s.last_event_at, lastEventAt, PROCESS_SUMMARY_ETA_COMPARE_OPTIONS) > 0)
+    ) {
+      lastEventAt = s.last_event_at
     }
   }
 
@@ -478,26 +501,76 @@ export function createListProcessesWithOperationalSummaryUseCase(
 
     // Calculate 'now' once for consistent ETA comparison across all processes
     const now = { kind: 'instant', value: systemClock.now().toIsoString() } as const
+    const allContainers = Array.from(containersByProcessId.values()).flat()
+    const leanTrackingProjection =
+      deps.trackingUseCases.findContainersLeanTrackingProjection === undefined
+        ? null
+        : await deps.trackingUseCases.findContainersLeanTrackingProjection({
+            containers: allContainers.map((container) => ({
+              containerId: String(container.id),
+              containerNumber: String(container.containerNumber),
+            })),
+            now: systemClock.now(),
+          })
+    const leanTrackingByContainerId = new Map(
+      (leanTrackingProjection?.containers ?? []).map(
+        (container) => [container.containerId, container] as const,
+      ),
+    )
 
     const processes: ProcessWithOperationalSummary[] = await Promise.all(
       allProcesses.map(async (process) => {
         const containers = containersByProcessId.get(process.id) ?? []
         const pwc: ProcessWithContainers = { process, containers }
 
-        // For each container, get tracking summary
         const summaries = await Promise.all(
-          containers.map(async (c) => {
+          containers.map(async (container) => {
+            const leanTracking = leanTrackingByContainerId.get(String(container.id))
+            if (leanTracking) {
+              return {
+                status: leanTracking.status,
+                operational: toContainerTrackingOperational({
+                  eta: leanTracking.operational.eta
+                    ? { eventTime: leanTracking.operational.eta.eventTime }
+                    : null,
+                  etaApplicable: leanTracking.operational.etaApplicable,
+                  lifecycleBucket: leanTracking.operational.lifecycleBucket,
+                }),
+                alerts: leanTracking.activeAlerts.map((alert) => ({
+                  severity: alert.severity,
+                  type: alert.type,
+                  triggered_at: alert.triggered_at,
+                })),
+                has_observations: leanTracking.hasObservations,
+                last_event_at: leanTracking.lastEventAt,
+              } satisfies ContainerTrackingSummary
+            }
+
             try {
-              return await deps.trackingUseCases.getContainerSummary(
-                String(c.id),
-                String(c.containerNumber),
+              const summary = await deps.trackingUseCases.getContainerSummary(
+                String(container.id),
+                String(container.containerNumber),
               )
+              return {
+                status: summary.status,
+                operational: toContainerTrackingOperational({
+                  eta: summary.operational.eta
+                    ? { eventTime: summary.operational.eta.eventTime }
+                    : null,
+                  etaApplicable: summary.operational.etaApplicable,
+                  lifecycleBucket: summary.operational.lifecycleBucket,
+                }),
+                alerts: summary.alerts,
+                has_observations: summary.observations.length > 0,
+                last_event_at:
+                  summary.timeline.observations[summary.timeline.observations.length - 1]
+                    ?.event_time ?? null,
+              } satisfies ContainerTrackingSummary
             } catch (err) {
               console.error(
-                `Failed to get tracking summary for container ${String(c.containerNumber)} (${String(c.id)}):`,
+                `Failed to get tracking summary for container ${String(container.containerNumber)} (${String(container.id)}):`,
                 err,
               )
-              // Return a minimal fallback summary
               const fallback: ContainerTrackingSummary = {
                 status: 'UNKNOWN',
                 operational: {
@@ -506,7 +579,8 @@ export function createListProcessesWithOperationalSummaryUseCase(
                   lifecycleBucket: 'pre_arrival',
                 },
                 alerts: [],
-                timeline: { observations: [] },
+                has_observations: false,
+                last_event_at: null,
               }
               return fallback
             }

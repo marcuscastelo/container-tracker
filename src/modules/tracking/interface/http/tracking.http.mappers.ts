@@ -74,7 +74,7 @@ export function toSnapshotResponseDto(snapshot: Snapshot): SnapshotResponseDto {
   }
 }
 
-function toObservationResponseDto(observation: Observation) {
+export function toObservationResponseDto(observation: Observation) {
   return {
     id: observation.id,
     fingerprint: observation.fingerprint,
@@ -119,6 +119,7 @@ function toReplaySeriesResponseDto(series: TrackingReplaySeries) {
 function toReplayTimelineItemResponseDto(item: TrackingTimelineItem) {
   return {
     id: item.id,
+    observation_id: item.observationId,
     type: item.type,
     carrier_label: item.carrierLabel ?? null,
     location: item.location ?? null,
@@ -127,18 +128,9 @@ function toReplayTimelineItemResponseDto(item: TrackingTimelineItem) {
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
     voyage: item.voyage ?? null,
+    has_series_history: item.hasSeriesHistory,
     series_history: item.seriesHistory
-      ? {
-          has_actual_conflict: item.seriesHistory.hasActualConflict,
-          classified: item.seriesHistory.classified.map((historyItem) => ({
-            id: historyItem.id,
-            type: historyItem.type,
-            event_time: historyItem.event_time,
-            event_time_type: historyItem.event_time_type,
-            created_at: historyItem.created_at,
-            series_label: historyItem.seriesLabel,
-          })),
-        }
+      ? toTrackingSeriesHistoryResponseDto(item.seriesHistory)
       : null,
   }
 }
@@ -244,6 +236,22 @@ export function toTrackingTimeTravelResponseDto(
     syncs: replay.syncs.map((checkpoint) =>
       toTrackingTimeTravelCheckpointResponseDto(checkpoint, replay.containerNumber),
     ),
+  }
+}
+
+export function toTrackingSeriesHistoryResponseDto(
+  seriesHistory: NonNullable<TrackingTimelineItem['seriesHistory']>,
+) {
+  return {
+    has_actual_conflict: seriesHistory.hasActualConflict,
+    classified: seriesHistory.classified.map((historyItem) => ({
+      id: historyItem.id,
+      type: historyItem.type,
+      event_time: historyItem.event_time,
+      event_time_type: historyItem.event_time_type,
+      created_at: historyItem.created_at,
+      series_label: historyItem.seriesLabel,
+    })),
   }
 }
 

@@ -9,11 +9,15 @@ import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import { buildShipmentAlertIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
+import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import {
   ProcessDetailResponseSchema,
   ProcessesV2ResponseSchema,
+  ProcessRecognizedAlertIncidentsResponseSchema,
+  ProcessSyncSnapshotResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 import { Instant } from '~/shared/time/instant'
 import { temporalValueFromDto } from '~/shared/time/tests/helpers'
@@ -46,6 +50,18 @@ const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
 
 function isContainerStatus(value: string): value is ContainerSummaryStatus {
   return CONTAINER_SUMMARY_STATUSES.some((item) => item === value)
+}
+
+function createProcessDetailRequest(): Request {
+  return new Request('http://localhost/api/processes/process-1')
+}
+
+function createProcessSyncSnapshotRequest(): Request {
+  return new Request('http://localhost/api/processes/process-1/sync-state')
+}
+
+function createRecognizedAlertsRequest(): Request {
+  return new Request('http://localhost/api/processes/process-1/alerts/recognized')
 }
 
 function createProcessWithContainers(destination: string) {
@@ -154,6 +170,9 @@ function createControllers(
         lastErrorAt: null,
       })),
   ),
+  trackingOverrides?: Partial<
+    Pick<TrackingUseCases, 'findContainersRecognizedAlertIncidentsProjection'>
+  >,
 ) {
   const { process, processWithContainers } = createProcessWithContainers(destination)
 
@@ -175,6 +194,12 @@ function createControllers(
     trackingUseCases: {
       getContainerSummary,
       getContainersSyncMetadata,
+      ...(trackingOverrides?.findContainersRecognizedAlertIncidentsProjection === undefined
+        ? {}
+        : {
+            findContainersRecognizedAlertIncidentsProjection:
+              trackingOverrides.findContainersRecognizedAlertIncidentsProjection,
+          }),
     },
   })
 }
@@ -228,7 +253,10 @@ describe('process controllers', () => {
     )
 
     const controllers = createControllers('Santos', getContainerSummaryMock)
-    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
     const body = ProcessDetailResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
@@ -304,7 +332,10 @@ describe('process controllers', () => {
       getContainerSummaryMock,
     )
 
-    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
     const body = ProcessDetailResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
@@ -360,7 +391,10 @@ describe('process controllers', () => {
     )
 
     const controllers = createControllers('Santos', getContainerSummaryMock)
-    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
     const body = ProcessDetailResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
@@ -375,6 +409,115 @@ describe('process controllers', () => {
       status: 'DISCHARGED',
       count: 1,
     })
+  })
+
+  it('returns a tiny sync snapshot contract for reconciliation', async () => {
+    const summary = createTrackingOperationalSummaryFallback(false)
+    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
+      async (containerId: string, containerNumber: string) =>
+        createSummary(containerId, containerNumber, summary),
+    )
+
+    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const response = await controllers.getProcessSyncSnapshot({
+      params: { id: 'process-1' },
+      request: createProcessSyncSnapshotRequest(),
+    })
+    const body = ProcessSyncSnapshotResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.tracking_freshness_token).toEqual(expect.any(String))
+    expect(body.containersSync).toEqual([
+      {
+        containerNumber: 'MSCU1234567',
+        carrier: 'msc',
+        lastSuccessAt: '2026-02-25T12:00:00.000Z',
+        lastAttemptAt: '2026-02-25T12:00:00.000Z',
+        isSyncing: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      },
+      {
+        containerNumber: 'MSCU7654321',
+        carrier: 'msc',
+        lastSuccessAt: '2026-02-25T12:00:00.000Z',
+        lastAttemptAt: '2026-02-25T12:00:00.000Z',
+        isSyncing: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      },
+    ])
+  })
+
+  it('returns recognized alert incidents through the lazy archive endpoint', async () => {
+    const containerId = 'container-1'
+    const recognizedAlertIncidents = buildShipmentAlertIncidentsReadModel({
+      containers: [
+        {
+          containerId,
+          containerNumber: 'MSCU1234567',
+          alerts: [
+            {
+              id: 'alert-recognized-1',
+              container_id: containerId,
+              category: 'fact',
+              type: 'TRANSSHIPMENT',
+              severity: 'warning',
+              message_key: 'alerts.transshipmentDetected',
+              message_params: {
+                port: 'MAPTM02',
+                fromVessel: 'MAERSK NARMADA',
+                toVessel: 'CMA CGM LISA MARIE',
+              },
+              detected_at: '2026-03-01T10:00:00.000Z',
+              triggered_at: '2026-03-01T10:00:00.000Z',
+              source_observation_fingerprints: ['fp-1'],
+              alert_fingerprint: 'recognized-fingerprint',
+              retroactive: false,
+              provider: 'maersk',
+              acked_at: '2026-03-01T11:00:00.000Z',
+              acked_by: 'operator@container-tracker',
+              acked_source: 'dashboard',
+              resolved_at: null,
+              resolved_reason: null,
+            },
+          ],
+        },
+      ],
+    })
+
+    const controllers = createControllers(
+      'Santos',
+      vi.fn<GetContainerSummaryMock>(async (containerId: string, containerNumber: string) =>
+        createSummary(
+          containerId,
+          containerNumber,
+          createTrackingOperationalSummaryFallback(false),
+        ),
+      ),
+      undefined,
+      {
+        findContainersRecognizedAlertIncidentsProjection: vi.fn(
+          async () => recognizedAlertIncidents,
+        ),
+      },
+    )
+
+    const response = await controllers.getProcessRecognizedAlertIncidents({
+      params: { id: 'process-1' },
+      request: createRecognizedAlertsRequest(),
+    })
+    const body = ProcessRecognizedAlertIncidentsResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.summary).toEqual({
+      active_incidents: 0,
+      affected_containers: 0,
+      recognized_incidents: 1,
+    })
+    expect(body.recognized).toHaveLength(1)
+    expect(body.recognized[0]?.type).toBe('TRANSSHIPMENT')
+    expect(body.recognized[0]?.members[0]?.container_number).toBe('MSCU1234567')
   })
 
   it('falls back to deterministic empty sync metadata when sync metadata lookup fails', async () => {
@@ -394,7 +537,10 @@ describe('process controllers', () => {
       getContainersSyncMetadata,
     )
 
-    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
     const body = ProcessDetailResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
@@ -445,7 +591,10 @@ describe('process controllers', () => {
       getContainersSyncMetadata,
     )
 
-    const response = await controllers.getProcessById({ params: { id: 'process-1' } })
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
     const body = ProcessDetailResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)
@@ -463,7 +612,10 @@ describe('process controllers', () => {
     )
     const controllers = createControllers('Santos', getContainerSummaryMock)
 
-    await controllers.getProcessById({ params: { id: 'process-1' } })
+    await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
 
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       1,
@@ -471,7 +623,7 @@ describe('process controllers', () => {
       'MSCU1234567',
       null,
       expect.anything(),
-      { includeAcknowledgedAlerts: true },
+      { includeAcknowledgedAlerts: false },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       2,
@@ -479,7 +631,7 @@ describe('process controllers', () => {
       'MSCU7654321',
       null,
       expect.anything(),
-      { includeAcknowledgedAlerts: true },
+      { includeAcknowledgedAlerts: false },
     )
   })
 
@@ -492,7 +644,10 @@ describe('process controllers', () => {
     )
     const controllers = createControllers('ESBCN07', getContainerSummaryMock)
 
-    await controllers.getProcessById({ params: { id: 'process-1' } })
+    await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
 
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       1,
@@ -500,7 +655,7 @@ describe('process controllers', () => {
       'MSCU1234567',
       'ESBCN07',
       expect.anything(),
-      { includeAcknowledgedAlerts: true },
+      { includeAcknowledgedAlerts: false },
     )
     expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
       2,
@@ -508,7 +663,7 @@ describe('process controllers', () => {
       'MSCU7654321',
       'ESBCN07',
       expect.anything(),
-      { includeAcknowledgedAlerts: true },
+      { includeAcknowledgedAlerts: false },
     )
   })
 

@@ -8,10 +8,17 @@ import { systemClock } from '~/shared/time/clock'
 const PROCESS_PREFETCH_TTL_MS = 15_000
 
 type FetchProcessMode = 'cache-first' | 'network-only'
+export type FetchProcessTrigger =
+  | 'shipment_initial_load'
+  | 'shipment_refresh'
+  | 'shipment_reconciliation'
+  | 'shipment_intent_prefetch'
+  | 'shipment_navigation_prefetch'
 
 type FetchProcessOptions = {
   readonly mode?: FetchProcessMode
   readonly dedupeInFlight?: boolean
+  readonly triggeredBy?: FetchProcessTrigger
 }
 
 type ProcessCacheRecord = {
@@ -75,9 +82,27 @@ function pruneExpiredCacheEntries(): void {
   }
 }
 
-async function fetchProcessFromApi(id: string, locale: string): Promise<ShipmentDetailVM | null> {
+function toReadTriggerHeaders(
+  triggeredBy: FetchProcessOptions['triggeredBy'],
+): HeadersInit | undefined {
+  if (triggeredBy === undefined) return undefined
+  return {
+    'x-process-read-trigger': triggeredBy,
+  }
+}
+
+async function fetchProcessFromApi(
+  id: string,
+  locale: string,
+  triggeredBy: FetchProcessOptions['triggeredBy'],
+): Promise<ShipmentDetailVM | null> {
   try {
-    const data = await typedFetch(`/api/processes/${id}`, undefined, ProcessDetailResponseSchema)
+    const headers = toReadTriggerHeaders(triggeredBy)
+    const data = await typedFetch(
+      `/api/processes/${id}`,
+      headers === undefined ? undefined : { headers },
+      ProcessDetailResponseSchema,
+    )
     return toShipmentDetailVM(data, locale)
   } catch (err: unknown) {
     // typedFetch throws TypedFetchError with status for non-2xx responses.
@@ -98,6 +123,7 @@ async function loadProcessFromNetwork(
   id: string,
   locale: string,
   dedupeInFlight = true,
+  triggeredBy?: FetchProcessOptions['triggeredBy'],
 ): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
 
@@ -116,7 +142,7 @@ async function loadProcessFromNetwork(
   // matches when the network response arrives.
   const generationAtRequest = processRequestGeneration.get(key) ?? 0
 
-  const request = fetchProcessFromApi(id, locale)
+  const request = fetchProcessFromApi(id, locale, triggeredBy)
     .then((value) => {
       const currentGeneration = processRequestGeneration.get(key) ?? 0
       if (currentGeneration === generationAtRequest) {
@@ -135,12 +161,16 @@ async function loadProcessFromNetwork(
   return request
 }
 
-async function loadProcessWithCache(id: string, locale: string): Promise<ShipmentDetailVM | null> {
+async function loadProcessWithCache(
+  id: string,
+  locale: string,
+  triggeredBy?: FetchProcessOptions['triggeredBy'],
+): Promise<ShipmentDetailVM | null> {
   const key = toProcessCacheKey(id, locale)
   const cached = readFreshCachedProcess(key)
   if (cached !== undefined) return cached
 
-  return loadProcessFromNetwork(id, locale)
+  return loadProcessFromNetwork(id, locale, true, triggeredBy)
 }
 
 export async function fetchProcess(
@@ -154,10 +184,10 @@ export async function fetchProcess(
   const dedupeInFlight = explicitDedupe ?? options?.mode !== 'network-only'
 
   if (options?.mode === 'network-only') {
-    return loadProcessFromNetwork(id, locale, dedupeInFlight)
+    return loadProcessFromNetwork(id, locale, dedupeInFlight, options?.triggeredBy)
   }
 
-  return loadProcessWithCache(id, locale)
+  return loadProcessWithCache(id, locale, options?.triggeredBy)
 }
 
 export async function prefetchProcessDetail(
@@ -165,7 +195,7 @@ export async function prefetchProcessDetail(
   locale: string = DEFAULT_LOCALE,
 ): Promise<void> {
   try {
-    await loadProcessWithCache(id, locale)
+    await loadProcessFromNetwork(id, locale, true, 'shipment_intent_prefetch')
   } catch {
     // Prefetch is best-effort and must not disrupt interaction.
   }

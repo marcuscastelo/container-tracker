@@ -40,8 +40,8 @@ export function TrackingTimeTravelTimelinePanel(
               ports: [],
             },
           }}
+          containerId={null}
           timeline={selectedSync().timeline}
-          observations={[]}
           alerts={selectedSync().alerts}
           {...(props.carrier === undefined ? {} : { carrier: props.carrier })}
         />

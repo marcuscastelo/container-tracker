@@ -11,6 +11,10 @@ import {
   type NavbarAlertsSummaryResponse,
   NavbarAlertsSummaryResponseSchema,
 } from '~/shared/api-schemas/dashboard.schemas'
+import {
+  readAuditedTriggerSource,
+  runWithReadRequestAudit,
+} from '~/shared/observability/readRequestMetrics'
 import { systemClock } from '~/shared/time/clock'
 
 type DashboardControllersDeps = {
@@ -180,20 +184,33 @@ function toNavbarAlertsSummaryResponse(
 export function createDashboardControllers(deps: DashboardControllersDeps) {
   const { dashboardUseCases } = deps
 
-  async function getOperationalSummary(): Promise<Response> {
-    try {
-      const result = await dashboardUseCases.getOperationalSummaryReadModel()
-      const generatedAt = systemClock.now().toIsoString()
-      const response = {
-        generated_at: generatedAt,
-        ...toDashboardGlobalAlertsResponse(result.globalAlerts),
-        process_exceptions: toDashboardProcessExceptionsResponse(result.processes),
-      }
-      return jsonResponse(response, 200, DashboardOperationalSummaryResponseSchema)
-    } catch (err) {
-      console.error('GET /api/dashboard/operational-summary error:', err)
-      return mapErrorToResponse(err)
-    }
+  async function getOperationalSummary({
+    request,
+  }: {
+    readonly request: Request
+  }): Promise<Response> {
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/dashboard/operational-summary',
+        projection: 'DashboardOperationalSummaryResponse',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const result = await dashboardUseCases.getOperationalSummaryReadModel()
+          const generatedAt = systemClock.now().toIsoString()
+          const response = {
+            generated_at: generatedAt,
+            ...toDashboardGlobalAlertsResponse(result.globalAlerts),
+            process_exceptions: toDashboardProcessExceptionsResponse(result.processes),
+          }
+          return jsonResponse(response, 200, DashboardOperationalSummaryResponseSchema)
+        } catch (err) {
+          console.error('GET /api/dashboard/operational-summary error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
   }
 
   async function getNavbarAlertsSummary(): Promise<Response> {

@@ -104,7 +104,7 @@ export const ProcessesV2ResponseSchema = z.object({
  * Observation shape as returned in the API.
  * Maps directly from the tracking domain Observation.
  */
-const ObservationResponseSchema = z.object({
+export const ObservationResponseSchema = z.object({
   id: z.string(),
   fingerprint: z.string(),
   type: z.string(),
@@ -198,14 +198,17 @@ const ShipmentAlertIncidentResponseSchema = z.object({
   monitoring_history: z.array(ShipmentAlertIncidentRecordResponseSchema),
 })
 
-const ShipmentAlertIncidentsResponseSchema = z.object({
+const ShipmentAlertIncidentsSummaryResponseSchema = z.object({
   summary: z.object({
     active_incidents: z.number().int().nonnegative(),
     affected_containers: z.number().int().nonnegative(),
     recognized_incidents: z.number().int().nonnegative(),
   }),
+})
+
+const ShipmentAlertIncidentsResponseSchema = ShipmentAlertIncidentsSummaryResponseSchema.extend({
   active: z.array(ShipmentAlertIncidentResponseSchema),
-  recognized: z.array(ShipmentAlertIncidentResponseSchema),
+  recognized: z.array(ShipmentAlertIncidentResponseSchema).optional(),
 })
 
 const OperationalEtaResponseSchema = z.object({
@@ -276,13 +279,14 @@ const TrackingTimelineSeriesItemResponseSchema = z.object({
   series_label: TrackingSeriesLabelSchema,
 })
 
-const TrackingTimelineSeriesHistoryResponseSchema = z.object({
+export const TrackingTimelineSeriesHistoryResponseSchema = z.object({
   has_actual_conflict: z.boolean(),
   classified: z.array(TrackingTimelineSeriesItemResponseSchema),
 })
 
 const TrackingTimelineItemResponseSchema = z.object({
   id: z.string(),
+  observation_id: z.string().nullable(),
   type: z.string(),
   carrier_label: z.string().nullable(),
   location: z.string().nullable(),
@@ -291,6 +295,7 @@ const TrackingTimelineItemResponseSchema = z.object({
   derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   vessel_name: z.string().nullable(),
   voyage: z.string().nullable(),
+  has_series_history: z.boolean(),
   series_history: TrackingTimelineSeriesHistoryResponseSchema.nullable(),
 })
 
@@ -305,6 +310,7 @@ const ContainerSyncResponseSchema = z.object({
 })
 
 export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
+  tracking_freshness_token: z.string(),
   containers: z.array(
     z.object({
       id: z.string(),
@@ -312,23 +318,31 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       carrier_code: z.string().nullish(),
       /** Derived container status (from tracking pipeline) */
       status: z.string().optional(),
-      /** Observations for this container (ordered by event_time) */
-      observations: z.array(ObservationResponseSchema).optional(),
       /** Timeline read-model derived in backend (safe-first series-aware) */
       timeline: z.array(TrackingTimelineItemResponseSchema).optional(),
       /** Container-level operational projection */
       operational: ContainerOperationalResponseSchema.optional(),
     }),
   ),
-  /** Tracking alerts for this process (across all containers) */
+  /** Active tracking alerts for this process (across all containers) */
   alerts: z.array(TrackingAlertResponseSchema).optional(),
-  /** Compact incident-oriented shipment alert projection */
+  /** Compact incident-oriented shipment alert projection (active only on hot path) */
   alert_incidents: ShipmentAlertIncidentsResponseSchema.optional(),
   /** Process-level operational projection */
   process_operational: ProcessOperationalResponseSchema.optional(),
   /** Container-level operational sync metadata */
   containersSync: z.array(ContainerSyncResponseSchema),
 })
+
+export const ProcessSyncSnapshotResponseSchema = z.object({
+  tracking_freshness_token: z.string(),
+  containersSync: z.array(ContainerSyncResponseSchema),
+})
+
+export const ProcessRecognizedAlertIncidentsResponseSchema =
+  ShipmentAlertIncidentsSummaryResponseSchema.extend({
+    recognized: z.array(ShipmentAlertIncidentResponseSchema),
+  })
 
 export const CreateProcessResponseSchema = z.object({
   process: ProcessResponseSchema,
@@ -389,3 +403,4 @@ export const ProcessRefreshResponseSchema = z.object({
 })
 
 export type ProcessDetailResponse = z.infer<typeof ProcessDetailResponseSchema>
+export type ProcessSyncSnapshotResponse = z.infer<typeof ProcessSyncSnapshotResponseSchema>

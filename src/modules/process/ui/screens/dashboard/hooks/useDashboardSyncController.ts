@@ -1,6 +1,7 @@
 import type { Accessor } from 'solid-js'
 import { createMemo, createSignal, onCleanup } from 'solid-js'
 import {
+  fetchProcessesSyncStatus,
   syncAllProcessesRequest,
   syncProcessRequest,
 } from '~/modules/process/ui/api/processSync.api'
@@ -94,6 +95,15 @@ function withoutProcessLocalSyncState(
   return nextState
 }
 
+function toDashboardLocalSyncStateFromSnapshot(
+  syncStatus: 'idle' | 'syncing' | 'completed' | 'failed',
+): DashboardLocalSyncStatus | null {
+  if (syncStatus === 'syncing') return 'syncing'
+  if (syncStatus === 'completed') return 'success'
+  if (syncStatus === 'failed') return 'error'
+  return null
+}
+
 export function useDashboardSyncController(
   command: UseDashboardSyncControllerCommand,
 ): DashboardSyncControllerResult {
@@ -179,7 +189,32 @@ export function useDashboardSyncController(
 
     realtimeReconciliationInFlight = true
     try {
-      await Promise.resolve(command.refetchProcesses())
+      const currentProcessIds = command.allProcesses().map((process) => process.id)
+      if (currentProcessIds.length === 0) return
+
+      const snapshot = await fetchProcessesSyncStatus(currentProcessIds)
+      const syncStatusByProcessId = new Map(
+        snapshot.processes.map((process) => [process.process_id, process.sync_status] as const),
+      )
+
+      for (const processId of currentProcessIds) {
+        const syncStatus = syncStatusByProcessId.get(processId) ?? 'idle'
+        const localSyncStatus = toDashboardLocalSyncStateFromSnapshot(syncStatus)
+
+        if (localSyncStatus === 'syncing') {
+          setLocalSyncState(processId, localSyncStatus)
+          continue
+        }
+
+        if (localSyncStatus === null) {
+          clearLocalSyncState(processId)
+          continue
+        }
+
+        setLocalSyncState(processId, localSyncStatus, {
+          ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+        })
+      }
     } catch (error) {
       console.error('Failed to reconcile dashboard process sync state from realtime:', error)
     } finally {
@@ -187,7 +222,7 @@ export function useDashboardSyncController(
       if (pendingRealtimeReconciliation) {
         pendingRealtimeReconciliation = false
         try {
-          await Promise.resolve(command.refetchProcesses())
+          await reconcileProcessesFromServerSnapshot()
         } catch (error) {
           console.error('Failed to perform pending realtime reconciliation:', error)
         }

@@ -1,9 +1,15 @@
 import type { Accessor, Resource } from 'solid-js'
 import { createEffect, createMemo, createResource } from 'solid-js'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
+import { fetchProcessSyncSnapshot } from '~/modules/process/ui/fetchProcessTrackingDetails'
+import {
+  normalizeContainerNumber,
+  toContainerSyncVM,
+} from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { toProcessResourceKey } from '~/modules/process/ui/utils/process-resource-key'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
+import { systemClock } from '~/shared/time/clock'
 
 type UseShipmentScreenResourceCommand = {
   readonly processId: Accessor<string>
@@ -27,6 +33,7 @@ export function mergeTrackingFieldsIntoShipment(
 ): ShipmentDetailVM {
   return {
     ...current,
+    trackingFreshnessToken: latest.trackingFreshnessToken,
     status: latest.status,
     statusCode: latest.statusCode,
     statusMicrobadge: latest.statusMicrobadge,
@@ -35,6 +42,28 @@ export function mergeTrackingFieldsIntoShipment(
     containers: latest.containers,
     alerts: latest.alerts,
     alertIncidents: latest.alertIncidents,
+  }
+}
+
+export function mergeProcessSyncSnapshotIntoShipment(
+  current: ShipmentDetailVM,
+  snapshot: Awaited<ReturnType<typeof fetchProcessSyncSnapshot>>,
+): ShipmentDetailVM {
+  const now = systemClock.now()
+  const syncByContainerNumber = new Map(
+    snapshot.containersSync.map((containerSync) => [
+      normalizeContainerNumber(containerSync.containerNumber),
+      toContainerSyncVM(containerSync, now),
+    ]),
+  )
+
+  return {
+    ...current,
+    trackingFreshnessToken: snapshot.tracking_freshness_token,
+    containers: current.containers.map((container) => ({
+      ...container,
+      sync: syncByContainerNumber.get(normalizeContainerNumber(container.number)) ?? container.sync,
+    })),
   }
 }
 
@@ -101,18 +130,53 @@ export function useShipmentScreenResource(
     if (currentKey === null) return
 
     const [currentProcessId, currentLocale] = currentKey
+    const current = latestShipment()
+    try {
+      const snapshot = await fetchProcessSyncSnapshot(currentProcessId)
+
+      if (!current) {
+        const latest = await fetchProcess(currentProcessId, currentLocale, {
+          mode: 'network-only',
+          triggeredBy: 'shipment_reconciliation',
+        })
+        if (latest) {
+          mutate(latest)
+        }
+        return
+      }
+
+      const syncedCurrent = mergeProcessSyncSnapshotIntoShipment(current, snapshot)
+      if (current.trackingFreshnessToken === snapshot.tracking_freshness_token) {
+        mutate(syncedCurrent)
+        return
+      }
+
+      const latest = await fetchProcess(currentProcessId, currentLocale, {
+        mode: 'network-only',
+        triggeredBy: 'shipment_reconciliation',
+      })
+      if (!latest) {
+        mutate(syncedCurrent)
+        return
+      }
+
+      mutate(mergeTrackingFieldsIntoShipment(syncedCurrent, latest))
+      return
+    } catch (error) {
+      console.error(`Failed to reconcile shipment ${currentProcessId} from sync snapshot:`, error)
+    }
+
     const latest = await fetchProcess(currentProcessId, currentLocale, {
       mode: 'network-only',
+      triggeredBy: 'shipment_reconciliation',
     })
     if (!latest) return
 
-    const current = latestShipment()
     if (!current) {
       mutate(latest)
       return
     }
 
-    // Keep non-tracking process metadata and update only fields derived from tracking.
     mutate(mergeTrackingFieldsIntoShipment(current, latest))
   }
 

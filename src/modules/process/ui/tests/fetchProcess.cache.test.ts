@@ -20,6 +20,7 @@ function buildProcessDetailResponse(
 ): Record<string, unknown> {
   return {
     id: command.processId,
+    tracking_freshness_token: `freshness-${command.processId}-${command.ackedAt ?? 'active'}`,
     reference: command.reference,
     origin: { display_name: 'Shanghai' },
     destination: { display_name: 'Santos' },
@@ -41,7 +42,6 @@ function buildProcessDetailResponse(
         container_number: command.containerNumber,
         carrier_code: 'MSC',
         status: 'IN_TRANSIT',
-        observations: [],
         timeline: [],
         operational: {
           status: 'IN_TRANSIT',

@@ -7,17 +7,23 @@
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
 import {
   toAlertResponseDto,
+  toObservationResponseDto,
   toSnapshotResponseDto,
   toTrackingReplayDebugResponseDto,
+  toTrackingSeriesHistoryResponseDto,
   toTrackingTimeTravelResponseDto,
 } from '~/modules/tracking/interface/http/tracking.http.mappers'
 import {
   AlertActionBodySchema,
   GetLatestSnapshotRequestSchema,
+  GetObservationInspectorRequestSchema,
   GetSnapshotsForContainerRequestSchema,
+  GetTimelineItemSeriesHistoryRequestSchema,
   GetTrackingReplayDebugRequestSchema,
   GetTrackingTimeTravelRequestSchema,
   ListAlertsQuerySchema,
+  ObservationInspectorResponseDtoSchema,
+  TimelineSeriesHistoryResponseDtoSchema,
   TrackingReplayDebugResponseDtoSchema,
   TrackingTimeTravelResponseDtoSchema,
 } from '~/modules/tracking/interface/http/tracking.schemas'
@@ -239,6 +245,91 @@ function createTimeTravelController(trackingUseCases: TrackingUseCases) {
   return { getTimeTravel, getReplayDebug }
 }
 
+function createDetailDrilldownController(trackingUseCases: TrackingUseCases) {
+  async function getTimelineItemSeriesHistory({
+    params,
+    request,
+  }: {
+    params: Record<string, string>
+    request: Request
+  }): Promise<Response> {
+    try {
+      const url = new URL(request.url)
+      const parsed = GetTimelineItemSeriesHistoryRequestSchema.safeParse({
+        containerId: params.containerId,
+        timelineItemId: params.timelineItemId,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const referenceNow = parseReferenceNow(url.searchParams.get('now') ?? undefined)
+      if (referenceNow === null) {
+        return jsonResponse({ error: 'Invalid now query parameter' }, 400)
+      }
+
+      const seriesHistory = await trackingUseCases.findTimelineItemSeriesHistory({
+        containerId: parsed.data.containerId,
+        timelineItemId: parsed.data.timelineItemId,
+        now: referenceNow,
+      })
+      if (seriesHistory === null) {
+        return jsonResponse({ error: 'Timeline item history not found' }, 404)
+      }
+
+      return jsonResponse(
+        toTrackingSeriesHistoryResponseDto(seriesHistory),
+        200,
+        TimelineSeriesHistoryResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error(
+        'GET /api/tracking/containers/:containerId/timeline-items/:timelineItemId/history error:',
+        err,
+      )
+      return mapErrorToResponse(err)
+    }
+  }
+
+  async function getObservationInspector({
+    params,
+  }: {
+    params: Record<string, string>
+  }): Promise<Response> {
+    try {
+      const parsed = GetObservationInspectorRequestSchema.safeParse({
+        containerId: params.containerId,
+        observationId: params.observationId,
+      })
+      if (!parsed.success) {
+        return jsonResponse({ error: parsed.error.message }, 400)
+      }
+
+      const observation = await trackingUseCases.findObservationInspectorProjection({
+        containerId: parsed.data.containerId,
+        observationId: parsed.data.observationId,
+      })
+      if (observation === null) {
+        return jsonResponse({ error: 'Observation not found' }, 404)
+      }
+
+      return jsonResponse(
+        toObservationResponseDto(observation),
+        200,
+        ObservationInspectorResponseDtoSchema,
+      )
+    } catch (err) {
+      console.error(
+        'GET /api/tracking/containers/:containerId/observations/:observationId error:',
+        err,
+      )
+      return mapErrorToResponse(err)
+    }
+  }
+
+  return { getTimelineItemSeriesHistory, getObservationInspector }
+}
+
 // ---------------------------------------------------------------------------
 // Aggregated controllers
 // ---------------------------------------------------------------------------
@@ -246,11 +337,13 @@ function createTimeTravelController(trackingUseCases: TrackingUseCases) {
 export type AlertsController = ReturnType<typeof createAlertsController>
 export type SnapshotsController = ReturnType<typeof createSnapshotsController>
 export type TimeTravelController = ReturnType<typeof createTimeTravelController>
+export type DetailDrilldownController = ReturnType<typeof createDetailDrilldownController>
 
 export type TrackingControllers = {
   readonly alerts: AlertsController
   readonly snapshots: SnapshotsController
   readonly timeTravel: TimeTravelController
+  readonly detail: DetailDrilldownController
 }
 
 export function createTrackingControllers(deps: TrackingControllersDeps): TrackingControllers {
@@ -258,5 +351,6 @@ export function createTrackingControllers(deps: TrackingControllersDeps): Tracki
     alerts: createAlertsController(deps.trackingUseCases),
     snapshots: createSnapshotsController(deps.trackingUseCases),
     timeTravel: createTimeTravelController(deps.trackingUseCases),
+    detail: createDetailDrilldownController(deps.trackingUseCases),
   }
 }

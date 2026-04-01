@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import { AlertIncidentItem } from '~/modules/process/ui/components/AlertIncidentItem'
+import { fetchRecognizedAlertIncidents } from '~/modules/process/ui/fetchProcessTrackingDetails'
 import {
   countAffectedContainers,
   filterAlertIncidents,
@@ -16,6 +17,7 @@ import type {
 import { useTranslation } from '~/shared/localization/i18n'
 
 type Props = {
+  readonly processId: string
   readonly alertIncidents: AlertIncidentsVM
   readonly busyAlertIds: ReadonlySet<string>
   readonly onAcknowledge: (alertIds: readonly string[]) => void
@@ -134,26 +136,57 @@ function RecognizedIncidentsSection(
     readonly count: number
     readonly incidents: readonly AlertIncidentVM[]
     readonly duplicatedTransshipmentIncidentKeys: ReadonlySet<string>
+    readonly loading: boolean
+    readonly errorMessage: string | null
+    readonly onToggle: (isOpen: boolean) => void
   } & AlertIncidentHandlers,
 ): JSX.Element {
   const { t, keys } = useTranslation()
 
   return (
-    <details class="rounded-lg border border-border/70 bg-surface-muted/70 p-1.5">
+    <details
+      class="rounded-lg border border-border/70 bg-surface-muted/70 p-1.5"
+      onToggle={(event: Event & { readonly currentTarget: HTMLDetailsElement }) =>
+        props.onToggle(event.currentTarget.open)
+      }
+    >
       <summary class="cursor-pointer select-none text-micro font-medium uppercase tracking-wider text-text-muted">
         {t(keys.shipmentView.alerts.archived.title, {
           count: props.count,
         })}
       </summary>
       <div class="mt-2">
-        <AlertIncidentList
-          incidents={props.incidents}
-          duplicatedTransshipmentIncidentKeys={props.duplicatedTransshipmentIncidentKeys}
-          busyAlertIds={props.busyAlertIds}
-          onAcknowledge={props.onAcknowledge}
-          onUnacknowledge={props.onUnacknowledge}
-          onSelectContainer={props.onSelectContainer}
-        />
+        <Show
+          when={!props.loading}
+          fallback={
+            <div class="rounded-md border border-border bg-surface px-2.5 py-2 text-xs-ui text-text-muted">
+              {t(keys.shipmentView.loading)}
+            </div>
+          }
+        >
+          <Show
+            when={props.errorMessage === null}
+            fallback={
+              <div class="rounded-md border border-tone-danger-border bg-tone-danger-bg px-2.5 py-2 text-xs-ui text-tone-danger-fg">
+                {props.errorMessage ?? t(keys.shipmentView.loadError)}
+              </div>
+            }
+          >
+            <Show
+              when={props.incidents.length > 0}
+              fallback={<AlertsPanelEmptyState kind="emptyFiltered" />}
+            >
+              <AlertIncidentList
+                incidents={props.incidents}
+                duplicatedTransshipmentIncidentKeys={props.duplicatedTransshipmentIncidentKeys}
+                busyAlertIds={props.busyAlertIds}
+                onAcknowledge={props.onAcknowledge}
+                onUnacknowledge={props.onUnacknowledge}
+                onSelectContainer={props.onSelectContainer}
+              />
+            </Show>
+          </Show>
+        </Show>
       </div>
     </details>
   )
@@ -162,13 +195,23 @@ function RecognizedIncidentsSection(
 export function AlertsPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const [filter, setFilter] = createSignal<ShipmentAlertIncidentFilter>('all')
+  const [recognizedIncidents, setRecognizedIncidents] = createSignal<readonly AlertIncidentVM[]>(
+    props.alertIncidents.recognized,
+  )
+  const [recognizedLoading, setRecognizedLoading] = createSignal(false)
+  const [recognizedErrorMessage, setRecognizedErrorMessage] = createSignal<string | null>(null)
+
+  createEffect(() => {
+    props.processId
+    setRecognizedIncidents(props.alertIncidents.recognized)
+    setRecognizedLoading(false)
+    setRecognizedErrorMessage(null)
+  })
 
   const sortedActiveIncidents = createMemo(() =>
     toSortedAlertIncidents(props.alertIncidents.active),
   )
-  const sortedRecognizedIncidents = createMemo(() =>
-    toSortedAlertIncidents(props.alertIncidents.recognized),
-  )
+  const sortedRecognizedIncidents = createMemo(() => toSortedAlertIncidents(recognizedIncidents()))
   const visibleActiveIncidents = createMemo(() =>
     filterAlertIncidents(sortedActiveIncidents(), filter()),
   )
@@ -185,7 +228,7 @@ export function AlertsPanel(props: Props): JSX.Element {
   const summary = createMemo(() => ({
     activeIncidentCount: visibleActiveIncidents().length,
     affectedContainers: countAffectedContainers(visibleActiveIncidents()),
-    recognizedIncidentCount: visibleRecognizedIncidents().length,
+    recognizedIncidentCount: props.alertIncidents.summary.recognizedIncidents,
   }))
 
   const filterOptions = createMemo<readonly FilterOption[]>(() => [
@@ -221,6 +264,25 @@ export function AlertsPanel(props: Props): JSX.Element {
       hasAnyActiveIncidents: props.alertIncidents.active.length > 0,
     }),
   )
+
+  const loadRecognizedIncidents = async (): Promise<void> => {
+    if (recognizedLoading()) return
+    if (recognizedIncidents().length > 0) return
+    if (props.alertIncidents.summary.recognizedIncidents === 0) return
+
+    setRecognizedLoading(true)
+    setRecognizedErrorMessage(null)
+
+    try {
+      const incidents = await fetchRecognizedAlertIncidents(props.processId)
+      setRecognizedIncidents(incidents)
+    } catch (error) {
+      console.error(`Failed to load recognized alert incidents for ${props.processId}:`, error)
+      setRecognizedErrorMessage(t(keys.shipmentView.loadError))
+    } finally {
+      setRecognizedLoading(false)
+    }
+  }
 
   return (
     <section id="shipment-alerts" class="space-y-2 scroll-mt-[120px]">
@@ -259,6 +321,12 @@ export function AlertsPanel(props: Props): JSX.Element {
           count={summary().recognizedIncidentCount}
           incidents={visibleRecognizedIncidents()}
           duplicatedTransshipmentIncidentKeys={duplicatedRecognizedTransshipmentIncidentKeys()}
+          loading={recognizedLoading()}
+          errorMessage={recognizedErrorMessage()}
+          onToggle={(isOpen) => {
+            if (!isOpen) return
+            void loadRecognizedIncidents()
+          }}
           busyAlertIds={props.busyAlertIds}
           onAcknowledge={props.onAcknowledge}
           onUnacknowledge={props.onUnacknowledge}

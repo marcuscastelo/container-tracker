@@ -6,9 +6,11 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 
 type Props = {
-  readonly seriesHistory: TrackingSeriesHistory
+  readonly seriesHistory: TrackingSeriesHistory | null
   readonly activityLabel: string
   readonly isOpen: boolean
+  readonly loading?: boolean
+  readonly errorMessage?: string | null
   readonly onClose: () => void
 }
 
@@ -54,11 +56,41 @@ export function PredictionHistoryModal(props: Props): JSX.Element {
   return (
     <Dialog open={props.isOpen} onClose={props.onClose} title={title()} maxWidth="2xl">
       <div class="space-y-4">
-        <Show when={props.seriesHistory.hasActualConflict}>
-          <ConflictWarning />
+        <Show when={props.loading === true}>
+          <div class="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm-ui text-text-muted">
+            {t(keys.shipmentView.loading)}
+          </div>
         </Show>
 
-        <PredictionHistoryTable classified={props.seriesHistory.classified} locale={locale()} />
+        <Show when={props.loading !== true && props.errorMessage}>
+          {(errorMessage) => (
+            <div class="rounded-md border border-tone-danger-border bg-tone-danger-bg px-4 py-6 text-center text-sm-ui text-tone-danger-fg">
+              {errorMessage()}
+            </div>
+          )}
+        </Show>
+
+        <Show when={props.loading !== true && props.errorMessage == null && props.seriesHistory}>
+          {(seriesHistory) => (
+            <>
+              <Show when={seriesHistory().hasActualConflict}>
+                <ConflictWarning />
+              </Show>
+
+              <PredictionHistoryTable classified={seriesHistory().classified} locale={locale()} />
+            </>
+          )}
+        </Show>
+
+        <Show
+          when={
+            props.loading !== true && props.errorMessage == null && props.seriesHistory === null
+          }
+        >
+          <div class="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm-ui text-text-muted">
+            {t(keys.shipmentView.noEvents)}
+          </div>
+        </Show>
 
         <div class="flex justify-end border-t border-border pt-3">
           <button

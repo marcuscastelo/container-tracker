@@ -15,10 +15,7 @@ import {
   toTrackingStatusCode,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import type {
-  ContainerObservationVM,
-  ShipmentDetailVM,
-} from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
@@ -38,9 +35,6 @@ type OperationalTransshipment = ContainerOperational['transshipment']
 
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
->[number]
-type ObservationResponseItem = NonNullable<
-  ProcessDetailResponse['containers'][number]['observations']
 >[number]
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
@@ -90,10 +84,12 @@ function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
 
   return {
     id: item.id,
+    observationId: item.observation_id,
     type: item.type,
     eventTime: item.event_time,
     eventTimeType: item.event_time_type,
     derivedState: item.derived_state,
+    hasSeriesHistory: item.has_series_history,
     ...(item.carrier_label === null || item.carrier_label === undefined
       ? {}
       : { carrierLabel: item.carrier_label }),
@@ -117,27 +113,6 @@ function toAlertProjectionSources(
       ...(resolved_reason === undefined ? {} : { resolved_reason }),
     }
   })
-}
-
-function toContainerObservationVm(item: ObservationResponseItem): ContainerObservationVM {
-  return {
-    id: item.id,
-    type: item.type,
-    eventTime: item.event_time,
-    eventTimeType: item.event_time_type,
-    locationCode: item.location_code,
-    locationDisplay: item.location_display,
-    vesselName: item.vessel_name,
-    voyage: item.voyage,
-    isEmpty: item.is_empty,
-    provider: item.provider,
-    carrierLabel: item.carrier_label ?? null,
-    confidence: item.confidence,
-    retroactive: item.retroactive ?? false,
-    fingerprint: item.fingerprint,
-    createdAt: item.created_at,
-    createdFromSnapshotId: item.created_from_snapshot_id ?? null,
-  }
 }
 
 function toEtaTone(
@@ -256,7 +231,6 @@ export function toShipmentDetailVM(
   )
 
   const containers = data.containers.map((container) => {
-    const observations = (container.observations ?? []).map(toContainerObservationVm)
     const timeline = (container.timeline ?? []).map(toTimelineItem)
 
     if (timeline.length === 0) {
@@ -296,7 +270,6 @@ export function toShipmentDetailVM(
         visible: container.operational?.data_issue === true,
       },
       transshipment,
-      observations,
       timeline,
     }
   })
@@ -308,6 +281,7 @@ export function toShipmentDetailVM(
 
   return {
     id: data.id,
+    trackingFreshnessToken: data.tracking_freshness_token,
     processRef: data.reference || `<${data.id.slice(0, 8)}>`,
     reference: data.reference ?? null,
     carrier: data.carrier ?? null,

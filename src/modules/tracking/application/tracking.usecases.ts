@@ -6,6 +6,16 @@ import {
   fetchAndProcess,
 } from '~/modules/tracking/application/usecases/fetch-and-process.usecase'
 import {
+  type FindContainersLeanTrackingProjectionCommand,
+  type FindContainersLeanTrackingProjectionResult,
+  findContainersLeanTrackingProjection,
+} from '~/modules/tracking/application/usecases/find-containers-lean-tracking-projection.usecase'
+import {
+  findContainersRecognizedAlertIncidentsProjection,
+  findObservationInspectorProjection,
+  findTimelineItemSeriesHistory,
+} from '~/modules/tracking/application/usecases/find-lazy-tracking-detail.usecases'
+import {
   type GetContainerSummaryResult,
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
@@ -154,6 +164,40 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       now: Instant = systemClock.now(),
     ): Promise<Map<string, TrackingOperationalSummary>> {
       return getContainersSummaryUseCase(deps, { containers, now })
+    },
+
+    async findContainersLeanTrackingProjection(
+      command: FindContainersLeanTrackingProjectionCommand,
+    ): Promise<FindContainersLeanTrackingProjectionResult> {
+      return findContainersLeanTrackingProjection(deps, command)
+    },
+
+    async findTimelineItemSeriesHistory(command: {
+      readonly containerId: string
+      readonly timelineItemId: string
+      readonly now?: Instant
+    }) {
+      return findTimelineItemSeriesHistory(deps, {
+        containerId: command.containerId,
+        timelineItemId: command.timelineItemId,
+        now: command.now ?? systemClock.now(),
+      })
+    },
+
+    async findObservationInspectorProjection(command: {
+      readonly containerId: string
+      readonly observationId: string
+    }) {
+      return findObservationInspectorProjection(deps, command)
+    },
+
+    async findContainersRecognizedAlertIncidentsProjection(command: {
+      readonly containers: readonly {
+        readonly containerId: string
+        readonly containerNumber: string
+      }[]
+    }) {
+      return findContainersRecognizedAlertIncidentsProjection(deps, command)
     },
 
     /**

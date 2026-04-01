@@ -9,6 +9,10 @@ import {
 import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('dashboard controllers - boundary behavior', () => {
+  function createDashboardRequest(): Request {
+    return new Request('http://localhost/api/dashboard/operational-summary')
+  }
+
   it('returns operational summary including process exceptions in backend order', async () => {
     const summary: DashboardOperationalSummaryReadModel = {
       globalAlerts: {
@@ -60,7 +64,9 @@ describe('dashboard controllers - boundary behavior', () => {
       getOperationalSummaryReadModel: async () => summary,
     })
 
-    const response = await controllers.getOperationalSummary()
+    const response = await controllers.getOperationalSummary({
+      request: createDashboardRequest(),
+    })
     const body = DashboardOperationalSummaryResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)

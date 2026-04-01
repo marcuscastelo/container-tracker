@@ -119,6 +119,16 @@ export const GetLatestSnapshotRequestSchema = z.object({
   containerId: z.string().min(1, 'containerId is required'),
 })
 
+export const GetTimelineItemSeriesHistoryRequestSchema = z.object({
+  containerId: z.string().min(1, 'containerId is required'),
+  timelineItemId: z.string().min(1, 'timelineItemId is required'),
+})
+
+export const GetObservationInspectorRequestSchema = z.object({
+  containerId: z.string().min(1, 'containerId is required'),
+  observationId: z.string().min(1, 'observationId is required'),
+})
+
 const IsoInstantQuerySchema = z.string().regex(ISO_INSTANT_PATTERN)
 
 export const GetTrackingTimeTravelRequestSchema = z.object({
@@ -149,6 +159,48 @@ export const SnapshotResponseDtoSchema = z.object({
   parse_error: z.string().nullable().optional(),
 })
 export type SnapshotResponseDto = z.infer<typeof SnapshotResponseDtoSchema>
+
+const DetailTimelineSeriesLabelResponseDtoSchema = z.enum([
+  'ACTIVE',
+  'EXPIRED',
+  'REDUNDANT_AFTER_ACTUAL',
+  'SUPERSEDED_EXPECTED',
+  'CONFIRMED',
+  'CONFLICTING_ACTUAL',
+])
+
+const DetailTimelineSeriesItemResponseDtoSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  event_time: TemporalValueDtoSchema.nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  created_at: z.string(),
+  series_label: DetailTimelineSeriesLabelResponseDtoSchema,
+})
+
+export const TimelineSeriesHistoryResponseDtoSchema = z.object({
+  has_actual_conflict: z.boolean(),
+  classified: z.array(DetailTimelineSeriesItemResponseDtoSchema),
+})
+
+export const ObservationInspectorResponseDtoSchema = z.object({
+  id: z.string(),
+  fingerprint: z.string(),
+  type: z.string(),
+  carrier_label: z.string().nullable().optional(),
+  event_time: TemporalValueDtoSchema.nullable(),
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  is_empty: z.boolean().nullable(),
+  confidence: z.string(),
+  provider: z.string(),
+  created_from_snapshot_id: z.string().optional(),
+  retroactive: z.boolean().optional(),
+  created_at: z.string(),
+})
 
 const ReplayObservationResponseDtoSchema = z.object({
   id: z.string(),
