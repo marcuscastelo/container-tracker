@@ -43,7 +43,8 @@ type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'non
 
 type Props = {
   readonly processes: readonly ProcessSummaryVM[]
-  readonly loading: boolean
+  readonly initialLoading: boolean
+  readonly refreshing: boolean
   readonly hasError: boolean
   readonly hasActiveFilters: boolean
   readonly onCreateProcess: () => void
@@ -82,6 +83,14 @@ type SortHeaderProps = {
   readonly onToggle: (field: DashboardSortField) => void
   readonly align?: 'left' | 'center' | 'right'
 }
+
+const DASHBOARD_TABLE_SKELETON_ROW_KEYS = [
+  'dashboard-row-skeleton-1',
+  'dashboard-row-skeleton-2',
+  'dashboard-row-skeleton-3',
+  'dashboard-row-skeleton-4',
+  'dashboard-row-skeleton-5',
+] as const
 
 // ---------------------------------------------------------------------------
 // Severity helpers
@@ -800,6 +809,73 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
   )
 }
 
+function toTableSkeletonWidth(columnId: DashboardColumnId): string {
+  switch (columnId) {
+    case 'processRef':
+      return 'w-24'
+    case 'carrier':
+      return 'w-20'
+    case 'importer':
+    case 'exporter':
+      return 'w-28'
+    case 'route':
+      return 'w-32'
+    case 'status':
+      return 'w-24'
+    case 'eta':
+      return 'w-20'
+    case 'sync':
+      return 'mx-auto w-8'
+    case 'alerts':
+      return 'mx-auto w-10'
+  }
+}
+
+function DashboardProcessTableSkeleton(props: {
+  readonly columnOrder: readonly DashboardColumnId[]
+}): JSX.Element {
+  const gridStyle = createMemo(() => buildGridTemplate(props.columnOrder))
+
+  return (
+    <div class="overflow-x-auto" aria-hidden="true">
+      <div
+        class="grid min-h-(--dashboard-table-header-height) border-b border-border bg-surface-muted"
+        style={{ 'grid-template-columns': gridStyle() }}
+      >
+        <For each={props.columnOrder}>
+          {(columnId) => (
+            <div class="min-h-(--dashboard-table-header-height) px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+              <div
+                class={`h-3 animate-pulse rounded bg-surface ${toTableSkeletonWidth(columnId)}`}
+              />
+            </div>
+          )}
+        </For>
+      </div>
+
+      <For each={DASHBOARD_TABLE_SKELETON_ROW_KEYS}>
+        {(rowKey) => (
+          <div
+            class="grid min-h-(--dashboard-table-row-height) items-center border-b border-border/50 bg-surface last:border-b-0"
+            style={{ 'grid-template-columns': gridStyle() }}
+            data-skeleton-row={rowKey}
+          >
+            <For each={props.columnOrder}>
+              {(columnId) => (
+                <div class="px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
+                  <div
+                    class={`h-4 animate-pulse rounded bg-surface-muted ${toTableSkeletonWidth(columnId)}`}
+                  />
+                </div>
+              )}
+            </For>
+          </div>
+        )}
+      </For>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -818,12 +894,8 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   const content = () => {
-    if (props.loading) {
-      return (
-        <div class="px-6 py-12 text-center text-md-ui text-text-muted">
-          {t(keys.dashboard.loading)}
-        </div>
-      )
+    if (props.initialLoading) {
+      return <DashboardProcessTableSkeleton columnOrder={columnOrder()} />
     }
 
     if (props.hasError) {
@@ -871,7 +943,10 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   }
 
   return (
-    <section class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
+    <section
+      class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]"
+      aria-busy={props.initialLoading || props.refreshing}
+    >
       <header class="border-b border-border bg-surface-muted px-6 py-4">
         <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
           {t(keys.dashboard.table.title)}

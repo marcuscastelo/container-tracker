@@ -126,7 +126,9 @@ export function AgentsPage(): JSX.Element {
   }
 
   function handleLogsClick(agentId: string): void {
-    void navigate(`/agents/${encodeURIComponent(agentId)}?logs=1`)
+    void navigate(`/agents/${encodeURIComponent(agentId)}`, {
+      state: { openLogs: true },
+    })
   }
 
   function handleRefresh(): void {

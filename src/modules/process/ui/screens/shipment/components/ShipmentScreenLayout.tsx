@@ -2,6 +2,7 @@ import { A } from '@solidjs/router'
 import type { Accessor, JSX, Resource } from 'solid-js'
 import { Show } from 'solid-js'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
+import { ShipmentScreenSkeleton } from '~/modules/process/ui/screens/shipment/components/ShipmentScreenSkeleton'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -65,10 +66,8 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
             {t(keys.shipmentView.backToList)}
           </A>
 
-          <Show when={props.shipmentLoading() || shouldShowPendingLoading()}>
-            <div class="rounded-lg border border-border bg-surface p-12 text-center">
-              <p class="text-text-muted">{t(keys.shipmentView.loading)}</p>
-            </div>
+          <Show when={shouldShowPendingLoading()}>
+            <ShipmentScreenSkeleton />
           </Show>
 
           <Show when={shouldShowLoadError()}>

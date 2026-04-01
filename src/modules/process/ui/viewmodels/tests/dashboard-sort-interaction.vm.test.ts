@@ -96,8 +96,7 @@ function createImporterTieBreakProcesses(): readonly ProcessSummaryVM[] {
   ] as const
 }
 
-// eslint-disable-next-line max-lines-per-function
-describe('dashboard sort interactions', () => {
+describe('dashboard sort selection interactions', () => {
   it('cycles same field in order desc -> asc -> default', () => {
     const first = nextDashboardSortSelection(null, 'provider')
     const second = nextDashboardSortSelection(first, 'provider')
@@ -144,7 +143,9 @@ describe('dashboard sort interactions', () => {
 
     expect(result).toBe(baseline)
   })
+})
 
+describe('dashboard sort interactions by field', () => {
   it('sorts by selected field and direction', () => {
     const baseline = [
       createProcess({ id: 'A', importerName: 'Zeta' }),
@@ -357,7 +358,9 @@ describe('dashboard sort interactions', () => {
       'eta-null-older',
     ])
   })
+})
 
+describe('dashboard sort tie-breakers and stability', () => {
   it('uses createdAt descending as tie-break when primary field values are equal', () => {
     const baseline = [
       createProcess({

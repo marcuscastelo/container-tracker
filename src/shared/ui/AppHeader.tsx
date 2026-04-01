@@ -53,19 +53,39 @@ function NavLink(props: {
 }
 
 function HeaderBrand(): JSX.Element {
-  const logoSrc = () =>
-    getTheme() === 'dark' ? BRANDING.logoPrimaryDark : BRANDING.logoPrimaryLight
+  const isDark = () => getTheme() === 'dark'
+
   return (
     <A
       href="/"
       class="flex min-w-0 items-center gap-3 text-primary"
       aria-label={BRANDING.displayTitle}
     >
-      <img
-        src={logoSrc()}
-        alt={BRANDING.companyName}
-        class="block h-10 w-auto shrink-0 object-contain"
-      />
+      <span class="relative block h-10 w-10 shrink-0 overflow-hidden">
+        <img
+          src={BRANDING.logoPrimaryLight}
+          alt={BRANDING.companyName}
+          class={clsx(
+            'absolute inset-0 block h-10 w-auto object-contain transition-all duration-200 ease-out',
+            {
+              'opacity-100 scale-100': !isDark(),
+              'opacity-0 scale-95': isDark(),
+            },
+          )}
+        />
+        <img
+          src={BRANDING.logoPrimaryDark}
+          alt=""
+          aria-hidden="true"
+          class={clsx(
+            'absolute inset-0 block h-10 w-auto object-contain transition-all duration-200 ease-out',
+            {
+              'opacity-100 scale-100': isDark(),
+              'opacity-0 scale-95': !isDark(),
+            },
+          )}
+        />
+      </span>
       <span class="flex min-w-0 flex-col">
         <span class="truncate text-lg-ui font-semibold leading-tight tracking-[-0.01em]">
           {BRANDING.productName}

@@ -1,7 +1,15 @@
-import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
+import { useNavigate, usePreloadRoute } from '@solidjs/router'
 import { Check, CircleAlert, RefreshCw, TriangleAlert } from 'lucide-solid'
-import type { JSX } from 'solid-js'
-import { createMemo, createResource, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import type { Accessor, JSX, Resource } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+} from 'solid-js'
 import {
   createProcessRequest,
   fetchDashboardGlobalAlertsSummary,
@@ -72,10 +80,37 @@ function getCreateErrorExisting(
   return error ?? undefined
 }
 
+type DashboardResourceSnapshotState<T> = {
+  readonly data: Accessor<T | undefined>
+  readonly initialLoading: Accessor<boolean>
+  readonly refreshing: Accessor<boolean>
+  readonly hasBlockingError: Accessor<boolean>
+}
+
+function useDashboardResourceSnapshot<T>(
+  resource: Resource<T | undefined>,
+): DashboardResourceSnapshotState<T> {
+  const [snapshot, setSnapshot] = createSignal<T | undefined>(resource())
+
+  createEffect(() => {
+    const value = resource()
+    if (value === undefined) return
+    setSnapshot(() => value)
+  })
+
+  const hasSnapshot = createMemo(() => snapshot() !== undefined)
+
+  return {
+    data: () => snapshot(),
+    initialLoading: () => resource.loading && !hasSnapshot(),
+    refreshing: () => resource.loading && hasSnapshot(),
+    hasBlockingError: () => Boolean(resource.error) && !hasSnapshot(),
+  }
+}
+
 // eslint-disable-next-line max-lines-per-function
 export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Element {
   const { t, keys, locale } = useTranslation()
-  const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
   let shouldPreferPrefetchedProcesses = true
@@ -108,6 +143,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     createResource(dashboardChartWindowSize, (windowSize) =>
       fetchDashboardProcessesCreatedByMonth({ windowSize }),
     )
+  const processesState = useDashboardResourceSnapshot(processes)
+  const dashboardKpisState = useDashboardResourceSnapshot(dashboardKpis)
+  const dashboardActivityState = useDashboardResourceSnapshot(dashboardProcessesCreatedByMonth)
   const {
     sortSelection,
     filterSelection,
@@ -117,28 +155,24 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     handleImporterFilterSelect,
     handleSeverityFilterSelect,
     handleClearAllFilters,
-  } = useDashboardFilterSortController({
-    pathname: () => location.pathname,
-    search: () => location.search,
-    navigate,
-  })
+  } = useDashboardFilterSortController()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
 
   const providerFilterOptions = createMemo(() =>
-    deriveDashboardProviderFilterOptions(processes() ?? []),
+    deriveDashboardProviderFilterOptions(processesState.data() ?? []),
   )
   const importerFilterOptions = createMemo(() =>
-    deriveDashboardImporterFilterOptions(processes() ?? []),
+    deriveDashboardImporterFilterOptions(processesState.data() ?? []),
   )
   const statusFilterOptions = createMemo(() =>
-    deriveDashboardStatusFilterOptions(processes() ?? []),
+    deriveDashboardStatusFilterOptions(processesState.data() ?? []),
   )
   const severityFilterOptions = createMemo(() =>
-    deriveDashboardSeverityFilterOptions(processes() ?? []),
+    deriveDashboardSeverityFilterOptions(processesState.data() ?? []),
   )
   const dashboardKpiItems = createMemo(() => {
-    const source = dashboardKpis()
+    const source = dashboardKpisState.data()
     if (!source) return []
 
     return toDashboardKpiVMs({
@@ -160,12 +194,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     })
   })
   const dashboardMonthlyBarData = createMemo(() => {
-    const source = dashboardProcessesCreatedByMonth()
+    const source = dashboardActivityState.data()
     if (!source) return []
     return toDashboardMonthlyBarDatumVMs(source, locale())
   })
   const filteredProcesses = createMemo(() =>
-    filterDashboardProcesses(processes() ?? [], filterSelection()),
+    filterDashboardProcesses(processesState.data() ?? [], filterSelection()),
   )
   const hasActiveFilters = createMemo(() => hasActiveDashboardFilters(filterSelection()))
   const sortedProcesses = createMemo(() =>
@@ -173,7 +207,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   )
   const { processesWithSyncFeedback, handleDashboardRefresh, handleProcessSync } =
     useDashboardSyncController({
-      allProcesses: () => processes() ?? [],
+      allProcesses: () => processesState.data() ?? [],
       sortedProcesses,
       refetchProcesses,
       refetchGlobalAlerts,
@@ -269,11 +303,16 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             />
           </Show>
 
-          <DashboardKpiRow items={dashboardKpiItems()} loading={dashboardKpis.loading} />
+          <DashboardKpiRow
+            items={dashboardKpiItems()}
+            loading={dashboardKpisState.initialLoading()}
+            refreshing={dashboardKpisState.refreshing()}
+          />
           <DashboardActivityChartCard
             data={dashboardMonthlyBarData()}
-            loading={dashboardProcessesCreatedByMonth.loading}
-            hasError={Boolean(dashboardProcessesCreatedByMonth.error)}
+            loading={dashboardActivityState.initialLoading()}
+            refreshing={dashboardActivityState.refreshing()}
+            hasError={dashboardActivityState.hasBlockingError()}
             windowSize={dashboardChartWindowSize()}
           />
           <UnifiedDashboardFilters
@@ -294,8 +333,9 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           />
           <DashboardProcessTable
             processes={processesWithSyncFeedback()}
-            loading={processes.loading}
-            hasError={Boolean(processes.error)}
+            initialLoading={processesState.initialLoading()}
+            refreshing={processesState.refreshing()}
+            hasError={processesState.hasBlockingError()}
             hasActiveFilters={hasActiveFilters()}
             onCreateProcess={handleCreateProcess}
             onClearFilters={handleClearAllFilters}
