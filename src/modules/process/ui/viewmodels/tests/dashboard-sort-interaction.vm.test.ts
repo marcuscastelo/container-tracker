@@ -96,6 +96,7 @@ function createImporterTieBreakProcesses(): readonly ProcessSummaryVM[] {
   ] as const
 }
 
+// eslint-disable-next-line max-lines-per-function
 describe('dashboard sort interactions', () => {
   it('cycles same field in order desc -> asc -> default', () => {
     const first = nextDashboardSortSelection(null, 'provider')
