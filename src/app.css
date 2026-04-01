@@ -59,8 +59,8 @@
   html.theme-transitioning,
   html.theme-transitioning body {
     transition:
-      background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-      color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      background-color var(--theme-transition-duration-ms) cubic-bezier(0.22, 1, 0.36, 1),
+      color var(--theme-transition-duration-ms) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   html.theme-transitioning *,
@@ -68,8 +68,8 @@
   html.theme-transitioning *::after {
     transition-property:
       background-color, border-color, color, fill, stroke, box-shadow, outline-color,
-      text-decoration-color;
-    transition-duration: 220ms;
+      text-decoration-color, opacity, transform;
+    transition-duration: var(--theme-transition-duration-ms);
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
