@@ -13,12 +13,16 @@ export function jsonResponse<T extends z.ZodTypeAny>(
   data: z.infer<T>,
   status = 200,
   schema?: T,
+  headers?: HeadersInit,
 ): Response {
   if (schema) schema.parse(data)
   const serialized = JSON.stringify(data)
   recordReadResponseMetrics(serialized, status)
   return new Response(serialized, {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
   })
 }

@@ -195,9 +195,7 @@ function RecognizedIncidentsSection(
 export function AlertsPanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const [filter, setFilter] = createSignal<ShipmentAlertIncidentFilter>('all')
-  const [recognizedIncidents, setRecognizedIncidents] = createSignal<readonly AlertIncidentVM[]>(
-    props.alertIncidents.recognized,
-  )
+  const [recognizedIncidents, setRecognizedIncidents] = createSignal<readonly AlertIncidentVM[]>([])
   const [recognizedLoading, setRecognizedLoading] = createSignal(false)
   const [recognizedErrorMessage, setRecognizedErrorMessage] = createSignal<string | null>(null)
 

@@ -20,6 +20,16 @@ import { copyToClipboard } from '~/shared/utils/clipboard'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
+type TimelineNodeProps = {
+  readonly containerId: string
+  readonly event: TrackingTimelineItem
+  readonly isLast: boolean
+  readonly carrier?: string | null
+  readonly containerNumber?: string | null
+  readonly observation?: ContainerObservationVM
+  readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
+  readonly highlighted?: boolean
+}
 
 type DateLabelProps = {
   readonly actualDateIso: TemporalValueDto | null
@@ -35,6 +45,7 @@ type CarrierLinkProps = {
   readonly containerNumber?: string | null
   readonly label: string
 }
+type TimelineSeriesHistoryState = NonNullable<TrackingTimelineItem['seriesHistory']> | null
 
 function toOptionalTimelineNodeLayoutProps(params: {
   readonly nonMappedBadgeLabel: string | undefined
@@ -155,51 +166,135 @@ function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
   )
 }
 
-export function TimelineNode(props: {
-  readonly containerId: string
-  readonly event: TrackingTimelineItem
-  readonly isLast: boolean
-  readonly carrier?: string | null
-  readonly containerNumber?: string | null
-  readonly observation?: ContainerObservationVM
-  readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
-  readonly highlighted?: boolean
-}): JSX.Element {
-  const { t, keys, locale } = useTranslation()
+function usePredictionHistoryController(command: {
+  readonly containerId: () => string
+  readonly event: () => TrackingTimelineItem
+  readonly loadErrorMessage: () => string
+}) {
   const [showPredictionHistory, setShowPredictionHistory] = createSignal(false)
-  const [showObservationInspector, setShowObservationInspector] = createSignal(false)
-  const [seriesHistory, setSeriesHistory] = createSignal(props.event.seriesHistory ?? null)
+  const [seriesHistory, setSeriesHistory] = createSignal<TimelineSeriesHistoryState>(null)
   const [seriesHistoryLoading, setSeriesHistoryLoading] = createSignal(false)
   const [seriesHistoryErrorMessage, setSeriesHistoryErrorMessage] = createSignal<string | null>(
     null,
   )
-  const [observation, setObservation] = createSignal(props.observation ?? null)
-  const [observationLoading, setObservationLoading] = createSignal(false)
-  const [observationErrorMessage, setObservationErrorMessage] = createSignal<string | null>(null)
 
   createEffect(() => {
-    props.event.id
+    const event = command.event()
     setShowPredictionHistory(false)
-    setSeriesHistory(props.event.seriesHistory ?? null)
+    setSeriesHistory(event.seriesHistory ?? null)
     setSeriesHistoryLoading(false)
     setSeriesHistoryErrorMessage(null)
   })
 
+  const hasPredictionHistory = createMemo(() => {
+    const event = command.event()
+    return Boolean(event.hasSeriesHistory) || Boolean(seriesHistory())
+  })
+
+  const openPredictionHistory = async (): Promise<void> => {
+    setShowPredictionHistory(true)
+    setSeriesHistoryErrorMessage(null)
+
+    const event = command.event()
+    if (seriesHistory() !== null || event.hasSeriesHistory !== true) return
+
+    setSeriesHistoryLoading(true)
+    try {
+      const loadedSeriesHistory = await fetchTimelineSeriesHistory(command.containerId(), event.id)
+      setSeriesHistory(loadedSeriesHistory)
+    } catch (error) {
+      console.error(`Failed to load series history for timeline item ${event.id}:`, error)
+      setSeriesHistoryErrorMessage(command.loadErrorMessage())
+    } finally {
+      setSeriesHistoryLoading(false)
+    }
+  }
+
+  return {
+    hasPredictionHistory,
+    openPredictionHistory,
+    closePredictionHistory: () => setShowPredictionHistory(false),
+    showPredictionHistory,
+    seriesHistory,
+    seriesHistoryLoading,
+    seriesHistoryErrorMessage,
+  }
+}
+
+function useObservationInspectorController(command: {
+  readonly containerId: () => string
+  readonly event: () => TrackingTimelineItem
+  readonly initialObservation: () => ContainerObservationVM | null
+  readonly loadErrorMessage: () => string
+}) {
+  const [showObservationInspector, setShowObservationInspector] = createSignal(false)
+  const [observation, setObservation] = createSignal<ContainerObservationVM | null>(null)
+  const [observationLoading, setObservationLoading] = createSignal(false)
+  const [observationErrorMessage, setObservationErrorMessage] = createSignal<string | null>(null)
+
   createEffect(() => {
-    props.event.id
-    props.observation
+    command.event().id
     setShowObservationInspector(false)
-    setObservation(props.observation ?? null)
+    setObservation(command.initialObservation())
     setObservationLoading(false)
     setObservationErrorMessage(null)
   })
 
+  const hasObservation = createMemo(() => {
+    const event = command.event()
+    return typeof event.observationId === 'string' || observation() !== null
+  })
+
+  const openObservationInspector = async (): Promise<void> => {
+    setShowObservationInspector(true)
+    setObservationErrorMessage(null)
+
+    const event = command.event()
+    if (observation() !== null || typeof event.observationId !== 'string') return
+
+    setObservationLoading(true)
+    try {
+      const loadedObservation = await fetchObservationInspector(
+        command.containerId(),
+        event.observationId,
+      )
+      setObservation(loadedObservation)
+    } catch (error) {
+      console.error(`Failed to load observation ${event.observationId}:`, error)
+      setObservationErrorMessage(command.loadErrorMessage())
+    } finally {
+      setObservationLoading(false)
+    }
+  }
+
+  return {
+    hasObservation,
+    openObservationInspector,
+    closeObservationInspector: () => setShowObservationInspector(false),
+    showObservationInspector,
+    observation,
+    observationLoading,
+    observationErrorMessage,
+  }
+}
+
+export function TimelineNode(props: TimelineNodeProps): JSX.Element {
+  const { t, keys, locale } = useTranslation()
+  const loadErrorMessage = () => t(keys.shipmentView.loadError)
+  const predictionHistory = usePredictionHistoryController({
+    containerId: () => props.containerId,
+    event: () => props.event,
+    loadErrorMessage,
+  })
+  const observationInspector = useObservationInspectorController({
+    containerId: () => props.containerId,
+    event: () => props.event,
+    initialObservation: () => props.observation ?? null,
+    loadErrorMessage,
+  })
+
   const isExpected = () => props.event.eventTimeType === 'EXPECTED'
   const isExpiredExpected = () => props.event.derivedState === 'EXPIRED_EXPECTED'
-  const hasPredictionHistory = () =>
-    Boolean(props.event.hasSeriesHistory) || Boolean(seriesHistory())
-  const hasObservation = () =>
-    typeof props.event.observationId === 'string' || observation() !== null
 
   const status = createMemo<EventStatus>(() => {
     if (!isExpected()) return 'completed'
@@ -264,13 +359,10 @@ export function TimelineNode(props: {
       : undefined,
   )
   const emptyContainerBadgeLabel = createMemo(() =>
-    observation()?.isEmpty === true ? t(keys.shipmentView.timeline.emptyContainerBadge) : undefined,
+    observationInspector.observation()?.isEmpty === true
+      ? t(keys.shipmentView.timeline.emptyContainerBadge)
+      : undefined,
   )
-
-  const etaChipLabel = createMemo(() => {
-    // ETA chip removed: render expected date on the right instead.
-    return null
-  })
 
   const actualDateIso = createMemo(() =>
     props.event.eventTimeType === 'ACTUAL' ? props.event.eventTime : null,
@@ -284,52 +376,6 @@ export function TimelineNode(props: {
     return <Icon class="h-4 w-4 shrink-0" aria-hidden="true" />
   })
 
-  const openPredictionHistory = async (): Promise<void> => {
-    setShowPredictionHistory(true)
-    setSeriesHistoryErrorMessage(null)
-
-    if (seriesHistory() !== null || props.event.hasSeriesHistory !== true) {
-      return
-    }
-
-    setSeriesHistoryLoading(true)
-    try {
-      const loadedSeriesHistory = await fetchTimelineSeriesHistory(
-        props.containerId,
-        props.event.id,
-      )
-      setSeriesHistory(loadedSeriesHistory)
-    } catch (error) {
-      console.error(`Failed to load series history for timeline item ${props.event.id}:`, error)
-      setSeriesHistoryErrorMessage(t(keys.shipmentView.loadError))
-    } finally {
-      setSeriesHistoryLoading(false)
-    }
-  }
-
-  const openObservationInspector = async (): Promise<void> => {
-    setShowObservationInspector(true)
-    setObservationErrorMessage(null)
-
-    if (observation() !== null || typeof props.event.observationId !== 'string') {
-      return
-    }
-
-    setObservationLoading(true)
-    try {
-      const loadedObservation = await fetchObservationInspector(
-        props.containerId,
-        props.event.observationId,
-      )
-      setObservation(loadedObservation)
-    } catch (error) {
-      console.error(`Failed to load observation ${props.event.observationId}:`, error)
-      setObservationErrorMessage(t(keys.shipmentView.loadError))
-    } finally {
-      setObservationLoading(false)
-    }
-  }
-
   return (
     <>
       <TimelineNodeLayout
@@ -342,15 +388,15 @@ export function TimelineNode(props: {
         textClass={styles().text}
         label={labelPresentation().label}
         eventIcon={eventIcon()}
-        etaChipLabel={etaChipLabel()}
-        showPredictionHistoryButton={hasPredictionHistory()}
+        etaChipLabel={null}
+        showPredictionHistoryButton={predictionHistory.hasPredictionHistory()}
         onOpenPredictionHistory={() => {
-          void openPredictionHistory()
+          void predictionHistory.openPredictionHistory()
         }}
         predictionHistoryLabel={t(keys.shipmentView.timeline.viewPredictionHistory)}
-        showObservationButton={hasObservation()}
+        showObservationButton={observationInspector.hasObservation()}
         onOpenObservation={() => {
-          void openObservationInspector()
+          void observationInspector.openObservationInspector()
         }}
         observationLabel={t(keys.shipmentView.timeline.viewObservation)}
         expiredExpectedLabel={t(keys.shipmentView.timeline.expiredExpected)}
@@ -384,20 +430,20 @@ export function TimelineNode(props: {
       />
 
       <PredictionHistoryModal
-        seriesHistory={seriesHistory()}
+        seriesHistory={predictionHistory.seriesHistory()}
         activityLabel={labelPresentation().label}
-        isOpen={showPredictionHistory()}
-        loading={seriesHistoryLoading()}
-        errorMessage={seriesHistoryErrorMessage()}
-        onClose={() => setShowPredictionHistory(false)}
+        isOpen={predictionHistory.showPredictionHistory()}
+        loading={predictionHistory.seriesHistoryLoading()}
+        errorMessage={predictionHistory.seriesHistoryErrorMessage()}
+        onClose={predictionHistory.closePredictionHistory}
       />
 
       <ObservationInspector
-        observation={observation()}
-        isOpen={showObservationInspector()}
-        loading={observationLoading()}
-        errorMessage={observationErrorMessage()}
-        onClose={() => setShowObservationInspector(false)}
+        observation={observationInspector.observation()}
+        isOpen={observationInspector.showObservationInspector()}
+        loading={observationInspector.observationLoading()}
+        errorMessage={observationInspector.observationErrorMessage()}
+        onClose={observationInspector.closeObservationInspector}
       />
     </>
   )

@@ -33,6 +33,8 @@ type DashboardSyncControllerResult = {
   readonly handleProcessSync: (processId: string) => Promise<void>
 }
 
+type ProcessesSyncSnapshot = Awaited<ReturnType<typeof fetchProcessesSyncStatus>>
+
 export function schedulePerProcessLocalSyncExpiry(command: {
   readonly processIds: readonly string[]
   readonly ttlMs: number
@@ -102,6 +104,40 @@ function toDashboardLocalSyncStateFromSnapshot(
   if (syncStatus === 'completed') return 'success'
   if (syncStatus === 'failed') return 'error'
   return null
+}
+
+function applyLocalSyncStateFromServerSnapshot(command: {
+  readonly processIds: readonly string[]
+  readonly snapshot: ProcessesSyncSnapshot
+  readonly setLocalSyncState: (
+    processId: string,
+    syncStatus: DashboardLocalSyncStatus,
+    options?: { readonly ttlMs?: number },
+  ) => void
+  readonly clearLocalSyncState: (processId: string) => void
+}): void {
+  const syncStatusByProcessId = new Map(
+    command.snapshot.processes.map((process) => [process.process_id, process.sync_status] as const),
+  )
+
+  for (const processId of command.processIds) {
+    const syncStatus = syncStatusByProcessId.get(processId) ?? 'idle'
+    const localSyncStatus = toDashboardLocalSyncStateFromSnapshot(syncStatus)
+
+    if (localSyncStatus === 'syncing') {
+      command.setLocalSyncState(processId, localSyncStatus)
+      continue
+    }
+
+    if (localSyncStatus === null) {
+      command.clearLocalSyncState(processId)
+      continue
+    }
+
+    command.setLocalSyncState(processId, localSyncStatus, {
+      ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
+    })
+  }
 }
 
 export function useDashboardSyncController(
@@ -193,28 +229,12 @@ export function useDashboardSyncController(
       if (currentProcessIds.length === 0) return
 
       const snapshot = await fetchProcessesSyncStatus(currentProcessIds)
-      const syncStatusByProcessId = new Map(
-        snapshot.processes.map((process) => [process.process_id, process.sync_status] as const),
-      )
-
-      for (const processId of currentProcessIds) {
-        const syncStatus = syncStatusByProcessId.get(processId) ?? 'idle'
-        const localSyncStatus = toDashboardLocalSyncStateFromSnapshot(syncStatus)
-
-        if (localSyncStatus === 'syncing') {
-          setLocalSyncState(processId, localSyncStatus)
-          continue
-        }
-
-        if (localSyncStatus === null) {
-          clearLocalSyncState(processId)
-          continue
-        }
-
-        setLocalSyncState(processId, localSyncStatus, {
-          ttlMs: LOCAL_SYNC_FEEDBACK_TTL_MS,
-        })
-      }
+      applyLocalSyncStateFromServerSnapshot({
+        processIds: currentProcessIds,
+        snapshot,
+        setLocalSyncState,
+        clearLocalSyncState,
+      })
     } catch (error) {
       console.error('Failed to reconcile dashboard process sync state from realtime:', error)
     } finally {

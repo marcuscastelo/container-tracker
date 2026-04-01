@@ -47,7 +47,11 @@ export function createSyncStatusControllers(deps: SyncStatusControllersDeps) {
               : { processIds: parsedQuery.data.processIds },
           )
           const response = toProcessesSyncStatusResponse(result)
-          return jsonResponse(response, 200, ProcessesSyncStatusResponseSchema)
+          return jsonResponse(response, 200, ProcessesSyncStatusResponseSchema, {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            Pragma: 'no-cache',
+            Expires: '0',
+          })
         } catch (err) {
           console.error('GET /api/processes/sync-status error:', err)
           return mapErrorToResponse(err)
