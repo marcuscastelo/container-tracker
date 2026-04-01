@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
 
 const ROOT = process.cwd()
 const INPUT = process.argv[2] ?? 'src'
@@ -71,7 +71,9 @@ function runDepcruise() {
 }
 
 function normalizePath(value) {
-  return String(value || '').replaceAll('\\', '/').replace(/^\.\//, '')
+  return String(value || '')
+    .replaceAll('\\', '/')
+    .replace(/^\.\//, '')
 }
 
 function isIncludedPath(filePath) {
@@ -87,10 +89,7 @@ function isIncludedPath(filePath) {
 }
 
 function dotEscape(value) {
-  return String(value)
-    .replaceAll('\\', '\\\\')
-    .replaceAll('"', '\\"')
-    .replaceAll('\n', '\\n')
+  return String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', '\\n')
 }
 
 function toNodeId(filePath) {
@@ -152,9 +151,7 @@ function getArchitecturalDepth(filePath) {
 }
 
 function getDepth(filePath) {
-  return USE_LITERAL_PATH_DEPTH
-    ? getLiteralDepth(filePath)
-    : getArchitecturalDepth(filePath)
+  return USE_LITERAL_PATH_DEPTH ? getLiteralDepth(filePath) : getArchitecturalDepth(filePath)
 }
 
 function sortPaths(a, b) {
@@ -240,9 +237,7 @@ function buildDot({ nodes, edges }) {
 
   // Âncoras invisíveis para forçar ordem das colunas
   for (const depth of sortedDepths) {
-    lines.push(
-      `  "anchor:${depth}" [shape=point, width=0, height=0, style=invis, label=""];`
-    )
+    lines.push(`  "anchor:${depth}" [shape=point, width=0, height=0, style=invis, label=""];`)
   }
 
   lines.push('')
@@ -250,9 +245,7 @@ function buildDot({ nodes, edges }) {
   for (let i = 0; i < sortedDepths.length - 1; i += 1) {
     const current = sortedDepths[i]
     const next = sortedDepths[i + 1]
-    lines.push(
-      `  "anchor:${current}" -> "anchor:${next}" [style=invis, weight=200];`
-    )
+    lines.push(`  "anchor:${current}" -> "anchor:${next}" [style=invis, weight=200];`)
   }
 
   lines.push('')
@@ -272,8 +265,8 @@ function buildDot({ nodes, edges }) {
 
       lines.push(
         `    "${dotEscape(nodeId)}" [label="${dotEscape(label)}", tooltip="${dotEscape(
-          tooltip
-        )}"];`
+          tooltip,
+        )}"];`,
       )
     }
 
@@ -286,8 +279,8 @@ function buildDot({ nodes, edges }) {
   for (const edge of edges) {
     lines.push(
       `  "${dotEscape(toNodeId(edge.from))}" -> "${dotEscape(
-        toNodeId(edge.to)
-      )}" [constraint=false];`
+        toNodeId(edge.to),
+      )}" [constraint=false];`,
     )
   }
 
@@ -309,7 +302,7 @@ function main() {
   console.log(`Nós: ${graph.nodes.length}`)
   console.log(`Arestas: ${graph.edges.length}`)
   console.log(
-    `Modo de profundidade: ${USE_LITERAL_PATH_DEPTH ? 'literal path depth' : 'architectural depth'}`
+    `Modo de profundidade: ${USE_LITERAL_PATH_DEPTH ? 'literal path depth' : 'architectural depth'}`,
   )
 }
 
