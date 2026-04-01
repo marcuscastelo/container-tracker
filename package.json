@@ -53,6 +53,8 @@
     "agent:rebuild-restart:linux": "bash scripts/agent/rebuild-restart-linux.sh",
     "rebuild-restart:linux": "pnpm run agent:rebuild-restart:linux",
     "supabase:gen-types": "yes | npx supabase gen types typescript --project-id kremuphdcxwgceravqfh > src/shared/supabase/database.types.ts && pnpm run fix",
+    "depgraph:dot": "node scripts/depgraph-columns.mjs",
+    "dot": "pnpm run depgraph:dot && xdot dep-graph.dot",
     "knip": "knip",
     "knip:files": "knip --files --no-progress",
     "deps:marcus:update": "pnpm up \"@marcuscastelo/*\" -r --latest"
