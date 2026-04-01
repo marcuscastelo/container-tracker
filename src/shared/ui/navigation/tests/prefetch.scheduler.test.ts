@@ -55,6 +55,33 @@ describe('prefetch scheduler', () => {
     expect(intentRun).toHaveBeenCalledTimes(1)
   })
 
+  it('flushes intent tasks without starting queued viewport tasks', async () => {
+    const viewportRun = vi.fn(async () => undefined)
+    const intentRun = vi.fn(async () => undefined)
+
+    scheduleNavigationPrefetch({
+      key: 'process:viewport-only',
+      priority: 'viewport',
+      run: viewportRun,
+    })
+    scheduleNavigationPrefetch({
+      key: 'process:intent-only',
+      priority: 'intent',
+      run: intentRun,
+    })
+
+    await Promise.resolve()
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(intentRun).toHaveBeenCalledTimes(1)
+    expect(viewportRun).not.toHaveBeenCalled()
+
+    flushScheduledNavigationPrefetches()
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(viewportRun).toHaveBeenCalledTimes(1)
+  })
+
   it('debounces viewport prefetch until scrolling settles', () => {
     vi.useFakeTimers()
 

@@ -51,7 +51,9 @@ function clearQueuedFlushFlag(): void {
   flushQueued = false
 }
 
-function flushScheduledNavigationPrefetchesImpl(): void {
+function flushScheduledNavigationPrefetchesImpl(
+  onlyPriorities?: readonly PrefetchPriority[],
+): void {
   clearQueuedFlushFlag()
 
   const scheduledEntries = [...scheduledPrefetches.entries()].sort((left, right) => {
@@ -61,6 +63,7 @@ function flushScheduledNavigationPrefetchesImpl(): void {
   })
 
   for (const [key, task] of scheduledEntries) {
+    if (onlyPriorities && !onlyPriorities.includes(task.priority)) continue
     if (inFlightPrefetches.has(key)) continue
 
     scheduledPrefetches.delete(key)
@@ -84,7 +87,7 @@ function queueNavigationPrefetchFlush(): void {
 
   flushQueued = true
   queueMicrotask(() => {
-    flushScheduledNavigationPrefetchesImpl()
+    flushScheduledNavigationPrefetchesImpl(['intent'])
   })
 }
 

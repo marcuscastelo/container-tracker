@@ -62,6 +62,8 @@ type ScheduleDashboardPrefetchCommand = {
   readonly priority: PrefetchPriority
 }
 
+const MAX_VISIBLE_PREFETCH_PER_FLUSH = 10
+
 function normalizeInternalHref(href: string): string | null {
   const trimmed = href.trim()
   if (trimmed.length === 0) return null
@@ -80,6 +82,20 @@ function toProcessPrefetchKey(processId: string): string {
 
 function toDashboardPrefetchKey(): string {
   return 'dashboard'
+}
+
+function toVisibleProcessIds(processIds: readonly string[]): readonly string[] {
+  const visibleProcessIds = new Set<string>()
+
+  for (const processId of processIds) {
+    const normalizedProcessId = processId.trim()
+    if (normalizedProcessId.length === 0) continue
+
+    visibleProcessIds.add(normalizedProcessId)
+    if (visibleProcessIds.size >= MAX_VISIBLE_PREFETCH_PER_FLUSH) break
+  }
+
+  return [...visibleProcessIds]
 }
 
 function enqueueProcessPrefetch(command: {
@@ -164,7 +180,10 @@ export function scheduleIntentPrefetch(command: ScheduleIntentPrefetchCommand): 
 }
 
 export function scheduleVisiblePrefetch(command: ScheduleVisiblePrefetchCommand): void {
-  for (const processId of command.processIds) {
+  const visibleProcessIds = toVisibleProcessIds(command.processIds)
+  if (visibleProcessIds.length === 0) return
+
+  for (const processId of visibleProcessIds) {
     enqueueProcessPrefetch({
       processId,
       preloadRoute: command.preloadRoute,

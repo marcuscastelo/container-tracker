@@ -908,12 +908,12 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   })
 
   createEffect(() => {
+    const processes = props.processes
     const shouldScheduleViewportPrefetch =
-      !props.initialLoading && !props.hasError && props.processes.length > 0
+      !props.initialLoading && !props.hasError && processes.length > 0
 
     if (!shouldScheduleViewportPrefetch) return
 
-    props.processes
     queueMicrotask(() => {
       viewportPrefetchController.schedule()
     })
