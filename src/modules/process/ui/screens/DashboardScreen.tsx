@@ -33,6 +33,7 @@ import { toDashboardKpiVMs } from '~/modules/process/ui/mappers/dashboard-kpis.u
 import { toDashboardMonthlyBarDatumVMs } from '~/modules/process/ui/mappers/dashboard-processes-created-by-month.ui-mapper'
 import { useDashboardFilterSortController } from '~/modules/process/ui/screens/dashboard/hooks/useDashboardFilterSortController'
 import { useDashboardSyncController } from '~/modules/process/ui/screens/dashboard/hooks/useDashboardSyncController'
+import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
 import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
@@ -56,21 +57,6 @@ import {
   scheduleIntentPrefetch,
   scheduleVisiblePrefetch,
 } from '~/shared/ui/navigation/app-navigation'
-
-const DASHBOARD_CHART_TABLET_MIN_WIDTH = 768
-const DASHBOARD_CHART_DESKTOP_MIN_WIDTH = 1280
-
-function resolveDashboardChartWindowSize(viewportWidth: number): DashboardChartWindowSize {
-  if (viewportWidth >= DASHBOARD_CHART_DESKTOP_MIN_WIDTH) {
-    return 24
-  }
-
-  if (viewportWidth >= DASHBOARD_CHART_TABLET_MIN_WIDTH) {
-    return 12
-  }
-
-  return 6
-}
 
 function getCreateErrorMessage(error: string | ExistingProcessConflict | null): string {
   if (typeof error === 'string') return error
@@ -119,6 +105,8 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const preloadRoute = usePreloadRoute()
   let shouldPreferPrefetchedProcesses = true
   let shouldPreferPrefetchedGlobalAlerts = true
+  let shouldPreferPrefetchedDashboardKpis = true
+  let shouldPreferPrefetchedDashboardActivity = true
   const [processes, { refetch: refetchProcesses }] = createResource(() => {
     const preferPrefetched = shouldPreferPrefetchedProcesses
     shouldPreferPrefetchedProcesses = false
@@ -133,9 +121,13 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       preferPrefetched,
     })
   })
-  const [dashboardKpis, { refetch: refetchDashboardKpis }] = createResource(() =>
-    fetchDashboardKpis(),
-  )
+  const [dashboardKpis, { refetch: refetchDashboardKpis }] = createResource(() => {
+    const preferPrefetched = shouldPreferPrefetchedDashboardKpis
+    shouldPreferPrefetchedDashboardKpis = false
+    return fetchDashboardKpis({
+      preferPrefetched,
+    })
+  })
   const [dashboardChartWindowSize, setDashboardChartWindowSize] =
     createSignal<DashboardChartWindowSize>(
       (() => {
@@ -144,9 +136,16 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       })(),
     )
   const [dashboardProcessesCreatedByMonth, { refetch: refetchDashboardProcessesCreatedByMonth }] =
-    createResource(dashboardChartWindowSize, (windowSize) =>
-      fetchDashboardProcessesCreatedByMonth({ windowSize }),
-    )
+    createResource(dashboardChartWindowSize, (windowSize) => {
+      const preferPrefetched = shouldPreferPrefetchedDashboardActivity
+      shouldPreferPrefetchedDashboardActivity = false
+      return fetchDashboardProcessesCreatedByMonth(
+        { windowSize },
+        {
+          preferPrefetched,
+        },
+      )
+    })
   const processesState = useDashboardResourceSnapshot(processes)
   const dashboardKpisState = useDashboardResourceSnapshot(dashboardKpis)
   const dashboardActivityState = useDashboardResourceSnapshot(dashboardProcessesCreatedByMonth)
@@ -265,7 +264,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
 
       const processId = await createProcessRequest(toCreateProcessInput(data))
 
-      await Promise.all([refetchProcesses(), refetchGlobalAlerts()])
+      await Promise.all([
+        refetchProcesses(),
+        refetchGlobalAlerts(),
+        refetchDashboardKpis(),
+        refetchDashboardProcessesCreatedByMonth(),
+      ])
 
       setIsCreateDialogOpen(false)
 

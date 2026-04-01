@@ -1,5 +1,13 @@
 import { A } from '@solidjs/router'
-import { Check, ChevronDown, ChevronUp, CircleAlert, OctagonX, TriangleAlert } from 'lucide-solid'
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CircleAlert,
+  OctagonX,
+  RefreshCw,
+  TriangleAlert,
+} from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import {
@@ -838,7 +846,7 @@ function DashboardProcessTableSkeleton(props: {
           {(columnId) => (
             <div class="min-h-(--dashboard-table-header-height) px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
               <div
-                class={`h-3 animate-pulse rounded bg-surface ${toTableSkeletonWidth(columnId)}`}
+                class={`dashboard-skeleton-shimmer h-3 rounded bg-surface ${toTableSkeletonWidth(columnId)}`}
               />
             </div>
           )}
@@ -856,7 +864,7 @@ function DashboardProcessTableSkeleton(props: {
               {(columnId) => (
                 <div class="px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
                   <div
-                    class={`h-4 animate-pulse rounded bg-surface-muted ${toTableSkeletonWidth(columnId)}`}
+                    class={`dashboard-skeleton-shimmer h-4 rounded bg-surface-muted ${toTableSkeletonWidth(columnId)}`}
                   />
                 </div>
               )}
@@ -977,9 +985,14 @@ export function DashboardProcessTable(props: Props): JSX.Element {
       aria-busy={props.initialLoading || props.refreshing}
     >
       <header class="border-b border-border bg-surface-muted px-6 py-4">
-        <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
-          {t(keys.dashboard.table.title)}
-        </h2>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg-ui font-semibold leading-tight tracking-[-0.01em] text-foreground">
+            {t(keys.dashboard.table.title)}
+          </h2>
+          <Show when={props.initialLoading || props.refreshing}>
+            <RefreshCw class="h-4 w-4 animate-spin text-text-muted" aria-hidden="true" />
+          </Show>
+        </div>
       </header>
       {content()}
     </section>

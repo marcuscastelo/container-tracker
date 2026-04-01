@@ -55,6 +55,30 @@
   }
 }
 
+@keyframes dashboard-skeleton-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.dashboard-skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  animation: dashboard-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html.theme-transitioning,
   html.theme-transitioning body {

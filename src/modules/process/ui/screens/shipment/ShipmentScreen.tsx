@@ -1,10 +1,7 @@
 import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
-import {
-  prefetchDashboardGlobalAlertsSummary,
-  prefetchDashboardProcessSummaries,
-} from '~/modules/process/ui/api/process.api'
+import { prefetchDashboardData } from '~/modules/process/ui/api/process.api'
 import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
@@ -22,6 +19,7 @@ import {
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
+import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { scheduleDashboardPrefetch } from '~/shared/ui/navigation/app-navigation'
@@ -107,7 +105,10 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
     scheduleDashboardPrefetch({
       preloadRoute,
       preloadData: () =>
-        Promise.all([prefetchDashboardProcessSummaries(), prefetchDashboardGlobalAlertsSummary()]),
+        prefetchDashboardData({
+          windowSize:
+            typeof window === 'undefined' ? 6 : resolveDashboardChartWindowSize(window.innerWidth),
+        }),
       priority: 'intent',
     })
   }

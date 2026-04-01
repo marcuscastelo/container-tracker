@@ -12,7 +12,10 @@ type NavigateOptions = {
 }
 
 type NavigateFn = (to: string, options?: NavigateOptions) => unknown
-type PreloadRouteFn = (url: string | URL, options?: { readonly preloadData?: boolean }) => void
+export type PreloadRouteFn = (
+  url: string | URL,
+  options?: { readonly preloadData?: boolean },
+) => void
 
 type NavigateToAppHrefCommand = {
   readonly navigate: NavigateFn

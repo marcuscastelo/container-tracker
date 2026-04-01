@@ -47,6 +47,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
       <div class="relative z-10">
         <AppHeader
           onCreateProcess={props.onOpenCreateProcess}
+          onDashboardIntent={props.onDashboardIntent}
           searchSlot={props.searchSlot}
           actionsSlot={props.actionsSlot}
         />
