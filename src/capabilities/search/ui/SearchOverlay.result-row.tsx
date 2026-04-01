@@ -51,6 +51,7 @@ export function SearchResultRow(props: SearchResultRowProps): JSX.Element {
     <button
       type="button"
       data-search-index={props.index}
+      data-search-process-id={props.item.processId}
       onClick={() => props.onSelectResult(props.item)}
       onMouseEnter={() => props.onHoverIndex(props.index)}
       class={`flex h-auto w-full flex-col border-b border-control-border px-4 py-3 text-left transition-colors last:border-b-0 ${

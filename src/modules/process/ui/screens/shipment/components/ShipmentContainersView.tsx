@@ -1,4 +1,4 @@
-import type { Accessor, Resource } from 'solid-js'
+import type { Accessor } from 'solid-js'
 import { Show } from 'solid-js'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
@@ -8,7 +8,7 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import type { Instant } from '~/shared/time/instant'
 
 type ShipmentContainersViewProps = {
-  readonly shipmentData: Resource<ShipmentDetailVM | null | undefined>
+  readonly shipmentData: Accessor<ShipmentDetailVM | null | undefined>
   readonly activeAlerts: Accessor<readonly AlertDisplayVM[]>
   readonly archivedAlerts: Accessor<readonly AlertDisplayVM[]>
   readonly busyAlertIds: Accessor<ReadonlySet<string>>

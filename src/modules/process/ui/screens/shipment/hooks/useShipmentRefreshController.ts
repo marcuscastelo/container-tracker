@@ -1,4 +1,4 @@
-import type { Accessor, Resource } from 'solid-js'
+import type { Accessor } from 'solid-js'
 import { createSignal, onCleanup } from 'solid-js'
 import { buildRecentUpdateHint } from '~/modules/process/ui/screens/shipment/lib/shipmentRefresh.helpers'
 import type { RefreshRetryState } from '~/modules/process/ui/screens/shipment/types/shipmentScreen.types'
@@ -11,7 +11,7 @@ import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'
 
 type UseShipmentRefreshControllerCommand = {
-  readonly shipment: Resource<ShipmentDetailVM | null | undefined>
+  readonly shipment: Accessor<ShipmentDetailVM | null | undefined>
   readonly reconcileTrackingView: () => Promise<void>
 }
 

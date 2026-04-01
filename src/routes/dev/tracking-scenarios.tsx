@@ -340,6 +340,7 @@ function DashboardPreview(props: {
             onProcessSync={() => Promise.resolve()}
             onOpenProcess={props.onOpenProcess}
             onProcessIntent={() => {}}
+            onVisibleProcessesPrefetch={() => {}}
           />
         </div>
       </Show>

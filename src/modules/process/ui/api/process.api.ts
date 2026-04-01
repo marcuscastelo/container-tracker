@@ -1,5 +1,14 @@
 import { z } from 'zod'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import {
+  clearDashboardKpisPrefetchCache,
+  prefetchDashboardKpis,
+} from '~/modules/process/ui/fetchDashboardKpis'
+import {
+  clearDashboardProcessesCreatedByMonthPrefetchCache,
+  type DashboardChartWindowSize,
+  prefetchDashboardProcessesCreatedByMonth,
+} from '~/modules/process/ui/fetchDashboardProcessesCreatedByMonth'
 import { toDashboardGlobalAlertsVM } from '~/modules/process/ui/mappers/dashboardGlobalAlerts.ui-mapper'
 import { toProcessSummaryVMs } from '~/modules/process/ui/mappers/processList.ui-mapper'
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
@@ -237,11 +246,26 @@ export async function prefetchDashboardGlobalAlertsSummary(): Promise<void> {
   await loadDashboardGlobalAlerts({ preferCached: true })
 }
 
+export async function prefetchDashboardData(command: {
+  readonly windowSize: DashboardChartWindowSize
+}): Promise<void> {
+  await Promise.all([
+    prefetchDashboardProcessSummaries(),
+    prefetchDashboardGlobalAlertsSummary(),
+    prefetchDashboardKpis(),
+    prefetchDashboardProcessesCreatedByMonth({
+      windowSize: command.windowSize,
+    }),
+  ])
+}
+
 export function clearDashboardPrefetchCache(): void {
   dashboardProcessSummariesCacheByPath.clear()
   inFlightDashboardProcessSummariesByPath.clear()
   dashboardGlobalAlertsCache = null
   inFlightDashboardGlobalAlerts = null
+  clearDashboardKpisPrefetchCache()
+  clearDashboardProcessesCreatedByMonthPrefetchCache()
 }
 
 export async function createProcessRequest(input: CreateProcessInput): Promise<string> {

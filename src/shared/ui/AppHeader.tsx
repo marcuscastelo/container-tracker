@@ -2,7 +2,7 @@ import { A, useLocation } from '@solidjs/router'
 import clsx from 'clsx'
 import { Moon, Sun } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createSignal, Show } from 'solid-js'
+import { createSignal, Show, Suspense } from 'solid-js'
 import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -10,6 +10,7 @@ import { NavbarAlertsButton } from '~/shared/ui/navbar-alerts/NavbarAlertsButton
 
 type Props = {
   readonly onCreateProcess?: () => void
+  readonly onDashboardIntent?: () => void
   readonly searchSlot?: JSX.Element
   readonly syncSlot?: JSX.Element
   readonly actionsSlot?: JSX.Element
@@ -22,6 +23,7 @@ function NavLink(props: {
   readonly href: string
   readonly children: JSX.Element
   readonly end?: boolean
+  readonly onIntent?: () => void
 }): JSX.Element {
   const location = useLocation()
   const pathname = location.pathname
@@ -38,6 +40,9 @@ function NavLink(props: {
     <A
       href={props.href}
       end={props.end}
+      onPointerEnter={() => props.onIntent?.()}
+      onFocusIn={() => props.onIntent?.()}
+      onPointerDown={() => props.onIntent?.()}
       class={clsx(
         'relative px-1 py-2 text-sm-ui font-medium transition-colors hover:text-primary',
         {
@@ -51,12 +56,15 @@ function NavLink(props: {
   )
 }
 
-function HeaderBrand(): JSX.Element {
+function HeaderBrand(props: { readonly onDashboardIntent?: () => void }): JSX.Element {
   const isDark = () => getTheme() === 'dark'
 
   return (
     <A
       href="/"
+      onPointerEnter={() => props.onDashboardIntent?.()}
+      onFocusIn={() => props.onDashboardIntent?.()}
+      onPointerDown={() => props.onDashboardIntent?.()}
       class="flex min-w-0 items-center gap-3 text-primary"
       aria-label={BRANDING.displayTitle}
     >
@@ -100,10 +108,15 @@ function HeaderBrand(): JSX.Element {
 function HeaderNavigation(props: {
   readonly dashboardLabel: string
   readonly agentsLabel: string
+  readonly onDashboardIntent?: () => void
 }): JSX.Element {
   return (
     <nav class="hidden shrink-0 items-center gap-6 md:flex" aria-label="Primary">
-      <NavLink href="/" end>
+      <NavLink
+        href="/"
+        end
+        {...(props.onDashboardIntent ? { onIntent: props.onDashboardIntent } : {})}
+      >
         {props.dashboardLabel}
       </NavLink>
       <NavLink href="/agents" end>
@@ -118,7 +131,16 @@ function HeaderSearch(props: { readonly searchSlot?: JSX.Element }): JSX.Element
     <Show when={props.searchSlot}>
       {(searchSlot) => (
         <div class="mx-auto w-full min-w-[220px] max-w-[var(--dashboard-search-width)] [&>[data-search-trigger='true']]:h-[var(--dashboard-search-height)] [&>[data-search-trigger='true']]:min-h-[var(--dashboard-search-height)] [&_[data-slot='input']]:h-[var(--dashboard-search-height)] [&_[data-slot='input']]:min-h-[var(--dashboard-search-height)]">
-          {searchSlot()}
+          <Suspense
+            fallback={
+              <div
+                class="dashboard-skeleton-shimmer h-[var(--dashboard-search-height)] min-h-[var(--dashboard-search-height)] rounded-[var(--dashboard-control-radius)] border border-border bg-surface-muted"
+                aria-hidden="true"
+              />
+            }
+          >
+            {searchSlot()}
+          </Suspense>
         </div>
       )}
     </Show>
@@ -215,10 +237,13 @@ export function AppHeader(props: Props): JSX.Element {
     <header class="border-b border-border bg-surface">
       <div class="mx-auto grid min-h-[var(--navbar-height)] w-full max-w-[var(--dashboard-container-max-width)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2 px-[var(--dashboard-container-px)] py-2 max-[1279px]:gap-x-3.5 max-[1023px]:grid-cols-[minmax(0,1fr)_auto]">
         <div class="navbar-left flex min-w-0 items-center gap-3 max-[1279px]:gap-4 lg:gap-6">
-          <HeaderBrand />
+          <HeaderBrand
+            {...(props.onDashboardIntent ? { onDashboardIntent: props.onDashboardIntent } : {})}
+          />
           <HeaderNavigation
             dashboardLabel={t(keys.header.nav.dashboard)}
             agentsLabel={t(keys.header.nav.agents)}
+            {...(props.onDashboardIntent ? { onDashboardIntent: props.onDashboardIntent } : {})}
           />
         </div>
 

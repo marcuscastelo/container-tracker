@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { createSignal, For, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { SearchOverlayFooter } from '~/capabilities/search/ui/SearchOverlay.footer'
 import { SearchIcon } from '~/capabilities/search/ui/SearchOverlay.icons'
 import {
@@ -9,6 +9,7 @@ import {
 import { SearchTriggerButton } from '~/capabilities/search/ui/SearchOverlay.trigger'
 import type { SearchResultItemVm, SearchUiState } from '~/capabilities/search/ui/search.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { createViewportPrefetchController } from '~/shared/ui/navigation/app-navigation'
 
 // Augment Navigator with User-Agent Client Hints (platform) when available.
 declare global {
@@ -34,12 +35,30 @@ type SearchOverlayPanelProps = {
   readonly onInputKeyDown: (event: KeyboardEvent) => void
   readonly onSelectResult: (item: SearchResultItemVm) => void
   readonly onHoverIndex: (index: number) => void
+  readonly onVisibleResultPrefetch: (processIds: readonly string[]) => void
   readonly setInputRef: (element: HTMLInputElement) => void
   readonly focusInput: () => void
   readonly minimumQueryLength: number
 }
 
 type SearchPanelTranslation = ReturnType<typeof useTranslation>
+
+type VisibleSearchResultRect = {
+  readonly bottom: number
+  readonly top: number
+}
+
+type VisibleSearchResultRow = {
+  readonly dataset: {
+    readonly searchProcessId?: string
+  }
+  readonly getBoundingClientRect: () => VisibleSearchResultRect
+}
+
+type VisibleSearchResultContainer = {
+  readonly getBoundingClientRect: () => VisibleSearchResultRect
+  readonly querySelectorAll: (selector: string) => Iterable<VisibleSearchResultRow>
+}
 
 function getMatchSourceLabel(
   source: SearchResultItemVm['matchSource'],
@@ -80,9 +99,38 @@ function getSearchResultRowLabels(
   }
 }
 
+export function collectVisibleSearchResultProcessIds(
+  container: VisibleSearchResultContainer | undefined,
+): readonly string[] {
+  if (!container) return []
+
+  const containerRect = container.getBoundingClientRect()
+  const rows = container.querySelectorAll('[data-search-process-id]')
+  const visibleProcessIds: string[] = []
+
+  for (const row of rows) {
+    const processId = row.dataset.searchProcessId
+    if (!processId) continue
+
+    const rowRect = row.getBoundingClientRect()
+    if (rowRect.bottom <= containerRect.top || rowRect.top >= containerRect.bottom) continue
+
+    visibleProcessIds.push(processId)
+  }
+
+  return visibleProcessIds
+}
+
 export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element {
   const { t, keys } = useTranslation()
   const [shortcutLabel, setShortcutLabel] = createSignal('Ctrl K')
+  let resultsContainerRef: HTMLDivElement | undefined
+
+  const viewportPrefetchController = createViewportPrefetchController({
+    collectVisibleKeys: () => collectVisibleSearchResultProcessIds(resultsContainerRef),
+    onVisibleKeysSettled: (processIds: readonly string[]) =>
+      props.onVisibleResultPrefetch(processIds),
+  })
 
   onMount(() => {
     // Use User-Agent Client Hints when available and fall back to navigator.platform.
@@ -100,6 +148,31 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
       userAgent.includes('ipad')
 
     setShortcutLabel(isApplePlatform ? '⌘K' : 'Ctrl K')
+  })
+
+  createEffect(() => {
+    const results = props.results
+    if (!props.isOpen || props.state !== 'ready' || results.length === 0) return
+
+    viewportPrefetchController.schedule()
+  })
+
+  createEffect(() => {
+    const resultsContainer = resultsContainerRef
+    if (!props.isOpen || !resultsContainer) return
+
+    const scheduleVisiblePrefetch = () => {
+      viewportPrefetchController.schedule()
+    }
+
+    resultsContainer.addEventListener('scroll', scheduleVisiblePrefetch, { passive: true })
+    window.addEventListener('resize', scheduleVisiblePrefetch)
+
+    onCleanup(() => {
+      resultsContainer.removeEventListener('scroll', scheduleVisiblePrefetch)
+      window.removeEventListener('resize', scheduleVisiblePrefetch)
+      viewportPrefetchController.dispose()
+    })
   })
 
   const shouldShowResultsState = () => props.query.trim().length >= props.minimumQueryLength
@@ -183,7 +256,12 @@ export function SearchOverlayPanel(props: SearchOverlayPanelProps): JSX.Element 
               </kbd>
             </div>
 
-            <div class="max-h-[65vh] overflow-y-auto">
+            <div
+              ref={(element) => {
+                resultsContainerRef = element
+              }}
+              class="max-h-[65vh] overflow-y-auto"
+            >
               <Show when={props.state === 'loading' && shouldShowResultsState()}>
                 <div class="px-4 py-6 text-center text-sm-ui text-text-muted" />
               </Show>

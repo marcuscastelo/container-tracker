@@ -1,10 +1,7 @@
 import { useLocation, useNavigate, usePreloadRoute } from '@solidjs/router'
 import type { Accessor, JSX } from 'solid-js'
 import { createEffect, createMemo } from 'solid-js'
-import {
-  prefetchDashboardGlobalAlertsSummary,
-  prefetchDashboardProcessSummaries,
-} from '~/modules/process/ui/api/process.api'
+import { prefetchDashboardData } from '~/modules/process/ui/api/process.api'
 import { ExportImportActions } from '~/modules/process/ui/components/export-import/ExportImportActions'
 import { ShipmentAlertActionFeedback } from '~/modules/process/ui/screens/shipment/components/ShipmentAlertActionFeedback'
 import { ShipmentContainersView } from '~/modules/process/ui/screens/shipment/components/ShipmentContainersView'
@@ -22,9 +19,10 @@ import {
   toSortedArchivedAlerts,
 } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
+import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
-import { prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'
+import { scheduleDashboardPrefetch } from '~/shared/ui/navigation/app-navigation'
 
 type ShipmentScreenProps = {
   readonly processId: Accessor<string>
@@ -52,7 +50,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Selected container ─────────────────────────────────────────────────────
   const selection = useShipmentSelectedContainer({
-    shipment: resource.shipment,
+    shipment: resource.latestShipment,
     preferredContainerNumber,
   })
 
@@ -62,7 +60,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Refresh controller ─────────────────────────────────────────────────────
   const refresh = useShipmentRefreshController({
-    shipment: resource.shipment,
+    shipment: resource.latestShipment,
     reconcileTrackingView: resource.reconcileTrackingView,
   })
 
@@ -91,30 +89,34 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Derived alerts ─────────────────────────────────────────────────────────
   const activeAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
-    const data = resource.shipment()
+    const data = resource.latestShipment()
     if (!data) return []
     return toSortedActiveAlerts(data.alerts)
   })
 
   const archivedAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
-    const data = resource.shipment()
+    const data = resource.latestShipment()
     if (!data) return []
     return toSortedArchivedAlerts(data.alerts)
   })
 
   // ── Dashboard prefetch intent ──────────────────────────────────────────────
   const handleDashboardIntent = () => {
-    prefetchDashboardIntent({
+    scheduleDashboardPrefetch({
       preloadRoute,
       preloadData: () =>
-        Promise.all([prefetchDashboardProcessSummaries(), prefetchDashboardGlobalAlertsSummary()]),
+        prefetchDashboardData({
+          windowSize:
+            typeof window === 'undefined' ? 6 : resolveDashboardChartWindowSize(window.innerWidth),
+        }),
+      priority: 'intent',
     })
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <ShipmentScreenLayout
-      shipmentData={resource.shipment}
+      shipmentData={resource.latestShipment}
       shipmentLoading={resource.loading}
       shipmentError={resource.error}
       onOpenCreateProcess={dialogs.openCreateDialog}
@@ -151,7 +153,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       }
       content={
         <ShipmentContainersView
-          shipmentData={resource.shipment}
+          shipmentData={resource.latestShipment}
           activeAlerts={activeAlerts}
           archivedAlerts={archivedAlerts}
           busyAlertIds={alertActions.busyAlertIds}

@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router'
-import type { Accessor, JSX, Resource } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 import { Show } from 'solid-js'
 import { ChevronLeftIcon } from '~/modules/process/ui/components/Icons'
 import { ShipmentScreenSkeleton } from '~/modules/process/ui/screens/shipment/components/ShipmentScreenSkeleton'
@@ -9,7 +9,7 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 
 type ShipmentScreenLayoutProps = {
-  readonly shipmentData: Resource<ShipmentDetailVM | null | undefined>
+  readonly shipmentData: Accessor<ShipmentDetailVM | null | undefined>
   readonly shipmentLoading: Accessor<boolean>
   readonly shipmentError: Accessor<unknown>
   readonly onOpenCreateProcess: () => void
@@ -47,6 +47,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
       <div class="relative z-10">
         <AppHeader
           onCreateProcess={props.onOpenCreateProcess}
+          onDashboardIntent={props.onDashboardIntent}
           searchSlot={props.searchSlot}
           actionsSlot={props.actionsSlot}
         />
