@@ -24,6 +24,7 @@ import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
+import { collectVisibleDashboardProcessIds } from '~/modules/process/ui/utils/dashboard-process-visibility.utils'
 import {
   hasDashboardRowSelectedText,
   isInteractiveDashboardRowTarget,
@@ -103,27 +104,6 @@ const DASHBOARD_TABLE_SKELETON_ROW_KEYS = [
   'dashboard-row-skeleton-4',
   'dashboard-row-skeleton-5',
 ] as const
-
-function collectVisibleDashboardProcessIds(container: HTMLElement | undefined): readonly string[] {
-  if (!container || typeof window === 'undefined') return []
-
-  const viewportTop = 0
-  const viewportBottom = window.innerHeight
-  const rows = container.querySelectorAll<HTMLElement>('[data-dashboard-process-id]')
-  const visibleProcessIds: string[] = []
-
-  for (const row of rows) {
-    const processId = row.dataset.dashboardProcessId
-    if (!processId) continue
-
-    const rowRect = row.getBoundingClientRect()
-    if (rowRect.bottom <= viewportTop || rowRect.top >= viewportBottom) continue
-
-    visibleProcessIds.push(processId)
-  }
-
-  return visibleProcessIds
-}
 
 // ---------------------------------------------------------------------------
 // Severity helpers

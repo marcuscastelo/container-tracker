@@ -75,7 +75,7 @@ export function AppInitialRoutePrefetchBoundary(
       return
     }
 
-    void prefetchProcessDetail(target.processId, locale)
+    void prefetchProcessDetail(target.processId, locale).catch(() => undefined)
   })
 
   return null

@@ -95,6 +95,7 @@ describe('app-navigation helpers', () => {
       preloadData,
     })
 
+    await Promise.resolve()
     await waitForNavigationPrefetchesToSettleForTests()
 
     expect(preloadRoute).toHaveBeenCalledTimes(1)
@@ -176,6 +177,7 @@ describe('app-navigation helpers', () => {
       priority: 'intent',
     })
 
+    await Promise.resolve()
     await waitForNavigationPrefetchesToSettleForTests()
 
     expect(preloadRoute).toHaveBeenCalledTimes(1)
