@@ -260,7 +260,11 @@ describe('process controllers', () => {
       affected_containers: 1,
       recognized_incidents: 0,
     })
+    expect(body.alert_incidents?.active[0]?.detected_at).toBe('2026-03-01T10:00:00.000Z')
     expect(body.alert_incidents?.active[0]?.members[0]?.container_number).toBe('MSCU1234567')
+    expect(body.alert_incidents?.active[0]?.members[0]?.detected_at).toBe(
+      '2026-03-01T10:00:00.000Z',
+    )
   })
 
   it('returns process detail with container operational and process coverage', async () => {

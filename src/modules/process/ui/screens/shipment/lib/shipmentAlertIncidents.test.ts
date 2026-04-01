@@ -24,6 +24,7 @@ function makeTransshipmentIncident(command: {
       fromVessel: command.fromVessel,
       toVessel: command.toVessel,
     },
+    detectedAtIso: '2026-02-28T00:00:00.000Z',
     triggeredAtIso: '2026-04-01T10:00:00.000Z',
     thresholdDays: null,
     daysWithoutMovement: null,

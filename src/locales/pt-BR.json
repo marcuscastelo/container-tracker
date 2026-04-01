@@ -466,6 +466,11 @@
           "noMovementThreshold": "Sem movimentação há {{days}} dias",
           "transshipmentOccurrence": "ocorrência {{count}} na rota"
         },
+        "timing": {
+          "detectedOn": "detectado em {{date}}",
+          "alertedAgo": "alertado há {{age}}",
+          "alertedNow": "alertado agora"
+        },
         "preview": {
           "containers": "{{count}} containers: {{containers}}",
           "withRemaining": "{{preview}} +{{count}}"

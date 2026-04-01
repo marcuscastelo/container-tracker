@@ -215,6 +215,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
               fromVessel: 'MSC IRIS',
               toVessel: 'MSC BIANCA SILVIA',
             },
+            detected_at: '2026-02-28T00:00:00.000Z',
             triggered_at: '2026-03-30T10:01:00.000Z',
             threshold_days: null,
             days_without_movement: null,
@@ -231,6 +232,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
                 container_id: 'container-1',
                 container_number: 'FCIU2000205',
                 lifecycle_state: 'ACTIVE',
+                detected_at: '2026-02-28T00:00:00.000Z',
                 threshold_days: null,
                 days_without_movement: null,
                 last_event_date: null,
@@ -242,6 +244,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
                   {
                     alert_id: 'alert-1',
                     lifecycle_state: 'ACTIVE',
+                    detected_at: '2026-02-28T00:00:00.000Z',
                     triggered_at: '2026-03-30T10:01:00.000Z',
                     acked_at: null,
                     resolved_at: null,
@@ -265,7 +268,11 @@ describe('toShipmentDetailVM tracking mapping', () => {
     expect(result.alertIncidents.active[0]?.incidentKey).toBe(
       'TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA',
     )
+    expect(result.alertIncidents.active[0]?.detectedAtIso).toBe('2026-02-28T00:00:00.000Z')
     expect(result.alertIncidents.active[0]?.members[0]?.containerNumber).toBe('FCIU2000205')
+    expect(result.alertIncidents.active[0]?.members[0]?.detectedAtIso).toBe(
+      '2026-02-28T00:00:00.000Z',
+    )
   })
 
   it('maps container sync metadata by normalized container number', () => {

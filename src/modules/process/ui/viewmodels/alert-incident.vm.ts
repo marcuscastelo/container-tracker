@@ -6,6 +6,7 @@ export type AlertIncidentBucketVM = 'active' | 'recognized'
 export type AlertIncidentRecordVM = {
   readonly alertId: string
   readonly lifecycleState: TrackingAlertLifecycleState
+  readonly detectedAtIso: string
   readonly triggeredAtIso: string
   readonly ackedAtIso: string | null
   readonly resolvedAtIso: string | null
@@ -19,6 +20,7 @@ export type AlertIncidentMemberVM = {
   readonly containerId: string
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
+  readonly detectedAtIso: string
   readonly thresholdDays: number | null
   readonly daysWithoutMovement: number | null
   readonly lastEventDate: string | null
@@ -51,6 +53,7 @@ export type AlertIncidentVM = {
     | 'alerts.portChange'
     | 'alerts.dataInconsistent'
   readonly messageParams: Record<string, string | number>
+  readonly detectedAtIso: string
   readonly triggeredAtIso: string
   readonly thresholdDays: number | null
   readonly daysWithoutMovement: number | null

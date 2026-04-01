@@ -13,6 +13,7 @@ function toAlertIncidentRecordVm(
   return {
     alertId: record.alert_id,
     lifecycleState: record.lifecycle_state,
+    detectedAtIso: record.detected_at,
     triggeredAtIso: record.triggered_at,
     ackedAtIso: record.acked_at,
     resolvedAtIso: record.resolved_at,
@@ -34,6 +35,7 @@ function toAlertIncidentVm(
     severity: incident.severity,
     messageKey: incident.message_key,
     messageParams: incident.message_params,
+    detectedAtIso: incident.detected_at,
     triggeredAtIso: incident.triggered_at,
     thresholdDays: incident.threshold_days,
     daysWithoutMovement: incident.days_without_movement,
@@ -49,6 +51,7 @@ function toAlertIncidentVm(
       containerId: member.container_id,
       containerNumber: member.container_number,
       lifecycleState: member.lifecycle_state,
+      detectedAtIso: member.detected_at,
       thresholdDays: member.threshold_days,
       daysWithoutMovement: member.days_without_movement,
       lastEventDate: member.last_event_date,

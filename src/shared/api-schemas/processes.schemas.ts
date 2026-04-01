@@ -133,6 +133,7 @@ const ShipmentAlertIncidentMessageParamsSchema = z.record(
 const ShipmentAlertIncidentRecordResponseSchema = z.object({
   alert_id: z.string(),
   lifecycle_state: z.enum(['ACTIVE', 'ACKED', 'AUTO_RESOLVED']),
+  detected_at: z.string(),
   triggered_at: z.string(),
   acked_at: z.string().nullable(),
   resolved_at: z.string().nullable(),
@@ -146,6 +147,7 @@ const ShipmentAlertIncidentMemberResponseSchema = z.object({
   container_id: z.string(),
   container_number: z.string(),
   lifecycle_state: z.enum(['ACTIVE', 'ACKED', 'AUTO_RESOLVED']),
+  detected_at: z.string(),
   threshold_days: z.number().nullable(),
   days_without_movement: z.number().nullable(),
   last_event_date: z.string().nullable(),
@@ -180,6 +182,7 @@ const ShipmentAlertIncidentResponseSchema = z.object({
     'alerts.dataInconsistent',
   ]),
   message_params: ShipmentAlertIncidentMessageParamsSchema,
+  detected_at: z.string(),
   triggered_at: z.string(),
   threshold_days: z.number().nullable(),
   days_without_movement: z.number().nullable(),

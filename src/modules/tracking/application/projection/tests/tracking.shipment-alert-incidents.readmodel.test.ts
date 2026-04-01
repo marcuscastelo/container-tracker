@@ -176,11 +176,14 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     expect(result.active[0]?.incidentKey).toBe('TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA')
     expect(result.active[0]?.affectedContainerCount).toBe(3)
     expect(result.active[0]?.transshipmentOrder).toBe(1)
+    expect(result.active[0]?.detectedAt).toBe('2026-03-30T10:00:00.000Z')
     expect(result.active[0]?.members.map((member) => member.containerNumber)).toEqual([
       'CAIU6241835',
       'FCIU2000205',
       'MSDU1652364',
     ])
+    expect(result.active[0]?.members[0]?.detectedAt).toBe('2026-03-30T10:03:00.000Z')
+    expect(result.active[0]?.members[0]?.records[0]?.detectedAt).toBe('2026-03-30T10:03:00.000Z')
   })
 
   it('separates transshipments when the route diverges', () => {

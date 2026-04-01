@@ -168,6 +168,30 @@ function toIncidentSummary(
   return toContainerPreview(incident, t, keys)
 }
 
+function toTransshipmentTimingSummary(
+  incident: AlertIncidentVM,
+  t: ReturnType<typeof useTranslation>['t'],
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string {
+  const parts = [
+    t(keys.shipmentView.alerts.incidents.timing.detectedOn, {
+      date: formatDateForLocale(incident.detectedAtIso),
+    }),
+  ]
+  const ageLabel = formatIncidentAge(incident.triggeredAtIso, t, keys)
+  const nowLabel = t(keys.shipmentView.alerts.aging.now)
+
+  if (ageLabel.length > 0) {
+    parts.push(
+      ageLabel === nowLabel
+        ? t(keys.shipmentView.alerts.incidents.timing.alertedNow)
+        : t(keys.shipmentView.alerts.incidents.timing.alertedAgo, { age: ageLabel }),
+    )
+  }
+
+  return parts.join(' · ')
+}
+
 function toMemberActiveAlertIds(member: AlertIncidentMemberVM): readonly string[] {
   return member.records
     .filter((record) => record.lifecycleState === 'ACTIVE')
@@ -181,6 +205,7 @@ function AlertIncidentHeader(props: {
   readonly showTransshipmentOccurrence: boolean
 }): JSX.Element {
   const { t, keys } = useTranslation()
+  const isTransshipmentIncident = () => props.incident.type === 'TRANSSHIPMENT'
 
   return (
     <div class="flex items-start justify-between gap-3">
@@ -197,9 +222,11 @@ function AlertIncidentHeader(props: {
           <span class="inline-flex items-center rounded bg-secondary px-1.5 py-0.5 text-micro font-medium text-text-muted">
             {toCategoryLabel(props.incident.category, t, keys)}
           </span>
-          <span class="text-micro font-medium text-text-muted">
-            {formatIncidentAge(props.incident.triggeredAtIso, t, keys)}
-          </span>
+          <Show when={!isTransshipmentIncident()}>
+            <span class="text-micro font-medium text-text-muted">
+              {formatIncidentAge(props.incident.triggeredAtIso, t, keys)}
+            </span>
+          </Show>
         </div>
 
         <p class="text-sm-ui font-semibold leading-tight text-foreground">
@@ -215,6 +242,11 @@ function AlertIncidentHeader(props: {
             </span>
           </Show>
         </p>
+        <Show when={isTransshipmentIncident()}>
+          <p class="text-xs-ui text-text-muted">
+            {toTransshipmentTimingSummary(props.incident, t, keys)}
+          </p>
+        </Show>
         <p class="text-xs-ui text-text-muted">{toIncidentSummary(props.incident, t, keys)}</p>
       </div>
 

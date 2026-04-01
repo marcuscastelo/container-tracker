@@ -259,6 +259,7 @@ function toShipmentAlertIncidentRecordResponse(record: ShipmentAlertIncidentReco
   return {
     alert_id: record.alertId,
     lifecycle_state: record.lifecycleState,
+    detected_at: record.detectedAt,
     triggered_at: record.triggeredAt,
     acked_at: record.ackedAt,
     resolved_at: record.resolvedAt,
@@ -278,6 +279,7 @@ function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadMode
     severity: incident.severity,
     message_key: incident.messageKey,
     message_params: incident.messageParams,
+    detected_at: incident.detectedAt,
     triggered_at: incident.triggeredAt,
     threshold_days: incident.thresholdDays,
     days_without_movement: incident.daysWithoutMovement,
@@ -293,6 +295,7 @@ function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadMode
       container_id: member.containerId,
       container_number: member.containerNumber,
       lifecycle_state: member.lifecycleState,
+      detected_at: member.detectedAt,
       threshold_days: member.thresholdDays,
       days_without_movement: member.daysWithoutMovement,
       last_event_date: member.lastEventDate,

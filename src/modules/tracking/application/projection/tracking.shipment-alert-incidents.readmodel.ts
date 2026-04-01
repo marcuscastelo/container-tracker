@@ -13,6 +13,7 @@ export type ShipmentAlertIncidentBucket = 'active' | 'recognized'
 export type ShipmentAlertIncidentRecordReadModel = {
   readonly alertId: string
   readonly lifecycleState: TrackingAlertLifecycleState
+  readonly detectedAt: string
   readonly triggeredAt: string
   readonly ackedAt: string | null
   readonly resolvedAt: string | null
@@ -26,6 +27,7 @@ export type ShipmentAlertIncidentMemberReadModel = {
   readonly containerId: string
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
+  readonly detectedAt: string
   readonly records: readonly ShipmentAlertIncidentRecordReadModel[]
   readonly thresholdDays: number | null
   readonly daysWithoutMovement: number | null
@@ -44,6 +46,7 @@ export type ShipmentAlertIncidentReadModel = {
   readonly severity: TrackingAlert['severity']
   readonly messageKey: TrackingAlertMessageKey
   readonly messageParams: Record<string, string | number>
+  readonly detectedAt: string
   readonly triggeredAt: string
   readonly thresholdDays: number | null
   readonly daysWithoutMovement: number | null
@@ -89,6 +92,7 @@ type PendingShipmentAlertIncidentMember = {
   readonly containerId: string
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
+  readonly detectedAt: string
   readonly records: readonly ShipmentAlertIncidentRecordReadModel[]
   readonly thresholdDays: number | null
   readonly daysWithoutMovement: number | null
@@ -145,6 +149,7 @@ function toAlertRecord(alert: TrackingAlert): ShipmentAlertIncidentRecordReadMod
   return {
     alertId: alert.id,
     lifecycleState,
+    detectedAt: alert.detected_at,
     triggeredAt: alert.triggered_at,
     ackedAt: alert.acked_at,
     resolvedAt: alert.resolved_at ?? null,
@@ -259,6 +264,18 @@ function toHighestSeverity(
   }
 
   return highest
+}
+
+function toEarliestDetectedAt(members: readonly PendingShipmentAlertIncidentMember[]): string {
+  const earliest = [...members]
+    .map((member) => member.detectedAt)
+    .sort((left, right) => left.localeCompare(right))[0]
+
+  if (earliest === undefined) {
+    throw new Error('shipment alert incidents: detectedAt missing')
+  }
+
+  return earliest
 }
 
 function toLatestTriggeredAt(members: readonly PendingShipmentAlertIncidentMember[]): string {
@@ -426,6 +443,7 @@ function buildTransshipmentMembers(
       containerId: container.containerId,
       containerNumber: container.containerNumber,
       lifecycleState,
+      detectedAt: representative.detected_at,
       records,
       thresholdDays: null,
       daysWithoutMovement: null,
@@ -505,6 +523,7 @@ function buildNoMovementMembers(
       containerId: container.containerId,
       containerNumber: container.containerNumber,
       lifecycleState,
+      detectedAt: representative.detected_at,
       records,
       thresholdDays: representative.message_params.threshold_days,
       daysWithoutMovement: representative.message_params.days_without_movement,
@@ -559,6 +578,7 @@ function buildGenericMembers(
       containerId: container.containerId,
       containerNumber: container.containerNumber,
       lifecycleState: toMemberLifecycleState(records),
+      detectedAt: representative.detected_at,
       records,
       thresholdDays: null,
       daysWithoutMovement: null,
@@ -666,6 +686,7 @@ export function buildShipmentAlertIncidentsReadModel(
       severity: toHighestSeverity(sortedMembers),
       messageKey: representativeMember.messageKey,
       messageParams: representativeMember.messageParams,
+      detectedAt: toEarliestDetectedAt(sortedMembers),
       triggeredAt: toLatestTriggeredAt(sortedMembers),
       thresholdDays: representativeMember.thresholdDays,
       daysWithoutMovement: representativeMember.daysWithoutMovement,
@@ -681,6 +702,7 @@ export function buildShipmentAlertIncidentsReadModel(
         containerId: member.containerId,
         containerNumber: member.containerNumber,
         lifecycleState: member.lifecycleState,
+        detectedAt: member.detectedAt,
         records: [...member.records].sort(compareAlertRecordsByActionTimeDesc),
         thresholdDays: member.thresholdDays,
         daysWithoutMovement: member.daysWithoutMovement,
