@@ -881,7 +881,8 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
   const viewportPrefetchController = createViewportPrefetchController({
     collectVisibleKeys: () => collectVisibleDashboardProcessIds(tableSectionRef),
-    onVisibleKeysSettled: props.onVisibleProcessesPrefetch,
+    onVisibleKeysSettled: (processIds: readonly string[]) =>
+      props.onVisibleProcessesPrefetch(processIds),
   })
 
   const handleColumnReorder = (columnId: DashboardColumnId, targetIndex: number) => {
