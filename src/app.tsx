@@ -18,7 +18,7 @@ export default function App() {
               } catch (_e) {}
               return (
                 <div style={{ padding: '24px' }}>
-                  <h1>Something went wrong.</h1>
+                  <h1>Algo deu errado.</h1>
                   <p>{err instanceof Error ? err.message : String(err)}</p>
                 </div>
               )

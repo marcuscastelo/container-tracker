@@ -1,5 +1,4 @@
 // @refresh reload
-import '~/shared/localization/i18n'
 import { mount, StartClient } from '@solidjs/start/client'
 import { render } from 'solid-js/web'
 import { initializeTheme } from '~/lib/theme'

@@ -761,16 +761,9 @@
   "about": {
     "page": "Sobre"
   },
-  "notfound": {
-    "title": "Não Encontrado",
-    "learn": "Visite"
-  },
   "common": {
     "copy": "Copiar",
     "copied": "Copiado"
-  },
-  "languageSwitch": {
-    "label": "Idioma"
   },
   "search": {
     "placeholder": "Busca geral...",
