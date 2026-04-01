@@ -129,13 +129,20 @@ export function bootstrapAgentSyncControllers(): AgentSyncControllers {
       }))
     },
 
-    async saveAndProcess({ containerId, containerNumber, provider, payload, fetchedAt }) {
+    async saveAndProcess({
+      containerId,
+      containerNumber,
+      provider,
+      payload,
+      parseError,
+      fetchedAt,
+    }) {
       const result = await trackingUseCases.saveAndProcess(
         containerId,
         containerNumber,
         provider,
         payload,
-        null,
+        parseError ?? null,
         fetchedAt,
       )
 

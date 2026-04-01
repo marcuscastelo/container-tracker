@@ -8,6 +8,7 @@ const DIALOG_CARRIERS: readonly DialogCarrier[] = [
   'maersk',
   'msc',
   'cmacgm',
+  'pil',
   'hapag',
   'one',
   'evergreen',

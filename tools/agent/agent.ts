@@ -15,6 +15,8 @@ import { createMaerskCaptureService } from '../../src/modules/tracking/infrastru
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchMscStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { fetchPilStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { createAgentScheduler } from './agent.scheduler.ts'
@@ -615,7 +617,7 @@ async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<Run
 
 const AgentTargetSchema = z.object({
   sync_request_id: z.string().uuid(),
-  provider: z.enum(['maersk', 'msc', 'cmacgm']),
+  provider: z.enum(['maersk', 'msc', 'cmacgm', 'pil']),
   ref_type: z.literal('container'),
   ref: z.string().min(1),
 })
@@ -712,8 +714,8 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
 }
 
 function resolveAgentCapabilities(config: RuntimeConfig): readonly string[] {
-  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'maersk']
-  return ['msc', 'cmacgm']
+  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'pil', 'maersk']
+  return ['msc', 'cmacgm', 'pil']
 }
 
 async function sendHeartbeat(command: {
@@ -902,18 +904,41 @@ async function fetchTargets(config: RuntimeConfig, limit: number): Promise<Targe
 
 const maerskCaptureService = createMaerskCaptureService()
 
-async function scrapeTarget(
+type ScrapeResult = {
+  readonly raw: unknown
+  readonly observedAt: string
+  readonly parseError?: string | null
+}
+
+async function performScrapeTarget(
   config: RuntimeConfig,
   target: AgentTarget,
-): Promise<{ raw: unknown; observedAt: string }> {
+): Promise<ScrapeResult> {
   if (target.provider === 'msc') {
     const result = await fetchMscStatus(target.ref)
-    return { raw: result.payload, observedAt: result.fetchedAt }
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
   }
 
   if (target.provider === 'cmacgm') {
     const result = await fetchCmaCgmStatus(target.ref)
-    return { raw: result.payload, observedAt: result.fetchedAt }
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
+  }
+
+  if (target.provider === 'pil') {
+    const result = await fetchPilStatus(target.ref)
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
   }
 
   if (!config.MAERSK_ENABLED) {
@@ -932,13 +957,29 @@ async function scrapeTarget(
     throw new Error(`maersk capture failed: ${JSON.stringify(result.body)}`)
   }
 
-  return { raw: result.payload, observedAt: new Date().toISOString() }
+  return { raw: result.payload, observedAt: new Date().toISOString(), parseError: null }
+}
+
+async function scrapeTarget(config: RuntimeConfig, target: AgentTarget): Promise<ScrapeResult> {
+  try {
+    return await performScrapeTarget(config, target)
+  } catch (error) {
+    const errorMessage = toErrorMessage(error)
+    return {
+      raw: {
+        _error: true,
+        message: errorMessage,
+      },
+      observedAt: new Date().toISOString(),
+      parseError: `Fetch failed: ${errorMessage}`,
+    }
+  }
 }
 
 async function ingestSnapshot(
   config: RuntimeConfig,
   target: AgentTarget,
-  scrape: { readonly raw: unknown; readonly observedAt: string },
+  scrape: ScrapeResult,
   agentVersion: string,
 ): Promise<
   { readonly kind: 'accepted'; readonly snapshotId: string } | { readonly kind: 'lease_conflict' }
@@ -955,6 +996,7 @@ async function ingestSnapshot(
       },
       observed_at: scrape.observedAt,
       raw: scrape.raw,
+      parse_error: scrape.parseError ?? null,
       meta: {
         agent_version: agentVersion,
         host: config.AGENT_ID,

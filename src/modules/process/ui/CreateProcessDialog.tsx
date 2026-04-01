@@ -40,7 +40,7 @@ import { isRecord } from '~/shared/utils/typeGuards'
 
 type TranslationApi = ReturnType<typeof useTranslation>
 
-type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'hapag' | 'one' | 'evergreen' | 'unknown'
+type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'pil' | 'hapag' | 'one' | 'evergreen' | 'unknown'
 
 export type ContainerInput = {
   readonly id: string
@@ -335,7 +335,7 @@ function createEmptyContainer(): ContainerInput {
 }
 
 function isCarrier(value: string): value is Carrier {
-  return ['maersk', 'msc', 'cmacgm', 'hapag', 'one', 'evergreen', 'unknown'].includes(value)
+  return ['maersk', 'msc', 'cmacgm', 'pil', 'hapag', 'one', 'evergreen', 'unknown'].includes(value)
 }
 
 function normalizeContainerNumber(value: string): string {
@@ -746,6 +746,7 @@ function buildCarrierOptions(
     { value: 'maersk', label: 'Maersk' },
     { value: 'msc', label: 'MSC' },
     { value: 'cmacgm', label: 'CMA CGM' },
+    { value: 'pil', label: 'PIL' },
     { value: 'unknown', label: unknownLabel },
   ]
 }

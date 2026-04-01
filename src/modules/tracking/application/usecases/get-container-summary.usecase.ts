@@ -3,7 +3,10 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeFingerprint,
+  computeLegacyFingerprint,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
@@ -82,22 +85,45 @@ function setCarrierLabelIfMissing(
   }
 }
 
+function registerCarrierLabelFingerprints(
+  labelsByFingerprint: Map<string, string>,
+  draft: ReturnType<typeof normalizeSnapshot>[number],
+): void {
+  if (!hasCarrierLabel(draft.carrier_label)) return
+
+  setCarrierLabelIfMissing(labelsByFingerprint, computeFingerprint(draft), draft.carrier_label)
+  setCarrierLabelIfMissing(
+    labelsByFingerprint,
+    computeLegacyFingerprint(draft),
+    draft.carrier_label,
+  )
+
+  // Historical OTHER observations may have been persisted before a provider label
+  // received a canonical mapping. Keep both new and legacy fingerprints addressable.
+  if (draft.type !== 'OTHER') {
+    const legacyOtherDraft = {
+      ...draft,
+      type: 'OTHER' as const,
+    }
+    setCarrierLabelIfMissing(
+      labelsByFingerprint,
+      computeFingerprint(legacyOtherDraft),
+      draft.carrier_label,
+    )
+    setCarrierLabelIfMissing(
+      labelsByFingerprint,
+      computeLegacyFingerprint(legacyOtherDraft),
+      draft.carrier_label,
+    )
+  }
+}
+
 function buildCarrierLabelByFingerprint(snapshot: Snapshot): ReadonlyMap<string, string> {
   const labelsByFingerprint = new Map<string, string>()
   const drafts = normalizeSnapshot(snapshot)
 
   for (const draft of drafts) {
-    if (!hasCarrierLabel(draft.carrier_label)) continue
-    setCarrierLabelIfMissing(labelsByFingerprint, computeFingerprint(draft), draft.carrier_label)
-
-    // Legacy observations may have been fingerprinted as OTHER before semantic mapping was expanded.
-    if (draft.type !== 'OTHER') {
-      const legacyOtherFingerprint = computeFingerprint({
-        ...draft,
-        type: 'OTHER',
-      })
-      setCarrierLabelIfMissing(labelsByFingerprint, legacyOtherFingerprint, draft.carrier_label)
-    }
+    registerCarrierLabelFingerprints(labelsByFingerprint, draft)
   }
 
   return labelsByFingerprint

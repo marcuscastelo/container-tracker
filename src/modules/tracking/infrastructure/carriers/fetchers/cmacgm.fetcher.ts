@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
+import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
 import { systemClock } from '~/shared/time/clock'
 
 /**

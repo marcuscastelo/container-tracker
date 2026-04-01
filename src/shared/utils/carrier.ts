@@ -13,6 +13,9 @@ export function carrierTrackUrl(carrier: string | null, containerNumber: string)
   if (c.includes('cma') || c.includes('cma-cgm')) {
     return `https://www.cma-cgm.com/ebusiness/tracking`
   }
+  if (c.includes('pil')) {
+    return `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${cn}`
+  }
 
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} container ${containerNumber}`)}`
 }

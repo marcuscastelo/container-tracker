@@ -5,6 +5,7 @@ import {
   IngestLeaseConflictResponseSchema,
   IngestSnapshotAcceptedResponseSchema,
   IngestSnapshotBodySchema,
+  IngestSnapshotFailedResponseSchema,
   type SyncRequestRow,
 } from '~/modules/tracking/interface/http/agent-sync.schemas'
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
@@ -81,6 +82,7 @@ export type AgentSyncControllersDeps = {
     readonly containerNumber: string
     readonly provider: Provider
     readonly payload: unknown
+    readonly parseError?: string | null
     readonly fetchedAt: string
   }) => Promise<{ readonly snapshotId: string }>
   readonly authenticateAgentToken: (command: {
@@ -411,8 +413,60 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
         containerNumber: container.containerNumber,
         provider: body.provider,
         payload: body.raw,
+        parseError: body.parse_error ?? null,
         fetchedAt: body.observed_at,
       })
+
+      const parseError = body.parse_error
+      if (parseError !== null && parseError !== undefined) {
+        const markedFailed = await deps.markSyncRequestFailed({
+          tenantId: body.tenant_id,
+          syncRequestId: body.sync_request_id,
+          agentId: authResult.agentId,
+          errorMessage: parseError,
+        })
+
+        if (!markedFailed) {
+          return jsonResponse(
+            { error: 'lease_conflict', snapshot_id: saveResult.snapshotId },
+            409,
+            IngestLeaseConflictResponseSchema,
+          )
+        }
+
+        await runTelemetrySafely(async () => {
+          await deps.updateAgentRuntimeState({
+            agentId: authResult.agentId,
+            tenantId: authResult.tenantId,
+            lastSeenAt: nowIso,
+            processingState: 'backing_off',
+            leaseHealth: 'healthy',
+            activeJobs: 0,
+            lastError: parseError,
+          })
+          await deps.recordAgentActivity({
+            agentId: authResult.agentId,
+            tenantId: authResult.tenantId,
+            type: 'REQUEST_FAILED',
+            message: parseError,
+            severity: 'danger',
+            metadata: {
+              syncRequestId: body.sync_request_id,
+              snapshotId: saveResult.snapshotId,
+              provider: body.provider,
+              ref: body.ref.value,
+              runtimeAgentId,
+            },
+            occurredAt: nowIso,
+          })
+        })
+
+        return jsonResponse(
+          { error: parseError, snapshot_id: saveResult.snapshotId },
+          422,
+          IngestSnapshotFailedResponseSchema,
+        )
+      }
 
       const markedDone = await deps.markSyncRequestDone({
         tenantId: body.tenant_id,

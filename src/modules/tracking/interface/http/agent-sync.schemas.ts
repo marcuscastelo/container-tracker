@@ -1,6 +1,6 @@
 import z from 'zod/v4'
 
-const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm'])
+const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm', 'pil'])
 
 const SyncRequestStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
 
@@ -31,6 +31,7 @@ export const IngestSnapshotBodySchema = z.object({
   }),
   observed_at: z.string().datetime({ offset: true }),
   raw: z.unknown(),
+  parse_error: z.string().nullable().optional(),
   meta: z.record(z.string(), z.unknown()).default({}),
   sync_request_id: z.string().uuid(),
 })
@@ -43,6 +44,11 @@ export const IngestSnapshotAcceptedResponseSchema = z.object({
 export const IngestLeaseConflictResponseSchema = z.object({
   error: z.literal('lease_conflict'),
   snapshot_id: z.string().uuid().optional(),
+})
+
+export const IngestSnapshotFailedResponseSchema = z.object({
+  error: z.string().min(1),
+  snapshot_id: z.string().uuid(),
 })
 
 export const SyncRequestRowSchema = z.object({
