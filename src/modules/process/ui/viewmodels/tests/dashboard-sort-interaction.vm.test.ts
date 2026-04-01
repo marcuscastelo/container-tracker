@@ -96,6 +96,7 @@ function createImporterTieBreakProcesses(): readonly ProcessSummaryVM[] {
   ] as const
 }
 
+// eslint-disable-next-line max-lines-per-function
 describe('dashboard sort interactions', () => {
   it('cycles same field in order desc -> asc -> default', () => {
     const first = nextDashboardSortSelection(null, 'provider')
@@ -107,12 +108,22 @@ describe('dashboard sort interactions', () => {
     expect(third).toBeNull()
   })
 
-  it('keeps a single active field by resetting to desc on another column click', () => {
+  it('cycles ETA in order asc -> desc -> default because ETA starts nearest-first', () => {
+    const first = nextDashboardSortSelection(null, 'eta')
+    const second = nextDashboardSortSelection(first, 'eta')
+    const third = nextDashboardSortSelection(second, 'eta')
+
+    expect(first).toEqual({ field: 'eta', direction: 'asc' })
+    expect(second).toEqual({ field: 'eta', direction: 'desc' })
+    expect(third).toBeNull()
+  })
+
+  it('keeps a single active field by resetting ETA to asc on another column click', () => {
     const activeProvider: DashboardSortSelection = { field: 'provider', direction: 'asc' }
 
     expect(nextDashboardSortSelection(activeProvider, 'eta')).toEqual({
       field: 'eta',
-      direction: 'desc',
+      direction: 'asc',
     })
   })
 
@@ -257,6 +268,94 @@ describe('dashboard sort interactions', () => {
 
     expect(ascResult.map((process) => process.id)).toEqual(['C', 'A', 'B'])
     expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
+  })
+
+  it('sorts ETA chronologically across same month, different months, and different years', () => {
+    const baseline = [
+      createProcess({
+        id: 'may-10-2026',
+        eta: temporalDtoFromCanonical('2026-05-10T00:00:00.000Z'),
+        etaMsOrNull: Date.UTC(2026, 4, 10),
+      }),
+      createProcess({
+        id: 'apr-24-2026',
+        eta: temporalDtoFromCanonical('2026-04-24T00:00:00.000Z'),
+        etaMsOrNull: Date.UTC(2026, 3, 24),
+      }),
+      createProcess({
+        id: 'apr-02-2026',
+        eta: temporalDtoFromCanonical('2026-04-02T00:00:00.000Z'),
+        etaMsOrNull: Date.UTC(2026, 3, 2),
+      }),
+      createProcess({
+        id: 'may-08-2026',
+        eta: temporalDtoFromCanonical('2026-05-08T00:00:00.000Z'),
+        etaMsOrNull: Date.UTC(2026, 4, 8),
+      }),
+      createProcess({
+        id: 'dec-31-2025',
+        eta: temporalDtoFromCanonical('2025-12-31T00:00:00.000Z'),
+        etaMsOrNull: Date.UTC(2025, 11, 31),
+      }),
+    ] as const
+
+    const ascResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'asc' })
+    const descResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'desc' })
+
+    expect(ascResult.map((process) => process.id)).toEqual([
+      'dec-31-2025',
+      'apr-02-2026',
+      'apr-24-2026',
+      'may-08-2026',
+      'may-10-2026',
+    ])
+    expect(descResult.map((process) => process.id)).toEqual([
+      'may-10-2026',
+      'may-08-2026',
+      'apr-24-2026',
+      'apr-02-2026',
+      'dec-31-2025',
+    ])
+  })
+
+  it('keeps null ETA values last and deterministic even when multiple rows are null', () => {
+    const baseline = [
+      createProcess({
+        id: 'eta-null-newer',
+        eta: null,
+        etaMsOrNull: null,
+        lastEventAt: temporalDtoFromCanonical('2025-03-02T00:00:00.000Z'),
+        reference: 'REF-3',
+      }),
+      createProcess({
+        id: 'eta-with-value',
+        eta: temporalDtoFromCanonical('2026-05-08T00:00:00.000Z'),
+        etaMsOrNull: Date.UTC(2026, 4, 8),
+        lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
+        reference: 'REF-2',
+      }),
+      createProcess({
+        id: 'eta-null-older',
+        eta: null,
+        etaMsOrNull: null,
+        lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z'),
+        reference: 'REF-1',
+      }),
+    ] as const
+
+    const ascResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'asc' })
+    const descResult = sortDashboardProcesses(baseline, { field: 'eta', direction: 'desc' })
+
+    expect(ascResult.map((process) => process.id)).toEqual([
+      'eta-with-value',
+      'eta-null-newer',
+      'eta-null-older',
+    ])
+    expect(descResult.map((process) => process.id)).toEqual([
+      'eta-with-value',
+      'eta-null-newer',
+      'eta-null-older',
+    ])
   })
 
   it('uses createdAt descending as tie-break when primary field values are equal', () => {
