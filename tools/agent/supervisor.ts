@@ -243,6 +243,15 @@ function resolveFallbackRuntimeEntrypoint(scriptDir: string): string {
   throw new Error('could not resolve fallback runtime entrypoint for supervisor')
 }
 
+function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
+  const loaderPath = path.resolve(path.dirname(scriptPath), 'runtime', 'alias-loader.js')
+  if (!fs.existsSync(loaderPath) || !fs.statSync(loaderPath).isFile()) {
+    return []
+  }
+
+  return ['--loader', loaderPath]
+}
+
 function findPackageJsonPath(startDir: string): string | null {
   let current = startDir
 
@@ -320,6 +329,7 @@ async function runChildWithHealthGate(command: {
   const platformAdapter = resolvePlatformAdapter()
   const child = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
+    execArgv: resolveRuntimeExecArgv(command.scriptPath),
     env: command.env,
     stdio: 'pipe',
   })
@@ -405,6 +415,7 @@ async function runChildWithoutHealthGate(command: {
   const platformAdapter = resolvePlatformAdapter()
   const child = platformAdapter.startRuntime({
     scriptPath: command.scriptPath,
+    execArgv: resolveRuntimeExecArgv(command.scriptPath),
     env: command.env,
     stdio: 'pipe',
   })

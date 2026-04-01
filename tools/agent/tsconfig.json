@@ -21,6 +21,7 @@
     "./runtime-health.ts",
     "./runtime-paths.ts",
     "./runtime/paths.ts",
+    "./runtime/alias-loader.ts",
     "./runtime/lifecycle-exit-codes.ts",
     "./pending-activity.ts",
     "./supervisor-control.ts",
