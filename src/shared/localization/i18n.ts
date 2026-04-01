@@ -23,6 +23,7 @@ type TranslationApiOptions = {
 const flatDictionary: TranslationFlatDictionary = flatten(ptBR)
 const translate = translator(() => flatDictionary, resolveTemplate)
 const warnedMissingKeys = new Set<string>()
+const keyProxyCache = new Map<string, TranslationKeys>()
 
 function isTemplateValue(value: unknown): value is string | number | boolean {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
@@ -54,8 +55,14 @@ function isTranslationLeafKey(key: string): key is TranslationLeafKey {
   return typeof flatDictionary[key] === 'string'
 }
 
-function createKeyProxy<T extends object>(path = ''): T {
-  return new Proxy<T>(Object.create(null), {
+// Reuse proxies by path so repeated key access does not allocate in render paths.
+function createKeyProxy(path = ''): TranslationKeys {
+  const cachedProxy = keyProxyCache.get(path)
+  if (cachedProxy !== undefined) {
+    return cachedProxy
+  }
+
+  const proxy = new Proxy(Object.create(null), {
     get(_target, property) {
       if (typeof property !== 'string') {
         return undefined
@@ -70,9 +77,12 @@ function createKeyProxy<T extends object>(path = ''): T {
       return createKeyProxy(nextPath)
     },
   })
+
+  keyProxyCache.set(path, proxy)
+  return proxy
 }
 
-const keys = createKeyProxy<TranslationKeys>()
+const keys = createKeyProxy()
 const locale = () => DEFAULT_LOCALE
 
 function warnMissingKey(key: string): void {

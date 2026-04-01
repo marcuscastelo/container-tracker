@@ -4,7 +4,8 @@ export type UiTheme = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'theme'
 const THEME_TRANSITION_CLASS = 'theme-transitioning'
-const THEME_TRANSITION_DURATION_MS = 220
+const THEME_TRANSITION_DURATION_CSS_VAR = '--theme-transition-duration-ms'
+const THEME_TRANSITION_DURATION_FALLBACK_MS = 220
 
 const DEFAULT_THEME: UiTheme = 'light'
 
@@ -72,6 +73,24 @@ function disableThemeTransitionClass(): void {
   document.documentElement.classList.remove(THEME_TRANSITION_CLASS)
 }
 
+function readThemeTransitionDurationMs(): number {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return THEME_TRANSITION_DURATION_FALLBACK_MS
+  }
+
+  if (typeof window.getComputedStyle !== 'function') {
+    return THEME_TRANSITION_DURATION_FALLBACK_MS
+  }
+
+  const rawValue = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(THEME_TRANSITION_DURATION_CSS_VAR)
+    .trim()
+
+  const parsedValue = Number.parseFloat(rawValue)
+  return Number.isFinite(parsedValue) ? parsedValue : THEME_TRANSITION_DURATION_FALLBACK_MS
+}
+
 function scheduleThemeTransitionCleanup(): void {
   if (typeof window === 'undefined') {
     return
@@ -80,7 +99,7 @@ function scheduleThemeTransitionCleanup(): void {
   clearThemeTransitionTimeout()
   themeTransitionTimeoutId = window.setTimeout(() => {
     disableThemeTransitionClass()
-  }, THEME_TRANSITION_DURATION_MS)
+  }, readThemeTransitionDurationMs())
 }
 
 function prefersReducedMotion(): boolean {

@@ -13,6 +13,13 @@ describe('shared localization', () => {
     expect(t(keys.header.alertsBadge, { count: 3 })).toBe('3 Alertas')
   })
 
+  it('memoizes nested key proxies', () => {
+    const { keys } = createTranslationApi({ devMode: true })
+
+    expect(keys.header).toBe(keys.header)
+    expect(keys.header.theme).toBe(keys.header.theme)
+  })
+
   it('returns a visible fallback and warns once in dev mode', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { t } = createTranslationApi({ devMode: true })
