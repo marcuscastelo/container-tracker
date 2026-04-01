@@ -565,11 +565,13 @@ export function toProcessDetailResponse(
   }
 
   const alertIncidentsReadModel = buildShipmentAlertIncidentsReadModel({
-    containers: [...containerNumberByContainerId.entries()].map(([containerId, containerNumber]) => ({
-      containerId,
-      containerNumber,
-      alerts: alertsByContainerId.get(containerId) ?? [],
-    })),
+    containers: [...containerNumberByContainerId.entries()].map(
+      ([containerId, containerNumber]) => ({
+        containerId,
+        containerNumber,
+        alerts: alertsByContainerId.get(containerId) ?? [],
+      }),
+    ),
   })
 
   return {

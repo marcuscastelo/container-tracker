@@ -16,9 +16,7 @@ function makeTransshipmentAlert(command: {
   readonly lifecycleState?: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
 }): TrackingAlert {
   return {
-    ...(command.lifecycleState === undefined
-      ? {}
-      : { lifecycle_state: command.lifecycleState }),
+    ...(command.lifecycleState === undefined ? {} : { lifecycle_state: command.lifecycleState }),
     id: command.id,
     container_id: command.containerId,
     category: 'fact',
@@ -57,9 +55,7 @@ function makeNoMovementAlert(command: {
   readonly lifecycleState?: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
 }): TrackingAlert {
   return {
-    ...(command.lifecycleState === undefined
-      ? {}
-      : { lifecycle_state: command.lifecycleState }),
+    ...(command.lifecycleState === undefined ? {} : { lifecycle_state: command.lifecycleState }),
     id: command.id,
     container_id: command.containerId,
     category: 'monitoring',
@@ -95,9 +91,7 @@ function makeCustomsHoldAlert(command: {
   readonly lifecycleState?: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
 }): TrackingAlert {
   return {
-    ...(command.lifecycleState === undefined
-      ? {}
-      : { lifecycle_state: command.lifecycleState }),
+    ...(command.lifecycleState === undefined ? {} : { lifecycle_state: command.lifecycleState }),
     id: command.id,
     container_id: command.containerId,
     category: 'fact',
@@ -179,6 +173,7 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     expect(result.summary.activeIncidentCount).toBe(1)
     expect(result.summary.affectedContainerCount).toBe(3)
     expect(result.active[0]?.type).toBe('TRANSSHIPMENT')
+    expect(result.active[0]?.incidentKey).toBe('TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA')
     expect(result.active[0]?.affectedContainerCount).toBe(3)
     expect(result.active[0]?.transshipmentOrder).toBe(1)
     expect(result.active[0]?.members.map((member) => member.containerNumber)).toEqual([
@@ -325,8 +320,97 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     expect(result.active[0]?.thresholdDays).toBe(30)
     expect(result.active[0]?.activeAlertIds).toEqual(['alert-30d'])
     expect(result.active[0]?.monitoringHistory.map((record) => record.thresholdDays)).toEqual([
-      20,
-      30,
+      20, 30,
+    ])
+  })
+
+  it('keeps repeated no-movement thresholds from different cycles as separate incidents', () => {
+    const result = buildShipmentAlertIncidentsReadModel({
+      containers: [
+        {
+          containerId: 'container-1',
+          containerNumber: 'MSDU1652364',
+          alerts: [
+            makeNoMovementAlert({
+              id: 'alert-cycle-1',
+              containerId: 'container-1',
+              thresholdDays: 30,
+              daysWithoutMovement: 30,
+              lastEventDate: '2026-02-28',
+              triggeredAt: '2026-03-30T12:00:00.000Z',
+              cycleFingerprint: 'cycle-1',
+              lifecycleState: 'ACTIVE',
+            }),
+            makeNoMovementAlert({
+              id: 'alert-cycle-2',
+              containerId: 'container-1',
+              thresholdDays: 30,
+              daysWithoutMovement: 30,
+              lastEventDate: '2026-03-31',
+              triggeredAt: '2026-04-30T12:00:00.000Z',
+              cycleFingerprint: 'cycle-2',
+              lifecycleState: 'ACTIVE',
+            }),
+          ],
+        },
+      ],
+    })
+
+    expect(result.active).toHaveLength(2)
+    expect(result.active.map((incident) => incident.incidentKey).sort()).toEqual([
+      'NO_MOVEMENT:30:fp:cycle-1',
+      'NO_MOVEMENT:30:fp:cycle-2',
+    ])
+  })
+
+  it('sorts monitoring history ties by latest alert action time first', () => {
+    const result = buildShipmentAlertIncidentsReadModel({
+      containers: [
+        {
+          containerId: 'container-1',
+          containerNumber: 'MSDU1652364',
+          alerts: [
+            makeNoMovementAlert({
+              id: 'alert-older-action',
+              containerId: 'container-1',
+              thresholdDays: 20,
+              daysWithoutMovement: 20,
+              lastEventDate: '2026-02-28',
+              triggeredAt: '2026-03-20T12:00:00.000Z',
+              cycleFingerprint: 'cycle-1',
+              ackedAt: '2026-03-21T12:00:00.000Z',
+              lifecycleState: 'ACKED',
+            }),
+            makeNoMovementAlert({
+              id: 'alert-newer-action',
+              containerId: 'container-1',
+              thresholdDays: 20,
+              daysWithoutMovement: 20,
+              lastEventDate: '2026-02-28',
+              triggeredAt: '2026-03-20T13:00:00.000Z',
+              cycleFingerprint: 'cycle-1',
+              ackedAt: '2026-03-22T12:00:00.000Z',
+              lifecycleState: 'ACKED',
+            }),
+            makeNoMovementAlert({
+              id: 'alert-active',
+              containerId: 'container-1',
+              thresholdDays: 30,
+              daysWithoutMovement: 30,
+              lastEventDate: '2026-02-28',
+              triggeredAt: '2026-03-30T12:00:00.000Z',
+              cycleFingerprint: 'cycle-1',
+              lifecycleState: 'ACTIVE',
+            }),
+          ],
+        },
+      ],
+    })
+
+    expect(result.active[0]?.monitoringHistory.map((record) => record.alertId)).toEqual([
+      'alert-newer-action',
+      'alert-older-action',
+      'alert-active',
     ])
   })
 
@@ -369,7 +453,10 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
 
     expect(result.summary.activeIncidentCount).toBe(0)
     expect(result.summary.recognizedIncidentCount).toBe(2)
-    expect(result.recognized.map((incident) => incident.bucket)).toEqual(['recognized', 'recognized'])
+    expect(result.recognized.map((incident) => incident.bucket)).toEqual([
+      'recognized',
+      'recognized',
+    ])
     expect(
       result.recognized
         .flatMap((incident) => incident.members.map((member) => member.lifecycleState))

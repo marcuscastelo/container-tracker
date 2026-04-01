@@ -183,7 +183,6 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
           activeAlerts={activeAlerts}
           alertIncidents={alertIncidents}
           busyAlertIds={alertActions.busyAlertIds}
-          collapsingAlertIds={alertActions.collapsingAlertIds}
           onAcknowledgeAlert={alertActions.acknowledgeAlerts}
           onUnacknowledgeAlert={alertActions.unacknowledgeAlerts}
           isRefreshing={refresh.isRefreshing}

@@ -2,72 +2,92 @@ import { describe, expect, it } from 'vitest'
 import { mergeTrackingFieldsIntoShipment } from '~/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 
-function buildShipmentDetailVm(
-  overrides: Partial<ShipmentDetailVM> = {},
-): ShipmentDetailVM {
+function buildDefaultProcessEtaSecondaryVm(): ShipmentDetailVM['processEtaSecondaryVm'] {
   return {
-    id: overrides.id ?? 'process-1',
-    processRef: overrides.processRef ?? 'REF-1',
-    reference: overrides.reference ?? 'REF-1',
-    carrier: overrides.carrier ?? 'MSC',
-    bill_of_lading: overrides.bill_of_lading ?? null,
-    booking_number: overrides.booking_number ?? null,
-    importer_name: overrides.importer_name ?? 'Importer',
-    exporter_name: overrides.exporter_name ?? 'Exporter',
-    reference_importer: overrides.reference_importer ?? null,
-    product: overrides.product ?? 'Product',
-    redestination_number: overrides.redestination_number ?? null,
-    origin: overrides.origin ?? 'Shanghai',
-    destination: overrides.destination ?? 'Santos',
-    status: overrides.status ?? 'in-transit',
-    statusCode: overrides.statusCode ?? 'IN_TRANSIT',
-    statusMicrobadge: overrides.statusMicrobadge ?? null,
-    eta: 'eta' in overrides ? (overrides.eta ?? null) : '2026-04-10',
-    processEtaSecondaryVm: overrides.processEtaSecondaryVm ?? {
-      visible: true,
-      date: '2026-04-10',
-      withEta: 1,
-      total: 2,
-      incomplete: true,
+    visible: true,
+    date: '2026-04-10',
+    withEta: 1,
+    total: 2,
+    incomplete: true,
+  }
+}
+
+function buildDefaultAlertIncidents(): ShipmentDetailVM['alertIncidents'] {
+  return {
+    summary: {
+      activeIncidents: 1,
+      affectedContainers: 1,
+      recognizedIncidents: 0,
     },
-    containers: overrides.containers ?? [],
-    alerts: overrides.alerts ?? [],
-    alertIncidents: overrides.alertIncidents ?? {
-      summary: {
-        activeIncidents: 1,
-        affectedContainers: 1,
-        recognizedIncidents: 0,
-      },
-      active: [
-        {
-          incidentKey: 'incident-active',
-          bucket: 'active',
-          category: 'movement',
-          type: 'TRANSSHIPMENT',
-          severity: 'warning',
-          messageKey: 'alerts.transshipmentDetected',
-          messageParams: {
-            port: 'KRPUS',
-            fromVessel: 'MSC IRIS',
-            toVessel: 'MSC BIANCA SILVIA',
-          },
-          triggeredAtIso: '2026-04-01T10:00:00.000Z',
-          thresholdDays: null,
-          daysWithoutMovement: null,
-          lastEventDate: null,
-          transshipmentOrder: 1,
+    active: [
+      {
+        incidentKey: 'incident-active',
+        bucket: 'active',
+        category: 'movement',
+        type: 'TRANSSHIPMENT',
+        severity: 'warning',
+        messageKey: 'alerts.transshipmentDetected',
+        messageParams: {
           port: 'KRPUS',
           fromVessel: 'MSC IRIS',
           toVessel: 'MSC BIANCA SILVIA',
-          affectedContainerCount: 1,
-          activeAlertIds: ['alert-active'],
-          ackedAlertIds: [],
-          members: [],
-          monitoringHistory: [],
         },
-      ],
-      recognized: [],
-    },
+        triggeredAtIso: '2026-04-01T10:00:00.000Z',
+        thresholdDays: null,
+        daysWithoutMovement: null,
+        lastEventDate: null,
+        transshipmentOrder: 1,
+        port: 'KRPUS',
+        fromVessel: 'MSC IRIS',
+        toVessel: 'MSC BIANCA SILVIA',
+        affectedContainerCount: 1,
+        activeAlertIds: ['alert-active'],
+        ackedAlertIds: [],
+        members: [],
+        monitoringHistory: [],
+      },
+    ],
+    recognized: [],
+  }
+}
+
+function buildDefaultShipmentDetailVm(): ShipmentDetailVM {
+  return {
+    id: 'process-1',
+    processRef: 'REF-1',
+    reference: 'REF-1',
+    carrier: 'MSC',
+    bill_of_lading: null,
+    booking_number: null,
+    importer_name: 'Importer',
+    exporter_name: 'Exporter',
+    reference_importer: null,
+    product: 'Product',
+    redestination_number: null,
+    origin: 'Shanghai',
+    destination: 'Santos',
+    status: 'in-transit',
+    statusCode: 'IN_TRANSIT',
+    statusMicrobadge: null,
+    eta: '2026-04-10',
+    processEtaSecondaryVm: buildDefaultProcessEtaSecondaryVm(),
+    containers: [],
+    alerts: [],
+    alertIncidents: buildDefaultAlertIncidents(),
+  }
+}
+
+function buildShipmentDetailVm(overrides: Partial<ShipmentDetailVM> = {}): ShipmentDetailVM {
+  const defaults = buildDefaultShipmentDetailVm()
+
+  return {
+    ...defaults,
+    ...overrides,
+    eta: 'eta' in overrides ? (overrides.eta ?? null) : defaults.eta,
+    processEtaSecondaryVm: overrides.processEtaSecondaryVm ?? defaults.processEtaSecondaryVm,
+    containers: overrides.containers ?? defaults.containers,
+    alerts: overrides.alerts ?? defaults.alerts,
+    alertIncidents: overrides.alertIncidents ?? defaults.alertIncidents,
   }
 }
 

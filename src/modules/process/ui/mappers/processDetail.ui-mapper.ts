@@ -1,10 +1,10 @@
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import { toAlertIncidentsVm } from '~/modules/process/ui/mappers/alertIncident.ui-mapper'
 import {
   createNeverContainerSyncVM,
   normalizeContainerNumber,
   toContainerSyncVM,
 } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
-import { toAlertIncidentsVm } from '~/modules/process/ui/mappers/alertIncident.ui-mapper'
 import {
   processStatusToVariant,
   toProcessStatusCode,

@@ -13,8 +13,8 @@ import { TrackingTimeTravelDiffSummary } from '~/modules/process/ui/screens/ship
 import { TrackingTimeTravelStatusPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelStatusPanel'
 import { TrackingTimeTravelTimelinePanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelTimelinePanel'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
-import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
+import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import type { Instant } from '~/shared/time/instant'
@@ -24,7 +24,6 @@ type ShipmentDataViewProps = {
   readonly activeAlerts: readonly AlertDisplayVM[]
   readonly alertIncidents: AlertIncidentsVM
   readonly busyAlertIds: ReadonlySet<string>
-  readonly collapsingAlertIds: ReadonlySet<string>
   readonly onAcknowledgeAlert: (alertIds: readonly string[]) => void
   readonly onUnacknowledgeAlert: (alertIds: readonly string[]) => void
   readonly onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
@@ -41,10 +40,8 @@ type ShipmentDataViewProps = {
 
 type ShipmentCurrentAlertsSectionProps = Pick<
   ShipmentDataViewProps,
-  | 'activeAlerts'
   | 'alertIncidents'
   | 'busyAlertIds'
-  | 'collapsingAlertIds'
   | 'onAcknowledgeAlert'
   | 'onUnacknowledgeAlert'
   | 'onSelectContainer'
@@ -193,10 +190,8 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
 
       <Show when={!isHistoricalMode()}>
         <ShipmentCurrentAlertsSection
-          activeAlerts={props.activeAlerts}
           alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
-          collapsingAlertIds={props.collapsingAlertIds}
           onAcknowledgeAlert={props.onAcknowledgeAlert}
           onUnacknowledgeAlert={props.onUnacknowledgeAlert}
           onSelectContainer={props.onSelectContainer}

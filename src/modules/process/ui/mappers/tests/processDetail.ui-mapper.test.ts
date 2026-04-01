@@ -11,7 +11,7 @@ function requireAt<T>(items: readonly T[], index: number): T {
   return item
 }
 
-describe('toShipmentDetailVM', () => {
+describe('toShipmentDetailVM base mapping', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-1',
@@ -172,7 +172,9 @@ describe('toShipmentDetailVM', () => {
     expect(firstAlert.containerNumber).toBe('MSCU1234567')
     expect(firstAlert.messageKey).toBe('alerts.transshipmentDetected')
   })
+})
 
+describe('toShipmentDetailVM tracking mapping', () => {
   it('maps compact shipment alert incidents when the additive payload is present', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-incident',

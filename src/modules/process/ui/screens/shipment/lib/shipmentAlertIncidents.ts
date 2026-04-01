@@ -4,6 +4,7 @@ import type {
 } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 
 export type ShipmentAlertIncidentFilter = 'all' | AlertIncidentCategoryVM
+export type AlertsPanelEmptyStateKind = 'activeEmpty' | 'emptyFiltered'
 
 function compareSeverity(
   left: AlertIncidentVM['severity'],
@@ -52,4 +53,47 @@ export function countAffectedContainers(incidents: readonly AlertIncidentVM[]): 
   }
 
   return containerIds.size
+}
+
+export function toAlertsPanelEmptyStateKind(command: {
+  readonly hasVisibleActiveIncidents: boolean
+  readonly hasAnyActiveIncidents: boolean
+}): AlertsPanelEmptyStateKind | null {
+  if (command.hasVisibleActiveIncidents) return null
+  return command.hasAnyActiveIncidents ? 'emptyFiltered' : 'activeEmpty'
+}
+
+function toTransshipmentRouteSignature(incident: AlertIncidentVM): string | null {
+  if (incident.type !== 'TRANSSHIPMENT') return null
+  if (incident.port === null || incident.fromVessel === null || incident.toVessel === null) {
+    return null
+  }
+
+  return [incident.port, incident.fromVessel, incident.toVessel].join('|')
+}
+
+export function toDuplicateTransshipmentIncidentKeys(
+  incidents: readonly AlertIncidentVM[],
+): ReadonlySet<string> {
+  const keys = new Set<string>()
+  const countsByRouteSignature = new Map<string, number>()
+
+  for (const incident of incidents) {
+    const routeSignature = toTransshipmentRouteSignature(incident)
+    if (routeSignature === null) continue
+
+    countsByRouteSignature.set(
+      routeSignature,
+      (countsByRouteSignature.get(routeSignature) ?? 0) + 1,
+    )
+  }
+
+  for (const incident of incidents) {
+    const routeSignature = toTransshipmentRouteSignature(incident)
+    if (routeSignature === null) continue
+    if ((countsByRouteSignature.get(routeSignature) ?? 0) < 2) continue
+    keys.add(incident.incidentKey)
+  }
+
+  return keys
 }

@@ -158,15 +158,13 @@ function toAlertRecord(alert: TrackingAlert): ShipmentAlertIncidentRecordReadMod
 function toRepresentativeRecords<TAlert extends TrackingAlert>(
   alerts: readonly TAlert[],
 ): readonly ShipmentAlertIncidentRecordReadModel[] {
-  return [...alerts]
-    .map(toAlertRecord)
-    .sort((left, right) => {
-      const thresholdCompare = (left.thresholdDays ?? -1) - (right.thresholdDays ?? -1)
-      if (thresholdCompare !== 0) return thresholdCompare
-      const triggeredAtCompare = left.triggeredAt.localeCompare(right.triggeredAt)
-      if (triggeredAtCompare !== 0) return triggeredAtCompare
-      return left.alertId.localeCompare(right.alertId)
-    })
+  return [...alerts].map(toAlertRecord).sort((left, right) => {
+    const thresholdCompare = (left.thresholdDays ?? -1) - (right.thresholdDays ?? -1)
+    if (thresholdCompare !== 0) return thresholdCompare
+    const triggeredAtCompare = left.triggeredAt.localeCompare(right.triggeredAt)
+    if (triggeredAtCompare !== 0) return triggeredAtCompare
+    return left.alertId.localeCompare(right.alertId)
+  })
 }
 
 function toMessageParams(
@@ -275,7 +273,9 @@ function toLatestTriggeredAt(members: readonly PendingShipmentAlertIncidentMembe
   return latest
 }
 
-function toLatestLastEventDate(members: readonly PendingShipmentAlertIncidentMember[]): string | null {
+function toLatestLastEventDate(
+  members: readonly PendingShipmentAlertIncidentMember[],
+): string | null {
   const latest = [...members]
     .map((member) => member.lastEventDate)
     .filter((value): value is string => value !== null)
@@ -294,7 +294,7 @@ function toMonitoringHistory(
       if (thresholdCompare !== 0) return thresholdCompare
       const lastEventCompare = (left.lastEventDate ?? '').localeCompare(right.lastEventDate ?? '')
       if (lastEventCompare !== 0) return lastEventCompare
-      return compareAlertRecordsByActionTimeDesc(right, left)
+      return compareAlertRecordsByActionTimeDesc(left, right)
     })
 }
 
@@ -472,7 +472,7 @@ function buildNoMovementMembers(
     group.push(alert)
   }
 
-  return [...groupedByCycle.values()].map((alerts) => {
+  return [...groupedByCycle.entries()].map(([cycleKey, alerts]) => {
     const activeAlerts = alerts.filter((alert) => toLifecycleState(alert) === 'ACTIVE')
     const candidateAlerts = activeAlerts.length > 0 ? activeAlerts : alerts
     const representative = [...candidateAlerts].sort((left, right) => {
@@ -496,7 +496,7 @@ function buildNoMovementMembers(
     const lifecycleState = toMemberLifecycleState(records)
 
     return {
-      incidentKey: `NO_MOVEMENT:${representative.message_params.threshold_days}`,
+      incidentKey: `NO_MOVEMENT:${representative.message_params.threshold_days}:${cycleKey}`,
       category: 'status',
       type: 'NO_MOVEMENT',
       severity: representative.severity,
@@ -598,7 +598,10 @@ function toIncidentBucket(
   return members.some((member) => member.lifecycleState === 'ACTIVE') ? 'active' : 'recognized'
 }
 
-function compareIncidentMembersByContainer(left: PendingShipmentAlertIncidentMember, right: PendingShipmentAlertIncidentMember): number {
+function compareIncidentMembersByContainer(
+  left: PendingShipmentAlertIncidentMember,
+  right: PendingShipmentAlertIncidentMember,
+): number {
   const containerCompare = left.containerNumber.localeCompare(right.containerNumber)
   if (containerCompare !== 0) return containerCompare
   return left.containerId.localeCompare(right.containerId)
@@ -650,13 +653,13 @@ export function buildShipmentAlertIncidentsReadModel(
     group.push(member)
   }
 
-  const incidents = [...groupedByIncidentKey.entries()].map(([groupedIncidentKey, members]) => {
+  const incidents = [...groupedByIncidentKey.entries()].map(([_groupedIncidentKey, members]) => {
     const sortedMembers = [...members].sort(compareIncidentMembersByContainer)
     const representativeMember = toRepresentativeMember(sortedMembers)
     const bucket = toIncidentBucket(sortedMembers)
 
     return {
-      incidentKey: groupedIncidentKey,
+      incidentKey: representativeMember.incidentKey,
       bucket,
       category: representativeMember.category,
       type: representativeMember.type,
