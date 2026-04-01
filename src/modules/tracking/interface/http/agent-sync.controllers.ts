@@ -14,6 +14,7 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 type AgentAuthIdentity = {
   readonly tenantId: string
   readonly agentId: string
+  readonly capabilities: readonly string[]
 }
 
 type ContainerLookupRecord = {
@@ -58,6 +59,7 @@ export type AgentSyncControllersDeps = {
     readonly limit: number
     readonly leaseMinutes: number
     readonly includeOwnedActiveLeases: boolean
+    readonly processableProviders: readonly Provider[]
   }) => Promise<readonly SyncRequestRow[]>
   readonly findLeasedSyncRequest: (command: {
     readonly tenantId: string
@@ -126,6 +128,19 @@ function normalizeContainerNumber(value: string): string {
 
 function normalizeCarrierCode(value: string): string {
   return value.toLowerCase().trim()
+}
+
+function toProcessableProviders(capabilities: readonly string[]): readonly Provider[] {
+  const providers = new Set<Provider>()
+
+  for (const capability of capabilities) {
+    if (capability === 'maersk') providers.add('maersk')
+    if (capability === 'msc') providers.add('msc')
+    if (capability === 'cmacgm') providers.add('cmacgm')
+    if (capability === 'pil') providers.add('pil')
+  }
+
+  return [...providers]
 }
 
 async function ensureAgentAuth(
@@ -208,12 +223,14 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       }
 
       const runtimeAgentId = getAgentId(request)
+      const processableProviders = toProcessableProviders(authResult.capabilities)
       const leased = await deps.leaseSyncRequests({
         tenantId: parsedQuery.data.tenant_id,
         agentId: authResult.agentId,
         limit: parsedQuery.data.limit,
         leaseMinutes: deps.leaseMinutes,
         includeOwnedActiveLeases: parsedQuery.data.recover_owned_leases,
+        processableProviders,
       })
 
       const queueLagSeconds = await deps.getTenantQueueLagSeconds({

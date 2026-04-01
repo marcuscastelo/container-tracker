@@ -53,6 +53,7 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
     authenticateAgentToken: vi.fn(async () => ({
       tenantId: TENANT_ID,
       agentId: AGENT_ID,
+      capabilities: ['msc', 'cmacgm', 'pil'],
     })),
     getTenantQueueLagSeconds: vi.fn(async () => 12),
     updateAgentRuntimeState: vi.fn(async () => undefined),
@@ -113,6 +114,7 @@ describe('agent sync controllers', () => {
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         agentId: AGENT_ID,
+        capabilities: ['msc'],
       })),
     })
     const controllers = createAgentSyncControllers(deps)
@@ -160,6 +162,7 @@ describe('agent sync controllers', () => {
       limit: 1,
       leaseMinutes: 5,
       includeOwnedActiveLeases: false,
+      processableProviders: ['msc', 'cmacgm', 'pil'],
     })
   })
 
@@ -187,6 +190,40 @@ describe('agent sync controllers', () => {
       limit: 1,
       leaseMinutes: 5,
       includeOwnedActiveLeases: true,
+      processableProviders: ['msc', 'cmacgm', 'pil'],
+    })
+  })
+
+  it('passes only processable providers derived from authenticated agent capabilities', async () => {
+    const deps = createDeps({
+      authenticateAgentToken: vi.fn(async () => ({
+        tenantId: TENANT_ID,
+        agentId: AGENT_ID,
+        capabilities: ['msc', 'custom-capability'],
+      })),
+      leaseSyncRequests: vi.fn(async () => []),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request(
+      `http://localhost/api/agent/targets?tenant_id=${TENANT_ID}&limit=1`,
+      {
+        headers: {
+          authorization: 'Bearer token-123',
+          'x-agent-id': 'agent-1',
+        },
+      },
+    )
+    const response = await controllers.getTargets({ request })
+
+    expect(response.status).toBe(200)
+    expect(deps.leaseSyncRequests).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+      limit: 1,
+      leaseMinutes: 5,
+      includeOwnedActiveLeases: false,
+      processableProviders: ['msc'],
     })
   })
 
@@ -229,6 +266,7 @@ describe('agent sync controllers', () => {
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         agentId: AGENT_ID,
+        capabilities: ['msc'],
       })),
     })
     const controllers = createAgentSyncControllers(deps)
