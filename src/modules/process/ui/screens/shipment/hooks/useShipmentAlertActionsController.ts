@@ -27,7 +27,9 @@ type ShipmentAlertActionsControllerResult = {
   readonly alertActionError: Accessor<string | null>
   readonly clearAlertActionError: () => void
   readonly acknowledgeAlert: (alertId: string) => Promise<void> // i18n-enforce-ignore
+  readonly acknowledgeAlerts: (alertIds: readonly string[]) => Promise<void> // i18n-enforce-ignore
   readonly unacknowledgeAlert: (alertId: string) => Promise<void> // i18n-enforce-ignore
+  readonly unacknowledgeAlerts: (alertIds: readonly string[]) => Promise<void> // i18n-enforce-ignore
 }
 
 const EMPTY_ALERT_IDS: ReadonlySet<string> = new Set()
@@ -45,35 +47,65 @@ export function useShipmentAlertActionsController(
     setAlertActionError(null)
   })
 
-  const handleAcknowledgeAlert = async (alertId: string) => {
-    if (busyAlertIds().has(alertId)) return
+  const handleAcknowledgeAlerts = async (alertIds: readonly string[]) => {
+    const uniqueAlertIds = [...new Set(alertIds.map((alertId) => alertId.trim()).filter(Boolean))]
+    if (uniqueAlertIds.length === 0) return
+    if (uniqueAlertIds.some((alertId) => busyAlertIds().has(alertId))) return
+
     setAlertActionError(null)
-    setBusyAlertIds((prev) => withSetEntry(prev, alertId))
+    setBusyAlertIds((prev) => {
+      let next = prev
+      for (const alertId of uniqueAlertIds) {
+        next = withSetEntry(next, alertId)
+      }
+      return next
+    })
 
     try {
-      await acknowledgeShipmentAlert(alertId)
+      await Promise.all(uniqueAlertIds.map((alertId) => acknowledgeShipmentAlert(alertId)))
       await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to acknowledge alert:', err)
       setAlertActionError(t(keys.shipmentView.alerts.action.errorAcknowledge))
     } finally {
-      setBusyAlertIds((prev) => withoutSetEntry(prev, alertId))
+      setBusyAlertIds((prev) => {
+        let next = prev
+        for (const alertId of uniqueAlertIds) {
+          next = withoutSetEntry(next, alertId)
+        }
+        return next
+      })
     }
   }
 
-  const handleUnacknowledgeAlert = async (alertId: string) => {
-    if (busyAlertIds().has(alertId)) return
+  const handleUnacknowledgeAlerts = async (alertIds: readonly string[]) => {
+    const uniqueAlertIds = [...new Set(alertIds.map((alertId) => alertId.trim()).filter(Boolean))]
+    if (uniqueAlertIds.length === 0) return
+    if (uniqueAlertIds.some((alertId) => busyAlertIds().has(alertId))) return
+
     setAlertActionError(null)
-    setBusyAlertIds((prev) => withSetEntry(prev, alertId))
+    setBusyAlertIds((prev) => {
+      let next = prev
+      for (const alertId of uniqueAlertIds) {
+        next = withSetEntry(next, alertId)
+      }
+      return next
+    })
 
     try {
-      await unacknowledgeShipmentAlert(alertId)
+      await Promise.all(uniqueAlertIds.map((alertId) => unacknowledgeShipmentAlert(alertId)))
       await command.reconcileTrackingView()
     } catch (err) {
       console.error('Failed to unacknowledge alert:', err)
       setAlertActionError(t(keys.shipmentView.alerts.action.errorUnacknowledge))
     } finally {
-      setBusyAlertIds((prev) => withoutSetEntry(prev, alertId))
+      setBusyAlertIds((prev) => {
+        let next = prev
+        for (const alertId of uniqueAlertIds) {
+          next = withoutSetEntry(next, alertId)
+        }
+        return next
+      })
     }
   }
 
@@ -82,7 +114,9 @@ export function useShipmentAlertActionsController(
     collapsingAlertIds: () => EMPTY_ALERT_IDS,
     alertActionError,
     clearAlertActionError: () => setAlertActionError(null),
-    acknowledgeAlert: handleAcknowledgeAlert,
-    unacknowledgeAlert: handleUnacknowledgeAlert,
+    acknowledgeAlert: (alertId: string) => handleAcknowledgeAlerts([alertId]),
+    acknowledgeAlerts: handleAcknowledgeAlerts,
+    unacknowledgeAlert: (alertId: string) => handleUnacknowledgeAlerts([alertId]),
+    unacknowledgeAlerts: handleUnacknowledgeAlerts,
   }
 }

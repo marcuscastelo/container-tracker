@@ -255,6 +255,12 @@ describe('process controllers', () => {
         resolved_reason: null,
       },
     ])
+    expect(body.alert_incidents?.summary).toEqual({
+      active_incidents: 1,
+      affected_containers: 1,
+      recognized_incidents: 0,
+    })
+    expect(body.alert_incidents?.active[0]?.members[0]?.container_number).toBe('MSCU1234567')
   })
 
   it('returns process detail with container operational and process coverage', async () => {

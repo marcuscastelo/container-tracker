@@ -1,3 +1,4 @@
+import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
@@ -119,4 +120,5 @@ export type ShipmentDetailVM = {
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
   readonly containers: readonly ContainerDetailVM[]
   readonly alerts: readonly AlertDisplayVM[]
+  readonly alertIncidents: AlertIncidentsVM
 }

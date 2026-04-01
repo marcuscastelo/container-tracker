@@ -46,6 +46,15 @@ function makeShipment(containers: ShipmentDetailVM['containers']): ShipmentDetai
     },
     containers,
     alerts: [],
+    alertIncidents: {
+      summary: {
+        activeIncidents: 0,
+        affectedContainers: 0,
+        recognizedIncidents: 0,
+      },
+      active: [],
+      recognized: [],
+    },
   }
 }
 

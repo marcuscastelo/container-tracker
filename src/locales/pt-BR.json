@@ -448,8 +448,49 @@
       "archived": {
         "title": "Reconhecidos ({{count}})"
       },
+      "incidents": {
+        "filters": {
+          "all": "Todos",
+          "movement": "Movement",
+          "eta": "ETA",
+          "customs": "Customs",
+          "data": "Data",
+          "status": "Status"
+        },
+        "summary": {
+          "activeLine": "{{incidents}} incidentes ativos · {{containers}} containers afetados",
+          "noMovement": "{{count}} containers afetados · último evento mais recente: {{date}}"
+        },
+        "emptyFiltered": "Nenhum incidente corresponde ao filtro atual.",
+        "title": {
+          "noMovementThreshold": "Sem movimentação há {{days}} dias"
+        },
+        "preview": {
+          "containers": "{{count}} containers: {{containers}}",
+          "withRemaining": "{{preview}} +{{count}}"
+        },
+        "expand": "Expandir",
+        "collapse": "Recolher",
+        "lifecycle": {
+          "active": "Ativo",
+          "acknowledged": "Reconhecido",
+          "autoResolved": "Auto-resolvido"
+        },
+        "details": {
+          "containers": "Containers",
+          "history": "Histórico de thresholds",
+          "transshipmentOrder": "Etapa de transbordo",
+          "location": "Local",
+          "fromVessel": "Origem",
+          "toVessel": "Destino",
+          "lastEvent": "Último evento",
+          "thresholdReachedOn": "atingido com último evento em {{date}}"
+        }
+      },
       "action": {
         "acknowledge": "Reconhecer",
+        "acknowledgeContainer": "Reconhecer para esse container",
+        "acknowledgeIncident": "Reconhecer para os {{count}} containers",
         "acknowledgeAria": "Reconhecer alerta",
         "unacknowledge": "Reativar",
         "unacknowledgeAria": "Reativar alerta",

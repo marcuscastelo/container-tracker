@@ -13,6 +13,7 @@ import { TrackingTimeTravelDiffSummary } from '~/modules/process/ui/screens/ship
 import { TrackingTimeTravelStatusPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelStatusPanel'
 import { TrackingTimeTravelTimelinePanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelTimelinePanel'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
+import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -21,11 +22,11 @@ import type { Instant } from '~/shared/time/instant'
 type ShipmentDataViewProps = {
   readonly data: ShipmentDetailVM
   readonly activeAlerts: readonly AlertDisplayVM[]
-  readonly archivedAlerts: readonly AlertDisplayVM[]
+  readonly alertIncidents: AlertIncidentsVM
   readonly busyAlertIds: ReadonlySet<string>
   readonly collapsingAlertIds: ReadonlySet<string>
-  readonly onAcknowledgeAlert: (alertId: string) => void
-  readonly onUnacknowledgeAlert: (alertId: string) => void
+  readonly onAcknowledgeAlert: (alertIds: readonly string[]) => void
+  readonly onUnacknowledgeAlert: (alertIds: readonly string[]) => void
   readonly onOpenEdit: (focus?: 'reference' | 'carrier' | null | undefined) => void
   readonly isRefreshing: boolean
   readonly refreshRetry: { readonly current: number; readonly total: number } | null
@@ -41,11 +42,12 @@ type ShipmentDataViewProps = {
 type ShipmentCurrentAlertsSectionProps = Pick<
   ShipmentDataViewProps,
   | 'activeAlerts'
-  | 'archivedAlerts'
+  | 'alertIncidents'
   | 'busyAlertIds'
   | 'collapsingAlertIds'
   | 'onAcknowledgeAlert'
   | 'onUnacknowledgeAlert'
+  | 'onSelectContainer'
 >
 
 function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps): JSX.Element {
@@ -64,12 +66,11 @@ function ShipmentCurrentAlertsSection(props: ShipmentCurrentAlertsSectionProps):
         }}
       >
         <AlertsPanel
-          activeAlerts={props.activeAlerts}
-          archivedAlerts={props.archivedAlerts}
+          alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
-          collapsingAlertIds={props.collapsingAlertIds}
           onAcknowledge={props.onAcknowledgeAlert}
           onUnacknowledge={props.onUnacknowledgeAlert}
+          onSelectContainer={props.onSelectContainer}
         />
       </ErrorBoundary>
     </div>
@@ -193,11 +194,12 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
       <Show when={!isHistoricalMode()}>
         <ShipmentCurrentAlertsSection
           activeAlerts={props.activeAlerts}
-          archivedAlerts={props.archivedAlerts}
+          alertIncidents={props.alertIncidents}
           busyAlertIds={props.busyAlertIds}
           collapsingAlertIds={props.collapsingAlertIds}
           onAcknowledgeAlert={props.onAcknowledgeAlert}
           onUnacknowledgeAlert={props.onUnacknowledgeAlert}
+          onSelectContainer={props.onSelectContainer}
         />
       </Show>
 

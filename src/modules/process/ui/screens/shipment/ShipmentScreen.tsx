@@ -15,10 +15,7 @@ import { useShipmentRefreshController } from '~/modules/process/ui/screens/shipm
 import { useShipmentScreenResource } from '~/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource'
 import { useShipmentSelectedContainer } from '~/modules/process/ui/screens/shipment/hooks/useShipmentSelectedContainer'
 import { useTrackingTimeTravelController } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
-import {
-  toSortedActiveAlerts,
-  toSortedArchivedAlerts,
-} from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
+import { toSortedActiveAlerts } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
@@ -113,10 +110,20 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
     return toSortedActiveAlerts(data.alerts)
   })
 
-  const archivedAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
+  const alertIncidents = createMemo(() => {
     const data = resource.latestShipment()
-    if (!data) return []
-    return toSortedArchivedAlerts(data.alerts)
+    if (!data) {
+      return {
+        summary: {
+          activeIncidents: 0,
+          affectedContainers: 0,
+          recognizedIncidents: 0,
+        },
+        active: [],
+        recognized: [],
+      }
+    }
+    return data.alertIncidents
   })
 
   // ── Dashboard prefetch intent ──────────────────────────────────────────────
@@ -174,11 +181,11 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
         <ShipmentContainersView
           shipmentData={resource.latestShipment}
           activeAlerts={activeAlerts}
-          archivedAlerts={archivedAlerts}
+          alertIncidents={alertIncidents}
           busyAlertIds={alertActions.busyAlertIds}
           collapsingAlertIds={alertActions.collapsingAlertIds}
-          onAcknowledgeAlert={alertActions.acknowledgeAlert}
-          onUnacknowledgeAlert={alertActions.unacknowledgeAlert}
+          onAcknowledgeAlert={alertActions.acknowledgeAlerts}
+          onUnacknowledgeAlert={alertActions.unacknowledgeAlerts}
           isRefreshing={refresh.isRefreshing}
           refreshRetry={refresh.refreshRetry}
           refreshHint={refresh.refreshHint}

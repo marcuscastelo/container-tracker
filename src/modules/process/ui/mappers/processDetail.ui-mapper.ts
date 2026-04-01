@@ -4,6 +4,7 @@ import {
   normalizeContainerNumber,
   toContainerSyncVM,
 } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
+import { toAlertIncidentsVm } from '~/modules/process/ui/mappers/alertIncident.ui-mapper'
 import {
   processStatusToVariant,
   toProcessStatusCode,
@@ -326,5 +327,6 @@ export function toShipmentDetailVM(
     processEtaSecondaryVm,
     containers,
     alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),
+    alertIncidents: toAlertIncidentsVm(data.alert_incidents),
   }
 }

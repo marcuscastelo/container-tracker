@@ -21,6 +21,23 @@ type ShipmentScreenResourceResult = {
   readonly reconcileTrackingView: () => Promise<void>
 }
 
+export function mergeTrackingFieldsIntoShipment(
+  current: ShipmentDetailVM,
+  latest: ShipmentDetailVM,
+): ShipmentDetailVM {
+  return {
+    ...current,
+    status: latest.status,
+    statusCode: latest.statusCode,
+    statusMicrobadge: latest.statusMicrobadge,
+    eta: latest.eta,
+    processEtaSecondaryVm: latest.processEtaSecondaryVm,
+    containers: latest.containers,
+    alerts: latest.alerts,
+    alertIncidents: latest.alertIncidents,
+  }
+}
+
 export function useShipmentScreenResource(
   command: UseShipmentScreenResourceCommand,
 ): ShipmentScreenResourceResult {
@@ -96,15 +113,7 @@ export function useShipmentScreenResource(
     }
 
     // Keep non-tracking process metadata and update only fields derived from tracking.
-    mutate({
-      ...current,
-      status: latest.status,
-      statusCode: latest.statusCode,
-      statusMicrobadge: latest.statusMicrobadge,
-      eta: latest.eta,
-      containers: latest.containers,
-      alerts: latest.alerts,
-    })
+    mutate(mergeTrackingFieldsIntoShipment(current, latest))
   }
 
   return {

@@ -8,10 +8,7 @@ import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataVi
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
-import {
-  toSortedActiveAlerts,
-  toSortedArchivedAlerts,
-} from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
+import { toSortedActiveAlerts } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
@@ -361,12 +358,6 @@ function ShipmentPreview(props: {
     return toSortedActiveAlerts(shipment.alerts)
   })
 
-  const archivedAlerts = createMemo(() => {
-    const shipment = props.shipment
-    if (!shipment) return []
-    return toSortedArchivedAlerts(shipment.alerts)
-  })
-
   const selectedContainer = createMemo(() => {
     const shipment = props.shipment
     if (!shipment) return null
@@ -394,7 +385,7 @@ function ShipmentPreview(props: {
             <ShipmentDataView
               data={shipment()}
               activeAlerts={activeAlerts()}
-              archivedAlerts={archivedAlerts()}
+              alertIncidents={shipment().alertIncidents}
               busyAlertIds={new Set<string>()}
               collapsingAlertIds={new Set<string>()}
               onAcknowledgeAlert={() => {}}
