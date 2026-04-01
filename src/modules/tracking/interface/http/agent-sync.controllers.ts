@@ -57,6 +57,7 @@ export type AgentSyncControllersDeps = {
     readonly agentId: string
     readonly limit: number
     readonly leaseMinutes: number
+    readonly includeOwnedActiveLeases: boolean
   }) => Promise<readonly SyncRequestRow[]>
   readonly findLeasedSyncRequest: (command: {
     readonly tenantId: string
@@ -195,6 +196,7 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
       const parsedQuery = GetAgentTargetsQuerySchema.safeParse({
         tenant_id: url.searchParams.get('tenant_id'),
         limit: url.searchParams.get('limit') ?? undefined,
+        recover_owned_leases: url.searchParams.get('recover_owned_leases') ?? undefined,
       })
 
       if (!parsedQuery.success) {
@@ -211,6 +213,7 @@ export function createAgentSyncControllers(deps: AgentSyncControllersDeps) {
         agentId: authResult.agentId,
         limit: parsedQuery.data.limit,
         leaseMinutes: deps.leaseMinutes,
+        includeOwnedActiveLeases: parsedQuery.data.recover_owned_leases,
       })
 
       const queueLagSeconds = await deps.getTenantQueueLagSeconds({

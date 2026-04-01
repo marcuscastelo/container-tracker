@@ -33,12 +33,13 @@ function parseSyncRequestRow(raw: unknown): SyncRequestRow {
 
 export function bootstrapAgentSyncControllers(): AgentSyncControllers {
   return createAgentSyncControllers({
-    async leaseSyncRequests({ tenantId, agentId, limit, leaseMinutes }) {
+    async leaseSyncRequests({ tenantId, agentId, limit, leaseMinutes, includeOwnedActiveLeases }) {
       const result = await supabaseServer.rpc('lease_sync_requests', {
         p_tenant_id: tenantId,
         p_agent_id: agentId,
         p_limit: limit,
         p_lease_minutes: leaseMinutes,
+        p_include_owned_active_leases: includeOwnedActiveLeases,
       })
 
       const data = unwrapSupabaseResultOrThrow(result, {

@@ -692,6 +692,7 @@ export type Database = {
       lease_sync_requests: {
         Args: {
           p_agent_id: string
+          p_include_owned_active_leases?: boolean
           p_lease_minutes?: number
           p_limit?: number
           p_tenant_id: string

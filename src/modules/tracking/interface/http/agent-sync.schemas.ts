@@ -4,9 +4,26 @@ const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm', 'pil'])
 
 const SyncRequestStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
 
+const RecoverOwnedLeasesQuerySchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null) return undefined
+    if (typeof value !== 'string') return value
+
+    const normalized = value.trim().toLowerCase()
+    if (normalized === '1') return 'true'
+    if (normalized === '0') return 'false'
+    return normalized
+  },
+  z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+)
+
 export const GetAgentTargetsQuerySchema = z.object({
   tenant_id: z.string().uuid('tenant_id must be a UUID'),
   limit: z.coerce.number().int().min(1).max(100).default(10),
+  recover_owned_leases: RecoverOwnedLeasesQuerySchema,
 })
 
 const AgentTargetSchema = z.object({

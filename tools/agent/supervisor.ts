@@ -252,6 +252,10 @@ function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
   return ['--loader', loaderPath]
 }
 
+function areUpdateManifestChecksDisabled(env: NodeJS.ProcessEnv): boolean {
+  return normalizeOptionalEnv(env.AGENT_UPDATE_MANIFEST_CHANNEL)?.toLowerCase() === 'disabled'
+}
+
 function findPackageJsonPath(startDir: string): string | null {
   let current = startDir
 
@@ -474,6 +478,13 @@ async function main(): Promise<void> {
   ensureAgentPathLayout(layout)
   clearSupervisorControl(layout.supervisorControlPath)
   appendSupervisorLog(layout.logsDir, 'supervisor started')
+  const updateManifestChecksDisabled = areUpdateManifestChecksDisabled(process.env)
+  if (updateManifestChecksDisabled) {
+    appendSupervisorLog(
+      layout.logsDir,
+      'automatic update checks disabled; forcing fallback runtime selection',
+    )
+  }
 
   let shuttingDown = false
   let supervisorExitCode = EXIT_OK
@@ -491,11 +502,17 @@ async function main(): Promise<void> {
     }
 
     let state = readReleaseState(layout.releaseStatePath, fallbackVersion)
-    releaseManager.ensureReleaseLinksForCurrentState({ layout, state })
+    if (!updateManifestChecksDisabled) {
+      releaseManager.ensureReleaseLinksForCurrentState({ layout, state })
+    }
 
     const nowIso = new Date().toISOString()
 
-    if (state.activation_state === 'pending' && state.target_version) {
+    if (
+      !updateManifestChecksDisabled &&
+      state.activation_state === 'pending' &&
+      state.target_version
+    ) {
       try {
         const targetVersion = state.target_version
         state = releaseManager.activateTargetRelease({
@@ -577,11 +594,17 @@ async function main(): Promise<void> {
     }
 
     state = readReleaseState(layout.releaseStatePath, fallbackVersion)
-    const runtimeSelection = releaseManager.resolveRuntimeEntrypoint({
-      layout,
-      fallbackEntrypoint,
-      expectedVersion: state.current_version,
-    })
+    const runtimeSelection = updateManifestChecksDisabled
+      ? {
+          version: fallbackVersion,
+          entrypointPath: fallbackEntrypoint,
+          source: 'fallback' as const,
+        }
+      : releaseManager.resolveRuntimeEntrypoint({
+          layout,
+          fallbackEntrypoint,
+          expectedVersion: state.current_version,
+        })
     appendSupervisorLog(
       layout.logsDir,
       `runtime selected source=${runtimeSelection.source} version=${runtimeSelection.version} entrypoint=${runtimeSelection.entrypointPath} activation_state=${state.activation_state}`,

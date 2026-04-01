@@ -19,7 +19,7 @@ import { fetchPilStatus } from '../../src/modules/tracking/infrastructure/carrie
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { createAgentScheduler } from './agent.scheduler.ts'
+import { type AgentRunReason, createAgentScheduler } from './agent.scheduler.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { computeBackoffDelayMs } from './backoff.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -882,10 +882,17 @@ async function sendHeartbeatAndPersistHealth(command: {
   })
 }
 
-async function fetchTargets(config: RuntimeConfig, limit: number): Promise<TargetsResponse> {
+async function fetchTargets(
+  config: RuntimeConfig,
+  limit: number,
+  recoverOwnedLeases = false,
+): Promise<TargetsResponse> {
   const url = new URL('/api/agent/targets', config.BACKEND_URL)
   url.searchParams.set('tenant_id', config.TENANT_ID)
   url.searchParams.set('limit', String(limit))
+  if (recoverOwnedLeases) {
+    url.searchParams.set('recover_owned_leases', 'true')
+  }
 
   const response = await fetch(url, {
     method: 'GET',
@@ -1090,6 +1097,7 @@ async function runOnce(
   config: RuntimeConfig,
   agentVersion: string,
   state: AgentRuntimeState,
+  reason: AgentRunReason,
 ): Promise<readonly AgentRuntimeActivity[]> {
   const leaseBatchSize = 1
   let processed = 0
@@ -1099,8 +1107,17 @@ async function runOnce(
 
   while (processed < config.LIMIT) {
     const remaining = config.LIMIT - processed
-    const targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
-    const targets = targetsResponse.targets
+    let targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
+    let targets = targetsResponse.targets
+
+    if (targets.length === 0 && reason === 'startup' && processed === 0) {
+      targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining), true)
+      targets = targetsResponse.targets
+      if (targets.length > 0) {
+        console.log('[agent] recovered owned lease(s) on startup')
+      }
+    }
+
     state.queueLagSeconds = targetsResponse.queue_lag_seconds
 
     if (targets.length === 0) {
@@ -1482,7 +1499,7 @@ async function main(): Promise<void> {
 
   scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
-    runCycle: async () => {
+    runCycle: async (reason) => {
       const cycleActivities: AgentRuntimeActivity[] = []
 
       const controlState = supervisorControl.readSupervisorControl(supervisorPaths.controlPath)
@@ -1492,7 +1509,7 @@ async function main(): Promise<void> {
       }
 
       if (runtimeState.updateState !== 'draining') {
-        const runActivities = await runOnce(runtimeConfig, agentVersion, runtimeState)
+        const runActivities = await runOnce(runtimeConfig, agentVersion, runtimeState, reason)
         cycleActivities.push(...runActivities)
       } else {
         runtimeState.processingState = 'idle'
