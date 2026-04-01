@@ -6,7 +6,6 @@ import { createSignal, Show } from 'solid-js'
 import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
-import { LanguageSwitch } from '~/shared/ui/LanguageSwitch'
 import { NavbarAlertsButton } from '~/shared/ui/navbar-alerts/NavbarAlertsButton'
 
 type Props = {
@@ -201,10 +200,6 @@ function HeaderActions(props: {
         {...(props.onCreateProcess ? { onCreateProcess: props.onCreateProcess } : {})}
       />
       <NavbarAlertsButton />
-
-      <div class="flex items-center">
-        <LanguageSwitch />
-      </div>
       <ThemeToggleButton />
       <Show when={props.actionsSlot}>
         {(actionsSlot) => <div class="flex items-center gap-2">{actionsSlot()}</div>}

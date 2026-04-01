@@ -19,6 +19,10 @@ function flatten(obj, prefix = '') {
   return out
 }
 
+function looksLikeTranslationKey(candidate) {
+  return /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/.test(candidate)
+}
+
 async function findFiles(dir, exts = ['.ts', '.tsx', '.js', '.jsx']) {
   const entries = await readdir(dir, { withFileTypes: true })
   let files = []
@@ -31,36 +35,16 @@ async function findFiles(dir, exts = ['.ts', '.tsx', '.js', '.jsx']) {
 }
 
 async function main() {
-  const localesDir = path.join(process.cwd(), 'src', 'locales')
-  let localeFiles = []
+  const localeFile = path.join(process.cwd(), 'src', 'locales', 'pt-BR.json')
+  let referenceLocale
   try {
-    const all = await readdir(localesDir)
-    localeFiles = all.filter((f) => f.endsWith('.json')).map((f) => path.join(localesDir, f))
+    referenceLocale = new Set(flatten(await readJson(localeFile)))
   } catch (err) {
-    console.error('Could not read locales directory:', err.message)
+    console.error('Could not read reference locale:', err.message)
     process.exit(2)
   }
 
-  if (localeFiles.length === 0) {
-    console.error('No locale JSON files found in src/locales')
-    process.exit(2)
-  }
-
-  const locales = {}
-  for (const f of localeFiles) {
-    try {
-      const j = await readJson(f)
-      const name = path.basename(f, '.json')
-      locales[name] = new Set(flatten(j))
-    } catch (err) {
-      console.error('Failed parsing', f, err.message)
-      process.exit(2)
-    }
-  }
-
-  const refLocale = locales.en ? 'en' : Object.keys(locales)[0]
-  const refKeys = locales[refLocale]
-  console.log(`Reference locale: ${refLocale} (${refKeys.size} keys)`)
+  console.log(`Reference locale: pt-BR (${referenceLocale.size} keys)`)
 
   // scan code for used keys
   const srcDir = path.join(process.cwd(), 'src')
@@ -88,7 +72,7 @@ async function main() {
         // only consider values that look like i18n keys (contain a dot and at least
         // one alphabetic character). This avoids picking up timestamps like
         // '2026-01-15T10:00:00.000Z' which contain dots but are not i18n keys.
-        if (e[2]?.includes('.') && /[A-Za-z]/.test(e[2])) {
+        if (looksLikeTranslationKey(e[2])) {
           globalKeyMap[varName] = globalKeyMap[varName] || {}
           globalKeyMap[varName][e[1]] = e[2]
         }
@@ -148,7 +132,7 @@ async function main() {
       // only accept candidates that look like i18n keys (e.g. contain a dot and
       // at least one alphabetic character). This prevents accidental matching of
       // timestamps or numeric literals that include dots.
-      if (cand.includes('.') && /[A-Za-z]/.test(cand)) {
+      if (looksLikeTranslationKey(cand)) {
         markUsed(cand, file)
       }
     }
@@ -179,7 +163,7 @@ async function main() {
             const remaining = segments.slice(i + 1)
             // combined dotted key is remaining + prop
             const mapped = [...remaining, prop].filter(Boolean).join('.')
-            if (mapped) {
+            if (mapped && referenceLocale.has(mapped)) {
               markUsed(mapped, file)
             }
             break
@@ -210,37 +194,18 @@ async function main() {
         if (localKeysVars.has(seg)) {
           const remaining = segments.slice(i + 1)
           const mapped = [...remaining, prop].filter(Boolean).join('.')
-          if (mapped) markUsed(mapped, file)
+          if (mapped && referenceLocale.has(mapped)) markUsed(mapped, file)
           break
         }
       }
     }
   }
 
-  // report missing keys per locale
-  let totalMissing = 0
-  for (const [loc, keysSet] of Object.entries(locales)) {
-    if (loc === refLocale) continue
-    const missing = [...refKeys].filter((k) => !keysSet.has(k))
-    if (missing.length) {
-      console.error(`Locale '${loc}' is missing ${missing.length} keys compared to ${refLocale}:`)
-      for (const k of missing) console.error('  -', k)
-      totalMissing += missing.length
-    } else {
-      console.log(`Locale '${loc}': OK`)
-    }
-  }
-
-  // unused keys warnings (present in locale but not used anywhere)
-  const unused = {}
-  for (const [loc, keysSet] of Object.entries(locales)) {
-    const unusedKeys = [...keysSet].filter((k) => !usedKeys.has(k))
-    unused[loc] = unusedKeys
-    if (unusedKeys.length) {
-      console.warn(`Locale '${loc}' has ${unusedKeys.length} keys that appear unused:`)
-      for (const k of unusedKeys.slice(0, 50)) console.warn('  -', k)
-      if (unusedKeys.length > 50) console.warn(`  ...and ${unusedKeys.length - 50} more`)
-    }
+  const unusedKeys = [...referenceLocale].filter((key) => !usedKeys.has(key))
+  if (unusedKeys.length) {
+    console.warn(`Locale 'pt-BR' has ${unusedKeys.length} keys that appear unused:`)
+    for (const key of unusedKeys.slice(0, 50)) console.warn('  -', key)
+    if (unusedKeys.length > 50) console.warn(`  ...and ${unusedKeys.length - 50} more`)
   }
 
   // option: remove unused keys in-place from locale JSON files
@@ -277,36 +242,32 @@ async function main() {
       }
     }
 
-    for (const f of localeFiles) {
-      try {
-        const txt = await readFile(f, 'utf8')
-        const j = JSON.parse(txt)
-        const name = path.basename(f, '.json')
-        const toRemove = unused[name] || []
-        if (!toRemove.length) continue
+    try {
+      const txt = await readFile(localeFile, 'utf8')
+      const json = JSON.parse(txt)
 
-        // backup original file
-        await copyFile(f, `${f}.bak`)
-
-        for (const key of toRemove) {
-          const segs = key.split('.')
-          removeKeyAndPrune(j, segs)
-        }
-
-        // write back formatted JSON
-        await writeFile(f, `${JSON.stringify(j, null, 2)}\n`, 'utf8')
-        console.log(`Wrote ${f} (removed ${toRemove.length} keys). Backup at ${f}.bak`)
-      } catch (err) {
-        console.error('Failed to update', f, err.message)
+      if (unusedKeys.length > 0) {
+        await copyFile(localeFile, `${localeFile}.bak`)
       }
+
+      for (const key of unusedKeys) {
+        removeKeyAndPrune(json, key.split('.'))
+      }
+
+      await writeFile(localeFile, `${JSON.stringify(json, null, 2)}\n`, 'utf8')
+      console.log(
+        `Wrote ${localeFile} (removed ${unusedKeys.length} keys). Backup at ${localeFile}.bak`,
+      )
+    } catch (err) {
+      console.error('Failed to update', localeFile, err.message)
     }
   }
 
   // keys used in code but not present in reference
-  const usedButMissing = [...usedKeys].filter((k) => !refKeys.has(k))
+  const usedButMissing = [...usedKeys].filter((key) => !referenceLocale.has(key))
   if (usedButMissing.length) {
     console.warn(
-      `There are ${usedButMissing.length} keys used in code but not present in reference locale (${refLocale}):`,
+      `There are ${usedButMissing.length} keys used in code but not present in reference locale (pt-BR):`,
     )
     for (const k of usedButMissing.slice(0, 100)) {
       console.warn('  -', k)
@@ -318,12 +279,12 @@ async function main() {
   }
 
   console.log('Summary:')
-  console.log('  reference locale:', refLocale)
+  console.log('  reference locale:', 'pt-BR')
   console.log('  total files scanned:', files.length)
   console.log('  total usedKeys detected:', usedKeys.size)
-  console.log('  total missing keys:', totalMissing)
+  console.log('  total missing keys:', usedButMissing.length)
 
-  if (totalMissing > 0) process.exit(1)
+  if (usedButMissing.length > 0) process.exit(1)
 }
 
 main().catch((err) => {

@@ -4,6 +4,8 @@ Status: Accepted
 Date: 2026-03-11  
 Owner: UI Architecture
 
+Last updated: 2026-03-31
+
 ---
 
 # Context
@@ -235,7 +237,6 @@ Implemented in:
 - `src/entry-client.tsx`
 - `src/shared/ui/theme.css`
 - `src/shared/ui/AppHeader.tsx`
-- `src/shared/ui/LanguageSwitch.tsx`
 - `src/modules/process/ui/components/DashboardRefreshButton.tsx`
 - `src/modules/process/ui/components/SyncCell.tsx`
 - `src/modules/process/ui/components/DashboardProcessTable.tsx`
@@ -245,9 +246,7 @@ Implemented in:
 
 Locale updates for theme labels:
 
-- `src/locales/en-US.json`
 - `src/locales/pt-BR.json`
-- `src/locales/pt-PT.json`
 
 Result:
 

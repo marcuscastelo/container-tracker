@@ -12,11 +12,7 @@ The system must prioritize operational awareness and high information density.
 
 LANGUAGE
 
-Interface language default: English
-
-Include a language toggle in the top navigation bar:
-
-EN | PT-BR
+Interface language default: pt-BR
 
 The interface should be designed so that labels can be translated easily.
 
@@ -79,10 +75,6 @@ Sync button
 Primary button:
 
 Create Process
-
-Language toggle:
-
-🌐 EN | PT-BR
 
 DASHBOARD PAGE
 
