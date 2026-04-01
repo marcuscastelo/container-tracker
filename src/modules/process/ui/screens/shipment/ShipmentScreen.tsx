@@ -9,6 +9,7 @@ import { ShipmentDialogsHost } from '~/modules/process/ui/screens/shipment/compo
 import { ShipmentRefreshStatusView } from '~/modules/process/ui/screens/shipment/components/ShipmentRefreshStatusView'
 import { ShipmentScreenLayout } from '~/modules/process/ui/screens/shipment/components/ShipmentScreenLayout'
 import { useShipmentAlertActionsController } from '~/modules/process/ui/screens/shipment/hooks/useShipmentAlertActionsController'
+import { useShipmentAlertNavigation } from '~/modules/process/ui/screens/shipment/hooks/useShipmentAlertNavigation'
 import { useShipmentDialogsController } from '~/modules/process/ui/screens/shipment/hooks/useShipmentDialogsController'
 import { useShipmentRefreshController } from '~/modules/process/ui/screens/shipment/hooks/useShipmentRefreshController'
 import { useShipmentScreenResource } from '~/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource'
@@ -22,7 +23,11 @@ import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/s
 import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
-import { scheduleDashboardPrefetch } from '~/shared/ui/navigation/app-navigation'
+import {
+  readProcessContainerNavigationState,
+  readProcessContainerNavigationStateFromSearch,
+  scheduleDashboardPrefetch,
+} from '~/shared/ui/navigation/app-navigation'
 
 type ShipmentScreenProps = {
   readonly processId: Accessor<string>
@@ -37,6 +42,11 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // props.processId is already an Accessor<string>; no extra createMemo indirection required
   const processId = () => props.processId()
+  const processContainerNavigationState = createMemo(() => {
+    const searchState = readProcessContainerNavigationStateFromSearch(location.search)
+    if (searchState !== null) return searchState
+    return readProcessContainerNavigationState(location.state)
+  })
 
   const preferredContainerNumber = createMemo(() =>
     normalizeSelectedContainerNumber(new URLSearchParams(location.search).get('container')),
@@ -56,6 +66,15 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   const trackingTimeTravel = useTrackingTimeTravelController({
     selectedContainer: selection.selectedContainer,
+  })
+
+  useShipmentAlertNavigation({
+    locationState: processContainerNavigationState,
+    shipment: resource.latestShipment,
+    preferredContainerNumber,
+    selectedContainer: selection.selectedContainer,
+    isTrackingTimeTravelActive: trackingTimeTravel.isActive,
+    closeTrackingTimeTravel: trackingTimeTravel.close,
   })
 
   // ── Refresh controller ─────────────────────────────────────────────────────

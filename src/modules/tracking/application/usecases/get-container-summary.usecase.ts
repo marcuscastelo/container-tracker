@@ -15,6 +15,7 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
 import type { Instant } from '~/shared/time/instant'
 
@@ -44,6 +45,11 @@ export type GetContainerSummaryResult = {
   readonly transshipment: TransshipmentInfo
   readonly alerts: readonly TrackingAlert[]
   readonly operational: TrackingOperationalSummary
+}
+
+type ContainerAlertsResult = {
+  readonly alerts: readonly TrackingAlert[]
+  readonly dataIssue: boolean
 }
 
 function hasCarrierLabel(value: string | null | undefined): value is string {
@@ -149,6 +155,38 @@ async function loadSnapshotsForCarrierLabelEnrichment(
   return allSnapshots.filter((snapshot) => neededSnapshotIds.has(snapshot.id))
 }
 
+async function loadContainerAlerts(
+  deps: TrackingUseCasesDeps,
+  cmd: GetContainerSummaryCommand,
+): Promise<ContainerAlertsResult> {
+  try {
+    const alerts = cmd.includeAcknowledgedAlerts
+      ? await deps.trackingAlertRepository.findByContainerId(cmd.containerId)
+      : await deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId)
+
+    return {
+      alerts,
+      dataIssue: false,
+    }
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.getContainerSummary.alerts_unavailable', {
+      containerId: cmd.containerId,
+      containerNumber: cmd.containerNumber,
+      includeAcknowledgedAlerts: cmd.includeAcknowledgedAlerts ?? false,
+      error: error.message,
+    })
+
+    return {
+      alerts: [],
+      dataIssue: true,
+    }
+  }
+}
+
 /**
  * Get the full tracking summary for a container.
  *
@@ -160,12 +198,9 @@ export async function getContainerSummary(
   cmd: GetContainerSummaryCommand,
 ): Promise<GetContainerSummaryResult> {
   const referenceNow = cmd.now ?? systemClock.now()
-  const includeAcknowledgedAlerts = cmd.includeAcknowledgedAlerts ?? false
-  const [observationsRaw, alerts] = await Promise.all([
+  const [observationsRaw, alertsResult] = await Promise.all([
     deps.observationRepository.findAllByContainerId(cmd.containerId),
-    includeAcknowledgedAlerts
-      ? deps.trackingAlertRepository.findByContainerId(cmd.containerId)
-      : deps.trackingAlertRepository.findActiveByContainerId(cmd.containerId),
+    loadContainerAlerts(deps, cmd),
   ])
 
   const snapshotIdsToEnrich = collectSnapshotIdsForCarrierLabelEnrichment(observationsRaw)
@@ -186,6 +221,7 @@ export async function getContainerSummary(
     transshipment,
     podLocationCode: cmd.podLocationCode ?? null,
     now: referenceNow,
+    dataIssue: alertsResult.dataIssue,
   })
 
   return {
@@ -195,7 +231,7 @@ export async function getContainerSummary(
     timeline,
     status,
     transshipment,
-    alerts,
+    alerts: alertsResult.alerts,
     operational,
   }
 }

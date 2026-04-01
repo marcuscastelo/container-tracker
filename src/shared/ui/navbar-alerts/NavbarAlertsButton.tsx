@@ -7,6 +7,7 @@ import { useNavbarAlerts } from '~/shared/ui/navbar-alerts/useNavbarAlerts'
 import {
   navigateToProcess,
   navigateToProcessContainer,
+  type ProcessContainerNavigationState,
 } from '~/shared/ui/navigation/app-navigation'
 
 export function NavbarAlertsButton(): JSX.Element {
@@ -15,6 +16,7 @@ export function NavbarAlertsButton(): JSX.Element {
   const navbarAlerts = useNavbarAlerts()
   const [isOpen, setIsOpen] = createSignal(false)
   const panelId = 'navbar-alerts-panel'
+  let containerNavigationRequestCounter = 0
   let rootRef: HTMLDivElement | undefined
 
   createEffect(() => {
@@ -71,10 +73,21 @@ export function NavbarAlertsButton(): JSX.Element {
 
   const openContainer = (processId: string, containerNumber: string) => {
     closePanel()
+
+    containerNavigationRequestCounter += 1
+    const navigationState: ProcessContainerNavigationState = {
+      source: 'navbar-alerts',
+      focusSection: 'current-status',
+      revealLiveStatus: true,
+      requestKey: `navbar-alert-${containerNavigationRequestCounter}`,
+    }
+
     navigateToProcessContainer({
       navigate,
       processId,
       containerNumber,
+      navigationState,
+      state: navigationState,
     })
   }
 
