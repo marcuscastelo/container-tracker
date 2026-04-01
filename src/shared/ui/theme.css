@@ -9,6 +9,7 @@
   --font-size-md-ui: 14px;
   --font-size-lg-ui: 18px;
   --font-size-xl-ui: 24px;
+  --theme-transition-duration-ms: 220ms;
 
   --color-background: #ffffff;
   --color-foreground: #0a0a0a;
