@@ -11,7 +11,11 @@ import {
 } from '~/capabilities/search/ui/search.vm'
 import { prefetchProcessDetail } from '~/modules/process/ui/fetchProcess'
 import { useTranslation } from '~/shared/localization/i18n'
-import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
+import {
+  navigateToProcess,
+  scheduleIntentPrefetch,
+  scheduleVisiblePrefetch,
+} from '~/shared/ui/navigation/app-navigation'
 
 const SEARCH_DEBOUNCE_MS = 180
 
@@ -127,10 +131,18 @@ export function SearchOverlay(): JSX.Element {
   )
 
   const prefetchResultIntent = (processId: string) => {
-    prefetchProcessIntent({
+    scheduleIntentPrefetch({
       processId,
       preloadRoute,
-      preloadData: () => prefetchProcessDetail(processId, locale()),
+      preloadData: (prefetchedProcessId) => prefetchProcessDetail(prefetchedProcessId, locale()),
+    })
+  }
+
+  const prefetchVisibleResults = (processIds: readonly string[]) => {
+    scheduleVisiblePrefetch({
+      processIds,
+      preloadRoute,
+      preloadData: (prefetchedProcessId) => prefetchProcessDetail(prefetchedProcessId, locale()),
     })
   }
 
@@ -192,6 +204,7 @@ export function SearchOverlay(): JSX.Element {
           prefetchResultIntent(item.processId)
         }
       }}
+      onVisibleResultPrefetch={prefetchVisibleResults}
       setInputRef={(element) => {
         inputRef = element
       }}

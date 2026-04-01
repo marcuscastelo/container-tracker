@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildDashboardHref,
   buildProcessContainerHref,
@@ -7,10 +7,19 @@ import {
   navigateToAppHref,
   navigateToProcess,
   navigateToProcessContainer,
-  prefetchDashboardIntent,
-  prefetchProcessIntent,
+  scheduleDashboardPrefetch,
+  scheduleIntentPrefetch,
+  scheduleVisiblePrefetch,
   toInternalAppPathname,
 } from '~/shared/ui/navigation/app-navigation'
+import {
+  resetNavigationPrefetchSchedulerForTests,
+  waitForNavigationPrefetchesToSettleForTests,
+} from '~/shared/ui/navigation/prefetch.scheduler'
+
+afterEach(() => {
+  resetNavigationPrefetchSchedulerForTests()
+})
 
 describe('app-navigation helpers', () => {
   it('builds dashboard href', () => {
@@ -76,66 +85,66 @@ describe('app-navigation helpers', () => {
     expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', undefined)
   })
 
-  it('prefetches process intent with throttle', async () => {
+  it('preloads process intent using the canonical route helper', async () => {
     const preloadRoute = vi.fn()
-    const preloadData = vi.fn(async () => undefined)
+    const preloadData = vi.fn(async (_processId: string) => undefined)
 
-    prefetchProcessIntent({
+    scheduleIntentPrefetch({
       processId: 'intent-process-1',
       preloadRoute,
       preloadData,
-      nowMs: 1_000,
-    })
-    prefetchProcessIntent({
-      processId: 'intent-process-1',
-      preloadRoute,
-      preloadData,
-      nowMs: 1_050,
-    })
-    prefetchProcessIntent({
-      processId: 'intent-process-1',
-      preloadRoute,
-      preloadData,
-      nowMs: 1_200,
     })
 
-    expect(preloadRoute).toHaveBeenCalledTimes(2)
-    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/shipments/intent-process-1', {
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(preloadRoute).toHaveBeenCalledTimes(1)
+    expect(preloadRoute).toHaveBeenCalledWith('/shipments/intent-process-1', {
       preloadData: true,
     })
-    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/shipments/intent-process-1', {
-      preloadData: true,
-    })
-    expect(preloadData).toHaveBeenCalledTimes(2)
+    expect(preloadData).toHaveBeenCalledTimes(1)
+    expect(preloadData).toHaveBeenCalledWith('intent-process-1')
   })
 
-  it('prefetches dashboard intent with throttle', async () => {
+  it('preloads visible processes using canonical route helpers', async () => {
     const preloadRoute = vi.fn()
-    const preloadData = vi.fn(async () => undefined)
+    const preloadData = vi.fn(async (_processId: string) => undefined)
 
-    prefetchDashboardIntent({
+    scheduleVisiblePrefetch({
+      processIds: ['visible-process-1', 'visible-process-1', 'visible-process-2'],
       preloadRoute,
       preloadData,
-      nowMs: 2_000,
     })
-    prefetchDashboardIntent({
-      preloadRoute,
-      preloadData,
-      nowMs: 2_050,
-    })
-    prefetchDashboardIntent({
-      preloadRoute,
-      preloadData,
-      nowMs: 2_200,
-    })
+
+    await waitForNavigationPrefetchesToSettleForTests()
 
     expect(preloadRoute).toHaveBeenCalledTimes(2)
-    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/', {
+    expect(preloadRoute).toHaveBeenNthCalledWith(1, '/shipments/visible-process-1', {
       preloadData: true,
     })
-    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/', {
+    expect(preloadRoute).toHaveBeenNthCalledWith(2, '/shipments/visible-process-2', {
       preloadData: true,
     })
     expect(preloadData).toHaveBeenCalledTimes(2)
+    expect(preloadData).toHaveBeenNthCalledWith(1, 'visible-process-1')
+    expect(preloadData).toHaveBeenNthCalledWith(2, 'visible-process-2')
+  })
+
+  it('preloads dashboard using the canonical route helper', async () => {
+    const preloadRoute = vi.fn()
+    const preloadData = vi.fn(async () => undefined)
+
+    scheduleDashboardPrefetch({
+      preloadRoute,
+      preloadData,
+      priority: 'intent',
+    })
+
+    await waitForNavigationPrefetchesToSettleForTests()
+
+    expect(preloadRoute).toHaveBeenCalledTimes(1)
+    expect(preloadRoute).toHaveBeenCalledWith('/', {
+      preloadData: true,
+    })
+    expect(preloadData).toHaveBeenCalledTimes(1)
   })
 })

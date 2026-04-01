@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router'
 import { Check, ChevronDown, ChevronUp, CircleAlert, OctagonX, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import {
   buildGridTemplate,
   type DashboardColumnDef,
@@ -31,7 +31,10 @@ import type {
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
-import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
+import {
+  buildProcessHref,
+  createViewportPrefetchController,
+} from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -54,6 +57,7 @@ type Props = {
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
   readonly onProcessIntent: (processId: string) => void
+  readonly onVisibleProcessesPrefetch: (processIds: readonly string[]) => void
 }
 
 type RowProps = {
@@ -91,6 +95,27 @@ const DASHBOARD_TABLE_SKELETON_ROW_KEYS = [
   'dashboard-row-skeleton-4',
   'dashboard-row-skeleton-5',
 ] as const
+
+function collectVisibleDashboardProcessIds(container: HTMLElement | undefined): readonly string[] {
+  if (!container || typeof window === 'undefined') return []
+
+  const viewportTop = 0
+  const viewportBottom = window.innerHeight
+  const rows = container.querySelectorAll<HTMLElement>('[data-dashboard-process-id]')
+  const visibleProcessIds: string[] = []
+
+  for (const row of rows) {
+    const processId = row.dataset.dashboardProcessId
+    if (!processId) continue
+
+    const rowRect = row.getBoundingClientRect()
+    if (rowRect.bottom <= viewportTop || rowRect.top >= viewportBottom) continue
+
+    visibleProcessIds.push(processId)
+  }
+
+  return visibleProcessIds
+}
 
 // ---------------------------------------------------------------------------
 // Severity helpers
@@ -285,7 +310,6 @@ type CellContext = {
   readonly process: ProcessSummaryVM
   readonly processHref: string
   readonly handleProcessLinkClick: (event: MouseEvent) => void
-  readonly triggerProcessIntent: () => void
   readonly t: (key: string, opts?: Record<string, unknown>) => string
   readonly keys: ReturnType<typeof useTranslation>['keys']
   readonly onProcessSync: (processId: string) => Promise<void>
@@ -298,9 +322,6 @@ function ProcessRefCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui font-semibold leading-tight tracking-[-0.01em] text-primary hover:text-primary-hover"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayProcessRef(ctx.process)}
       </A>
@@ -315,9 +336,6 @@ function CarrierCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)}
       </A>
@@ -332,9 +350,6 @@ function ImporterCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayTruncatedText(ctx.process.importerName)}
       </A>
@@ -349,9 +364,6 @@ function ExporterCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         {displayTruncatedText(ctx.process.exporterName)}
       </A>
@@ -363,14 +375,7 @@ function RouteCell(ctx: CellContext): JSX.Element {
   const route = () => displayRoute(ctx.process)
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py)">
-      <A
-        href={ctx.processHref}
-        class="row-link block"
-        onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
-      >
+      <A href={ctx.processHref} class="row-link block" onClick={ctx.handleProcessLinkClick}>
         <div class="flex min-w-0 items-center gap-1.5 text-xs-ui leading-tight text-text-muted">
           <span class="truncate">{route().origin}</span>
           <ArrowIcon />
@@ -407,9 +412,6 @@ function StatusCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link inline-flex max-w-full items-center"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         <div class="inline-flex max-w-full flex-col items-start leading-tight">
           <StatusBadge variant={primary().variant} label={primary().label} />
@@ -431,14 +433,7 @@ function StatusCell(ctx: CellContext): JSX.Element {
 function EtaCell(ctx: CellContext): JSX.Element {
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py) text-center">
-      <A
-        href={ctx.processHref}
-        class="row-link block"
-        onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
-      >
+      <A href={ctx.processHref} class="row-link block" onClick={ctx.handleProcessLinkClick}>
         <Show
           when={ctx.process.eta}
           fallback={<span class="text-xs-ui leading-tight text-text-muted">—</span>}
@@ -513,9 +508,6 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         href={ctx.processHref}
         class="row-link flex justify-center"
         onClick={ctx.handleProcessLinkClick}
-        onPointerEnter={ctx.triggerProcessIntent}
-        onFocusIn={ctx.triggerProcessIntent}
-        onPointerDown={ctx.triggerProcessIntent}
       >
         <Show
           when={dominantSeverity() !== 'none'}
@@ -617,7 +609,6 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     process: props.process,
     processHref: processHref(),
     handleProcessLinkClick,
-    triggerProcessIntent,
     t: translate,
     keys,
     onProcessSync: props.onProcessSync,
@@ -628,6 +619,7 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
     <div
       role="button"
       tabIndex={0}
+      data-dashboard-process-id={props.process.id}
       class={`grid min-h-(--dashboard-table-row-height) cursor-pointer items-center border-b border-border/50 bg-surface transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 last:border-b-0 ${getSeverityBorderClass(dominantSeverity())}`}
       style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
@@ -885,6 +877,12 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const [columnOrder, setColumnOrder] = createSignal<readonly DashboardColumnId[]>(
     readColumnOrderFromLocalStorage(),
   )
+  let tableSectionRef: HTMLElement | undefined
+
+  const viewportPrefetchController = createViewportPrefetchController({
+    collectVisibleKeys: () => collectVisibleDashboardProcessIds(tableSectionRef),
+    onVisibleKeysSettled: props.onVisibleProcessesPrefetch,
+  })
 
   const handleColumnReorder = (columnId: DashboardColumnId, targetIndex: number) => {
     const result = moveColumn(columnOrder(), columnId, targetIndex)
@@ -892,6 +890,33 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     setColumnOrder(result)
     writeColumnOrderToLocalStorage(result)
   }
+
+  onMount(() => {
+    const scheduleVisiblePrefetch = () => {
+      viewportPrefetchController.schedule()
+    }
+
+    window.addEventListener('scroll', scheduleVisiblePrefetch, { passive: true })
+    window.addEventListener('resize', scheduleVisiblePrefetch)
+
+    onCleanup(() => {
+      window.removeEventListener('scroll', scheduleVisiblePrefetch)
+      window.removeEventListener('resize', scheduleVisiblePrefetch)
+      viewportPrefetchController.dispose()
+    })
+  })
+
+  createEffect(() => {
+    const shouldScheduleViewportPrefetch =
+      !props.initialLoading && !props.hasError && props.processes.length > 0
+
+    if (!shouldScheduleViewportPrefetch) return
+
+    props.processes
+    queueMicrotask(() => {
+      viewportPrefetchController.schedule()
+    })
+  })
 
   const content = () => {
     if (props.initialLoading) {
@@ -944,6 +969,9 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
   return (
     <section
+      ref={(element) => {
+        tableSectionRef = element
+      }}
       class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]"
       aria-busy={props.initialLoading || props.refreshing}
     >

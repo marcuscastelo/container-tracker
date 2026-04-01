@@ -51,7 +51,11 @@ import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
-import { navigateToProcess, prefetchProcessIntent } from '~/shared/ui/navigation/app-navigation'
+import {
+  navigateToProcess,
+  scheduleIntentPrefetch,
+  scheduleVisiblePrefetch,
+} from '~/shared/ui/navigation/app-navigation'
 
 const DASHBOARD_CHART_TABLET_MIN_WIDTH = 768
 const DASHBOARD_CHART_DESKTOP_MIN_WIDTH = 1280
@@ -240,10 +244,18 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   }
 
   const handleProcessIntent = (processId: string) => {
-    prefetchProcessIntent({
+    scheduleIntentPrefetch({
       processId,
       preloadRoute,
-      preloadData: () => prefetchProcessDetail(processId, locale()),
+      preloadData: (prefetchedProcessId) => prefetchProcessDetail(prefetchedProcessId, locale()),
+    })
+  }
+
+  const handleVisibleProcessPrefetch = (processIds: readonly string[]) => {
+    scheduleVisiblePrefetch({
+      processIds,
+      preloadRoute,
+      preloadData: (prefetchedProcessId) => prefetchProcessDetail(prefetchedProcessId, locale()),
     })
   }
 
@@ -344,6 +356,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             onProcessSync={handleProcessSync}
             onOpenProcess={handleOpenProcess}
             onProcessIntent={handleProcessIntent}
+            onVisibleProcessesPrefetch={handleVisibleProcessPrefetch}
           />
         </main>
       </div>

@@ -24,7 +24,7 @@ import {
 import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
-import { prefetchDashboardIntent } from '~/shared/ui/navigation/app-navigation'
+import { scheduleDashboardPrefetch } from '~/shared/ui/navigation/app-navigation'
 
 type ShipmentScreenProps = {
   readonly processId: Accessor<string>
@@ -104,10 +104,11 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Dashboard prefetch intent ──────────────────────────────────────────────
   const handleDashboardIntent = () => {
-    prefetchDashboardIntent({
+    scheduleDashboardPrefetch({
       preloadRoute,
       preloadData: () =>
         Promise.all([prefetchDashboardProcessSummaries(), prefetchDashboardGlobalAlertsSummary()]),
+      priority: 'intent',
     })
   }
 
