@@ -4,6 +4,7 @@ import { BRANDING } from '~/shared/config/branding'
 import { env } from '~/shared/config/env'
 
 // TODO (SSR disabled): Quando habilitar SSR, implementar a inicialização server-side de
+// Issue URL: https://github.com/marcuscastelo/container-tracker/issues/255
 // localization e evitar uso de APIs do navegador neste arquivo. Checklist mínima ao habilitar SSR:
 // - Carregar o dicionário correspondente ao locale resolvido antes de renderizar.
 // - Detectar o locale do request (cookie, rota ou Accept-Language) sem acoplar isso ao app shell.
