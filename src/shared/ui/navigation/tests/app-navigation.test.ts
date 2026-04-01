@@ -7,6 +7,8 @@ import {
   navigateToAppHref,
   navigateToProcess,
   navigateToProcessContainer,
+  readProcessContainerNavigationState,
+  readProcessContainerNavigationStateFromSearch,
   scheduleDashboardPrefetch,
   scheduleIntentPrefetch,
   scheduleVisiblePrefetch,
@@ -21,7 +23,7 @@ afterEach(() => {
   resetNavigationPrefetchSchedulerForTests()
 })
 
-describe('app-navigation helpers', () => {
+describe('app-navigation href helpers', () => {
   it('builds dashboard href', () => {
     expect(buildDashboardHref()).toBe('/')
   })
@@ -33,6 +35,19 @@ describe('app-navigation helpers', () => {
   it('builds process href with container deep-link query', () => {
     expect(buildProcessContainerHref('process/with space', ' mscu1234567 ')).toBe(
       '/shipments/process%2Fwith%20space?container=MSCU1234567',
+    )
+  })
+
+  it('builds process href with shipment alert navigation query params', () => {
+    expect(
+      buildProcessContainerHref('process/with space', ' mscu1234567 ', {
+        source: 'navbar-alerts',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-alert-3',
+      }),
+    ).toBe(
+      '/shipments/process%2Fwith%20space?container=MSCU1234567&focus=current-status&focusRequest=navbar-alert-3',
     )
   })
 
@@ -85,6 +100,96 @@ describe('app-navigation helpers', () => {
     expect(navigate).toHaveBeenCalledWith('/shipments/p-abc?container=MSCU7654321', undefined)
   })
 
+  it('passes navigation state through process container deep-links when provided', () => {
+    const navigate = vi.fn()
+    navigateToProcessContainer({
+      navigate,
+      processId: 'p-abc',
+      containerNumber: 'mscu7654321',
+      navigationState: {
+        source: 'navbar-alerts',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-alert-1',
+      },
+      state: {
+        source: 'navbar-alerts',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-alert-1',
+      },
+    })
+
+    expect(navigate).toHaveBeenCalledWith(
+      '/shipments/p-abc?container=MSCU7654321&focus=current-status&focusRequest=navbar-alert-1',
+      {
+        state: {
+          source: 'navbar-alerts',
+          focusSection: 'current-status',
+          revealLiveStatus: true,
+          requestKey: 'navbar-alert-1',
+        },
+      },
+    )
+  })
+
+  it('reads valid process container navigation state from router state', () => {
+    expect(
+      readProcessContainerNavigationState({
+        source: 'navbar-alerts',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-alert-2',
+      }),
+    ).toEqual({
+      source: 'navbar-alerts',
+      focusSection: 'current-status',
+      revealLiveStatus: true,
+      requestKey: 'navbar-alert-2',
+    })
+  })
+
+  it('reads valid process container navigation state from url search params', () => {
+    expect(
+      readProcessContainerNavigationStateFromSearch(
+        '?container=MSCU1234567&focus=current-status&focusRequest=navbar-alert-4',
+      ),
+    ).toEqual({
+      source: 'navbar-alerts',
+      focusSection: 'current-status',
+      revealLiveStatus: true,
+      requestKey: 'navbar-alert-4',
+    })
+  })
+
+  it('rejects unrelated or malformed process container navigation state', () => {
+    expect(
+      readProcessContainerNavigationState({
+        source: 'search',
+        focusSection: 'current-status',
+        revealLiveStatus: true,
+        requestKey: 'navbar-alert-2',
+      }),
+    ).toBeNull()
+    expect(
+      readProcessContainerNavigationState({
+        source: 'navbar-alerts',
+        focusSection: 'current-status',
+        revealLiveStatus: false,
+        requestKey: 'navbar-alert-2',
+      }),
+    ).toBeNull()
+    expect(readProcessContainerNavigationState(null)).toBeNull()
+    expect(
+      readProcessContainerNavigationStateFromSearch('?container=MSCU1234567&focus=current-status'),
+    ).toBeNull()
+    expect(
+      readProcessContainerNavigationStateFromSearch('?container=MSCU1234567&focus=timeline'),
+    ).toBeNull()
+  })
+})
+
+describe('app-navigation prefetch helpers', () => {
   it('preloads process intent using the canonical route helper', async () => {
     const preloadRoute = vi.fn()
     const preloadData = vi.fn(async (_processId: string) => undefined)

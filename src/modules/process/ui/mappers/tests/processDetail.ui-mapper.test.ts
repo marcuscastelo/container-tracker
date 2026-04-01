@@ -11,7 +11,7 @@ function requireAt<T>(items: readonly T[], index: number): T {
   return item
 }
 
-describe('toShipmentDetailVM', () => {
+describe('toShipmentDetailVM base mapping', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-1',
@@ -171,6 +171,108 @@ describe('toShipmentDetailVM', () => {
     expect(firstAlert.ackedAtIso).toBeNull()
     expect(firstAlert.containerNumber).toBe('MSCU1234567')
     expect(firstAlert.messageKey).toBe('alerts.transshipmentDetected')
+  })
+})
+
+describe('toShipmentDetailVM tracking mapping', () => {
+  it('maps compact shipment alert incidents when the additive payload is present', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-incident',
+      reference: 'REF-INCIDENT',
+      origin: { display_name: 'Busan' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      bill_of_lading: null,
+      booking_number: null,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      containers: [
+        {
+          id: 'container-1',
+          container_number: 'FCIU2000205',
+          observations: [],
+        },
+      ],
+      containersSync: [],
+      alerts: [],
+      alert_incidents: {
+        summary: {
+          active_incidents: 1,
+          affected_containers: 1,
+          recognized_incidents: 0,
+        },
+        active: [
+          {
+            incident_key: 'TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA',
+            bucket: 'active',
+            category: 'movement',
+            type: 'TRANSSHIPMENT',
+            severity: 'warning',
+            message_key: 'alerts.transshipmentDetected',
+            message_params: {
+              port: 'KRPUS',
+              fromVessel: 'MSC IRIS',
+              toVessel: 'MSC BIANCA SILVIA',
+            },
+            detected_at: '2026-02-28T00:00:00.000Z',
+            triggered_at: '2026-03-30T10:01:00.000Z',
+            threshold_days: null,
+            days_without_movement: null,
+            last_event_date: null,
+            transshipment_order: 1,
+            port: 'KRPUS',
+            from_vessel: 'MSC IRIS',
+            to_vessel: 'MSC BIANCA SILVIA',
+            affected_container_count: 1,
+            active_alert_ids: ['alert-1'],
+            acked_alert_ids: [],
+            members: [
+              {
+                container_id: 'container-1',
+                container_number: 'FCIU2000205',
+                lifecycle_state: 'ACTIVE',
+                detected_at: '2026-02-28T00:00:00.000Z',
+                threshold_days: null,
+                days_without_movement: null,
+                last_event_date: null,
+                transshipment_order: 1,
+                port: 'KRPUS',
+                from_vessel: 'MSC IRIS',
+                to_vessel: 'MSC BIANCA SILVIA',
+                records: [
+                  {
+                    alert_id: 'alert-1',
+                    lifecycle_state: 'ACTIVE',
+                    detected_at: '2026-02-28T00:00:00.000Z',
+                    triggered_at: '2026-03-30T10:01:00.000Z',
+                    acked_at: null,
+                    resolved_at: null,
+                    resolved_reason: null,
+                    threshold_days: null,
+                    days_without_movement: null,
+                    last_event_date: null,
+                  },
+                ],
+              },
+            ],
+            monitoring_history: [],
+          },
+        ],
+        recognized: [],
+      },
+    }
+
+    const result = toShipmentDetailVM(example)
+    expect(result.alertIncidents.summary.activeIncidents).toBe(1)
+    expect(result.alertIncidents.active[0]?.incidentKey).toBe(
+      'TRANSSHIPMENT:1:KRPUS:MSC IRIS:MSC BIANCA SILVIA',
+    )
+    expect(result.alertIncidents.active[0]?.detectedAtIso).toBe('2026-02-28T00:00:00.000Z')
+    expect(result.alertIncidents.active[0]?.members[0]?.containerNumber).toBe('FCIU2000205')
+    expect(result.alertIncidents.active[0]?.members[0]?.detectedAtIso).toBe(
+      '2026-02-28T00:00:00.000Z',
+    )
   })
 
   it('maps container sync metadata by normalized container number', () => {

@@ -11,6 +11,7 @@ import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/a
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 import {
   instantFromIsoText,
   resolveTemporalValue,
@@ -280,5 +281,32 @@ describe('getContainerSummary', () => {
     ).not.toHaveBeenCalled()
     expect(result.alerts.length).toBe(2)
     expect(result.alerts.some((alert) => alert.acked_at !== null)).toBe(true)
+  })
+})
+
+describe('getContainerSummary alert resilience', () => {
+  it('keeps derived tracking data and marks dataIssue when alert reads fail', async () => {
+    const observation = makeObservation({
+      type: 'ARRIVAL',
+      carrierLabel: null,
+      createdFromSnapshotId: 'snapshot-1',
+      eventTime: '2026-02-14T10:00:00.000Z',
+      eventTimeType: 'EXPECTED',
+    })
+    const { deps } = createDeps([observation], [])
+
+    deps.trackingAlertRepository.findActiveByContainerId = vi.fn(async () => {
+      throw new InfrastructureError(
+        'Database error on tracking_alerts during findActiveByContainerId',
+      )
+    })
+
+    const result = await getContainerSummary(deps, makeCommand())
+
+    expect(result.status).toBe('IN_PROGRESS')
+    expect(result.timeline.observations).toHaveLength(1)
+    expect(result.alerts).toEqual([])
+    expect(result.operational.dataIssue).toBe(true)
+    expect(result.operational.eta?.eventTime.value).toBe('2026-02-14T10:00:00.000Z')
   })
 })

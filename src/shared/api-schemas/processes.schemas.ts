@@ -125,6 +125,89 @@ const ObservationResponseSchema = z.object({
 
 const TrackingAlertResponseSchema = AlertResponseDtoSchema
 
+const ShipmentAlertIncidentMessageParamsSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number()]),
+)
+
+const ShipmentAlertIncidentRecordResponseSchema = z.object({
+  alert_id: z.string(),
+  lifecycle_state: z.enum(['ACTIVE', 'ACKED', 'AUTO_RESOLVED']),
+  detected_at: z.string(),
+  triggered_at: z.string(),
+  acked_at: z.string().nullable(),
+  resolved_at: z.string().nullable(),
+  resolved_reason: z.enum(['condition_cleared', 'terminal_state']).nullable(),
+  threshold_days: z.number().nullable(),
+  days_without_movement: z.number().nullable(),
+  last_event_date: z.string().nullable(),
+})
+
+const ShipmentAlertIncidentMemberResponseSchema = z.object({
+  container_id: z.string(),
+  container_number: z.string(),
+  lifecycle_state: z.enum(['ACTIVE', 'ACKED', 'AUTO_RESOLVED']),
+  detected_at: z.string(),
+  threshold_days: z.number().nullable(),
+  days_without_movement: z.number().nullable(),
+  last_event_date: z.string().nullable(),
+  transshipment_order: z.number().int().nullable(),
+  port: z.string().nullable(),
+  from_vessel: z.string().nullable(),
+  to_vessel: z.string().nullable(),
+  records: z.array(ShipmentAlertIncidentRecordResponseSchema),
+})
+
+const ShipmentAlertIncidentResponseSchema = z.object({
+  incident_key: z.string(),
+  bucket: z.enum(['active', 'recognized']),
+  category: z.enum(['movement', 'eta', 'customs', 'status', 'data']),
+  type: z.enum([
+    'TRANSSHIPMENT',
+    'CUSTOMS_HOLD',
+    'PORT_CHANGE',
+    'NO_MOVEMENT',
+    'ETA_PASSED',
+    'ETA_MISSING',
+    'DATA_INCONSISTENT',
+  ]),
+  severity: z.enum(['info', 'warning', 'danger']),
+  message_key: z.enum([
+    'alerts.transshipmentDetected',
+    'alerts.customsHoldDetected',
+    'alerts.noMovementDetected',
+    'alerts.etaMissing',
+    'alerts.etaPassed',
+    'alerts.portChange',
+    'alerts.dataInconsistent',
+  ]),
+  message_params: ShipmentAlertIncidentMessageParamsSchema,
+  detected_at: z.string(),
+  triggered_at: z.string(),
+  threshold_days: z.number().nullable(),
+  days_without_movement: z.number().nullable(),
+  last_event_date: z.string().nullable(),
+  transshipment_order: z.number().int().nullable(),
+  port: z.string().nullable(),
+  from_vessel: z.string().nullable(),
+  to_vessel: z.string().nullable(),
+  affected_container_count: z.number().int().nonnegative(),
+  active_alert_ids: z.array(z.string()),
+  acked_alert_ids: z.array(z.string()),
+  members: z.array(ShipmentAlertIncidentMemberResponseSchema),
+  monitoring_history: z.array(ShipmentAlertIncidentRecordResponseSchema),
+})
+
+const ShipmentAlertIncidentsResponseSchema = z.object({
+  summary: z.object({
+    active_incidents: z.number().int().nonnegative(),
+    affected_containers: z.number().int().nonnegative(),
+    recognized_incidents: z.number().int().nonnegative(),
+  }),
+  active: z.array(ShipmentAlertIncidentResponseSchema),
+  recognized: z.array(ShipmentAlertIncidentResponseSchema),
+})
+
 const OperationalEtaResponseSchema = z.object({
   event_time: TemporalValueDtoSchema,
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
@@ -239,6 +322,8 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
   ),
   /** Tracking alerts for this process (across all containers) */
   alerts: z.array(TrackingAlertResponseSchema).optional(),
+  /** Compact incident-oriented shipment alert projection */
+  alert_incidents: ShipmentAlertIncidentsResponseSchema.optional(),
   /** Process-level operational projection */
   process_operational: ProcessOperationalResponseSchema.optional(),
   /** Container-level operational sync metadata */

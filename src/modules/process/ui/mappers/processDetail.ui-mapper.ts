@@ -1,4 +1,5 @@
 import type { ProcessAggregatedStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import { toAlertIncidentsVm } from '~/modules/process/ui/mappers/alertIncident.ui-mapper'
 import {
   createNeverContainerSyncVM,
   normalizeContainerNumber,
@@ -326,5 +327,6 @@ export function toShipmentDetailVM(
     processEtaSecondaryVm,
     containers,
     alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),
+    alertIncidents: toAlertIncidentsVm(data.alert_incidents),
   }
 }

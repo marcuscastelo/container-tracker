@@ -34,6 +34,8 @@ type NavigateToProcessContainerCommand = {
   readonly processId: string
   readonly containerNumber: string
   readonly replace?: boolean
+  readonly navigationState?: ProcessContainerNavigationState
+  readonly state?: unknown
 }
 
 type PrefetchProcessIntentCommand = {
@@ -67,6 +69,13 @@ type ScheduleDashboardPrefetchCommand = {
 
 const MAX_VISIBLE_PREFETCH_PER_FLUSH = 10
 
+export type ProcessContainerNavigationState = {
+  readonly source: 'navbar-alerts'
+  readonly focusSection: 'current-status'
+  readonly revealLiveStatus: true
+  readonly requestKey: string
+}
+
 function normalizeInternalHref(href: string): string | null {
   const trimmed = href.trim()
   if (trimmed.length === 0) return null
@@ -77,6 +86,23 @@ function normalizeInternalHref(href: string): string | null {
 function toNavigateOptions(replace?: boolean): NavigateOptions | undefined {
   if (replace === undefined) return undefined
   return { replace }
+}
+
+function withNavigateState(
+  options: NavigateOptions | undefined,
+  state: unknown,
+): NavigateOptions | undefined {
+  if (options === undefined) {
+    return { state }
+  }
+  return {
+    ...options,
+    state,
+  }
+}
+
+function isNonBlankString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
 }
 
 function toProcessPrefetchKey(processId: string): string {
@@ -128,7 +154,11 @@ export function buildProcessHref(processId: string): string {
   return `/shipments/${encodeURIComponent(processId)}`
 }
 
-export function buildProcessContainerHref(processId: string, containerNumber: string): string {
+export function buildProcessContainerHref(
+  processId: string,
+  containerNumber: string,
+  navigationState?: ProcessContainerNavigationState,
+): string {
   const processHref = buildProcessHref(processId)
   const normalizedContainerNumber = containerNumber.trim().toUpperCase()
   if (normalizedContainerNumber.length === 0) {
@@ -137,6 +167,12 @@ export function buildProcessContainerHref(processId: string, containerNumber: st
 
   const searchParams = new URLSearchParams()
   searchParams.set('container', normalizedContainerNumber)
+
+  if (navigationState !== undefined) {
+    searchParams.set('focus', navigationState.focusSection)
+    searchParams.set('focusRequest', navigationState.requestKey)
+  }
+
   return `${processHref}?${searchParams.toString()}`
 }
 
@@ -167,10 +203,56 @@ export function navigateToProcess(command: NavigateToProcessCommand): void {
 }
 
 export function navigateToProcessContainer(command: NavigateToProcessContainerCommand): void {
+  const navigateOptions =
+    command.state === undefined
+      ? toNavigateOptions(command.replace)
+      : withNavigateState(toNavigateOptions(command.replace), command.state)
+
   void command.navigate(
-    buildProcessContainerHref(command.processId, command.containerNumber),
-    toNavigateOptions(command.replace),
+    buildProcessContainerHref(command.processId, command.containerNumber, command.navigationState),
+    navigateOptions,
   )
+}
+
+export function readProcessContainerNavigationState(
+  state: unknown,
+): ProcessContainerNavigationState | null {
+  if (typeof state !== 'object' || state === null) return null
+
+  const source = Reflect.get(state, 'source')
+  const focusSection = Reflect.get(state, 'focusSection')
+  const revealLiveStatus = Reflect.get(state, 'revealLiveStatus')
+  const requestKey = Reflect.get(state, 'requestKey')
+
+  if (source !== 'navbar-alerts') return null
+  if (focusSection !== 'current-status') return null
+  if (revealLiveStatus !== true) return null
+  if (!isNonBlankString(requestKey)) return null
+
+  return {
+    source,
+    focusSection,
+    revealLiveStatus,
+    requestKey,
+  }
+}
+
+export function readProcessContainerNavigationStateFromSearch(
+  search: string,
+): ProcessContainerNavigationState | null {
+  const searchParams = new URLSearchParams(search)
+  const focusSection = searchParams.get('focus')
+  const requestKey = searchParams.get('focusRequest')
+
+  if (focusSection !== 'current-status') return null
+  if (!isNonBlankString(requestKey)) return null
+
+  return {
+    source: 'navbar-alerts',
+    focusSection,
+    revealLiveStatus: true,
+    requestKey,
+  }
 }
 
 export function scheduleIntentPrefetch(command: ScheduleIntentPrefetchCommand): void {

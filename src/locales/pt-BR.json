@@ -440,16 +440,63 @@
       "activeEmpty": "Nenhum alerta ativo para este embarque.",
       "category": {
         "eta": "eta",
-        "movement": "movement",
-        "customs": "customs",
+        "movement": "movimentação",
+        "customs": "alfândega",
         "status": "status",
-        "data": "data"
+        "data": "dados"
       },
       "archived": {
         "title": "Reconhecidos ({{count}})"
       },
+      "incidents": {
+        "filters": {
+          "all": "Todos",
+          "movement": "Movimentação",
+          "eta": "ETA",
+          "customs": "Alfândega",
+          "data": "Dados",
+          "status": "Status"
+        },
+        "summary": {
+          "activeLine": "{{incidents}} incidentes ativos · {{containers}} containers afetados",
+          "noMovement": "{{count}} containers afetados · último evento mais recente: {{date}}"
+        },
+        "emptyFiltered": "Nenhum incidente corresponde ao filtro atual.",
+        "title": {
+          "noMovementThreshold": "Sem movimentação há {{days}} dias",
+          "transshipmentOccurrence": "ocorrência {{count}} na rota"
+        },
+        "timing": {
+          "detectedOn": "detectado em {{date}}",
+          "alertedAgo": "alertado há {{age}}",
+          "alertedNow": "alertado agora"
+        },
+        "preview": {
+          "containers": "{{count}} containers: {{containers}}",
+          "withRemaining": "{{preview}} +{{count}}"
+        },
+        "expand": "Expandir",
+        "collapse": "Recolher",
+        "lifecycle": {
+          "active": "Ativo",
+          "acknowledged": "Reconhecido",
+          "autoResolved": "Auto-resolvido"
+        },
+        "details": {
+          "containers": "Containers",
+          "history": "Histórico de thresholds",
+          "transshipmentOrder": "Ocorrência na rota",
+          "location": "Local",
+          "fromVessel": "Origem",
+          "toVessel": "Destino",
+          "lastEvent": "Último evento",
+          "thresholdReachedOn": "atingido com último evento em {{date}}"
+        }
+      },
       "action": {
         "acknowledge": "Reconhecer",
+        "acknowledgeContainer": "Reconhecer para esse container",
+        "acknowledgeIncident": "Reconhecer para os {{count}} containers",
         "acknowledgeAria": "Reconhecer alerta",
         "unacknowledge": "Reativar",
         "unacknowledgeAria": "Reativar alerta",

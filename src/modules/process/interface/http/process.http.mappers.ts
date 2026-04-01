@@ -19,13 +19,18 @@ import {
   createTrackingOperationalSummaryFallback,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  buildShipmentAlertIncidentsReadModel,
+  type ShipmentAlertIncidentReadModel,
+  type ShipmentAlertIncidentRecordReadModel,
+} from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import {
   type TrackingAlertDisplayReadModel,
-  type TrackingAlertDisplaySource,
   toTrackingAlertDisplayReadModels,
 } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
+import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
@@ -112,7 +117,11 @@ type TrackingObservationRecord = {
   readonly created_at: string
 }
 
-type TrackingAlertRecord = TrackingAlertDisplaySource
+type TrackingAlertRecord = TrackingAlert
+type AlertTriggeredSortItem = {
+  readonly id: string
+  readonly triggered_at: string
+}
 
 type ContainerWithTrackingResponse = {
   id: string
@@ -246,6 +255,60 @@ function toTrackingAlertResponse(a: TrackingAlertDisplayReadModel) {
   }
 }
 
+function toShipmentAlertIncidentRecordResponse(record: ShipmentAlertIncidentRecordReadModel) {
+  return {
+    alert_id: record.alertId,
+    lifecycle_state: record.lifecycleState,
+    detected_at: record.detectedAt,
+    triggered_at: record.triggeredAt,
+    acked_at: record.ackedAt,
+    resolved_at: record.resolvedAt,
+    resolved_reason: record.resolvedReason,
+    threshold_days: record.thresholdDays,
+    days_without_movement: record.daysWithoutMovement,
+    last_event_date: record.lastEventDate,
+  }
+}
+
+function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadModel) {
+  return {
+    incident_key: incident.incidentKey,
+    bucket: incident.bucket,
+    category: incident.category,
+    type: incident.type,
+    severity: incident.severity,
+    message_key: incident.messageKey,
+    message_params: incident.messageParams,
+    detected_at: incident.detectedAt,
+    triggered_at: incident.triggeredAt,
+    threshold_days: incident.thresholdDays,
+    days_without_movement: incident.daysWithoutMovement,
+    last_event_date: incident.lastEventDate,
+    transshipment_order: incident.transshipmentOrder,
+    port: incident.port,
+    from_vessel: incident.fromVessel,
+    to_vessel: incident.toVessel,
+    affected_container_count: incident.affectedContainerCount,
+    active_alert_ids: [...incident.activeAlertIds],
+    acked_alert_ids: [...incident.ackedAlertIds],
+    members: incident.members.map((member) => ({
+      container_id: member.containerId,
+      container_number: member.containerNumber,
+      lifecycle_state: member.lifecycleState,
+      detected_at: member.detectedAt,
+      threshold_days: member.thresholdDays,
+      days_without_movement: member.daysWithoutMovement,
+      last_event_date: member.lastEventDate,
+      transshipment_order: member.transshipmentOrder,
+      port: member.port,
+      from_vessel: member.fromVessel,
+      to_vessel: member.toVessel,
+      records: member.records.map(toShipmentAlertIncidentRecordResponse),
+    })),
+    monitoring_history: incident.monitoringHistory.map(toShipmentAlertIncidentRecordResponse),
+  }
+}
+
 function toSeriesHistoryResponse(seriesHistory: TrackingSeriesHistory) {
   return {
     has_actual_conflict: seriesHistory.hasActualConflict,
@@ -276,8 +339,8 @@ function toTimelineItemResponse(item: TrackingTimelineItem) {
 }
 
 function compareAlertsByTriggeredAtDesc(
-  left: TrackingAlertRecord,
-  right: TrackingAlertRecord,
+  left: AlertTriggeredSortItem,
+  right: AlertTriggeredSortItem,
 ): number {
   const triggeredAtCompare = right.triggered_at.localeCompare(left.triggered_at)
   if (triggeredAtCompare !== 0) return triggeredAtCompare
@@ -492,6 +555,27 @@ export function toProcessDetailResponse(
     alerts,
     (containerId) => containerNumberByContainerId.get(containerId) ?? null,
   )
+  const alertsByContainerId = new Map<string, TrackingAlertRecord[]>()
+
+  for (const alert of alerts) {
+    const group = alertsByContainerId.get(alert.container_id)
+    if (group === undefined) {
+      alertsByContainerId.set(alert.container_id, [alert])
+      continue
+    }
+
+    group.push(alert)
+  }
+
+  const alertIncidentsReadModel = buildShipmentAlertIncidentsReadModel({
+    containers: [...containerNumberByContainerId.entries()].map(
+      ([containerId, containerNumber]) => ({
+        containerId,
+        containerNumber,
+        alerts: alertsByContainerId.get(containerId) ?? [],
+      }),
+    ),
+  })
 
   return {
     ...processToResponseFields(pwc.process),
@@ -500,6 +584,15 @@ export function toProcessDetailResponse(
     alerts: [...alertDisplayReadModel]
       .sort(compareAlertsByTriggeredAtDesc)
       .map(toTrackingAlertResponse),
+    alert_incidents: {
+      summary: {
+        active_incidents: alertIncidentsReadModel.summary.activeIncidentCount,
+        affected_containers: alertIncidentsReadModel.summary.affectedContainerCount,
+        recognized_incidents: alertIncidentsReadModel.summary.recognizedIncidentCount,
+      },
+      active: alertIncidentsReadModel.active.map(toShipmentAlertIncidentResponse),
+      recognized: alertIncidentsReadModel.recognized.map(toShipmentAlertIncidentResponse),
+    },
     process_operational: toProcessOperationalResponse(summariesForProcess),
   }
 }
