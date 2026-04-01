@@ -695,7 +695,7 @@ export type Database = {
           p_include_owned_active_leases?: boolean
           p_lease_minutes?: number
           p_limit?: number
-          p_processable_providers?: string[] | null
+          p_processable_providers?: string[]
           p_tenant_id: string
         }
         Returns: {
