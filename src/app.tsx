@@ -4,6 +4,8 @@ import type { JSX } from 'solid-js'
 import { createEffect, createMemo, ErrorBoundary, Show, Suspense } from 'solid-js'
 import { Toaster } from 'solid-toast'
 import { getAppErrorDetails } from '~/app-error-details'
+import { AppInitialRoutePrefetchBoundary } from '~/modules/process/ui/screens/app/AppInitialRoutePrefetchBoundary'
+import { AppRouteSkeleton } from '~/modules/process/ui/screens/app/AppRouteSkeleton'
 import { DashboardKeepWarmBoundary } from '~/modules/process/ui/screens/dashboard/DashboardKeepWarmBoundary'
 import { useTranslation } from '~/shared/localization/i18n'
 import '~/app.css'
@@ -42,12 +44,16 @@ function AppErrorBoundaryFallback(props: AppErrorBoundaryFallbackProps): JSX.Ele
 function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
   const location = useLocation()
   const preloadRoute = usePreloadRoute()
+  const { locale } = useTranslation()
 
   return (
     <div class="root">
+      <AppInitialRoutePrefetchBoundary pathname={() => location.pathname} locale={locale} />
       <DashboardKeepWarmBoundary pathname={() => location.pathname} preloadRoute={preloadRoute} />
       <ErrorBoundary fallback={(err) => <AppErrorBoundaryFallback error={err} />}>
-        <Suspense>{props.children}</Suspense>
+        <Suspense fallback={<AppRouteSkeleton pathname={() => location.pathname} />}>
+          {props.children}
+        </Suspense>
       </ErrorBoundary>
       <Toaster position="top-right" />
     </div>

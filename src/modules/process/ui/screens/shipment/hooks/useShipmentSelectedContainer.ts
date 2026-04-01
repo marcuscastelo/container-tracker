@@ -1,4 +1,4 @@
-import type { Accessor, Resource } from 'solid-js'
+import type { Accessor } from 'solid-js'
 import { createEffect, createMemo, createSignal } from 'solid-js'
 import { findContainerIdByNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import type {
@@ -7,7 +7,7 @@ import type {
 } from '~/modules/process/ui/viewmodels/shipment.vm'
 
 type UseShipmentSelectedContainerCommand = {
-  readonly shipment: Resource<ShipmentDetailVM | null | undefined>
+  readonly shipment: Accessor<ShipmentDetailVM | null | undefined>
   readonly preferredContainerNumber: Accessor<string | null>
 }
 

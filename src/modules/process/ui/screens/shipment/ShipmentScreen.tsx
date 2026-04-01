@@ -50,7 +50,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Selected container ─────────────────────────────────────────────────────
   const selection = useShipmentSelectedContainer({
-    shipment: resource.shipment,
+    shipment: resource.latestShipment,
     preferredContainerNumber,
   })
 
@@ -60,7 +60,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Refresh controller ─────────────────────────────────────────────────────
   const refresh = useShipmentRefreshController({
-    shipment: resource.shipment,
+    shipment: resource.latestShipment,
     reconcileTrackingView: resource.reconcileTrackingView,
   })
 
@@ -89,13 +89,13 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   // ── Derived alerts ─────────────────────────────────────────────────────────
   const activeAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
-    const data = resource.shipment()
+    const data = resource.latestShipment()
     if (!data) return []
     return toSortedActiveAlerts(data.alerts)
   })
 
   const archivedAlerts = createMemo<readonly AlertDisplayVM[]>(() => {
-    const data = resource.shipment()
+    const data = resource.latestShipment()
     if (!data) return []
     return toSortedArchivedAlerts(data.alerts)
   })
@@ -116,7 +116,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <ShipmentScreenLayout
-      shipmentData={resource.shipment}
+      shipmentData={resource.latestShipment}
       shipmentLoading={resource.loading}
       shipmentError={resource.error}
       onOpenCreateProcess={dialogs.openCreateDialog}
@@ -153,7 +153,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       }
       content={
         <ShipmentContainersView
-          shipmentData={resource.shipment}
+          shipmentData={resource.latestShipment}
           activeAlerts={activeAlerts}
           archivedAlerts={archivedAlerts}
           busyAlertIds={alertActions.busyAlertIds}

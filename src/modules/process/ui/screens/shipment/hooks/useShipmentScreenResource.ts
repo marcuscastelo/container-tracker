@@ -3,6 +3,7 @@ import { createEffect, createMemo, createResource } from 'solid-js'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
 import { toProcessResourceKey } from '~/modules/process/ui/utils/process-resource-key'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import { readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 
 type UseShipmentScreenResourceCommand = {
   readonly processId: Accessor<string>
@@ -11,6 +12,7 @@ type UseShipmentScreenResourceCommand = {
 
 type ShipmentScreenResourceResult = {
   readonly shipment: Resource<ShipmentDetailVM | null | undefined>
+  readonly latestShipment: Accessor<ShipmentDetailVM | null | undefined>
   readonly loading: Accessor<boolean>
   readonly error: Accessor<unknown>
   readonly refetch: () => unknown
@@ -30,6 +32,7 @@ export function useShipmentScreenResource(
     processResourceKey,
     ([id, currentLocale]) => fetchProcess(id, currentLocale),
   )
+  const latestShipment = () => readResourceSnapshot(shipment)
 
   let previousProcessId: string | null = null
   let lastUndefinedRecoveryKey: string | null = null
@@ -60,7 +63,7 @@ export function useShipmentScreenResource(
     if (currentKey === null) return
 
     const recoveryKey = `${currentKey[0]}::${currentKey[1]}`
-    const data = shipment()
+    const data = latestShipment()
     const hasError = Boolean(shipment.error)
     const isLoading = shipment.loading
 
@@ -86,7 +89,7 @@ export function useShipmentScreenResource(
     })
     if (!latest) return
 
-    const current = shipment()
+    const current = latestShipment()
     if (!current) {
       mutate(latest)
       return
@@ -106,6 +109,7 @@ export function useShipmentScreenResource(
 
   return {
     shipment,
+    latestShipment,
     loading: () => shipment.loading,
     error: () => shipment.error,
     refetch,

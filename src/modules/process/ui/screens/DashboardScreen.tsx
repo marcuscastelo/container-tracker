@@ -50,6 +50,7 @@ import {
 import { sortDashboardProcesses } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
+import { readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
 import {
@@ -80,10 +81,10 @@ type DashboardResourceSnapshotState<T> = {
 function useDashboardResourceSnapshot<T>(
   resource: Resource<T | undefined>,
 ): DashboardResourceSnapshotState<T> {
-  const [snapshot, setSnapshot] = createSignal<T | undefined>(resource())
+  const [snapshot, setSnapshot] = createSignal<T | undefined>(readResourceSnapshot(resource))
 
   createEffect(() => {
-    const value = resource()
+    const value = readResourceSnapshot(resource)
     if (value === undefined) return
     setSnapshot(() => value)
   })

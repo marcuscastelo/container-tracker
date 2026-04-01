@@ -2,7 +2,7 @@ import { A, useLocation } from '@solidjs/router'
 import clsx from 'clsx'
 import { Moon, Sun } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createSignal, Show } from 'solid-js'
+import { createSignal, Show, Suspense } from 'solid-js'
 import { getTheme, toggleTheme, type UiTheme } from '~/lib/theme'
 import { BRANDING } from '~/shared/config/branding'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -131,7 +131,16 @@ function HeaderSearch(props: { readonly searchSlot?: JSX.Element }): JSX.Element
     <Show when={props.searchSlot}>
       {(searchSlot) => (
         <div class="mx-auto w-full min-w-[220px] max-w-[var(--dashboard-search-width)] [&>[data-search-trigger='true']]:h-[var(--dashboard-search-height)] [&>[data-search-trigger='true']]:min-h-[var(--dashboard-search-height)] [&_[data-slot='input']]:h-[var(--dashboard-search-height)] [&_[data-slot='input']]:min-h-[var(--dashboard-search-height)]">
-          {searchSlot()}
+          <Suspense
+            fallback={
+              <div
+                class="dashboard-skeleton-shimmer h-[var(--dashboard-search-height)] min-h-[var(--dashboard-search-height)] rounded-[var(--dashboard-control-radius)] border border-border bg-surface-muted"
+                aria-hidden="true"
+              />
+            }
+          >
+            {searchSlot()}
+          </Suspense>
         </div>
       )}
     </Show>
