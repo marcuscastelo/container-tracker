@@ -208,6 +208,7 @@ export function TimelineNode(props: {
     const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
     return typeof trackUrl === 'string' ? trackUrl : undefined
   })
+
   const labelPresentation = createMemo(() => {
     const indicatorVariant = props.nonMappedIndicatorVariant ?? 'badge'
     const presentation = resolveTimelineEventLabelPresentation(
