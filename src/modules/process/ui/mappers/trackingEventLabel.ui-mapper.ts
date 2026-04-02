@@ -16,6 +16,9 @@ type TimelineLabelKeys = {
       readonly DISCHARGE: string
       readonly DELIVERY: string
       readonly EMPTY_RETURN: string
+      readonly TRANSSHIPMENT_INTENDED: string
+      readonly TRANSSHIPMENT_POSITIONED_IN: string
+      readonly TRANSSHIPMENT_POSITIONED_OUT: string
       readonly CUSTOMS_HOLD: string
       readonly CUSTOMS_RELEASE: string
     }
@@ -60,6 +63,12 @@ function toCanonicalLabelKey(keys: TimelineLabelKeys, eventType: string): string
       return keys.tracking.observationType.DELIVERY
     case 'EMPTY_RETURN':
       return keys.tracking.observationType.EMPTY_RETURN
+    case 'TRANSSHIPMENT_INTENDED':
+      return keys.tracking.observationType.TRANSSHIPMENT_INTENDED
+    case 'TRANSSHIPMENT_POSITIONED_IN':
+      return keys.tracking.observationType.TRANSSHIPMENT_POSITIONED_IN
+    case 'TRANSSHIPMENT_POSITIONED_OUT':
+      return keys.tracking.observationType.TRANSSHIPMENT_POSITIONED_OUT
     case 'CUSTOMS_HOLD':
       return keys.tracking.observationType.CUSTOMS_HOLD
     case 'CUSTOMS_RELEASE':

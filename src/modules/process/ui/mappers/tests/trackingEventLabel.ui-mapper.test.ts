@@ -23,6 +23,9 @@ const keys = {
       DISCHARGE: 'tracking.observationType.DISCHARGE',
       DELIVERY: 'tracking.observationType.DELIVERY',
       EMPTY_RETURN: 'tracking.observationType.EMPTY_RETURN',
+      TRANSSHIPMENT_INTENDED: 'tracking.observationType.TRANSSHIPMENT_INTENDED',
+      TRANSSHIPMENT_POSITIONED_IN: 'tracking.observationType.TRANSSHIPMENT_POSITIONED_IN',
+      TRANSSHIPMENT_POSITIONED_OUT: 'tracking.observationType.TRANSSHIPMENT_POSITIONED_OUT',
       CUSTOMS_HOLD: 'tracking.observationType.CUSTOMS_HOLD',
       CUSTOMS_RELEASE: 'tracking.observationType.CUSTOMS_RELEASE',
     },
@@ -42,6 +45,9 @@ const translations: Record<string, string> = {
   [keys.tracking.observationType.DISCHARGE]: 'Descarregado do Navio',
   [keys.tracking.observationType.DELIVERY]: 'Entregue',
   [keys.tracking.observationType.EMPTY_RETURN]: 'Vazio Devolvido',
+  [keys.tracking.observationType.TRANSSHIPMENT_INTENDED]: 'Transbordo Planejado',
+  [keys.tracking.observationType.TRANSSHIPMENT_POSITIONED_IN]: 'Entrada Operacional no Transbordo',
+  [keys.tracking.observationType.TRANSSHIPMENT_POSITIONED_OUT]: 'Saída Operacional no Transbordo',
   [keys.tracking.observationType.CUSTOMS_HOLD]: 'Retencao Alfandegaria',
   [keys.tracking.observationType.CUSTOMS_RELEASE]: 'Liberacao Alfandegaria',
 }
@@ -62,6 +68,19 @@ describe('resolveTimelineEventLabel', () => {
     )
 
     expect(label).toBe('Carregado no Navio')
+  })
+
+  it('treats transshipment helper events as canonical labels', () => {
+    const label = resolveTimelineEventLabel(
+      {
+        type: 'TRANSSHIPMENT_INTENDED',
+        carrierLabel: 'Full Intended Transshipment',
+      },
+      t,
+      keys,
+    )
+
+    expect(label).toBe('Transbordo Planejado')
   })
 
   it('uses canonical translation for system-created placeholder events', () => {
@@ -150,6 +169,22 @@ describe('resolveTimelineEventLabelResolution', () => {
 
     expect(result).toEqual({
       label: 'Carregado no Navio',
+      source: 'canonical',
+    })
+  })
+
+  it('classifies transshipment helper labels as canonical source', () => {
+    const result = resolveTimelineEventLabelResolution(
+      {
+        type: 'TRANSSHIPMENT_POSITIONED_IN',
+        carrierLabel: 'Full Transshipment Positioned In',
+      },
+      t,
+      keys,
+    )
+
+    expect(result).toEqual({
+      label: 'Entrada Operacional no Transbordo',
       source: 'canonical',
     })
   })

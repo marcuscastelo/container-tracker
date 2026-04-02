@@ -58,8 +58,8 @@ describe('MSC transshipment regression (0312)', () => {
       'GATE_IN',
       'LOAD',
       'DISCHARGE',
-      'TERMINAL_MOVE',
-      'TERMINAL_MOVE',
+      'TRANSSHIPMENT_POSITIONED_OUT',
+      'TRANSSHIPMENT_POSITIONED_IN',
       'LOAD',
       'ARRIVAL',
     ])
@@ -70,7 +70,10 @@ describe('MSC transshipment regression (0312)', () => {
 
     const positionedDrafts = drafts.filter((draft) => draft.carrier_label?.includes('Positioned'))
     expect(positionedDrafts).toHaveLength(2)
-    expect(positionedDrafts.map((draft) => draft.type)).toEqual(['TERMINAL_MOVE', 'TERMINAL_MOVE'])
+    expect(positionedDrafts.map((draft) => draft.type)).toEqual([
+      'TRANSSHIPMENT_POSITIONED_OUT',
+      'TRANSSHIPMENT_POSITIONED_IN',
+    ])
 
     assertNoObservationSemanticViolations(drafts)
   })

@@ -1,3 +1,4 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
   deriveTrackingOperationalSummary,
   type TrackingOperationalSummary,
@@ -82,14 +83,15 @@ export function findContainersTimelineMainProjection(command: {
 }): readonly ContainerTimelineMainProjection[] {
   return command.containers.map((container) => {
     const observations = command.observationsByContainerId.get(container.containerId) ?? []
+    const projectionObservations = suppressSupersededObservationsForProjection(observations)
     const domainTimeline = deriveTimeline(
       container.containerId,
       container.containerNumber,
-      observations,
+      projectionObservations,
       command.now,
     )
     const timeline = deriveTimelineWithSeriesReadModel(
-      toTrackingObservationProjections(observations),
+      toTrackingObservationProjections(projectionObservations),
       command.now,
       { includeSeriesHistory: false },
     )
@@ -118,12 +120,13 @@ export function findContainersOperationalSummaryProjection(command: {
 
   for (const container of command.containers) {
     const observations = command.observationsByContainerId.get(container.containerId) ?? []
+    const projectionObservations = suppressSupersededObservationsForProjection(observations)
     const timelineProjection = command.timelineMainByContainerId.get(container.containerId)
     if (timelineProjection === undefined) continue
 
     const transshipment = deriveTransshipment(timelineProjection.domainTimeline)
     const operational = deriveTrackingOperationalSummary({
-      observations: toTrackingObservationProjections(observations),
+      observations: toTrackingObservationProjections(projectionObservations),
       status: timelineProjection.status,
       transshipment,
       podLocationCode: container.podLocationCode ?? null,

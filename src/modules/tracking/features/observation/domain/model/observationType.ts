@@ -27,6 +27,12 @@ export type ObservationType =
   | 'DELIVERY'
   /** Empty container returned */
   | 'EMPTY_RETURN'
+  /** Planned transshipment intent reported by carrier */
+  | 'TRANSSHIPMENT_INTENDED'
+  /** Operational inbound positioning within transshipment flow */
+  | 'TRANSSHIPMENT_POSITIONED_IN'
+  /** Operational outbound positioning within transshipment flow */
+  | 'TRANSSHIPMENT_POSITIONED_OUT'
   /** Terminal positioning move (yard movement, not vessel milestone) */
   | 'TERMINAL_MOVE'
   /** Catch-all for unmapped events */

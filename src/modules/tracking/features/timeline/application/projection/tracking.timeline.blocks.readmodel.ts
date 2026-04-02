@@ -19,6 +19,24 @@ type TerminalSegment = {
   readonly events: readonly TrackingTimelineItem[]
 }
 
+function isVoyageLikeSegment(segment: VoyageSegment): boolean {
+  return segment.vessel !== null || segment.voyage !== null
+}
+
+function findNextVoyageLikeSegment(
+  voyageSegments: readonly VoyageSegment[],
+  currentIndex: number,
+): { readonly index: number; readonly segment: VoyageSegment } | null {
+  for (let index = currentIndex + 1; index < voyageSegments.length; index++) {
+    const candidate = voyageSegments[index]
+    if (candidate !== undefined && isVoyageLikeSegment(candidate)) {
+      return { index, segment: candidate }
+    }
+  }
+
+  return null
+}
+
 /**
  * Identify a single dominant location from a set of events (mode).
  * Returns null when no events carry location info.
@@ -56,7 +74,7 @@ function groupTerminalSegments(
   // Build a set of event IDs that belong to voyages
   const voyageEventIds = new Set<string>()
   for (const seg of voyageSegments) {
-    if (seg.vessel !== null) {
+    if (isVoyageLikeSegment(seg)) {
       for (const e of seg.events) voyageEventIds.add(e.id)
     }
   }
@@ -194,10 +212,10 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
     toVessel: string | null
   }[] = []
 
-  // Only consider segments that are actual voyages (vessel !== null)
+  // Only consider segments that are voyage-like (vessel or voyage present)
   const voyageOnly = voyageSegments
     .map((seg, idx) => ({ seg, idx }))
-    .filter(({ seg }) => seg.vessel !== null)
+    .filter(({ seg }) => isVoyageLikeSegment(seg))
 
   for (let i = 0; i < voyageOnly.length - 1; i++) {
     const current = voyageOnly[i]
@@ -519,7 +537,7 @@ export function buildTimelineRenderList(
       segIdx === voyageSegments.length - 1 &&
       terminalSegments.every((ts) => ts.kind !== 'post-carriage')
 
-    if (segment.vessel !== null) {
+    if (isVoyageLikeSegment(segment)) {
       // It's a voyage block
       const voyageBlock: VoyageBlock = {
         blockType: 'voyage',
@@ -548,11 +566,11 @@ export function buildTimelineRenderList(
         const firstTermEvent = ts.events[0]
         if (firstTermEvent === undefined) continue
 
-        const nextVoyageSegment = voyageSegments[segIdx + 1]
-        if (!nextVoyageSegment) continue
+        const nextVoyageEntry = findNextVoyageLikeSegment(voyageSegments, segIdx)
+        if (nextVoyageEntry === null) continue
 
         const lastCurrentVoyageEvent = segment.events[segment.events.length - 1]
-        const firstNextVoyageEvent = nextVoyageSegment.events[0]
+        const firstNextVoyageEvent = nextVoyageEntry.segment.events[0]
         if (lastCurrentVoyageEvent === undefined || firstNextVoyageEvent === undefined) continue
 
         // Check if the terminal event is positioned between the two voyages

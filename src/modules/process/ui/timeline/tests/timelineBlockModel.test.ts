@@ -35,7 +35,7 @@ function requireDefined<T>(value: T | undefined): T {
 // ---------------------------------------------------------------------------
 // Phase 4-5 — buildTimelineRenderList (block assembly + transshipment)
 // ---------------------------------------------------------------------------
-describe('buildTimelineRenderList', () => {
+describe('buildTimelineRenderList voyage grouping', () => {
   it('returns empty list for empty events', () => {
     expect(buildTimelineRenderList([])).toEqual([])
   })
@@ -60,6 +60,45 @@ describe('buildTimelineRenderList', () => {
       expect(vb.block.vessel).toBe('V1')
       expect(vb.block.origin).toBe('A')
       expect(vb.block.destination).toBe('B')
+    }
+  })
+
+  it('creates a predicted voyage block starting from DEPARTURE EXPECTED without a preceding LOAD', () => {
+    const events = [
+      makeEvent({
+        id: 'e1',
+        type: 'DEPARTURE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'KARACHI, PK',
+      }),
+      makeEvent({
+        id: 'e2',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'COLOMBO, LK',
+      }),
+    ]
+
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-04-02T00:00:00.000Z'),
+    )
+
+    const voyageBlocks = renderList.filter((r) => r.type === 'voyage-block')
+    expect(voyageBlocks).toHaveLength(1)
+
+    const voyageBlock = requireDefined(voyageBlocks[0])
+    if (voyageBlock.type === 'voyage-block') {
+      expect(voyageBlock.block.vessel).toBe('MSC MIRAYA V')
+      expect(voyageBlock.block.voyage).toBe('OB612R')
+      expect(voyageBlock.block.origin).toBe('KARACHI, PK')
+      expect(voyageBlock.block.destination).toBe('COLOMBO, LK')
     }
   })
 
@@ -158,7 +197,9 @@ describe('buildTimelineRenderList', () => {
     const tsBlocks = renderList.filter((r) => r.type === 'transshipment-block')
     expect(tsBlocks).toHaveLength(0)
   })
+})
 
+describe('buildTimelineRenderList terminal grouping', () => {
   it('creates pre-carriage terminal block for events before voyage', () => {
     const events = [
       makeEvent({ id: 'e1', type: 'GATE_IN', location: 'Terminal X' }),
@@ -191,6 +232,61 @@ describe('buildTimelineRenderList', () => {
 
     const termBlocks = renderList.filter((r) => r.type === 'terminal-block')
     expect(termBlocks.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('renders transshipment helper events as transshipment-terminal between maritime legs', () => {
+    const events = [
+      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'A' }),
+      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({
+        id: 'e3',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'B',
+      }),
+      makeEvent({
+        id: 'e4',
+        type: 'TRANSSHIPMENT_POSITIONED_IN',
+        location: 'B',
+      }),
+      makeEvent({
+        id: 'e5',
+        type: 'DEPARTURE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'V2',
+        voyage: 'VY2',
+        location: 'B',
+      }),
+      makeEvent({
+        id: 'e6',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'V2',
+        voyage: 'VY2',
+        location: 'C',
+      }),
+    ]
+
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-02T00:00:00.000Z'),
+    )
+
+    const transshipmentTerminalBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
+    )
+    expect(transshipmentTerminalBlocks).toHaveLength(1)
+
+    const terminalBlock = requireDefined(transshipmentTerminalBlocks[0])
+    if (terminalBlock.type === 'terminal-block') {
+      expect(terminalBlock.block.events.map((event) => event.type)).toEqual([
+        'TRANSSHIPMENT_INTENDED',
+        'TRANSSHIPMENT_POSITIONED_IN',
+      ])
+    }
   })
 })
 
