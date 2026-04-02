@@ -231,13 +231,14 @@ export async function getContainerSummary(
     snapshotIds.length > 0
       ? await loadSnapshotsForObservationEnrichment(deps, cmd.containerId, snapshotIds)
       : []
-  const observations =
-    snapshots.length > 0
-      ? enrichPilObservationsFromSnapshots(
-          enrichCarrierLabelsFromSnapshots(observationsRaw, snapshots),
-          snapshots,
-        )
-      : observationsRaw
+
+  let observations = observationsRaw
+  if (snapshots.length > 0 && snapshotIdsToEnrich.length > 0) {
+    observations = enrichCarrierLabelsFromSnapshots(observations, snapshots)
+  }
+  if (snapshots.length > 0 && pilSnapshotIdsToEnrich.length > 0) {
+    observations = enrichPilObservationsFromSnapshots(observations, snapshots)
+  }
 
   const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations, referenceNow)
   const status = deriveStatus(timeline)

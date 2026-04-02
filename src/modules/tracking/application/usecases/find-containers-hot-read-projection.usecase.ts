@@ -104,28 +104,30 @@ async function enrichObservationsByContainerId(
   containers: readonly ContainerTarget[],
   observationsByContainerId: ReadonlyMap<string, readonly Observation[]>,
 ): Promise<ReadonlyMap<string, readonly Observation[]>> {
-  const enrichedEntries = await Promise.all(
-    containers.map(async (container) => {
-      const observations = observationsByContainerId.get(container.containerId) ?? []
-      const snapshotIds = collectSnapshotIdsForPilObservationEnrichment(observations)
-      if (snapshotIds.length === 0) {
-        return [container.containerId, observations] as const
-      }
+  const enrichedByContainerId = new Map<string, readonly Observation[]>()
 
-      const snapshots = await loadSnapshotsForPilObservationEnrichment(
-        deps,
-        container.containerId,
-        snapshotIds,
-      )
+  for (const container of containers) {
+    const observations = observationsByContainerId.get(container.containerId) ?? []
+    const snapshotIds = collectSnapshotIdsForPilObservationEnrichment(observations)
 
-      return [
-        container.containerId,
-        enrichPilObservationsFromSnapshots(observations, snapshots),
-      ] as const
-    }),
-  )
+    if (snapshotIds.length === 0) {
+      enrichedByContainerId.set(container.containerId, observations)
+      continue
+    }
 
-  return new Map(enrichedEntries)
+    const snapshots = await loadSnapshotsForPilObservationEnrichment(
+      deps,
+      container.containerId,
+      snapshotIds,
+    )
+
+    enrichedByContainerId.set(
+      container.containerId,
+      enrichPilObservationsFromSnapshots(observations, snapshots),
+    )
+  }
+
+  return enrichedByContainerId
 }
 
 export async function findContainersHotReadProjection(
