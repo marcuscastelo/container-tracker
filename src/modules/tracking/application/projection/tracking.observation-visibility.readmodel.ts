@@ -17,7 +17,7 @@ function normalizeCode(value: string | null | undefined): string {
 }
 
 function temporalIdentity(observation: Observation): string {
-  if (observation.event_time === null) return ''
+  if (observation.event_time === null) return `null-time:${observation.fingerprint}`
   if (observation.event_time.kind === 'instant') {
     return `instant:${observation.event_time.value.toIsoString()}`
   }

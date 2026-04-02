@@ -94,4 +94,28 @@ describe('suppressSupersededObservationsForProjection', () => {
 
     expect(visible).toEqual([other, mappedArrival])
   })
+
+  it('keeps null-timestamp OTHER observations visible when identity would otherwise collide', () => {
+    const nullTimeOther = makeObservation({
+      id: 'null-time-other',
+      fingerprint: 'fp-null-time-other',
+      type: 'OTHER',
+      event_time: null,
+      created_from_snapshot_id: 'snapshot-legacy',
+    })
+    const mappedArrivalWithoutTime = makeObservation({
+      id: 'mapped-arrival-without-time',
+      fingerprint: 'fp-null-time-arrival',
+      type: 'ARRIVAL',
+      event_time: null,
+      created_from_snapshot_id: 'snapshot-remapped',
+    })
+
+    const visible = suppressSupersededObservationsForProjection([
+      nullTimeOther,
+      mappedArrivalWithoutTime,
+    ])
+
+    expect(visible).toEqual([nullTimeOther, mappedArrivalWithoutTime])
+  })
 })

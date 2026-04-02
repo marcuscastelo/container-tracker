@@ -212,7 +212,7 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
     toVessel: string | null
   }[] = []
 
-  // Only consider segments that are actual voyages (vessel !== null)
+  // Only consider segments that are voyage-like (vessel or voyage present)
   const voyageOnly = voyageSegments
     .map((seg, idx) => ({ seg, idx }))
     .filter(({ seg }) => isVoyageLikeSegment(seg))

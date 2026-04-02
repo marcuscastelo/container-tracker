@@ -84,10 +84,13 @@ export function groupVoyageSegments(
   }
 
   function matchesCurrentVoyageIdentity(event: TrackingTimelineItem): boolean {
+    const eventVessel = event.vesselName ?? null
+    const eventVoyage = event.voyage ?? null
+
     const vesselMatches =
-      currentVessel === null || event.vesselName === undefined || event.vesselName === currentVessel
+      currentVessel === null || eventVessel === null || eventVessel === currentVessel
     const voyageMatches =
-      currentVoyage === null || event.voyage === undefined || event.voyage === currentVoyage
+      currentVoyage === null || eventVoyage === null || eventVoyage === currentVoyage
 
     return vesselMatches && voyageMatches
   }
