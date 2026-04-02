@@ -1,4 +1,4 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { PersistedProvider, Provider } from '~/modules/tracking/domain/model/provider'
 
 /**
  * Tracking Alert — derived signal from timeline/status analysis.
@@ -116,7 +116,7 @@ type TrackingAlertBase = {
   retroactive: boolean
 
   /** Provider, if attributable */
-  provider: Provider | null
+  provider: PersistedProvider | null
 
   /** When acknowledged by user (UTC ISO) */
   acked_at: string | null
@@ -160,7 +160,9 @@ export type TrackingAlertDerivationState = Pick<
 /**
  * Shape for inserting a new tracking alert.
  */
-type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id'>
+type NewTrackingAlertBase = Omit<TrackingAlertBase, 'id' | 'provider'> & {
+  provider: Provider | null
+}
 export type NewTrackingAlert = NewTrackingAlertBase & TrackingAlertMessageContract
 
 export function resolveAlertLifecycleState(alert: {

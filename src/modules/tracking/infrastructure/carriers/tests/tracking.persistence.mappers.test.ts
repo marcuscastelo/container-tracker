@@ -58,10 +58,9 @@ describe('observationRowToDomain', () => {
     expect(result.type).toBe('TERMINAL_MOVE')
   })
 
-  it('should throw for invalid provider', () => {
-    expect(() => observationRowToDomain({ ...validRow, provider: 'invalid' })).toThrow(
-      'not a valid provider',
-    )
+  it('should degrade unknown persisted provider to unknown', () => {
+    const result = observationRowToDomain({ ...validRow, provider: 'invalid' })
+    expect(result.provider).toBe('unknown')
   })
 
   it('should throw for invalid observation type', () => {
@@ -144,10 +143,9 @@ describe('snapshotRowToDomain', () => {
     expect(result.payload).toEqual({ test: 'data' })
   })
 
-  it('should throw for invalid provider', () => {
-    expect(() => snapshotRowToDomain({ ...validRow, provider: 'unknown_carrier' })).toThrow(
-      'not a valid provider',
-    )
+  it('should degrade unknown persisted provider to unknown', () => {
+    const result = snapshotRowToDomain({ ...validRow, provider: 'unknown_carrier' })
+    expect(result.provider).toBe('unknown')
   })
 
   it('should throw for invalid timestamp', () => {
@@ -242,6 +240,11 @@ describe('alertRowToDomain', () => {
   it('should handle null provider', () => {
     const result = alertRowToDomain({ ...validRow, provider: null })
     expect(result.provider).toBeNull()
+  })
+
+  it('should degrade unknown persisted alert provider to unknown', () => {
+    const result = alertRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('unknown')
   })
 
   it('should normalize space-separated timestamps', () => {
