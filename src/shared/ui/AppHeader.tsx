@@ -11,6 +11,7 @@ import { NavbarAlertsButton } from '~/shared/ui/navbar-alerts/NavbarAlertsButton
 type Props = {
   readonly onCreateProcess?: () => void
   readonly onDashboardIntent?: () => void
+  readonly preserveDashboardScroll?: boolean
   readonly searchSlot?: JSX.Element
   readonly syncSlot?: JSX.Element
   readonly actionsSlot?: JSX.Element
@@ -23,6 +24,7 @@ function NavLink(props: {
   readonly href: string
   readonly children: JSX.Element
   readonly end?: boolean
+  readonly preserveScroll?: boolean
   readonly onIntent?: () => void
 }): JSX.Element {
   const location = useLocation()
@@ -40,6 +42,7 @@ function NavLink(props: {
     <A
       href={props.href}
       end={props.end}
+      noScroll={props.preserveScroll === true}
       onPointerEnter={() => props.onIntent?.()}
       onFocusIn={() => props.onIntent?.()}
       onPointerDown={() => props.onIntent?.()}
@@ -56,12 +59,16 @@ function NavLink(props: {
   )
 }
 
-function HeaderBrand(props: { readonly onDashboardIntent?: () => void }): JSX.Element {
+function HeaderBrand(props: {
+  readonly onDashboardIntent?: () => void
+  readonly preserveDashboardScroll?: boolean
+}): JSX.Element {
   const isDark = () => getTheme() === 'dark'
 
   return (
     <A
       href="/"
+      noScroll={props.preserveDashboardScroll === true}
       onPointerEnter={() => props.onDashboardIntent?.()}
       onFocusIn={() => props.onDashboardIntent?.()}
       onPointerDown={() => props.onDashboardIntent?.()}
@@ -109,12 +116,14 @@ function HeaderNavigation(props: {
   readonly dashboardLabel: string
   readonly agentsLabel: string
   readonly onDashboardIntent?: () => void
+  readonly preserveDashboardScroll?: boolean
 }): JSX.Element {
   return (
     <nav class="hidden shrink-0 items-center gap-6 md:flex" aria-label="Primary">
       <NavLink
         href="/"
         end
+        {...(props.preserveDashboardScroll ? { preserveScroll: true } : {})}
         {...(props.onDashboardIntent ? { onIntent: props.onDashboardIntent } : {})}
       >
         {props.dashboardLabel}
@@ -239,11 +248,13 @@ export function AppHeader(props: Props): JSX.Element {
         <div class="navbar-left flex min-w-0 items-center gap-3 max-[1279px]:gap-4 lg:gap-6">
           <HeaderBrand
             {...(props.onDashboardIntent ? { onDashboardIntent: props.onDashboardIntent } : {})}
+            {...(props.preserveDashboardScroll ? { preserveDashboardScroll: true } : {})}
           />
           <HeaderNavigation
             dashboardLabel={t(keys.header.nav.dashboard)}
             agentsLabel={t(keys.header.nav.agents)}
             {...(props.onDashboardIntent ? { onDashboardIntent: props.onDashboardIntent } : {})}
+            {...(props.preserveDashboardScroll ? { preserveDashboardScroll: true } : {})}
           />
         </div>
 

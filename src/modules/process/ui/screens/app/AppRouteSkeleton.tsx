@@ -88,6 +88,7 @@ function DashboardRouteSkeleton(): JSX.Element {
         <DashboardFiltersSkeleton />
         <DashboardProcessTable
           processes={[]}
+          highlightedProcessId={null}
           initialLoading
           refreshing={false}
           hasError={false}

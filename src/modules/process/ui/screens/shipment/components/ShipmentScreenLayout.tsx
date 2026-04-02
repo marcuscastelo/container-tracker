@@ -14,6 +14,7 @@ type ShipmentScreenLayoutProps = {
   readonly shipmentError: Accessor<unknown>
   readonly onOpenCreateProcess: () => void
   readonly onDashboardIntent: () => void
+  readonly preserveDashboardScroll: boolean
   readonly searchSlot?: JSX.Element
   readonly actionsSlot?: JSX.Element
   readonly banners: JSX.Element
@@ -48,6 +49,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         <AppHeader
           onCreateProcess={props.onOpenCreateProcess}
           onDashboardIntent={props.onDashboardIntent}
+          preserveDashboardScroll={props.preserveDashboardScroll}
           searchSlot={props.searchSlot}
           actionsSlot={props.actionsSlot}
         />
@@ -58,6 +60,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         <main class="relative mx-auto max-w-(--dashboard-container-max-width) px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
           <A
             href="/"
+            noScroll={props.preserveDashboardScroll}
             class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-text-muted transition-colors hover:text-foreground"
             onPointerEnter={triggerDashboardIntent}
             onFocusIn={triggerDashboardIntent}
@@ -76,6 +79,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
               <p class="text-tone-danger-fg">{t(keys.shipmentView.loadError)}</p>
               <A
                 href="/"
+                noScroll={props.preserveDashboardScroll}
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}
@@ -91,6 +95,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
               <p class="text-tone-danger-fg">{t(keys.shipmentView.notFound)}</p>
               <A
                 href="/"
+                noScroll={props.preserveDashboardScroll}
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}

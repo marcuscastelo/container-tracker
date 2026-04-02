@@ -18,6 +18,7 @@ import { useTrackingTimeTravelController } from '~/modules/process/ui/screens/sh
 import { toSortedActiveAlerts } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { normalizeSelectedContainerNumber } from '~/modules/process/ui/screens/shipment/lib/shipmentContainerSelection'
 import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
+import { hasDashboardNavigationState } from '~/modules/process/ui/utils/dashboard-navigation-state'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import {
@@ -36,6 +37,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
+  const preserveDashboardScroll = hasDashboardNavigationState()
 
   // props.processId is already an Accessor<string>; no extra createMemo indirection required
   const processId = () => props.processId()
@@ -147,6 +149,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
       shipmentError={resource.error}
       onOpenCreateProcess={dialogs.openCreateDialog}
       onDashboardIntent={handleDashboardIntent}
+      preserveDashboardScroll={preserveDashboardScroll}
       searchSlot={props.searchSlot}
       actionsSlot={<ExportImportActions processId={processId()} showImport={false} />}
       banners={

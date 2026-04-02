@@ -34,6 +34,13 @@ import { toDashboardMonthlyBarDatumVMs } from '~/modules/process/ui/mappers/dash
 import { useDashboardFilterSortController } from '~/modules/process/ui/screens/dashboard/hooks/useDashboardFilterSortController'
 import { useDashboardSyncController } from '~/modules/process/ui/screens/dashboard/hooks/useDashboardSyncController'
 import { resolveDashboardChartWindowSize } from '~/modules/process/ui/utils/dashboard-chart-window-size'
+import {
+  clearDashboardNavigationState,
+  readDashboardNavigationState,
+  resolveHighlightedDashboardProcessId,
+  restoreDashboardScrollPosition,
+  saveDashboardNavigationState,
+} from '~/modules/process/ui/utils/dashboard-navigation-state'
 import { toCreateProcessInput } from '~/modules/process/ui/validation/processApi.validation'
 import {
   type ExistingProcessConflict,
@@ -100,10 +107,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const { t, keys, locale } = useTranslation()
   const navigate = useNavigate()
   const preloadRoute = usePreloadRoute()
+  const dashboardNavigationState = readDashboardNavigationState()
   let shouldPreferPrefetchedProcesses = true
   let shouldPreferPrefetchedGlobalAlerts = true
   let shouldPreferPrefetchedDashboardKpis = true
   let shouldPreferPrefetchedDashboardActivity = true
+  let shouldRestoreDashboardScroll = dashboardNavigationState !== null
   const [processes, { refetch: refetchProcesses }] = createResource(() => {
     const preferPrefetched = shouldPreferPrefetchedProcesses
     shouldPreferPrefetchedProcesses = false
@@ -149,6 +158,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   const {
     sortSelection,
     filterSelection,
+    isHydrated: isDashboardFilterSortHydrated,
     handleSortToggle,
     handleProviderFilterToggle,
     handleStatusFilterToggle,
@@ -158,6 +168,11 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
   } = useDashboardFilterSortController()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = createSignal(false)
   const [createError, setCreateError] = createSignal<string | ExistingProcessConflict | null>(null)
+  const [lastOpenedProcessId] = createSignal<string | null>(
+    dashboardNavigationState?.lastOpenedProcessId ?? null,
+  )
+
+  clearDashboardNavigationState()
 
   const providerFilterOptions = createMemo(() =>
     deriveDashboardProviderFilterOptions(processesState.data() ?? []),
@@ -214,6 +229,12 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
       refetchDashboardKpis,
       refetchDashboardProcessesCreatedByMonth,
     })
+  const highlightedProcessId = createMemo(() =>
+    resolveHighlightedDashboardProcessId({
+      processes: processesWithSyncFeedback(),
+      lastOpenedProcessId: lastOpenedProcessId(),
+    }),
+  )
 
   onMount(() => {
     const updateChartWindowSize = (): void => {
@@ -227,12 +248,29 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     })
   })
 
+  createEffect(() => {
+    if (!shouldRestoreDashboardScroll) return
+    if (!isDashboardFilterSortHydrated()) return
+    if (processesState.initialLoading()) return
+    if (dashboardKpisState.initialLoading()) return
+    if (dashboardActivityState.initialLoading()) return
+
+    shouldRestoreDashboardScroll = false
+    restoreDashboardScrollPosition({
+      state: dashboardNavigationState,
+    })
+  })
+
   const handleCreateProcess = () => {
     setCreateError(null)
     setIsCreateDialogOpen(true)
   }
 
   const handleOpenProcess = (processId: string) => {
+    saveDashboardNavigationState({
+      lastOpenedProcessId: processId,
+    })
+
     navigateToProcess({
       navigate,
       processId,
@@ -338,6 +376,7 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
           />
           <DashboardProcessTable
             processes={processesWithSyncFeedback()}
+            highlightedProcessId={highlightedProcessId()}
             initialLoading={processesState.initialLoading()}
             refreshing={processesState.refreshing()}
             hasError={processesState.hasBlockingError()}
