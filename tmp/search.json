@@ -1,0 +1,98 @@
+{
+  "status": 200,
+  "code": 1,
+  "message": "Success",
+  "total": 1,
+  "data": [
+    {
+      "bookingNo": "KHIG05580700",
+      "containerNo": "DRYU2434190",
+      "containerTypeSize": "20'DRY ST.",
+      "weight": "28,044.800 KGS",
+      "latestEvent": {
+        "eventName": "Departure from Transshipment Port",
+        "locationName": "SINGAPORE",
+        "date": "2026-03-22T22:20:00.000Z"
+      },
+      "socFlag": false,
+      "seals": [
+        {
+          "sealSequence": 0,
+          "sealNo": "********"
+        }
+      ],
+      "place": {
+        "yardCode": "SGSIN04",
+        "yardName": "PSA CORPORATION LIMITED",
+        "locationName": "SINGAPORE"
+      },
+      "por": {
+        "code": "PKKHI",
+        "locationName": "KARACHI",
+        "countryName": "PAKISTAN"
+      },
+      "pod": {
+        "code": "BRSSZ",
+        "locationName": "SANTOS",
+        "countryName": "BRAZIL"
+      },
+      "copNo": "CKHI6216884569",
+      "bookingNoShow": "",
+      "cargoEvents": [
+        {
+          "matrixId": "E061",
+          "locationName": "KARACHI",
+          "countryCode": "PK",
+          "countryName": "PAKISTAN",
+          "date": "2026-02-26T23:27:00.000Z",
+          "localPortDate": "2026-02-27T04:27:00.000Z",
+          "trigger": "ACTUAL"
+        },
+        {
+          "matrixId": "E089",
+          "locationName": "SANTOS",
+          "countryCode": "BR",
+          "countryName": "BRAZIL",
+          "date": "2026-04-14T04:00:00.000Z",
+          "localPortDate": "2026-04-14T01:00:00.000Z",
+          "trigger": "ESTIMATED"
+        },
+        {
+          "matrixId": "E105",
+          "locationName": "SANTOS",
+          "countryCode": "BR",
+          "countryName": "BRAZIL",
+          "date": "2026-04-14T10:00:00.000Z",
+          "localPortDate": "2026-04-14T07:00:00.000Z",
+          "trigger": "ESTIMATED"
+        }
+      ],
+      "vesselVoyage": {
+        "vesselCode": "PXPT",
+        "vesselName": "PARANA EXPRESS",
+        "voyageNo": "2610",
+        "directionCode": "W"
+      },
+      "deadlineEvents": [
+        {
+          "matrixId": "E167",
+          "date": "2026-02-24T12:00:00.000Z",
+          "localPortDate": "2026-02-24T17:00:00.000Z",
+          "isShowData": true
+        },
+        {
+          "matrixId": "E105",
+          "date": "",
+          "localPortDate": "",
+          "isShowData": false
+        },
+        {
+          "matrixId": "E138",
+          "date": "",
+          "localPortDate": "",
+          "isShowData": false
+        }
+      ]
+    }
+  ]
+}

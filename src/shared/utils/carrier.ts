@@ -16,6 +16,9 @@ export function carrierTrackUrl(carrier: string | null, containerNumber: string)
   if (c.includes('pil')) {
     return `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${cn}`
   }
+  if (c.includes('one')) {
+    return `https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking?containerNo=${cn}`
+  }
 
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} container ${containerNumber}`)}`
 }

@@ -6,6 +6,7 @@ import {
   type RestCarrier,
 } from '~/modules/tracking/infrastructure/carriers/fetchers/is-rest-carrier'
 import { fetchMscStatus } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
+import { fetchOneStatus } from '~/modules/tracking/infrastructure/carriers/fetchers/one.fetcher'
 import { fetchPilStatus } from '~/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher'
 
 type CarrierFetcher = (containerNumber: string) => Promise<FetchResult>
@@ -14,6 +15,7 @@ const REST_FETCHERS: Record<RestCarrier, CarrierFetcher> = {
   msc: fetchMscStatus,
   cmacgm: fetchCmaCgmStatus,
   pil: fetchPilStatus,
+  one: fetchOneStatus,
 }
 
 /**

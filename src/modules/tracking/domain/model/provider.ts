@@ -2,7 +2,7 @@
  * Supported carrier/provider identifiers.
  * Extensible — add new carriers here as they are integrated.
  */
-export type Provider = 'msc' | 'maersk' | 'cmacgm' | 'pil'
+export type Provider = 'msc' | 'maersk' | 'cmacgm' | 'pil' | 'one'
 
 /**
  * Provider values that may appear in persisted legacy/external data.
@@ -13,5 +13,11 @@ export type Provider = 'msc' | 'maersk' | 'cmacgm' | 'pil'
 export type PersistedProvider = Provider | 'unknown'
 
 export function isKnownProvider(value: string): value is Provider {
-  return value === 'msc' || value === 'maersk' || value === 'cmacgm' || value === 'pil'
+  return (
+    value === 'msc' ||
+    value === 'maersk' ||
+    value === 'cmacgm' ||
+    value === 'pil' ||
+    value === 'one'
+  )
 }

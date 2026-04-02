@@ -1,0 +1,51 @@
+{
+  "status": 200,
+  "code": 1,
+  "message": "Success",
+  "data": [
+    {
+      "vesselCode": "CQAT",
+      "vesselEngName": "CARL SCHULTE",
+      "scheduleVoyageNumber": "0009",
+      "scheduleDirectionCode": "E",
+      "pol": {
+        "locationName": "KARACHI, PAKISTAN",
+        "isActual": true,
+        "date": "2026-02-27T04:27:00.000Z",
+        "locationCode": "PKKHI"
+      },
+      "pod": {
+        "locationName": "SINGAPORE, SINGAPORE",
+        "isArrivalActual": true,
+        "arrivalDate": "2026-03-11T18:25:00.000Z",
+        "isBerthingActual": true,
+        "berthingDate": "2026-03-11T20:25:00.000Z",
+        "locationCode": "SGSIN"
+      },
+      "inboundConsortiumVoyage": "0009E",
+      "outboundConsortiumVoyage": "0009E"
+    },
+    {
+      "vesselCode": "PXPT",
+      "vesselEngName": "PARANA EXPRESS",
+      "scheduleVoyageNumber": "2610",
+      "scheduleDirectionCode": "W",
+      "pol": {
+        "locationName": "SINGAPORE, SINGAPORE",
+        "isActual": true,
+        "date": "2026-03-22T22:20:00.000Z",
+        "locationCode": "SGSIN"
+      },
+      "pod": {
+        "locationName": "SANTOS, BRAZIL",
+        "isArrivalActual": false,
+        "arrivalDate": "2026-04-13T17:00:00.000Z",
+        "isBerthingActual": false,
+        "berthingDate": "2026-04-14T01:00:00.000Z",
+        "locationCode": "BRSSZ"
+      },
+      "inboundConsortiumVoyage": "2610W",
+      "outboundConsortiumVoyage": "2610W"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import z from 'zod/v4'
 
-const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm', 'pil'])
+const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm', 'pil', 'one'])
 
 const SyncRequestStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
 

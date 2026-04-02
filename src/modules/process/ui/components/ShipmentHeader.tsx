@@ -7,6 +7,7 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 type Props = {
   data: ShipmentDetailVM
@@ -228,7 +229,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
     () => `${props.data.origin} ${String.fromCharCode(8594)} ${props.data.destination}`,
   )
   const carrierLabel = createMemo(
-    () => `${t(keys.shipmentView.carrier)}: ${props.data.carrier ?? String.fromCharCode(8212)}`,
+    () =>
+      `${t(keys.shipmentView.carrier)}: ${
+        toCarrierDisplayLabel(props.data.carrier) ?? String.fromCharCode(8212)
+      }`,
   )
   const etaLabel = createMemo(() => {
     const value = (() => {

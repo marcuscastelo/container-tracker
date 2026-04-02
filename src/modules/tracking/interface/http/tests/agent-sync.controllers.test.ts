@@ -53,7 +53,7 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
     authenticateAgentToken: vi.fn(async () => ({
       tenantId: TENANT_ID,
       agentId: AGENT_ID,
-      capabilities: ['msc', 'cmacgm', 'pil'],
+      capabilities: ['msc', 'cmacgm', 'pil', 'one'],
     })),
     getTenantQueueLagSeconds: vi.fn(async () => 12),
     updateAgentRuntimeState: vi.fn(async () => undefined),
@@ -162,7 +162,7 @@ describe('agent sync controllers', () => {
       limit: 1,
       leaseMinutes: 5,
       includeOwnedActiveLeases: false,
-      processableProviders: ['msc', 'cmacgm', 'pil'],
+      processableProviders: ['msc', 'cmacgm', 'pil', 'one'],
     })
   })
 
@@ -190,7 +190,7 @@ describe('agent sync controllers', () => {
       limit: 1,
       leaseMinutes: 5,
       includeOwnedActiveLeases: true,
-      processableProviders: ['msc', 'cmacgm', 'pil'],
+      processableProviders: ['msc', 'cmacgm', 'pil', 'one'],
     })
   })
 
@@ -232,7 +232,7 @@ describe('agent sync controllers', () => {
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: TENANT_ID,
         agentId: AGENT_ID,
-        capabilities: ['pil', 'custom-capability', 'msc', 'cmacgm'],
+        capabilities: ['pil', 'custom-capability', 'msc', 'cmacgm', 'one'],
       })),
       leaseSyncRequests: vi.fn(async () => []),
     })
@@ -256,7 +256,7 @@ describe('agent sync controllers', () => {
       limit: 1,
       leaseMinutes: 5,
       includeOwnedActiveLeases: false,
-      processableProviders: ['msc', 'cmacgm', 'pil'],
+      processableProviders: ['msc', 'cmacgm', 'pil', 'one'],
     })
   })
 

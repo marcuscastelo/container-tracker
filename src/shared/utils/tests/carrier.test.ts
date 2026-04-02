@@ -23,6 +23,12 @@ describe('carrierTrackUrl util', () => {
     expect(url).toContain('PCIU8712104')
   })
 
+  it('returns ONE tracking URL when carrier includes one', () => {
+    const url = carrierTrackUrl('ONE', 'DRYU2434190')
+    expect(url).toContain('one-line.com')
+    expect(url).toContain('DRYU2434190')
+  })
+
   it('returns google search fallback for unknown carrier', () => {
     const url = carrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
     expect(url).toContain('google.com/search')

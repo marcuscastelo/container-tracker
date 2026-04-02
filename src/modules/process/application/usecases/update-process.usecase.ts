@@ -23,18 +23,29 @@ export function createUpdateProcessUseCase(deps: {
   containerUseCases: Pick<ContainerUseCasesForProcess, 'reconcileForProcess' | 'listByProcessId'>
 }) {
   return async function execute(command: UpdateProcessCommand): Promise<UpdateProcessResult> {
-    if (command.containers) {
+    const shouldSyncContainerCarriers =
+      command.containers === undefined && command.record.carrier !== undefined
+
+    if (command.containers || shouldSyncContainerCarriers) {
       const { containers: existing } = await deps.containerUseCases.listByProcessId({
         processId: command.processId,
       })
+
+      const incomingContainers =
+        command.containers ??
+        existing.map((container) => ({
+          container_number: String(container.containerNumber),
+          carrier_code: command.record.carrier ?? container.carrierCode,
+        }))
 
       await deps.containerUseCases.reconcileForProcess({
         processId: command.processId,
         existing: existing.map((c) => ({
           id: String(c.id),
           containerNumber: String(c.containerNumber),
+          carrierCode: c.carrierCode,
         })),
-        incoming: command.containers.map((c) => ({
+        incoming: incomingContainers.map((c) => ({
           containerNumber: c.container_number,
           carrierCode: c.carrier_code,
         })),

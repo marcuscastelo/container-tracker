@@ -55,6 +55,18 @@ export const supabaseContainerRepository: ContainerRepository = {
     return data.map(containerMappers.fromRow)
   },
 
+  async update(record): Promise<ContainerEntity> {
+    const row = containerMappers.toUpdate(record)
+
+    const result = await supabase.from(TABLE_NAME).update(row).eq('id', record.id).select().single()
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'update',
+      table: TABLE_NAME,
+    })
+
+    return containerMappers.fromRow(data)
+  },
+
   async existsMany(containerNumbers: string[]): Promise<Map<string, boolean>> {
     if (containerNumbers.length === 0) {
       return new Map()

@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-
 import { createRefreshRestContainerUseCase } from '~/modules/tracking/application/usecases/refresh-rest-container.usecase'
 
 describe('refresh-rest-container use case', () => {
@@ -7,6 +6,12 @@ describe('refresh-rest-container use case', () => {
     const useCase = createRefreshRestContainerUseCase({
       containerLookup: {
         findByNumbers: vi.fn(async () => ({ containers: [] })),
+      },
+      processLookup: {
+        findProcessById: vi.fn(async () => ({ process: null })),
+      },
+      containerCarrierMutation: {
+        updateContainerCarrier: vi.fn(async () => undefined),
       },
       enqueueSyncRequest: {
         enqueueSyncRequest: vi.fn(),
@@ -34,8 +39,23 @@ describe('refresh-rest-container use case', () => {
     const useCase = createRefreshRestContainerUseCase({
       containerLookup: {
         findByNumbers: vi.fn(async () => ({
-          containers: [{ id: 'container-1' }],
+          containers: [
+            {
+              id: 'container-1',
+              containerNumber: 'MRKU1234567',
+              carrierCode: 'maersk',
+              processId: 'process-1',
+            },
+          ],
         })),
+      },
+      processLookup: {
+        findProcessById: vi.fn(async () => ({
+          process: { id: 'process-1', carrier: 'maersk' },
+        })),
+      },
+      containerCarrierMutation: {
+        updateContainerCarrier: vi.fn(async () => undefined),
       },
       enqueueSyncRequest: {
         enqueueSyncRequest,
@@ -66,8 +86,23 @@ describe('refresh-rest-container use case', () => {
     const useCase = createRefreshRestContainerUseCase({
       containerLookup: {
         findByNumbers: vi.fn(async () => ({
-          containers: [{ id: 'container-1' }],
+          containers: [
+            {
+              id: 'container-1',
+              containerNumber: 'MSCU7654321',
+              carrierCode: 'msc',
+              processId: 'process-1',
+            },
+          ],
         })),
+      },
+      processLookup: {
+        findProcessById: vi.fn(async () => ({
+          process: { id: 'process-1', carrier: 'msc' },
+        })),
+      },
+      containerCarrierMutation: {
+        updateContainerCarrier: vi.fn(async () => undefined),
       },
       enqueueSyncRequest: {
         enqueueSyncRequest: vi.fn(async () => ({
@@ -100,8 +135,23 @@ describe('refresh-rest-container use case', () => {
     const useCase = createRefreshRestContainerUseCase({
       containerLookup: {
         findByNumbers: vi.fn(async () => ({
-          containers: [{ id: 'container-1' }],
+          containers: [
+            {
+              id: 'container-1',
+              containerNumber: 'PCIU8712104',
+              carrierCode: 'pil',
+              processId: 'process-1',
+            },
+          ],
         })),
+      },
+      processLookup: {
+        findProcessById: vi.fn(async () => ({
+          process: { id: 'process-1', carrier: 'pil' },
+        })),
+      },
+      containerCarrierMutation: {
+        updateContainerCarrier: vi.fn(async () => undefined),
       },
       enqueueSyncRequest: {
         enqueueSyncRequest,
@@ -120,5 +170,96 @@ describe('refresh-rest-container use case', () => {
       refValue: 'PCIU8712104',
       priority: 0,
     })
+  })
+
+  it('self-heals stale container carrier codes when the owning process already uses the requested provider', async () => {
+    const enqueueSyncRequest = vi.fn(async () => ({
+      id: '0b68e4b8-b15b-4da0-9e8f-aaaaaaaaaaaa',
+      status: 'PENDING' as const,
+      isNew: true,
+    }))
+    const updateContainerCarrier = vi.fn(async () => undefined)
+
+    const useCase = createRefreshRestContainerUseCase({
+      containerLookup: {
+        findByNumbers: vi.fn(async () => ({
+          containers: [
+            {
+              id: 'container-1',
+              containerNumber: 'DRYU2434190',
+              carrierCode: 'unknown',
+              processId: 'process-1',
+            },
+          ],
+        })),
+      },
+      processLookup: {
+        findProcessById: vi.fn(async () => ({
+          process: { id: 'process-1', carrier: 'one' },
+        })),
+      },
+      containerCarrierMutation: {
+        updateContainerCarrier,
+      },
+      enqueueSyncRequest: {
+        enqueueSyncRequest,
+      },
+    })
+
+    const result = await useCase({
+      container: 'DRYU2434190',
+      provider: 'one',
+    })
+
+    expect(result.kind).toBe('queued')
+    expect(updateContainerCarrier).toHaveBeenCalledWith({
+      containerId: 'container-1',
+      containerNumber: 'DRYU2434190',
+      carrierCode: 'one',
+    })
+  })
+
+  it('rejects refresh requests when neither the stored container nor the owning process match the requested provider', async () => {
+    const enqueueSyncRequest = vi.fn()
+    const updateContainerCarrier = vi.fn(async () => undefined)
+
+    const useCase = createRefreshRestContainerUseCase({
+      containerLookup: {
+        findByNumbers: vi.fn(async () => ({
+          containers: [
+            {
+              id: 'container-1',
+              containerNumber: 'DRYU2434190',
+              carrierCode: 'unknown',
+              processId: 'process-1',
+            },
+          ],
+        })),
+      },
+      processLookup: {
+        findProcessById: vi.fn(async () => ({
+          process: { id: 'process-1', carrier: 'unknown' },
+        })),
+      },
+      containerCarrierMutation: {
+        updateContainerCarrier,
+      },
+      enqueueSyncRequest: {
+        enqueueSyncRequest,
+      },
+    })
+
+    await expect(
+      useCase({
+        container: 'DRYU2434190',
+        provider: 'one',
+      }),
+    ).rejects.toMatchObject({
+      message: 'container_provider_mismatch_for_refresh:DRYU2434190:one',
+      status: 409,
+    })
+
+    expect(updateContainerCarrier).not.toHaveBeenCalled()
+    expect(enqueueSyncRequest).not.toHaveBeenCalled()
   })
 })
