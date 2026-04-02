@@ -67,6 +67,15 @@ describe('observationRowToDomain', () => {
     expect(result.type).toBe('TERMINAL_MOVE')
   })
 
+  it.each([
+    'TRANSSHIPMENT_INTENDED',
+    'TRANSSHIPMENT_POSITIONED_IN',
+    'TRANSSHIPMENT_POSITIONED_OUT',
+  ] as const)('should accept %s observation type', (type) => {
+    const result = observationRowToDomain({ ...validRow, type })
+    expect(result.type).toBe(type)
+  })
+
   it('should degrade unknown persisted provider to unknown', () => {
     const result = observationRowToDomain({ ...validRow, provider: 'invalid' })
     expect(result.provider).toBe('unknown')
@@ -166,6 +175,33 @@ describe('observationToInsertRow', () => {
     expect(row.event_time_zone).toBe('America/Sao_Paulo')
     expect(row.raw_event_time).toBe('Fri 24-APR-2026 07:00 PM')
     expect(row.event_time_source).toBe('carrier_local_port_time')
+  })
+
+  it('should persist tracking-only transshipment helper types', () => {
+    const obs = {
+      fingerprint: 'fp-ts',
+      container_id: '22222222-2222-2222-2222-222222222222',
+      container_number: 'MSKU1234567',
+      event_time_type: 'EXPECTED' as const,
+      type: 'TRANSSHIPMENT_INTENDED' as const,
+      event_time: temporalValueFromCanonical('2026-05-15'),
+      location_code: 'SGSIN',
+      location_display: 'SINGAPORE, SG',
+      vessel_name: null,
+      voyage: null,
+      is_empty: null,
+      confidence: 'medium' as const,
+      provider: 'msc' as const,
+      created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
+      carrier_label: 'Full Intended Transshipment',
+      raw_event_time: null,
+      event_time_source: null,
+      retroactive: false,
+    }
+
+    const row = observationToInsertRow(obs)
+    expect(row.type).toBe('TRANSSHIPMENT_INTENDED')
+    expect(row.event_date).toBe('2026-05-15')
   })
 })
 

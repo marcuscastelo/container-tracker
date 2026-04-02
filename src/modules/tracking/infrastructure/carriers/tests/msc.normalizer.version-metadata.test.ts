@@ -59,10 +59,10 @@ describe('MSC normalizer version metadata', () => {
 
     expect(drafts[0]?.type).toBe('LOAD')
     expect(drafts[0]?.event_time_type).toBe('ACTUAL')
-    expect(readNormalizerVersion(drafts[0]?.raw_event)).toBe('msc-v2')
+    expect(readNormalizerVersion(drafts[0]?.raw_event)).toBe('msc-v3')
 
     expect(drafts[1]?.type).toBe('ARRIVAL')
     expect(drafts[1]?.event_time_type).toBe('EXPECTED')
-    expect(readNormalizerVersion(drafts[1]?.raw_event)).toBe('msc-v2')
+    expect(readNormalizerVersion(drafts[1]?.raw_event)).toBe('msc-v3')
   })
 })

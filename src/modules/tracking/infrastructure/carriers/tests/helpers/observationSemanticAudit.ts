@@ -13,7 +13,7 @@ type ObservationSemanticViolation = {
   readonly vessel_name: string | null
 }
 
-const INVALID_VESSEL_NAMES = new Set(['LADEN', 'EMPTY'])
+const INVALID_VESSEL_NAMES = new Set(['LADEN', 'EMPTY', 'TBN'])
 
 function isPositionedLabel(label: string | null): boolean {
   if (typeof label !== 'string') return false

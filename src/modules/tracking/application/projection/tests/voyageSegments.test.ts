@@ -174,6 +174,46 @@ describe('groupVoyageSegments', () => {
     expect(segment.destination).toBe('Port B')
   })
 
+  it('keeps predicted voyage events with null vessel identity in the active voyage when voyage matches', () => {
+    const events = [
+      makeEvent({
+        id: 'departure-with-vessel',
+        type: 'DEPARTURE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC PARIS',
+        voyage: 'MZ546A',
+        location: 'Port A',
+      }),
+      makeEvent({
+        id: 'departure-with-null-vessel',
+        type: 'DEPARTURE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: null,
+        voyage: 'MZ546A',
+        location: 'Port A',
+      }),
+      makeEvent({
+        id: 'arrival-without-vessel',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: null,
+        voyage: 'MZ546A',
+        location: 'Port B',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(1)
+    const segment = requireDefined(segments[0])
+    expect(segment.vessel).toBe('MSC PARIS')
+    expect(segment.voyage).toBe('MZ546A')
+    expect(segment.events).toHaveLength(3)
+  })
+
   it('preserves event order within segments', () => {
     const events = [
       makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', location: 'A' }),

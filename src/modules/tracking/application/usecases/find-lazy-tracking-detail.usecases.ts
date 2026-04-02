@@ -1,3 +1,4 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
   buildShipmentAlertIncidentsReadModel,
   type ShipmentAlertIncidentsReadModel,
@@ -161,7 +162,7 @@ export async function findTimelineItemSeriesHistory(
 ): Promise<TrackingSeriesHistory | null> {
   const observations = await deps.observationRepository.findAllByContainerId(command.containerId)
   const timeline = deriveTimelineWithSeriesReadModel(
-    toTrackingObservationProjections(observations),
+    toTrackingObservationProjections(suppressSupersededObservationsForProjection(observations)),
     command.now,
     { includeSeriesHistory: true },
   )

@@ -26,10 +26,14 @@ export type VoyageSegment = {
 /**
  * Groups timeline events into voyage segments.
  *
- * A new segment starts when a LOAD event is encountered.
- * The segment's destination is set when a DISCHARGE event is found.
- * Events before the first LOAD or after a DISCHARGE (before the next LOAD)
- * are collected into a segment with `vessel: null`.
+ * A new segment starts when:
+ * - a LOAD event is encountered
+ * - or a DEPARTURE EXPECTED event appears with vessel/voyage context and there is no active voyage
+ *
+ * The segment destination is updated by ARRIVAL/DISCHARGE milestones so predicted legs
+ * can expose a temporary destination before an actual discharge exists.
+ *
+ * Non-maritime events stay outside voyage segments, including transshipment helper events.
  *
  * @param events - Ordered timeline events for a single container
  * @returns Array of voyage segments preserving event order
@@ -64,24 +68,95 @@ export function groupVoyageSegments(
     inVoyage = false
   }
 
+  function isMaritimeEvent(event: TrackingTimelineItem): boolean {
+    return (
+      event.type === 'LOAD' ||
+      event.type === 'DEPARTURE' ||
+      event.type === 'ARRIVAL' ||
+      event.type === 'DISCHARGE'
+    )
+  }
+
+  function canStartPredictedVoyage(event: TrackingTimelineItem): boolean {
+    if (event.type !== 'DEPARTURE' || event.eventTimeType !== 'EXPECTED') return false
+
+    return (event.vesselName?.trim().length ?? 0) > 0 || (event.voyage?.trim().length ?? 0) > 0
+  }
+
+  function matchesCurrentVoyageIdentity(event: TrackingTimelineItem): boolean {
+    const eventVessel = event.vesselName ?? null
+    const eventVoyage = event.voyage ?? null
+
+    const vesselMatches =
+      currentVessel === null || eventVessel === null || eventVessel === currentVessel
+    const voyageMatches =
+      currentVoyage === null || eventVoyage === null || eventVoyage === currentVoyage
+
+    return vesselMatches && voyageMatches
+  }
+
+  function beginVoyage(event: TrackingTimelineItem): void {
+    inVoyage = true
+    currentVessel = event.vesselName ?? null
+    currentVoyage = event.voyage ?? null
+    currentOrigin = event.location ?? null
+    currentDestination = null
+    currentEvents.push(event)
+  }
+
   for (const event of events) {
-    if (event.type === 'LOAD') {
-      // Flush any pre-voyage or previous voyage events
-      flushCurrent()
-      inVoyage = true
-      currentVessel = event.vesselName ?? null
-      currentVoyage = event.voyage ?? null
-      currentOrigin = event.location ?? null
+    if (inVoyage) {
+      if (!isMaritimeEvent(event)) {
+        flushCurrent()
+        currentEvents.push(event)
+        continue
+      }
+
+      if (event.type === 'LOAD') {
+        flushCurrent()
+        beginVoyage(event)
+        continue
+      }
+
+      if (canStartPredictedVoyage(event) && !matchesCurrentVoyageIdentity(event)) {
+        flushCurrent()
+        beginVoyage(event)
+        continue
+      }
+
       currentEvents.push(event)
+      if (currentVessel === null && event.vesselName !== undefined) {
+        currentVessel = event.vesselName ?? null
+      }
+      if (currentVoyage === null && event.voyage !== undefined) {
+        currentVoyage = event.voyage ?? null
+      }
+      if (
+        currentOrigin === null &&
+        (event.type === 'LOAD' || event.type === 'DEPARTURE') &&
+        event.location !== undefined
+      ) {
+        currentOrigin = event.location ?? null
+      }
+      if (
+        (event.type === 'ARRIVAL' || event.type === 'DISCHARGE') &&
+        event.location !== undefined
+      ) {
+        currentDestination = event.location ?? null
+      }
+      if (event.type === 'DISCHARGE' && event.eventTimeType === 'ACTUAL') {
+        flushCurrent()
+      }
+      continue
+    }
+
+    if (event.type === 'LOAD' || canStartPredictedVoyage(event)) {
+      flushCurrent()
+      beginVoyage(event)
       continue
     }
 
     currentEvents.push(event)
-
-    if (event.type === 'DISCHARGE' && inVoyage) {
-      currentDestination = event.location ?? null
-      flushCurrent()
-    }
   }
 
   // Flush any remaining events
