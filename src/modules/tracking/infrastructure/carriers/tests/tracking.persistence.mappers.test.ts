@@ -258,7 +258,7 @@ describe('alertRowToDomain', () => {
   })
 
   it('should degrade unknown persisted alert provider to unknown', () => {
-    const result = alertRowToDomain({ ...validRow, provider: 'pil' })
+    const result = alertRowToDomain({ ...validRow, provider: 'thisproviderwillneverexist' })
     expect(result.provider).toBe('unknown')
   })
 
