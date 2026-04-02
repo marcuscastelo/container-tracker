@@ -639,6 +639,11 @@ const IngestAcceptedResponseSchema = z.object({
   snapshot_id: z.string().uuid(),
 })
 
+const IngestFailedResponseSchema = z.object({
+  error: z.string().min(1),
+  snapshot_id: z.string().uuid().optional(),
+})
+
 const HeartbeatAckResponseSchema = z.object({
   ok: z.literal(true),
   updatedAt: z.string().datetime({ offset: true }),
@@ -993,7 +998,9 @@ async function ingestSnapshot(
   scrape: ScrapeResult,
   agentVersion: string,
 ): Promise<
-  { readonly kind: 'accepted'; readonly snapshotId: string } | { readonly kind: 'lease_conflict' }
+  | { readonly kind: 'accepted'; readonly snapshotId: string }
+  | { readonly kind: 'failed'; readonly errorMessage: string; readonly snapshotId?: string }
+  | { readonly kind: 'lease_conflict' }
 > {
   const response = await fetch(`${config.BACKEND_URL}/api/tracking/snapshots/ingest`, {
     method: 'POST',
@@ -1020,6 +1027,28 @@ async function ingestSnapshot(
     const body = await response.json().catch(() => ({}))
     console.warn(`[agent] lease conflict for ${target.sync_request_id}:`, body)
     return { kind: 'lease_conflict' }
+  }
+
+  if (response.status === 422) {
+    const payload: unknown = await response.json().catch(() => ({}))
+    const parsed = IngestFailedResponseSchema.safeParse(payload)
+    if (!parsed.success) {
+      throw new Error(`invalid ingest failure response: ${parsed.error.message}`)
+    }
+
+    if (parsed.data.snapshot_id) {
+      console.warn(
+        `[agent] backend marked ${target.ref} as failed after persisting snapshot ${parsed.data.snapshot_id}: ${parsed.data.error}`,
+      )
+    } else {
+      console.warn(`[agent] backend marked ${target.ref} as failed: ${parsed.data.error}`)
+    }
+
+    return {
+      kind: 'failed',
+      errorMessage: parsed.data.error,
+      ...(parsed.data.snapshot_id === undefined ? {} : { snapshotId: parsed.data.snapshot_id }),
+    }
   }
 
   if (!response.ok) {
@@ -1052,6 +1081,7 @@ type ProcessTargetResult =
       readonly kind: 'failed'
       readonly durationMs: number
       readonly errorMessage: string
+      readonly snapshotId?: string
     }
 
 async function processTarget(
@@ -1070,6 +1100,15 @@ async function processTarget(
         kind: 'lease_conflict',
         durationMs: Math.max(0, Date.now() - startedAtMs),
         errorMessage: `Lease conflict for ${target.sync_request_id}`,
+      }
+    }
+
+    if (ingestResult.kind === 'failed') {
+      return {
+        kind: 'failed',
+        durationMs: Math.max(0, Date.now() - startedAtMs),
+        errorMessage: ingestResult.errorMessage,
+        ...(ingestResult.snapshotId === undefined ? {} : { snapshotId: ingestResult.snapshotId }),
       }
     }
 
@@ -1170,6 +1209,7 @@ async function runOnce(
           provider: target.provider,
           ref: target.ref,
           durationMs: result.durationMs,
+          snapshotId: result.snapshotId,
         },
       })
     }
