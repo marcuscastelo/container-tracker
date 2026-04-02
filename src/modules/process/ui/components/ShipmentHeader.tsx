@@ -60,14 +60,14 @@ function InternalIdHint(props: InternalIdHintProps): JSX.Element {
   const [open, setOpen] = createSignal(false)
 
   return (
-    <span class="relative ml-2 inline-block align-middle">
+    <span class="relative inline-block align-middle">
       <button
         type="button"
         aria-label={props.message}
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-surface-muted text-xs-ui font-medium text-primary transition-transform hover:cursor-pointer hover:scale-110 hover:bg-surface-muted"
+        class="inline-flex h-4 w-16 p-2 text-xs align-text-top italic bold text-tone-warning-fg items-center justify-center rounded-full bg-tone-warning-bg text-xs-ui font-medium animate-pulse transition-transform hover:cursor-pointer hover:scale-110 hover:bg-surface-muted"
         onClick={() => setOpen((current) => !current)}
       >
-        i
+        sem ref
       </button>
       <Show when={open()}>
         <div
