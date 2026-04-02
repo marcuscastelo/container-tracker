@@ -127,6 +127,10 @@ export type ProcessEtaDisplayVM =
       readonly date: string
     }
   | {
+      readonly kind: 'arrived'
+      readonly date: string
+    }
+  | {
       readonly kind: 'unavailable'
     }
   | {

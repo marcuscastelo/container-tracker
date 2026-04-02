@@ -26,6 +26,10 @@ export type ProcessSummaryVM = {
         readonly value: TemporalValueDto
       }
     | {
+        readonly kind: 'arrived'
+        readonly value: TemporalValueDto
+      }
+    | {
         readonly kind: 'unavailable'
       }
     | {

@@ -8,6 +8,7 @@ function createTranslationStub(
   keys: ReturnType<typeof useTranslation>['keys'],
 ): (key: string, options?: Record<string, unknown>) => string {
   return (key: string) => {
+    if (key === keys.shipmentView.operational.chips.etaArrived) return 'Chegou'
     if (key === keys.tracking.status.DELIVERED) return 'Entregue'
     if (key === keys.shipmentView.operational.chips.etaMissing) return 'Indisponível'
     return key
@@ -34,6 +35,18 @@ describe('toDashboardEtaCellLabel', () => {
     }
 
     expect(toDashboardEtaCellLabel(etaDisplay, createTranslationStub(keys), keys)).toBe('Entregue')
+  })
+
+  it('renders arrived ETA state with canonical arrived label and formatted date', () => {
+    const { keys } = useTranslation()
+    const etaDisplay: ProcessSummaryVM['etaDisplay'] = {
+      kind: 'arrived',
+      value: temporalDtoFromCanonical('2026-03-28'),
+    }
+
+    expect(toDashboardEtaCellLabel(etaDisplay, createTranslationStub(keys), keys)).toBe(
+      'Chegou 28/03/2026',
+    )
   })
 
   it('renders unavailable ETA state with canonical unavailable label', () => {

@@ -232,6 +232,10 @@ export function ShipmentHeader(props: Props): JSX.Element {
   )
   const etaLabel = createMemo(() => {
     const value = (() => {
+      if (props.data.processEtaDisplayVm.kind === 'arrived') {
+        return `${t(keys.shipmentView.operational.chips.etaArrived)} ${props.data.processEtaDisplayVm.date}`
+      }
+
       if (props.data.processEtaDisplayVm.kind === 'date') {
         return props.data.processEtaDisplayVm.date
       }

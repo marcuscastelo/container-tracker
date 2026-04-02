@@ -701,6 +701,17 @@ describe('toShipmentDetailVM operational mapping', () => {
     expect(result.eta).toBeNull()
   })
 
+  it('maps arrived process ETA display with a resolved arrival date', () => {
+    const result = toShipmentDetailVM(createArrivedOperationalResponse(), 'pt-BR')
+
+    expect(result.processEtaDisplayVm).toEqual({
+      kind: 'arrived',
+      date: '28/03/2026',
+    })
+    expect(result.eta).toBe('28/03/2026')
+    expect(result.processEtaSecondaryVm.date).toBe('28/03/2026')
+  })
+
   it('keeps INT chip hidden when transshipment flag is false even with count > 0', () => {
     const result = toShipmentDetailVM(createOperationalHiddenIntResponse(), 'pt-BR')
     const firstContainer = requireAt(result.containers, 0)
@@ -773,6 +784,48 @@ function createDeliveredOperationalResponse(): ProcessDetailResponse {
       lifecycle_bucket: 'final_delivery',
       final_delivery_complete: true,
       full_logistics_complete: true,
+    },
+  }
+}
+
+function createArrivedOperationalResponse(): ProcessDetailResponse {
+  return {
+    id: 'proc-arrived-eta',
+    tracking_freshness_token: 'token-proc-arrived-eta',
+    reference: 'OPS-ARRIVED',
+    origin: { display_name: 'Karachi' },
+    destination: { display_name: 'Santos' },
+    carrier: 'msc',
+    source: 'api',
+    created_at: '2026-02-01T10:00:00.000Z',
+    updated_at: '2026-02-01T10:00:00.000Z',
+    containers: [
+      {
+        id: 'c-arrived-eta-1',
+        container_number: 'FCIU2000205',
+        status: 'LOADED',
+      },
+    ],
+    containersSync: [],
+    alerts: [],
+    process_operational: {
+      derived_status: 'IN_TRANSIT',
+      eta_max: {
+        event_time: temporalDtoFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        state: 'ACTUAL',
+        type: 'DISCHARGE',
+        location_code: 'LKCMB',
+        location_display: 'Colombo',
+      },
+      eta_display: {
+        kind: 'arrived',
+        value: temporalDtoFromCanonical('2026-03-28'),
+      },
+      coverage: {
+        total: 1,
+        with_eta: 1,
+      },
     },
   }
 }

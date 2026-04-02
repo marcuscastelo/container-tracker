@@ -238,6 +238,29 @@ describe('toProcessSummaryVMs', () => {
     expect(first.etaMsOrNull).toBeNull()
   })
 
+  it('maps arrived eta_display and keeps the arrival date sortable', () => {
+    const arrivedEta = temporalDtoFromCanonical('2026-03-28T12:00:00.000Z')
+
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-arrived',
+        eta: null,
+        eta_display: {
+          kind: 'arrived',
+          value: arrivedEta,
+        },
+      }),
+    ])
+
+    const first = requireAt(result, 0)
+    expect(first.eta).toBeNull()
+    expect(first.etaDisplay).toEqual({
+      kind: 'arrived',
+      value: arrivedEta,
+    })
+    expect(first.etaMsOrNull).toBe(Date.parse('2026-03-28T12:00:00.000Z'))
+  })
+
   it('falls back to legacy eta when eta_display is absent', () => {
     const eta = temporalDtoFromCanonical('2025-06-01T00:00:00Z')
 

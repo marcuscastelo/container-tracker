@@ -7,6 +7,10 @@ export function toDashboardEtaCellLabel(
   t: (key: string, opts?: Record<string, unknown>) => string,
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
+  if (etaDisplay.kind === 'arrived') {
+    return `${t(keys.shipmentView.operational.chips.etaArrived)} ${formatDateForLocale(etaDisplay.value)}`
+  }
+
   if (etaDisplay.kind === 'delivered') return t(keys.tracking.status.DELIVERED)
   if (etaDisplay.kind === 'unavailable') return t(keys.shipmentView.operational.chips.etaMissing)
   return formatDateForLocale(etaDisplay.value)

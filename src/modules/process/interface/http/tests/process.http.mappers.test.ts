@@ -203,6 +203,34 @@ describe('process.http.mappers', () => {
     })
   })
 
+  it('maps arrived eta_display into process list response DTO', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        eta: null,
+        eta_display: {
+          kind: 'arrived',
+          value: {
+            kind: 'instant',
+            value: '2026-03-28T12:00:00.000Z',
+          },
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.eta).toBeNull()
+    expect(parsed.eta_display).toEqual({
+      kind: 'arrived',
+      value: {
+        kind: 'instant',
+        value: '2026-03-28T12:00:00.000Z',
+      },
+    })
+  })
+
   it('keeps status microbadge nullable when there is no advanced subset status', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),

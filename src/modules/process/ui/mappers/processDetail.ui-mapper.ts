@@ -201,9 +201,9 @@ function toProcessEtaDisplayVm(
     return { kind: 'delivered' }
   }
 
-  if (etaDisplay?.kind === 'date') {
+  if (etaDisplay?.kind === 'date' || etaDisplay?.kind === 'arrived') {
     return {
-      kind: 'date',
+      kind: etaDisplay.kind,
       date: formatDateForLocale(etaDisplay.value, locale),
     }
   }
@@ -216,6 +216,16 @@ function toProcessEtaDisplayVm(
   }
 
   return { kind: 'unavailable' }
+}
+
+function toProcessEtaDate(
+  processEtaDisplayVm: ShipmentDetailVM['processEtaDisplayVm'],
+): string | null {
+  if (processEtaDisplayVm.kind === 'date' || processEtaDisplayVm.kind === 'arrived') {
+    return processEtaDisplayVm.date
+  }
+
+  return null
 }
 
 function toCurrentContextVm(
@@ -304,7 +314,7 @@ function toProcessEtaSecondaryVm(
 
   return {
     visible: containers.length > 1 && total > 0,
-    date: processEtaDisplayVm.kind === 'date' ? processEtaDisplayVm.date : null,
+    date: toProcessEtaDate(processEtaDisplayVm),
     withEta,
     total,
     incomplete: total > 0 && withEta < total,
@@ -407,7 +417,7 @@ export function toShipmentDetailVM(
     status: processAggregatedStatusToVariant(processAggregatedStatus),
     statusCode: toProcessStatusCode(processAggregatedStatus),
     statusMicrobadge: toProcessStatusMicrobadgeVM(data.process_operational?.status_microbadge),
-    eta: processEtaDisplayVm.kind === 'date' ? processEtaDisplayVm.date : null,
+    eta: toProcessEtaDate(processEtaDisplayVm),
     processEtaDisplayVm,
     processEtaSecondaryVm,
     containers,

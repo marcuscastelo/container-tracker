@@ -38,6 +38,10 @@ const EtaDisplayResponseSchema = z.discriminatedUnion('kind', [
     value: TemporalValueDtoSchema,
   }),
   z.object({
+    kind: z.literal('arrived'),
+    value: TemporalValueDtoSchema,
+  }),
+  z.object({
     kind: z.literal('unavailable'),
   }),
   z.object({

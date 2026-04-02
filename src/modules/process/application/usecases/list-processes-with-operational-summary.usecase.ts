@@ -28,6 +28,7 @@ type ContainerTrackingSummary = {
   readonly operational?: {
     readonly eta: {
       readonly eventTime: TemporalValueDto
+      readonly state: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
     } | null
     readonly etaApplicable?: boolean
     readonly lifecycleBucket?: 'pre_arrival' | 'post_arrival_pre_delivery' | 'final_delivery'
@@ -175,7 +176,10 @@ function createFallbackContainerSyncMetadata(containerNumber: string): Container
 }
 
 function toContainerTrackingOperational(command: {
-  readonly eta: { readonly eventTime: TemporalValueDto } | null
+  readonly eta: {
+    readonly eventTime: TemporalValueDto
+    readonly state: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
+  } | null
   readonly etaApplicable: boolean | undefined
   readonly lifecycleBucket:
     | 'pre_arrival'
@@ -253,9 +257,11 @@ function deriveProcessLifecycleBucket(
 function toProcessEtaDisplay(command: {
   readonly finalDeliveryComplete: boolean
   readonly eta: TemporalValueDto | null
+  readonly arrivedEta: TemporalValueDto | null
 }): ProcessOperationalSummary['eta_display'] {
   if (command.finalDeliveryComplete) return { kind: 'delivered' }
   if (command.eta !== null) return { kind: 'date', value: command.eta }
+  if (command.arrivedEta !== null) return { kind: 'arrived', value: command.arrivedEta }
   return { kind: 'unavailable' }
 }
 
@@ -388,6 +394,7 @@ export function aggregateOperationalSummary(
   // Select earliest future ETA among ETA-eligible containers.
   const nowTemporal = now ?? { kind: 'instant', value: systemClock.now().toIsoString() }
   let eta: TemporalValueDto | null = null
+  let arrivedEta: TemporalValueDto | null = null
   let etaEligibleTotal = 0
   let etaWithValue = 0
   for (let index = 0; index < summaries.length; index += 1) {
@@ -407,6 +414,15 @@ export function aggregateOperationalSummary(
       if (eta === null || compareNullableTemporalValues(etaTemporal, eta) < 0) {
         eta = etaTemporal
       }
+
+      continue
+    }
+
+    if (
+      summary.operational?.eta?.state === 'ACTUAL' &&
+      (arrivedEta === null || compareNullableTemporalValues(etaTemporal, arrivedEta) > 0)
+    ) {
+      arrivedEta = etaTemporal
     }
   }
 
@@ -494,6 +510,7 @@ export function aggregateOperationalSummary(
     eta_display: toProcessEtaDisplay({
       finalDeliveryComplete,
       eta,
+      arrivedEta,
     }),
     eta_coverage: {
       total: containerCount,
@@ -560,7 +577,10 @@ export function createListProcessesWithOperationalSummaryUseCase(
             status: hotRead.status,
             operational: toContainerTrackingOperational({
               eta: hotRead.operational.eta
-                ? { eventTime: hotRead.operational.eta.eventTime }
+                ? {
+                    eventTime: hotRead.operational.eta.eventTime,
+                    state: hotRead.operational.eta.state,
+                  }
                 : null,
               etaApplicable: hotRead.operational.etaApplicable,
               lifecycleBucket: hotRead.operational.lifecycleBucket,

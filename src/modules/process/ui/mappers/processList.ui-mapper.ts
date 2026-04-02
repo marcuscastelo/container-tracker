@@ -43,6 +43,10 @@ export type ProcessListItemSource = {
         readonly value: TemporalValueDto
       }
     | {
+        readonly kind: 'arrived'
+        readonly value: TemporalValueDto
+      }
+    | {
         readonly kind: 'unavailable'
       }
     | {
@@ -96,9 +100,9 @@ function toEtaDisplay(
   etaDisplay: ProcessListItemSource['eta_display'],
   eta: TemporalValueDto | null,
 ): ProcessSummaryVM['etaDisplay'] {
-  if (etaDisplay?.kind === 'date') {
+  if (etaDisplay?.kind === 'date' || etaDisplay?.kind === 'arrived') {
     return {
-      kind: 'date',
+      kind: etaDisplay.kind,
       value: etaDisplay.value,
     }
   }
@@ -121,12 +125,21 @@ function toEtaDisplay(
   return { kind: 'unavailable' }
 }
 
+function toEtaMsOrNull(etaDisplay: ProcessSummaryVM['etaDisplay']): number | null {
+  if (etaDisplay.kind === 'date' || etaDisplay.kind === 'arrived') {
+    return toTimestampOrNull(etaDisplay.value)
+  }
+
+  return null
+}
+
 export function toProcessSummaryVMs(
   data: readonly ProcessListItemSource[],
 ): readonly ProcessSummaryVM[] {
   return data.map((process) => {
     const rawStatus = process.process_status ?? null
     const eta = process.eta ?? null
+    const etaDisplay = toEtaDisplay(process.eta_display, eta)
     const statusCode = toProcessStatusCode(rawStatus)
     const statusRank = processStatusToRank(statusCode)
 
@@ -147,8 +160,8 @@ export function toProcessSummaryVMs(
       statusMicrobadge: toProcessStatusMicrobadgeVM(process.status_microbadge),
       statusRank,
       eta,
-      etaDisplay: toEtaDisplay(process.eta_display, eta),
-      etaMsOrNull: toTimestampOrNull(eta),
+      etaDisplay,
+      etaMsOrNull: toEtaMsOrNull(etaDisplay),
       carrier: toOptionalNonBlankString(process.carrier),
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,

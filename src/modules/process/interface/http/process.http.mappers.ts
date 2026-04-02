@@ -135,6 +135,10 @@ type EtaDisplayResponse =
       readonly value: TemporalValueDto
     }
   | {
+      readonly kind: 'arrived'
+      readonly value: TemporalValueDto
+    }
+  | {
       readonly kind: 'unavailable'
     }
   | {
@@ -495,6 +499,13 @@ function toProcessEtaDisplayResponse(command: {
   }
 
   if (command.etaMax !== null) {
+    if (command.etaMax.state === 'ACTUAL') {
+      return {
+        kind: 'arrived',
+        value: command.etaMax.eventTime,
+      }
+    }
+
     return {
       kind: 'date',
       value: command.etaMax.eventTime,
