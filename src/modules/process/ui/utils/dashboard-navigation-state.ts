@@ -28,6 +28,10 @@ export function readDashboardNavigationState(): DashboardNavigationState | null 
   return dashboardNavigationState
 }
 
+export function hasDashboardNavigationState(): boolean {
+  return dashboardNavigationState !== null
+}
+
 export function saveDashboardNavigationState(command: {
   readonly lastOpenedProcessId: string
   readonly environment?: DashboardNavigationStateEnvironment

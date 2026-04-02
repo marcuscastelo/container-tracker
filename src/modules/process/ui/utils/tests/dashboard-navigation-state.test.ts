@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   clearDashboardNavigationState,
+  hasDashboardNavigationState,
   readDashboardNavigationState,
   resolveHighlightedDashboardProcessId,
   restoreDashboardScrollPosition,
@@ -35,6 +36,7 @@ describe('dashboard-navigation-state', () => {
       lastOpenedProcessId: 'process-42',
       scrollY: 420,
     })
+    expect(hasDashboardNavigationState()).toBe(true)
   })
 
   it('clamps negative scroll values and clears previous state when process id is blank', () => {
@@ -55,6 +57,7 @@ describe('dashboard-navigation-state', () => {
     })
 
     expect(readDashboardNavigationState()).toBeNull()
+    expect(hasDashboardNavigationState()).toBe(false)
   })
 
   it('restores scroll from saved dashboard state and reports no-op when state or window is missing', () => {
