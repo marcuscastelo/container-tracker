@@ -5,6 +5,7 @@ const mockedIcons = vi.hoisted(() => ({
   Download: () => null,
   LogIn: () => null,
   LogOut: () => null,
+  Repeat: () => null,
   RotateCcw: () => null,
   Sailboat: () => null,
   ShieldAlert: () => null,
@@ -31,6 +32,9 @@ const CASES: readonly IconCase[] = [
   { eventType: 'DISCHARGE', expected: mockedIcons.Download },
   { eventType: 'DELIVERY', expected: mockedIcons.Truck },
   { eventType: 'EMPTY_RETURN', expected: mockedIcons.RotateCcw },
+  { eventType: 'TRANSSHIPMENT_INTENDED', expected: mockedIcons.Repeat },
+  { eventType: 'TRANSSHIPMENT_POSITIONED_IN', expected: mockedIcons.Repeat },
+  { eventType: 'TRANSSHIPMENT_POSITIONED_OUT', expected: mockedIcons.Repeat },
   { eventType: 'CUSTOMS_HOLD', expected: mockedIcons.ShieldAlert },
   { eventType: 'CUSTOMS_RELEASE', expected: mockedIcons.ShieldCheck },
 ]

@@ -1,3 +1,4 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
@@ -133,10 +134,16 @@ function toReplayState(
   now: Instant,
 ): TrackingReplayState {
   const resolvedContainerNumber = containerNumber ?? 'UNKNOWN'
-  const timelineDomain = deriveTimeline(containerId, resolvedContainerNumber, observations, now)
+  const projectionObservations = suppressSupersededObservationsForProjection(observations)
+  const timelineDomain = deriveTimeline(
+    containerId,
+    resolvedContainerNumber,
+    projectionObservations,
+    now,
+  )
   const status = deriveStatus(timelineDomain)
   const timeline = deriveTimelineWithSeriesReadModel(
-    toTrackingObservationProjections(observations),
+    toTrackingObservationProjections(projectionObservations),
     now,
   )
   const series = buildReplaySeries(timeline)

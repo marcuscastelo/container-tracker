@@ -11,6 +11,11 @@ import { parseInstantFromIso } from '~/shared/time/parsing'
 import { calendarDateValue } from '~/shared/time/temporal-value'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
+type MscSemanticRule = {
+  readonly type: ObservationType
+  readonly eventTimeTypeStrategy: 'date-derived' | 'forced-expected'
+}
+
 /**
  * Maps MSC event Description strings to canonical ObservationType.
  *
@@ -18,39 +23,108 @@ import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
  *   - "Empty to Shipper" → GATE_OUT
  *   - "Export received at CY" → GATE_IN
  *   - "Export Loaded on Vessel" → LOAD
+ *   - "Estimated Time of Arrival" → ARRIVAL (EXPECTED)
+ *   - "Estimated Time of Departure" → DEPARTURE (EXPECTED)
+ *   - "Full Intended Transshipment" → TRANSSHIPMENT_INTENDED (EXPECTED)
  *   - "Full Transshipment Loaded" → LOAD
  *   - "Full Transshipment Discharged" → DISCHARGE
- *   - "Full Transshipment Positioned In" → TERMINAL_MOVE
- *   - "Full Transshipment Positioned Out" → TERMINAL_MOVE
+ *   - "Full Transshipment Positioned In" → TRANSSHIPMENT_POSITIONED_IN
+ *   - "Full Transshipment Positioned Out" → TRANSSHIPMENT_POSITIONED_OUT
  *   - "Import Discharged from Vessel" → DISCHARGE
  *   - "Delivered" → DELIVERY
  *
  * This mapping will grow as we see more MSC event types.
  */
-const MSC_DESCRIPTION_MAP: Record<string, ObservationType> = {
-  'empty to shipper': 'GATE_OUT',
-  'export received at cy': 'GATE_IN',
-  'export loaded on vessel': 'LOAD',
-  'full transshipment loaded': 'LOAD',
-  'full transshipment discharged': 'DISCHARGE',
-  'full transshipment positioned in': 'TERMINAL_MOVE',
-  'full transshipment positioned out': 'TERMINAL_MOVE',
-  'import discharged from vessel': 'DISCHARGE',
-  'import to consignee': 'DELIVERY',
-  delivered: 'DELIVERY',
-  'gate in': 'GATE_IN',
-  'gate out': 'GATE_OUT',
-  'customs hold': 'CUSTOMS_HOLD',
-  'customs release': 'CUSTOMS_RELEASE',
-  'empty return': 'EMPTY_RETURN',
-  'empty received at cy': 'EMPTY_RETURN',
-  'container returned empty': 'EMPTY_RETURN',
-  'devolucao de conteiner vazio': 'EMPTY_RETURN',
+const MSC_EVENT_RULES: Readonly<Record<string, MscSemanticRule>> = {
+  'empty to shipper': {
+    type: 'GATE_OUT',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'export received at cy': {
+    type: 'GATE_IN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'export loaded on vessel': {
+    type: 'LOAD',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'estimated time of arrival': {
+    type: 'ARRIVAL',
+    eventTimeTypeStrategy: 'forced-expected',
+  },
+  'estimated time of departure': {
+    type: 'DEPARTURE',
+    eventTimeTypeStrategy: 'forced-expected',
+  },
+  'full intended transshipment': {
+    type: 'TRANSSHIPMENT_INTENDED',
+    eventTimeTypeStrategy: 'forced-expected',
+  },
+  'full transshipment loaded': {
+    type: 'LOAD',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'full transshipment discharged': {
+    type: 'DISCHARGE',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'full transshipment positioned in': {
+    type: 'TRANSSHIPMENT_POSITIONED_IN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'full transshipment positioned out': {
+    type: 'TRANSSHIPMENT_POSITIONED_OUT',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'import discharged from vessel': {
+    type: 'DISCHARGE',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'import to consignee': {
+    type: 'DELIVERY',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  delivered: {
+    type: 'DELIVERY',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'gate in': {
+    type: 'GATE_IN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'gate out': {
+    type: 'GATE_OUT',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'customs hold': {
+    type: 'CUSTOMS_HOLD',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'customs release': {
+    type: 'CUSTOMS_RELEASE',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'empty return': {
+    type: 'EMPTY_RETURN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'empty received at cy': {
+    type: 'EMPTY_RETURN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'container returned empty': {
+    type: 'EMPTY_RETURN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
+  'devolucao de conteiner vazio': {
+    type: 'EMPTY_RETURN',
+    eventTimeTypeStrategy: 'date-derived',
+  },
 }
 
-const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY'])
+const INVALID_VESSEL_VALUES = new Set(['LADEN', 'EMPTY', 'TBN'])
 const VESSEL_EVENT_TYPES: readonly ObservationType[] = ['LOAD', 'DISCHARGE', 'ARRIVAL', 'DEPARTURE']
-const MSC_NORMALIZER_VERSION = 'msc-v2'
+const MSC_NORMALIZER_VERSION = 'msc-v3'
 
 type ParsedMscDetail = {
   readonly vessel_name: string | null
@@ -62,10 +136,10 @@ type MscVesselInfo = {
   readonly IMO?: string | null | undefined
 } | null
 
-function mapMscDescription(description: string | null | undefined): ObservationType {
-  if (!description) return 'OTHER'
+function lookupMscSemanticRule(description: string | null | undefined): MscSemanticRule | null {
+  if (!description) return null
   const key = toLookupMapKey(description)
-  return MSC_DESCRIPTION_MAP[key] ?? 'OTHER'
+  return MSC_EVENT_RULES[key] ?? null
 }
 
 function sanitizeVesselName(vesselName: string | null): string | null {
@@ -149,6 +223,58 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   return label.trim().length > 0 ? label : null
 }
 
+function normalizeLocationDisplay(value: string | null | undefined): string {
+  return typeof value === 'string' ? toLookupMapKey(value) : ''
+}
+
+function sameCalendarDateValue(
+  left: ObservationDraft['event_time'],
+  right: ObservationDraft['event_time'],
+): boolean {
+  if (left === null || right === null) return left === right
+  if (left.kind !== 'date' || right.kind !== 'date') return false
+  return left.value.toIsoDate() === right.value.toIsoDate()
+}
+
+function locationsMatch(
+  draft: Pick<ObservationDraft, 'location_code' | 'location_display'>,
+  locationCode: string | null,
+  locationDisplay: string | null,
+): boolean {
+  const normalizedDraftCode = draft.location_code?.trim().toUpperCase() ?? ''
+  const normalizedTargetCode = locationCode?.trim().toUpperCase() ?? ''
+  if (
+    normalizedDraftCode.length > 0 &&
+    normalizedTargetCode.length > 0 &&
+    normalizedDraftCode === normalizedTargetCode
+  ) {
+    return true
+  }
+
+  const normalizedDraftDisplay = normalizeLocationDisplay(draft.location_display)
+  const normalizedTargetDisplay = normalizeLocationDisplay(locationDisplay)
+  return normalizedDraftDisplay.length > 0 && normalizedDraftDisplay === normalizedTargetDisplay
+}
+
+function hasExplicitArrivalEtaForPod(command: {
+  readonly drafts: readonly ObservationDraft[]
+  readonly podEtaEventTime: ObservationDraft['event_time']
+  readonly podLocationCode: string | null
+  readonly podLocationDisplay: string | null
+}): boolean {
+  return command.drafts.some((draft) => {
+    if (draft.type !== 'ARRIVAL' || draft.event_time_type !== 'EXPECTED') return false
+    if (
+      typeof draft.carrier_label !== 'string' ||
+      toLookupMapKey(draft.carrier_label) !== 'estimated time of arrival'
+    ) {
+      return false
+    }
+    if (!sameCalendarDateValue(draft.event_time, command.podEtaEventTime)) return false
+    return locationsMatch(draft, command.podLocationCode, command.podLocationDisplay)
+  })
+}
+
 function computeConfidence(
   eventTime: ObservationDraft['event_time'],
   locationCode: string | null | undefined,
@@ -181,7 +307,10 @@ function determineEventTimeType(
   eventDate: string | null | undefined,
   currentDate: string | null | undefined,
   snapshotFetchedAt: string,
+  strategy: MscSemanticRule['eventTimeTypeStrategy'] = 'date-derived',
 ): EventTimeType {
+  if (strategy === 'forced-expected') return 'EXPECTED'
+
   // If no event date, treat as EXPECTED (provisional)
   if (!eventDate) return 'EXPECTED'
 
@@ -240,10 +369,12 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
       const containerNumber =
         containerInfo.ContainerNumber ?? mscData.Data?.TrackingNumber ?? 'UNKNOWN'
       const events = containerInfo.Events ?? []
+      const containerDrafts: ObservationDraft[] = []
 
       // Process historical/confirmed events from Events array
       for (const event of events) {
-        const type = mapMscDescription(event.Description)
+        const semanticRule = lookupMscSemanticRule(event.Description)
+        const type = semanticRule?.type ?? 'OTHER'
         const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
         const eventTime = parsedDate ? calendarDateValue(parsedDate) : null
         const locationCode = event.UnLocationCode ?? null
@@ -251,7 +382,12 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const parsedDetail = parseMscDetail(type, event.Detail, event.Vessel)
 
         // Determine ACTUAL vs EXPECTED based on date comparison
-        const eventTimeType = determineEventTimeType(event.Date, currentDate, snapshot.fetched_at)
+        const eventTimeType = determineEventTimeType(
+          event.Date,
+          currentDate,
+          snapshot.fetched_at,
+          semanticRule?.eventTimeTypeStrategy ?? 'date-derived',
+        )
 
         const confidence = computeConfidence(eventTime, locationCode, type, eventTimeType)
 
@@ -272,7 +408,7 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           raw_event: withNormalizerVersion(event),
         }
 
-        drafts.push(draft)
+        containerDrafts.push(draft)
       }
 
       // Generate EXPECTED observation from PodEtaDate if present and future
@@ -287,11 +423,24 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           if (etaTimeType === 'EXPECTED') {
             const podLocation = bill.GeneralTrackingInfo?.PortOfDischarge ?? null
             const podLocationCode = null // MSC doesn't provide POD UN/LOCODE in PodEtaDate context
+            const etaEventTime = calendarDateValue(parsedEta)
+
+            if (
+              hasExplicitArrivalEtaForPod({
+                drafts: containerDrafts,
+                podEtaEventTime: etaEventTime,
+                podLocationCode,
+                podLocationDisplay: podLocation,
+              })
+            ) {
+              drafts.push(...containerDrafts)
+              continue
+            }
 
             const etaDraft: ObservationDraft = {
               container_number: containerNumber,
               type: 'ARRIVAL', // ETA implies arrival at POD
-              event_time: calendarDateValue(parsedEta),
+              event_time: etaEventTime,
               event_time_type: 'EXPECTED',
               location_code: podLocationCode,
               location_display: podLocation,
@@ -305,10 +454,12 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
               raw_event: withNormalizerVersion({ source: 'PodEtaDate', value: podEtaDate }),
             }
 
-            drafts.push(etaDraft)
+            containerDrafts.push(etaDraft)
           }
         }
       }
+
+      drafts.push(...containerDrafts)
     }
   }
 

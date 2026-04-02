@@ -1,3 +1,4 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import {
   deriveTrackingOperationalSummary,
   type TrackingOperationalSummary,
@@ -240,11 +241,18 @@ export async function getContainerSummary(
     observations = enrichPilObservationsFromSnapshots(observations, snapshots)
   }
 
-  const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations, referenceNow)
+  const projectionObservations = suppressSupersededObservationsForProjection(observations)
+
+  const timeline = deriveTimeline(
+    cmd.containerId,
+    cmd.containerNumber,
+    projectionObservations,
+    referenceNow,
+  )
   const status = deriveStatus(timeline)
   const transshipment = deriveTransshipment(timeline)
   const operational = deriveTrackingOperationalSummary({
-    observations: toTrackingObservationProjections(observations),
+    observations: toTrackingObservationProjections(projectionObservations),
     status,
     transshipment,
     podLocationCode: cmd.podLocationCode ?? null,
