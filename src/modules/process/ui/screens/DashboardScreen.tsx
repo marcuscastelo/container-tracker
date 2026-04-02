@@ -53,11 +53,7 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 import { AppHeader } from '~/shared/ui/AppHeader'
 import { ExistingProcessError } from '~/shared/ui/ExistingProcessError'
-import {
-  navigateToProcess,
-  scheduleIntentPrefetch,
-  scheduleVisiblePrefetch,
-} from '~/shared/ui/navigation/app-navigation'
+import { navigateToProcess, scheduleIntentPrefetch } from '~/shared/ui/navigation/app-navigation'
 
 function getCreateErrorMessage(error: string | ExistingProcessConflict | null): string {
   if (typeof error === 'string') return error
@@ -251,14 +247,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
     })
   }
 
-  const handleVisibleProcessPrefetch = (processIds: readonly string[]) => {
-    scheduleVisiblePrefetch({
-      processIds,
-      preloadRoute,
-      preloadData: (prefetchedProcessId) => prefetchProcessDetail(prefetchedProcessId, locale()),
-    })
-  }
-
   const handleProcessSubmit = async (data: CreateProcessDialogFormData) => {
     try {
       setCreateError(null)
@@ -361,7 +349,6 @@ export function Dashboard(props: { readonly searchSlot?: JSX.Element }): JSX.Ele
             onProcessSync={handleProcessSync}
             onOpenProcess={handleOpenProcess}
             onProcessIntent={handleProcessIntent}
-            onVisibleProcessesPrefetch={handleVisibleProcessPrefetch}
           />
         </main>
       </div>

@@ -6,6 +6,8 @@ import {
   toProcessDetailResponse,
   toProcessResponse,
   toProcessResponseWithSummary,
+  toProcessSyncSnapshotResponse,
+  toRecognizedAlertIncidentsResponse,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import {
@@ -18,8 +20,14 @@ import { jsonResponse } from '~/shared/api/typedRoute'
 import {
   ProcessDetailResponseSchema,
   ProcessesV2ResponseSchema,
+  ProcessRecognizedAlertIncidentsResponseSchema,
   ProcessResponseSchema,
+  ProcessSyncSnapshotResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
+import {
+  readAuditedTriggerSource,
+  runWithReadRequestAudit,
+} from '~/shared/observability/readRequestMetrics'
 import { systemClock } from '~/shared/time/clock'
 
 // ---------------------------------------------------------------------------
@@ -38,8 +46,9 @@ type ProcessControllerDeps = {
   >
   readonly trackingUseCases: Pick<
     TrackingUseCases,
-    'getContainerSummary' | 'getContainersSyncMetadata'
-  >
+    'findContainersHotReadProjection' | 'getContainersSyncMetadata'
+  > &
+    Partial<Pick<TrackingUseCases, 'findContainersRecognizedAlertIncidentsProjection'>>
 }
 
 // ---------------------------------------------------------------------------
@@ -49,20 +58,64 @@ type ProcessControllerDeps = {
 export function createProcessControllers(deps: ProcessControllerDeps) {
   const { processUseCases, trackingUseCases } = deps
 
+  async function buildProcessDetailLeanPayload(processId: string) {
+    const result = await processUseCases.findProcessByIdWithContainers({ processId })
+    if (!result.process) {
+      return null
+    }
+
+    const pwc = result.process
+    const now = systemClock.now()
+    const {
+      containersWithTracking,
+      activeAlerts,
+      activeAlertIncidents,
+      operationalByContainerId,
+      containersSync,
+    } = await resolveProcessDetailTracking(pwc, trackingUseCases, now)
+
+    return {
+      pwc,
+      containersWithTracking,
+      activeAlerts,
+      activeAlertIncidents,
+      operationalByContainerId,
+      containersSync,
+      response: toProcessDetailResponse(
+        pwc,
+        containersWithTracking,
+        activeAlerts,
+        activeAlertIncidents,
+        operationalByContainerId,
+        containersSync,
+      ),
+    }
+  }
+
   // -----------------------------------------------------------------------
   // GET /api/processes — list all processes with containers and operational summary
   // -----------------------------------------------------------------------
-  async function listProcesses(): Promise<Response> {
-    try {
-      const result = await processUseCases.listProcessesWithOperationalSummary()
-      const response = result.processes.map((p) =>
-        toProcessResponseWithSummary(p.pwc, p.summary, p.sync),
-      )
-      return jsonResponse(response, 200)
-    } catch (err) {
-      console.error('GET /api/processes error:', err)
-      return mapErrorToResponse(err)
-    }
+  async function listProcesses({ request }: { readonly request: Request }): Promise<Response> {
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/processes',
+        projection: 'ProcessListResponse',
+        readStrategy: 'tracking.hot_read_projection.process_list',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const result = await processUseCases.listProcessesWithOperationalSummary()
+          const response = result.processes.map((p) =>
+            toProcessResponseWithSummary(p.pwc, p.summary, p.sync),
+          )
+          return jsonResponse(response, 200)
+        } catch (err) {
+          console.error('GET /api/processes error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
   }
 
   // -----------------------------------------------------------------------
@@ -122,38 +175,132 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
   // -----------------------------------------------------------------------
   async function getProcessById({
     params,
+    request,
   }: {
     readonly params: { readonly id?: string }
+    readonly request: Request
   }): Promise<Response> {
-    try {
-      const processId = params.id
-      if (!processId) {
-        return jsonResponse({ error: 'Process ID is required' }, 400)
-      }
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/processes/:id',
+        projection: 'ProcessDetailLeanResponse',
+        readStrategy: 'tracking.hot_read_projection.process_detail',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const processId = params.id
+          if (!processId) {
+            return jsonResponse({ error: 'Process ID is required' }, 400)
+          }
 
-      const result = await processUseCases.findProcessByIdWithContainers({ processId })
-      if (!result.process) {
-        return jsonResponse({ error: 'Process not found' }, 404)
-      }
+          const detail = await buildProcessDetailLeanPayload(processId)
+          if (!detail) {
+            return jsonResponse({ error: 'Process not found' }, 404)
+          }
 
-      const pwc = result.process
-      const now = systemClock.now()
-      const { containersWithTracking, allAlerts, operationalByContainerId, containersSync } =
-        await resolveProcessDetailTracking(pwc, trackingUseCases, now)
+          return jsonResponse(detail.response, 200, ProcessDetailResponseSchema)
+        } catch (err) {
+          console.error('GET /api/processes/[id] error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
+  }
 
-      const response = toProcessDetailResponse(
-        pwc,
-        containersWithTracking,
-        allAlerts,
-        operationalByContainerId,
-        containersSync,
-      )
+  async function getProcessSyncSnapshot({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/processes/:id/sync-state',
+        projection: 'ProcessSyncSnapshotResponse',
+        readStrategy: 'tracking.hot_read_projection.process_sync_snapshot',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const processId = params.id
+          if (!processId) {
+            return jsonResponse({ error: 'Process ID is required' }, 400)
+          }
 
-      return jsonResponse(response, 200, ProcessDetailResponseSchema)
-    } catch (err) {
-      console.error('GET /api/processes/[id] error:', err)
-      return mapErrorToResponse(err)
-    }
+          const detail = await buildProcessDetailLeanPayload(processId)
+          if (!detail) {
+            return jsonResponse({ error: 'Process not found' }, 404)
+          }
+
+          const response = toProcessSyncSnapshotResponse({
+            trackingFreshnessToken: detail.response.tracking_freshness_token,
+            containersSync: detail.containersSync,
+          })
+
+          return jsonResponse(response, 200, ProcessSyncSnapshotResponseSchema)
+        } catch (err) {
+          console.error('GET /api/processes/[id]/sync-state error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
+  }
+
+  async function getProcessRecognizedAlertIncidents({
+    params,
+    request,
+  }: {
+    readonly params: { readonly id?: string }
+    readonly request: Request
+  }): Promise<Response> {
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/processes/:id/alerts/recognized',
+        projection: 'ProcessRecognizedAlertIncidentsResponse',
+        readStrategy: 'tracking.recognized_alerts_projection.lazy',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const processId = params.id
+          if (!processId) {
+            return jsonResponse({ error: 'Process ID is required' }, 400)
+          }
+
+          const result = await processUseCases.findProcessByIdWithContainers({ processId })
+          if (!result.process) {
+            return jsonResponse({ error: 'Process not found' }, 404)
+          }
+
+          const recognizedAlertIncidents =
+            trackingUseCases.findContainersRecognizedAlertIncidentsProjection === undefined
+              ? {
+                  summary: {
+                    activeIncidentCount: 0,
+                    affectedContainerCount: 0,
+                    recognizedIncidentCount: 0,
+                  },
+                  active: [],
+                  recognized: [],
+                }
+              : await trackingUseCases.findContainersRecognizedAlertIncidentsProjection({
+                  containers: result.process.containers.map((container) => ({
+                    containerId: String(container.id),
+                    containerNumber: String(container.containerNumber),
+                  })),
+                })
+
+          const response = toRecognizedAlertIncidentsResponse(recognizedAlertIncidents)
+
+          return jsonResponse(response, 200, ProcessRecognizedAlertIncidentsResponseSchema)
+        } catch (err) {
+          console.error('GET /api/processes/[id]/alerts/recognized error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
   }
 
   // -----------------------------------------------------------------------
@@ -268,6 +415,8 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
     listProcessesV2,
     createProcess,
     getProcessById,
+    getProcessSyncSnapshot,
+    getProcessRecognizedAlertIncidents,
     updateProcessById,
     deleteProcessById,
   }

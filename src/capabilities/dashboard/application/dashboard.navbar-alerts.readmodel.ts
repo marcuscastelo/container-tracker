@@ -50,10 +50,10 @@ export function createDashboardNavbarAlertsReadModelUseCase(
     const containerOperationalById =
       containerSummaryCommand.length === 0
         ? new Map<string, TrackingOperationalSummary>()
-        : await deps.trackingUseCases.getContainersSummary(
-            containerSummaryCommand,
-            systemClock.now(),
-          )
+        : await deps.trackingUseCases.findContainersOperationalSummaryProjection({
+            containers: containerSummaryCommand,
+            now: systemClock.now(),
+          })
 
     const processAccumulatorsById = new Map<string, MutableProcessAccumulator>()
 

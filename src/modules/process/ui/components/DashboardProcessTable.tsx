@@ -9,7 +9,7 @@ import {
   TriangleAlert,
 } from 'lucide-solid'
 import type { JSX } from 'solid-js'
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createMemo, createSignal, For, Show } from 'solid-js'
 import {
   buildGridTemplate,
   type DashboardColumnDef,
@@ -24,7 +24,6 @@ import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
-import { collectVisibleDashboardProcessIds } from '~/modules/process/ui/utils/dashboard-process-visibility.utils'
 import {
   hasDashboardRowSelectedText,
   isInteractiveDashboardRowTarget,
@@ -40,10 +39,7 @@ import type {
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
-import {
-  buildProcessHref,
-  createViewportPrefetchController,
-} from '~/shared/ui/navigation/app-navigation'
+import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
@@ -66,7 +62,6 @@ type Props = {
   readonly onProcessSync: (processId: string) => Promise<void>
   readonly onOpenProcess: (processId: string) => void
   readonly onProcessIntent: (processId: string) => void
-  readonly onVisibleProcessesPrefetch: (processIds: readonly string[]) => void
 }
 
 type RowProps = {
@@ -865,13 +860,6 @@ export function DashboardProcessTable(props: Props): JSX.Element {
   const [columnOrder, setColumnOrder] = createSignal<readonly DashboardColumnId[]>(
     readColumnOrderFromLocalStorage(),
   )
-  let tableSectionRef: HTMLElement | undefined
-
-  const viewportPrefetchController = createViewportPrefetchController({
-    collectVisibleKeys: () => collectVisibleDashboardProcessIds(tableSectionRef),
-    onVisibleKeysSettled: (processIds: readonly string[]) =>
-      props.onVisibleProcessesPrefetch(processIds),
-  })
 
   const handleColumnReorder = (columnId: DashboardColumnId, targetIndex: number) => {
     const result = moveColumn(columnOrder(), columnId, targetIndex)
@@ -879,33 +867,6 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     setColumnOrder(result)
     writeColumnOrderToLocalStorage(result)
   }
-
-  onMount(() => {
-    const scheduleVisiblePrefetch = () => {
-      viewportPrefetchController.schedule()
-    }
-
-    window.addEventListener('scroll', scheduleVisiblePrefetch, { passive: true })
-    window.addEventListener('resize', scheduleVisiblePrefetch)
-
-    onCleanup(() => {
-      window.removeEventListener('scroll', scheduleVisiblePrefetch)
-      window.removeEventListener('resize', scheduleVisiblePrefetch)
-      viewportPrefetchController.dispose()
-    })
-  })
-
-  createEffect(() => {
-    const processes = props.processes
-    const shouldScheduleViewportPrefetch =
-      !props.initialLoading && !props.hasError && processes.length > 0
-
-    if (!shouldScheduleViewportPrefetch) return
-
-    queueMicrotask(() => {
-      viewportPrefetchController.schedule()
-    })
-  })
 
   const content = () => {
     if (props.initialLoading) {
@@ -958,9 +919,6 @@ export function DashboardProcessTable(props: Props): JSX.Element {
 
   return (
     <section
-      ref={(element) => {
-        tableSectionRef = element
-      }}
       class="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_1px_2px_rgb(0_0_0_/8%)]"
       aria-busy={props.initialLoading || props.refreshing}
     >

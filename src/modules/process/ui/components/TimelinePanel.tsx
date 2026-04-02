@@ -21,10 +21,7 @@ import {
 } from '~/modules/process/ui/timeline/timelineBlockModel'
 import { deriveCurrentVesselFromTimeline } from '~/modules/process/ui/utils/current-tracking-context'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
-import type {
-  ContainerDetailVM,
-  ContainerObservationVM,
-} from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
@@ -45,8 +42,8 @@ type TrackingTimelinePanelContainerContext = Pick<
 type TrackingTimelinePanelContentProps = {
   readonly title: string
   readonly container: TrackingTimelinePanelContainerContext | null
+  readonly containerId: string | null
   readonly timeline: readonly TrackingTimelineItem[]
-  readonly observations?: readonly ContainerObservationVM[]
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly alerts?: readonly AlertDisplayVM[]
@@ -83,16 +80,6 @@ function derivePortsRoute(container: TrackingTimelinePanelContainerContext | nul
   return ports.map((p) => p.code).join(' \u2192 ')
 }
 
-function buildObservationsById(
-  observations: readonly ContainerObservationVM[],
-): ReadonlyMap<string, ContainerObservationVM> {
-  const observationsById = new Map<string, ContainerObservationVM>()
-  for (const observation of observations) {
-    observationsById.set(observation.id, observation)
-  }
-  return observationsById
-}
-
 function toOptionalTimelineBlockListProps(params: {
   readonly carrier: string | null | undefined
   readonly containerNumber: string | null | undefined
@@ -112,18 +99,18 @@ function toOptionalTimelineBlockListProps(params: {
 }
 
 function toOptionalTrackingTimelinePanelContentProps(params: {
-  readonly observations: readonly ContainerObservationVM[] | undefined
+  readonly containerId: string | null
   readonly carrier: string | null | undefined
   readonly nonMappedIndicatorVariant: NonMappedIndicatorVariant | undefined
   readonly alerts: readonly AlertDisplayVM[] | undefined
 }): {
-  readonly observations?: readonly ContainerObservationVM[]
+  readonly containerId: string | null
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly alerts?: readonly AlertDisplayVM[]
 } {
   return {
-    ...(params.observations === undefined ? {} : { observations: params.observations }),
+    containerId: params.containerId,
     ...(params.carrier === undefined ? {} : { carrier: params.carrier }),
     ...(params.nonMappedIndicatorVariant === undefined
       ? {}
@@ -133,22 +120,22 @@ function toOptionalTrackingTimelinePanelContentProps(params: {
 }
 
 function toOptionalTimelineNodeProps(params: {
+  readonly containerId: string
   readonly carrier: string | null | undefined
   readonly containerNumber: string | null | undefined
-  readonly observation: ContainerObservationVM | undefined
   readonly nonMappedIndicatorVariant: NonMappedIndicatorVariant | undefined
   readonly highlighted: boolean | undefined
 }): {
+  readonly containerId: string
   readonly carrier?: string | null
   readonly containerNumber?: string | null
-  readonly observation?: ContainerObservationVM
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlighted?: boolean
 } {
   return {
+    containerId: params.containerId,
     ...(params.carrier === undefined ? {} : { carrier: params.carrier }),
     ...(params.containerNumber === undefined ? {} : { containerNumber: params.containerNumber }),
-    ...(params.observation === undefined ? {} : { observation: params.observation }),
     ...(params.nonMappedIndicatorVariant === undefined
       ? {}
       : { nonMappedIndicatorVariant: params.nonMappedIndicatorVariant }),
@@ -164,7 +151,6 @@ export function TrackingTimelinePanelContent(
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
   const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.timeline))
   const portsRoute = createMemo(() => derivePortsRoute(props.container))
-  const observationsById = createMemo(() => buildObservationsById(props.observations ?? []))
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 
   return (
@@ -191,7 +177,7 @@ export function TrackingTimelinePanelContent(
           <TimelineBlockList
             renderList={renderList()}
             highlightedTypes={highlightedTypes()}
-            observationById={observationsById()}
+            containerId={props.containerId}
             {...toOptionalTimelineBlockListProps({
               carrier: props.carrier,
               containerNumber: props.container?.number,
@@ -259,7 +245,7 @@ export function TimelinePanel(props: Props): JSX.Element {
       container={props.selectedContainer}
       timeline={props.selectedContainer?.timeline ?? []}
       {...toOptionalTrackingTimelinePanelContentProps({
-        observations: props.selectedContainer?.observations ?? [],
+        containerId: props.selectedContainer?.id ?? null,
         carrier: props.carrier,
         nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
         alerts: props.alerts,
@@ -334,11 +320,11 @@ function groupRenderItems(items: readonly TimelineRenderItem[]): readonly BlockG
 
 function BlockChildren(props: {
   readonly children: readonly TimelineRenderItem[]
+  readonly containerId: string
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlightedTypes: ReadonlySet<string>
-  readonly observationById: ReadonlyMap<string, ContainerObservationVM>
 }): JSX.Element {
   let eventIdx = 0
 
@@ -359,9 +345,9 @@ function BlockChildren(props: {
                     event={child.event}
                     isLast={child.isLast}
                     {...toOptionalTimelineNodeProps({
+                      containerId: props.containerId,
                       carrier: props.carrier,
                       containerNumber: props.containerNumber,
-                      observation: props.observationById.get(child.event.id),
                       nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
                       highlighted: props.highlightedTypes.has(child.event.type),
                     })}
@@ -384,11 +370,11 @@ function BlockChildren(props: {
 
 function TimelineBlockList(props: {
   readonly renderList: readonly TimelineRenderItem[]
+  readonly containerId: string | null
   readonly carrier?: string | null
   readonly containerNumber?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly highlightedTypes: ReadonlySet<string>
-  readonly observationById: ReadonlyMap<string, ContainerObservationVM>
 }): JSX.Element {
   const groups = createMemo(() => groupRenderItems(props.renderList))
   const currentVoyageIdx = createMemo(() =>
@@ -397,13 +383,15 @@ function TimelineBlockList(props: {
 
   const renderGroupContent = (group: BlockGroup, isCurrent: boolean): JSX.Element | null => {
     switch (group.kind) {
-      case 'voyage':
+      case 'voyage': {
+        const containerId = props.containerId
+        if (containerId === null) return null
         return (
           <BlockCard variant="voyage" isCurrent={isCurrent}>
             <VoyageBlockHeader block={group.block} isCurrent={isCurrent} />
             <BlockChildren
               children={group.children}
-              observationById={props.observationById}
+              containerId={containerId}
               highlightedTypes={props.highlightedTypes}
               {...toOptionalTimelineBlockListProps({
                 carrier: props.carrier,
@@ -413,13 +401,16 @@ function TimelineBlockList(props: {
             />
           </BlockCard>
         )
-      case 'terminal':
+      }
+      case 'terminal': {
+        const containerId = props.containerId
+        if (containerId === null) return null
         return (
           <BlockCard variant="terminal">
             <TerminalBlockHeader block={group.block} />
             <BlockChildren
               children={group.children}
-              observationById={props.observationById}
+              containerId={containerId}
               highlightedTypes={props.highlightedTypes}
               {...toOptionalTimelineBlockListProps({
                 carrier: props.carrier,
@@ -429,19 +420,21 @@ function TimelineBlockList(props: {
             />
           </BlockCard>
         )
+      }
       case 'transshipment':
         return <TransshipmentBlockCard block={group.block} />
       case 'standalone':
         switch (group.item.type) {
           case 'event':
+            if (props.containerId === null) return null
             return (
               <TimelineNode
                 event={group.item.event}
                 isLast={group.item.isLast}
                 {...toOptionalTimelineNodeProps({
+                  containerId: props.containerId,
                   carrier: props.carrier,
                   containerNumber: props.containerNumber,
-                  observation: props.observationById.get(group.item.event.id),
                   nonMappedIndicatorVariant: props.nonMappedIndicatorVariant,
                   highlighted: props.highlightedTypes.has(group.item.event.type),
                 })}

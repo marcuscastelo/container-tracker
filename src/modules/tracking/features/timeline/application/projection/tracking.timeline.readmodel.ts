@@ -33,6 +33,7 @@ export type TrackingSeriesHistory = {
 
 export type TrackingTimelineItem = {
   readonly id: string
+  readonly observationId?: string | null
   readonly type: TrackingObservationProjection['type']
   readonly carrierLabel?: string
   readonly location?: string
@@ -47,6 +48,8 @@ export type TrackingTimelineItem = {
   readonly vesselName?: string | null
   readonly voyage?: string | null
 
+  /** Whether this primary has additional series entries available on demand. */
+  readonly hasSeriesHistory?: boolean
   /** Optional series history with backend-derived classification. */
   readonly seriesHistory?: TrackingSeriesHistory
 }
@@ -67,10 +70,12 @@ function observationToTrackingTimelineItem(
 
   return {
     id: obs.id ?? `obs-${index}`,
+    observationId: obs.id ?? null,
     type: obs.type,
     eventTime: trackingTemporalValueToDto(obs.event_time),
     eventTimeType,
     derivedState,
+    hasSeriesHistory: false,
     ...(obs.carrier_label === undefined || obs.carrier_label === null
       ? {}
       : { carrierLabel: obs.carrier_label }),
@@ -83,6 +88,7 @@ function observationToTrackingTimelineItem(
 function timelineItemToTrackingItem(
   item: {
     readonly primary: TrackingObservationProjection
+    readonly hasSeriesHistory: boolean
     readonly seriesHistory?: TrackingSeriesHistory
   },
   allObservations: readonly TrackingObservationProjection[],
@@ -90,7 +96,9 @@ function timelineItemToTrackingItem(
 ): TrackingTimelineItem {
   const derivedState = deriveObservationState(item.primary, allObservations)
   const base = observationToTrackingTimelineItem(item.primary, index, derivedState)
-  return item.seriesHistory === undefined ? base : { ...base, seriesHistory: item.seriesHistory }
+  return item.seriesHistory === undefined
+    ? { ...base, hasSeriesHistory: item.hasSeriesHistory }
+    : { ...base, hasSeriesHistory: true, seriesHistory: item.seriesHistory }
 }
 
 /**
@@ -106,6 +114,7 @@ function timelineItemToTrackingItem(
 export function deriveTimelineWithSeriesReadModel(
   observations: readonly TrackingObservationProjection[],
   now: Instant = systemClock.now(),
+  options?: { readonly includeSeriesHistory?: boolean },
 ): TrackingTimelineItem[] {
   if (observations.length === 0) return []
 
@@ -120,6 +129,7 @@ export function deriveTimelineWithSeriesReadModel(
 
   const result: Array<{
     primary: TrackingObservationProjection
+    hasSeriesHistory: boolean
     seriesHistory?: TrackingSeriesHistory
   }> = []
 
@@ -128,8 +138,9 @@ export function deriveTimelineWithSeriesReadModel(
     const classification = classifySeries(series, now)
 
     if (classification.primary) {
+      const shouldIncludeSeriesHistory = options?.includeSeriesHistory ?? true
       const seriesHistory: TrackingSeriesHistory | undefined =
-        series.length > 1
+        shouldIncludeSeriesHistory && series.length > 1
           ? {
               hasActualConflict: classification.hasActualConflict,
               classified: classification.classified.map((observation) => ({
@@ -145,6 +156,7 @@ export function deriveTimelineWithSeriesReadModel(
 
       result.push({
         primary: classification.primary,
+        hasSeriesHistory: series.length > 1,
         ...(seriesHistory === undefined ? {} : { seriesHistory }),
       })
     }

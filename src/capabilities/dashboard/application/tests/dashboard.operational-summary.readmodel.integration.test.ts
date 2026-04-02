@@ -206,7 +206,7 @@ describe('dashboard operational summary read model integration', () => {
       processUseCases: { listProcessesWithOperationalSummary },
       trackingUseCases: {
         listActiveAlertReadModel,
-        getContainersSummary: vi.fn(async () => new Map()),
+        findContainersOperationalSummaryProjection: vi.fn(async () => new Map()),
       },
     })
 
@@ -270,7 +270,7 @@ describe('dashboard operational summary read model integration', () => {
       processUseCases: { listProcessesWithOperationalSummary },
       trackingUseCases: {
         listActiveAlertReadModel,
-        getContainersSummary: vi.fn(async () => new Map()),
+        findContainersOperationalSummaryProjection: vi.fn(async () => new Map()),
       },
     })
     const result = await useCases.getOperationalSummaryReadModel()
@@ -373,7 +373,7 @@ describe('dashboard operational summary read model integration', () => {
       processUseCases: { listProcessesWithOperationalSummary },
       trackingUseCases: {
         listActiveAlertReadModel,
-        getContainersSummary: vi.fn(async () => new Map()),
+        findContainersOperationalSummaryProjection: vi.fn(async () => new Map()),
       },
     })
 
@@ -534,7 +534,7 @@ describe('dashboard operational summary read model integration', () => {
       processUseCases: { listProcessesWithOperationalSummary },
       trackingUseCases: {
         listActiveAlertReadModel,
-        getContainersSummary: vi.fn(async () => new Map()),
+        findContainersOperationalSummaryProjection: vi.fn(async () => new Map()),
       },
     })
 

@@ -14,14 +14,14 @@ export type DashboardTrackingUseCases = {
   listActiveAlertReadModel(): Promise<{
     readonly alerts: readonly TrackingActiveAlertReadModel[]
   }>
-  getContainersSummary(
-    containers: readonly {
+  findContainersOperationalSummaryProjection(command: {
+    readonly containers: readonly {
       readonly containerId: string
       readonly containerNumber: string
       readonly podLocationCode?: string | null
-    }[],
-    now?: Instant,
-  ): Promise<Map<string, TrackingOperationalSummary>>
+    }[]
+    readonly now: Instant
+  }): Promise<Map<string, TrackingOperationalSummary>>
 }
 
 export type DashboardNavbarAlertsReadModelDeps = {

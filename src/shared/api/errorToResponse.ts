@@ -6,9 +6,12 @@ import {
   DuplicateContainersError,
 } from '~/shared/errors/container-process.errors'
 import { HttpError, InfrastructureError } from '~/shared/errors/httpErrors'
+import { recordReadResponseMetrics } from '~/shared/observability/readRequestMetrics'
 
 function jsonResponse(body: unknown, status = 500): Response {
-  return new Response(JSON.stringify(body), {
+  const serialized = JSON.stringify(body)
+  recordReadResponseMetrics(serialized, status)
+  return new Response(serialized, {
     status,
     headers: { 'Content-Type': 'application/json' },
   })

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type {
   ProcessContainerRecord,
   ProcessWithContainers,
@@ -15,14 +16,11 @@ import {
 import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
-import {
-  createTrackingOperationalSummaryFallback,
-  type TrackingOperationalSummary,
-} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
-import {
-  buildShipmentAlertIncidentsReadModel,
-  type ShipmentAlertIncidentReadModel,
-  type ShipmentAlertIncidentRecordReadModel,
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type {
+  ShipmentAlertIncidentReadModel,
+  ShipmentAlertIncidentRecordReadModel,
+  ShipmentAlertIncidentsReadModel,
 } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import {
@@ -128,7 +126,6 @@ type ContainerWithTrackingResponse = {
   container_number: string
   carrier_code: string | null
   status: string
-  observations: ReturnType<typeof toObservationResponse>[]
   timeline: ReturnType<typeof toTimelineItemResponse>[]
 }
 
@@ -214,7 +211,7 @@ export function toProcessResponseWithSummary(
 // Tracking data → Response DTO
 // ---------------------------------------------------------------------------
 
-function toObservationResponse(obs: TrackingObservationRecord) {
+export function toObservationResponse(obs: TrackingObservationRecord) {
   return {
     id: obs.id,
     fingerprint: obs.fingerprint,
@@ -326,6 +323,7 @@ function toSeriesHistoryResponse(seriesHistory: TrackingSeriesHistory) {
 function toTimelineItemResponse(item: TrackingTimelineItem) {
   return {
     id: item.id,
+    observation_id: item.observationId ?? null,
     type: item.type,
     carrier_label: item.carrierLabel ?? null,
     location: item.location ?? null,
@@ -334,6 +332,7 @@ function toTimelineItemResponse(item: TrackingTimelineItem) {
     derived_state: item.derivedState,
     vessel_name: item.vesselName ?? null,
     voyage: item.voyage ?? null,
+    has_series_history: item.hasSeriesHistory ?? false,
     series_history: item.seriesHistory ? toSeriesHistoryResponse(item.seriesHistory) : null,
   }
 }
@@ -361,20 +360,18 @@ function toContainerSyncResponse(sync: ContainerSyncRecord) {
 
 /**
  * Maps a container entity + its tracking summary to the detail response shape.
- * If tracking fetch fails, returns a fallback with status 'UNKNOWN' and empty observations.
+ * If tracking fetch fails, returns a fallback with status 'UNKNOWN' and empty timeline.
  */
 export function toContainerWithTrackingResponse(
   c: ProcessContainerRecord,
   summary: {
     status: string
-    observations: readonly TrackingObservationRecord[]
     timeline: readonly TrackingTimelineItem[]
   },
 ) {
   return {
     ...toContainerResponse(c),
     status: summary.status,
-    observations: summary.observations.map(toObservationResponse),
     timeline: summary.timeline.map(toTimelineItemResponse),
   }
 }
@@ -383,7 +380,6 @@ export function toContainerWithTrackingFallback(c: ProcessContainerRecord) {
   return {
     ...toContainerResponse(c),
     status: 'UNKNOWN',
-    observations: [],
     timeline: [],
   }
 }
@@ -511,23 +507,59 @@ function toProcessOperationalResponse(summaries: readonly TrackingOperationalSum
   }
 }
 
+function toTrackingFreshnessToken(command: {
+  readonly containers: ReadonlyArray<
+    ContainerWithTrackingResponse & {
+      readonly operational: ReturnType<typeof toContainerOperationalResponse>
+    }
+  >
+  readonly alerts: readonly ReturnType<typeof toTrackingAlertResponse>[]
+  readonly activeAlertIncidents: readonly ReturnType<typeof toShipmentAlertIncidentResponse>[]
+  readonly processOperational: ReturnType<typeof toProcessOperationalResponse>
+}): string {
+  const stablePayload = {
+    containers: command.containers.map((container) => ({
+      id: container.id,
+      status: container.status,
+      operational: container.operational,
+      timeline: container.timeline,
+    })),
+    alerts: command.alerts.map((alert) => ({
+      id: alert.id,
+      container_number: alert.container_number,
+      severity: alert.severity,
+      type: alert.type,
+      triggered_at: alert.triggered_at,
+      lifecycle_state: alert.lifecycle_state,
+    })),
+    active_alert_incidents: command.activeAlertIncidents.map((incident) => ({
+      incident_key: incident.incident_key,
+      type: incident.type,
+      severity: incident.severity,
+      active_alert_ids: incident.active_alert_ids,
+      acked_alert_ids: incident.acked_alert_ids,
+      triggered_at: incident.triggered_at,
+    })),
+    process_operational: command.processOperational,
+  }
+
+  return createHash('sha1').update(JSON.stringify(stablePayload)).digest('hex')
+}
+
 export function toProcessDetailResponse(
   pwc: ProcessWithContainers,
   containersWithTracking: readonly ContainerWithTrackingResponse[],
   alerts: readonly TrackingAlertRecord[],
+  activeAlertIncidents: ShipmentAlertIncidentsReadModel,
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
   containersSync: readonly ContainerSyncRecord[],
 ) {
-  const fallbackByContainerId = new Map<string, TrackingOperationalSummary>()
-
   const containers = containersWithTracking.map((container) => {
-    const summary =
-      operationalByContainerId.get(container.id) ??
-      fallbackByContainerId.get(container.id) ??
-      createTrackingOperationalSummaryFallback(true)
-
-    if (!fallbackByContainerId.has(container.id) && !operationalByContainerId.has(container.id)) {
-      fallbackByContainerId.set(container.id, summary)
+    const summary = operationalByContainerId.get(container.id)
+    if (summary === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing operational summary for container ${container.id}`,
+      )
     }
 
     return {
@@ -537,13 +569,13 @@ export function toProcessDetailResponse(
   })
 
   const summariesForProcess = containersWithTracking.map((container) => {
-    const fromBatch = operationalByContainerId.get(container.id)
-    if (fromBatch) return fromBatch
-    const fallback = fallbackByContainerId.get(container.id)
-    if (fallback) return fallback
-    const createdFallback = createTrackingOperationalSummaryFallback(true)
-    fallbackByContainerId.set(container.id, createdFallback)
-    return createdFallback
+    const summary = operationalByContainerId.get(container.id)
+    if (summary === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing process operational summary for container ${container.id}`,
+      )
+    }
+    return summary
   })
 
   const containerNumberByContainerId = new Map<string, string>()
@@ -555,44 +587,57 @@ export function toProcessDetailResponse(
     alerts,
     (containerId) => containerNumberByContainerId.get(containerId) ?? null,
   )
-  const alertsByContainerId = new Map<string, TrackingAlertRecord[]>()
-
-  for (const alert of alerts) {
-    const group = alertsByContainerId.get(alert.container_id)
-    if (group === undefined) {
-      alertsByContainerId.set(alert.container_id, [alert])
-      continue
-    }
-
-    group.push(alert)
-  }
-
-  const alertIncidentsReadModel = buildShipmentAlertIncidentsReadModel({
-    containers: [...containerNumberByContainerId.entries()].map(
-      ([containerId, containerNumber]) => ({
-        containerId,
-        containerNumber,
-        alerts: alertsByContainerId.get(containerId) ?? [],
-      }),
-    ),
+  const alertsResponse = [...alertDisplayReadModel]
+    .sort(compareAlertsByTriggeredAtDesc)
+    .map(toTrackingAlertResponse)
+  const processOperational = toProcessOperationalResponse(summariesForProcess)
+  const activeAlertIncidentResponses = activeAlertIncidents.active.map(
+    toShipmentAlertIncidentResponse,
+  )
+  const trackingFreshnessToken = toTrackingFreshnessToken({
+    containers,
+    alerts: alertsResponse,
+    activeAlertIncidents: activeAlertIncidentResponses,
+    processOperational,
   })
 
   return {
     ...processToResponseFields(pwc.process),
+    tracking_freshness_token: trackingFreshnessToken,
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
-    alerts: [...alertDisplayReadModel]
-      .sort(compareAlertsByTriggeredAtDesc)
-      .map(toTrackingAlertResponse),
+    alerts: alertsResponse,
     alert_incidents: {
       summary: {
-        active_incidents: alertIncidentsReadModel.summary.activeIncidentCount,
-        affected_containers: alertIncidentsReadModel.summary.affectedContainerCount,
-        recognized_incidents: alertIncidentsReadModel.summary.recognizedIncidentCount,
+        active_incidents: activeAlertIncidents.summary.activeIncidentCount,
+        affected_containers: activeAlertIncidents.summary.affectedContainerCount,
+        recognized_incidents: activeAlertIncidents.summary.recognizedIncidentCount,
       },
-      active: alertIncidentsReadModel.active.map(toShipmentAlertIncidentResponse),
-      recognized: alertIncidentsReadModel.recognized.map(toShipmentAlertIncidentResponse),
+      active: activeAlertIncidentResponses,
     },
-    process_operational: toProcessOperationalResponse(summariesForProcess),
+    process_operational: processOperational,
+  }
+}
+
+export function toProcessSyncSnapshotResponse(command: {
+  readonly trackingFreshnessToken: string
+  readonly containersSync: readonly ContainerSyncRecord[]
+}) {
+  return {
+    tracking_freshness_token: command.trackingFreshnessToken,
+    containersSync: command.containersSync.map(toContainerSyncResponse),
+  }
+}
+
+export function toRecognizedAlertIncidentsResponse(
+  alertIncidents: ShipmentAlertIncidentsReadModel,
+) {
+  return {
+    summary: {
+      active_incidents: alertIncidents.summary.activeIncidentCount,
+      affected_containers: alertIncidents.summary.affectedContainerCount,
+      recognized_incidents: alertIncidents.summary.recognizedIncidentCount,
+    },
+    recognized: alertIncidents.recognized.map(toShipmentAlertIncidentResponse),
   }
 }

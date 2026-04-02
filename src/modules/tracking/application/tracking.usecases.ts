@@ -6,13 +6,23 @@ import {
   fetchAndProcess,
 } from '~/modules/tracking/application/usecases/fetch-and-process.usecase'
 import {
+  type FindContainersHotReadProjectionCommand,
+  type FindContainersHotReadProjectionResult,
+  findContainersHotReadProjection,
+} from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import {
+  type FindContainersOperationalSummaryProjectionCommand,
+  findContainersOperationalSummaryProjection as findContainersOperationalSummaryProjectionUseCase,
+} from '~/modules/tracking/application/usecases/find-containers-operational-summary-projection.usecase'
+import {
+  findContainersRecognizedAlertIncidentsProjection,
+  findObservationInspectorProjection,
+  findTimelineItemSeriesHistory,
+} from '~/modules/tracking/application/usecases/find-lazy-tracking-detail.usecases'
+import {
   type GetContainerSummaryResult,
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
-import {
-  type GetContainersSummaryCommand,
-  getContainersSummary as getContainersSummaryUseCase,
-} from '~/modules/tracking/application/usecases/get-containers-summary.usecase'
 import {
   type ContainerSyncRecord,
   createGetContainersSyncMetadataUseCase,
@@ -144,16 +154,50 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
     },
 
     /**
-     * Get operational summaries for multiple containers with partial-success behavior.
-     *
-     * Containers that fail due infra issues are returned with dataIssue=true
-     * so callers can keep rendering uncertainty explicitly.
+     * Get canonical operational summaries for multiple containers using the
+     * batch hot-read projection path.
      */
-    async getContainersSummary(
-      containers: GetContainersSummaryCommand['containers'],
-      now: Instant = systemClock.now(),
+    async findContainersOperationalSummaryProjection(
+      command: FindContainersOperationalSummaryProjectionCommand,
     ): Promise<Map<string, TrackingOperationalSummary>> {
-      return getContainersSummaryUseCase(deps, { containers, now })
+      return findContainersOperationalSummaryProjectionUseCase(deps, command)
+    },
+
+    /**
+     * Get the canonical hot-read projection for shipment detail and process list.
+     */
+    async findContainersHotReadProjection(
+      command: FindContainersHotReadProjectionCommand,
+    ): Promise<FindContainersHotReadProjectionResult> {
+      return findContainersHotReadProjection(deps, command)
+    },
+
+    async findTimelineItemSeriesHistory(command: {
+      readonly containerId: string
+      readonly timelineItemId: string
+      readonly now?: Instant
+    }) {
+      return findTimelineItemSeriesHistory(deps, {
+        containerId: command.containerId,
+        timelineItemId: command.timelineItemId,
+        now: command.now ?? systemClock.now(),
+      })
+    },
+
+    async findObservationInspectorProjection(command: {
+      readonly containerId: string
+      readonly observationId: string
+    }) {
+      return findObservationInspectorProjection(deps, command)
+    },
+
+    async findContainersRecognizedAlertIncidentsProjection(command: {
+      readonly containers: readonly {
+        readonly containerId: string
+        readonly containerNumber: string
+      }[]
+    }) {
+      return findContainersRecognizedAlertIncidentsProjection(deps, command)
     },
 
     /**

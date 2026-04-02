@@ -15,6 +15,7 @@ import {
   alertRowToDomain,
   alertToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mappers'
+import { measureAuditedReadQuery } from '~/shared/observability/readRequestMetrics'
 import { supabase } from '~/shared/supabase/supabase'
 import {
   unwrapSupabaseResultOrThrow,
@@ -23,6 +24,8 @@ import {
 
 const TABLE = 'tracking_alerts' as const
 const CONTAINERS_TABLE = 'containers' as const
+const TRACKING_ALERT_DOMAIN_SELECT =
+  'id,container_id,category,type,severity,message_key,message_params,created_at,detected_at,triggered_at,source_observation_fingerprints,alert_fingerprint,retroactive,provider,acked_at,acked_by,acked_source,resolved_at,resolved_reason,lifecycle_state'
 
 // NOTE: enum validation and normalization for alert rows is implemented in
 // `alertRowToDomain` (tracking.persistence.mappers). We prefer reusing that
@@ -82,11 +85,17 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       ),
     )
     if (containerIds.length > 0 && factFingerprints.length > 0) {
-      const existingFingerprintRowsResult = await supabase
-        .from(TABLE)
-        .select('container_id, alert_fingerprint')
-        .in('container_id', containerIds)
-        .in('alert_fingerprint', factFingerprints)
+      const existingFingerprintRowsResult = await measureAuditedReadQuery({
+        table: TABLE,
+        operation: 'insertMany.findExistingFingerprints',
+        query: () =>
+          supabase
+            .from(TABLE)
+            .select('container_id, alert_fingerprint')
+            .in('container_id', containerIds)
+            .in('alert_fingerprint', factFingerprints),
+        resultSelector: (queryResult) => queryResult.data ?? [],
+      })
 
       const existingFingerprintRows =
         unwrapSupabaseResultOrThrow(existingFingerprintRowsResult, {
@@ -102,16 +111,22 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
 
     const existingNoMovementKeys = new Set<string>()
     if (containerIds.length > 0 && incomingNoMovementKeys.size > 0) {
-      const existingNoMovementRowsResult = await supabase
-        .from(TABLE)
-        .select(
-          'container_id, category, type, message_key, message_params, source_observation_fingerprints',
-        )
-        .in('container_id', containerIds)
-        .eq('category', 'monitoring')
-        .eq('type', 'NO_MOVEMENT')
-        .eq('message_key', 'alerts.noMovementDetected')
-        .eq('lifecycle_state', 'ACTIVE')
+      const existingNoMovementRowsResult = await measureAuditedReadQuery({
+        table: TABLE,
+        operation: 'insertMany.findExistingNoMovement',
+        query: () =>
+          supabase
+            .from(TABLE)
+            .select(
+              'container_id, category, type, message_key, message_params, source_observation_fingerprints',
+            )
+            .in('container_id', containerIds)
+            .eq('category', 'monitoring')
+            .eq('type', 'NO_MOVEMENT')
+            .eq('message_key', 'alerts.noMovementDetected')
+            .eq('lifecycle_state', 'ACTIVE'),
+        resultSelector: (queryResult) => queryResult.data ?? [],
+      })
 
       const existingNoMovementRows =
         unwrapSupabaseResultOrThrow(existingNoMovementRowsResult, {
@@ -159,7 +174,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     // option with types, replace this call with an "on conflict do nothing"
     // insert (or `.upsert(..., { onConflict: [...] })`) to make the operation
     // atomic.
-    const result = await supabase.from(TABLE).insert(rows).select('*')
+    const result = await supabase.from(TABLE).insert(rows).select(TRACKING_ALERT_DOMAIN_SELECT)
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'insertMany',
       table: TABLE,
@@ -169,16 +184,50 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   },
 
   async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
-    const result = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('container_id', containerId)
-      .eq('lifecycle_state', 'ACTIVE')
-      .order('triggered_at', { ascending: false })
-      .order('id', { ascending: false })
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findActiveByContainerId',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .eq('container_id', containerId)
+          .eq('lifecycle_state', 'ACTIVE')
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findActiveByContainerId',
+      table: TABLE,
+    })
+
+    return (data ?? []).map(alertRowToDomain)
+  },
+
+  async findActiveByContainerIds(
+    containerIds: readonly string[],
+  ): Promise<readonly TrackingAlert[]> {
+    if (containerIds.length === 0) return []
+
+    const uniqueContainerIds = Array.from(new Set(containerIds))
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findActiveByContainerIds',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .in('container_id', uniqueContainerIds)
+          .eq('lifecycle_state', 'ACTIVE')
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findActiveByContainerIds',
       table: TABLE,
     })
 
@@ -205,15 +254,46 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   },
 
   async findByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
-    const result = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('container_id', containerId)
-      .order('triggered_at', { ascending: false })
-      .order('id', { ascending: false })
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findByContainerId',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .eq('container_id', containerId)
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const data = unwrapSupabaseResultOrThrow(result, {
       operation: 'findByContainerId',
+      table: TABLE,
+    })
+
+    return (data ?? []).map(alertRowToDomain)
+  },
+
+  async findByContainerIds(containerIds: readonly string[]): Promise<readonly TrackingAlert[]> {
+    if (containerIds.length === 0) return []
+
+    const uniqueContainerIds = Array.from(new Set(containerIds))
+    const result = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'findByContainerIds',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .in('container_id', uniqueContainerIds)
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
+
+    const data = unwrapSupabaseResultOrThrow(result, {
+      operation: 'findByContainerIds',
       table: TABLE,
     })
 
@@ -246,10 +326,13 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const uniqueContainerIds = Array.from(new Set(containerIds))
-    const result = await supabase
-      .from(CONTAINERS_TABLE)
-      .select('id, container_number')
-      .in('id', uniqueContainerIds)
+    const result = await measureAuditedReadQuery({
+      table: CONTAINERS_TABLE,
+      operation: 'findContainerNumbersByIds',
+      query: () =>
+        supabase.from(CONTAINERS_TABLE).select('id, container_number').in('id', uniqueContainerIds),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const rows =
       unwrapSupabaseResultOrThrow(result, {
@@ -266,12 +349,18 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   },
 
   async listActiveAlertReadModel(): Promise<readonly TrackingActiveAlertReadModel[]> {
-    const alertsResult = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('lifecycle_state', 'ACTIVE')
-      .order('triggered_at', { ascending: false })
-      .order('id', { ascending: false })
+    const alertsResult = await measureAuditedReadQuery({
+      table: TABLE,
+      operation: 'listActiveAlertReadModel.alerts',
+      query: () =>
+        supabase
+          .from(TABLE)
+          .select(TRACKING_ALERT_DOMAIN_SELECT)
+          .eq('lifecycle_state', 'ACTIVE')
+          .order('triggered_at', { ascending: false })
+          .order('id', { ascending: false }),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const alertRows =
       unwrapSupabaseResultOrThrow(alertsResult, {
@@ -285,10 +374,12 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
 
     const containerIds = Array.from(new Set(alertRows.map((row) => row.container_id)))
 
-    const containersResult = await supabase
-      .from(CONTAINERS_TABLE)
-      .select('id, process_id')
-      .in('id', containerIds)
+    const containersResult = await measureAuditedReadQuery({
+      table: CONTAINERS_TABLE,
+      operation: 'listActiveAlertReadModel.containers',
+      query: () => supabase.from(CONTAINERS_TABLE).select('id, process_id').in('id', containerIds),
+      resultSelector: (queryResult) => queryResult.data ?? [],
+    })
 
     const containerRows =
       unwrapSupabaseResultOrThrow(containersResult, {

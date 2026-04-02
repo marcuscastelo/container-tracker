@@ -85,6 +85,6 @@ export function toAlertIncidentsVm(alertIncidents: AlertIncidentsResponse): Aler
       recognizedIncidents: alertIncidents.summary.recognized_incidents,
     },
     active: alertIncidents.active.map(toAlertIncidentVm),
-    recognized: alertIncidents.recognized.map(toAlertIncidentVm),
+    recognized: (alertIncidents.recognized ?? []).map(toAlertIncidentVm),
   }
 }

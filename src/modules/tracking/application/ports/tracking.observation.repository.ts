@@ -16,6 +16,12 @@ export type ObservationRepository = {
   /** Fetch all observations for a container, ordered by canonical tracking chronology. */
   findAllByContainerId(containerId: string): Promise<readonly Observation[]>
 
+  /** Fetch all observations for many containers, ordered by container + chronology. */
+  findAllByContainerIds(containerIds: readonly string[]): Promise<readonly Observation[]>
+
+  /** Fetch a single observation by container ownership. */
+  findById?(containerId: string, observationId: string): Promise<Observation | null>
+
   /** Fetch the set of fingerprints already persisted for a container. */
   findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>>
 

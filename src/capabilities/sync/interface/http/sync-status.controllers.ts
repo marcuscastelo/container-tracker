@@ -4,6 +4,10 @@ import { toProcessesSyncStatusResponse } from '~/capabilities/sync/presenter/syn
 import { mapErrorToResponse } from '~/shared/api/errorToResponse'
 import { jsonResponse } from '~/shared/api/typedRoute'
 import { ProcessesSyncStatusResponseSchema } from '~/shared/api-schemas/processes.schemas'
+import {
+  readAuditedTriggerSource,
+  runWithReadRequestAudit,
+} from '~/shared/observability/readRequestMetrics'
 
 type SyncStatusControllersDeps = {
   readonly syncUseCases: Pick<SyncUseCases, 'getSyncStatus'>
@@ -17,40 +21,44 @@ export function createSyncStatusControllers(deps: SyncStatusControllersDeps) {
   }: {
     readonly request: Request
   }): Promise<Response> {
-    try {
-      const url = new URL(request.url)
-      const parsedQuery = ProcessesSyncStatusQuerySchema.safeParse({
-        processIds: url.searchParams.get('processIds') ?? undefined,
-      })
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/processes/sync-status',
+        projection: 'ProcessesSyncStatusResponse',
+        readStrategy: 'sync.status_projection',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const url = new URL(request.url)
+          const parsedQuery = ProcessesSyncStatusQuerySchema.safeParse({
+            processIds: url.searchParams.get('processIds') ?? undefined,
+          })
 
-      if (!parsedQuery.success) {
-        return jsonResponse(
-          { error: `Invalid sync-status query: ${parsedQuery.error.message}` },
-          400,
-        )
-      }
+          if (!parsedQuery.success) {
+            return jsonResponse(
+              { error: `Invalid sync-status query: ${parsedQuery.error.message}` },
+              400,
+            )
+          }
 
-      const result = await syncUseCases.getSyncStatus(
-        parsedQuery.data.processIds === undefined
-          ? {}
-          : { processIds: parsedQuery.data.processIds },
-      )
-      const response = toProcessesSyncStatusResponse(result)
-      const validated = ProcessesSyncStatusResponseSchema.parse(response)
-
-      return new Response(JSON.stringify(validated), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-          Pragma: 'no-cache',
-          Expires: '0',
-        },
-      })
-    } catch (err) {
-      console.error('GET /api/processes/sync-status error:', err)
-      return mapErrorToResponse(err)
-    }
+          const result = await syncUseCases.getSyncStatus(
+            parsedQuery.data.processIds === undefined
+              ? {}
+              : { processIds: parsedQuery.data.processIds },
+          )
+          const response = toProcessesSyncStatusResponse(result)
+          return jsonResponse(response, 200, ProcessesSyncStatusResponseSchema, {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            Pragma: 'no-cache',
+            Expires: '0',
+          })
+        } catch (err) {
+          console.error('GET /api/processes/sync-status error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
   }
 
   return {

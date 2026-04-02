@@ -55,6 +55,7 @@ function buildDefaultAlertIncidents(): ShipmentDetailVM['alertIncidents'] {
 function buildDefaultShipmentDetailVm(): ShipmentDetailVM {
   return {
     id: 'process-1',
+    trackingFreshnessToken: 'freshness-initial',
     processRef: 'REF-1',
     reference: 'REF-1',
     carrier: 'MSC',
@@ -95,6 +96,7 @@ function buildShipmentDetailVm(overrides: Partial<ShipmentDetailVM> = {}): Shipm
 describe('useShipmentScreenResource', () => {
   it('merges refreshed tracking-derived fields without replacing non-tracking shipment metadata', () => {
     const current = buildShipmentDetailVm({
+      trackingFreshnessToken: 'freshness-current',
       reference: 'REF-CURRENT',
       importer_name: 'Importer Current',
       status: 'in-transit',
@@ -130,6 +132,7 @@ describe('useShipmentScreenResource', () => {
     })
 
     const latest = buildShipmentDetailVm({
+      trackingFreshnessToken: 'freshness-latest',
       reference: 'REF-LATEST',
       importer_name: 'Importer Latest',
       status: 'amber-600',
@@ -190,6 +193,7 @@ describe('useShipmentScreenResource', () => {
 
     expect(merged.reference).toBe('REF-CURRENT')
     expect(merged.importer_name).toBe('Importer Current')
+    expect(merged.trackingFreshnessToken).toBe('freshness-latest')
     expect(merged.status).toBe('amber-600')
     expect(merged.statusCode).toBe('AWAITING_DATA')
     expect(merged.statusMicrobadge).toEqual({

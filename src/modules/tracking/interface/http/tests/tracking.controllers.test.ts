@@ -7,12 +7,15 @@ import type {
   TrackingAlert,
   TrackingAlertAckSource,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import maerskPayload from '~/modules/tracking/infrastructure/carriers/tests/fixtures/maersk/maersk_full.json'
 import { createTrackingControllers } from '~/modules/tracking/interface/http/tracking.controllers'
+import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 function createControllers(options?: {
   readonly activeAlerts?: readonly TrackingAlert[]
   readonly containerNumberByContainerId?: ReadonlyMap<string, string>
+  readonly observationsByContainerId?: ReadonlyMap<string, readonly Observation[]>
   readonly snapshots?: readonly Snapshot[]
 }) {
   const acknowledge = vi.fn(
@@ -31,7 +34,13 @@ function createControllers(options?: {
     const alerts = options?.activeAlerts ?? []
     return alerts.filter((alert) => alert.container_id === containerId)
   })
-  const findAllObservationsByContainerId = vi.fn(async () => [])
+  const findAllObservationsByContainerId = vi.fn(async (containerId: string) => {
+    return options?.observationsByContainerId?.get(containerId) ?? []
+  })
+  const findObservationById = vi.fn(async (containerId: string, observationId: string) => {
+    const observations = options?.observationsByContainerId?.get(containerId) ?? []
+    return observations.find((observation) => observation.id === observationId) ?? null
+  })
   const findContainerNumbersByIds = vi.fn(async (containerIds: readonly string[]) => {
     const map = new Map<string, string>()
     const source = options?.containerNumberByContainerId ?? new Map<string, string>()
@@ -58,6 +67,12 @@ function createControllers(options?: {
     observationRepository: {
       insertMany: vi.fn(async () => []),
       findAllByContainerId: findAllObservationsByContainerId,
+      findAllByContainerIds: vi.fn(async (containerIds: readonly string[]) =>
+        containerIds.flatMap(
+          (containerId) => options?.observationsByContainerId?.get(containerId) ?? [],
+        ),
+      ),
+      findById: findObservationById,
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations: vi.fn(async () => []),
     },
@@ -65,6 +80,10 @@ function createControllers(options?: {
       insertMany: vi.fn(async () => []),
       listActiveAlertReadModel: vi.fn(async () => []),
       findActiveByContainerId,
+      findActiveByContainerIds: vi.fn(async (containerIds: readonly string[]) => {
+        const requestedIds = new Set(containerIds)
+        return (options?.activeAlerts ?? []).filter((alert) => requestedIds.has(alert.container_id))
+      }),
       findByContainerId: vi.fn(async () => []),
       findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds,
@@ -88,6 +107,7 @@ function createControllers(options?: {
     autoResolveMany,
     findActiveByContainerId,
     findAllObservationsByContainerId,
+    findObservationById,
     findContainerNumbersByIds,
   }
 }
@@ -240,6 +260,116 @@ describe('tracking controllers', () => {
     expect(acknowledge).not.toHaveBeenCalled()
     expect(unacknowledge).toHaveBeenCalledTimes(1)
     expect(unacknowledge).toHaveBeenCalledWith('alert-3')
+  })
+
+  it('series-history drilldown returns lazy timeline history for a primary item', async () => {
+    const containerId = 'container-series'
+    const observations: readonly Observation[] = [
+      {
+        id: 'obs-expected-1',
+        fingerprint: 'fp-expected-1',
+        container_id: containerId,
+        container_number: 'MSCU1234567',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-03-10T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'high',
+        provider: 'maersk',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'MAERSK',
+        created_at: '2026-03-01T10:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'obs-expected-2',
+        fingerprint: 'fp-expected-2',
+        container_id: containerId,
+        container_number: 'MSCU1234567',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-03-12T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'high',
+        provider: 'maersk',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'MAERSK',
+        created_at: '2026-03-02T10:00:00.000Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers, findAllObservationsByContainerId } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/obs-expected-2/history?now=2026-03-05T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'obs-expected-2' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.has_actual_conflict).toBe(false)
+    expect(body.classified).toHaveLength(2)
+    expect(body.classified.map((item: { id: string }) => item.id)).toEqual([
+      'obs-expected-1',
+      'obs-expected-2',
+    ])
+    expect(findAllObservationsByContainerId).toHaveBeenCalledWith(containerId)
+  })
+
+  it('observation-inspector drilldown returns a single observation payload', async () => {
+    const containerId = 'container-observation'
+    const observation: Observation = {
+      id: 'obs-1',
+      fingerprint: 'fp-1',
+      container_id: containerId,
+      container_number: 'MSCU7654321',
+      type: 'DELIVERY',
+      event_time: temporalValueFromCanonical('2026-03-15T14:00:00.000Z'),
+      event_time_type: 'ACTUAL',
+      location_code: 'BRSSZ',
+      location_display: 'Santos',
+      vessel_name: null,
+      voyage: null,
+      is_empty: false,
+      confidence: 'high',
+      provider: 'maersk',
+      created_from_snapshot_id: 'snapshot-3',
+      carrier_label: 'MAERSK',
+      created_at: '2026-03-15T14:01:00.000Z',
+      retroactive: false,
+    }
+
+    const { controllers, findObservationById } = createControllers({
+      observationsByContainerId: new Map([[containerId, [observation]]]),
+    })
+
+    const response = await controllers.detail.getObservationInspector({
+      params: { containerId, observationId: observation.id },
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      id: 'obs-1',
+      type: 'DELIVERY',
+      location_display: 'Santos',
+      carrier_label: 'MAERSK',
+    })
+    expect(findObservationById).toHaveBeenCalledWith(containerId, observation.id)
   })
 
   it('time-travel endpoint returns snapshot checkpoints', async () => {

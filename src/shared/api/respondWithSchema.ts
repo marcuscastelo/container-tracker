@@ -1,4 +1,5 @@
 import type z4 from 'zod/v4'
+import { recordReadResponseMetrics } from '~/shared/observability/readRequestMetrics'
 
 /**
  * Helper to create a validated JSON Response.
@@ -18,8 +19,12 @@ export function respondWithSchema<T>(
   const parsed = schema.safeParse(payload)
   if (!parsed.success) {
     console.error('refresh: response validation failed', parsed.error)
-    return new Response(JSON.stringify({ error: 'response validation failed' }), { status: 500 })
+    const errorBody = JSON.stringify({ error: 'response validation failed' })
+    recordReadResponseMetrics(errorBody, 500)
+    return new Response(errorBody, { status: 500 })
   }
   const headers = { 'Content-Type': 'application/json', ...(extraHeaders ?? {}) }
-  return new Response(JSON.stringify(parsed.data), { status, headers })
+  const serialized = JSON.stringify(parsed.data)
+  recordReadResponseMetrics(serialized, status)
+  return new Response(serialized, { status, headers })
 }

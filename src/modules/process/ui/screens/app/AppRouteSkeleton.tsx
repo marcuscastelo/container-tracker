@@ -99,7 +99,6 @@ function DashboardRouteSkeleton(): JSX.Element {
           onProcessSync={noopAsync}
           onOpenProcess={noop}
           onProcessIntent={noop}
-          onVisibleProcessesPrefetch={noop}
         />
       </main>
     </AppShellFrame>

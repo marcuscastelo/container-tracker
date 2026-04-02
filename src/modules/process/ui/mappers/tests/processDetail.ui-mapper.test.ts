@@ -15,6 +15,7 @@ describe('toShipmentDetailVM base mapping', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-1',
+      tracking_freshness_token: 'token-proc-1',
       reference: 'REF-1',
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
@@ -30,28 +31,10 @@ describe('toShipmentDetailVM base mapping', () => {
           container_number: 'MRKU1234567',
           carrier_code: 'MAERSK',
           status: 'LOADED',
-          observations: [
-            {
-              id: 'obs-1',
-              fingerprint: 'abc123',
-              type: 'LOAD',
-              event_time: temporalDtoFromCanonical('2026-02-01T10:00:00.000Z'),
-              event_time_type: 'ACTUAL',
-              location_code: 'CNSHA',
-              location_display: 'Shanghai',
-              vessel_name: 'MAERSK SEVILLE',
-              voyage: '123W',
-              is_empty: false,
-              confidence: 'confirmed',
-              provider: 'maersk',
-              created_from_snapshot_id: 'snapshot-001',
-              retroactive: false,
-              created_at: new Date().toISOString(),
-            },
-          ],
           timeline: [
             {
               id: 'timeline-1',
+              observation_id: 'obs-1',
               type: 'LOAD',
               carrier_label: 'Loaded',
               location: 'Shanghai',
@@ -60,6 +43,7 @@ describe('toShipmentDetailVM base mapping', () => {
               derived_state: 'ACTUAL',
               vessel_name: 'MAERSK SEVILLE',
               voyage: '123W',
+              has_series_history: false,
               series_history: null,
             },
           ],
@@ -72,9 +56,9 @@ describe('toShipmentDetailVM base mapping', () => {
     const result = toShipmentDetailVM(example)
     const firstContainer = requireAt(result.containers, 0)
     const firstTimelineItem = requireAt(firstContainer.timeline, 0)
-    const firstObservation = requireAt(firstContainer.observations, 0)
     expect(result).toBeTruthy()
     expect(result.id).toBe('proc-1')
+    expect(result.trackingFreshnessToken).toBe('token-proc-1')
     expect(Array.isArray(result.containers)).toBe(true)
     expect(firstContainer.number).toBe('MRKU1234567')
     expect(firstContainer.status).toBe('indigo-500')
@@ -83,14 +67,8 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(firstTimelineItem.type).toBe('LOAD')
     expect(firstTimelineItem.vesselName).toBe('MAERSK SEVILLE')
     expect(firstTimelineItem.voyage).toBe('123W')
-    expect(firstContainer.observations.length).toBe(1)
-    expect(firstObservation).toMatchObject({
-      id: 'obs-1',
-      type: 'LOAD',
-      isEmpty: false,
-      provider: 'maersk',
-      createdFromSnapshotId: 'snapshot-001',
-    })
+    expect(firstTimelineItem.observationId).toBe('obs-1')
+    expect(firstTimelineItem.hasSeriesHistory).toBe(false)
     expect(firstContainer.carrierCode).toBe('MAERSK')
     expect(firstContainer.sync.state).toBe('never')
     expect(firstContainer.etaChipVm.state).toBe('UNAVAILABLE')
@@ -103,6 +81,7 @@ describe('toShipmentDetailVM base mapping', () => {
   it('maps process-level status and alerts from tracking data', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-2',
+      tracking_freshness_token: 'token-proc-2',
       reference: 'REF-2',
       origin: { display_name: 'Rotterdam' },
       destination: { display_name: 'Santos' },
@@ -117,7 +96,6 @@ describe('toShipmentDetailVM base mapping', () => {
           id: 'c2',
           container_number: 'MSCU1234567',
           status: 'IN_TRANSIT',
-          observations: [],
         },
       ],
       process_operational: {
@@ -178,6 +156,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
   it('maps compact shipment alert incidents when the additive payload is present', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-incident',
+      tracking_freshness_token: 'token-proc-incident',
       reference: 'REF-INCIDENT',
       origin: { display_name: 'Busan' },
       destination: { display_name: 'Santos' },
@@ -191,7 +170,6 @@ describe('toShipmentDetailVM tracking mapping', () => {
         {
           id: 'container-1',
           container_number: 'FCIU2000205',
-          observations: [],
         },
       ],
       containersSync: [],
@@ -278,6 +256,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
   it('maps container sync metadata by normalized container number', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-sync',
+      tracking_freshness_token: 'token-proc-sync',
       reference: 'REF-SYNC',
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
@@ -291,7 +270,6 @@ describe('toShipmentDetailVM tracking mapping', () => {
           container_number: 'MSCU8888888',
           carrier_code: 'MSC',
           status: 'IN_TRANSIT',
-          observations: [],
         },
       ],
       containersSync: [
@@ -319,6 +297,7 @@ describe('toShipmentDetailVM fallback mapping', () => {
   it('keeps acknowledged alerts and exposes ackedAtIso', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-3',
+      tracking_freshness_token: 'token-proc-3',
       reference: null,
       origin: null,
       destination: null,
@@ -360,6 +339,7 @@ describe('toShipmentDetailVM fallback mapping', () => {
   it('shows placeholder timeline when no observations', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-4',
+      tracking_freshness_token: 'token-proc-4',
       reference: 'EMPTY',
       origin: null,
       destination: null,
@@ -372,7 +352,6 @@ describe('toShipmentDetailVM fallback mapping', () => {
           id: 'c4',
           container_number: 'NONE1234567',
           status: 'UNKNOWN',
-          observations: [],
         },
       ],
       containersSync: [],
@@ -391,6 +370,7 @@ describe('toShipmentDetailVM fallback mapping', () => {
 function createOperationalMultiContainerResponse(): ProcessDetailResponse {
   return {
     id: 'proc-5',
+    tracking_freshness_token: 'token-proc-5',
     reference: 'OPS-5',
     origin: { display_name: 'Shanghai' },
     destination: { display_name: 'Santos' },
@@ -403,7 +383,6 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
         id: 'c5-1',
         container_number: 'MSCU1111111',
         status: 'IN_TRANSIT',
-        observations: [],
         operational: {
           status: 'IN_TRANSIT',
           eta: {
@@ -429,7 +408,6 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
         id: 'c5-2',
         container_number: 'MSCU2222222',
         status: 'IN_TRANSIT',
-        observations: [],
         operational: {
           status: 'IN_TRANSIT',
           eta: {
@@ -472,6 +450,7 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
 function createOperationalHiddenIntResponse(): ProcessDetailResponse {
   return {
     id: 'proc-6',
+    tracking_freshness_token: 'token-proc-6',
     reference: 'OPS-6',
     origin: { display_name: 'Shanghai' },
     destination: { display_name: 'Santos' },
@@ -484,7 +463,6 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
         id: 'c6-1',
         container_number: 'MSCU3333333',
         status: 'IN_TRANSIT',
-        observations: [],
         operational: {
           status: 'IN_TRANSIT',
           eta: null,
@@ -508,6 +486,7 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
 function createOperationalFullCoverageResponse(): ProcessDetailResponse {
   return {
     id: 'proc-7',
+    tracking_freshness_token: 'token-proc-7',
     reference: 'OPS-7',
     origin: { display_name: 'Shanghai' },
     destination: { display_name: 'Santos' },
@@ -520,7 +499,6 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
         id: 'c7-1',
         container_number: 'MSCU4444444',
         status: 'IN_TRANSIT',
-        observations: [],
         operational: {
           status: 'IN_TRANSIT',
           eta: {
@@ -543,7 +521,6 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
         id: 'c7-2',
         container_number: 'MSCU5555555',
         status: 'IN_TRANSIT',
-        observations: [],
         operational: {
           status: 'IN_TRANSIT',
           eta: {

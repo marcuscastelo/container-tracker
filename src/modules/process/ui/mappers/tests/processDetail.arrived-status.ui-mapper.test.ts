@@ -6,6 +6,7 @@ describe('toShipmentDetailVM ARRIVED_AT_POD mapping', () => {
   it('keeps ARRIVED_AT_POD as process-level status', () => {
     const example: ProcessDetailResponse = {
       id: 'proc-arrived',
+      tracking_freshness_token: 'token-proc-arrived',
       reference: 'REF-ARRIVED',
       origin: { display_name: 'Tangier' },
       destination: { display_name: 'Santos' },
@@ -18,13 +19,11 @@ describe('toShipmentDetailVM ARRIVED_AT_POD mapping', () => {
           id: 'c-arrived-1',
           container_number: 'CAIU1234567',
           status: 'ARRIVED_AT_POD',
-          observations: [],
         },
         {
           id: 'c-arrived-2',
           container_number: 'CAIU7654321',
           status: 'ARRIVED_AT_POD',
-          observations: [],
         },
       ],
       process_operational: {

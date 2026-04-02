@@ -52,12 +52,14 @@ function makeSummary(
   return {
     status: overrides.status ?? 'UNKNOWN',
     alerts: overrides.alerts ?? [],
-    timeline: {
-      observations:
-        overrides.observations?.map((observation) => ({
-          event_time: resolveTemporalValue(observation.event_time, null),
-        })) ?? [],
-    },
+    has_observations: (overrides.observations?.length ?? 0) > 0,
+    last_event_at:
+      overrides.observations === undefined || overrides.observations.length === 0
+        ? null
+        : resolveTemporalValue(
+            overrides.observations[overrides.observations.length - 1]?.event_time ?? null,
+            null,
+          ),
     ...(operational === undefined ? {} : { operational }),
   }
 }
