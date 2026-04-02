@@ -1,5 +1,6 @@
 import type { EventTimeType } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import { CalendarDate } from '~/shared/time/calendar-date'
+import { calendarDateValue, type TemporalValue } from '~/shared/time/temporal-value'
 
 type PilParsedSummary = {
   readonly rawLoadPortName: string | null
@@ -197,6 +198,25 @@ function parsePilTemporalText(value: string | null): {
   }
 }
 
+function parseSummaryNextLocationDate(value: string | null): TemporalValue | null {
+  const parsedTemporal = parsePilTemporalText(value)
+  if (parsedTemporal.eventDate !== null) {
+    return calendarDateValue(parsedTemporal.eventDate)
+  }
+
+  if (parsedTemporal.eventLocalDateTime === null) {
+    return null
+  }
+
+  try {
+    return calendarDateValue(
+      CalendarDate.fromIsoDate(parsedTemporal.eventLocalDateTime.slice(0, 10)),
+    )
+  } catch {
+    return null
+  }
+}
+
 function parseSummary(html: string): PilParsedSummary | null {
   const summaryRowHtml = extractFirstMatch(
     html,
@@ -217,7 +237,7 @@ function parseSummary(html: string): PilParsedSummary | null {
     rawLoadPortCode: locationLines[2] ?? null,
     rawNextLocationCode: nextLocationLines[0] ?? null,
     rawNextLocationDateText: nextLocationLines[1] ?? null,
-    nextLocationDate: parsePilTemporalText(nextLocationLines[1] ?? null).eventTime,
+    nextLocationDate: parseSummaryNextLocationDate(nextLocationLines[1] ?? null),
     rawVessel: vesselLines[0] ?? null,
     rawVoyage: vesselLines[1] ?? null,
   }

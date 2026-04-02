@@ -5,7 +5,10 @@ import type {
 } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
-import { parsePilTrackingPayload } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.parser'
+import {
+  type PilParsedEventRow,
+  parsePilTrackingPayload,
+} from '~/modules/tracking/infrastructure/carriers/normalizers/pil.parser'
 import {
   buildDateOnlyTrackingTemporal,
   buildLocalDateTimeTrackingTemporal,
@@ -52,6 +55,14 @@ function toTemporalDateKey(value: TemporalValue | null): string | null {
   return value.value.toIsoString().slice(0, 10)
 }
 
+function toPilEventDateKey(
+  eventDate: PilParsedEventRow['eventDate'],
+  eventLocalDateTime: PilParsedEventRow['eventLocalDateTime'],
+): string | null {
+  if (eventDate !== null) return eventDate.toIsoDate()
+  return eventLocalDateTime === null ? null : eventLocalDateTime.slice(0, 10)
+}
+
 function matchesPilText(left: string | null, right: string | null): boolean {
   if (left === null || right === null) return false
   return toLookupMapKey(left) === toLookupMapKey(right)
@@ -60,7 +71,7 @@ function matchesPilText(left: string | null, right: string | null): boolean {
 function resolvePilLocationCode(command: {
   readonly type: ObservationType
   readonly rawPlace: string | null
-  readonly eventTime: TemporalValue | null
+  readonly eventDateKey: string | null
   readonly summary: {
     readonly rawLoadPortName: string | null
     readonly rawLoadPortCode: string | null
@@ -90,10 +101,11 @@ function resolvePilLocationCode(command: {
     return null
   }
 
-  const eventDateKey = toTemporalDateKey(command.eventTime)
   const nextLocationDateKey = toTemporalDateKey(summary.nextLocationDate)
   const sameScheduledDay =
-    eventDateKey !== null && nextLocationDateKey !== null && eventDateKey === nextLocationDateKey
+    command.eventDateKey !== null &&
+    nextLocationDateKey !== null &&
+    command.eventDateKey === nextLocationDateKey
 
   if (sameScheduledDay) {
     return nextLocationCode
@@ -142,7 +154,7 @@ export function normalizePilSnapshot(snapshot: Snapshot): ObservationDraft[] {
     const locationCode = resolvePilLocationCode({
       type,
       rawPlace: eventRow.rawPlace,
-      eventTime: eventRow.eventTime,
+      eventDateKey: toPilEventDateKey(eventRow.eventDate, eventRow.eventLocalDateTime),
       summary,
     })
     const locationDisplay = eventRow.rawPlace
