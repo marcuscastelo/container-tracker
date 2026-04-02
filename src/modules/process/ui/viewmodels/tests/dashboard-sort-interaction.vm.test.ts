@@ -33,6 +33,8 @@ function createProcess(
 ): ProcessSummaryVM {
   const eta = input.eta ?? null
   const etaMsOrNull = input.etaMsOrNull ?? toTimestampOrNull(eta)
+  const etaDisplay: ProcessSummaryVM['etaDisplay'] =
+    eta === null ? { kind: 'unavailable' } : { kind: 'date', value: eta }
 
   return {
     id: input.id,
@@ -49,6 +51,7 @@ function createProcess(
     statusMicrobadge: null,
     statusRank: input.statusRank ?? 0,
     eta,
+    etaDisplay,
     etaMsOrNull,
     carrier: input.carrier ?? null,
     alertsCount: 0,

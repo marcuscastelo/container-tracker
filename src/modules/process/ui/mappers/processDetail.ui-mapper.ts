@@ -130,10 +130,38 @@ function toEtaTone(
   }
 }
 
+function toDateEtaChipVm(
+  eta: OperationalEta,
+  locale: string,
+): ShipmentDetailVM['containers'][number]['etaChipVm'] {
+  return {
+    state: eta.state,
+    tone: toEtaTone(eta.state),
+    date: formatDateForLocale(eta.event_time, locale),
+  }
+}
+
 function toContainerEtaChipVm(
+  etaDisplay: ContainerOperational['eta_display'] | undefined,
   eta: ContainerOperational['eta'] | undefined,
   locale: string,
 ): ShipmentDetailVM['containers'][number]['etaChipVm'] {
+  if (etaDisplay?.kind === 'delivered') {
+    return {
+      state: 'DELIVERED',
+      tone: 'positive',
+      date: null,
+    }
+  }
+
+  if (etaDisplay?.kind === 'unavailable') {
+    return {
+      state: 'UNAVAILABLE',
+      tone: 'neutral',
+      date: null,
+    }
+  }
+
   if (!eta?.event_time) {
     return {
       state: 'UNAVAILABLE',
@@ -142,17 +170,18 @@ function toContainerEtaChipVm(
     }
   }
 
-  return {
-    state: eta.state,
-    tone: toEtaTone(eta.state),
-    date: formatDateForLocale(eta.event_time, locale),
-  }
+  return toDateEtaChipVm(eta, locale)
 }
 
 function toContainerEtaDetailVm(
+  etaDisplay: ContainerOperational['eta_display'] | undefined,
   eta: ContainerOperational['eta'] | undefined,
   locale: string,
 ): ShipmentDetailVM['containers'][number]['selectedEtaVm'] {
+  if (etaDisplay?.kind === 'delivered' || etaDisplay?.kind === 'unavailable') {
+    return null
+  }
+
   if (!eta?.event_time) return null
 
   return {
@@ -161,6 +190,42 @@ function toContainerEtaDetailVm(
     date: formatDateForLocale(eta.event_time, locale),
     type: eta.type,
   }
+}
+
+function toProcessEtaDisplayVm(
+  processOperational: ProcessDetailResponse['process_operational'],
+  locale: string,
+): ShipmentDetailVM['processEtaDisplayVm'] {
+  const etaDisplay = processOperational?.eta_display
+  if (etaDisplay?.kind === 'delivered') {
+    return { kind: 'delivered' }
+  }
+
+  if (etaDisplay?.kind === 'date' || etaDisplay?.kind === 'arrived') {
+    return {
+      kind: etaDisplay.kind,
+      date: formatDateForLocale(etaDisplay.value, locale),
+    }
+  }
+
+  if (processOperational?.eta_max?.event_time) {
+    return {
+      kind: 'date',
+      date: formatDateForLocale(processOperational.eta_max.event_time, locale),
+    }
+  }
+
+  return { kind: 'unavailable' }
+}
+
+function toProcessEtaDate(
+  processEtaDisplayVm: ShipmentDetailVM['processEtaDisplayVm'],
+): string | null {
+  if (processEtaDisplayVm.kind === 'date' || processEtaDisplayVm.kind === 'arrived') {
+    return processEtaDisplayVm.date
+  }
+
+  return null
 }
 
 function toCurrentContextVm(
@@ -239,18 +304,17 @@ function toTsChipVm(
 }
 
 function toProcessEtaSecondaryVm(
-  data: ProcessDetailResponse,
+  processOperational: ProcessDetailResponse['process_operational'],
   containers: readonly ShipmentDetailVM['containers'][number][],
-  locale: string,
+  processEtaDisplayVm: ShipmentDetailVM['processEtaDisplayVm'],
 ): ShipmentDetailVM['processEtaSecondaryVm'] {
-  const total = data.process_operational?.coverage.eligible_total ?? containers.length
+  const total = processOperational?.coverage.eligible_total ?? containers.length
   const withEta =
-    data.process_operational?.coverage.with_eta ?? containers.filter((c) => c.selectedEtaVm).length
-  const etaMax = data.process_operational?.eta_max ?? null
+    processOperational?.coverage.with_eta ?? containers.filter((c) => c.selectedEtaVm).length
 
   return {
     visible: containers.length > 1 && total > 0,
-    date: etaMax?.event_time ? formatDateForLocale(etaMax.event_time, locale) : null,
+    date: toProcessEtaDate(processEtaDisplayVm),
     withEta,
     total,
     incomplete: total > 0 && withEta < total,
@@ -283,8 +347,16 @@ export function toShipmentDetailVM(
     }
 
     const statusCode = toTrackingStatusCode(container.status)
-    const etaChipVm = toContainerEtaChipVm(container.operational?.eta, locale)
-    const selectedEtaVm = toContainerEtaDetailVm(container.operational?.eta, locale)
+    const etaChipVm = toContainerEtaChipVm(
+      container.operational?.eta_display,
+      container.operational?.eta,
+      locale,
+    )
+    const selectedEtaVm = toContainerEtaDetailVm(
+      container.operational?.eta_display,
+      container.operational?.eta,
+      locale,
+    )
     const etaApplicable =
       container.operational?.eta_applicable ??
       container.operational?.lifecycle_bucket === 'pre_arrival'
@@ -320,7 +392,12 @@ export function toShipmentDetailVM(
   const processAggregatedStatus = toProcessAggregatedStatus(
     data.process_operational?.derived_status,
   )
-  const processEtaSecondaryVm = toProcessEtaSecondaryVm(data, containers, locale)
+  const processEtaDisplayVm = toProcessEtaDisplayVm(data.process_operational, locale)
+  const processEtaSecondaryVm = toProcessEtaSecondaryVm(
+    data.process_operational,
+    containers,
+    processEtaDisplayVm,
+  )
 
   return {
     id: data.id,
@@ -340,7 +417,8 @@ export function toShipmentDetailVM(
     status: processAggregatedStatusToVariant(processAggregatedStatus),
     statusCode: toProcessStatusCode(processAggregatedStatus),
     statusMicrobadge: toProcessStatusMicrobadgeVM(data.process_operational?.status_microbadge),
-    eta: processEtaSecondaryVm.date,
+    eta: toProcessEtaDate(processEtaDisplayVm),
+    processEtaDisplayVm,
     processEtaSecondaryVm,
     containers,
     alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),

@@ -31,6 +31,7 @@ function toContainerSummaryRowVM(
     arrived: command.t(command.keys.shipmentView.operational.chips.etaArrived),
     expectedPrefix: command.t(command.keys.shipmentView.operational.chips.etaExpected),
     delayed: command.t(command.keys.shipmentView.operational.chips.etaDelayedSuffix),
+    delivered: command.t(command.keys.tracking.status.DELIVERED),
     missing: command.noEtaLabel,
   })
 

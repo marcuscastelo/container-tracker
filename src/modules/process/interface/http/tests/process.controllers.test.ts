@@ -378,14 +378,154 @@ describe('process controllers', () => {
       kind: 'instant',
       value: '2026-03-10T12:00:00.000Z',
     })
+    expect(body.containers[0]?.operational?.eta_display).toEqual({
+      kind: 'date',
+      value: {
+        kind: 'instant',
+        value: '2026-03-10T12:00:00.000Z',
+      },
+    })
+    expect(body.containers[1]?.operational?.eta_display).toEqual({
+      kind: 'unavailable',
+    })
     expect(body.containers[1]?.operational?.data_issue).toBe(true)
     expect(body.process_operational?.eta_max?.event_time).toEqual({
       kind: 'instant',
       value: '2026-03-10T12:00:00.000Z',
     })
+    expect(body.process_operational?.eta_display).toEqual({
+      kind: 'date',
+      value: {
+        kind: 'instant',
+        value: '2026-03-10T12:00:00.000Z',
+      },
+    })
     expect(body.process_operational?.coverage.total).toBe(2)
     expect(body.process_operational?.coverage.with_eta).toBe(1)
     expect(body.containersSync).toHaveLength(2)
+  })
+
+  it('returns delivered eta_display when the process is in final delivery', async () => {
+    const deliveredSummary = makeTrackingOperationalSummary({
+      status: 'DELIVERED',
+      eta: null,
+      etaApplicable: false,
+      lifecycleBucket: 'final_delivery',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    })
+    const emptyReturnedSummary = makeTrackingOperationalSummary({
+      status: 'EMPTY_RETURNED',
+      eta: null,
+      etaApplicable: false,
+      lifecycleBucket: 'final_delivery',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    })
+
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: deliveredSummary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: emptyReturnedSummary,
+          },
+        ]),
+    )
+
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.containers[0]?.operational?.eta_display).toEqual({
+      kind: 'delivered',
+    })
+    expect(body.containers[1]?.operational?.eta_display).toEqual({
+      kind: 'delivered',
+    })
+    expect(body.process_operational?.eta_display).toEqual({
+      kind: 'delivered',
+    })
+    expect(body.process_operational?.final_delivery_complete).toBe(true)
+  })
+
+  it('returns arrived eta_display for containers and process when ETA is ACTUAL', async () => {
+    const arrivedSummary = makeTrackingOperationalSummary({
+      status: 'DISCHARGED',
+      eta: {
+        eventTime: { kind: 'date', value: '2026-03-28' },
+        eventTimeType: 'ACTUAL',
+        state: 'ACTUAL',
+        type: 'ARRIVAL',
+        locationCode: 'BRSSZ',
+        locationDisplay: 'Santos',
+      },
+      etaApplicable: true,
+      lifecycleBucket: 'post_arrival_pre_delivery',
+      transshipment: {
+        hasTransshipment: false,
+        count: 0,
+        ports: [],
+      },
+      dataIssue: false,
+    })
+
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: arrivedSummary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: arrivedSummary,
+          },
+        ]),
+    )
+
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
+    const response = await controllers.getProcessById({
+      params: { id: 'process-1' },
+      request: createProcessDetailRequest(),
+    })
+    const body = ProcessDetailResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(200)
+    expect(body.containers[0]?.operational?.eta_display).toEqual({
+      kind: 'arrived',
+      value: {
+        kind: 'date',
+        value: '2026-03-28',
+      },
+    })
+    expect(body.process_operational?.eta_display).toEqual({
+      kind: 'arrived',
+      value: {
+        kind: 'date',
+        value: '2026-03-28',
+      },
+    })
   })
 
   it('returns process detail with derived microbadge fields when containers are in dispersed lifecycle phases', async () => {

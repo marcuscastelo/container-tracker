@@ -32,6 +32,23 @@ const ProcessStatusMicrobadgeSchema = z.object({
   count: z.number().int().positive(),
 })
 
+const EtaDisplayResponseSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('date'),
+    value: TemporalValueDtoSchema,
+  }),
+  z.object({
+    kind: z.literal('arrived'),
+    value: TemporalValueDtoSchema,
+  }),
+  z.object({
+    kind: z.literal('unavailable'),
+  }),
+  z.object({
+    kind: z.literal('delivered'),
+  }),
+])
+
 export const ProcessResponseSchema = z.object({
   id: z.string(),
   reference: z.string().nullish(),
@@ -70,6 +87,7 @@ export const ProcessResponseSchema = z.object({
   full_logistics_complete: z.boolean().optional(),
   /** Earliest future ETA across containers */
   eta: TemporalValueDtoSchema.nullish(),
+  eta_display: EtaDisplayResponseSchema.optional(),
   eta_coverage: z
     .object({
       total: z.number(),
@@ -252,6 +270,7 @@ const OperationalTransshipmentResponseSchema = z.object({
 const ContainerOperationalResponseSchema = z.object({
   status: z.string(),
   eta: OperationalEtaResponseSchema.nullable(),
+  eta_display: EtaDisplayResponseSchema.optional(),
   eta_applicable: z.boolean().optional(),
   lifecycle_bucket: z
     .enum(['pre_arrival', 'post_arrival_pre_delivery', 'final_delivery'])
@@ -269,6 +288,7 @@ const ProcessOperationalResponseSchema = z.object({
   status_microbadge: ProcessStatusMicrobadgeSchema.nullish(),
   has_status_dispersion: z.boolean().optional(),
   eta_max: OperationalEtaResponseSchema.nullable(),
+  eta_display: EtaDisplayResponseSchema.optional(),
   coverage: z.object({
     total: z.number(),
     eligible_total: z.number().optional(),

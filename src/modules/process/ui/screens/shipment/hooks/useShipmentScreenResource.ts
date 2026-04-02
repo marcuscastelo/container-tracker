@@ -38,6 +38,7 @@ export function mergeTrackingFieldsIntoShipment(
     statusCode: latest.statusCode,
     statusMicrobadge: latest.statusMicrobadge,
     eta: latest.eta,
+    processEtaDisplayVm: latest.processEtaDisplayVm,
     processEtaSecondaryVm: latest.processEtaSecondaryVm,
     containers: latest.containers,
     alerts: latest.alerts,

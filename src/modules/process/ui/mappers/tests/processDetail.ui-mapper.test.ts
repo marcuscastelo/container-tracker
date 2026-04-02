@@ -46,6 +46,7 @@ function makeNextLocation(
 function makeContainerOperational(
   overrides: Partial<ContainerOperationalResponse> & {
     readonly eta?: ContainerOperationalResponse['eta']
+    readonly eta_display?: ContainerOperationalResponse['eta_display']
     readonly current_context?: OperationalCurrentContextResponse
     readonly next_location?: ContainerOperationalResponse['next_location']
   } = {},
@@ -53,6 +54,9 @@ function makeContainerOperational(
   return {
     status: 'IN_TRANSIT',
     eta: null,
+    eta_display: {
+      kind: 'unavailable',
+    },
     current_context: makeCurrentContext(),
     next_location: null,
     transshipment: {
@@ -127,6 +131,7 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(firstContainer.sync.state).toBe('never')
     expect(firstContainer.etaChipVm.state).toBe('UNAVAILABLE')
     expect(firstContainer.dataIssueChipVm.visible).toBe(false)
+    expect(result.processEtaDisplayVm.kind).toBe('unavailable')
     expect(result.processEtaSecondaryVm.visible).toBe(false)
     expect(result.processEtaSecondaryVm.total).toBe(1)
     expect(Array.isArray(result.alerts)).toBe(true)
@@ -159,6 +164,9 @@ describe('toShipmentDetailVM base mapping', () => {
           count: 1,
         },
         eta_max: null,
+        eta_display: {
+          kind: 'unavailable',
+        },
         coverage: {
           total: 1,
           with_eta: 0,
@@ -203,6 +211,7 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(firstAlert.ackedAtIso).toBeNull()
     expect(firstAlert.containerNumber).toBe('MSCU1234567')
     expect(firstAlert.messageKey).toBe('alerts.transshipmentDetected')
+    expect(result.processEtaDisplayVm.kind).toBe('unavailable')
   })
 })
 
@@ -447,6 +456,10 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
+          eta_display: {
+            kind: 'date',
+            value: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
+          },
           current_context: makeCurrentContext(),
           next_location: makeNextLocation({
             event_time: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
@@ -477,10 +490,19 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
+          eta_display: {
+            kind: 'date',
+            value: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
+          },
           current_context: makeCurrentContext(),
           next_location: makeNextLocation({
             event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
           }),
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
           data_issue: false,
         }),
       },
@@ -496,6 +518,10 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
         type: 'DISCHARGE',
         location_code: 'BRSSZ',
         location_display: 'Santos',
+      },
+      eta_display: {
+        kind: 'date',
+        value: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
       },
       coverage: {
         total: 2,
@@ -524,6 +550,9 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
         operational: makeContainerOperational({
           status: 'IN_TRANSIT',
           eta: null,
+          eta_display: {
+            kind: 'unavailable',
+          },
           current_context: makeCurrentContext(),
           next_location: null,
           transshipment: {
@@ -569,11 +598,20 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
+          eta_display: {
+            kind: 'date',
+            value: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
+          },
           current_context: makeCurrentContext(),
           next_location: makeNextLocation({
             event_time: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
             type: 'ARRIVAL',
           }),
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
           data_issue: false,
         }),
       },
@@ -591,11 +629,20 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
+          eta_display: {
+            kind: 'date',
+            value: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
+          },
           current_context: makeCurrentContext(),
           next_location: makeNextLocation({
             event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
             type: 'ARRIVAL',
           }),
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
           data_issue: false,
         }),
       },
@@ -611,6 +658,10 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
         type: 'ARRIVAL',
         location_code: 'BRSSZ',
         location_display: 'Santos',
+      },
+      eta_display: {
+        kind: 'date',
+        value: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
       },
       coverage: {
         total: 2,
@@ -631,10 +682,34 @@ describe('toShipmentDetailVM operational mapping', () => {
     expect(firstContainer.tsChipVm.count).toBe(2)
     expect(firstContainer.dataIssueChipVm.visible).toBe(true)
     expect(secondContainer.tsChipVm.visible).toBe(false)
+    expect(result.processEtaDisplayVm.kind).toBe('date')
     expect(result.processEtaSecondaryVm.visible).toBe(true)
     expect(result.processEtaSecondaryVm.total).toBe(2)
     expect(result.processEtaSecondaryVm.withEta).toBe(1)
     expect(result.processEtaSecondaryVm.incomplete).toBe(true)
+  })
+
+  it('maps delivered ETA display for terminal process and container states', () => {
+    const result = toShipmentDetailVM(createDeliveredOperationalResponse(), 'pt-BR')
+    const firstContainer = requireAt(result.containers, 0)
+
+    expect(firstContainer.etaChipVm.state).toBe('DELIVERED')
+    expect(firstContainer.selectedEtaVm).toBeNull()
+    expect(result.processEtaDisplayVm).toEqual({
+      kind: 'delivered',
+    })
+    expect(result.eta).toBeNull()
+  })
+
+  it('maps arrived process ETA display with a resolved arrival date', () => {
+    const result = toShipmentDetailVM(createArrivedOperationalResponse(), 'pt-BR')
+
+    expect(result.processEtaDisplayVm).toEqual({
+      kind: 'arrived',
+      date: '28/03/2026',
+    })
+    expect(result.eta).toBe('28/03/2026')
+    expect(result.processEtaSecondaryVm.date).toBe('28/03/2026')
   })
 
   it('keeps INT chip hidden when transshipment flag is false even with count > 0', () => {
@@ -652,3 +727,105 @@ describe('toShipmentDetailVM operational mapping', () => {
     expect(result.processEtaSecondaryVm.incomplete).toBe(false)
   })
 })
+
+function createDeliveredOperationalResponse(): ProcessDetailResponse {
+  return {
+    id: 'proc-delivered',
+    tracking_freshness_token: 'token-proc-delivered',
+    reference: 'OPS-DELIVERED',
+    origin: { display_name: 'Shanghai' },
+    destination: { display_name: 'Santos' },
+    carrier: 'msc',
+    source: 'api',
+    created_at: '2026-02-01T10:00:00.000Z',
+    updated_at: '2026-02-01T10:00:00.000Z',
+    containers: [
+      {
+        id: 'c-delivered-1',
+        container_number: 'MSCU9999999',
+        status: 'EMPTY_RETURNED',
+        operational: {
+          status: 'EMPTY_RETURNED',
+          eta: null,
+          eta_display: {
+            kind: 'delivered',
+          },
+          eta_applicable: false,
+          lifecycle_bucket: 'final_delivery',
+          current_context: makeCurrentContext({
+            location_code: 'BRSSZ',
+            location_display: 'Santos',
+            vessel_name: null,
+            voyage: null,
+            vessel_visible: false,
+          }),
+          next_location: null,
+          transshipment: {
+            has_transshipment: false,
+            count: 0,
+            ports: [],
+          },
+          data_issue: false,
+        },
+      },
+    ],
+    containersSync: [],
+    alerts: [],
+    process_operational: {
+      derived_status: 'DELIVERED',
+      eta_max: null,
+      eta_display: {
+        kind: 'delivered',
+      },
+      coverage: {
+        total: 1,
+        with_eta: 0,
+      },
+      lifecycle_bucket: 'final_delivery',
+      final_delivery_complete: true,
+      full_logistics_complete: true,
+    },
+  }
+}
+
+function createArrivedOperationalResponse(): ProcessDetailResponse {
+  return {
+    id: 'proc-arrived-eta',
+    tracking_freshness_token: 'token-proc-arrived-eta',
+    reference: 'OPS-ARRIVED',
+    origin: { display_name: 'Karachi' },
+    destination: { display_name: 'Santos' },
+    carrier: 'msc',
+    source: 'api',
+    created_at: '2026-02-01T10:00:00.000Z',
+    updated_at: '2026-02-01T10:00:00.000Z',
+    containers: [
+      {
+        id: 'c-arrived-eta-1',
+        container_number: 'FCIU2000205',
+        status: 'LOADED',
+      },
+    ],
+    containersSync: [],
+    alerts: [],
+    process_operational: {
+      derived_status: 'IN_TRANSIT',
+      eta_max: {
+        event_time: temporalDtoFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        state: 'ACTUAL',
+        type: 'DISCHARGE',
+        location_code: 'LKCMB',
+        location_display: 'Colombo',
+      },
+      eta_display: {
+        kind: 'arrived',
+        value: temporalDtoFromCanonical('2026-03-28'),
+      },
+      coverage: {
+        total: 1,
+        with_eta: 1,
+      },
+    },
+  }
+}

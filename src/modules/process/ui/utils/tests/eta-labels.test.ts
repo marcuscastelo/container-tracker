@@ -25,6 +25,7 @@ const chipLabels = {
   arrived: 'Chegou',
   expectedPrefix: 'ETA',
   delayed: 'Atrasado',
+  delivered: 'Entregue',
   missing: 'ETA —',
 }
 
@@ -93,10 +94,16 @@ describe('eta labels', () => {
       tone: 'neutral',
       date: null,
     }
+    const deliveredChip: ContainerEtaChipVM = {
+      state: 'DELIVERED',
+      tone: 'positive',
+      date: null,
+    }
 
     expect(toContainerEtaChipLabel(actualChip, chipLabels)).toBe('Chegou 13/02')
     expect(toContainerEtaChipLabel(activeExpectedChip, chipLabels)).toBe('ETA 08/03')
     expect(toContainerEtaChipLabel(expiredExpectedChip, chipLabels)).toBe('ETA 05/03 · Atrasado')
+    expect(toContainerEtaChipLabel(deliveredChip, chipLabels)).toBe('Entregue')
     expect(toContainerEtaChipLabel(missingChip, chipLabels)).toBe('ETA —')
   })
 })

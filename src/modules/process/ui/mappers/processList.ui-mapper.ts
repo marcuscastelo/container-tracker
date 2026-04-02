@@ -37,6 +37,22 @@ export type ProcessListItemSource = {
     | null
     | undefined
   eta?: TemporalValueDto | null | undefined
+  eta_display?:
+    | {
+        readonly kind: 'date'
+        readonly value: TemporalValueDto
+      }
+    | {
+        readonly kind: 'arrived'
+        readonly value: TemporalValueDto
+      }
+    | {
+        readonly kind: 'unavailable'
+      }
+    | {
+        readonly kind: 'delivered'
+      }
+    | undefined
   alerts_count?: number | undefined
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null | undefined
   dominant_alert_created_at?: string | null | undefined
@@ -80,12 +96,50 @@ function toProcessSyncStatus(
   return 'idle'
 }
 
+function toEtaDisplay(
+  etaDisplay: ProcessListItemSource['eta_display'],
+  eta: TemporalValueDto | null,
+): ProcessSummaryVM['etaDisplay'] {
+  if (etaDisplay?.kind === 'date' || etaDisplay?.kind === 'arrived') {
+    return {
+      kind: etaDisplay.kind,
+      value: etaDisplay.value,
+    }
+  }
+
+  if (etaDisplay?.kind === 'delivered') {
+    return { kind: 'delivered' }
+  }
+
+  if (etaDisplay?.kind === 'unavailable') {
+    return { kind: 'unavailable' }
+  }
+
+  if (eta !== null) {
+    return {
+      kind: 'date',
+      value: eta,
+    }
+  }
+
+  return { kind: 'unavailable' }
+}
+
+function toEtaMsOrNull(etaDisplay: ProcessSummaryVM['etaDisplay']): number | null {
+  if (etaDisplay.kind === 'date' || etaDisplay.kind === 'arrived') {
+    return toTimestampOrNull(etaDisplay.value)
+  }
+
+  return null
+}
+
 export function toProcessSummaryVMs(
   data: readonly ProcessListItemSource[],
 ): readonly ProcessSummaryVM[] {
   return data.map((process) => {
     const rawStatus = process.process_status ?? null
     const eta = process.eta ?? null
+    const etaDisplay = toEtaDisplay(process.eta_display, eta)
     const statusCode = toProcessStatusCode(rawStatus)
     const statusRank = processStatusToRank(statusCode)
 
@@ -106,7 +160,8 @@ export function toProcessSummaryVMs(
       statusMicrobadge: toProcessStatusMicrobadgeVM(process.status_microbadge),
       statusRank,
       eta,
-      etaMsOrNull: toTimestampOrNull(eta),
+      etaDisplay,
+      etaMsOrNull: toEtaMsOrNull(etaDisplay),
       carrier: toOptionalNonBlankString(process.carrier),
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,

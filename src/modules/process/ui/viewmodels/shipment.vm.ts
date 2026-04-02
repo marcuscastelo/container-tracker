@@ -7,7 +7,12 @@ import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/
 import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 
-export type EtaChipState = 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED' | 'UNAVAILABLE'
+export type EtaChipState =
+  | 'ACTUAL'
+  | 'ACTIVE_EXPECTED'
+  | 'EXPIRED_EXPECTED'
+  | 'DELIVERED'
+  | 'UNAVAILABLE'
 export type EtaChipTone = 'positive' | 'informative' | 'warning' | 'neutral'
 
 export type ContainerEtaChipVM = {
@@ -118,6 +123,22 @@ export type ProcessEtaSecondaryVM = {
   readonly incomplete: boolean
 }
 
+export type ProcessEtaDisplayVM =
+  | {
+      readonly kind: 'date'
+      readonly date: string
+    }
+  | {
+      readonly kind: 'arrived'
+      readonly date: string
+    }
+  | {
+      readonly kind: 'unavailable'
+    }
+  | {
+      readonly kind: 'delivered'
+    }
+
 export type ShipmentDetailVM = {
   readonly id: string
   readonly trackingFreshnessToken: string
@@ -137,6 +158,7 @@ export type ShipmentDetailVM = {
   readonly statusCode: ProcessStatusCode
   readonly statusMicrobadge: ProcessStatusMicrobadgeVM | null
   readonly eta: string | null
+  readonly processEtaDisplayVm: ProcessEtaDisplayVM
   readonly processEtaSecondaryVm: ProcessEtaSecondaryVM
   readonly containers: readonly ContainerDetailVM[]
   readonly alerts: readonly AlertDisplayVM[]

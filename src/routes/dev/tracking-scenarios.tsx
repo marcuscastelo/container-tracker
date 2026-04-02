@@ -16,8 +16,12 @@ import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 import { systemClock } from '~/shared/time/clock'
 import { toComparableInstant } from '~/shared/time/compare-temporal'
-import { toTemporalValueDto } from '~/shared/time/dto'
-import { parseTemporalValueFromCanonicalString } from '~/shared/time/parsing'
+import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
+import {
+  parseCalendarDateFromDdMmYyyy,
+  parseTemporalValueFromCanonicalString,
+} from '~/shared/time/parsing'
+import { calendarDateValue } from '~/shared/time/temporal-value'
 
 const SCENARIO_LAB_ENABLED = import.meta.env.DEV
 
@@ -69,6 +73,18 @@ const ScenarioLoadResponseSchema = z.object({
 type ScenarioCatalogResponse = z.infer<typeof ScenarioCatalogResponseSchema>
 type ScenarioSummary = z.infer<typeof ScenarioSummarySchema>
 type ScenarioLoadResult = z.infer<typeof ScenarioLoadResponseSchema>['result']
+
+function parseShipmentEtaLabelToDto(etaLabel: string | null): TemporalValueDto | null {
+  if (etaLabel === null) return null
+
+  const parsedCanonical = parseTemporalValueFromCanonicalString(etaLabel)
+  if (parsedCanonical !== null) return toTemporalValueDto(parsedCanonical)
+
+  const parsedLocaleDate = parseCalendarDateFromDdMmYyyy(etaLabel)
+  if (parsedLocaleDate !== null) return toTemporalValueDto(calendarDateValue(parsedLocaleDate))
+
+  return null
+}
 
 const DISABLED_TIME_TRAVEL_CONTROLLER: TrackingTimeTravelControllerResult = {
   isActive: () => false,
@@ -489,6 +505,21 @@ export default function TrackingScenariosPage(): JSX.Element {
 
       const containerNumbers = shipment.containers.map((c) => c.number.trim().toUpperCase())
       const hasTransshipment = shipment.containers.some((c) => c.transshipment?.hasTransshipment)
+      const eta = parseShipmentEtaLabelToDto(shipment.eta)
+      const etaDisplay: ProcessSummaryVM['etaDisplay'] = (() => {
+        if (shipment.processEtaDisplayVm.kind === 'delivered') return { kind: 'delivered' }
+        if (
+          (shipment.processEtaDisplayVm.kind === 'date' ||
+            shipment.processEtaDisplayVm.kind === 'arrived') &&
+          eta !== null
+        ) {
+          return {
+            kind: shipment.processEtaDisplayVm.kind,
+            value: eta,
+          }
+        }
+        return { kind: 'unavailable' }
+      })()
 
       // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
       // Dashboard preview can render without fetching the full list.
@@ -516,18 +547,19 @@ export default function TrackingScenariosPage(): JSX.Element {
         statusCode: shipment.statusCode,
         statusMicrobadge: shipment.statusMicrobadge ?? null,
         statusRank: processStatusToRank(shipment.statusCode),
-        eta:
-          shipment.eta === null
-            ? null
-            : (() => {
-                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
-                return temporalValue ? toTemporalValueDto(temporalValue) : null
-              })(),
+        eta,
+        etaDisplay,
         etaMsOrNull:
-          shipment.eta === null
+          eta === null
             ? null
             : (() => {
-                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+                const parsedCanonical = parseTemporalValueFromCanonicalString(shipment.eta ?? '')
+                const temporalValue =
+                  parsedCanonical ??
+                  (() => {
+                    const parsedLocaleDate = parseCalendarDateFromDdMmYyyy(shipment.eta ?? '')
+                    return parsedLocaleDate ? calendarDateValue(parsedLocaleDate) : null
+                  })()
                 if (!temporalValue) return null
                 return toComparableInstant(temporalValue, {
                   timezone: 'UTC',

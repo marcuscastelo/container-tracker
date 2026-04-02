@@ -25,85 +25,100 @@ function requireAt<T>(items: readonly T[], index: number): T {
   return item
 }
 
+function assertMapsApiResponseToProcessSummaryVMArray(): void {
+  const example: ProcessListItemSource[] = [
+    {
+      id: 'p1',
+      reference: 'REF1',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'Maersk',
+      importer_id: 'importer-1',
+      importer_name: 'Empresa ABC',
+      bill_of_lading: null,
+      booking_number: null,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      containers: [{ id: 'c1', container_number: 'MRKU1111111', carrier_code: null }],
+    },
+  ]
+
+  const result = toProcessSummaryVMs(example)
+  const first = requireAt(result, 0)
+  expect(Array.isArray(result)).toBe(true)
+  expect(first.id).toBe('p1')
+  expect(first.containerCount).toBe(1)
+  expect(first.containerNumbers).toEqual(['MRKU1111111'])
+  expect(first.carrier).toBe('Maersk')
+  expect(first.importerId).toBe('importer-1')
+  expect(first.importerName).toBe('Empresa ABC')
+  expect(first.syncStatus).toBe('idle')
+  expect(first.lastSyncAt).toBeNull()
+  expect(first.dominantAlertCreatedAt).toBeNull()
+}
+
+function assertMapsProcessStatusFromApiToStatusCodeAndVariant(): void {
+  const example: ProcessListItemSource[] = [
+    {
+      id: 'p2',
+      reference: 'REF2',
+      carrier: 'MSC',
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      containers: [{ id: 'c2', container_number: 'MSCU1111111' }],
+      process_status: 'IN_TRANSIT',
+      status_microbadge: {
+        status: 'DISCHARGED',
+        count: 2,
+      },
+      eta: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
+      eta_display: {
+        kind: 'date',
+        value: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
+      },
+      alerts_count: 2,
+      highest_alert_severity: 'warning',
+      dominant_alert_created_at: '2025-04-29T08:00:00Z',
+      has_transshipment: true,
+      last_event_at: temporalDtoFromCanonical('2025-05-01T00:00:00Z'),
+      last_sync_status: 'DONE',
+      last_sync_at: '2025-05-01T11:00:00Z',
+    },
+  ]
+
+  const result = toProcessSummaryVMs(example)
+  const first = requireAt(result, 0)
+  expect(first.status).toBe('blue-500')
+  expect(first.statusCode).toBe('IN_TRANSIT')
+  expect(first.statusMicrobadge).toEqual({
+    statusCode: 'DISCHARGED',
+    count: 2,
+  })
+  expect(first.statusRank).toBeGreaterThan(0)
+  expect(first.eta).toEqual(temporalDtoFromCanonical('2025-06-01T00:00:00Z'))
+  expect(first.etaDisplay).toEqual({
+    kind: 'date',
+    value: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
+  })
+  expect(first.etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
+  expect(first.alertsCount).toBe(2)
+  expect(first.highestAlertSeverity).toBe('warning')
+  expect(first.dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
+  expect(first.hasTransshipment).toBe(true)
+  expect(first.lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
+  expect(first.syncStatus).toBe('idle')
+  expect(first.lastSyncAt).toBe('2025-05-01T11:00:00Z')
+}
+
 describe('toProcessSummaryVMs', () => {
-  it('maps API response to ProcessSummaryVM array', () => {
-    const example: ProcessListItemSource[] = [
-      {
-        id: 'p1',
-        reference: 'REF1',
-        origin: { display_name: 'Shanghai' },
-        destination: { display_name: 'Santos' },
-        carrier: 'Maersk',
-        importer_id: 'importer-1',
-        importer_name: 'Empresa ABC',
-        bill_of_lading: null,
-        booking_number: null,
-        source: 'api',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        containers: [{ id: 'c1', container_number: 'MRKU1111111', carrier_code: null }],
-      },
-    ]
+  it('maps API response to ProcessSummaryVM array', assertMapsApiResponseToProcessSummaryVMArray)
 
-    const result = toProcessSummaryVMs(example)
-    const first = requireAt(result, 0)
-    expect(Array.isArray(result)).toBe(true)
-    expect(first.id).toBe('p1')
-    expect(first.containerCount).toBe(1)
-    expect(first.containerNumbers).toEqual(['MRKU1111111'])
-    expect(first.carrier).toBe('Maersk')
-    expect(first.importerId).toBe('importer-1')
-    expect(first.importerName).toBe('Empresa ABC')
-    expect(first.syncStatus).toBe('idle')
-    expect(first.lastSyncAt).toBeNull()
-    expect(first.dominantAlertCreatedAt).toBeNull()
-  })
-
-  it('maps process_status from API to status code + StatusVariant', () => {
-    const example: ProcessListItemSource[] = [
-      {
-        id: 'p2',
-        reference: 'REF2',
-        carrier: 'MSC',
-        source: 'api',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        containers: [{ id: 'c2', container_number: 'MSCU1111111' }],
-        process_status: 'IN_TRANSIT',
-        status_microbadge: {
-          status: 'DISCHARGED',
-          count: 2,
-        },
-        eta: temporalDtoFromCanonical('2025-06-01T00:00:00Z'),
-        alerts_count: 2,
-        highest_alert_severity: 'warning',
-        dominant_alert_created_at: '2025-04-29T08:00:00Z',
-        has_transshipment: true,
-        last_event_at: temporalDtoFromCanonical('2025-05-01T00:00:00Z'),
-        last_sync_status: 'DONE',
-        last_sync_at: '2025-05-01T11:00:00Z',
-      },
-    ]
-
-    const result = toProcessSummaryVMs(example)
-    const first = requireAt(result, 0)
-    expect(first.status).toBe('blue-500')
-    expect(first.statusCode).toBe('IN_TRANSIT')
-    expect(first.statusMicrobadge).toEqual({
-      statusCode: 'DISCHARGED',
-      count: 2,
-    })
-    expect(first.statusRank).toBeGreaterThan(0)
-    expect(first.eta).toEqual(temporalDtoFromCanonical('2025-06-01T00:00:00Z'))
-    expect(first.etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
-    expect(first.alertsCount).toBe(2)
-    expect(first.highestAlertSeverity).toBe('warning')
-    expect(first.dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
-    expect(first.hasTransshipment).toBe(true)
-    expect(first.lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
-    expect(first.syncStatus).toBe('idle')
-    expect(first.lastSyncAt).toBe('2025-05-01T11:00:00Z')
-  })
+  it(
+    'maps process_status from API to status code + StatusVariant',
+    assertMapsProcessStatusFromApiToStatusCodeAndVariant,
+  )
 
   it('defaults to unknown status when process_status is absent', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p3' })])
@@ -113,6 +128,9 @@ describe('toProcessSummaryVMs', () => {
     expect(first.statusMicrobadge).toBeNull()
     expect(first.statusRank).toBe(0)
     expect(first.eta).toBeNull()
+    expect(first.etaDisplay).toEqual({
+      kind: 'unavailable',
+    })
     expect(first.etaMsOrNull).toBeNull()
     expect(first.alertsCount).toBe(0)
     expect(first.highestAlertSeverity).toBeNull()
@@ -193,7 +211,70 @@ describe('toProcessSummaryVMs', () => {
     ])
     const first = requireAt(result, 0)
     expect(first.eta).toEqual(temporalDtoFromCanonical('2025-06-01'))
+    expect(first.etaDisplay).toEqual({
+      kind: 'date',
+      value: temporalDtoFromCanonical('2025-06-01'),
+    })
     expect(first.etaMsOrNull).toBe(Instant.fromIso('2025-06-01T00:00:00.000Z').toEpochMs())
+  })
+
+  it('maps delivered eta_display without changing null ETA sort value', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-delivered',
+        process_status: 'DELIVERED',
+        eta: null,
+        eta_display: {
+          kind: 'delivered',
+        },
+      }),
+    ])
+
+    const first = requireAt(result, 0)
+    expect(first.eta).toBeNull()
+    expect(first.etaDisplay).toEqual({
+      kind: 'delivered',
+    })
+    expect(first.etaMsOrNull).toBeNull()
+  })
+
+  it('maps arrived eta_display and keeps the arrival date sortable', () => {
+    const arrivedEta = temporalDtoFromCanonical('2026-03-28T12:00:00.000Z')
+
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-arrived',
+        eta: null,
+        eta_display: {
+          kind: 'arrived',
+          value: arrivedEta,
+        },
+      }),
+    ])
+
+    const first = requireAt(result, 0)
+    expect(first.eta).toBeNull()
+    expect(first.etaDisplay).toEqual({
+      kind: 'arrived',
+      value: arrivedEta,
+    })
+    expect(first.etaMsOrNull).toBe(Date.parse('2026-03-28T12:00:00.000Z'))
+  })
+
+  it('falls back to legacy eta when eta_display is absent', () => {
+    const eta = temporalDtoFromCanonical('2025-06-01T00:00:00Z')
+
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-legacy-eta',
+        eta,
+      }),
+    ])
+
+    expect(requireAt(result, 0).etaDisplay).toEqual({
+      kind: 'date',
+      value: eta,
+    })
   })
 
   it('normalizes blank importer_name to null', () => {

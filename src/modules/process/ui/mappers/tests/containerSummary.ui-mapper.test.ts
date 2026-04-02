@@ -78,6 +78,7 @@ function makeMapperCommand(containers: readonly ContainerDetailVM[]) {
       if (key === keys.shipmentView.operational.chips.etaArrived) return 'Arrived'
       if (key === keys.shipmentView.operational.chips.etaExpected) return 'ETA'
       if (key === keys.shipmentView.operational.chips.etaDelayedSuffix) return 'delayed'
+      if (key === keys.tracking.status.DELIVERED) return 'Delivered'
       if (key === keys.tracking.status.DISCHARGED) return 'Discharged'
       if (key === keys.tracking.status.IN_TRANSIT) return 'In transit'
       return `tx:${key}`
@@ -126,12 +127,22 @@ describe('toContainerSummaryRowVMs', () => {
         date: null,
       },
     })
-    const rows = toContainerSummaryRowVMs(makeMapperCommand([delayed, unavailable]))
+    const delivered = makeContainer({
+      number: 'MSCU3333333',
+      etaChipVm: {
+        state: 'DELIVERED',
+        tone: 'positive',
+        date: null,
+      },
+    })
+    const rows = toContainerSummaryRowVMs(makeMapperCommand([delayed, unavailable, delivered]))
     const delayedRow = requireAt(rows, 0)
     const unavailableRow = requireAt(rows, 1)
+    const deliveredRow = requireAt(rows, 2)
 
     expect(delayedRow.etaLabel).toBe('ETA 2026-03-10 · delayed')
     expect(unavailableRow.etaLabel).toBe('ETA —')
+    expect(deliveredRow.etaLabel).toBe('Delivered')
   })
 
   it('formats updatedAgoLabel from relative time and keeps null when missing', () => {

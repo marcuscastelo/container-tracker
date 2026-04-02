@@ -34,7 +34,7 @@ import type {
   TrackingTimelineItem,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { compareTemporal } from '~/shared/time/compare-temporal'
-import { toTemporalValueDto } from '~/shared/time/dto'
+import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -131,6 +131,22 @@ type ContainerWithTrackingResponse = {
   timeline: ReturnType<typeof toTimelineItemResponse>[]
 }
 
+type EtaDisplayResponse =
+  | {
+      readonly kind: 'date'
+      readonly value: TemporalValueDto
+    }
+  | {
+      readonly kind: 'arrived'
+      readonly value: TemporalValueDto
+    }
+  | {
+      readonly kind: 'unavailable'
+    }
+  | {
+      readonly kind: 'delivered'
+    }
+
 function resolveTrackingAlertLifecycleStateFromReadModel(
   alert: Pick<TrackingAlertDisplayReadModel, 'lifecycle_state' | 'acked_at' | 'resolved_at'>,
 ): 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED' {
@@ -194,6 +210,7 @@ export function toProcessResponseWithSummary(
     final_delivery_complete: summary.final_delivery_complete,
     full_logistics_complete: summary.full_logistics_complete,
     eta: summary.eta,
+    eta_display: summary.eta_display,
     eta_coverage: {
       total: summary.eta_coverage.total,
       eligible_total: summary.eta_coverage.eligible_total,
@@ -457,10 +474,63 @@ function toOperationalTransshipmentResponse(
   }
 }
 
+function isDeliveredEtaStatus(status: string): boolean {
+  return status === 'DELIVERED' || status === 'EMPTY_RETURNED'
+}
+
+function toContainerEtaDisplayResponse(summary: TrackingOperationalSummary): EtaDisplayResponse {
+  const lifecycleBucket = summary.lifecycleBucket ?? 'pre_arrival'
+  if (lifecycleBucket === 'final_delivery' && isDeliveredEtaStatus(summary.status)) {
+    return { kind: 'delivered' }
+  }
+
+  if (summary.eta !== null) {
+    if (summary.eta.state === 'ACTUAL') {
+      return {
+        kind: 'arrived',
+        value: summary.eta.eventTime,
+      }
+    }
+
+    return {
+      kind: 'date',
+      value: summary.eta.eventTime,
+    }
+  }
+
+  return { kind: 'unavailable' }
+}
+
+function toProcessEtaDisplayResponse(command: {
+  readonly etaMax: NonNullable<TrackingOperationalSummary['eta']> | null
+  readonly finalDeliveryComplete: boolean
+}): EtaDisplayResponse {
+  if (command.finalDeliveryComplete) {
+    return { kind: 'delivered' }
+  }
+
+  if (command.etaMax !== null) {
+    if (command.etaMax.state === 'ACTUAL') {
+      return {
+        kind: 'arrived',
+        value: command.etaMax.eventTime,
+      }
+    }
+
+    return {
+      kind: 'date',
+      value: command.etaMax.eventTime,
+    }
+  }
+
+  return { kind: 'unavailable' }
+}
+
 function toContainerOperationalResponse(summary: TrackingOperationalSummary) {
   return {
     status: summary.status,
     eta: toOperationalEtaResponse(summary.eta),
+    eta_display: toContainerEtaDisplayResponse(summary),
     // normalize lifecycle bucket first so eta applicability uses the same fallback
     // logic everywhere (legacy read models may lack lifecycleBucket)
     lifecycle_bucket: (() => {
@@ -531,6 +601,7 @@ function toProcessOperationalResponse(summaries: readonly TrackingOperationalSum
     final_delivery_complete: finalDeliveryComplete,
     full_logistics_complete: fullLogisticsComplete,
     eta_max: toOperationalEtaResponse(etaMax),
+    eta_display: toProcessEtaDisplayResponse({ etaMax, finalDeliveryComplete }),
     coverage: {
       total,
       eligible_total: etaEligibleSummaries.length,

@@ -231,7 +231,22 @@ export function ShipmentHeader(props: Props): JSX.Element {
     () => `${t(keys.shipmentView.carrier)}: ${props.data.carrier ?? String.fromCharCode(8212)}`,
   )
   const etaLabel = createMemo(() => {
-    const value = props.data.eta ?? t(keys.shipmentView.etaMissing)
+    const value = (() => {
+      if (props.data.processEtaDisplayVm.kind === 'arrived') {
+        return `${t(keys.shipmentView.operational.chips.etaArrived)} ${props.data.processEtaDisplayVm.date}`
+      }
+
+      if (props.data.processEtaDisplayVm.kind === 'date') {
+        return props.data.processEtaDisplayVm.date
+      }
+
+      if (props.data.processEtaDisplayVm.kind === 'delivered') {
+        return t(keys.tracking.status.DELIVERED)
+      }
+
+      return t(keys.shipmentView.operational.chips.etaMissing)
+    })()
+
     return `${t(keys.shipmentView.eta)}: ${value}`
   })
 

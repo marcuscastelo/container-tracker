@@ -19,6 +19,7 @@ import {
   readColumnOrderFromLocalStorage,
   writeColumnOrderToLocalStorage,
 } from '~/modules/process/ui/components/dashboard-columns'
+import { toDashboardEtaCellLabel } from '~/modules/process/ui/components/dashboard-process-table.presenter'
 import { createDashboardStatusCellDisplayMemo } from '~/modules/process/ui/components/dashboard-status-cell.display'
 import {
   SyncCell as SyncCellComponent,
@@ -41,7 +42,6 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
 import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
-import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -171,11 +171,6 @@ function displayRoute(process: ProcessSummaryVM): { origin: string; destination:
     origin: process.origin?.display_name ?? '—',
     destination: process.destination?.display_name ?? '—',
   }
-}
-
-function displayEta(eta: CellContext['process']['eta']): string {
-  if (!eta) return '—'
-  return formatDateForLocale(eta)
 }
 
 function displayTruncatedText(value: string | null): string {
@@ -414,17 +409,24 @@ function StatusCell(ctx: CellContext): JSX.Element {
 }
 
 function EtaCell(ctx: CellContext): JSX.Element {
+  const isDateEta = () => ctx.process.etaDisplay.kind === 'date'
+  const isDelayedDateEta = () => isDateEta() && ctx.process.status === 'delayed'
+
   return (
     <div class="min-w-0 overflow-hidden px-(--dashboard-table-cell-px) py-(--dashboard-table-cell-py) text-center">
       <A href={ctx.processHref} class="row-link block" onClick={ctx.handleProcessLinkClick}>
         <Show
-          when={ctx.process.eta}
-          fallback={<span class="text-xs-ui leading-tight text-text-muted">—</span>}
+          when={isDateEta()}
+          fallback={
+            <span class="text-xs-ui font-medium leading-tight text-text-muted">
+              {toDashboardEtaCellLabel(ctx.process.etaDisplay, ctx.t, ctx.keys)}
+            </span>
+          }
         >
           <span
-            class={`text-sm-ui font-semibold tabular-nums ${ctx.process.status === 'delayed' ? 'text-tone-danger-fg' : 'text-foreground'}`}
+            class={`text-sm-ui font-semibold tabular-nums ${isDelayedDateEta() ? 'text-tone-danger-fg' : 'text-foreground'}`}
           >
-            {displayEta(ctx.process.eta)}
+            {toDashboardEtaCellLabel(ctx.process.etaDisplay, ctx.t, ctx.keys)}
           </span>
         </Show>
       </A>

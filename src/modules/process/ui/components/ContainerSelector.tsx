@@ -11,6 +11,7 @@ type ContainerSelectorItemLabels = {
   readonly etaArrived: string
   readonly etaExpectedPrefix: string
   readonly etaDelayed: string
+  readonly etaDelivered: string
   readonly etaMissing: string
   readonly dataIssue: string
   readonly etaLabel: string
@@ -31,6 +32,7 @@ function ContainerSelectorItem(props: {
       arrived: props.labels.etaArrived,
       expectedPrefix: props.labels.etaExpectedPrefix,
       delayed: props.labels.etaDelayed,
+      delivered: props.labels.etaDelivered,
       missing: props.labels.etaMissing,
     })
 
@@ -93,6 +95,7 @@ export function ContainerSelector(props: {
     etaArrived: t(keys.shipmentView.operational.chips.etaArrived),
     etaExpectedPrefix: t(keys.shipmentView.operational.chips.etaExpected),
     etaDelayed: t(keys.shipmentView.operational.header.selectedExpectedDelayed),
+    etaDelivered: t(keys.tracking.status.DELIVERED),
     etaMissing: t(keys.shipmentView.operational.chips.etaMissing),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
     etaLabel: t(keys.shipmentView.currentStatus.eta),
