@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Labeler"
+  short_description: "Apply GitHub labels to issues, PRs, and milestones"
+  default_prompt: "Use $gh-apply-labels to infer and apply appropriate labels to issue #45, multiple issues, a milestone, or a PR."
