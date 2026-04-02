@@ -481,6 +481,13 @@ function toContainerEtaDisplayResponse(summary: TrackingOperationalSummary): Eta
   }
 
   if (summary.eta !== null) {
+    if (summary.eta.state === 'ACTUAL') {
+      return {
+        kind: 'arrived',
+        value: summary.eta.eventTime,
+      }
+    }
+
     return {
       kind: 'date',
       value: summary.eta.eventTime,
