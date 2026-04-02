@@ -44,7 +44,7 @@ describe('MSC normalizer vessel/voyage eligibility', () => {
 
     const drafts = normalizeMscSnapshot(makeSnapshot(payload))
     expect(drafts).toHaveLength(1)
-    expect(drafts[0]?.type).toBe('TERMINAL_MOVE')
+    expect(drafts[0]?.type).toBe('TRANSSHIPMENT_POSITIONED_IN')
     expect(drafts[0]?.vessel_name).toBeNull()
     expect(drafts[0]?.voyage).toBeNull()
   })

@@ -772,6 +772,9 @@
       "DISCHARGE": "Descarregado do Navio",
       "DELIVERY": "Entregue",
       "EMPTY_RETURN": "Vazio Devolvido",
+      "TRANSSHIPMENT_INTENDED": "Transbordo Planejado",
+      "TRANSSHIPMENT_POSITIONED_IN": "Entrada Operacional no Transbordo",
+      "TRANSSHIPMENT_POSITIONED_OUT": "Saída Operacional no Transbordo",
       "CUSTOMS_HOLD": "Retenção Alfandegária",
       "CUSTOMS_RELEASE": "Liberação Alfandegária",
       "OTHER": "Outro"

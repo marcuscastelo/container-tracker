@@ -1,3 +1,4 @@
+import { suppressSupersededObservationsForProjection } from '~/modules/tracking/application/projection/tracking.observation-visibility.readmodel'
 import { deriveTrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
@@ -80,14 +81,15 @@ function buildCheckpointState(command: {
   const containerNumber =
     command.rawCheckpoint.containerNumber ?? command.run.containerNumber ?? 'UNKNOWN'
   const state = command.isLatest ? command.run.finalState : command.rawCheckpoint.state
+  const projectionObservations = suppressSupersededObservationsForProjection(state.observations)
   const timelineDomain = deriveTimeline(
     command.run.containerId,
     containerNumber,
-    state.observations,
+    projectionObservations,
     effectiveNow,
   )
   const operational = deriveTrackingOperationalSummary({
-    observations: toTrackingObservationProjections(state.observations),
+    observations: toTrackingObservationProjections(projectionObservations),
     status: state.status,
     transshipment: deriveTransshipment(timelineDomain),
     now: effectiveNow,

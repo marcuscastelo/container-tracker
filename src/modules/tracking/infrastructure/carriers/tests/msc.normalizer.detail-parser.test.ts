@@ -82,7 +82,7 @@ describe('MSC detail contextual parser', () => {
     expect(drafts[0]?.voyage).toBeNull()
   })
 
-  it('parses load-state context for TERMINAL_MOVE events', () => {
+  it('parses load-state context for positioned transshipment helper events', () => {
     const payload = {
       Data: {
         CurrentDate: '12/03/2026',
@@ -112,7 +112,7 @@ describe('MSC detail contextual parser', () => {
     expect(drafts).toHaveLength(1)
 
     const draft = drafts[0]
-    expect(draft?.type).toBe('TERMINAL_MOVE')
+    expect(draft?.type).toBe('TRANSSHIPMENT_POSITIONED_IN')
     expect(draft?.is_empty).toBe(false)
     expect(draft?.vessel_name).toBeNull()
     expect(draft?.voyage).toBeNull()
