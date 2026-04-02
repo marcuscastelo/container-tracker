@@ -6,9 +6,9 @@ import type {
 } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
+import { buildDateOnlyTrackingTemporal } from '~/modules/tracking/infrastructure/carriers/normalizers/tracking-temporal-resolution'
 import { MscApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/msc.api.schema'
 import { parseInstantFromIso } from '~/shared/time/parsing'
-import { calendarDateValue } from '~/shared/time/temporal-value'
 import { parseDateDDMMYYYYString } from '~/shared/utils/parseDate'
 
 type MscSemanticRule = {
@@ -376,9 +376,15 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
         const semanticRule = lookupMscSemanticRule(event.Description)
         const type = semanticRule?.type ?? 'OTHER'
         const parsedDate = event.Date ? parseDateDDMMYYYYString(event.Date) : null
-        const eventTime = parsedDate ? calendarDateValue(parsedDate) : null
         const locationCode = event.UnLocationCode ?? null
         const locationDisplay = event.Location ?? null
+        const temporal = buildDateOnlyTrackingTemporal({
+          date: parsedDate,
+          rawEventTime: event.Date ?? null,
+          locationCode,
+          locationDisplay,
+        })
+        const eventTime = temporal.event_time
         const parsedDetail = parseMscDetail(type, event.Detail, event.Vessel)
 
         // Determine ACTUAL vs EXPECTED based on date comparison
@@ -405,6 +411,8 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           provider: 'msc',
           snapshot_id: snapshot.id,
           carrier_label: toCarrierLabelOrNull(event.Description),
+          raw_event_time: temporal.raw_event_time ?? null,
+          event_time_source: temporal.event_time_source ?? null,
           raw_event: withNormalizerVersion(event),
         }
 
@@ -423,7 +431,13 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
           if (etaTimeType === 'EXPECTED') {
             const podLocation = bill.GeneralTrackingInfo?.PortOfDischarge ?? null
             const podLocationCode = null // MSC doesn't provide POD UN/LOCODE in PodEtaDate context
-            const etaEventTime = calendarDateValue(parsedEta)
+            const etaTemporal = buildDateOnlyTrackingTemporal({
+              date: parsedEta,
+              rawEventTime: podEtaDate,
+              locationCode: podLocationCode,
+              locationDisplay: podLocation,
+            })
+            const etaEventTime = etaTemporal.event_time
 
             if (
               hasExplicitArrivalEtaForPod({
@@ -451,6 +465,8 @@ export function normalizeMscSnapshot(snapshot: Snapshot): ObservationDraft[] {
               provider: 'msc',
               snapshot_id: snapshot.id,
               carrier_label: null,
+              raw_event_time: etaTemporal.raw_event_time ?? null,
+              event_time_source: etaTemporal.event_time_source ?? null,
               raw_event: withNormalizerVersion({ source: 'PodEtaDate', value: podEtaDate }),
             }
 

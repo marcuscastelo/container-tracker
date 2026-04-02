@@ -73,9 +73,10 @@ function toDetectedAtIso(value: Observation['event_time'], fallback: Instant): s
   return toComparableInstant(value, TRACKING_CHRONOLOGY_COMPARE_OPTIONS).toIsoString()
 }
 
-function toUtcCalendarDateString(value: Observation['event_time']): string | null {
+function toOperationalCalendarDateString(value: Observation['event_time']): string | null {
   if (value === null) return null
   if (value.kind === 'date') return value.value.toIsoDate()
+  if (value.kind === 'local-datetime') return value.value.date.toIsoDate()
   return value.value.toCalendarDate('UTC').toIsoDate()
 }
 
@@ -379,7 +380,7 @@ export function deriveAlertTransitions(
           // cycle emission checks. This keeps deterministic fingerprints
           // compatible with existing expectations while also allowing us to
           // detect anchor changes via the stronger observation fingerprint.
-          const cycleAnchorDate = toUtcCalendarDateString(lastActualEvent.event_time)
+          const cycleAnchorDate = toOperationalCalendarDateString(lastActualEvent.event_time)
           if (cycleAnchorDate !== null) {
             const monitoringFingerprint = computeNoMovementAlertFingerprint(
               timeline.container_id,

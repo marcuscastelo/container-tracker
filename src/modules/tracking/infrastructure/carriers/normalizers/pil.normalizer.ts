@@ -5,7 +5,14 @@ import type {
 } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
-import { parsePilTrackingPayload } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.parser'
+import {
+  type PilParsedEventRow,
+  parsePilTrackingPayload,
+} from '~/modules/tracking/infrastructure/carriers/normalizers/pil.parser'
+import {
+  buildDateOnlyTrackingTemporal,
+  buildLocalDateTimeTrackingTemporal,
+} from '~/modules/tracking/infrastructure/carriers/normalizers/tracking-temporal-resolution'
 import { PilApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/pil.api.schema'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -45,7 +52,16 @@ function toStructuredLocationCodeOrNull(value: string | null): string | null {
 function toTemporalDateKey(value: TemporalValue | null): string | null {
   if (value === null) return null
   if (value.kind === 'date') return value.value.toIsoDate()
+  if (value.kind === 'local-datetime') return value.value.toIsoLocalString().slice(0, 10)
   return value.value.toIsoString().slice(0, 10)
+}
+
+function toPilEventDateKey(
+  eventDate: PilParsedEventRow['eventDate'],
+  eventLocalDateTime: PilParsedEventRow['eventLocalDateTime'],
+): string | null {
+  if (eventDate !== null) return eventDate.toIsoDate()
+  return eventLocalDateTime === null ? null : eventLocalDateTime.slice(0, 10)
 }
 
 function matchesPilText(left: string | null, right: string | null): boolean {
@@ -56,7 +72,7 @@ function matchesPilText(left: string | null, right: string | null): boolean {
 function resolvePilLocationCode(command: {
   readonly type: ObservationType
   readonly rawPlace: string | null
-  readonly eventTime: TemporalValue | null
+  readonly eventDateKey: string | null
   readonly summary: {
     readonly rawLoadPortName: string | null
     readonly rawLoadPortCode: string | null
@@ -86,10 +102,11 @@ function resolvePilLocationCode(command: {
     return null
   }
 
-  const eventDateKey = toTemporalDateKey(command.eventTime)
   const nextLocationDateKey = toTemporalDateKey(summary.nextLocationDate)
   const sameScheduledDay =
-    eventDateKey !== null && nextLocationDateKey !== null && eventDateKey === nextLocationDateKey
+    command.eventDateKey !== null &&
+    nextLocationDateKey !== null &&
+    command.eventDateKey === nextLocationDateKey
 
   if (sameScheduledDay) {
     return nextLocationCode
@@ -130,11 +147,7 @@ export function normalizePilSnapshot(snapshot: Snapshot): ObservationDraft[] {
   const summary = parsedPayload.value.summary
 
   for (const eventRow of parsedPayload.value.detailedEvents) {
-    if (
-      eventRow.eventTime === null ||
-      eventRow.eventTimeType === null ||
-      eventRow.rawEventName.trim().length === 0
-    ) {
+    if (eventRow.eventTimeType === null || eventRow.rawEventName.trim().length === 0) {
       continue
     }
 
@@ -142,10 +155,24 @@ export function normalizePilSnapshot(snapshot: Snapshot): ObservationDraft[] {
     const locationCode = resolvePilLocationCode({
       type,
       rawPlace: eventRow.rawPlace,
-      eventTime: eventRow.eventTime,
+      eventDateKey: toPilEventDateKey(eventRow.eventDate, eventRow.eventLocalDateTime),
       summary,
     })
     const locationDisplay = eventRow.rawPlace
+    const temporal =
+      eventRow.eventLocalDateTime !== null
+        ? buildLocalDateTimeTrackingTemporal({
+            localDateTime: eventRow.eventLocalDateTime,
+            rawEventTime: eventRow.rawEventTimeText,
+            locationCode,
+            locationDisplay,
+          })
+        : buildDateOnlyTrackingTemporal({
+            date: eventRow.eventDate,
+            rawEventTime: eventRow.rawEventTimeText,
+            locationCode,
+            locationDisplay,
+          })
     const isVesselEvent =
       type === 'LOAD' || type === 'DISCHARGE' || type === 'DEPARTURE' || type === 'ARRIVAL'
     const vesselName = isVesselEvent ? (eventRow.rawVessel ?? summary?.rawVessel ?? null) : null
@@ -154,17 +181,19 @@ export function normalizePilSnapshot(snapshot: Snapshot): ObservationDraft[] {
     drafts.push({
       container_number: containerNumber,
       type,
-      event_time: eventRow.eventTime,
+      event_time: temporal.event_time,
       event_time_type: eventRow.eventTimeType,
       location_code: locationCode,
       location_display: locationDisplay,
       vessel_name: vesselName,
       voyage,
       is_empty: null,
-      confidence: computeConfidence(eventRow.eventTime, locationCode, locationDisplay, type),
+      confidence: computeConfidence(temporal.event_time, locationCode, locationDisplay, type),
       provider: 'pil',
       snapshot_id: snapshot.id,
       carrier_label: toCarrierLabelOrNull(eventRow.rawEventName),
+      raw_event_time: temporal.raw_event_time ?? null,
+      event_time_source: temporal.event_time_source ?? null,
       raw_event: {
         ...eventRow,
         summary,

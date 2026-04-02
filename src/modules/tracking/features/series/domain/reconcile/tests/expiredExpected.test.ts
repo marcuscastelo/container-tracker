@@ -4,6 +4,8 @@ import {
   deriveObservationState,
   isExpiredExpected,
 } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
+import { CalendarDate } from '~/shared/time/calendar-date'
+import { calendarDateValue } from '~/shared/time/temporal-value'
 import {
   instantFromIsoText,
   resolveTemporalValue,
@@ -111,6 +113,32 @@ describe('isExpiredExpected', () => {
         location_code: 'ITNAP',
       })
       expect(isExpiredExpected(expected, [expected, actual], now)).toBe(true)
+    })
+
+    it('should not expire DATE_ONLY observations before the operational day ends in the event timezone', () => {
+      const obs = makeObs({
+        id: '00000000-0000-0000-0000-000000000014',
+        fingerprint: 'fp-date-only-sao-paulo',
+        type: 'ARRIVAL',
+        event_time: calendarDateValue(CalendarDate.fromIsoDate('2026-01-14'), 'America/Sao_Paulo'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+      })
+
+      expect(isExpiredExpected(obs, [obs], now)).toBe(false)
+    })
+
+    it('should compare LOCAL_DATETIME observations using the event timezone instant', () => {
+      const obs = makeObs({
+        id: '00000000-0000-0000-0000-000000000015',
+        fingerprint: 'fp-local-datetime-sao-paulo',
+        type: 'ARRIVAL',
+        event_time: '2026-01-14T22:30:00.000[America/Sao_Paulo]',
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+      })
+
+      expect(isExpiredExpected(obs, [obs], now)).toBe(false)
     })
   })
 

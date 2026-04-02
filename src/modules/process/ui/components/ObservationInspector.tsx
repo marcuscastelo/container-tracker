@@ -20,6 +20,79 @@ type InspectorRow = {
   readonly tone?: 'default' | 'technical'
 }
 
+type ObservationIdentitySource = {
+  readonly type: string | null
+  readonly eventTime: TemporalValueDto | null
+  readonly eventTimeType: string | null
+  readonly rawEventTime: string | null
+  readonly eventTimeSource: string | null
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+  readonly vesselName: string | null
+}
+
+const EMPTY_OBSERVATION_IDENTITY_SOURCE: ObservationIdentitySource = {
+  type: null,
+  eventTime: null,
+  eventTimeType: null,
+  rawEventTime: null,
+  eventTimeSource: null,
+  locationCode: null,
+  locationDisplay: null,
+  vesselName: null,
+}
+
+function formatBooleanRawValue(
+  value: boolean | null,
+  labels: {
+    readonly trueLabel: string
+    readonly falseLabel: string
+    readonly nullLabel: string
+  },
+): string {
+  if (value === true) return labels.trueLabel
+  if (value === false) return labels.falseLabel
+  return labels.nullLabel
+}
+
+function formatConditionValue(
+  value: boolean | null,
+  labels: {
+    readonly emptyLabel: string
+    readonly notEmptyLabel: string
+    readonly unknownLabel: string
+  },
+): string {
+  if (value === true) return labels.emptyLabel
+  if (value === false) return labels.notEmptyLabel
+  return labels.unknownLabel
+}
+
+function formatInspectorValue(value: string | null, unavailableLabel: string): string {
+  return value ?? unavailableLabel
+}
+
+function formatInspectorTemporalValue(
+  value: TemporalValueDto | null,
+  unavailableLabel: string,
+): string {
+  if (value === null) {
+    return unavailableLabel
+  }
+
+  if (value.kind === 'local-datetime') {
+    return `${value.value}[${value.timezone}]`
+  }
+
+  if (value.kind === 'date') {
+    return value.timezone === null || value.timezone === undefined
+      ? value.value
+      : `${value.value}[${value.timezone}]`
+  }
+
+  return value.value
+}
+
 function ObservationInspectorMessage(props: {
   readonly tone: 'default' | 'danger'
   readonly message: string
@@ -66,75 +139,106 @@ function ObservationInspectorRow(props: { readonly row: InspectorRow }): JSX.Ele
 export function ObservationInspector(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const observation = () => props.observation
+  const unavailableLabel = () =>
+    t(keys.shipmentView.timeline.observationInspector.values.unavailable)
 
-  const booleanRawValue = (value: boolean | null): string => {
-    if (value === true) return t(keys.shipmentView.timeline.observationInspector.values.true)
-    if (value === false) return t(keys.shipmentView.timeline.observationInspector.values.false)
-    return t(keys.shipmentView.timeline.observationInspector.values.null)
-  }
+  const identityValues = createMemo(() => {
+    const currentObservation = observation()
+    const source: ObservationIdentitySource =
+      currentObservation === null
+        ? EMPTY_OBSERVATION_IDENTITY_SOURCE
+        : {
+            type: currentObservation.type,
+            eventTime: currentObservation.eventTime,
+            eventTimeType: currentObservation.eventTimeType,
+            rawEventTime: currentObservation.rawEventTime,
+            eventTimeSource: currentObservation.eventTimeSource,
+            locationCode: currentObservation.locationCode,
+            locationDisplay: currentObservation.locationDisplay,
+            vesselName: currentObservation.vesselName,
+          }
 
-  const conditionValue = (value: boolean | null): string => {
-    if (value === true) return t(keys.shipmentView.timeline.observationInspector.values.empty)
-    if (value === false) return t(keys.shipmentView.timeline.observationInspector.values.notEmpty)
-    return t(keys.shipmentView.timeline.observationInspector.values.unknown)
-  }
+    return {
+      type: formatInspectorValue(source.type, unavailableLabel()),
+      eventTime: formatInspectorTemporalValue(source.eventTime, unavailableLabel()),
+      eventTimeType: formatInspectorValue(source.eventTimeType, unavailableLabel()),
+      rawEventTime: formatInspectorValue(source.rawEventTime, unavailableLabel()),
+      eventTimeSource: formatInspectorValue(source.eventTimeSource, unavailableLabel()),
+      locationCode: formatInspectorValue(source.locationCode, unavailableLabel()),
+      locationDisplay: formatInspectorValue(source.locationDisplay, unavailableLabel()),
+      vesselName: formatInspectorValue(source.vesselName, unavailableLabel()),
+    }
+  })
 
-  const asValue = (value: string | null): string =>
-    value ?? t(keys.shipmentView.timeline.observationInspector.values.unavailable)
-  const asTemporalValue = (value: TemporalValueDto | null): string =>
-    value?.value ?? t(keys.shipmentView.timeline.observationInspector.values.unavailable)
+  const identityRows = createMemo<readonly InspectorRow[]>(() => {
+    const values = identityValues()
 
-  const identityRows = createMemo<readonly InspectorRow[]>(() => [
-    {
-      label: t(keys.shipmentView.timeline.observationInspector.fields.type),
-      value:
-        observation()?.type ??
-        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
-      tone: 'technical',
-    },
-    {
-      label: t(keys.shipmentView.timeline.observationInspector.fields.eventTime),
-      value: asTemporalValue(observation()?.eventTime ?? null),
-      tone: 'technical',
-    },
-    {
-      label: t(keys.shipmentView.timeline.observationInspector.fields.eventTimeType),
-      value:
-        observation()?.eventTimeType ??
-        t(keys.shipmentView.timeline.observationInspector.values.unavailable),
-      tone: 'technical',
-    },
-    {
-      label: t(keys.shipmentView.timeline.observationInspector.fields.locationCode),
-      value: asValue(observation()?.locationCode ?? null),
-      tone: 'technical',
-    },
-    {
-      label: t(keys.shipmentView.timeline.observationInspector.fields.locationDisplay),
-      value: asValue(observation()?.locationDisplay ?? null),
-    },
-    {
-      label: t(keys.shipmentView.timeline.observationInspector.fields.vesselName),
-      value: asValue(observation()?.vesselName ?? null),
-    },
-  ])
+    return [
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.type),
+        value: values.type,
+        tone: 'technical',
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.eventTime),
+        value: values.eventTime,
+        tone: 'technical',
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.eventTimeType),
+        value: values.eventTimeType,
+        tone: 'technical',
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.rawEventTime),
+        value: values.rawEventTime,
+        tone: 'technical',
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.eventTimeSource),
+        value: values.eventTimeSource,
+        tone: 'technical',
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.locationCode),
+        value: values.locationCode,
+        tone: 'technical',
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.locationDisplay),
+        value: values.locationDisplay,
+      },
+      {
+        label: t(keys.shipmentView.timeline.observationInspector.fields.vesselName),
+        value: values.vesselName,
+      },
+    ]
+  })
 
   const conditionRows = createMemo<readonly InspectorRow[]>(() => [
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.voyage),
-      value: asValue(observation()?.voyage ?? null),
+      value: formatInspectorValue(observation()?.voyage ?? null, unavailableLabel()),
       tone: 'technical',
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.condition),
-      value: conditionValue(observation()?.isEmpty ?? null),
+      value: formatConditionValue(observation()?.isEmpty ?? null, {
+        emptyLabel: t(keys.shipmentView.timeline.observationInspector.values.empty),
+        notEmptyLabel: t(keys.shipmentView.timeline.observationInspector.values.notEmpty),
+        unknownLabel: t(keys.shipmentView.timeline.observationInspector.values.unknown),
+      }),
     },
   ])
 
   const technicalRows = createMemo<readonly InspectorRow[]>(() => [
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.isEmpty),
-      value: booleanRawValue(observation()?.isEmpty ?? null),
+      value: formatBooleanRawValue(observation()?.isEmpty ?? null, {
+        trueLabel: t(keys.shipmentView.timeline.observationInspector.values.true),
+        falseLabel: t(keys.shipmentView.timeline.observationInspector.values.false),
+        nullLabel: t(keys.shipmentView.timeline.observationInspector.values.null),
+      }),
       tone: 'technical',
     },
     {
@@ -146,7 +250,7 @@ export function ObservationInspector(props: Props): JSX.Element {
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.carrierLabel),
-      value: asValue(observation()?.carrierLabel ?? null),
+      value: formatInspectorValue(observation()?.carrierLabel ?? null, unavailableLabel()),
       tone: 'technical',
     },
   ])
@@ -182,7 +286,7 @@ export function ObservationInspector(props: Props): JSX.Element {
     },
     {
       label: t(keys.shipmentView.timeline.observationInspector.fields.createdFromSnapshotId),
-      value: asValue(observation()?.createdFromSnapshotId ?? null),
+      value: formatInspectorValue(observation()?.createdFromSnapshotId ?? null, unavailableLabel()),
       tone: 'technical',
     },
   ])

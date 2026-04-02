@@ -8,9 +8,11 @@ import {
   parseCalendarDateFromIso,
   parseInstantFromIso,
   parseTemporalValue,
+  parseTemporalValueFromCanonicalString,
 } from '~/shared/time/parsing'
 import { formatTemporalDate, formatTemporalDateTime } from '~/shared/time/temporal-formatters'
 import { calendarDateValue, instantValue } from '~/shared/time/temporal-value'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 describe('shared time temporal semantics', () => {
   it('parses dd/MM/yyyy into CalendarDate without inventing an instant', () => {
@@ -88,6 +90,14 @@ describe('shared time temporal semantics', () => {
     expect(formatTemporalDate({ kind: 'date', value: '2026-02-15' }, 'en-US')).toBe('02/15/2026')
   })
 
+  it('keeps DATE_ONLY rendering stable across browser timezones', () => {
+    const value = { kind: 'date', value: '2026-04-24' } as const
+
+    expect(formatTemporalDate(value, 'pt-BR', 'America/Sao_Paulo')).toBe('24/04/2026')
+    expect(formatTemporalDate(value, 'pt-BR', 'UTC')).toBe('24/04/2026')
+    expect(formatTemporalDate(value, 'pt-BR', 'Europe/Berlin')).toBe('24/04/2026')
+  })
+
   it('formats instants with time while keeping calendar dates date-only', () => {
     expect(
       formatTemporalDateTime(
@@ -102,6 +112,19 @@ describe('shared time temporal semantics', () => {
     )
   })
 
+  it('renders LOCAL_DATETIME using the event timezone instead of the browser timezone', () => {
+    const value = {
+      kind: 'local-datetime',
+      value: '2026-04-24T19:00:00.000',
+      timezone: 'America/Sao_Paulo',
+    } as const
+
+    expect(formatTemporalDate(value, 'pt-BR', 'UTC')).toBe('24/04/2026')
+    expect(formatTemporalDate(value, 'pt-BR', 'Europe/Berlin')).toBe('24/04/2026')
+    expect(formatTemporalDateTime(value, 'pt-BR', 'UTC')).toContain('19:00')
+    expect(formatTemporalDateTime(value, 'pt-BR', 'Europe/Berlin')).toContain('19:00')
+  })
+
   it('keeps explicit instant wrappers usable in comparisons', () => {
     const left = instantValue(Instant.fromIso('2026-02-15T00:00:00.000Z'))
     const right = instantValue(Instant.fromIso('2026-02-16T00:00:00.000Z'))
@@ -112,5 +135,27 @@ describe('shared time temporal semantics', () => {
         strategy: 'start-of-day',
       }),
     ).toBeLessThan(0)
+  })
+
+  it('compares date-only temporal values using each value timezone', () => {
+    const utcDate = calendarDateValue(CalendarDate.fromIsoDate('2026-01-14'), 'UTC')
+    const saoPauloDate = calendarDateValue(
+      CalendarDate.fromIsoDate('2026-01-14'),
+      'America/Sao_Paulo',
+    )
+
+    expect(
+      compareTemporal(utcDate, saoPauloDate, {
+        timezone: 'UTC',
+        strategy: 'start-of-day',
+      }),
+    ).toBeLessThan(0)
+  })
+
+  it('roundtrips date-only canonical strings with timezone suffix', () => {
+    const canonicalText = '2026-01-14[America/Sao_Paulo]'
+    const parsed = parseTemporalValueFromCanonicalString(canonicalText)
+
+    expect(temporalCanonicalText(parsed)).toBe(canonicalText)
   })
 })

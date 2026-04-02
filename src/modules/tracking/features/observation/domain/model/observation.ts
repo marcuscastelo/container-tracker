@@ -1,5 +1,8 @@
 import type { PersistedProvider, Provider } from '~/modules/tracking/domain/model/provider'
-import type { Confidence } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import type {
+  Confidence,
+  EventTimeSource,
+} from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -86,6 +89,12 @@ export type Observation = {
 
   /** Original provider event label preserved for auditability */
   carrier_label?: string | null
+
+  /** Raw provider temporal value preserved for auditability */
+  raw_event_time?: string | null
+
+  /** Temporal provenance decided by tracking during normalization */
+  event_time_source?: EventTimeSource | null
 
   /** When the observation was first persisted (UTC ISO) */
   created_at: string

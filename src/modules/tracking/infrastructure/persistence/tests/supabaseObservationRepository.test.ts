@@ -41,6 +41,9 @@ function makeObservationRow(
     event_time_instant: '2026-01-15T10:00:00.000Z',
     event_time: '2026-01-15T10:00:00.000Z',
     event_date: null,
+    event_time_local: null,
+    event_time_zone: null,
+    event_time_source: null,
     location_code: 'USNYC',
     location_display: 'New York',
     vessel_name: null,
@@ -50,6 +53,7 @@ function makeObservationRow(
     provider: 'maersk',
     created_from_snapshot_id: 'snapshot-1',
     carrier_label: null,
+    raw_event_time: null,
     created_at: createdAt,
     retroactive: false,
   }

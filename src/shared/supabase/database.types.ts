@@ -130,6 +130,9 @@ export type Database = {
           created_at: string
           created_from_snapshot_id: string | null
           event_date: string | null
+          event_time_local: string | null
+          event_time_source: string | null
+          event_time_zone: string | null
           /**
            * @deprecated
            */
@@ -142,6 +145,7 @@ export type Database = {
           location_code: string | null
           location_display: string | null
           provider: string
+          raw_event_time: string | null
           retroactive: boolean
           temporal_kind: string | null
           type: string
@@ -156,6 +160,9 @@ export type Database = {
           created_at?: string
           created_from_snapshot_id?: string | null
           event_date?: string | null
+          event_time_local?: string | null
+          event_time_source?: string | null
+          event_time_zone?: string | null
           event_time?: string | null
           event_time_instant?: string | null
           event_time_type: string
@@ -165,6 +172,7 @@ export type Database = {
           location_code?: string | null
           location_display?: string | null
           provider: string
+          raw_event_time?: string | null
           retroactive?: boolean
           temporal_kind?: string | null
           type: string
@@ -179,6 +187,9 @@ export type Database = {
           created_at?: string
           created_from_snapshot_id?: string | null
           event_date?: string | null
+          event_time_local?: string | null
+          event_time_source?: string | null
+          event_time_zone?: string | null
           event_time?: string | null
           event_time_instant?: string | null
           event_time_type?: string
@@ -188,6 +199,7 @@ export type Database = {
           location_code?: string | null
           location_display?: string | null
           provider?: string
+          raw_event_time?: string | null
           retroactive?: boolean
           temporal_kind?: string | null
           type?: string

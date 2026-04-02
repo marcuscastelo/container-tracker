@@ -33,16 +33,19 @@ describe('parsePilTrackingPayload', () => {
     const gateOut = result.value.detailedEvents[0]
     expect(gateOut?.rawEventName).toBe('O/B Empty Container Released')
     expect(gateOut?.eventTimeType).toBe('ACTUAL')
-    expect(temporalCanonicalText(gateOut?.eventTime ?? null)).toBe('2026-03-02T14:04:00.000Z')
+    expect(gateOut?.eventDate).toBeNull()
+    expect(gateOut?.eventLocalDateTime).toBe('2026-03-02T14:04:00.000')
 
     const discharge = result.value.detailedEvents[3]
     expect(discharge?.rawEventName).toBe('Vessel Discharge')
     expect(discharge?.eventTimeType).toBe('EXPECTED')
-    expect(temporalCanonicalText(discharge?.eventTime ?? null)).toBe('2026-04-23T19:00:00.000Z')
+    expect(discharge?.eventDate).toBeNull()
+    expect(discharge?.eventLocalDateTime).toBe('2026-04-23T19:00:00.000')
 
     const unavailable = result.value.detailedEvents[4]
     expect(unavailable?.rawEventName).toBe('Truck Gate Out from I/B Terminal')
-    expect(unavailable?.eventTime).toBeNull()
+    expect(unavailable?.eventDate).toBeNull()
+    expect(unavailable?.eventLocalDateTime).toBeNull()
     expect(unavailable?.eventTimeType).toBeNull()
   })
 

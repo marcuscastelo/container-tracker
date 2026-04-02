@@ -21,6 +21,9 @@ function temporalIdentity(observation: Observation): string {
   if (observation.event_time.kind === 'instant') {
     return `instant:${observation.event_time.value.toIsoString()}`
   }
+  if (observation.event_time.kind === 'local-datetime') {
+    return `local-datetime:${observation.event_time.value.toCanonicalString()}`
+  }
   return `date:${observation.event_time.value.toIsoDate()}`
 }
 

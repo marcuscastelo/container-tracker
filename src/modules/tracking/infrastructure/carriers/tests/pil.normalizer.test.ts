@@ -24,13 +24,19 @@ describe('normalizePilSnapshot', () => {
     expect(load?.vessel_name).toBe('CMA CGM KRYPTON')
     expect(load?.voyage).toBe('VCGK0001W')
     expect(load?.location_code).toBe('CNTAO')
-    expect(temporalCanonicalText(load?.event_time ?? null)).toBe('2026-03-14T04:10:00.000Z')
+    expect(temporalCanonicalText(load?.event_time ?? null)).toBe(
+      '2026-03-14T04:10:00.000[Asia/Shanghai]',
+    )
+    expect(load?.event_time_source).toBe('carrier_local_port_time')
 
     const discharge = drafts.find((draft) => draft.type === 'DISCHARGE')
     expect(discharge?.event_time_type).toBe('EXPECTED')
     expect(discharge?.location_display).toBe('SANTOS')
     expect(discharge?.location_code).toBe('BRSSZ')
-    expect(temporalCanonicalText(discharge?.event_time ?? null)).toBe('2026-04-23T19:00:00.000Z')
+    expect(temporalCanonicalText(discharge?.event_time ?? null)).toBe(
+      '2026-04-23T19:00:00.000[America/Sao_Paulo]',
+    )
+    expect(discharge?.event_time_source).toBe('carrier_local_port_time')
   })
 
   it('maps unknown carrier events to OTHER and preserves the original carrier_label', () => {

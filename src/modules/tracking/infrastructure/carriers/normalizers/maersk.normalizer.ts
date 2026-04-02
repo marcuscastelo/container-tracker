@@ -6,9 +6,12 @@ import type {
 } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
+import {
+  buildAbsoluteTrackingTemporal,
+  buildLocalDateTimeTrackingTemporal,
+} from '~/modules/tracking/infrastructure/carriers/normalizers/tracking-temporal-resolution'
 import { MaerskApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/maersk.api.schema'
 import { parseInstantFromIso } from '~/shared/time/parsing'
-import { instantValue } from '~/shared/time/temporal-value'
 
 /**
  * Maps Maersk event `activity` strings to canonical ObservationType.
@@ -72,15 +75,39 @@ const MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN = /(Z|[+-]\d{2}:\d{2})$/u
 
 function parseMaerskEventTime(
   eventTime: string | null | undefined,
-): ObservationDraft['event_time'] {
-  if (typeof eventTime !== 'string') return null
+  locationCode: string | null | undefined,
+  locationDisplay: string | null | undefined,
+): Pick<ObservationDraft, 'event_time' | 'raw_event_time' | 'event_time_source'> {
+  if (typeof eventTime !== 'string') {
+    return {
+      event_time: null,
+      raw_event_time: null,
+      event_time_source: null,
+    }
+  }
 
   const trimmed = eventTime.trim()
-  if (trimmed.length === 0) return null
+  if (trimmed.length === 0) {
+    return {
+      event_time: null,
+      raw_event_time: null,
+      event_time_source: null,
+    }
+  }
 
-  const normalized = MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN.test(trimmed) ? trimmed : `${trimmed}Z`
-  const parsedInstant = parseInstantFromIso(normalized)
-  return parsedInstant ? instantValue(parsedInstant) : null
+  if (MAERSK_EVENT_TIME_HAS_TIMEZONE_PATTERN.test(trimmed)) {
+    return buildAbsoluteTrackingTemporal({
+      instant: parseInstantFromIso(trimmed),
+      rawEventTime: trimmed,
+    })
+  }
+
+  return buildLocalDateTimeTrackingTemporal({
+    localDateTime: trimmed,
+    rawEventTime: trimmed,
+    locationCode,
+    locationDisplay,
+  })
 }
 
 function toCarrierLabelOrNull(label: string | null | undefined): string | null {
@@ -126,10 +153,11 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
 
       for (const event of events) {
         const type = mapMaerskActivity(event.activity)
-        const eventTime = parseMaerskEventTime(event.event_time)
         const locationCode = event.locationCode ?? location.location_code ?? null
         const locationDisplay =
           [location.city, location.country_code].filter(Boolean).join(', ') || null
+        const temporal = parseMaerskEventTime(event.event_time, locationCode, locationDisplay)
+        const eventTime = temporal.event_time
         const vesselName = event.vessel_name ?? null
         const voyage = event.voyage_num ?? null
         const isEmpty = event.stempty ?? null
@@ -156,6 +184,8 @@ export function normalizeMaerskSnapshot(snapshot: Snapshot): ObservationDraft[] 
           provider: 'maersk',
           snapshot_id: snapshot.id,
           carrier_label: toCarrierLabelOrNull(event.activity),
+          raw_event_time: temporal.raw_event_time ?? null,
+          event_time_source: temporal.event_time_source ?? null,
           raw_event: event,
         }
 

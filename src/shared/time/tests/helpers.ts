@@ -42,11 +42,30 @@ export function temporalCanonicalText(
   value: TemporalValue | TemporalValueDto | null,
 ): string | null {
   if (value === null) return null
-  if (typeof value.value === 'string') {
-    return value.value
+  if (value.kind === 'instant') {
+    return typeof value.value === 'string' ? value.value : value.value.toIsoString()
   }
 
-  return value.kind === 'instant' ? value.value.toIsoString() : value.value.toIsoDate()
+  if (value.kind === 'local-datetime') {
+    const timezone = 'timezone' in value ? value.timezone : value.value.timezone
+    const localValue =
+      typeof value.value === 'string' ? value.value : value.value.toIsoLocalString()
+    return `${localValue}[${timezone}]`
+  }
+
+  if (typeof value.value === 'string') {
+    if (value.timezone === null || value.timezone === undefined) {
+      return value.value
+    }
+
+    return `${value.value}[${value.timezone}]`
+  }
+
+  if (value.timezone === null || value.timezone === undefined) {
+    return value.value.toIsoDate()
+  }
+
+  return `${value.value.toIsoDate()}[${value.timezone}]`
 }
 
 export function temporalValueFromDto(value: TemporalValueDto | null): TemporalValue | null {

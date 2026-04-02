@@ -2,11 +2,20 @@ import { CalendarDate } from '~/shared/time/calendar-date'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { isTemporalValueDto } from '~/shared/time/guards'
 import { Instant } from '~/shared/time/instant'
-import { calendarDateValue, instantValue, type TemporalValue } from '~/shared/time/temporal-value'
+import { ISO_LOCAL_DATE_TIME_PATTERN, LocalDateTime } from '~/shared/time/local-date-time'
+import {
+  calendarDateValue,
+  instantValue,
+  localDateTimeValue,
+  type TemporalValue,
+} from '~/shared/time/temporal-value'
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const MS_DATE_PATTERN = /\/Date\((-?\d+)\)\//
 const DD_MM_YYYY_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+const CANONICAL_DATE_PATTERN = /^(\d{4}-\d{2}-\d{2})\[(.+)\]$/
+const CANONICAL_LOCAL_DATE_TIME_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?\[.+\]$/
 
 function parseWithFactory<T>(factory: () => T): T | null {
   try {
@@ -49,6 +58,24 @@ export function parseCalendarDateFromIso(input: string): CalendarDate | null {
   return parseWithFactory(() => CalendarDate.fromIsoDate(input))
 }
 
+function parseCalendarDateFromCanonicalString(input: string): TemporalValue | null {
+  const match = input.match(CANONICAL_DATE_PATTERN)
+  if (!match || match[1] === undefined || match[2] === undefined) return null
+
+  const calendarDate = parseCalendarDateFromIso(match[1])
+  return calendarDate ? calendarDateValue(calendarDate, match[2]) : null
+}
+
+export function parseLocalDateTimeFromIso(input: string, timezone: string): LocalDateTime | null {
+  if (!ISO_LOCAL_DATE_TIME_PATTERN.test(input)) return null
+  return parseWithFactory(() => LocalDateTime.fromIsoLocal(input, timezone))
+}
+
+export function parseLocalDateTimeFromCanonicalString(input: string): LocalDateTime | null {
+  if (!CANONICAL_LOCAL_DATE_TIME_PATTERN.test(input)) return null
+  return parseWithFactory(() => LocalDateTime.fromCanonicalString(input))
+}
+
 export function parseCalendarDateFromDdMmYyyy(input: string): CalendarDate | null {
   const match = input.match(DD_MM_YYYY_PATTERN)
   if (!match) return null
@@ -76,13 +103,24 @@ export function parseTemporalValueDto(input: TemporalValueDto): TemporalValue | 
     return instant ? instantValue(instant) : null
   }
 
+  if (input.kind === 'local-datetime') {
+    const localDateTime = parseLocalDateTimeFromIso(input.value, input.timezone)
+    return localDateTime ? localDateTimeValue(localDateTime) : null
+  }
+
   const calendarDate = parseCalendarDateFromIso(input.value)
-  return calendarDate ? calendarDateValue(calendarDate) : null
+  return calendarDate ? calendarDateValue(calendarDate, input.timezone ?? null) : null
 }
 
 export function parseTemporalValueFromCanonicalString(input: string): TemporalValue | null {
   const calendarDate = parseCalendarDateFromIso(input)
   if (calendarDate) return calendarDateValue(calendarDate)
+
+  const calendarDateWithTimezone = parseCalendarDateFromCanonicalString(input)
+  if (calendarDateWithTimezone) return calendarDateWithTimezone
+
+  const localDateTime = parseLocalDateTimeFromCanonicalString(input)
+  if (localDateTime) return localDateTimeValue(localDateTime)
 
   const instant = parseInstantFromIso(input)
   if (instant) return instantValue(instant)

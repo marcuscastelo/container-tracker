@@ -370,6 +370,8 @@
           "type": "type",
           "eventTime": "event_time",
           "eventTimeType": "event_time_type",
+          "rawEventTime": "raw_event_time",
+          "eventTimeSource": "event_time_source",
           "locationCode": "location_code",
           "locationDisplay": "location_display",
           "vesselName": "vessel_name",

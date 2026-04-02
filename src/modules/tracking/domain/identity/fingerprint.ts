@@ -52,19 +52,27 @@ function normalizeCarrierLabel(value: string | null | undefined): string {
 function toTemporalFingerprintParts(draft: ObservationDraft): {
   readonly temporalKind: string
   readonly temporalValue: string
+  readonly temporalTimezone: string
 } {
   const temporalKind = draft.event_time?.kind ?? ''
   let temporalValue = ''
+  let temporalTimezone = ''
   if (draft.event_time !== null) {
-    temporalValue =
-      draft.event_time.kind === 'instant'
-        ? draft.event_time.value.toIsoString()
-        : draft.event_time.value.toIsoDate()
+    if (draft.event_time.kind === 'instant') {
+      temporalValue = draft.event_time.value.toIsoString()
+    } else if (draft.event_time.kind === 'local-datetime') {
+      temporalValue = draft.event_time.value.toIsoLocalString()
+      temporalTimezone = draft.event_time.value.timezone
+    } else {
+      temporalValue = draft.event_time.value.toIsoDate()
+      temporalTimezone = draft.event_time.timezone ?? ''
+    }
   }
 
   return {
     temporalKind,
     temporalValue,
+    temporalTimezone,
   }
 }
 
@@ -82,6 +90,7 @@ export function computeLegacyFingerprint(draft: ObservationDraft): string {
     draft.event_time_type,
     temporal.temporalKind,
     temporal.temporalValue,
+    temporal.temporalTimezone,
     (draft.location_code ?? '').toUpperCase().trim(),
     (draft.vessel_name ?? '').toUpperCase().trim(),
     (draft.voyage ?? '').toUpperCase().trim(),
@@ -98,6 +107,7 @@ export function computeFingerprint(draft: ObservationDraft): string {
     draft.event_time_type,
     temporal.temporalKind,
     temporal.temporalValue,
+    temporal.temporalTimezone,
     (draft.location_code ?? '').toUpperCase().trim(),
     normalizeDisplayText(draft.location_display),
     (draft.vessel_name ?? '').toUpperCase().trim(),

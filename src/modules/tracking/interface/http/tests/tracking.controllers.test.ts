@@ -338,8 +338,10 @@ describe('tracking controllers', () => {
       container_id: containerId,
       container_number: 'MSCU7654321',
       type: 'DELIVERY',
-      event_time: temporalValueFromCanonical('2026-03-15T14:00:00.000Z'),
+      event_time: temporalValueFromCanonical('2026-03-15T14:00:00.000[America/Sao_Paulo]'),
       event_time_type: 'ACTUAL',
+      raw_event_time: '15-MAR-2026 02:00 PM',
+      event_time_source: 'carrier_local_port_time',
       location_code: 'BRSSZ',
       location_display: 'Santos',
       vessel_name: null,
@@ -368,6 +370,8 @@ describe('tracking controllers', () => {
       type: 'DELIVERY',
       location_display: 'Santos',
       carrier_label: 'MAERSK',
+      raw_event_time: '15-MAR-2026 02:00 PM',
+      event_time_source: 'carrier_local_port_time',
     })
     expect(findObservationById).toHaveBeenCalledWith(containerId, observation.id)
   })

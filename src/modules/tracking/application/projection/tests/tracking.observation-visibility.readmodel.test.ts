@@ -95,6 +95,29 @@ describe('suppressSupersededObservationsForProjection', () => {
     expect(visible).toEqual([other, mappedArrival])
   })
 
+  it('suppresses legacy OTHER when a richer local-datetime observation exists for the same event', () => {
+    const legacyOther = makeObservation({
+      id: 'legacy-local-other',
+      fingerprint: 'fp-local-other',
+      type: 'OTHER',
+      event_time: temporalValueFromCanonical('2026-04-24T19:00:00.000[America/Sao_Paulo]'),
+      carrier_label: 'Vessel Discharge',
+      created_from_snapshot_id: 'snapshot-legacy',
+    })
+    const mappedDischarge = makeObservation({
+      id: 'mapped-local-discharge',
+      fingerprint: 'fp-local-discharge',
+      type: 'DISCHARGE',
+      event_time: temporalValueFromCanonical('2026-04-24T19:00:00.000[America/Sao_Paulo]'),
+      carrier_label: 'Vessel Discharge',
+      created_from_snapshot_id: 'snapshot-remapped',
+    })
+
+    const visible = suppressSupersededObservationsForProjection([legacyOther, mappedDischarge])
+
+    expect(visible).toEqual([mappedDischarge])
+  })
+
   it('keeps null-timestamp OTHER observations visible when identity would otherwise collide', () => {
     const nullTimeOther = makeObservation({
       id: 'null-time-other',
