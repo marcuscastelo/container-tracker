@@ -19,7 +19,7 @@ import {
 const TABLE = 'container_observations' as const
 const CONTAINERS_TABLE = 'containers' as const
 const OBSERVATION_DOMAIN_SELECT =
-  'id,fingerprint,container_id,container_number,type,temporal_kind,event_time_instant,event_date,event_time,event_time_type,location_code,location_display,vessel_name,voyage,is_empty,confidence,provider,created_from_snapshot_id,carrier_label,created_at,retroactive'
+  'id,fingerprint,container_id,container_number,type,temporal_kind,event_time_instant,event_date,event_time_local,event_time_zone,event_time,event_time_type,location_code,location_display,vessel_name,voyage,is_empty,confidence,provider,created_from_snapshot_id,carrier_label,raw_event_time,event_time_source,created_at,retroactive'
 
 function compareObservationChronology(left: Observation, right: Observation): number {
   const chronologyCompare = compareObservationsChronologically(left, right)

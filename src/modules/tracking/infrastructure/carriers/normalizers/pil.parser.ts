@@ -1,8 +1,5 @@
 import type { EventTimeType } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import { CalendarDate } from '~/shared/time/calendar-date'
-import { Instant } from '~/shared/time/instant'
-import type { TemporalValue } from '~/shared/time/temporal-value'
-import { calendarDateValue, instantValue } from '~/shared/time/temporal-value'
 
 type PilParsedSummary = {
   readonly rawLoadPortName: string | null
@@ -16,7 +13,8 @@ type PilParsedSummary = {
 export type PilParsedEventRow = {
   readonly rawEventName: string
   readonly rawEventTimeText: string | null
-  readonly eventTime: TemporalValue | null
+  readonly eventDate: CalendarDate | null
+  readonly eventLocalDateTime: string | null
   readonly eventTimeType: EventTimeType | null
   readonly rawPlace: string | null
   readonly rawVessel: string | null
@@ -112,20 +110,21 @@ function extractFirstMatch(value: string, pattern: RegExp): string | null {
 }
 
 function parsePilTemporalText(value: string | null): {
-  readonly eventTime: TemporalValue | null
+  readonly eventDate: CalendarDate | null
+  readonly eventLocalDateTime: string | null
   readonly eventTimeType: EventTimeType | null
 } {
   if (value === null) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   const normalizedValue = normalizeWhitespace(value)
   if (normalizedValue.length === 0) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   if (normalizedValue.toLowerCase() === 'information not available') {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   const eventTimeType: EventTimeType = normalizedValue.startsWith('*') ? 'EXPECTED' : 'ACTUAL'
@@ -138,7 +137,7 @@ function parsePilTemporalText(value: string | null): {
   )
 
   if (!match) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   const dayPart = match[1]
@@ -149,32 +148,31 @@ function parsePilTemporalText(value: string | null): {
   const secondPart = match[6]
 
   if (dayPart === undefined || monthPart === undefined || yearPart === undefined) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   const month = MONTHS_BY_ABBREVIATION.get(monthPart.toUpperCase())
   if (month === undefined) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   const day = Number(dayPart)
   const year = Number(yearPart)
   if (!Number.isInteger(day) || !Number.isInteger(year)) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
   if (hourPart === undefined || minutePart === undefined || secondPart === undefined) {
     try {
       return {
-        eventTime: calendarDateValue(
-          CalendarDate.fromIsoDate(
-            `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-          ),
+        eventDate: CalendarDate.fromIsoDate(
+          `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
         ),
+        eventLocalDateTime: null,
         eventTimeType,
       }
     } catch {
-      return { eventTime: null, eventTimeType: null }
+      return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
     }
   }
 
@@ -182,14 +180,18 @@ function parsePilTemporalText(value: string | null): {
   const minute = Number(minutePart)
   const second = Number(secondPart)
   if (!Number.isInteger(hour) || !Number.isInteger(minute) || !Number.isInteger(second)) {
-    return { eventTime: null, eventTimeType: null }
+    return { eventDate: null, eventLocalDateTime: null, eventTimeType: null }
   }
 
-  const epochMs = Date.UTC(year, month - 1, day, hour, minute, second)
-  const instant = Instant.fromEpochMs(epochMs)
-
   return {
-    eventTime: instantValue(instant),
+    eventDate: null,
+    eventLocalDateTime: `${String(year).padStart(4, '0')}-${String(month).padStart(
+      2,
+      '0',
+    )}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(
+      2,
+      '0',
+    )}:${String(second).padStart(2, '0')}.000`,
     eventTimeType,
   }
 }
@@ -254,7 +256,8 @@ function parseDetailedEvents(html: string): PilParseResult {
     detailedEvents.push({
       rawEventName,
       rawEventTimeText,
-      eventTime: parsedTemporal.eventTime,
+      eventDate: parsedTemporal.eventDate,
+      eventLocalDateTime: parsedTemporal.eventLocalDateTime,
       eventTimeType: parsedTemporal.eventTimeType,
       rawPlace,
       rawVessel,

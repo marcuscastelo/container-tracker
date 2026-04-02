@@ -88,6 +88,14 @@ describe('shared time temporal semantics', () => {
     expect(formatTemporalDate({ kind: 'date', value: '2026-02-15' }, 'en-US')).toBe('02/15/2026')
   })
 
+  it('keeps DATE_ONLY rendering stable across browser timezones', () => {
+    const value = { kind: 'date', value: '2026-04-24' } as const
+
+    expect(formatTemporalDate(value, 'pt-BR', 'America/Sao_Paulo')).toBe('24/04/2026')
+    expect(formatTemporalDate(value, 'pt-BR', 'UTC')).toBe('24/04/2026')
+    expect(formatTemporalDate(value, 'pt-BR', 'Europe/Berlin')).toBe('24/04/2026')
+  })
+
   it('formats instants with time while keeping calendar dates date-only', () => {
     expect(
       formatTemporalDateTime(
@@ -100,6 +108,19 @@ describe('shared time temporal semantics', () => {
     expect(formatTemporalDateTime({ kind: 'date', value: '2026-02-15' }, 'en-US')).toBe(
       '02/15/2026',
     )
+  })
+
+  it('renders LOCAL_DATETIME using the event timezone instead of the browser timezone', () => {
+    const value = {
+      kind: 'local-datetime',
+      value: '2026-04-24T19:00:00.000',
+      timezone: 'America/Sao_Paulo',
+    } as const
+
+    expect(formatTemporalDate(value, 'pt-BR', 'UTC')).toBe('24/04/2026')
+    expect(formatTemporalDate(value, 'pt-BR', 'Europe/Berlin')).toBe('24/04/2026')
+    expect(formatTemporalDateTime(value, 'pt-BR', 'UTC')).toContain('19:00')
+    expect(formatTemporalDateTime(value, 'pt-BR', 'Europe/Berlin')).toContain('19:00')
   })
 
   it('keeps explicit instant wrappers usable in comparisons', () => {

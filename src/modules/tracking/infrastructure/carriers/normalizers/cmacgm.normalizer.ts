@@ -6,9 +6,16 @@ import type {
 } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
+import {
+  buildAbsoluteTrackingTemporal,
+  buildDateOnlyTrackingTemporal,
+  buildLocalDateTimeTrackingTemporal,
+  composeTrackingRawEventTime,
+} from '~/modules/tracking/infrastructure/carriers/normalizers/tracking-temporal-resolution'
 import { CmaCgmApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/cmacgm.api.schema'
+import { CalendarDate } from '~/shared/time/calendar-date'
 import { systemClock } from '~/shared/time/clock'
-import { instantValue } from '~/shared/time/temporal-value'
+import { parseInstantFromIso } from '~/shared/time/parsing'
 import { parseIsoOrRfcString, parseMsDateString } from '~/shared/utils/parseDate'
 
 /**
@@ -76,6 +83,63 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
   return label.trim().length > 0 ? label : null
 }
 
+const MONTHS_BY_ABBREVIATION = new Map<string, number>([
+  ['JAN', 1],
+  ['FEB', 2],
+  ['MAR', 3],
+  ['APR', 4],
+  ['MAY', 5],
+  ['JUN', 6],
+  ['JUL', 7],
+  ['AUG', 8],
+  ['SEP', 9],
+  ['OCT', 10],
+  ['NOV', 11],
+  ['DEC', 12],
+])
+
+const CMA_DATE_TEXT_PATTERN = /(?:[A-Z]{3,9}[,\s]+)?(\d{1,2})-([A-Z]{3})-(\d{4})/iu
+const CMA_TIME_TEXT_PATTERN = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/iu
+
+function parseCmaCgmCalendarDate(value: string): CalendarDate | null {
+  const match = value.trim().match(CMA_DATE_TEXT_PATTERN)
+  if (!match || match[1] === undefined || match[2] === undefined || match[3] === undefined) {
+    return null
+  }
+
+  const month = MONTHS_BY_ABBREVIATION.get(match[2].toUpperCase())
+  if (month === undefined) return null
+
+  try {
+    return CalendarDate.fromIsoDate(
+      `${String(Number(match[3])).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(
+        Number(match[1]),
+      ).padStart(2, '0')}`,
+    )
+  } catch {
+    return null
+  }
+}
+
+function parseCmaCgmMeridiemTime(value: string): string | null {
+  const match = value.trim().match(CMA_TIME_TEXT_PATTERN)
+  if (!match || match[1] === undefined || match[2] === undefined || match[3] === undefined) {
+    return null
+  }
+
+  const baseHour = Number(match[1])
+  const minute = Number(match[2])
+  if (!Number.isInteger(baseHour) || baseHour < 1 || baseHour > 12) return null
+  if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null
+
+  let hour = baseHour % 12
+  if (match[3].toUpperCase() === 'PM') {
+    hour += 12
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00.000`
+}
+
 /**
  * Parse CMA-CGM date strings.
  *
@@ -85,24 +149,68 @@ function toCarrierLabelOrNull(label: string | null | undefined): string | null {
 function parseCmaCgmDate(
   dateField: string | null | undefined,
   dateStringField: string | null | undefined,
-): ObservationDraft['event_time'] {
-  // Try DateString first (human-readable ISO/RFC) — many CMA-CGM endpoints provide ISO strings here
-  if (dateStringField) {
-    const d = parseIsoOrRfcString(dateStringField)
-    if (d) return instantValue(d)
-  }
+  timeStringField: string | null | undefined,
+  locationCode: string | null | undefined,
+  locationDisplay: string | null | undefined,
+): Pick<ObservationDraft, 'event_time' | 'raw_event_time' | 'event_time_source'> {
+  const rawEventTime = composeTrackingRawEventTime(dateStringField, timeStringField)
 
-  // Try MS date format: /Date(1234567890000)/
+  // Prefer the provider absolute timestamp when it exists.
   if (dateField) {
     const ms = parseMsDateString(dateField)
-    if (ms) return instantValue(ms)
+    if (ms) {
+      return buildAbsoluteTrackingTemporal({
+        instant: ms,
+        rawEventTime: rawEventTime ?? dateField.trim(),
+      })
+    }
 
-    // Fallback: try ISO/RFC parsing on the field
     const d = parseIsoOrRfcString(dateField)
-    if (d) return instantValue(d)
+    if (d) {
+      return buildAbsoluteTrackingTemporal({
+        instant: d,
+        rawEventTime: rawEventTime ?? dateField.trim(),
+      })
+    }
   }
 
-  return null
+  if (dateStringField) {
+    const explicitInstant = parseInstantFromIso(dateStringField.trim())
+    if (explicitInstant) {
+      return buildAbsoluteTrackingTemporal({
+        instant: explicitInstant,
+        rawEventTime: rawEventTime ?? dateStringField.trim(),
+      })
+    }
+
+    const parsedDate = parseCmaCgmCalendarDate(dateStringField)
+    if (parsedDate) {
+      if (timeStringField) {
+        const parsedTime = parseCmaCgmMeridiemTime(timeStringField)
+        if (parsedTime) {
+          return buildLocalDateTimeTrackingTemporal({
+            localDateTime: `${parsedDate.toIsoDate()}T${parsedTime}`,
+            rawEventTime: rawEventTime ?? dateStringField.trim(),
+            locationCode,
+            locationDisplay,
+          })
+        }
+      }
+
+      return buildDateOnlyTrackingTemporal({
+        date: parsedDate,
+        rawEventTime: rawEventTime ?? dateStringField.trim(),
+        locationCode,
+        locationDisplay,
+      })
+    }
+  }
+
+  return {
+    event_time: null,
+    raw_event_time: rawEventTime,
+    event_time_source: null,
+  }
 }
 
 function computeConfidence(
@@ -182,7 +290,14 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
 
   for (const move of allMoves) {
     const type = mapCmaCgmDescription(move.StatusDescription)
-    const eventTime = parseCmaCgmDate(move.Date, move.DateString)
+    const temporal = parseCmaCgmDate(
+      move.Date,
+      move.DateString,
+      move.TimeString,
+      move.LocationCode,
+      move.Location,
+    )
+    const eventTime = temporal.event_time
     const locationCode = move.LocationCode ?? null
     const locationDisplay = move.Location ?? null
     const vesselName = move.Vessel ?? null
@@ -210,6 +325,8 @@ export function normalizeCmaCgmSnapshot(snapshot: Snapshot): ObservationDraft[] 
       provider: 'cmacgm',
       snapshot_id: snapshot.id,
       carrier_label: toCarrierLabelOrNull(move.StatusDescription),
+      raw_event_time: temporal.raw_event_time ?? null,
+      event_time_source: temporal.event_time_source ?? null,
       raw_event: move,
     }
 

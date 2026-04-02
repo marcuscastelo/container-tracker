@@ -82,6 +82,8 @@ export function toObservationResponseDto(observation: Observation) {
     carrier_label: observation.carrier_label ?? null,
     event_time: trackingTemporalValueToDto(observation.event_time),
     event_time_type: observation.event_time_type,
+    raw_event_time: observation.raw_event_time ?? null,
+    event_time_source: observation.event_time_source ?? null,
     location_code: observation.location_code,
     location_display: observation.location_display,
     vessel_name: observation.vessel_name,

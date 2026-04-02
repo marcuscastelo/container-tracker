@@ -4,6 +4,7 @@ import { systemClock } from '~/shared/time/clock'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { isTemporalValue, isTemporalValueDto } from '~/shared/time/guards'
 import type { Instant } from '~/shared/time/instant'
+import type { LocalDateTime } from '~/shared/time/local-date-time'
 import { parseTemporalValue } from '~/shared/time/parsing'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -60,6 +61,14 @@ function formatCalendarDate(date: CalendarDate, locale: string): string {
   }).format(formatCalendarDateUtcDate(date))
 }
 
+function formatLocalDateTimeDate(value: LocalDateTime, locale: string): string {
+  return formatInstantDate(value.toInstant(), locale, value.timezone)
+}
+
+function formatLocalDateTime(value: LocalDateTime, locale: string): string {
+  return formatInstantDateTime(value.toInstant(), locale, value.timezone)
+}
+
 export function formatTemporalDate(
   input: FormatterInput,
   locale: string,
@@ -70,6 +79,10 @@ export function formatTemporalDate(
 
   if (parsed.kind === 'instant') {
     return formatInstantDate(parsed.value, locale, timezone)
+  }
+
+  if (parsed.kind === 'local-datetime') {
+    return formatLocalDateTimeDate(parsed.value, locale)
   }
 
   return formatCalendarDate(parsed.value, locale)
@@ -85,6 +98,10 @@ export function formatTemporalDateTime(
 
   if (parsed.kind === 'instant') {
     return formatInstantDateTime(parsed.value, locale, timezone)
+  }
+
+  if (parsed.kind === 'local-datetime') {
+    return formatLocalDateTime(parsed.value, locale)
   }
 
   return formatCalendarDate(parsed.value, locale)

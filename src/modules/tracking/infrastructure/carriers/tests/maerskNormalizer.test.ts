@@ -152,10 +152,13 @@ describe('normalizeMaerskSnapshot', () => {
       expect(gateIn?.voyage).toBeNull()
     })
 
-    it('should normalize timezone-less event_time values as UTC instants', () => {
+    it('should normalize timezone-less event_time values as local datetimes with port timezone', () => {
       const drafts = normalizeMaerskSnapshot(makeSnapshot(fullPayload))
 
-      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe('2026-01-13T20:15:00.000Z')
+      expect(temporalCanonicalText(drafts[0]?.event_time ?? null)).toBe(
+        '2026-01-13T20:15:00.000[Africa/Cairo]',
+      )
+      expect(drafts[0]?.event_time_source).toBe('carrier_local_port_time')
     })
   })
 

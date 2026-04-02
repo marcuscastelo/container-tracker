@@ -6,6 +6,10 @@ import type {
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import { toLookupMapKey } from '~/modules/tracking/infrastructure/carriers/normalizers/lookup-key'
 import { parsePilTrackingPayload } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.parser'
+import {
+  buildDateOnlyTrackingTemporal,
+  buildLocalDateTimeTrackingTemporal,
+} from '~/modules/tracking/infrastructure/carriers/normalizers/tracking-temporal-resolution'
 import { PilApiSchema } from '~/modules/tracking/infrastructure/carriers/schemas/api/pil.api.schema'
 
 const PIL_EVENT_MAP: Record<string, ObservationType> = {
@@ -60,17 +64,27 @@ export function normalizePilSnapshot(snapshot: Snapshot): ObservationDraft[] {
   const drafts: ObservationDraft[] = []
 
   for (const eventRow of parsedPayload.value.detailedEvents) {
-    if (
-      eventRow.eventTime === null ||
-      eventRow.eventTimeType === null ||
-      eventRow.rawEventName.trim().length === 0
-    ) {
+    if (eventRow.eventTimeType === null || eventRow.rawEventName.trim().length === 0) {
       continue
     }
 
     const type = mapPilEventName(eventRow.rawEventName)
     const locationCode = toLocationCodeOrNull(eventRow.rawPlace)
     const locationDisplay = eventRow.rawPlace
+    const temporal =
+      eventRow.eventLocalDateTime !== null
+        ? buildLocalDateTimeTrackingTemporal({
+            localDateTime: eventRow.eventLocalDateTime,
+            rawEventTime: eventRow.rawEventTimeText,
+            locationCode,
+            locationDisplay,
+          })
+        : buildDateOnlyTrackingTemporal({
+            date: eventRow.eventDate,
+            rawEventTime: eventRow.rawEventTimeText,
+            locationCode,
+            locationDisplay,
+          })
     const isVesselEvent =
       type === 'LOAD' || type === 'DISCHARGE' || type === 'DEPARTURE' || type === 'ARRIVAL'
     const vesselName = isVesselEvent ? eventRow.rawVessel : null
@@ -79,17 +93,19 @@ export function normalizePilSnapshot(snapshot: Snapshot): ObservationDraft[] {
     drafts.push({
       container_number: containerNumber,
       type,
-      event_time: eventRow.eventTime,
+      event_time: temporal.event_time,
       event_time_type: eventRow.eventTimeType,
       location_code: locationCode,
       location_display: locationDisplay,
       vessel_name: vesselName,
       voyage,
       is_empty: null,
-      confidence: computeConfidence(eventRow.eventTime, locationCode, locationDisplay, type),
+      confidence: computeConfidence(temporal.event_time, locationCode, locationDisplay, type),
       provider: 'pil',
       snapshot_id: snapshot.id,
       carrier_label: toCarrierLabelOrNull(eventRow.rawEventName),
+      raw_event_time: temporal.raw_event_time ?? null,
+      event_time_source: temporal.event_time_source ?? null,
       raw_event: {
         ...eventRow,
         summary: parsedPayload.value.summary,

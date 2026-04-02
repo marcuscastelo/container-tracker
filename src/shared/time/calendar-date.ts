@@ -9,6 +9,12 @@ type TimeParts = {
   readonly second: number
 }
 
+function validateTimePart(value: number, min: number, max: number, label: string): void {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`Invalid ${label}: ${String(value)}`)
+  }
+}
+
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const formatterCache = new Map<string, Intl.DateTimeFormat>()
 
@@ -190,6 +196,38 @@ export class CalendarDate {
       )}`,
     )
   }
+}
+
+export function resolveCalendarDateTimeToInstant(args: {
+  readonly date: CalendarDate
+  readonly hour: number
+  readonly minute: number
+  readonly second: number
+  readonly millisecond?: number
+  readonly timezone: string
+}): Instant {
+  validateTimePart(args.hour, 0, 23, 'hour')
+  validateTimePart(args.minute, 0, 59, 'minute')
+  validateTimePart(args.second, 0, 59, 'second')
+  validateTimePart(args.millisecond ?? 0, 0, 999, 'millisecond')
+
+  const [yearPart, monthPart, dayPart] = args.date.toIsoDate().split('-')
+  const year = Number(yearPart)
+  const month = Number(monthPart)
+  const day = Number(dayPart)
+  const baseEpochMs = resolveEpochMsForTimezone(
+    {
+      year,
+      month,
+      day,
+      hour: args.hour,
+      minute: args.minute,
+      second: args.second,
+    },
+    args.timezone,
+  )
+
+  return Instant.fromEpochMs(baseEpochMs + (args.millisecond ?? 0))
 }
 
 export function calendarDateFromInstant(instant: Instant, timezone: string): CalendarDate {

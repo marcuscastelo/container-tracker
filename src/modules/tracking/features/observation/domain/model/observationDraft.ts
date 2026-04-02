@@ -13,6 +13,12 @@ export type EventTimeType = 'ACTUAL' | 'EXPECTED'
  * Determined during normalization based on field completeness.
  */
 export type Confidence = 'high' | 'medium' | 'low'
+export type EventTimeSource =
+  | 'carrier_explicit_timezone'
+  | 'carrier_local_port_time'
+  | 'carrier_date_only'
+  | 'derived_fallback'
+  | 'unknown'
 
 /**
  * ObservationDraft — output of normalizeSnapshot, before deduplication.
@@ -67,6 +73,12 @@ export type ObservationDraft = {
 
   /** Original provider event label (for audit/debug), null when unavailable */
   carrier_label?: string | null
+
+  /** Raw provider temporal value preserved for audit/debug. */
+  raw_event_time?: string | null
+
+  /** Tracking-owned temporal provenance for rendering/audit decisions. */
+  event_time_source?: EventTimeSource | null
 
   /** Reference to the raw event inside the snapshot payload (for audit) */
   raw_event?: unknown

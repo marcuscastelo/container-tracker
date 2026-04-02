@@ -103,6 +103,8 @@ type TrackingObservationRecord = {
   readonly carrier_label?: string | null
   readonly event_time: TemporalValue | null
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
+  readonly raw_event_time?: string | null
+  readonly event_time_source?: string | null
   readonly location_code: string | null
   readonly location_display: string | null
   readonly vessel_name: string | null
@@ -219,6 +221,8 @@ export function toObservationResponse(obs: TrackingObservationRecord) {
     carrier_label: obs.carrier_label ?? null,
     event_time: obs.event_time === null ? null : toTemporalValueDto(obs.event_time),
     event_time_type: obs.event_time_type,
+    raw_event_time: obs.raw_event_time ?? null,
+    event_time_source: obs.event_time_source ?? null,
     location_code: obs.location_code,
     location_display: obs.location_display,
     vessel_name: obs.vessel_name,

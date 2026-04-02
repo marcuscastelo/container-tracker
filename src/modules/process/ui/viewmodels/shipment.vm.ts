@@ -59,6 +59,8 @@ export type ContainerObservationVM = {
   readonly type: string
   readonly eventTime: TemporalValueDto | null
   readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly rawEventTime: string | null
+  readonly eventTimeSource: string | null
   readonly locationCode: string | null
   readonly locationDisplay: string | null
   readonly vesselName: string | null

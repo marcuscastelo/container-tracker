@@ -30,6 +30,9 @@ describe('observationRowToDomain', () => {
     event_time_instant: '2026-01-15T10:00:00.000Z',
     event_time: '2026-01-15T10:00:00.000Z',
     event_date: null,
+    event_time_local: null,
+    event_time_zone: null,
+    event_time_source: null,
     location_code: 'USNYC',
     location_display: 'New York',
     vessel_name: 'MSC Fantasy',
@@ -39,6 +42,7 @@ describe('observationRowToDomain', () => {
     provider: 'maersk',
     created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
     carrier_label: 'Loaded on board',
+    raw_event_time: null,
     created_at: '2026-01-15T12:00:00.000Z',
     retroactive: false,
   }
@@ -92,6 +96,9 @@ describe('observationRowToDomain', () => {
       temporal_kind: null,
       event_time_instant: null,
       event_date: null,
+      event_time_local: null,
+      event_time_zone: null,
+      event_time_source: null,
       event_time: null,
     })
     expect(result.event_time).toBeNull()
@@ -116,6 +123,8 @@ describe('observationToInsertRow', () => {
       provider: 'maersk' as const,
       created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
       carrier_label: 'Loaded on board',
+      raw_event_time: null,
+      event_time_source: null,
       retroactive: false,
     }
 
@@ -124,6 +133,39 @@ describe('observationToInsertRow', () => {
     expect(row.type).toBe('LOAD')
     expect(row.provider).toBe('maersk')
     expect(row.carrier_label).toBe('Loaded on board')
+  })
+
+  it('should map local datetime observations to persistence columns', () => {
+    const obs = {
+      fingerprint: 'fp-local',
+      container_id: '22222222-2222-2222-2222-222222222222',
+      container_number: 'MSKU1234567',
+      event_time_type: 'EXPECTED' as const,
+      type: 'ARRIVAL' as const,
+      event_time: temporalValueFromCanonical('2026-04-24T19:00:00.000[America/Sao_Paulo]'),
+      location_code: 'BRSSZ',
+      location_display: 'SANTOS',
+      vessel_name: 'MSC Fantasy',
+      voyage: 'V001',
+      is_empty: null,
+      confidence: 'high' as const,
+      provider: 'cmacgm' as const,
+      created_from_snapshot_id: '33333333-3333-3333-3333-333333333333',
+      carrier_label: 'Vessel Arrival',
+      raw_event_time: 'Fri 24-APR-2026 07:00 PM',
+      event_time_source: 'carrier_local_port_time' as const,
+      retroactive: false,
+    }
+
+    const row = observationToInsertRow(obs)
+
+    expect(row.temporal_kind).toBe('local_datetime')
+    expect(row.event_time_instant).toBeNull()
+    expect(row.event_date).toBeNull()
+    expect(row.event_time_local).toBe('2026-04-24T19:00:00.000')
+    expect(row.event_time_zone).toBe('America/Sao_Paulo')
+    expect(row.raw_event_time).toBe('Fri 24-APR-2026 07:00 PM')
+    expect(row.event_time_source).toBe('carrier_local_port_time')
   })
 })
 

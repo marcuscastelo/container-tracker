@@ -23,6 +23,8 @@ function toObservationInspectorVm(
     type: observation.type,
     eventTime: observation.event_time,
     eventTimeType: observation.event_time_type,
+    rawEventTime: observation.raw_event_time ?? null,
+    eventTimeSource: observation.event_time_source ?? null,
     locationCode: observation.location_code,
     locationDisplay: observation.location_display,
     vesselName: observation.vessel_name,

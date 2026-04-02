@@ -58,6 +58,8 @@ export function diffObservations(
       provider: draft.provider,
       created_from_snapshot_id: draft.snapshot_id,
       carrier_label: draft.carrier_label ?? null,
+      raw_event_time: draft.raw_event_time ?? null,
+      event_time_source: draft.event_time_source ?? null,
       retroactive: false,
     }
 
