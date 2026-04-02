@@ -276,6 +276,46 @@ const TrackingOperationalEtaResponseDtoSchema = z.object({
   location_display: z.string().nullable(),
 })
 
+const TrackingOperationalCurrentContextResponseDtoSchema = z.object({
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  vessel_visible: z.boolean(),
+})
+
+const TrackingOperationalNextLocationResponseDtoSchema = z.object({
+  event_time: TemporalValueDtoSchema,
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  type: z.string(),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+})
+
+const TrackingOperationalTransshipmentPortResponseDtoSchema = z.object({
+  code: z.string(),
+  display: z.string().nullable(),
+})
+
+const TrackingOperationalTransshipmentResponseDtoSchema = z.object({
+  has_transshipment: z.boolean(),
+  count: z.number(),
+  ports: z.array(TrackingOperationalTransshipmentPortResponseDtoSchema),
+})
+
+const TrackingOperationalSummaryResponseDtoSchema = z.object({
+  status: z.string(),
+  eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  eta_applicable: z.boolean().optional(),
+  lifecycle_bucket: z
+    .enum(['pre_arrival', 'post_arrival_pre_delivery', 'final_delivery'])
+    .optional(),
+  current_context: TrackingOperationalCurrentContextResponseDtoSchema,
+  next_location: TrackingOperationalNextLocationResponseDtoSchema.nullable(),
+  transshipment: TrackingOperationalTransshipmentResponseDtoSchema,
+  data_issue: z.boolean().optional(),
+})
+
 const ReplayStateResponseDtoSchema = z.object({
   observations: z.array(ReplayObservationResponseDtoSchema),
   series: z.array(ReplaySeriesResponseDtoSchema),
@@ -331,6 +371,7 @@ export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
   status: z.string(),
   alerts: z.array(AlertResponseDtoSchema),
   eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
+  operational: TrackingOperationalSummaryResponseDtoSchema,
   diff_from_previous: TrackingTimeTravelDiffResponseDtoSchema,
   debug_available: z.literal(true),
 })

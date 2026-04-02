@@ -96,6 +96,33 @@ function toEtaVm(
   }
 }
 
+function toCurrentContextVm(
+  currentContext: TrackingTimeTravelResponseDto['syncs'][number]['operational']['current_context'],
+) {
+  return {
+    locationCode: currentContext.location_code,
+    locationDisplay: currentContext.location_display,
+    vesselName: currentContext.vessel_name,
+    voyage: currentContext.voyage,
+    vesselVisible: currentContext.vessel_visible,
+  }
+}
+
+function toNextLocationVm(
+  nextLocation: TrackingTimeTravelResponseDto['syncs'][number]['operational']['next_location'],
+  locale: string,
+) {
+  if (!nextLocation) return null
+
+  return {
+    date: formatDateForLocale(nextLocation.event_time, locale),
+    type: nextLocation.type,
+    eventTimeType: nextLocation.event_time_type,
+    locationCode: nextLocation.location_code,
+    locationDisplay: nextLocation.location_display,
+  }
+}
+
 function toDiffVm(
   diff: TrackingTimeTravelResponseDto['syncs'][number]['diff_from_previous'],
   locale: string,
@@ -140,6 +167,8 @@ function toSyncVm(
     timeline: checkpoint.timeline.map(toTimelineItem),
     alerts: toAlertDisplayVMs(toAlertProjectionSources(checkpoint.alerts), locale),
     eta: toEtaVm(checkpoint.eta, locale),
+    currentContext: toCurrentContextVm(checkpoint.operational.current_context),
+    nextLocation: toNextLocationVm(checkpoint.operational.next_location, locale),
     diff: toDiffVm(checkpoint.diff_from_previous, locale),
     debugAvailable: checkpoint.debug_available,
   }

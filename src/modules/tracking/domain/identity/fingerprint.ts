@@ -105,3 +105,12 @@ export function computeFingerprint(draft: ObservationDraft): string {
     normalizeCarrierLabel(draft.carrier_label),
   ])
 }
+
+export function computePilLocationlessFingerprintAlias(draft: ObservationDraft): string | null {
+  if (draft.provider !== 'pil') return null
+
+  return computeFingerprint({
+    ...draft,
+    location_code: null,
+  })
+}

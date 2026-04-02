@@ -17,18 +17,19 @@ describe('normalizePilSnapshot', () => {
     expect(gateIn?.vessel_name).toBeNull()
     expect(gateIn?.voyage).toBeNull()
     expect(gateIn?.location_display).toBe('QINGDAO')
-    expect(gateIn?.location_code).toBeNull()
+    expect(gateIn?.location_code).toBe('CNTAO')
 
     const load = drafts.find((draft) => draft.type === 'LOAD')
     expect(load?.carrier_label).toBe('Vessel Loading')
     expect(load?.vessel_name).toBe('CMA CGM KRYPTON')
     expect(load?.voyage).toBe('VCGK0001W')
+    expect(load?.location_code).toBe('CNTAO')
     expect(temporalCanonicalText(load?.event_time ?? null)).toBe('2026-03-14T04:10:00.000Z')
 
     const discharge = drafts.find((draft) => draft.type === 'DISCHARGE')
     expect(discharge?.event_time_type).toBe('EXPECTED')
     expect(discharge?.location_display).toBe('SANTOS')
-    expect(discharge?.location_code).toBeNull()
+    expect(discharge?.location_code).toBe('BRSSZ')
     expect(temporalCanonicalText(discharge?.event_time ?? null)).toBe('2026-04-23T19:00:00.000Z')
   })
 

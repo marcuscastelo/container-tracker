@@ -103,6 +103,7 @@ function buildCheckpointState(command: {
     status: state.status,
     alerts: state.alerts,
     eta: operational.eta,
+    operational,
     debugAvailable: true,
   }
 }
