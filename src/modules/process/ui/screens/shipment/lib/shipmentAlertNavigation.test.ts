@@ -38,6 +38,9 @@ function makeShipment(containers: ShipmentDetailVM['containers']): ShipmentDetai
     statusCode: 'IN_TRANSIT',
     statusMicrobadge: null,
     eta: null,
+    processEtaDisplayVm: {
+      kind: 'unavailable',
+    },
     processEtaSecondaryVm: {
       visible: false,
       date: null,

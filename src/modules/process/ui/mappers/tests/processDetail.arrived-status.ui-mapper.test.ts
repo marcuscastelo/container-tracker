@@ -30,6 +30,9 @@ describe('toShipmentDetailVM ARRIVED_AT_POD mapping', () => {
         derived_status: 'ARRIVED_AT_POD',
         status_microbadge: null,
         eta_max: null,
+        eta_display: {
+          kind: 'unavailable',
+        },
         coverage: {
           total: 2,
           with_eta: 0,
@@ -43,5 +46,6 @@ describe('toShipmentDetailVM ARRIVED_AT_POD mapping', () => {
 
     expect(result.statusCode).toBe('ARRIVED_AT_POD')
     expect(result.status).toBe('amber-500')
+    expect(result.processEtaDisplayVm.kind).toBe('unavailable')
   })
 })

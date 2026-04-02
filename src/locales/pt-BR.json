@@ -274,7 +274,7 @@
     "carrier": "Armador",
     "status": "Status",
     "eta": "ETA",
-    "etaMissing": "Não disponível",
+    "etaMissing": "Indisponível",
     "summaryStrip": {
       "status": "Status",
       "carrier": "Armador",

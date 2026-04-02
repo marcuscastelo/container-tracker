@@ -19,6 +19,7 @@ type EtaChipLabels = {
   readonly arrived: string
   readonly expectedPrefix: string
   readonly delayed: string
+  readonly delivered: string
   readonly missing: string
 }
 
@@ -47,6 +48,10 @@ export function toContainerEtaChipLabel(
   etaChip: ContainerEtaChipVM,
   labels: EtaChipLabels,
 ): string {
+  if (etaChip.state === 'DELIVERED') {
+    return labels.delivered
+  }
+
   if (etaChip.state === 'UNAVAILABLE') {
     return labels.missing
   }

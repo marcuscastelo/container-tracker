@@ -12,6 +12,13 @@ function buildDefaultProcessEtaSecondaryVm(): ShipmentDetailVM['processEtaSecond
   }
 }
 
+function buildDefaultProcessEtaDisplayVm(): ShipmentDetailVM['processEtaDisplayVm'] {
+  return {
+    kind: 'date',
+    date: '2026-04-10',
+  }
+}
+
 function buildDefaultAlertIncidents(): ShipmentDetailVM['alertIncidents'] {
   return {
     summary: {
@@ -72,6 +79,7 @@ function buildDefaultShipmentDetailVm(): ShipmentDetailVM {
     statusCode: 'IN_TRANSIT',
     statusMicrobadge: null,
     eta: '2026-04-10',
+    processEtaDisplayVm: buildDefaultProcessEtaDisplayVm(),
     processEtaSecondaryVm: buildDefaultProcessEtaSecondaryVm(),
     containers: [],
     alerts: [],
@@ -86,6 +94,7 @@ function buildShipmentDetailVm(overrides: Partial<ShipmentDetailVM> = {}): Shipm
     ...defaults,
     ...overrides,
     eta: 'eta' in overrides ? (overrides.eta ?? null) : defaults.eta,
+    processEtaDisplayVm: overrides.processEtaDisplayVm ?? defaults.processEtaDisplayVm,
     processEtaSecondaryVm: overrides.processEtaSecondaryVm ?? defaults.processEtaSecondaryVm,
     containers: overrides.containers ?? defaults.containers,
     alerts: overrides.alerts ?? defaults.alerts,
@@ -142,6 +151,9 @@ describe('useShipmentScreenResource', () => {
         count: 1,
       },
       eta: null,
+      processEtaDisplayVm: {
+        kind: 'unavailable',
+      },
       processEtaSecondaryVm: {
         visible: true,
         date: null,
@@ -201,6 +213,9 @@ describe('useShipmentScreenResource', () => {
       count: 1,
     })
     expect(merged.eta).toBeNull()
+    expect(merged.processEtaDisplayVm).toEqual({
+      kind: 'unavailable',
+    })
     expect(merged.processEtaSecondaryVm).toEqual({
       visible: true,
       date: null,
