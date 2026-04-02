@@ -19,7 +19,6 @@ import {
   buildTimelineRenderList,
   type TimelineRenderItem,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
-import { deriveCurrentVesselFromTimeline } from '~/modules/process/ui/utils/current-tracking-context'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
@@ -36,7 +35,7 @@ type Props = {
 
 type TrackingTimelinePanelContainerContext = Pick<
   ContainerDetailVM,
-  'number' | 'status' | 'statusCode' | 'transshipment'
+  'number' | 'status' | 'statusCode' | 'transshipment' | 'currentContext'
 >
 
 type TrackingTimelinePanelContentProps = {
@@ -149,7 +148,11 @@ export function TrackingTimelinePanelContent(
   const { t, keys } = useTranslation()
   const timeline = () => props.timeline
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
-  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.timeline))
+  const currentVessel = createMemo(() =>
+    props.container?.currentContext.vesselVisible === false
+      ? null
+      : (props.container?.currentContext.vesselName ?? null),
+  )
   const portsRoute = createMemo(() => derivePortsRoute(props.container))
   const renderList = createMemo(() => buildTimelineRenderList(timeline()))
 

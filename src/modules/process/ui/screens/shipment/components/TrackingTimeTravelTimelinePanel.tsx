@@ -34,6 +34,7 @@ export function TrackingTimeTravelTimelinePanel(
             number: props.containerNumber ?? 'UNKNOWN',
             status: selectedSync().statusVariant,
             statusCode: selectedSync().statusCode,
+            currentContext: selectedSync().currentContext,
             transshipment: {
               hasTransshipment: false,
               count: 0,

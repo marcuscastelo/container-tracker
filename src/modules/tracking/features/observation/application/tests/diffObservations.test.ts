@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   computeFingerprint,
   computeLegacyFingerprint,
+  computePilLocationlessFingerprintAlias,
 } from '~/modules/tracking/domain/identity/fingerprint'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
@@ -56,6 +57,22 @@ describe('diffObservations', () => {
     const existing = new Set([computeLegacyFingerprint(draft)])
 
     const result = diffObservations(existing, [draft], CONTAINER_ID)
+
+    expect(result).toHaveLength(0)
+  })
+
+  it('should skip PIL drafts whose locationless alias fingerprint is already known', () => {
+    const draft = makeDraft({
+      provider: 'pil',
+      location_code: 'CNTAO',
+      location_display: 'QINGDAO',
+      carrier_label: 'Vessel Loading',
+    })
+    const alias = computePilLocationlessFingerprintAlias(draft)
+
+    expect(alias).not.toBeNull()
+
+    const result = diffObservations(new Set(alias ? [alias] : []), [draft], CONTAINER_ID)
 
     expect(result).toHaveLength(0)
   })

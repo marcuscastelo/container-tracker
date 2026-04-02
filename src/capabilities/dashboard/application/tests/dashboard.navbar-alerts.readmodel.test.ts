@@ -3,7 +3,10 @@ import {
   createDashboardNavbarAlertsReadModelUseCase,
   type DashboardNavbarAlertsReadModelDeps,
 } from '~/capabilities/dashboard/application/dashboard.navbar-alerts.readmodel'
-import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  createTrackingOperationalSummaryFallback,
+  type TrackingOperationalSummary,
+} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
@@ -95,6 +98,20 @@ function makeAlert(args: {
   }
 }
 
+function makeOperationalSummary(
+  overrides: Partial<TrackingOperationalSummary> = {},
+): TrackingOperationalSummary {
+  const fallback = createTrackingOperationalSummaryFallback(false)
+
+  return {
+    ...fallback,
+    ...overrides,
+    currentContext: overrides.currentContext ?? fallback.currentContext,
+    nextLocation: overrides.nextLocation ?? fallback.nextLocation,
+    transshipment: overrides.transshipment ?? fallback.transshipment,
+  }
+}
+
 describe('createDashboardNavbarAlertsReadModelUseCase', () => {
   it('groups alerts by process and container using backend sorting rules', async () => {
     const processes: ProcessesProjection = [
@@ -174,7 +191,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
         const summaries = new Map<string, TrackingOperationalSummary>([
           [
             'container-danger-1',
-            {
+            makeOperationalSummary({
               status: 'IN_TRANSIT',
               eta: {
                 eventTime: temporalDtoFromCanonical('2026-03-24T00:00:00.000Z'),
@@ -190,11 +207,11 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
                 ports: [],
               },
               dataIssue: false,
-            },
+            }),
           ],
           [
             'container-warn-1',
-            {
+            makeOperationalSummary({
               status: 'LOADED',
               eta: null,
               transshipment: {
@@ -203,11 +220,11 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
                 ports: [],
               },
               dataIssue: false,
-            },
+            }),
           ],
           [
             'container-warn-2',
-            {
+            makeOperationalSummary({
               status: 'BOOKED',
               eta: null,
               transshipment: {
@@ -216,7 +233,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
                 ports: [],
               },
               dataIssue: false,
-            },
+            }),
           ],
         ])
         return summaries

@@ -1,4 +1,7 @@
-import type { TrackingOperationalEta } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type {
+  TrackingOperationalEta,
+  TrackingOperationalSummary,
+} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
@@ -120,6 +123,7 @@ export type TrackingTimeTravelCheckpoint = {
   readonly status: ContainerStatus
   readonly alerts: readonly TrackingAlert[]
   readonly eta: TrackingOperationalEta | null
+  readonly operational: TrackingOperationalSummary
   readonly diffFromPrevious: TrackingTimeTravelDiff
   readonly debugAvailable: true
 }
