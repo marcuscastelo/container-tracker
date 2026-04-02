@@ -4,7 +4,7 @@ import {
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import { computeLegacyFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
@@ -188,7 +188,7 @@ describe('getContainerSummary', () => {
       snapshot_id: 'snapshot-1',
       carrier_label: null,
     }
-    const legacyFingerprint = computeFingerprint(legacyOtherDraft)
+    const legacyFingerprint = computeLegacyFingerprint(legacyOtherDraft)
     const legacyObservation = makeObservation({
       type: 'OTHER',
       fingerprint: legacyFingerprint,

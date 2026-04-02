@@ -56,6 +56,7 @@ const PROVIDER_BY_CARRIER: Readonly<Record<string, SupportedSyncProvider>> = {
   msc: 'msc',
   maersk: 'maersk',
   cmacgm: 'cmacgm',
+  pil: 'pil',
 }
 
 function normalizeCarrierCode(value: string): string {

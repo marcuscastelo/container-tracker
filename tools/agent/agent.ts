@@ -15,9 +15,11 @@ import { createMaerskCaptureService } from '../../src/modules/tracking/infrastru
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchMscStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { fetchPilStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { createAgentScheduler } from './agent.scheduler.ts'
+import { type AgentRunReason, createAgentScheduler } from './agent.scheduler.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { computeBackoffDelayMs } from './backoff.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -87,6 +89,10 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
   if (normalized === '1' || normalized === 'true') return true
   if (normalized === '0' || normalized === 'false') return false
   return fallback
+}
+
+function isUpdateManifestChecksDisabled(config: RuntimeConfig): boolean {
+  return config.AGENT_UPDATE_MANIFEST_CHANNEL === 'disabled'
 }
 
 function sanitizeText(value: string, secrets: readonly string[]): string {
@@ -615,7 +621,7 @@ async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<Run
 
 const AgentTargetSchema = z.object({
   sync_request_id: z.string().uuid(),
-  provider: z.enum(['maersk', 'msc', 'cmacgm']),
+  provider: z.enum(['maersk', 'msc', 'cmacgm', 'pil']),
   ref_type: z.literal('container'),
   ref: z.string().min(1),
 })
@@ -631,6 +637,11 @@ const TargetsResponseSchema = z.object({
 const IngestAcceptedResponseSchema = z.object({
   ok: z.literal(true),
   snapshot_id: z.string().uuid(),
+})
+
+const IngestFailedResponseSchema = z.object({
+  error: z.string().min(1),
+  snapshot_id: z.string().uuid().optional(),
 })
 
 const HeartbeatAckResponseSchema = z.object({
@@ -712,8 +723,8 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
 }
 
 function resolveAgentCapabilities(config: RuntimeConfig): readonly string[] {
-  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'maersk']
-  return ['msc', 'cmacgm']
+  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'pil', 'maersk']
+  return ['msc', 'cmacgm', 'pil']
 }
 
 async function sendHeartbeat(command: {
@@ -876,10 +887,17 @@ async function sendHeartbeatAndPersistHealth(command: {
   })
 }
 
-async function fetchTargets(config: RuntimeConfig, limit: number): Promise<TargetsResponse> {
+async function fetchTargets(
+  config: RuntimeConfig,
+  limit: number,
+  recoverOwnedLeases = false,
+): Promise<TargetsResponse> {
   const url = new URL('/api/agent/targets', config.BACKEND_URL)
   url.searchParams.set('tenant_id', config.TENANT_ID)
   url.searchParams.set('limit', String(limit))
+  if (recoverOwnedLeases) {
+    url.searchParams.set('recover_owned_leases', 'true')
+  }
 
   const response = await fetch(url, {
     method: 'GET',
@@ -902,18 +920,41 @@ async function fetchTargets(config: RuntimeConfig, limit: number): Promise<Targe
 
 const maerskCaptureService = createMaerskCaptureService()
 
-async function scrapeTarget(
+type ScrapeResult = {
+  readonly raw: unknown
+  readonly observedAt: string
+  readonly parseError?: string | null
+}
+
+async function performScrapeTarget(
   config: RuntimeConfig,
   target: AgentTarget,
-): Promise<{ raw: unknown; observedAt: string }> {
+): Promise<ScrapeResult> {
   if (target.provider === 'msc') {
     const result = await fetchMscStatus(target.ref)
-    return { raw: result.payload, observedAt: result.fetchedAt }
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
   }
 
   if (target.provider === 'cmacgm') {
     const result = await fetchCmaCgmStatus(target.ref)
-    return { raw: result.payload, observedAt: result.fetchedAt }
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
+  }
+
+  if (target.provider === 'pil') {
+    const result = await fetchPilStatus(target.ref)
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
   }
 
   if (!config.MAERSK_ENABLED) {
@@ -932,16 +973,34 @@ async function scrapeTarget(
     throw new Error(`maersk capture failed: ${JSON.stringify(result.body)}`)
   }
 
-  return { raw: result.payload, observedAt: new Date().toISOString() }
+  return { raw: result.payload, observedAt: new Date().toISOString(), parseError: null }
+}
+
+async function scrapeTarget(config: RuntimeConfig, target: AgentTarget): Promise<ScrapeResult> {
+  try {
+    return await performScrapeTarget(config, target)
+  } catch (error) {
+    const errorMessage = toErrorMessage(error)
+    return {
+      raw: {
+        _error: true,
+        message: errorMessage,
+      },
+      observedAt: new Date().toISOString(),
+      parseError: `Fetch failed: ${errorMessage}`,
+    }
+  }
 }
 
 async function ingestSnapshot(
   config: RuntimeConfig,
   target: AgentTarget,
-  scrape: { readonly raw: unknown; readonly observedAt: string },
+  scrape: ScrapeResult,
   agentVersion: string,
 ): Promise<
-  { readonly kind: 'accepted'; readonly snapshotId: string } | { readonly kind: 'lease_conflict' }
+  | { readonly kind: 'accepted'; readonly snapshotId: string }
+  | { readonly kind: 'failed'; readonly errorMessage: string; readonly snapshotId?: string }
+  | { readonly kind: 'lease_conflict' }
 > {
   const response = await fetch(`${config.BACKEND_URL}/api/tracking/snapshots/ingest`, {
     method: 'POST',
@@ -955,6 +1014,7 @@ async function ingestSnapshot(
       },
       observed_at: scrape.observedAt,
       raw: scrape.raw,
+      parse_error: scrape.parseError ?? null,
       meta: {
         agent_version: agentVersion,
         host: config.AGENT_ID,
@@ -967,6 +1027,28 @@ async function ingestSnapshot(
     const body = await response.json().catch(() => ({}))
     console.warn(`[agent] lease conflict for ${target.sync_request_id}:`, body)
     return { kind: 'lease_conflict' }
+  }
+
+  if (response.status === 422) {
+    const payload: unknown = await response.json().catch(() => ({}))
+    const parsed = IngestFailedResponseSchema.safeParse(payload)
+    if (!parsed.success) {
+      throw new Error(`invalid ingest failure response: ${parsed.error.message}`)
+    }
+
+    if (parsed.data.snapshot_id) {
+      console.warn(
+        `[agent] backend marked ${target.ref} as failed after persisting snapshot ${parsed.data.snapshot_id}: ${parsed.data.error}`,
+      )
+    } else {
+      console.warn(`[agent] backend marked ${target.ref} as failed: ${parsed.data.error}`)
+    }
+
+    return {
+      kind: 'failed',
+      errorMessage: parsed.data.error,
+      ...(parsed.data.snapshot_id === undefined ? {} : { snapshotId: parsed.data.snapshot_id }),
+    }
   }
 
   if (!response.ok) {
@@ -999,6 +1081,7 @@ type ProcessTargetResult =
       readonly kind: 'failed'
       readonly durationMs: number
       readonly errorMessage: string
+      readonly snapshotId?: string
     }
 
 async function processTarget(
@@ -1017,6 +1100,15 @@ async function processTarget(
         kind: 'lease_conflict',
         durationMs: Math.max(0, Date.now() - startedAtMs),
         errorMessage: `Lease conflict for ${target.sync_request_id}`,
+      }
+    }
+
+    if (ingestResult.kind === 'failed') {
+      return {
+        kind: 'failed',
+        durationMs: Math.max(0, Date.now() - startedAtMs),
+        errorMessage: ingestResult.errorMessage,
+        ...(ingestResult.snapshotId === undefined ? {} : { snapshotId: ingestResult.snapshotId }),
       }
     }
 
@@ -1044,6 +1136,7 @@ async function runOnce(
   config: RuntimeConfig,
   agentVersion: string,
   state: AgentRuntimeState,
+  reason: AgentRunReason,
 ): Promise<readonly AgentRuntimeActivity[]> {
   const leaseBatchSize = 1
   let processed = 0
@@ -1053,8 +1146,17 @@ async function runOnce(
 
   while (processed < config.LIMIT) {
     const remaining = config.LIMIT - processed
-    const targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
-    const targets = targetsResponse.targets
+    let targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining))
+    let targets = targetsResponse.targets
+
+    if (targets.length === 0 && reason === 'startup' && processed === 0) {
+      targetsResponse = await fetchTargets(config, Math.min(leaseBatchSize, remaining), true)
+      targets = targetsResponse.targets
+      if (targets.length > 0) {
+        console.log('[agent] recovered owned lease(s) on startup')
+      }
+    }
+
     state.queueLagSeconds = targetsResponse.queue_lag_seconds
 
     if (targets.length === 0) {
@@ -1107,6 +1209,7 @@ async function runOnce(
           provider: target.provider,
           ref: target.ref,
           durationMs: result.durationMs,
+          snapshotId: result.snapshotId,
         },
       })
     }
@@ -1379,12 +1482,18 @@ async function main(): Promise<void> {
   const agentLayout = runtimePaths.resolveAgentPathLayout()
   runtimePaths.ensureAgentPathLayout(agentLayout)
   const runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
+  const updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
   const agentVersion = resolveAgentVersion()
   const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
   console.log(
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
+  if (updateManifestChecksDisabled) {
+    console.log(
+      '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
+    )
+  }
 
   const runtimeState: AgentRuntimeState = {
     realtimeState:
@@ -1430,7 +1539,7 @@ async function main(): Promise<void> {
 
   scheduler = createAgentScheduler({
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
-    runCycle: async () => {
+    runCycle: async (reason) => {
       const cycleActivities: AgentRuntimeActivity[] = []
 
       const controlState = supervisorControl.readSupervisorControl(supervisorPaths.controlPath)
@@ -1440,7 +1549,7 @@ async function main(): Promise<void> {
       }
 
       if (runtimeState.updateState !== 'draining') {
-        const runActivities = await runOnce(runtimeConfig, agentVersion, runtimeState)
+        const runActivities = await runOnce(runtimeConfig, agentVersion, runtimeState, reason)
         cycleActivities.push(...runActivities)
       } else {
         runtimeState.processingState = 'idle'
@@ -1449,6 +1558,7 @@ async function main(): Promise<void> {
 
       const nowMs = Date.now()
       const shouldRunUpdateCheck =
+        !updateManifestChecksDisabled &&
         runtimeState.updateState !== 'draining' &&
         nowMs - lastUpdateCheckAtMs >= UPDATE_CHECK_INTERVAL_MS
 

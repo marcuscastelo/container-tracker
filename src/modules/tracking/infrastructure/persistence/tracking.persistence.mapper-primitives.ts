@@ -5,6 +5,7 @@ const PROVIDER_MAP: Record<string, Provider> = {
   msc: 'msc',
   maersk: 'maersk',
   cmacgm: 'cmacgm',
+  pil: 'pil',
 }
 
 export function requireString(value: unknown, field: string): string {

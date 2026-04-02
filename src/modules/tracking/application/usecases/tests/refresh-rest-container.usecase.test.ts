@@ -89,4 +89,36 @@ describe('refresh-rest-container use case', () => {
       expect(result.deduped).toBe(true)
     }
   })
+
+  it('queues PIL container refreshes through the shared REST sync path', async () => {
+    const enqueueSyncRequest = vi.fn(async () => ({
+      id: 'a15f86aa-f6db-470a-ae7a-555555555555',
+      status: 'PENDING' as const,
+      isNew: true,
+    }))
+
+    const useCase = createRefreshRestContainerUseCase({
+      containerLookup: {
+        findByNumbers: vi.fn(async () => ({
+          containers: [{ id: 'container-1' }],
+        })),
+      },
+      enqueueSyncRequest: {
+        enqueueSyncRequest,
+      },
+    })
+
+    const result = await useCase({
+      container: 'PCIU8712104',
+      provider: 'pil',
+    })
+
+    expect(result.kind).toBe('queued')
+    expect(enqueueSyncRequest).toHaveBeenCalledWith({
+      provider: 'pil',
+      refType: 'container',
+      refValue: 'PCIU8712104',
+      priority: 0,
+    })
+  })
 })

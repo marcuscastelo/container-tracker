@@ -5,8 +5,8 @@
  * predicate and the exact carrier union without relying on a barrel file.
  */
 
-export type RestCarrier = 'msc' | 'cmacgm'
+export type RestCarrier = 'msc' | 'cmacgm' | 'pil'
 
 export function isRestCarrier(provider: string): provider is RestCarrier {
-  return provider === 'msc' || provider === 'cmacgm'
+  return provider === 'msc' || provider === 'cmacgm' || provider === 'pil'
 }

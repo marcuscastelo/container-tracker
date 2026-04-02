@@ -76,7 +76,7 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
     }
   },
   startRuntime(command) {
-    return spawn(process.execPath, [command.scriptPath], {
+    return spawn(process.execPath, [...(command.execArgv ?? []), command.scriptPath], {
       env: command.env,
       stdio: command.stdio,
       shell: false,
@@ -87,7 +87,7 @@ export const windowsPlatformAdapter: AgentPlatformAdapter = {
   },
   restartRuntime(command) {
     command.child.kill()
-    return spawn(process.execPath, [command.next.scriptPath], {
+    return spawn(process.execPath, [...(command.next.execArgv ?? []), command.next.scriptPath], {
       env: command.next.env,
       stdio: command.next.stdio,
       shell: false,
