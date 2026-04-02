@@ -1,14 +1,10 @@
 import {
-  type ContainerOperationalSummaryProjection,
   type ContainersActiveAlertIncidentsProjection,
   findContainersActiveAlertIncidentsProjection,
   findContainersOperationalSummaryProjection,
   findContainersTimelineMainProjection,
 } from '~/modules/tracking/application/projection/tracking.hot-read.projections'
-import {
-  createTrackingOperationalSummaryFallback,
-  type TrackingOperationalSummary,
-} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
@@ -23,7 +19,7 @@ type ContainerTarget = {
   readonly podLocationCode?: string | null
 }
 
-export type ContainerLeanTrackingProjection = {
+export type ContainerHotReadProjection = {
   readonly containerId: string
   readonly containerNumber: string
   readonly status: ContainerStatus
@@ -34,13 +30,13 @@ export type ContainerLeanTrackingProjection = {
   readonly lastEventAt: TemporalValue | null
 }
 
-export type FindContainersLeanTrackingProjectionCommand = {
+export type FindContainersHotReadProjectionCommand = {
   readonly containers: readonly ContainerTarget[]
   readonly now: Instant
 }
 
-export type FindContainersLeanTrackingProjectionResult = {
-  readonly containers: readonly ContainerLeanTrackingProjection[]
+export type FindContainersHotReadProjectionResult = {
+  readonly containers: readonly ContainerHotReadProjection[]
   readonly activeAlertIncidents: ContainersActiveAlertIncidentsProjection['activeAlertIncidents']
   readonly activeAlerts: readonly TrackingAlert[]
 }
@@ -63,17 +59,18 @@ function groupObservationsByContainerId(
   return grouped
 }
 
-function toFallbackOperationalProjection(
-  container: ContainerTarget,
-): ContainerOperationalSummaryProjection {
-  return {
-    containerId: container.containerId,
-    containerNumber: container.containerNumber,
-    status: 'UNKNOWN',
-    operational: createTrackingOperationalSummaryFallback(true),
-    hasObservations: false,
-    lastEventAt: null,
-  }
+function assertProjectionCoverage(
+  containers: readonly ContainerTarget[],
+  projectionName: string,
+  projectedContainerIds: ReadonlySet<string>,
+): void {
+  const missingContainerIds = containers
+    .map((container) => container.containerId)
+    .filter((containerId) => !projectedContainerIds.has(containerId))
+
+  if (missingContainerIds.length === 0) return
+
+  throw new Error(`${projectionName} missing containers: ${missingContainerIds.join(', ')}`)
 }
 
 async function loadObservationsByContainerId(
@@ -83,22 +80,8 @@ async function loadObservationsByContainerId(
   const containerIds = containers.map((container) => container.containerId)
   if (containerIds.length === 0) return new Map()
 
-  if (deps.observationRepository.findAllByContainerIds) {
-    const observations = await deps.observationRepository.findAllByContainerIds(containerIds)
-    return groupObservationsByContainerId(observations)
-  }
-
-  const observationsByContainerId = new Map<string, readonly Observation[]>()
-  await Promise.all(
-    containers.map(async (container) => {
-      const observations = await deps.observationRepository.findAllByContainerId(
-        container.containerId,
-      )
-      observationsByContainerId.set(container.containerId, observations)
-    }),
-  )
-
-  return observationsByContainerId
+  const observations = await deps.observationRepository.findAllByContainerIds(containerIds)
+  return groupObservationsByContainerId(observations)
 }
 
 async function loadActiveAlerts(
@@ -108,22 +91,13 @@ async function loadActiveAlerts(
   const containerIds = containers.map((container) => container.containerId)
   if (containerIds.length === 0) return []
 
-  if (deps.trackingAlertRepository.findActiveByContainerIds) {
-    return deps.trackingAlertRepository.findActiveByContainerIds(containerIds)
-  }
-
-  const results = await Promise.all(
-    containers.map((container) =>
-      deps.trackingAlertRepository.findActiveByContainerId(container.containerId),
-    ),
-  )
-  return results.flat()
+  return deps.trackingAlertRepository.findActiveByContainerIds(containerIds)
 }
 
-export async function findContainersLeanTrackingProjection(
+export async function findContainersHotReadProjection(
   deps: TrackingUseCasesDeps,
-  command: FindContainersLeanTrackingProjectionCommand,
-): Promise<FindContainersLeanTrackingProjectionResult> {
+  command: FindContainersHotReadProjectionCommand,
+): Promise<FindContainersHotReadProjectionResult> {
   if (command.containers.length === 0) {
     return {
       containers: [],
@@ -140,21 +114,10 @@ export async function findContainersLeanTrackingProjection(
     }
   }
 
-  const observationsByContainerId = await loadObservationsByContainerId(deps, command.containers)
-
-  let activeAlerts: readonly TrackingAlert[] = []
-  let dataIssueByContainerId: ReadonlyMap<string, boolean> = new Map()
-  try {
-    activeAlerts = await loadActiveAlerts(deps, command.containers)
-  } catch (error) {
-    console.error('tracking.findContainersLeanTrackingProjection.activeAlerts_failed', {
-      containerCount: command.containers.length,
-      error: error instanceof Error ? error.message : String(error),
-    })
-    dataIssueByContainerId = new Map(
-      command.containers.map((container) => [container.containerId, true] as const),
-    )
-  }
+  const [observationsByContainerId, activeAlerts] = await Promise.all([
+    loadObservationsByContainerId(deps, command.containers),
+    loadActiveAlerts(deps, command.containers),
+  ])
 
   const timelineMain = findContainersTimelineMainProjection({
     containers: command.containers,
@@ -164,13 +127,24 @@ export async function findContainersLeanTrackingProjection(
   const timelineMainByContainerId = new Map(
     timelineMain.map((container) => [container.containerId, container] as const),
   )
+  assertProjectionCoverage(
+    command.containers,
+    'tracking.findContainersHotReadProjection.timeline',
+    new Set(timelineMainByContainerId.keys()),
+  )
+
   const operationalByContainerId = findContainersOperationalSummaryProjection({
     containers: command.containers,
     observationsByContainerId,
     timelineMainByContainerId,
-    dataIssueByContainerId,
     now: command.now,
   })
+  assertProjectionCoverage(
+    command.containers,
+    'tracking.findContainersHotReadProjection.operational',
+    new Set(operationalByContainerId.keys()),
+  )
+
   const activeAlertProjection = findContainersActiveAlertIncidentsProjection({
     containers: command.containers,
     activeAlerts,
@@ -178,18 +152,19 @@ export async function findContainersLeanTrackingProjection(
 
   const containers = command.containers.map((container) => {
     const timelineProjection = timelineMainByContainerId.get(container.containerId)
-    const operationalProjection =
-      operationalByContainerId.get(container.containerId) ??
-      toFallbackOperationalProjection(container)
+    const operationalProjection = operationalByContainerId.get(container.containerId)
 
-    const timeline = timelineProjection?.timeline ?? []
-    const status = timelineProjection?.status ?? 'UNKNOWN'
+    if (timelineProjection === undefined || operationalProjection === undefined) {
+      throw new Error(
+        `tracking.findContainersHotReadProjection coverage mismatch for ${container.containerId}`,
+      )
+    }
 
     return {
       containerId: container.containerId,
       containerNumber: container.containerNumber,
-      status,
-      timeline,
+      status: timelineProjection.status,
+      timeline: timelineProjection.timeline,
       operational: operationalProjection.operational,
       activeAlerts:
         activeAlertProjection.activeAlertsByContainerId.get(container.containerId) ?? [],

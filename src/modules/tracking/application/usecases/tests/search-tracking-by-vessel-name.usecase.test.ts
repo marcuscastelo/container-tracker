@@ -52,6 +52,7 @@ function createDeps(
     observationRepository: {
       insertMany: vi.fn(async () => []),
       findAllByContainerId: vi.fn(async () => []),
+      findAllByContainerIds: vi.fn(async () => []),
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations,
     },
@@ -65,6 +66,7 @@ function createDeps(
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
       findActiveByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
+      findActiveByContainerIds: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findByContainerId: vi.fn(async (): Promise<readonly TrackingAlert[]> => []),
       findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds: vi.fn(async () => new Map<string, string>()),

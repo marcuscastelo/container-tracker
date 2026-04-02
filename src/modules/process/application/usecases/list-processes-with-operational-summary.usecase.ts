@@ -11,8 +11,7 @@ import {
   toOperationalStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
-import type { FindContainersLeanTrackingProjectionResult } from '~/modules/tracking/application/usecases/find-containers-lean-tracking-projection.usecase'
-import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
+import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import { systemClock } from '~/shared/time/clock'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
@@ -58,17 +57,13 @@ export type ProcessSyncSummaryReadModel = {
 }
 
 type TrackingFacade = {
-  getContainerSummary(
-    containerId: string,
-    containerNumber: string,
-  ): Promise<GetContainerSummaryResult>
-  findContainersLeanTrackingProjection?(command: {
+  findContainersHotReadProjection(command: {
     readonly containers: readonly {
       readonly containerId: string
       readonly containerNumber: string
     }[]
     readonly now: Instant
-  }): Promise<FindContainersLeanTrackingProjectionResult>
+  }): Promise<FindContainersHotReadProjectionResult>
   getContainersSyncMetadata(command: {
     readonly containerNumbers: readonly string[]
   }): Promise<readonly ContainerSyncMetadata[]>
@@ -92,6 +87,26 @@ type ListProcessesWithOperationalSummaryResult = {
 
 function normalizeContainerNumber(value: string): string {
   return value.trim().toUpperCase()
+}
+
+function assertTrackingCoverage(
+  containers: readonly {
+    readonly id: string
+  }[],
+  trackingByContainerId: ReadonlyMap<
+    string,
+    FindContainersHotReadProjectionResult['containers'][number]
+  >,
+): void {
+  const missingContainerIds = containers
+    .map((container) => String(container.id))
+    .filter((containerId) => !trackingByContainerId.has(containerId))
+
+  if (missingContainerIds.length === 0) return
+
+  throw new Error(
+    `tracking.findContainersHotReadProjection missing list containers: ${missingContainerIds.join(', ')}`,
+  )
 }
 
 function toTimestampOrNegativeInfinity(value: string | null): number {
@@ -500,92 +515,52 @@ export function createListProcessesWithOperationalSummaryUseCase(
     })
 
     // Calculate 'now' once for consistent ETA comparison across all processes
-    const now = { kind: 'instant', value: systemClock.now().toIsoString() } as const
+    const nowInstant = systemClock.now()
+    const now = { kind: 'instant', value: nowInstant.toIsoString() } as const
     const allContainers = Array.from(containersByProcessId.values()).flat()
-    const leanTrackingProjection =
-      deps.trackingUseCases.findContainersLeanTrackingProjection === undefined
-        ? null
-        : await deps.trackingUseCases.findContainersLeanTrackingProjection({
-            containers: allContainers.map((container) => ({
-              containerId: String(container.id),
-              containerNumber: String(container.containerNumber),
-            })),
-            now: systemClock.now(),
-          })
-    const leanTrackingByContainerId = new Map(
-      (leanTrackingProjection?.containers ?? []).map(
-        (container) => [container.containerId, container] as const,
-      ),
+    const hotReadProjection = await deps.trackingUseCases.findContainersHotReadProjection({
+      containers: allContainers.map((container) => ({
+        containerId: String(container.id),
+        containerNumber: String(container.containerNumber),
+      })),
+      now: nowInstant,
+    })
+    const hotReadByContainerId = new Map(
+      hotReadProjection.containers.map((container) => [container.containerId, container] as const),
     )
+    assertTrackingCoverage(allContainers, hotReadByContainerId)
 
     const processes: ProcessWithOperationalSummary[] = await Promise.all(
       allProcesses.map(async (process) => {
         const containers = containersByProcessId.get(process.id) ?? []
         const pwc: ProcessWithContainers = { process, containers }
 
-        const summaries = await Promise.all(
-          containers.map(async (container) => {
-            const leanTracking = leanTrackingByContainerId.get(String(container.id))
-            if (leanTracking) {
-              return {
-                status: leanTracking.status,
-                operational: toContainerTrackingOperational({
-                  eta: leanTracking.operational.eta
-                    ? { eventTime: leanTracking.operational.eta.eventTime }
-                    : null,
-                  etaApplicable: leanTracking.operational.etaApplicable,
-                  lifecycleBucket: leanTracking.operational.lifecycleBucket,
-                }),
-                alerts: leanTracking.activeAlerts.map((alert) => ({
-                  severity: alert.severity,
-                  type: alert.type,
-                  triggered_at: alert.triggered_at,
-                })),
-                has_observations: leanTracking.hasObservations,
-                last_event_at: leanTracking.lastEventAt,
-              } satisfies ContainerTrackingSummary
-            }
+        const summaries = containers.map((container) => {
+          const hotRead = hotReadByContainerId.get(String(container.id))
+          if (hotRead === undefined) {
+            throw new Error(
+              `tracking.findContainersHotReadProjection missing process list container ${String(container.id)}`,
+            )
+          }
 
-            try {
-              const summary = await deps.trackingUseCases.getContainerSummary(
-                String(container.id),
-                String(container.containerNumber),
-              )
-              return {
-                status: summary.status,
-                operational: toContainerTrackingOperational({
-                  eta: summary.operational.eta
-                    ? { eventTime: summary.operational.eta.eventTime }
-                    : null,
-                  etaApplicable: summary.operational.etaApplicable,
-                  lifecycleBucket: summary.operational.lifecycleBucket,
-                }),
-                alerts: summary.alerts,
-                has_observations: summary.observations.length > 0,
-                last_event_at:
-                  summary.timeline.observations[summary.timeline.observations.length - 1]
-                    ?.event_time ?? null,
-              } satisfies ContainerTrackingSummary
-            } catch (err) {
-              console.error(
-                `Failed to get tracking summary for container ${String(container.containerNumber)} (${String(container.id)}):`,
-                err,
-              )
-              const fallback: ContainerTrackingSummary = {
-                status: 'UNKNOWN',
-                operational: {
-                  eta: null,
-                  etaApplicable: true,
-                  lifecycleBucket: 'pre_arrival',
-                },
-                alerts: [],
-                has_observations: false,
-                last_event_at: null,
-              }
-              return fallback
-            }
-          }),
-        )
+          return {
+            status: hotRead.status,
+            operational: toContainerTrackingOperational({
+              eta: hotRead.operational.eta
+                ? { eventTime: hotRead.operational.eta.eventTime }
+                : null,
+              etaApplicable: hotRead.operational.etaApplicable,
+              lifecycleBucket: hotRead.operational.lifecycleBucket,
+            }),
+            alerts: hotRead.activeAlerts.map((alert) => ({
+              severity: alert.severity,
+              type: alert.type,
+              triggered_at: alert.triggered_at,
+            })),
+            has_observations: hotRead.hasObservations,
+            last_event_at: hotRead.lastEventAt,
+          } satisfies ContainerTrackingSummary
+        })
 
         const summary = aggregateOperationalSummary(
           process.id,

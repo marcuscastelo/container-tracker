@@ -25,6 +25,7 @@ export function createSyncStatusControllers(deps: SyncStatusControllersDeps) {
       {
         endpoint: '/api/processes/sync-status',
         projection: 'ProcessesSyncStatusResponse',
+        readStrategy: 'sync.status_projection',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {

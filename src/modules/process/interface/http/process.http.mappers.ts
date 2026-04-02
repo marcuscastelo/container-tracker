@@ -16,10 +16,7 @@ import {
 import { toOperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
-import {
-  createTrackingOperationalSummaryFallback,
-  type TrackingOperationalSummary,
-} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type {
   ShipmentAlertIncidentReadModel,
   ShipmentAlertIncidentRecordReadModel,
@@ -557,16 +554,12 @@ export function toProcessDetailResponse(
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
   containersSync: readonly ContainerSyncRecord[],
 ) {
-  const fallbackByContainerId = new Map<string, TrackingOperationalSummary>()
-
   const containers = containersWithTracking.map((container) => {
-    const summary =
-      operationalByContainerId.get(container.id) ??
-      fallbackByContainerId.get(container.id) ??
-      createTrackingOperationalSummaryFallback(true)
-
-    if (!fallbackByContainerId.has(container.id) && !operationalByContainerId.has(container.id)) {
-      fallbackByContainerId.set(container.id, summary)
+    const summary = operationalByContainerId.get(container.id)
+    if (summary === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing operational summary for container ${container.id}`,
+      )
     }
 
     return {
@@ -576,13 +569,13 @@ export function toProcessDetailResponse(
   })
 
   const summariesForProcess = containersWithTracking.map((container) => {
-    const fromBatch = operationalByContainerId.get(container.id)
-    if (fromBatch) return fromBatch
-    const fallback = fallbackByContainerId.get(container.id)
-    if (fallback) return fallback
-    const createdFallback = createTrackingOperationalSummaryFallback(true)
-    fallbackByContainerId.set(container.id, createdFallback)
-    return createdFallback
+    const summary = operationalByContainerId.get(container.id)
+    if (summary === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing process operational summary for container ${container.id}`,
+      )
+    }
+    return summary
   })
 
   const containerNumberByContainerId = new Map<string, string>()

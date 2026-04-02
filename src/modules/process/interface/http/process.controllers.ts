@@ -46,14 +46,9 @@ type ProcessControllerDeps = {
   >
   readonly trackingUseCases: Pick<
     TrackingUseCases,
-    'getContainerSummary' | 'getContainersSyncMetadata'
+    'findContainersHotReadProjection' | 'getContainersSyncMetadata'
   > &
-    Partial<
-      Pick<
-        TrackingUseCases,
-        'findContainersLeanTrackingProjection' | 'findContainersRecognizedAlertIncidentsProjection'
-      >
-    >
+    Partial<Pick<TrackingUseCases, 'findContainersRecognizedAlertIncidentsProjection'>>
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +100,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       {
         endpoint: '/api/processes',
         projection: 'ProcessListResponse',
+        readStrategy: 'tracking.hot_read_projection.process_list',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {
@@ -188,6 +184,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       {
         endpoint: '/api/processes/:id',
         projection: 'ProcessDetailLeanResponse',
+        readStrategy: 'tracking.hot_read_projection.process_detail',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {
@@ -222,6 +219,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       {
         endpoint: '/api/processes/:id/sync-state',
         projection: 'ProcessSyncSnapshotResponse',
+        readStrategy: 'tracking.hot_read_projection.process_sync_snapshot',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {
@@ -261,6 +259,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       {
         endpoint: '/api/processes/:id/alerts/recognized',
         projection: 'ProcessRecognizedAlertIncidentsResponse',
+        readStrategy: 'tracking.recognized_alerts_projection.lazy',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {

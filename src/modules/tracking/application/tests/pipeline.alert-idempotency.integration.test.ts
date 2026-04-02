@@ -73,6 +73,17 @@ class InMemoryObservationRepository implements ObservationRepository {
       .sort(compareObservationsChronologically)
   }
 
+  async findAllByContainerIds(containerIds: readonly string[]): Promise<readonly Observation[]> {
+    const requestedIds = new Set(containerIds)
+    return [...this.observations]
+      .filter((observation) => requestedIds.has(observation.container_id))
+      .sort((left, right) => {
+        const containerCompare = left.container_id.localeCompare(right.container_id)
+        if (containerCompare !== 0) return containerCompare
+        return compareObservationsChronologically(left, right)
+      })
+  }
+
   async findFingerprintsByContainerId(containerId: string): Promise<ReadonlySet<string>> {
     return new Set(
       this.observations
@@ -106,6 +117,16 @@ class InMemoryTrackingAlertRepository implements TrackingAlertRepository {
     return this.alerts.filter(
       (alert) =>
         alert.container_id === containerId && resolveAlertLifecycleState(alert) === 'ACTIVE',
+    )
+  }
+
+  async findActiveByContainerIds(
+    containerIds: readonly string[],
+  ): Promise<readonly TrackingAlert[]> {
+    const requestedIds = new Set(containerIds)
+    return this.alerts.filter(
+      (alert) =>
+        requestedIds.has(alert.container_id) && resolveAlertLifecycleState(alert) === 'ACTIVE',
     )
   }
 

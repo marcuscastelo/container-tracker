@@ -11,7 +11,10 @@ import {
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import { buildShipmentAlertIncidentsReadModel } from '~/modules/tracking/application/projection/tracking.shipment-alert-incidents.readmodel'
 import type { TrackingUseCases } from '~/modules/tracking/application/tracking.usecases'
-import type { GetContainerSummaryResult } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
+import type {
+  ContainerHotReadProjection,
+  FindContainersHotReadProjectionResult,
+} from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import {
   ProcessDetailResponseSchema,
@@ -22,19 +25,20 @@ import {
 import { Instant } from '~/shared/time/instant'
 import { temporalValueFromDto } from '~/shared/time/tests/helpers'
 
-type GetContainerSummaryMock = (
-  containerId: string,
-  containerNumber: string,
-  podLocationCode?: string | null,
-  now?: Instant,
-  options?: { readonly includeAcknowledgedAlerts?: boolean },
-) => Promise<GetContainerSummaryResult>
+type FindContainersHotReadProjectionMock = (command: {
+  readonly containers: readonly {
+    readonly containerId: string
+    readonly containerNumber: string
+    readonly podLocationCode?: string | null
+  }[]
+  readonly now: Instant
+}) => Promise<FindContainersHotReadProjectionResult>
 
 type GetContainersSyncMetadataMock = (command: {
   readonly containerNumbers: readonly string[]
 }) => Promise<readonly ContainerSyncRecord[]>
 
-type ContainerSummaryStatus = GetContainerSummaryResult['status']
+type ContainerSummaryStatus = ContainerHotReadProjection['status']
 
 const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
   'UNKNOWN',
@@ -104,12 +108,12 @@ function createProcessWithContainers(destination: string) {
   return { process, processWithContainers }
 }
 
-function createSummary(
+function createHotReadContainer(
   containerId: string,
   containerNumber: string,
   operational: TrackingOperationalSummary,
-  alerts: GetContainerSummaryResult['alerts'] = [],
-): GetContainerSummaryResult {
+  alerts: FindContainersHotReadProjectionResult['activeAlerts'] = [],
+): ContainerHotReadProjection {
   const status: ContainerSummaryStatus = isContainerStatus(operational.status)
     ? operational.status
     : 'UNKNOWN'
@@ -117,47 +121,50 @@ function createSummary(
   return {
     containerId,
     containerNumber,
-    observations: [
-      {
-        id: `obs-${containerId}`,
-        fingerprint: `fp-${containerId}`,
-        container_id: containerId,
-        container_number: containerNumber,
-        type: 'ARRIVAL',
-        event_time: temporalValueFromDto(operational.eta?.eventTime ?? null),
-        event_time_type: operational.eta?.eventTimeType ?? 'EXPECTED',
-        location_code: operational.eta?.locationCode ?? null,
-        location_display: operational.eta?.locationDisplay ?? null,
-        vessel_name: null,
-        voyage: null,
-        is_empty: null,
-        confidence: 'high',
-        provider: 'msc',
-        created_from_snapshot_id: 'snapshot-1',
-        created_at: '2026-02-25T12:00:00.000Z',
-      },
-    ],
-    timeline: {
-      container_id: containerId,
-      container_number: containerNumber,
-      observations: [],
-      derived_at: '2026-02-25T12:00:00.000Z',
-      holes: [],
-    },
+    timeline: [],
     status,
-    transshipment: {
-      hasTransshipment: operational.transshipment.hasTransshipment,
-      transshipmentCount: operational.transshipment.count,
-      ports: operational.transshipment.ports.map((port) => port.code),
-    },
-    alerts,
     operational,
+    activeAlerts: alerts,
+    hasObservations: operational.dataIssue !== true,
+    lastEventAt: temporalValueFromDto(operational.eta?.eventTime ?? null),
+  }
+}
+
+function createHotReadProjection(
+  containers: readonly {
+    readonly containerId: string
+    readonly containerNumber: string
+    readonly operational: TrackingOperationalSummary
+    readonly alerts?: FindContainersHotReadProjectionResult['activeAlerts']
+  }[],
+): FindContainersHotReadProjectionResult {
+  const hotReadContainers = containers.map((container) =>
+    createHotReadContainer(
+      container.containerId,
+      container.containerNumber,
+      container.operational,
+      container.alerts ?? [],
+    ),
+  )
+  const activeAlerts = hotReadContainers.flatMap((container) => container.activeAlerts)
+  const activeAlertIncidents = buildShipmentAlertIncidentsReadModel({
+    containers: hotReadContainers.map((container) => ({
+      containerId: container.containerId,
+      containerNumber: container.containerNumber,
+      alerts: container.activeAlerts,
+    })),
+  })
+
+  return {
+    containers: hotReadContainers,
+    activeAlerts,
+    activeAlertIncidents,
   }
 }
 
 function createControllers(
   destination: string,
-  getContainerSummary: GetContainerSummaryMock,
+  findContainersHotReadProjection: FindContainersHotReadProjectionMock,
   getContainersSyncMetadata: GetContainersSyncMetadataMock = vi.fn<GetContainersSyncMetadataMock>(
     async (command) =>
       command.containerNumbers.map((containerNumber) => ({
@@ -192,7 +199,7 @@ function createControllers(
       deleteProcess: vi.fn(async () => ({ deleted: true as const })),
     },
     trackingUseCases: {
-      getContainerSummary,
+      findContainersHotReadProjection,
       getContainersSyncMetadata,
       ...(trackingOverrides?.findContainersRecognizedAlertIncidentsProjection === undefined
         ? {}
@@ -219,40 +226,47 @@ describe('process controllers', () => {
       dataIssue: false,
     }
 
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        if (containerId === 'container-1') {
-          return createSummary(containerId, containerNumber, containerOneSummary, [
-            {
-              id: 'alert-1',
-              container_id: 'container-1',
-              category: 'fact',
-              type: 'TRANSSHIPMENT',
-              severity: 'warning',
-              message_key: 'alerts.transshipmentDetected',
-              message_params: {
-                port: 'MAPTM02',
-                fromVessel: 'MAERSK NARMADA',
-                toVessel: 'CMA CGM LISA MARIE',
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: containerOneSummary,
+            alerts: [
+              {
+                id: 'alert-1',
+                container_id: 'container-1',
+                category: 'fact',
+                type: 'TRANSSHIPMENT',
+                severity: 'warning',
+                message_key: 'alerts.transshipmentDetected',
+                message_params: {
+                  port: 'MAPTM02',
+                  fromVessel: 'MAERSK NARMADA',
+                  toVessel: 'CMA CGM LISA MARIE',
+                },
+                detected_at: '2026-03-01T10:00:00.000Z',
+                triggered_at: '2026-03-01T10:00:00.000Z',
+                source_observation_fingerprints: ['fp-1', 'fp-2'],
+                alert_fingerprint: 'fp-alert',
+                retroactive: false,
+                provider: 'maersk',
+                acked_at: null,
+                acked_by: null,
+                acked_source: null,
               },
-              detected_at: '2026-03-01T10:00:00.000Z',
-              triggered_at: '2026-03-01T10:00:00.000Z',
-              source_observation_fingerprints: ['fp-1', 'fp-2'],
-              alert_fingerprint: 'fp-alert',
-              retroactive: false,
-              provider: 'maersk',
-              acked_at: null,
-              acked_by: null,
-              acked_source: null,
-            },
-          ])
-        }
-
-        return createSummary(containerId, containerNumber, containerOneSummary)
-      },
+            ],
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: containerOneSummary,
+          },
+        ]),
     )
 
-    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
     const response = await controllers.getProcessById({
       params: { id: 'process-1' },
       request: createProcessDetailRequest(),
@@ -317,19 +331,25 @@ describe('process controllers', () => {
     }
     const containerTwoSummary = createTrackingOperationalSummaryFallback(true)
 
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        if (containerId === 'container-2') {
-          return createSummary(containerId, containerNumber, containerTwoSummary)
-        }
-
-        return createSummary(containerId, containerNumber, containerOneSummary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: containerOneSummary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: containerTwoSummary,
+          },
+        ]),
     )
 
     const controllers = createControllers(
       '{"display_name":"Santos, BR","unlocode":"BRSSZBT"}',
-      getContainerSummaryMock,
+      findContainersHotReadProjectionMock,
     )
 
     const response = await controllers.getProcessById({
@@ -380,17 +400,23 @@ describe('process controllers', () => {
       dataIssue: false,
     }
 
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        if (containerId === 'container-2') {
-          return createSummary(containerId, containerNumber, dischargedSummary)
-        }
-
-        return createSummary(containerId, containerNumber, inTransitSummary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: inTransitSummary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: dischargedSummary,
+          },
+        ]),
     )
 
-    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
     const response = await controllers.getProcessById({
       params: { id: 'process-1' },
       request: createProcessDetailRequest(),
@@ -413,12 +439,23 @@ describe('process controllers', () => {
 
   it('returns a tiny sync snapshot contract for reconciliation', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) =>
-        createSummary(containerId, containerNumber, summary),
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
 
-    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
     const response = await controllers.getProcessSyncSnapshot({
       params: { id: 'process-1' },
       request: createProcessSyncSnapshotRequest(),
@@ -488,12 +525,19 @@ describe('process controllers', () => {
 
     const controllers = createControllers(
       'Santos',
-      vi.fn<GetContainerSummaryMock>(async (containerId: string, containerNumber: string) =>
-        createSummary(
-          containerId,
-          containerNumber,
-          createTrackingOperationalSummaryFallback(false),
-        ),
+      vi.fn<FindContainersHotReadProjectionMock>(async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: createTrackingOperationalSummaryFallback(false),
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: createTrackingOperationalSummaryFallback(false),
+          },
+        ]),
       ),
       undefined,
       {
@@ -522,10 +566,20 @@ describe('process controllers', () => {
 
   it('falls back to deterministic empty sync metadata when sync metadata lookup fails', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        return createSummary(containerId, containerNumber, summary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
     const getContainersSyncMetadata = vi.fn<GetContainersSyncMetadataMock>(async () => {
       throw new Error('sync metadata lookup failed')
@@ -533,7 +587,7 @@ describe('process controllers', () => {
 
     const controllers = createControllers(
       'Santos',
-      getContainerSummaryMock,
+      findContainersHotReadProjectionMock,
       getContainersSyncMetadata,
     )
 
@@ -568,10 +622,20 @@ describe('process controllers', () => {
 
   it('keeps process derived_status as UNKNOWN when all containers are UNKNOWN / never synced', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        return createSummary(containerId, containerNumber, summary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
     const getContainersSyncMetadata = vi.fn<GetContainersSyncMetadataMock>(async (command) =>
       command.containerNumbers.map((containerNumber) => ({
@@ -587,7 +651,7 @@ describe('process controllers', () => {
 
     const controllers = createControllers(
       'Santos',
-      getContainerSummaryMock,
+      findContainersHotReadProjectionMock,
       getContainersSyncMetadata,
     )
 
@@ -605,79 +669,107 @@ describe('process controllers', () => {
 
   it('does not infer POD code from free-text destination names', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        return createSummary(containerId, containerNumber, summary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
-    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
 
     await controllers.getProcessById({
       params: { id: 'process-1' },
       request: createProcessDetailRequest(),
     })
 
-    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
-      1,
-      'container-1',
-      'MSCU1234567',
-      null,
-      expect.anything(),
-      { includeAcknowledgedAlerts: false },
-    )
-    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
-      2,
-      'container-2',
-      'MSCU7654321',
-      null,
-      expect.anything(),
-      { includeAcknowledgedAlerts: false },
-    )
+    expect(findContainersHotReadProjectionMock).toHaveBeenCalledTimes(1)
+    expect(findContainersHotReadProjectionMock).toHaveBeenCalledWith({
+      containers: [
+        {
+          containerId: 'container-1',
+          containerNumber: 'MSCU1234567',
+        },
+        {
+          containerId: 'container-2',
+          containerNumber: 'MSCU7654321',
+        },
+      ],
+      now: expect.any(Instant),
+    })
   })
 
   it('accepts alphanumeric direct destination codes with numeric terminal suffix', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        return createSummary(containerId, containerNumber, summary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
-    const controllers = createControllers('ESBCN07', getContainerSummaryMock)
+    const controllers = createControllers('ESBCN07', findContainersHotReadProjectionMock)
 
     await controllers.getProcessById({
       params: { id: 'process-1' },
       request: createProcessDetailRequest(),
     })
 
-    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
-      1,
-      'container-1',
-      'MSCU1234567',
-      'ESBCN07',
-      expect.anything(),
-      { includeAcknowledgedAlerts: false },
-    )
-    expect(getContainerSummaryMock).toHaveBeenNthCalledWith(
-      2,
-      'container-2',
-      'MSCU7654321',
-      'ESBCN07',
-      expect.anything(),
-      { includeAcknowledgedAlerts: false },
-    )
+    expect(findContainersHotReadProjectionMock).toHaveBeenCalledTimes(1)
+    expect(findContainersHotReadProjectionMock).toHaveBeenCalledWith({
+      containers: [
+        {
+          containerId: 'container-1',
+          containerNumber: 'MSCU1234567',
+          podLocationCode: 'ESBCN07',
+        },
+        {
+          containerId: 'container-2',
+          containerNumber: 'MSCU7654321',
+          podLocationCode: 'ESBCN07',
+        },
+      ],
+      now: expect.any(Instant),
+    })
   })
 
   it('returns 204 when deleting an existing process and emits PROCESS_DELETED log', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        return createSummary(containerId, containerNumber, summary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
 
     const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     try {
-      const controllers = createControllers('Santos', getContainerSummaryMock)
+      const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
       const response = await controllers.deleteProcessById({ params: { id: 'process-1' } })
 
       expect(response.status).toBe(204)
@@ -712,14 +804,19 @@ describe('process controllers', () => {
         deleteProcess: deleteProcessSpy,
       },
       trackingUseCases: {
-        getContainerSummary: vi.fn<GetContainerSummaryMock>(
-          async (containerId: string, containerNumber: string) => {
-            return createSummary(
-              containerId,
-              containerNumber,
-              createTrackingOperationalSummaryFallback(false),
-            )
-          },
+        findContainersHotReadProjection: vi.fn<FindContainersHotReadProjectionMock>(async () =>
+          createHotReadProjection([
+            {
+              containerId: 'container-1',
+              containerNumber: 'MSCU1234567',
+              operational: createTrackingOperationalSummaryFallback(false),
+            },
+            {
+              containerId: 'container-2',
+              containerNumber: 'MSCU7654321',
+              operational: createTrackingOperationalSummaryFallback(false),
+            },
+          ]),
         ),
         getContainersSyncMetadata: vi.fn<GetContainersSyncMetadataMock>(async () => []),
       },
@@ -734,13 +831,23 @@ describe('process controllers', () => {
 
   it('returns /api/processes-v2 envelope with generated_at and unchanged process items', async () => {
     const summary = createTrackingOperationalSummaryFallback(false)
-    const getContainerSummaryMock = vi.fn<GetContainerSummaryMock>(
-      async (containerId: string, containerNumber: string) => {
-        return createSummary(containerId, containerNumber, summary)
-      },
+    const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
+      async () =>
+        createHotReadProjection([
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1234567',
+            operational: summary,
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU7654321',
+            operational: summary,
+          },
+        ]),
     )
 
-    const controllers = createControllers('Santos', getContainerSummaryMock)
+    const controllers = createControllers('Santos', findContainersHotReadProjectionMock)
 
     const response = await controllers.listProcessesV2()
     const body = ProcessesV2ResponseSchema.parse(await response.json())

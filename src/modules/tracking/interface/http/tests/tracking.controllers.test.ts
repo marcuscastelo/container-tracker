@@ -67,6 +67,11 @@ function createControllers(options?: {
     observationRepository: {
       insertMany: vi.fn(async () => []),
       findAllByContainerId: findAllObservationsByContainerId,
+      findAllByContainerIds: vi.fn(async (containerIds: readonly string[]) =>
+        containerIds.flatMap(
+          (containerId) => options?.observationsByContainerId?.get(containerId) ?? [],
+        ),
+      ),
       findById: findObservationById,
       findFingerprintsByContainerId: vi.fn(async () => new Set<string>()),
       listSearchObservations: vi.fn(async () => []),
@@ -75,6 +80,10 @@ function createControllers(options?: {
       insertMany: vi.fn(async () => []),
       listActiveAlertReadModel: vi.fn(async () => []),
       findActiveByContainerId,
+      findActiveByContainerIds: vi.fn(async (containerIds: readonly string[]) => {
+        const requestedIds = new Set(containerIds)
+        return (options?.activeAlerts ?? []).filter((alert) => requestedIds.has(alert.container_id))
+      }),
       findByContainerId: vi.fn(async () => []),
       findAlertDerivationStateByContainerId: vi.fn(async () => []),
       findContainerNumbersByIds,

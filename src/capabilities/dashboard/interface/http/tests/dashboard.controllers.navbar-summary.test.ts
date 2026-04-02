@@ -5,6 +5,10 @@ import { NavbarAlertsSummaryResponseSchema } from '~/shared/api-schemas/dashboar
 import { temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 describe('dashboard controllers - navbar message contract behavior', () => {
+  function createNavbarSummaryRequest(): Request {
+    return new Request('http://localhost/api/alerts/navbar-summary')
+  }
+
   it('returns navbar alerts summary grouped by process and container', async () => {
     const navbarSummary: NavbarAlertsSummaryReadModel = {
       totalActiveAlerts: 2,
@@ -61,7 +65,9 @@ describe('dashboard controllers - navbar message contract behavior', () => {
       getNavbarAlertsSummaryReadModel: async () => navbarSummary,
     })
 
-    const response = await controllers.getNavbarAlertsSummary()
+    const response = await controllers.getNavbarAlertsSummary({
+      request: createNavbarSummaryRequest(),
+    })
     const body = NavbarAlertsSummaryResponseSchema.parse(await response.json())
 
     expect(response.status).toBe(200)

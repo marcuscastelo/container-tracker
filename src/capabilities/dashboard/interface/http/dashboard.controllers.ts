@@ -193,6 +193,7 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
       {
         endpoint: '/api/dashboard/operational-summary',
         projection: 'DashboardOperationalSummaryResponse',
+        readStrategy: 'tracking.hot_read_projection.dashboard_operational_summary',
         triggeredBy: readAuditedTriggerSource(request),
       },
       async () => {
@@ -213,15 +214,29 @@ export function createDashboardControllers(deps: DashboardControllersDeps) {
     )
   }
 
-  async function getNavbarAlertsSummary(): Promise<Response> {
-    try {
-      const result = await dashboardUseCases.getNavbarAlertsSummaryReadModel()
-      const response = toNavbarAlertsSummaryResponse(result)
-      return jsonResponse(response, 200, NavbarAlertsSummaryResponseSchema)
-    } catch (err) {
-      console.error('GET /api/alerts/navbar-summary error:', err)
-      return mapErrorToResponse(err)
-    }
+  async function getNavbarAlertsSummary({
+    request,
+  }: {
+    readonly request: Request
+  }): Promise<Response> {
+    return runWithReadRequestAudit(
+      {
+        endpoint: '/api/alerts/navbar-summary',
+        projection: 'NavbarAlertsSummaryResponse',
+        readStrategy: 'tracking.operational_summary_projection.navbar_alerts',
+        triggeredBy: readAuditedTriggerSource(request),
+      },
+      async () => {
+        try {
+          const result = await dashboardUseCases.getNavbarAlertsSummaryReadModel()
+          const response = toNavbarAlertsSummaryResponse(result)
+          return jsonResponse(response, 200, NavbarAlertsSummaryResponseSchema)
+        } catch (err) {
+          console.error('GET /api/alerts/navbar-summary error:', err)
+          return mapErrorToResponse(err)
+        }
+      },
+    )
   }
 
   async function getKpis(): Promise<Response> {

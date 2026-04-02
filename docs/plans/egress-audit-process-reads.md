@@ -2,18 +2,20 @@
 
 ## Status
 
-- Created before contract refactor work, per initiative rule.
-- Baseline source for this first pass is a structural audit of the current code path plus the shared request/DB observability added in the same branch.
-- Runtime samples should be captured from the new audited logs for at least 10 representative requests per endpoint after this branch is deployed to a dev environment with live data.
+- Follow-up complete: the legacy per-container summary fallback has been removed from the audited hot paths.
+- This document now reflects the canonical post-refactor read paths plus the shared request/DB observability emitted by this branch.
+- Runtime samples should be captured from the audited logs for at least 10 representative requests per endpoint after this branch is deployed to a dev environment with live data.
 
 ## Scope
 
 Audited hot endpoints:
 
 - `GET /api/processes/:id`
+- `GET /api/processes/:id/sync-state`
 - `GET /api/processes`
 - `GET /api/processes/sync-status`
 - `GET /api/dashboard/operational-summary`
+- `GET /api/alerts/navbar-summary`
 
 ## Method
 
@@ -21,28 +23,33 @@ Audited hot endpoints:
 
 - `GET /api/processes/:id`
   - `process.controllers.ts` loads the process + containers, then delegates to `resolveProcessDetailTracking`.
-  - `resolveProcessDetailTracking` calls `trackingUseCases.getContainerSummary(...)` once per container.
-  - Each per-container summary loads full observation history, alert history, and may trigger snapshot enrichment.
-  - Response includes observations, timeline series history, alert archive, and sync metadata in one payload.
+  - `resolveProcessDetailTracking` now calls `trackingUseCases.findContainersHotReadProjection(...)` once for the full container set.
+  - The canonical hot-read projection batches observation and active-alert reads, then derives lean operational state from those projections only.
+  - Response stays first-paint sized: no inline raw observations, no recognized alert archive, and no full `series_history` payload by default.
+- `GET /api/processes/:id/sync-state`
+  - Uses the same lean process/container fetch with sync metadata only.
+  - Read audit identifies this path separately as `tracking.hot_read_projection.process_sync_snapshot`.
 - `GET /api/processes`
   - `list-processes-with-operational-summary.usecase.ts` loads all processes + containers.
-  - It then calls `trackingUseCases.getContainerSummary(...)` once per container to build dashboard summaries.
-  - Current response is summary-sized, but backend read cost scales with full observation history per container.
+  - It then calls `trackingUseCases.findContainersHotReadProjection(...)` once for all containers in scope.
+  - Process summaries are aggregated from the lean batch projection only; there is no per-container fallback branch left in the hot path.
 - `GET /api/processes/sync-status`
   - Already relatively lean at the HTTP layer.
-  - This endpoint is a candidate for heavier use during reconciliation because its response is small and operational-only.
+  - This endpoint is the preferred reconciliation path for dashboard/process sync visibility.
 - `GET /api/dashboard/operational-summary`
   - Depends on aggregated process/tracking operational read models.
-  - This is less payload-heavy than shipment detail, but it is a hot dashboard read and should still emit the same audit metrics.
+  - This hot dashboard read now emits the same `read_strategy` and `query_operations` audit fields as the other audited routes.
+- `GET /api/alerts/navbar-summary`
+  - Uses `trackingUseCases.findContainersOperationalSummaryProjection(...)` to read active-alert summary state in batch.
+  - This endpoint no longer depends on the legacy `getContainersSummary(...)` loop for its hot navbar payload.
 
-### Current hot-read anti-patterns
+### Canonical hot-read guardrails
 
-- Per-container `getContainerSummary(...)` fan-out from process detail.
-- Per-container `getContainerSummary(...)` fan-out from dashboard process list.
-- `select('*')` in hot observation and alert reads.
-- Hot path loads acknowledged / recognized alert history even when first paint only uses active incidents.
-- Hot path ships raw observations and full `series_history` even though history/inspection are modal flows.
-- Snapshot-based carrier-label enrichment can trigger extra reads on detail loads.
+- No per-container `getContainerSummary(...)` fan-out in process detail, process list, dashboard operational summary, or navbar active-alert summary.
+- No `if batch missing -> per-container` rescue branch inside the canonical tracking hot-read projection.
+- Hot observation and alert repositories use explicit column projections instead of `select('*')`.
+- Hot paths keep recognized/archive incidents, observation inspection, and timeline history on lazy/on-demand endpoints.
+- Runtime proof comes from `[read_audit]` `read_strategy` plus aggregated `query_operations`, making fallback reintroduction visible.
 
 ## Section A — Hot Endpoints Ranked By Estimated DB Cost
 
@@ -53,22 +60,21 @@ Audited hot endpoints:
   - 1 process read
   - 1 container list read
   - 1 sync metadata read
-  - `N` full observation-history reads
-  - `N` alert-history reads
-  - optional snapshot enrichment reads
-  - timeline/status/operational derivation repeated per container after full-history load
+  - 1 batch observation read for the requested container set
+  - 1 batch active-alert read for the requested container set
+  - timeline/status/operational derivation once from the batch projection
 - Trigger sources:
   - initial shipment load
   - shipment refetch after sync / refresh
   - manual reload
-  - shipment prefetch
+  - shipment intent prefetch
 
 ### 2. `GET /api/processes`
 
-- Estimated DB cost rank: `very high`
+- Estimated DB cost rank: `high`
 - Why:
-  - process list response is lean, but backend currently loads full tracking history for each container in the dashboard result set
-  - cost scales with visible and non-visible rows because aggregation happens before pagination/render concerns
+  - process list response is lean and now uses a single batch hot-read projection for all containers in scope
+  - cost still scales with result-set size, but no longer with per-container historical fan-out
 - Trigger sources:
   - dashboard first load
   - dashboard manual refresh
@@ -83,87 +89,100 @@ Audited hot endpoints:
   - payload is smaller than shipment detail, but frequency is high on dashboard visits
   - still important for instrumentation because it participates in dashboard refresh flows
 
-### 4. `GET /api/processes/sync-status`
+### 4. `GET /api/alerts/navbar-summary`
+
+- Estimated DB cost rank: `medium-low`
+- Why:
+  - summary-shaped navbar payload
+  - reads operational state from a batch projection instead of per-container summary fan-out
+  - participates in the same dashboard visitation cadence as other hot summary reads
+
+### 5. `GET /api/processes/:id/sync-state`
+
+- Estimated DB cost rank: `low`
+- Why:
+  - uses the same lean process/container fetch with sync metadata only
+  - designed specifically to replace heavyweight reconciliation reloads
+
+### 6. `GET /api/processes/sync-status`
 
 - Estimated DB cost rank: `low`
 - Why:
   - operational sync-state read already has a compact contract
-  - should become the preferred reconciliation path for dashboard/process sync visibility
+  - should remain the preferred reconciliation path for dashboard/process sync visibility
 
 ## Section B — Payload Sections Ranked By Response Bytes
 
 ### 1. `containers[].observations`
 
-- Always loaded in shipment detail today.
-- High duplication of location/vessel/provider metadata across full history.
-- Not directly visible in first paint; only observation inspector needs the full row.
+- Removed from the hot shipment detail contract.
+- Observation inspector remains the owner of full observation-row drill-down.
 
 ### 2. `containers[].timeline[].series_history`
 
-- Dense historical payload embedded inside every primary timeline item.
-- First paint only needs main timeline primaries.
-- Prediction history is a modal flow and should be lazy.
+- Removed from first paint.
+- Timeline history now belongs to the lazy history endpoint.
 
 ### 3. `alert_incidents.recognized`
 
-- Historical / archive data.
-- Currently shipped with hot detail even though it is rendered in a collapsed section.
+- Removed from hot detail.
+- Recognized/archive incidents now live behind `GET /api/processes/:id/alerts/recognized`.
 
 ### 4. `alerts`
 
-- Current shipment response ships process-level alert list and then also ships incident-oriented grouping.
-- The default panel is action-oriented; hot path should keep only active alert rows needed for visible rendering and highlighting.
+- Hot detail keeps only the active/visible alert state needed for rendering and highlighting.
+- Archive/recognized history no longer inflates the default payload.
 
 ### 5. Snapshot-enriched observation fields
 
-- Carrier label enrichment can force additional reads that do not change first-paint understanding for most shipment views.
-- This belongs in observation-inspector diagnostics, not in the hot path.
+- Kept out of the hot path unless explicitly requested by a drill-down flow.
+- This avoids extra reads that do not change first-paint understanding.
 
-## Section C — Clear Waste Candidates
+## Section C — Eliminated Waste Candidates
 
-### Candidate 1 — Shipment detail loads raw observations for every container
+### Candidate 1 — Shipment detail no longer loads raw observations for every container on first paint
 
-- Loaded always but not visible initially.
-- Loaded from DB, then condensed into a smaller visible timeline + status summary.
-- Repeated across post-mutation refetches and prefetches.
+- Raw observations were removed from the first-paint response contract.
+- Observation inspection remains available through the lazy detail endpoint.
 
-### Candidate 2 — Shipment detail ships `series_history` inline
+### Candidate 2 — Shipment detail no longer ships `series_history` inline by default
 
-- Heavy history content embedded in every timeline primary.
-- Only needed after explicit user intent.
+- Heavy timeline history moved to the lazy history endpoint.
+- Hot detail only carries lean timeline primaries plus `has_series_history`.
 
-### Candidate 3 — Shipment detail loads recognized / archive incidents by default
+### Candidate 3 — Shipment detail no longer loads recognized / archive incidents by default
 
-- Collapsed by default in UI.
-- Historical and secondary, not first-paint essential.
+- Recognized/archive incidents moved to `GET /api/processes/:id/alerts/recognized`.
+- Hot detail only includes active/visible alert state.
 
-### Candidate 4 — Dashboard process list derives summary by loading full tracking history per container
+### Candidate 4 — Dashboard process list no longer derives summary by loading full tracking history per container
 
-- DB-heavy even though HTTP payload is already summary-shaped.
-- Clear example of “load history then compress in memory”.
+- The process list now uses a single batch canonical projection.
+- There is no remaining per-container fallback branch in the hot summary path.
 
-### Candidate 5 — Snapshot enrichment on the hot path
+### Candidate 5 — Navbar active-alert summary no longer loops over legacy per-container summaries
 
-- Extra DB reads for audit/UI context that is only needed in drill-down.
+- The navbar summary now reads `findContainersOperationalSummaryProjection(...)` in batch.
+- Active alerts stay summary-shaped at the backend and at the HTTP boundary.
 
 ### Candidate 6 — Viewport-driven shipment-detail prefetch
 
-- Multiplies calls to the heaviest endpoint during dashboard scrolling.
-- Waste compounds with the current universal process detail contract.
+- Removed from dashboard scrolling behavior.
+- Intent-based prefetch remains the only supported prefetch strategy.
 
-## Representative Baseline Request Matrix
+## Representative Request Matrix
 
 These are the request classes that must be sampled from the new logs:
 
 1. Shipment detail first load
 2. Shipment detail after manual refresh enqueue
 3. Shipment detail after sync completion reconciliation
-4. Dashboard first load
-5. Dashboard realtime reconciliation
-6. Dashboard manual refresh
-7. Dashboard -> shipment intent prefetch
-8. Shipment tab/container switch
-9. Active alerts panel open on shipment view
+4. Shipment sync-state snapshot check
+5. Dashboard first load
+6. Dashboard realtime reconciliation
+7. Dashboard manual refresh
+8. Dashboard -> shipment intent prefetch
+9. Navbar active-alert summary load
 10. Prediction history / observation inspector expansion
 
 ## Measurement Fields To Capture From Logs
@@ -171,18 +190,20 @@ These are the request classes that must be sampled from the new logs:
 - endpoint name
 - request id
 - projection/read-model name
+- read strategy
 - trigger source
 - response bytes
 - total DB time
 - query count
+- query operations
 - estimated rows returned
 - estimated rows read
 - touched tables
 
-## Initial Decision
+## Current Canonical Decision
 
-Top three waste sources for this implementation pass:
+The hot path is now intentionally split into one canonical batch strategy per surface:
 
-1. Shipment detail over-reads observation and alert history.
-2. Dashboard list uses per-container full-history tracking reads.
-3. Shipment/dashboard reconciliation paths overuse heavyweight reads or prefetches.
+1. `findContainersHotReadProjection(...)` for process detail, process list aggregation, and process sync snapshot support.
+2. `findContainersOperationalSummaryProjection(...)` for navbar active-alert summary.
+3. Lazy/on-demand endpoints for recognized archive, observation inspection, and timeline history.

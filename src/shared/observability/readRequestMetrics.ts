@@ -14,6 +14,7 @@ type ReadRequestMetricContext = {
   readonly requestId: string
   readonly endpoint: string
   readonly projection: string
+  readonly readStrategy: string | null
   readonly triggeredBy: string | null
   readonly startedAtMs: number
   responseBytes: number | null
@@ -24,6 +25,7 @@ type ReadRequestMetricContext = {
 type ReadRequestAuditMeta = {
   readonly endpoint: string
   readonly projection: string
+  readonly readStrategy?: string | null
   readonly triggeredBy?: string | null
 }
 
@@ -50,6 +52,9 @@ function toEstimatedBytes(value: unknown): number {
 
 function flushReadRequestMetric(context: ReadRequestMetricContext): void {
   const touchedTables = Array.from(new Set(context.queryMetrics.map((metric) => metric.table)))
+  const queryOperations = Array.from(
+    new Set(context.queryMetrics.map((metric) => `${metric.table}.${metric.operation}`)),
+  )
   const totalDbTimeMs = context.queryMetrics.reduce((total, metric) => total + metric.durationMs, 0)
   const estimatedRowsReturned = context.queryMetrics.reduce(
     (total, metric) => total + metric.rowsReturned,
@@ -71,11 +76,13 @@ function flushReadRequestMetric(context: ReadRequestMetricContext): void {
       request_id: context.requestId,
       endpoint: context.endpoint,
       projection: context.projection,
+      read_strategy: context.readStrategy,
       triggered_by: context.triggeredBy,
       duration_ms: durationMs,
       response_bytes: context.responseBytes,
       response_status: context.responseStatus,
       query_count: context.queryMetrics.length,
+      query_operations: queryOperations,
       db_time_ms: Math.round(totalDbTimeMs * 100) / 100,
       estimated_rows_returned: estimatedRowsReturned,
       estimated_rows_read: estimatedRowsRead,
@@ -93,6 +100,7 @@ export async function runWithReadRequestAudit<T>(
     requestId: randomUUID(),
     endpoint: meta.endpoint,
     projection: meta.projection,
+    readStrategy: meta.readStrategy ?? null,
     triggeredBy: meta.triggeredBy ?? null,
     startedAtMs: performance.now(),
     responseBytes: null,

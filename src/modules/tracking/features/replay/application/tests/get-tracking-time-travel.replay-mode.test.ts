@@ -26,6 +26,7 @@ function createNoopDeps(): TrackingUseCasesDeps {
     observationRepository: {
       insertMany: async () => [],
       findAllByContainerId: async () => [],
+      findAllByContainerIds: async () => [],
       findFingerprintsByContainerId: async () => new Set<string>(),
       listSearchObservations: async () => [],
     },
@@ -33,6 +34,7 @@ function createNoopDeps(): TrackingUseCasesDeps {
       insertMany: async () => [],
       listActiveAlertReadModel: async () => [],
       findActiveByContainerId: async () => [],
+      findActiveByContainerIds: async () => [],
       findByContainerId: async () => [],
       findAlertDerivationStateByContainerId: async () => [],
       findContainerNumbersByIds: async () => new Map<string, string>(),

@@ -169,7 +169,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       }),
     ]
 
-    const getContainersSummary: DashboardNavbarAlertsReadModelDeps['trackingUseCases']['getContainersSummary'] =
+    const findContainersOperationalSummaryProjection: DashboardNavbarAlertsReadModelDeps['trackingUseCases']['findContainersOperationalSummaryProjection'] =
       vi.fn(async () => {
         const summaries = new Map<string, TrackingOperationalSummary>([
           [
@@ -228,7 +228,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       },
       trackingUseCases: {
         listActiveAlertReadModel: vi.fn(async () => ({ alerts })),
-        getContainersSummary,
+        findContainersOperationalSummaryProjection,
       },
     })
 
@@ -249,18 +249,18 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       'container-warn-2',
     ])
     expect(result.processes[1]?.routeSummary).toBe('Santos → Hamburg')
-    expect(getContainersSummary).toHaveBeenCalledTimes(1)
+    expect(findContainersOperationalSummaryProjection).toHaveBeenCalledTimes(1)
   })
 
   it('returns empty summary and skips container summary when no active alerts exist', async () => {
-    const getContainersSummary = vi.fn(async () => new Map())
+    const findContainersOperationalSummaryProjection = vi.fn(async () => new Map())
     const useCase = createDashboardNavbarAlertsReadModelUseCase({
       processUseCases: {
         listProcessesWithOperationalSummary: vi.fn(async () => ({ processes: [] })),
       },
       trackingUseCases: {
         listActiveAlertReadModel: vi.fn(async () => ({ alerts: [] })),
-        getContainersSummary,
+        findContainersOperationalSummaryProjection,
       },
     })
 
@@ -268,6 +268,6 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
       totalActiveAlerts: 0,
       processes: [],
     })
-    expect(getContainersSummary).not.toHaveBeenCalled()
+    expect(findContainersOperationalSummaryProjection).not.toHaveBeenCalled()
   })
 })

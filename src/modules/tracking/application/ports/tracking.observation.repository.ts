@@ -17,7 +17,7 @@ export type ObservationRepository = {
   findAllByContainerId(containerId: string): Promise<readonly Observation[]>
 
   /** Fetch all observations for many containers, ordered by container + chronology. */
-  findAllByContainerIds?(containerIds: readonly string[]): Promise<readonly Observation[]>
+  findAllByContainerIds(containerIds: readonly string[]): Promise<readonly Observation[]>
 
   /** Fetch a single observation by container ownership. */
   findById?(containerId: string, observationId: string): Promise<Observation | null>

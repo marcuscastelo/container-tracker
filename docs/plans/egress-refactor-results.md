@@ -6,10 +6,12 @@
 - Baseline audit artifact exists at `docs/plans/egress-audit-process-reads.md`.
 - Shared read instrumentation is now wired for:
   - `GET /api/processes/:id`
-  - `GET /api/processes`
   - `GET /api/processes/:id/sync-state`
+  - `GET /api/processes`
   - `GET /api/processes/sync-status`
   - `GET /api/dashboard/operational-summary`
+  - `GET /api/alerts/navbar-summary`
+- `[read_audit]` now records the canonical `read_strategy` and aggregated `query_operations` for each audited hot request.
 - Live DB-egress comparison is still required in a dev/staging environment with real data. This branch now emits the logs needed for that comparison.
 
 ## What Changed
@@ -42,11 +44,11 @@
 
 ### Backend read-model/query changes
 
-- Added batch lean tracking projections for process detail and dashboard aggregation.
+- Added canonical batch tracking projections for process detail, process list aggregation, dashboard operational summary, and navbar active-alert summary.
 - Added lazy detail use cases for recognized incidents, series history, and observation inspector flows.
 - Replaced hot-path `select('*')` reads with explicit projections for observations and alerts.
-- Dashboard list aggregation no longer depends on per-container full-history shaping for its hot summary path.
-- Legacy per-container fallback still exists as a safety net, but it now uses active-alert semantics only and reuses the incident read model instead of returning empty archive state.
+- Removed the legacy per-container fallback from process detail, dashboard list aggregation, and the tracking batch projection itself.
+- Dashboard list aggregation and navbar active-alert summary now read summary-shaped batch projections directly instead of loading full history and compressing it in memory.
 
 ### Frequency reduction
 
@@ -91,14 +93,33 @@ These numbers come from deterministic controller tests on this branch. They are 
 3. Sync reconciliation is now snapshot-first, with full detail reload gated by `tracking_freshness_token`.
 4. Dashboard realtime sync no longer forces a full process-list refetch on every terminal event.
 5. Hot observation/alert repositories now use explicit column selection, preserving the egress-first query-shaping goal.
+6. No audited hot endpoint silently falls back to per-container summary fan-out anymore.
+
+## Fallback Elimination
+
+- Removed the legacy fallback chain from:
+  - process detail hot reads
+  - process list operational summary aggregation
+  - tracking batch hot-read projection internals
+- Migrated hot callers to the canonical batch-only entry points:
+  - `findContainersHotReadProjection(...)`
+  - `findContainersOperationalSummaryProjection(...)`
+- Kept `getContainerSummary(...)` only for non-hot callers such as export/import and replay-oriented flows.
+- Made batch repository methods mandatory for hot reads:
+  - `ObservationRepository.findAllByContainerIds(...)`
+  - `TrackingAlertRepository.findActiveByContainerIds(...)`
+- Extended runtime proof via `[read_audit]` so hot requests now identify the canonical strategy used:
+  - `tracking.hot_read_projection.process_detail`
+  - `tracking.hot_read_projection.process_sync_snapshot`
+  - `tracking.hot_read_projection.dashboard_operational_summary`
+  - `tracking.operational_summary_projection.navbar_alerts`
+  - `sync.status_projection`
 
 ## Remaining Hotspots
 
 1. Live DB byte-read / rows-read validation is still pending.
    - The instrumentation is shipped, but representative runtime samples still need to be collected from a non-mocked environment.
-2. The legacy per-container summary fallback still exists.
-   - It is safer than before, but the lean batch projection should remain the preferred path everywhere.
-3. Full repo `pnpm check` is still blocked by unrelated workspace issues.
+2. Full repo `pnpm check` is still blocked by unrelated workspace issues.
    - Current known unrelated failures include:
      - `dep-graph.html` max-size check
      - `dep-graph.json` formatting
@@ -117,6 +138,7 @@ These numbers come from deterministic controller tests on this branch. They are 
 - `pnpm exec vitest run src/modules/process/interface/http/tests/process.controllers.test.ts src/capabilities/dashboard/interface/http/tests/dashboard.controllers.operational-summary.test.ts src/modules/process/features/operational-projection/application/tests/aggregateOperationalSummary.test.ts src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts src/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource.test.ts src/modules/tracking/interface/http/tests/tracking.controllers.test.ts`
 - `pnpm exec vitest run src/modules/process/ui/tests/fetchProcess.cache.test.ts src/modules/process/ui/mappers/tests/processDetail.arrived-status.ui-mapper.test.ts src/modules/process/ui/mappers/tests/containerSummary.ui-mapper.test.ts src/modules/process/ui/screens/shipment/lib/shipmentAlertNavigation.test.ts`
 - `pnpm exec vitest run src/modules/tracking/features/replay/application/tests/tracking-time-travel.readmodel.test.ts src/modules/tracking/application/projection/tests/voyageSegments.test.ts src/modules/process/ui/timeline/tests/timelineBlockModel.test.ts src/modules/process/ui/utils/tests/current-tracking-context.test.ts`
+- `pnpm exec vitest run src/modules/process/interface/http/tests/process.controllers.test.ts src/modules/process/application/usecases/tests/list-processes-with-operational-summary.usecase.test.ts src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts src/modules/tracking/application/usecases/tests/find-containers-operational-summary-projection.usecase.test.ts src/capabilities/dashboard/application/tests/dashboard.navbar-alerts.readmodel.test.ts src/capabilities/dashboard/application/tests/dashboard.operational-summary.readmodel.integration.test.ts src/capabilities/dashboard/interface/http/tests/dashboard.controllers.operational-summary.test.ts src/capabilities/dashboard/interface/http/tests/dashboard.controllers.navbar-summary.test.ts src/capabilities/sync/interface/http/tests/sync-status.controllers.test.ts`
 
 ## Follow-Up Required For Completion Of The Audit Loop
 
@@ -124,7 +146,9 @@ These numbers come from deterministic controller tests on this branch. They are 
 2. Capture at least 10 requests per audited endpoint from `[read_audit]` logs.
 3. Fill in before/after live numbers for:
    - response bytes
+   - read strategy
    - query count
+   - query operations
    - DB time
    - estimated rows read / returned
    - estimated DB read bytes
