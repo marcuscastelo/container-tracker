@@ -2,6 +2,11 @@ import {
   deriveTrackingOperationalSummary,
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  collectSnapshotIdsForPilObservationEnrichment,
+  enrichPilObservationsFromSnapshots,
+  loadSnapshotsForPilObservationEnrichment,
+} from '~/modules/tracking/application/usecases/pil-observation-read-enrichment'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import {
   computeFingerprint,
@@ -163,22 +168,12 @@ function enrichCarrierLabelsFromSnapshots(
   return hasChanges ? enriched : observations
 }
 
-async function loadSnapshotsForCarrierLabelEnrichment(
+async function loadSnapshotsForObservationEnrichment(
   deps: TrackingUseCasesDeps,
   containerId: string,
   snapshotIds: readonly string[],
 ): Promise<readonly Snapshot[]> {
-  if (snapshotIds.length === 0) return []
-
-  if (deps.snapshotRepository.findByIds) {
-    return deps.snapshotRepository.findByIds(containerId, snapshotIds)
-  }
-
-  const allSnapshots = await deps.snapshotRepository.findAllByContainerId(containerId)
-  if (allSnapshots.length === 0) return allSnapshots
-
-  const neededSnapshotIds = new Set(snapshotIds)
-  return allSnapshots.filter((snapshot) => neededSnapshotIds.has(snapshot.id))
+  return loadSnapshotsForPilObservationEnrichment(deps, containerId, snapshotIds)
 }
 
 async function loadContainerAlerts(
@@ -230,13 +225,20 @@ export async function getContainerSummary(
   ])
 
   const snapshotIdsToEnrich = collectSnapshotIdsForCarrierLabelEnrichment(observationsRaw)
-  const observations =
-    snapshotIdsToEnrich.length > 0
-      ? enrichCarrierLabelsFromSnapshots(
-          observationsRaw,
-          await loadSnapshotsForCarrierLabelEnrichment(deps, cmd.containerId, snapshotIdsToEnrich),
-        )
-      : observationsRaw
+  const pilSnapshotIdsToEnrich = collectSnapshotIdsForPilObservationEnrichment(observationsRaw)
+  const snapshotIds = [...new Set([...snapshotIdsToEnrich, ...pilSnapshotIdsToEnrich])]
+  const snapshots =
+    snapshotIds.length > 0
+      ? await loadSnapshotsForObservationEnrichment(deps, cmd.containerId, snapshotIds)
+      : []
+
+  let observations = observationsRaw
+  if (snapshots.length > 0 && snapshotIdsToEnrich.length > 0) {
+    observations = enrichCarrierLabelsFromSnapshots(observations, snapshots)
+  }
+  if (snapshots.length > 0 && pilSnapshotIdsToEnrich.length > 0) {
+    observations = enrichPilObservationsFromSnapshots(observations, snapshots)
+  }
 
   const timeline = deriveTimeline(cmd.containerId, cmd.containerNumber, observations, referenceNow)
   const status = deriveStatus(timeline)

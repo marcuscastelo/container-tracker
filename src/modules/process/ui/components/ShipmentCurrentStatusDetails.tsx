@@ -2,11 +2,6 @@ import type { JSX } from 'solid-js'
 import { createMemo, Show } from 'solid-js'
 import { toContainerSyncLabel } from '~/modules/process/ui/mappers/containerSync.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
-import {
-  deriveCurrentLocationFromTimeline,
-  deriveCurrentVesselFromTimeline,
-  shouldHideCurrentVesselForCompletedLeg,
-} from '~/modules/process/ui/utils/current-tracking-context'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import type { Instant } from '~/shared/time/instant'
@@ -35,14 +30,10 @@ export function ShipmentCurrentStatusDetails(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const unknown = () => t(keys.shipmentView.currentStatus.unknown)
   const vesselNotApplicable = () => t(keys.shipmentView.currentStatus.vesselNotApplicable)
-
-  const currentVessel = createMemo(() => deriveCurrentVesselFromTimeline(props.container.timeline))
-  const currentLocation = createMemo(() =>
-    deriveCurrentLocationFromTimeline(props.container.timeline),
-  )
-  const hideCurrentVessel = createMemo(() =>
-    shouldHideCurrentVesselForCompletedLeg(props.container.timeline),
-  )
+  const currentLocation = () =>
+    props.container.currentContext.locationDisplay ?? props.container.currentContext.locationCode
+  const currentVessel = () => props.container.currentContext.vesselName
+  const hideCurrentVessel = () => props.container.currentContext.vesselVisible === false
 
   const syncLabel = createMemo(() =>
     toContainerSyncLabel(

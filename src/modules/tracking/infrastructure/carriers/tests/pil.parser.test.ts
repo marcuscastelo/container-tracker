@@ -12,6 +12,9 @@ describe('parsePilTrackingPayload', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
+    if (result.value.summary === null) {
+      throw new Error('Expected PIL summary block')
+    }
 
     expect(result.value.containerNumber).toBe(PIL_SAMPLE_CONTAINER_NUMBER)
     expect(result.value.summary).toEqual({
@@ -19,9 +22,11 @@ describe('parsePilTrackingPayload', () => {
       rawLoadPortCode: 'CNTAO',
       rawNextLocationCode: 'BRSSZ',
       rawNextLocationDateText: '23-Apr-2026',
+      nextLocationDate: expect.any(Object),
       rawVessel: 'CMA CGM KRYPTON',
       rawVoyage: 'VCGK0001W',
     })
+    expect(temporalCanonicalText(result.value.summary.nextLocationDate)).toBe('2026-04-23')
     expect(result.value.detailedEvents).toHaveLength(6)
 
     const gateOut = result.value.detailedEvents[0]

@@ -400,6 +400,32 @@ function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
   }
 }
 
+function toOperationalCurrentContextResponse(
+  currentContext: TrackingOperationalSummary['currentContext'],
+) {
+  return {
+    location_code: currentContext.locationCode,
+    location_display: currentContext.locationDisplay,
+    vessel_name: currentContext.vesselName,
+    voyage: currentContext.voyage,
+    vessel_visible: currentContext.vesselVisible,
+  }
+}
+
+function toOperationalNextLocationResponse(
+  nextLocation: TrackingOperationalSummary['nextLocation'],
+) {
+  if (!nextLocation) return null
+
+  return {
+    event_time: nextLocation.eventTime,
+    event_time_type: nextLocation.eventTimeType,
+    type: nextLocation.type,
+    location_code: nextLocation.locationCode,
+    location_display: nextLocation.locationDisplay,
+  }
+}
+
 const PROCESS_ETA_COMPARE_OPTIONS = {
   timezone: 'UTC',
   strategy: 'start-of-day',
@@ -445,6 +471,8 @@ function toContainerOperationalResponse(summary: TrackingOperationalSummary) {
       const bucket = summary.lifecycleBucket ?? 'pre_arrival'
       return summary.etaApplicable ?? bucket === 'pre_arrival'
     })(),
+    current_context: toOperationalCurrentContextResponse(summary.currentContext),
+    next_location: toOperationalNextLocationResponse(summary.nextLocation),
     transshipment: toOperationalTransshipmentResponse(summary.transshipment),
     data_issue: summary.dataIssue,
   }

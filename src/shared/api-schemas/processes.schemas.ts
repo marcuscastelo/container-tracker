@@ -222,6 +222,22 @@ const OperationalEtaResponseSchema = z.object({
   location_display: z.string().nullable(),
 })
 
+const OperationalCurrentContextResponseSchema = z.object({
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+  vessel_name: z.string().nullable(),
+  voyage: z.string().nullable(),
+  vessel_visible: z.boolean(),
+})
+
+const OperationalNextLocationResponseSchema = z.object({
+  event_time: TemporalValueDtoSchema,
+  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+  type: z.string(),
+  location_code: z.string().nullable(),
+  location_display: z.string().nullable(),
+})
+
 const OperationalTransshipmentPortResponseSchema = z.object({
   code: z.string(),
   display: z.string().nullable(),
@@ -240,6 +256,8 @@ const ContainerOperationalResponseSchema = z.object({
   lifecycle_bucket: z
     .enum(['pre_arrival', 'post_arrival_pre_delivery', 'final_delivery'])
     .optional(),
+  current_context: OperationalCurrentContextResponseSchema,
+  next_location: OperationalNextLocationResponseSchema.nullable(),
   transshipment: OperationalTransshipmentResponseSchema,
   data_issue: z.boolean().optional(),
 })

@@ -39,6 +39,14 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
       date: '2026-03-10',
     },
     selectedEtaVm: null,
+    currentContext: {
+      locationCode: null,
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    },
+    nextLocation: null,
     tsChipVm: {
       visible: false,
       count: 0,

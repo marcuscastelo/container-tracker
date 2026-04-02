@@ -1,3 +1,4 @@
+import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingAlertDisplayReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
@@ -181,6 +182,52 @@ function toTrackingOperationalEtaResponseDto(eta: TrackingTimeTravelCheckpoint['
   }
 }
 
+function toTrackingOperationalCurrentContextResponseDto(
+  currentContext: TrackingOperationalSummary['currentContext'],
+) {
+  return {
+    location_code: currentContext.locationCode,
+    location_display: currentContext.locationDisplay,
+    vessel_name: currentContext.vesselName,
+    voyage: currentContext.voyage,
+    vessel_visible: currentContext.vesselVisible,
+  }
+}
+
+function toTrackingOperationalNextLocationResponseDto(
+  nextLocation: TrackingOperationalSummary['nextLocation'],
+) {
+  if (nextLocation === null) return null
+
+  return {
+    event_time: nextLocation.eventTime,
+    event_time_type: nextLocation.eventTimeType,
+    type: nextLocation.type,
+    location_code: nextLocation.locationCode,
+    location_display: nextLocation.locationDisplay,
+  }
+}
+
+function toTrackingOperationalSummaryResponseDto(summary: TrackingOperationalSummary) {
+  return {
+    status: summary.status,
+    eta: toTrackingOperationalEtaResponseDto(summary.eta),
+    ...(summary.etaApplicable === undefined ? {} : { eta_applicable: summary.etaApplicable }),
+    ...(summary.lifecycleBucket === undefined ? {} : { lifecycle_bucket: summary.lifecycleBucket }),
+    current_context: toTrackingOperationalCurrentContextResponseDto(summary.currentContext),
+    next_location: toTrackingOperationalNextLocationResponseDto(summary.nextLocation),
+    transshipment: {
+      has_transshipment: summary.transshipment.hasTransshipment,
+      count: summary.transshipment.count,
+      ports: summary.transshipment.ports.map((port) => ({
+        code: port.code,
+        display: port.display,
+      })),
+    },
+    ...(summary.dataIssue === undefined ? {} : { data_issue: summary.dataIssue }),
+  }
+}
+
 function toTrackingTimeTravelDiffResponseDto(
   diff: TrackingTimeTravelDiff,
 ): TrackingTimeTravelDiffResponseDto {
@@ -221,6 +268,7 @@ function toTrackingTimeTravelCheckpointResponseDto(
     status: checkpoint.status,
     alerts: [...toReplayAlertsResponseDto(checkpoint.alerts, containerNumber)],
     eta: toTrackingOperationalEtaResponseDto(checkpoint.eta),
+    operational: toTrackingOperationalSummaryResponseDto(checkpoint.operational),
     diff_from_previous: toTrackingTimeTravelDiffResponseDto(checkpoint.diffFromPrevious),
     debug_available: true,
   }

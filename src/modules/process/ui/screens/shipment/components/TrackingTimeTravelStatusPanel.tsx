@@ -1,12 +1,7 @@
 import type { JSX } from 'solid-js'
-import { createMemo, Show } from 'solid-js'
+import { Show } from 'solid-js'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { TrackingTimeTravelSyncVM } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
-import {
-  deriveCurrentLocationFromTimeline,
-  deriveCurrentVesselFromTimeline,
-  shouldHideCurrentVesselForCompletedLeg,
-} from '~/modules/process/ui/utils/current-tracking-context'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
@@ -28,15 +23,6 @@ function StatusField(props: { readonly label: string; readonly value: JSX.Elemen
 
 export function TrackingTimeTravelStatusPanel(props: Props): JSX.Element {
   const { t, keys, locale } = useTranslation()
-  const currentVessel = createMemo(() =>
-    deriveCurrentVesselFromTimeline(props.selectedSync?.timeline ?? []),
-  )
-  const currentLocation = createMemo(() =>
-    deriveCurrentLocationFromTimeline(props.selectedSync?.timeline ?? []),
-  )
-  const hideCurrentVessel = createMemo(() =>
-    shouldHideCurrentVesselForCompletedLeg(props.selectedSync?.timeline ?? []),
-  )
 
   return (
     <Panel
@@ -82,16 +68,23 @@ export function TrackingTimeTravelStatusPanel(props: Props): JSX.Element {
 
             <StatusField
               label={t(keys.shipmentView.currentStatus.currentLocation)}
-              value={<span>{currentLocation() ?? t(keys.shipmentView.currentStatus.unknown)}</span>}
+              value={
+                <span>
+                  {sync().currentContext.locationDisplay ??
+                    sync().currentContext.locationCode ??
+                    t(keys.shipmentView.currentStatus.unknown)}
+                </span>
+              }
             />
 
             <StatusField
               label={t(keys.shipmentView.currentStatus.currentVessel)}
               value={
                 <span>
-                  {hideCurrentVessel()
+                  {sync().currentContext.vesselVisible === false
                     ? t(keys.shipmentView.currentStatus.vesselNotApplicable)
-                    : (currentVessel() ?? t(keys.shipmentView.currentStatus.unknown))}
+                    : (sync().currentContext.vesselName ??
+                      t(keys.shipmentView.currentStatus.unknown))}
                 </span>
               }
             />
