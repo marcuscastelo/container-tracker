@@ -58,6 +58,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
         <main class="relative mx-auto max-w-(--dashboard-container-max-width) px-[var(--dashboard-container-px)] pb-[var(--dashboard-container-py)] pt-6">
           <A
             href="/"
+            noScroll
             class="mb-3 inline-flex items-center gap-1.5 text-sm-ui text-text-muted transition-colors hover:text-foreground"
             onPointerEnter={triggerDashboardIntent}
             onFocusIn={triggerDashboardIntent}
@@ -76,6 +77,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
               <p class="text-tone-danger-fg">{t(keys.shipmentView.loadError)}</p>
               <A
                 href="/"
+                noScroll
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}
@@ -91,6 +93,7 @@ export function ShipmentScreenLayout(props: ShipmentScreenLayoutProps) {
               <p class="text-tone-danger-fg">{t(keys.shipmentView.notFound)}</p>
               <A
                 href="/"
+                noScroll
                 class="mt-4 inline-block text-sm-ui text-text-muted hover:text-foreground"
                 onPointerEnter={triggerDashboardIntent}
                 onFocusIn={triggerDashboardIntent}

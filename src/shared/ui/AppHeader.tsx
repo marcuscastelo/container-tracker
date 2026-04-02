@@ -40,6 +40,7 @@ function NavLink(props: {
     <A
       href={props.href}
       end={props.end}
+      noScroll={props.href === '/' && props.onIntent !== undefined}
       onPointerEnter={() => props.onIntent?.()}
       onFocusIn={() => props.onIntent?.()}
       onPointerDown={() => props.onIntent?.()}
@@ -62,6 +63,7 @@ function HeaderBrand(props: { readonly onDashboardIntent?: () => void }): JSX.El
   return (
     <A
       href="/"
+      noScroll={props.onDashboardIntent !== undefined}
       onPointerEnter={() => props.onDashboardIntent?.()}
       onFocusIn={() => props.onDashboardIntent?.()}
       onPointerDown={() => props.onDashboardIntent?.()}

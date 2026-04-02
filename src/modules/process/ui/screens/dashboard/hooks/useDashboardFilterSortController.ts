@@ -30,6 +30,7 @@ import { DASHBOARD_DEFAULT_SORT_SELECTION } from '~/modules/process/ui/viewmodel
 type DashboardFilterSortControllerResult = {
   readonly sortSelection: Accessor<DashboardSortSelection>
   readonly filterSelection: Accessor<DashboardFilterSelection>
+  readonly isHydrated: Accessor<boolean>
   readonly handleSortToggle: (field: DashboardSortField) => void
   readonly handleProviderFilterToggle: (provider: string) => void
   readonly handleStatusFilterToggle: (status: ProcessStatusCode) => void
@@ -45,10 +46,12 @@ export function useDashboardFilterSortController(): DashboardFilterSortControlle
   const [filterSelection, setFilterSelection] = createSignal<DashboardFilterSelection>(
     DASHBOARD_DEFAULT_FILTER_SELECTION,
   )
+  const [isHydrated, setIsHydrated] = createSignal(false)
 
   onMount(() => {
     setSortSelection(readDashboardSortFromLocalStorage())
     setFilterSelection(readDashboardFiltersFromLocalStorage())
+    setIsHydrated(true)
   })
 
   const persistDashboardFilters = (nextFilterSelection: DashboardFilterSelection) => {
@@ -86,6 +89,7 @@ export function useDashboardFilterSortController(): DashboardFilterSortControlle
   return {
     sortSelection,
     filterSelection,
+    isHydrated,
     handleSortToggle,
     handleProviderFilterToggle,
     handleStatusFilterToggle,

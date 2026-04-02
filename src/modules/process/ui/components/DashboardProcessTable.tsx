@@ -24,6 +24,7 @@ import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
+import { toDashboardProcessRowClass } from '~/modules/process/ui/utils/dashboard-process-row-style'
 import {
   hasDashboardRowSelectedText,
   isInteractiveDashboardRowTarget,
@@ -51,6 +52,7 @@ type DashboardProcessSeverity = 'danger' | 'warning' | 'info' | 'success' | 'non
 
 type Props = {
   readonly processes: readonly ProcessSummaryVM[]
+  readonly highlightedProcessId: string | null
   readonly initialLoading: boolean
   readonly refreshing: boolean
   readonly hasError: boolean
@@ -66,6 +68,7 @@ type Props = {
 
 type RowProps = {
   readonly process: ProcessSummaryVM
+  readonly isHighlighted: boolean
   readonly columnOrder: readonly DashboardColumnId[]
   readonly gridStyle: string
   readonly onProcessSync: (processId: string) => Promise<void>
@@ -75,6 +78,7 @@ type RowProps = {
 
 type TableRowsProps = {
   readonly processes: readonly ProcessSummaryVM[]
+  readonly highlightedProcessId: string | null
   readonly sortSelection: DashboardSortSelection
   readonly onSortToggle: (field: DashboardSortField) => void
   readonly onProcessSync: (processId: string) => Promise<void>
@@ -141,13 +145,6 @@ function toSeverityBadgeClasses(severity: DashboardProcessSeverity): string {
   if (severity === 'success')
     return 'border-tone-success-border bg-tone-success-bg text-tone-success-fg'
   return 'border-border bg-surface-muted text-text-muted'
-}
-
-function getSeverityBorderClass(severity: DashboardProcessSeverity): string {
-  if (severity === 'danger') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-danger-strong)]'
-  if (severity === 'warning') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-warning-strong)]'
-  if (severity === 'info') return '[box-shadow:inset_4px_0_0_0_var(--color-tone-info-strong)]'
-  return ''
 }
 
 function toUnifiedAlertIcon(severity: DashboardProcessSeverity): JSX.Element {
@@ -603,7 +600,11 @@ function DashboardProcessRow(props: RowProps): JSX.Element {
       role="button"
       tabIndex={0}
       data-dashboard-process-id={props.process.id}
-      class={`grid min-h-(--dashboard-table-row-height) cursor-pointer items-center border-b border-border/50 bg-surface transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 last:border-b-0 ${getSeverityBorderClass(dominantSeverity())}`}
+      data-dashboard-last-opened={props.isHighlighted ? 'true' : undefined}
+      class={toDashboardProcessRowClass({
+        severity: dominantSeverity(),
+        isHighlighted: props.isHighlighted,
+      })}
       style={{ 'grid-template-columns': props.gridStyle }}
       onClick={handleRowClick}
       onKeyDown={handleRowKeydown}
@@ -771,6 +772,7 @@ function DashboardProcessRows(props: TableRowsProps): JSX.Element {
           {(process) => (
             <DashboardProcessRow
               process={process}
+              isHighlighted={process.id === props.highlightedProcessId}
               columnOrder={props.columnOrder}
               gridStyle={gridStyle()}
               onProcessSync={props.onProcessSync}
@@ -906,6 +908,7 @@ export function DashboardProcessTable(props: Props): JSX.Element {
     return (
       <DashboardProcessRows
         processes={props.processes}
+        highlightedProcessId={props.highlightedProcessId}
         sortSelection={props.sortSelection}
         onSortToggle={props.onSortToggle}
         onProcessSync={props.onProcessSync}
