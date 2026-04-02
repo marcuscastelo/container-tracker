@@ -84,6 +84,14 @@ function makeContainer(id: string, number: string): ShipmentDetailVM['containers
       date: null,
     },
     selectedEtaVm: null,
+    currentContext: {
+      locationCode: null,
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    },
+    nextLocation: null,
     tsChipVm: {
       visible: false,
       count: 0,

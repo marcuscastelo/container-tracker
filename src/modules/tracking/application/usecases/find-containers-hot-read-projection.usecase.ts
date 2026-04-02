@@ -5,6 +5,11 @@ import {
   findContainersTimelineMainProjection,
 } from '~/modules/tracking/application/projection/tracking.hot-read.projections'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import {
+  collectSnapshotIdsForPilObservationEnrichment,
+  enrichPilObservationsFromSnapshots,
+  loadSnapshotsForPilObservationEnrichment,
+} from '~/modules/tracking/application/usecases/pil-observation-read-enrichment'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
@@ -94,6 +99,37 @@ async function loadActiveAlerts(
   return deps.trackingAlertRepository.findActiveByContainerIds(containerIds)
 }
 
+async function enrichObservationsByContainerId(
+  deps: TrackingUseCasesDeps,
+  containers: readonly ContainerTarget[],
+  observationsByContainerId: ReadonlyMap<string, readonly Observation[]>,
+): Promise<ReadonlyMap<string, readonly Observation[]>> {
+  const enrichedByContainerId = new Map<string, readonly Observation[]>()
+
+  for (const container of containers) {
+    const observations = observationsByContainerId.get(container.containerId) ?? []
+    const snapshotIds = collectSnapshotIdsForPilObservationEnrichment(observations)
+
+    if (snapshotIds.length === 0) {
+      enrichedByContainerId.set(container.containerId, observations)
+      continue
+    }
+
+    const snapshots = await loadSnapshotsForPilObservationEnrichment(
+      deps,
+      container.containerId,
+      snapshotIds,
+    )
+
+    enrichedByContainerId.set(
+      container.containerId,
+      enrichPilObservationsFromSnapshots(observations, snapshots),
+    )
+  }
+
+  return enrichedByContainerId
+}
+
 export async function findContainersHotReadProjection(
   deps: TrackingUseCasesDeps,
   command: FindContainersHotReadProjectionCommand,
@@ -118,10 +154,15 @@ export async function findContainersHotReadProjection(
     loadObservationsByContainerId(deps, command.containers),
     loadActiveAlerts(deps, command.containers),
   ])
+  const readEnrichedObservationsByContainerId = await enrichObservationsByContainerId(
+    deps,
+    command.containers,
+    observationsByContainerId,
+  )
 
   const timelineMain = findContainersTimelineMainProjection({
     containers: command.containers,
-    observationsByContainerId,
+    observationsByContainerId: readEnrichedObservationsByContainerId,
     now: command.now,
   })
   const timelineMainByContainerId = new Map(
@@ -135,7 +176,7 @@ export async function findContainersHotReadProjection(
 
   const operationalByContainerId = findContainersOperationalSummaryProjection({
     containers: command.containers,
-    observationsByContainerId,
+    observationsByContainerId: readEnrichedObservationsByContainerId,
     timelineMainByContainerId,
     now: command.now,
   })

@@ -54,6 +54,9 @@ function createDeps(args?: {
     const requestedIds = new Set(containerIds)
     return observations.filter((observation) => requestedIds.has(observation.container_id))
   })
+  const findAllSnapshotsByContainerId = vi.fn(
+    async (_containerId: string): Promise<readonly Snapshot[]> => [],
+  )
   const findActiveByContainerIds = vi.fn(async (containerIds: readonly string[]) => {
     if (args?.failActiveAlerts === true) {
       throw new Error('active alert batch failed')
@@ -75,7 +78,7 @@ function createDeps(args?: {
         throw new Error('not used')
       }),
       findLatestByContainerId: vi.fn(async (): Promise<Snapshot | null> => null),
-      findAllByContainerId: vi.fn(async (): Promise<readonly Snapshot[]> => []),
+      findAllByContainerId: findAllSnapshotsByContainerId,
     },
     trackingAlertRepository: {
       insertMany: vi.fn(async () => []),
@@ -99,6 +102,7 @@ function createDeps(args?: {
     deps,
     findAllByContainerId,
     findAllByContainerIds,
+    findAllSnapshotsByContainerId,
     findActiveByContainerIds,
   }
 }
@@ -176,5 +180,45 @@ describe('findContainersHotReadProjection', () => {
         now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
       }),
     ).rejects.toThrow('active alert batch failed')
+  })
+
+  it('serializes snapshot reads for PIL enrichment fallback to avoid concurrent fan-out', async () => {
+    const { deps, findAllSnapshotsByContainerId } = createDeps({
+      observations: [
+        makeObservation('c1', 'MSCU1111111', {
+          provider: 'pil',
+          type: 'LOAD',
+          location_code: null,
+          created_from_snapshot_id: 'snapshot-c1',
+        }),
+        makeObservation('c2', 'MSCU2222222', {
+          provider: 'pil',
+          type: 'LOAD',
+          location_code: null,
+          created_from_snapshot_id: 'snapshot-c2',
+        }),
+      ],
+    })
+    let inFlightSnapshotReads = 0
+    let maxInFlightSnapshotReads = 0
+
+    findAllSnapshotsByContainerId.mockImplementation(async () => {
+      inFlightSnapshotReads += 1
+      maxInFlightSnapshotReads = Math.max(maxInFlightSnapshotReads, inFlightSnapshotReads)
+      await Promise.resolve()
+      inFlightSnapshotReads -= 1
+      return []
+    })
+
+    await findContainersHotReadProjection(deps, {
+      containers: [
+        { containerId: 'c1', containerNumber: 'MSCU1111111' },
+        { containerId: 'c2', containerNumber: 'MSCU2222222' },
+      ],
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
+    })
+
+    expect(findAllSnapshotsByContainerId).toHaveBeenCalledTimes(2)
+    expect(maxInFlightSnapshotReads).toBe(1)
   })
 })

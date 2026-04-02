@@ -15,6 +15,14 @@ function makeSync(snapshotId: string, position: number): TrackingTimeTravelSyncV
     timeline: [],
     alerts: [],
     eta: null,
+    currentContext: {
+      locationCode: null,
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    },
+    nextLocation: null,
     diff:
       position === 1
         ? { kind: 'initial' }

@@ -28,6 +28,22 @@ export type ContainerEtaDetailVM = {
   readonly type: string
 } | null
 
+export type ContainerCurrentContextVM = {
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+  readonly vesselName: string | null
+  readonly voyage: string | null
+  readonly vesselVisible: boolean
+}
+
+export type ContainerNextLocationVM = {
+  readonly date: string
+  readonly type: string
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+} | null
+
 type ContainerTransshipmentPortVM = {
   readonly code: string
   readonly display: string | null
@@ -89,6 +105,8 @@ export type ContainerDetailVM = {
   readonly etaApplicable?: boolean
   readonly etaChipVm: ContainerEtaChipVM
   readonly selectedEtaVm: ContainerEtaDetailVM
+  readonly currentContext: ContainerCurrentContextVM
+  readonly nextLocation: ContainerNextLocationVM
   readonly tsChipVm: ContainerTsChipVM
   readonly dataIssueChipVm: ContainerDataIssueChipVM
   readonly transshipment: ContainerTransshipmentVM

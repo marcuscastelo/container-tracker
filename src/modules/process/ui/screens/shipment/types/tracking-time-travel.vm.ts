@@ -11,6 +11,22 @@ export type TrackingTimeTravelEtaVM = {
   readonly type: string
 } | null
 
+export type TrackingTimeTravelCurrentContextVM = {
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+  readonly vesselName: string | null
+  readonly voyage: string | null
+  readonly vesselVisible: boolean
+}
+
+export type TrackingTimeTravelNextLocationVM = {
+  readonly date: string
+  readonly type: string
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+} | null
+
 export type TrackingTimeTravelDiffVM =
   | {
       readonly kind: 'initial'
@@ -42,6 +58,8 @@ export type TrackingTimeTravelSyncVM = {
   readonly timeline: readonly TrackingTimelineItem[]
   readonly alerts: readonly AlertDisplayVM[]
   readonly eta: TrackingTimeTravelEtaVM
+  readonly currentContext: TrackingTimeTravelCurrentContextVM
+  readonly nextLocation: TrackingTimeTravelNextLocationVM
   readonly diff: TrackingTimeTravelDiffVM
   readonly debugAvailable: boolean
 }

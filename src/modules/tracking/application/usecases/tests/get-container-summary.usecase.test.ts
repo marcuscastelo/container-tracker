@@ -4,13 +4,21 @@ import {
   getContainerSummary,
 } from '~/modules/tracking/application/usecases/get-container-summary.usecase'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
-import { computeLegacyFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeLegacyFingerprint,
+  computePilLocationlessFingerprintAlias,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingActiveAlertReadModel } from '~/modules/tracking/features/alerts/application/projection/tracking.active-alert.readmodel'
 import { computeNoMovementAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
+import { normalizePilSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.normalizer'
+import {
+  makePilSnapshot,
+  PIL_VALID_PAYLOAD,
+} from '~/modules/tracking/infrastructure/carriers/tests/helpers/pil.fixture'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
 import {
   instantFromIsoText,
@@ -26,9 +34,20 @@ type ObservationOverrides = {
   readonly eventTime?: string | Observation['event_time']
   readonly eventTimeType?: Observation['event_time_type']
   readonly locationCode?: string | null
+  readonly locationDisplay?: string
+  readonly vesselName?: string | null
+  readonly voyage?: string | null
+  readonly provider?: Observation['provider']
 }
 
 function makeObservation(overrides: ObservationOverrides = {}): Observation {
+  const locationCode = overrides.locationCode === undefined ? 'BRSSZ' : overrides.locationCode
+  const locationDisplay =
+    overrides.locationDisplay === undefined ? 'Santos, BR' : overrides.locationDisplay
+  const vesselName = overrides.vesselName === undefined ? null : overrides.vesselName
+  const voyage = overrides.voyage === undefined ? null : overrides.voyage
+  const provider = overrides.provider === undefined ? 'maersk' : overrides.provider
+
   return {
     id: 'obs-1',
     fingerprint: overrides.fingerprint ?? 'fp-1',
@@ -40,13 +59,13 @@ function makeObservation(overrides: ObservationOverrides = {}): Observation {
       temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
     ),
     event_time_type: overrides.eventTimeType ?? 'ACTUAL',
-    location_code: overrides.locationCode ?? 'BRSSZ',
-    location_display: 'Santos, BR',
-    vessel_name: null,
-    voyage: null,
+    location_code: locationCode,
+    location_display: locationDisplay,
+    vessel_name: vesselName,
+    voyage,
     is_empty: true,
     confidence: 'high',
-    provider: 'maersk',
+    provider,
     created_from_snapshot_id: overrides.createdFromSnapshotId ?? 'snapshot-1',
     carrier_label: overrides.carrierLabel ?? null,
     created_at: '2026-02-10T10:00:00.000Z',
@@ -210,6 +229,42 @@ describe('getContainerSummary', () => {
     expect(findSnapshotsByIds).toHaveBeenCalledWith('container-1', ['snapshot-1'])
     expect(findAllSnapshotsByContainerId).not.toHaveBeenCalled()
     expect(result.observations[0]?.carrier_label).toBe('Container returned empty')
+  })
+
+  it('enriches legacy PIL observations from raw snapshots without rewriting facts', async () => {
+    const snapshot = makePilSnapshot(PIL_VALID_PAYLOAD)
+    const loadDraft = normalizePilSnapshot(snapshot).find((draft) => draft.type === 'LOAD')
+    if (loadDraft === undefined) {
+      throw new Error('Expected a PIL load draft in fixture')
+    }
+
+    const fingerprint = computePilLocationlessFingerprintAlias(loadDraft)
+    if (fingerprint === null) {
+      throw new Error('Expected a locationless PIL fingerprint alias')
+    }
+
+    const legacyObservation = makeObservation({
+      provider: 'pil',
+      type: 'LOAD',
+      fingerprint,
+      createdFromSnapshotId: snapshot.id,
+      eventTime: '2026-03-14T04:10:00.000Z',
+      eventTimeType: 'ACTUAL',
+      locationCode: null,
+      locationDisplay: 'QINGDAO',
+      vesselName: 'CMA CGM KRYPTON',
+      voyage: 'VCGK0001W',
+    })
+    const { deps, findSnapshotsByIds } = createDeps([legacyObservation], [snapshot])
+
+    const result = await getContainerSummary(deps, makeCommand())
+
+    expect(findSnapshotsByIds).toHaveBeenCalledWith('container-1', [snapshot.id])
+    expect(result.observations[0]?.provider).toBe('pil')
+    expect(result.observations[0]?.location_code).toBe('CNTAO')
+    expect(result.observations[0]?.location_display).toBe('QINGDAO')
+    expect(result.observations[0]?.vessel_name).toBe('CMA CGM KRYPTON')
+    expect(result.observations[0]?.voyage).toBe('VCGK0001W')
   })
 
   it('loads active + acknowledged alerts when includeAcknowledgedAlerts is enabled', async () => {

@@ -108,6 +108,20 @@ function createProcessWithContainers(destination: string) {
   return { process, processWithContainers }
 }
 
+function makeTrackingOperationalSummary(
+  overrides: Partial<TrackingOperationalSummary> = {},
+): TrackingOperationalSummary {
+  const fallback = createTrackingOperationalSummaryFallback(false)
+
+  return {
+    ...fallback,
+    ...overrides,
+    currentContext: overrides.currentContext ?? fallback.currentContext,
+    nextLocation: overrides.nextLocation ?? fallback.nextLocation,
+    transshipment: overrides.transshipment ?? fallback.transshipment,
+  }
+}
+
 function createHotReadContainer(
   containerId: string,
   containerNumber: string,
@@ -213,7 +227,7 @@ function createControllers(
 
 describe('process controllers', () => {
   it('returns enriched alert contract with container number and semantic message fields', async () => {
-    const containerOneSummary: TrackingOperationalSummary = {
+    const containerOneSummary = makeTrackingOperationalSummary({
       status: 'IN_TRANSIT',
       eta: null,
       etaApplicable: true,
@@ -224,7 +238,7 @@ describe('process controllers', () => {
         ports: [],
       },
       dataIssue: false,
-    }
+    })
 
     const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
       async () =>
@@ -310,7 +324,7 @@ describe('process controllers', () => {
   })
 
   it('returns process detail with container operational and process coverage', async () => {
-    const containerOneSummary: TrackingOperationalSummary = {
+    const containerOneSummary = makeTrackingOperationalSummary({
       status: 'IN_TRANSIT',
       eta: {
         eventTime: { kind: 'instant', value: '2026-03-10T12:00:00.000Z' },
@@ -328,7 +342,7 @@ describe('process controllers', () => {
         ports: [{ code: 'ESALG', display: 'Algeciras' }],
       },
       dataIssue: false,
-    }
+    })
     const containerTwoSummary = createTrackingOperationalSummaryFallback(true)
 
     const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
@@ -454,7 +468,7 @@ describe('process controllers', () => {
   })
 
   it('returns process detail with derived microbadge fields when containers are in dispersed lifecycle phases', async () => {
-    const inTransitSummary: TrackingOperationalSummary = {
+    const inTransitSummary = makeTrackingOperationalSummary({
       status: 'IN_TRANSIT',
       eta: null,
       etaApplicable: true,
@@ -465,8 +479,8 @@ describe('process controllers', () => {
         ports: [],
       },
       dataIssue: false,
-    }
-    const dischargedSummary: TrackingOperationalSummary = {
+    })
+    const dischargedSummary = makeTrackingOperationalSummary({
       status: 'DISCHARGED',
       eta: null,
       etaApplicable: false,
@@ -477,7 +491,7 @@ describe('process controllers', () => {
         ports: [],
       },
       dataIssue: false,
-    }
+    })
 
     const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
       async () =>
