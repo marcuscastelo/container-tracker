@@ -204,6 +204,7 @@ export function toProcessResponseWithSummary(
     final_delivery_complete: summary.final_delivery_complete,
     full_logistics_complete: summary.full_logistics_complete,
     eta: summary.eta,
+    eta_display: summary.eta_display,
     eta_coverage: {
       total: summary.eta_coverage.total,
       eligible_total: summary.eta_coverage.eligible_total,

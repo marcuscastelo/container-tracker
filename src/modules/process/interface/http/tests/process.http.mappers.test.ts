@@ -87,6 +87,9 @@ function createSummary(
       eligible_total: 2,
       with_eta: 0,
     },
+    eta_display: {
+      kind: 'unavailable',
+    },
     alerts_count: 0,
     highest_alert_severity: null,
     dominant_alert_created_at: null,
@@ -160,6 +163,43 @@ describe('process.http.mappers', () => {
     expect(parsed.status_microbadge).toEqual({
       status: 'DISCHARGED',
       count: 2,
+    })
+  })
+
+  it('maps delivered eta_display into process list response DTO', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        process_status: 'DELIVERED',
+        highest_container_status: 'DELIVERED',
+        status_counts: {
+          UNKNOWN: 0,
+          IN_PROGRESS: 0,
+          LOADED: 0,
+          IN_TRANSIT: 0,
+          ARRIVED_AT_POD: 0,
+          DISCHARGED: 0,
+          AVAILABLE_FOR_PICKUP: 0,
+          DELIVERED: 2,
+          EMPTY_RETURNED: 0,
+        },
+        status_microbadge: null,
+        has_status_dispersion: false,
+        lifecycle_bucket: 'final_delivery',
+        final_delivery_complete: true,
+        eta: null,
+        eta_display: {
+          kind: 'delivered',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.eta).toBeNull()
+    expect(parsed.eta_display).toEqual({
+      kind: 'delivered',
     })
   })
 

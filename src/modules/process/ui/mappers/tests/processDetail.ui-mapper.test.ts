@@ -741,6 +741,14 @@ function createDeliveredOperationalResponse(): ProcessDetailResponse {
           },
           eta_applicable: false,
           lifecycle_bucket: 'final_delivery',
+          current_context: makeCurrentContext({
+            location_code: 'BRSSZ',
+            location_display: 'Santos',
+            vessel_name: null,
+            voyage: null,
+            vessel_visible: false,
+          }),
+          next_location: null,
           transshipment: {
             has_transshipment: false,
             count: 0,

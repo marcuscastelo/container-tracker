@@ -20,6 +20,17 @@ export type ProcessSummaryVM = {
   readonly statusMicrobadge: ProcessStatusMicrobadgeVM | null
   readonly statusRank: number
   readonly eta: TemporalValueDto | null
+  readonly etaDisplay:
+    | {
+        readonly kind: 'date'
+        readonly value: TemporalValueDto
+      }
+    | {
+        readonly kind: 'unavailable'
+      }
+    | {
+        readonly kind: 'delivered'
+      }
   readonly etaMsOrNull: number | null
   readonly carrier: string | null
   readonly alertsCount: number

@@ -406,7 +406,7 @@ describe('process controllers', () => {
   })
 
   it('returns delivered eta_display when the process is in final delivery', async () => {
-    const deliveredSummary: TrackingOperationalSummary = {
+    const deliveredSummary = makeTrackingOperationalSummary({
       status: 'DELIVERED',
       eta: null,
       etaApplicable: false,
@@ -417,8 +417,8 @@ describe('process controllers', () => {
         ports: [],
       },
       dataIssue: false,
-    }
-    const emptyReturnedSummary: TrackingOperationalSummary = {
+    })
+    const emptyReturnedSummary = makeTrackingOperationalSummary({
       status: 'EMPTY_RETURNED',
       eta: null,
       etaApplicable: false,
@@ -429,7 +429,7 @@ describe('process controllers', () => {
         ports: [],
       },
       dataIssue: false,
-    }
+    })
 
     const findContainersHotReadProjectionMock = vi.fn<FindContainersHotReadProjectionMock>(
       async () =>

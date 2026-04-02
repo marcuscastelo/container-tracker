@@ -250,6 +250,15 @@ function deriveProcessLifecycleBucket(
   return 'post_arrival_pre_delivery'
 }
 
+function toProcessEtaDisplay(command: {
+  readonly finalDeliveryComplete: boolean
+  readonly eta: TemporalValueDto | null
+}): ProcessOperationalSummary['eta_display'] {
+  if (command.finalDeliveryComplete) return { kind: 'delivered' }
+  if (command.eta !== null) return { kind: 'date', value: command.eta }
+  return { kind: 'unavailable' }
+}
+
 function hasAnyTrackingObservation(summaries: readonly ContainerTrackingSummary[]): boolean {
   return summaries.some((summary) => summary.has_observations)
 }
@@ -482,6 +491,10 @@ export function aggregateOperationalSummary(
     final_delivery_complete: finalDeliveryComplete,
     full_logistics_complete: fullLogisticsComplete,
     eta,
+    eta_display: toProcessEtaDisplay({
+      finalDeliveryComplete,
+      eta,
+    }),
     eta_coverage: {
       total: containerCount,
       eligible_total: etaEligibleTotal,

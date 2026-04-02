@@ -241,6 +241,10 @@ describe('aggregateOperationalSummary', () => {
     const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
 
     expect(result.eta).toEqual(temporalDtoFromCanonical(futureDate1))
+    expect(result.eta_display).toEqual({
+      kind: 'date',
+      value: temporalDtoFromCanonical(futureDate1),
+    })
   })
 
   it('returns null ETA when no future events', () => {
@@ -261,6 +265,40 @@ describe('aggregateOperationalSummary', () => {
     const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
 
     expect(result.eta).toBeNull()
+    expect(result.eta_display).toEqual({
+      kind: 'unavailable',
+    })
+  })
+
+  it('returns delivered eta_display when every container reached final delivery', () => {
+    const summaries = [
+      makeSummary({
+        status: 'DELIVERED',
+        operational: {
+          etaEventTime: null,
+          etaApplicable: false,
+          lifecycleBucket: 'final_delivery',
+        },
+        observations: [{ event_time: '2026-03-02T00:00:00.000Z' }],
+      }),
+      makeSummary({
+        status: 'EMPTY_RETURNED',
+        operational: {
+          etaEventTime: null,
+          etaApplicable: false,
+          lifecycleBucket: 'final_delivery',
+        },
+        observations: [{ event_time: '2026-03-03T00:00:00.000Z' }],
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 2, summaries)
+
+    expect(result.final_delivery_complete).toBe(true)
+    expect(result.eta).toBeNull()
+    expect(result.eta_display).toEqual({
+      kind: 'delivered',
+    })
   })
 
   it('counts alerts across all containers', () => {

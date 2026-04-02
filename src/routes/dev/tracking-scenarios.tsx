@@ -489,6 +489,23 @@ export default function TrackingScenariosPage(): JSX.Element {
 
       const containerNumbers = shipment.containers.map((c) => c.number.trim().toUpperCase())
       const hasTransshipment = shipment.containers.some((c) => c.transshipment?.hasTransshipment)
+      const eta =
+        shipment.eta === null
+          ? null
+          : (() => {
+              const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+              return temporalValue ? toTemporalValueDto(temporalValue) : null
+            })()
+      const etaDisplay: ProcessSummaryVM['etaDisplay'] = (() => {
+        if (shipment.processEtaDisplayVm.kind === 'delivered') return { kind: 'delivered' }
+        if (shipment.processEtaDisplayVm.kind === 'date' && eta !== null) {
+          return {
+            kind: 'date',
+            value: eta,
+          }
+        }
+        return { kind: 'unavailable' }
+      })()
 
       // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
       // Dashboard preview can render without fetching the full list.
@@ -516,18 +533,13 @@ export default function TrackingScenariosPage(): JSX.Element {
         statusCode: shipment.statusCode,
         statusMicrobadge: shipment.statusMicrobadge ?? null,
         statusRank: processStatusToRank(shipment.statusCode),
-        eta:
-          shipment.eta === null
-            ? null
-            : (() => {
-                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
-                return temporalValue ? toTemporalValueDto(temporalValue) : null
-              })(),
+        eta,
+        etaDisplay,
         etaMsOrNull:
-          shipment.eta === null
+          eta === null
             ? null
             : (() => {
-                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta)
+                const temporalValue = parseTemporalValueFromCanonicalString(shipment.eta ?? '')
                 if (!temporalValue) return null
                 return toComparableInstant(temporalValue, {
                   timezone: 'UTC',

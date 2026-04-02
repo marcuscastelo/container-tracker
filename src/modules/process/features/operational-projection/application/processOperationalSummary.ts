@@ -35,6 +35,17 @@ export type ProcessOperationalSummary = {
   readonly lifecycle_bucket: TrackingLifecycleBucket
   readonly final_delivery_complete: boolean
   readonly full_logistics_complete: boolean
+  readonly eta_display:
+    | {
+        readonly kind: 'date'
+        readonly value: TemporalValueDto
+      }
+    | {
+        readonly kind: 'unavailable'
+      }
+    | {
+        readonly kind: 'delivered'
+      }
   readonly eta_coverage: {
     readonly total: number
     readonly eligible_total: number

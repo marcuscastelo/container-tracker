@@ -38,6 +38,9 @@ function createProcess(
     statusMicrobadge: null,
     statusRank: 0,
     eta: null,
+    etaDisplay: {
+      kind: 'unavailable',
+    },
     etaMsOrNull: null,
     carrier: input.carrier ?? null,
     alertsCount: 0,
