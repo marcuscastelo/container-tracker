@@ -29,10 +29,6 @@ export function compareTemporal(
     return a.value.compare(b.value)
   }
 
-  if (a.kind === 'date' && b.kind === 'date') {
-    return a.value.compare(b.value)
-  }
-
   if (a.kind === 'local-datetime' && b.kind === 'local-datetime') {
     return a.value.compare(b.value)
   }

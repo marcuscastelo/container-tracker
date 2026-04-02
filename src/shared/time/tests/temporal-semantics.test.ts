@@ -8,9 +8,11 @@ import {
   parseCalendarDateFromIso,
   parseInstantFromIso,
   parseTemporalValue,
+  parseTemporalValueFromCanonicalString,
 } from '~/shared/time/parsing'
 import { formatTemporalDate, formatTemporalDateTime } from '~/shared/time/temporal-formatters'
 import { calendarDateValue, instantValue } from '~/shared/time/temporal-value'
+import { temporalCanonicalText } from '~/shared/time/tests/helpers'
 
 describe('shared time temporal semantics', () => {
   it('parses dd/MM/yyyy into CalendarDate without inventing an instant', () => {
@@ -133,5 +135,27 @@ describe('shared time temporal semantics', () => {
         strategy: 'start-of-day',
       }),
     ).toBeLessThan(0)
+  })
+
+  it('compares date-only temporal values using each value timezone', () => {
+    const utcDate = calendarDateValue(CalendarDate.fromIsoDate('2026-01-14'), 'UTC')
+    const saoPauloDate = calendarDateValue(
+      CalendarDate.fromIsoDate('2026-01-14'),
+      'America/Sao_Paulo',
+    )
+
+    expect(
+      compareTemporal(utcDate, saoPauloDate, {
+        timezone: 'UTC',
+        strategy: 'start-of-day',
+      }),
+    ).toBeLessThan(0)
+  })
+
+  it('roundtrips date-only canonical strings with timezone suffix', () => {
+    const canonicalText = '2026-01-14[America/Sao_Paulo]'
+    const parsed = parseTemporalValueFromCanonicalString(canonicalText)
+
+    expect(temporalCanonicalText(parsed)).toBe(canonicalText)
   })
 })

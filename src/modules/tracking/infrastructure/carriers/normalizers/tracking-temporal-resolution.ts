@@ -1,7 +1,7 @@
 import type { EventTimeSource } from '~/modules/tracking/features/observation/domain/model/observationDraft'
-import { CalendarDate } from '~/shared/time/calendar-date'
+import type { CalendarDate } from '~/shared/time/calendar-date'
 import type { Instant } from '~/shared/time/instant'
-import { LocalDateTime } from '~/shared/time/local-date-time'
+import { parseCalendarDateFromIso, parseLocalDateTimeFromIso } from '~/shared/time/parsing'
 import {
   calendarDateValue,
   instantValue,
@@ -158,7 +158,7 @@ export function buildLocalDateTimeTrackingTemporal(args: {
 
   if (timezone === null) {
     return buildDateOnlyTrackingTemporal({
-      date: CalendarDate.fromIsoDate(args.localDateTime.slice(0, 10)),
+      date: parseCalendarDateFromIso(args.localDateTime.slice(0, 10)),
       rawEventTime: args.rawEventTime,
       locationCode: args.locationCode,
       locationDisplay: args.locationDisplay,
@@ -166,8 +166,17 @@ export function buildLocalDateTimeTrackingTemporal(args: {
     })
   }
 
+  const localDateTime = parseLocalDateTimeFromIso(args.localDateTime, timezone)
+  if (localDateTime === null) {
+    return {
+      event_time: null,
+      raw_event_time: args.rawEventTime,
+      event_time_source: null,
+    }
+  }
+
   return {
-    event_time: localDateTimeValue(LocalDateTime.fromIsoLocal(args.localDateTime, timezone)),
+    event_time: localDateTimeValue(localDateTime),
     raw_event_time: args.rawEventTime,
     event_time_source: 'carrier_local_port_time',
   }

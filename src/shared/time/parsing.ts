@@ -13,6 +13,7 @@ import {
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const MS_DATE_PATTERN = /\/Date\((-?\d+)\)\//
 const DD_MM_YYYY_PATTERN = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+const CANONICAL_DATE_PATTERN = /^(\d{4}-\d{2}-\d{2})\[(.+)\]$/
 const CANONICAL_LOCAL_DATE_TIME_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?\[.+\]$/
 
@@ -55,6 +56,14 @@ export function parseInstantFromNumber(input: number): Instant | null {
 export function parseCalendarDateFromIso(input: string): CalendarDate | null {
   if (!ISO_DATE_PATTERN.test(input)) return null
   return parseWithFactory(() => CalendarDate.fromIsoDate(input))
+}
+
+function parseCalendarDateFromCanonicalString(input: string): TemporalValue | null {
+  const match = input.match(CANONICAL_DATE_PATTERN)
+  if (!match || match[1] === undefined || match[2] === undefined) return null
+
+  const calendarDate = parseCalendarDateFromIso(match[1])
+  return calendarDate ? calendarDateValue(calendarDate, match[2]) : null
 }
 
 export function parseLocalDateTimeFromIso(input: string, timezone: string): LocalDateTime | null {
@@ -106,6 +115,9 @@ export function parseTemporalValueDto(input: TemporalValueDto): TemporalValue | 
 export function parseTemporalValueFromCanonicalString(input: string): TemporalValue | null {
   const calendarDate = parseCalendarDateFromIso(input)
   if (calendarDate) return calendarDateValue(calendarDate)
+
+  const calendarDateWithTimezone = parseCalendarDateFromCanonicalString(input)
+  if (calendarDateWithTimezone) return calendarDateWithTimezone
 
   const localDateTime = parseLocalDateTimeFromCanonicalString(input)
   if (localDateTime) return localDateTimeValue(localDateTime)

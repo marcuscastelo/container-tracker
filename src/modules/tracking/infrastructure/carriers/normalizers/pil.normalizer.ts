@@ -52,6 +52,7 @@ function toStructuredLocationCodeOrNull(value: string | null): string | null {
 function toTemporalDateKey(value: TemporalValue | null): string | null {
   if (value === null) return null
   if (value.kind === 'date') return value.value.toIsoDate()
+  if (value.kind === 'local-datetime') return value.value.toIsoLocalString().slice(0, 10)
   return value.value.toIsoString().slice(0, 10)
 }
 
