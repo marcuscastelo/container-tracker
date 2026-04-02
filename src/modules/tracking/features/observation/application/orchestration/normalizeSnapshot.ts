@@ -1,4 +1,4 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
+import { isKnownProvider, type Provider } from '~/modules/tracking/domain/model/provider'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer'
@@ -31,6 +31,12 @@ const NORMALIZERS: Record<Provider, (snapshot: Snapshot) => ObservationDraft[]> 
  * @see docs/master-consolidated-0209.md §4.1
  */
 export function normalizeSnapshot(snapshot: Snapshot): ObservationDraft[] {
+  if (!isKnownProvider(snapshot.provider)) {
+    throw new Error(
+      `normalizeSnapshot: provider ${snapshot.provider} is not supported for normalization`,
+    )
+  }
+
   const normalizer = NORMALIZERS[snapshot.provider]
   return normalizer(snapshot)
 }

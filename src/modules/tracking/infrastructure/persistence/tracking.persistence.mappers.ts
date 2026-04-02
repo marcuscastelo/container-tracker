@@ -26,7 +26,7 @@ import {
   alertToInsertRow as mapAlertToInsertRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.alert.persistence.mappers'
 import {
-  requireProvider,
+  readProvider,
   requireString,
   requireTimestamp,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mapper-primitives'
@@ -200,7 +200,7 @@ export function observationRowToDomain(row: TrackingObservationRow): Observation
     voyage: row.voyage,
     is_empty: row.is_empty,
     confidence: requireConfidence(row.confidence, 'observation.confidence'),
-    provider: requireProvider(row.provider, 'observation.provider'),
+    provider: readProvider(row.provider, 'observation.provider'),
     created_from_snapshot_id: requireString(
       row.created_from_snapshot_id,
       'observation.created_from_snapshot_id',
@@ -244,7 +244,7 @@ export function snapshotRowToDomain(row: TrackingSnapshotRow): Snapshot {
   return {
     id: requireString(row.id, 'snapshot.id'),
     container_id: requireString(row.container_id, 'snapshot.container_id'),
-    provider: requireProvider(row.provider, 'snapshot.provider'),
+    provider: readProvider(row.provider, 'snapshot.provider'),
     fetched_at: requireTimestamp(row.fetched_at, 'snapshot.fetched_at'),
     payload: row.payload,
     parse_error: row.parse_error,

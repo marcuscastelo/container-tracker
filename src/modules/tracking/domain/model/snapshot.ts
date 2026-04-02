@@ -1,4 +1,4 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { PersistedProvider, Provider } from '~/modules/tracking/domain/model/provider'
 
 /**
  * Snapshot — immutable record of what a carrier API returned at a given moment.
@@ -16,7 +16,7 @@ export type Snapshot = {
   container_id: string
 
   /** Provider that returned this data */
-  provider: Provider
+  provider: PersistedProvider
 
   /** When the API call was made (UTC ISO string) */
   fetched_at: string
@@ -31,4 +31,6 @@ export type Snapshot = {
 /**
  * Shape for inserting a new snapshot (id auto-generated on DB side).
  */
-export type NewSnapshot = Omit<Snapshot, 'id'>
+export type NewSnapshot = Omit<Snapshot, 'id' | 'provider'> & {
+  provider: Provider
+}

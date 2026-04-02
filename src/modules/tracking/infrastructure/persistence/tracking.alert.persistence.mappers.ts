@@ -13,7 +13,7 @@ import {
   isRecord,
   normalizeAlertIso,
   optionalFiniteNumber,
-  optionalProvider,
+  optionalReadProvider,
   requireFiniteNumber,
   requireString,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mapper-primitives'
@@ -261,7 +261,7 @@ export function alertRowToDomain(row: TrackingAlertRow): TrackingAlert {
     source_observation_fingerprints: fingerprints,
     alert_fingerprint: row.alert_fingerprint ?? null,
     retroactive: row.retroactive,
-    provider: optionalProvider(row.provider, 'alert.provider'),
+    provider: optionalReadProvider(row.provider, 'alert.provider'),
     acked_at: ackedAtIso,
     acked_by: row.acked_by ?? null,
     acked_source: optionalAlertAckSource(row.acked_source, 'alert.acked_source'),

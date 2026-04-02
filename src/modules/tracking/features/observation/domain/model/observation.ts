@@ -1,4 +1,4 @@
-import type { Provider } from '~/modules/tracking/domain/model/provider'
+import type { PersistedProvider, Provider } from '~/modules/tracking/domain/model/provider'
 import type { Confidence } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import type { ObservationType } from '~/modules/tracking/features/observation/domain/model/observationType'
 import type { TemporalValue } from '~/shared/time/temporal-value'
@@ -79,7 +79,7 @@ export type Observation = {
   confidence: Confidence
 
   /** Provider that produced this data */
-  provider: Provider
+  provider: PersistedProvider
 
   /** Snapshot that first introduced this observation */
   created_from_snapshot_id: string
@@ -97,4 +97,6 @@ export type Observation = {
 /**
  * Shape for inserting — omits server-generated fields.
  */
-export type NewObservation = Omit<Observation, 'id' | 'created_at'>
+export type NewObservation = Omit<Observation, 'id' | 'created_at' | 'provider'> & {
+  provider: Provider
+}
