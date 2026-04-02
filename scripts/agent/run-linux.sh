@@ -13,7 +13,7 @@ project_env_path="$repo_root/.env"
 agent_data_dir="${AGENT_DATA_DIR:-$repo_root/.agent-runtime}"
 dotenv_path="${DOTENV_PATH:-$agent_data_dir/config.env}"
 bootstrap_path="${BOOTSTRAP_DOTENV_PATH:-$agent_data_dir/bootstrap.env}"
-update_manifest_channel="${AGENT_UPDATE_MANIFEST_CHANNEL:-disabled}"
+update_manifest_channel="${AGENT_UPDATE_MANIFEST_CHANNEL:-stable}"
 
 mkdir -p "$agent_data_dir"
 
