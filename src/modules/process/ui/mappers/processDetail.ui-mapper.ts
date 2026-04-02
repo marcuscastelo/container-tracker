@@ -32,6 +32,8 @@ function processAggregatedStatusToVariant(status: ProcessAggregatedStatus) {
 type ContainerOperational = NonNullable<ProcessDetailResponse['containers'][number]['operational']>
 type OperationalEta = NonNullable<ContainerOperational['eta']>
 type OperationalTransshipment = ContainerOperational['transshipment']
+type OperationalCurrentContext = ContainerOperational['current_context']
+type OperationalNextLocation = ContainerOperational['next_location']
 
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
@@ -161,6 +163,43 @@ function toContainerEtaDetailVm(
   }
 }
 
+function toCurrentContextVm(
+  currentContext: OperationalCurrentContext | undefined,
+): ShipmentDetailVM['containers'][number]['currentContext'] {
+  if (!currentContext) {
+    return {
+      locationCode: null,
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    }
+  }
+
+  return {
+    locationCode: currentContext.location_code,
+    locationDisplay: currentContext.location_display,
+    vesselName: currentContext.vessel_name,
+    voyage: currentContext.voyage,
+    vesselVisible: currentContext.vessel_visible,
+  }
+}
+
+function toNextLocationVm(
+  nextLocation: OperationalNextLocation | undefined,
+  locale: string,
+): ShipmentDetailVM['containers'][number]['nextLocation'] {
+  if (!nextLocation?.event_time) return null
+
+  return {
+    date: formatDateForLocale(nextLocation.event_time, locale),
+    type: nextLocation.type,
+    eventTimeType: nextLocation.event_time_type,
+    locationCode: nextLocation.location_code,
+    locationDisplay: nextLocation.location_display,
+  }
+}
+
 function toTransshipmentVm(
   transshipment: OperationalTransshipment | undefined,
 ): ShipmentDetailVM['containers'][number]['transshipment'] {
@@ -250,6 +289,8 @@ export function toShipmentDetailVM(
       container.operational?.eta_applicable ??
       container.operational?.lifecycle_bucket === 'pre_arrival'
     const transshipment = toTransshipmentVm(container.operational?.transshipment)
+    const currentContext = toCurrentContextVm(container.operational?.current_context)
+    const nextLocation = toNextLocationVm(container.operational?.next_location, locale)
     const sync =
       syncByContainerNumber.get(normalizeContainerNumber(container.container_number)) ??
       createNeverContainerSyncVM(container.container_number)
@@ -265,6 +306,8 @@ export function toShipmentDetailVM(
       etaApplicable,
       etaChipVm,
       selectedEtaVm,
+      currentContext,
+      nextLocation,
       tsChipVm: toTsChipVm(transshipment),
       dataIssueChipVm: {
         visible: container.operational?.data_issue === true,

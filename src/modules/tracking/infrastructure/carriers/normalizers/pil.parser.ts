@@ -9,6 +9,7 @@ type PilParsedSummary = {
   readonly rawLoadPortCode: string | null
   readonly rawNextLocationCode: string | null
   readonly rawNextLocationDateText: string | null
+  readonly nextLocationDate: TemporalValue | null
   readonly rawVessel: string | null
   readonly rawVoyage: string | null
 }
@@ -214,6 +215,7 @@ function parseSummary(html: string): PilParsedSummary | null {
     rawLoadPortCode: locationLines[2] ?? null,
     rawNextLocationCode: nextLocationLines[0] ?? null,
     rawNextLocationDateText: nextLocationLines[1] ?? null,
+    nextLocationDate: parsePilTemporalText(nextLocationLines[1] ?? null).eventTime,
     rawVessel: vesselLines[0] ?? null,
     rawVoyage: vesselLines[1] ?? null,
   }

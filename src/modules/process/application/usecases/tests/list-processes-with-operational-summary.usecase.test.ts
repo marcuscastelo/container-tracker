@@ -7,6 +7,10 @@ import { toProcessId } from '~/modules/process/domain/identity/process-id.vo'
 import { toProcessReference } from '~/modules/process/domain/identity/process-reference.vo'
 import { toProcessSource } from '~/modules/process/domain/identity/process-source.vo'
 import { createProcessEntity } from '~/modules/process/domain/process.entity'
+import {
+  createTrackingOperationalSummaryFallback,
+  type TrackingOperationalSummary,
+} from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import { Instant } from '~/shared/time/instant'
 import { temporalDtoFromCanonical, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
@@ -29,6 +33,20 @@ function makeProcess(processId: string) {
     createdAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
     updatedAt: Instant.fromIso('2026-02-01T10:00:00.000Z'),
   })
+}
+
+function makeOperationalSummary(
+  overrides: Partial<TrackingOperationalSummary> = {},
+): TrackingOperationalSummary {
+  const fallback = createTrackingOperationalSummaryFallback(false)
+
+  return {
+    ...fallback,
+    ...overrides,
+    currentContext: overrides.currentContext ?? fallback.currentContext,
+    nextLocation: overrides.nextLocation ?? fallback.nextLocation,
+    transshipment: overrides.transshipment ?? fallback.transshipment,
+  }
 }
 
 function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProjectionResult }) {
@@ -57,7 +75,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
           containerNumber: 'MSCU1111111',
           status: 'IN_TRANSIT' as const,
           timeline: [],
-          operational: {
+          operational: makeOperationalSummary({
             status: 'IN_TRANSIT',
             eta: {
               eventTime: temporalDtoFromCanonical('2026-03-10T12:00:00.000Z'),
@@ -75,7 +93,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
               ports: [],
             },
             dataIssue: false,
-          },
+          }),
           activeAlerts: [
             {
               id: 'alert-1',
@@ -104,7 +122,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
           containerNumber: 'MSCU2222222',
           status: 'DISCHARGED' as const,
           timeline: [],
-          operational: {
+          operational: makeOperationalSummary({
             status: 'DISCHARGED',
             eta: null,
             etaApplicable: false,
@@ -115,7 +133,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
               ports: [],
             },
             dataIssue: false,
-          },
+          }),
           activeAlerts: [],
           hasObservations: true,
           lastEventAt: temporalValueFromCanonical('2026-03-11T12:00:00.000Z'),
@@ -219,7 +237,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
             containerNumber: 'MSCU1111111',
             status: 'IN_TRANSIT',
             timeline: [],
-            operational: {
+            operational: makeOperationalSummary({
               status: 'IN_TRANSIT',
               eta: null,
               etaApplicable: true,
@@ -230,7 +248,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
                 ports: [],
               },
               dataIssue: false,
-            },
+            }),
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: null,

@@ -11,6 +11,60 @@ function requireAt<T>(items: readonly T[], index: number): T {
   return item
 }
 
+type ContainerOperationalResponse = NonNullable<
+  ProcessDetailResponse['containers'][number]['operational']
+>
+type OperationalCurrentContextResponse = ContainerOperationalResponse['current_context']
+type OperationalNextLocationResponse = NonNullable<ContainerOperationalResponse['next_location']>
+
+function makeCurrentContext(
+  overrides: Partial<OperationalCurrentContextResponse> = {},
+): OperationalCurrentContextResponse {
+  return {
+    location_code: 'BRSSZ',
+    location_display: 'Santos',
+    vessel_name: 'CMA CGM KRYPTON',
+    voyage: 'VCGK0001W',
+    vessel_visible: true,
+    ...overrides,
+  }
+}
+
+function makeNextLocation(
+  overrides: Partial<OperationalNextLocationResponse> = {},
+): OperationalNextLocationResponse {
+  return {
+    event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
+    event_time_type: 'EXPECTED',
+    type: 'DISCHARGE',
+    location_code: 'BRSSZ',
+    location_display: 'Santos',
+    ...overrides,
+  }
+}
+
+function makeContainerOperational(
+  overrides: Partial<ContainerOperationalResponse> & {
+    readonly eta?: ContainerOperationalResponse['eta']
+    readonly current_context?: OperationalCurrentContextResponse
+    readonly next_location?: ContainerOperationalResponse['next_location']
+  } = {},
+): ContainerOperationalResponse {
+  return {
+    status: 'IN_TRANSIT',
+    eta: null,
+    current_context: makeCurrentContext(),
+    next_location: null,
+    transshipment: {
+      has_transshipment: false,
+      count: 0,
+      ports: [],
+    },
+    data_issue: false,
+    ...overrides,
+  }
+}
+
 describe('toShipmentDetailVM base mapping', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
     const example: ProcessDetailResponse = {
@@ -383,7 +437,7 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
         id: 'c5-1',
         container_number: 'MSCU1111111',
         status: 'IN_TRANSIT',
-        operational: {
+        operational: makeContainerOperational({
           status: 'IN_TRANSIT',
           eta: {
             event_time: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
@@ -393,6 +447,11 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
+          current_context: makeCurrentContext(),
+          next_location: makeNextLocation({
+            event_time: temporalDtoFromCanonical('2026-02-20T10:00:00.000Z'),
+            type: 'ARRIVAL',
+          }),
           transshipment: {
             has_transshipment: true,
             count: 2,
@@ -402,13 +461,13 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
             ],
           },
           data_issue: true,
-        },
+        }),
       },
       {
         id: 'c5-2',
         container_number: 'MSCU2222222',
         status: 'IN_TRANSIT',
-        operational: {
+        operational: makeContainerOperational({
           status: 'IN_TRANSIT',
           eta: {
             event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
@@ -418,13 +477,12 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
-          transshipment: {
-            has_transshipment: false,
-            count: 0,
-            ports: [],
-          },
+          current_context: makeCurrentContext(),
+          next_location: makeNextLocation({
+            event_time: temporalDtoFromCanonical('2026-02-25T10:00:00.000Z'),
+          }),
           data_issue: false,
-        },
+        }),
       },
     ],
     containersSync: [],
@@ -463,9 +521,11 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
         id: 'c6-1',
         container_number: 'MSCU3333333',
         status: 'IN_TRANSIT',
-        operational: {
+        operational: makeContainerOperational({
           status: 'IN_TRANSIT',
           eta: null,
+          current_context: makeCurrentContext(),
+          next_location: null,
           transshipment: {
             has_transshipment: false,
             count: 2,
@@ -475,7 +535,7 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
             ],
           },
           data_issue: false,
-        },
+        }),
       },
     ],
     containersSync: [],
@@ -499,7 +559,7 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
         id: 'c7-1',
         container_number: 'MSCU4444444',
         status: 'IN_TRANSIT',
-        operational: {
+        operational: makeContainerOperational({
           status: 'IN_TRANSIT',
           eta: {
             event_time: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
@@ -509,19 +569,19 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
-          transshipment: {
-            has_transshipment: false,
-            count: 0,
-            ports: [],
-          },
+          current_context: makeCurrentContext(),
+          next_location: makeNextLocation({
+            event_time: temporalDtoFromCanonical('2026-03-05T10:00:00.000Z'),
+            type: 'ARRIVAL',
+          }),
           data_issue: false,
-        },
+        }),
       },
       {
         id: 'c7-2',
         container_number: 'MSCU5555555',
         status: 'IN_TRANSIT',
-        operational: {
+        operational: makeContainerOperational({
           status: 'IN_TRANSIT',
           eta: {
             event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
@@ -531,13 +591,13 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
             location_code: 'BRSSZ',
             location_display: 'Santos',
           },
-          transshipment: {
-            has_transshipment: false,
-            count: 0,
-            ports: [],
-          },
+          current_context: makeCurrentContext(),
+          next_location: makeNextLocation({
+            event_time: temporalDtoFromCanonical('2026-03-10T10:00:00.000Z'),
+            type: 'ARRIVAL',
+          }),
           data_issue: false,
-        },
+        }),
       },
     ],
     containersSync: [],

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveTrackingOperationalSummary,
   type TrackingObservationForOperationalSummary,
+  type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import {
   instantFromIsoText,
@@ -36,6 +37,22 @@ function makeObservation(
     created_at: '2026-02-10T10:00:00.000Z',
     ...rest,
   }
+}
+
+function requireEta(summary: TrackingOperationalSummary) {
+  if (summary.eta === null) {
+    throw new Error('Expected summary ETA')
+  }
+
+  return summary.eta
+}
+
+function requireNextLocation(summary: TrackingOperationalSummary) {
+  if (summary.nextLocation === null) {
+    throw new Error('Expected summary next location')
+  }
+
+  return summary.nextLocation
 }
 
 describe('deriveTrackingOperationalSummary', () => {
@@ -336,5 +353,107 @@ describe('deriveTrackingOperationalSummary', () => {
     expect(summary.eta?.eventTimeType).toBe('EXPECTED')
     expect(summary.eta?.state).toBe('ACTIVE_EXPECTED')
     expect(summary.eta?.locationCode).toBe('BRSSZBT')
+  })
+
+  it('infers final ETA from expected DISCHARGE when POD code is missing but the route is canonical', () => {
+    const summary = deriveTrackingOperationalSummary({
+      observations: [
+        makeObservation({
+          id: 'load-actual',
+          type: 'LOAD',
+          event_time_type: 'ACTUAL',
+          event_time: '2026-03-14T04:10:00.000Z',
+          location_code: 'CNTAO',
+          location_display: 'QINGDAO',
+          vessel_name: 'CMA CGM KRYPTON',
+          voyage: 'VCGK0001W',
+          created_at: '2026-03-14T04:10:00.000Z',
+        }),
+        makeObservation({
+          id: 'discharge-expected',
+          type: 'DISCHARGE',
+          event_time_type: 'EXPECTED',
+          event_time: '2026-04-23T19:00:00.000Z',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS',
+          vessel_name: 'CMA CGM KRYPTON',
+          voyage: 'VCGK0001W',
+          created_at: '2026-03-14T04:11:00.000Z',
+        }),
+      ],
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      podLocationCode: null,
+      now: instantFromIsoText('2026-03-20T00:00:00.000Z'),
+    })
+
+    const eta = requireEta(summary)
+    const nextLocation = requireNextLocation(summary)
+
+    expect(eta.type).toBe('DISCHARGE')
+    expect(eta.locationCode).toBe('BRSSZ')
+    expect(temporalCanonicalText(eta.eventTime)).toBe('2026-04-23T19:00:00.000Z')
+    expect(summary.currentContext).toEqual({
+      locationCode: 'CNTAO',
+      locationDisplay: 'QINGDAO',
+      vesselName: 'CMA CGM KRYPTON',
+      voyage: 'VCGK0001W',
+      vesselVisible: true,
+    })
+    expect(nextLocation).toEqual({
+      eventTime: eta.eventTime,
+      eventTimeType: 'EXPECTED',
+      type: 'DISCHARGE',
+      locationCode: 'BRSSZ',
+      locationDisplay: 'SANTOS',
+    })
+  })
+
+  it('hides current vessel after an actual terminal discharge with no later factual leg', () => {
+    const summary = deriveTrackingOperationalSummary({
+      observations: [
+        makeObservation({
+          id: 'load-actual',
+          type: 'LOAD',
+          event_time_type: 'ACTUAL',
+          event_time: '2026-03-14T04:10:00.000Z',
+          location_code: 'CNTAO',
+          location_display: 'QINGDAO',
+          vessel_name: 'CMA CGM KRYPTON',
+          voyage: 'VCGK0001W',
+          created_at: '2026-03-14T04:10:00.000Z',
+        }),
+        makeObservation({
+          id: 'discharge-actual',
+          type: 'DISCHARGE',
+          event_time_type: 'ACTUAL',
+          event_time: '2026-04-23T19:00:00.000Z',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS',
+          vessel_name: 'CMA CGM KRYPTON',
+          voyage: 'VCGK0001W',
+          created_at: '2026-04-23T19:00:00.000Z',
+        }),
+      ],
+      status: 'DISCHARGED',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      podLocationCode: null,
+      now: instantFromIsoText('2026-04-24T00:00:00.000Z'),
+    })
+
+    expect(summary.eta).toBeNull()
+    expect(summary.currentContext.locationCode).toBe('BRSSZ')
+    expect(summary.currentContext.locationDisplay).toBe('SANTOS')
+    expect(summary.currentContext.vesselName).toBe('CMA CGM KRYPTON')
+    expect(summary.currentContext.vesselVisible).toBe(false)
+    expect(summary.nextLocation).toBeNull()
   })
 })
