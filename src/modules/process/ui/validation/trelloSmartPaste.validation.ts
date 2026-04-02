@@ -36,6 +36,7 @@ type ParsedTitleFields = {
   readonly importerName?: string
   readonly exporterName?: string
   readonly product?: string
+  readonly unmappedFields: readonly ParsedUnmappedField[]
 }
 
 type ParsedLineFields = {
@@ -96,6 +97,24 @@ function extractContainerNumbers(rawText: string): readonly string[] {
   return dedupeStrings(
     matches.map((value) => normalizeContainerNumber(value)).filter((value) => value.length > 0),
   )
+}
+
+function splitProductValueFromInlineVessel(rawValue: string): {
+  readonly productValue: string
+  readonly vesselValue?: string
+} {
+  const productWithInlineVesselMatch = rawValue.match(
+    /^(?<productValue>.+?)\s*NAVIO\s*:\s*(?<vesselValue>.+)$/i,
+  )
+  const productValue = normalizeWhitespace(
+    productWithInlineVesselMatch?.groups?.productValue ?? rawValue,
+  )
+  const vesselValue = normalizeWhitespace(productWithInlineVesselMatch?.groups?.vesselValue ?? '')
+
+  return {
+    productValue,
+    ...(vesselValue.length === 0 ? {} : { vesselValue }),
+  }
 }
 
 function toLabelClassification(rawLabel: string): LabelClassification {
@@ -167,7 +186,7 @@ function toLabelClassification(rawLabel: string): LabelClassification {
 function parseTitleFields(rawTitle: string): ParsedTitleFields {
   const title = normalizeWhitespace(rawTitle)
   if (title.length === 0) {
-    return {}
+    return { unmappedFields: [] }
   }
 
   const segments = title
@@ -175,13 +194,14 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
     .map((segment) => normalizeWhitespace(segment))
     .filter((segment) => segment.length > 0)
 
-  if (segments.length === 0) return {}
+  if (segments.length === 0) return { unmappedFields: [] }
 
   let reference: string | undefined
   let importerName: string | undefined
   let exporterName: string | undefined
   let product: string | undefined
   const leftovers: string[] = []
+  const unmappedFields: ParsedUnmappedField[] = []
 
   for (const segment of segments) {
     const referenceMatch = segment.match(/^REF\.?(?:\s+[^:]+)?\s*:\s*(.+)$/i)
@@ -204,7 +224,13 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
 
     const productMatch = segment.match(/^PRODUTO\s*:\s*(.+)$/i)
     if (productMatch?.[1]) {
-      product = normalizeWhitespace(productMatch[1])
+      const productField = splitProductValueFromInlineVessel(productMatch[1])
+      product = productField.productValue
+
+      if (productField.vesselValue !== undefined) {
+        unmappedFields.push({ label: 'NAVIO', value: productField.vesselValue })
+      }
+
       continue
     }
 
@@ -212,7 +238,12 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
   }
 
   if (!product && leftovers.length > 0) {
-    product = leftovers[leftovers.length - 1]
+    const fallbackProduct = splitProductValueFromInlineVessel(leftovers[leftovers.length - 1] ?? '')
+    product = fallbackProduct.productValue
+
+    if (fallbackProduct.vesselValue !== undefined) {
+      unmappedFields.push({ label: 'NAVIO', value: fallbackProduct.vesselValue })
+    }
   }
 
   return {
@@ -220,6 +251,7 @@ function parseTitleFields(rawTitle: string): ParsedTitleFields {
     ...(importerName === undefined ? {} : { importerName }),
     ...(exporterName === undefined ? {} : { exporterName }),
     ...(product === undefined ? {} : { product }),
+    unmappedFields,
   }
 }
 
@@ -299,6 +331,18 @@ function parseLineFields(lines: readonly string[]): ParsedLineFields {
 
     if (rawValue.length === 0) continue
     if (scalar[classification.key] !== undefined) continue
+
+    if (classification.key === 'product') {
+      const productField = splitProductValueFromInlineVessel(rawValue)
+      scalar.product = productField.productValue
+
+      if (productField.vesselValue !== undefined) {
+        unmappedFields.push({ label: 'NAVIO', value: productField.vesselValue })
+      }
+
+      continue
+    }
+
     scalar[classification.key] = rawValue
   }
 
@@ -367,7 +411,7 @@ export function parseTrelloSmartPaste(rawInput: string): ParsedProcessDraft {
 
   return {
     fields,
-    unmappedFields: lineFields.unmappedFields,
+    unmappedFields: [...titleFields.unmappedFields, ...lineFields.unmappedFields],
     warnings: buildWarnings({
       hasCarrier: Boolean(fields.carrier && fields.carrier.trim().length > 0),
       containers: mergedContainers,

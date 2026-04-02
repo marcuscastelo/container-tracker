@@ -62,6 +62,24 @@ Reserva alternativa CAAU7648798`)
     expect(parsed.fields.containers).toEqual(['MRSU8798130', 'CAAU7648798'])
   })
 
+  it('splits product and vessel when NAVIO is pasted without a line break after product', () => {
+    const parsed = parseTrelloSmartPaste(`Título:
+REF. CASTRO: CA075-25 - IMP: FLUSH - EXP: AL-HAMDOLILLAH - SAL
+
+Descrição:
+PRODUTO: SALNAVIO: GSL VIOLETTA
+BL: MEDUP6124762
+CTNR: MSCU1234567`)
+
+    expect(parsed.fields.reference).toBe('CA075-25')
+    expect(parsed.fields.importerName).toBe('FLUSH')
+    expect(parsed.fields.exporterName).toBe('AL-HAMDOLILLAH')
+    expect(parsed.fields.product).toBe('SAL')
+    expect(parsed.fields.billOfLading).toBe('MEDUP6124762')
+    expect(parsed.fields.containers).toEqual(['MSCU1234567'])
+    expect(parsed.unmappedFields).toContainEqual({ label: 'NAVIO', value: 'GSL VIOLETTA' })
+  })
+
   it('returns warning when no valid container can be found', () => {
     const parsed = parseTrelloSmartPaste(`REF: ABC-001
 IMP: Empresa A
