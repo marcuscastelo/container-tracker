@@ -4,6 +4,13 @@ const AgentProviderSchema = z.enum(['maersk', 'msc', 'cmacgm', 'pil'])
 
 const SyncRequestStatusSchema = z.enum(['PENDING', 'LEASED', 'DONE', 'FAILED'])
 
+const OptionalParseErrorSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}, z.string().min(1).nullable().optional())
+
 const RecoverOwnedLeasesQuerySchema = z.preprocess(
   (value) => {
     if (value === undefined || value === null) return undefined
@@ -48,7 +55,7 @@ export const IngestSnapshotBodySchema = z.object({
   }),
   observed_at: z.string().datetime({ offset: true }),
   raw: z.unknown(),
-  parse_error: z.string().nullable().optional(),
+  parse_error: OptionalParseErrorSchema,
   meta: z.record(z.string(), z.unknown()).default({}),
   sync_request_id: z.string().uuid(),
 })

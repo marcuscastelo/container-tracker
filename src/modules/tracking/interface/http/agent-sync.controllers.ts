@@ -130,17 +130,11 @@ function normalizeCarrierCode(value: string): string {
   return value.toLowerCase().trim()
 }
 
+const PROCESSABLE_PROVIDER_ORDER: readonly Provider[] = ['maersk', 'msc', 'cmacgm', 'pil']
+
 function toProcessableProviders(capabilities: readonly string[]): readonly Provider[] {
-  const providers = new Set<Provider>()
-
-  for (const capability of capabilities) {
-    if (capability === 'maersk') providers.add('maersk')
-    if (capability === 'msc') providers.add('msc')
-    if (capability === 'cmacgm') providers.add('cmacgm')
-    if (capability === 'pil') providers.add('pil')
-  }
-
-  return [...providers]
+  const capabilitySet = new Set(capabilities)
+  return PROCESSABLE_PROVIDER_ORDER.filter((provider) => capabilitySet.has(provider))
 }
 
 async function ensureAgentAuth(
