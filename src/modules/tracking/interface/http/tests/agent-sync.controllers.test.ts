@@ -8,6 +8,7 @@ import {
   GetAgentTargetsResponseSchema,
   IngestLeaseConflictResponseSchema,
   IngestSnapshotAcceptedResponseSchema,
+  IngestSnapshotFailedResponseSchema,
   type SyncRequestRow,
 } from '~/modules/tracking/interface/http/agent-sync.schemas'
 
@@ -52,6 +53,7 @@ function createDeps(overrides: Partial<AgentSyncControllersDeps> = {}): AgentSyn
     authenticateAgentToken: vi.fn(async () => ({
       tenantId: TENANT_ID,
       agentId: AGENT_ID,
+      capabilities: ['msc', 'cmacgm', 'pil'],
     })),
     getTenantQueueLagSeconds: vi.fn(async () => 12),
     updateAgentRuntimeState: vi.fn(async () => undefined),
@@ -112,6 +114,7 @@ describe('agent sync controllers', () => {
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         agentId: AGENT_ID,
+        capabilities: ['msc'],
       })),
     })
     const controllers = createAgentSyncControllers(deps)
@@ -158,6 +161,102 @@ describe('agent sync controllers', () => {
       agentId: AGENT_ID,
       limit: 1,
       leaseMinutes: 5,
+      includeOwnedActiveLeases: false,
+      processableProviders: ['msc', 'cmacgm', 'pil'],
+    })
+  })
+
+  it('passes recover_owned_leases query flag to leaseSyncRequests', async () => {
+    const deps = createDeps({
+      leaseSyncRequests: vi.fn(async () => [createSyncRequestRow()]),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request(
+      `http://localhost/api/agent/targets?tenant_id=${TENANT_ID}&limit=1&recover_owned_leases=true`,
+      {
+        headers: {
+          authorization: 'Bearer token-123',
+          'x-agent-id': 'agent-1',
+        },
+      },
+    )
+    const response = await controllers.getTargets({ request })
+
+    expect(response.status).toBe(200)
+    expect(deps.leaseSyncRequests).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+      limit: 1,
+      leaseMinutes: 5,
+      includeOwnedActiveLeases: true,
+      processableProviders: ['msc', 'cmacgm', 'pil'],
+    })
+  })
+
+  it('passes only processable providers derived from authenticated agent capabilities', async () => {
+    const deps = createDeps({
+      authenticateAgentToken: vi.fn(async () => ({
+        tenantId: TENANT_ID,
+        agentId: AGENT_ID,
+        capabilities: ['msc', 'custom-capability'],
+      })),
+      leaseSyncRequests: vi.fn(async () => []),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request(
+      `http://localhost/api/agent/targets?tenant_id=${TENANT_ID}&limit=1`,
+      {
+        headers: {
+          authorization: 'Bearer token-123',
+          'x-agent-id': 'agent-1',
+        },
+      },
+    )
+    const response = await controllers.getTargets({ request })
+
+    expect(response.status).toBe(200)
+    expect(deps.leaseSyncRequests).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+      limit: 1,
+      leaseMinutes: 5,
+      includeOwnedActiveLeases: false,
+      processableProviders: ['msc'],
+    })
+  })
+
+  it('returns processable providers in a stable canonical order', async () => {
+    const deps = createDeps({
+      authenticateAgentToken: vi.fn(async () => ({
+        tenantId: TENANT_ID,
+        agentId: AGENT_ID,
+        capabilities: ['pil', 'custom-capability', 'msc', 'cmacgm'],
+      })),
+      leaseSyncRequests: vi.fn(async () => []),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request(
+      `http://localhost/api/agent/targets?tenant_id=${TENANT_ID}&limit=1`,
+      {
+        headers: {
+          authorization: 'Bearer token-123',
+          'x-agent-id': 'agent-1',
+        },
+      },
+    )
+    const response = await controllers.getTargets({ request })
+
+    expect(response.status).toBe(200)
+    expect(deps.leaseSyncRequests).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      agentId: AGENT_ID,
+      limit: 1,
+      leaseMinutes: 5,
+      includeOwnedActiveLeases: false,
+      processableProviders: ['msc', 'cmacgm', 'pil'],
     })
   })
 
@@ -200,6 +299,7 @@ describe('agent sync controllers', () => {
       authenticateAgentToken: vi.fn(async () => ({
         tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         agentId: AGENT_ID,
+        capabilities: ['msc'],
       })),
     })
     const controllers = createAgentSyncControllers(deps)
@@ -224,6 +324,121 @@ describe('agent sync controllers', () => {
     const response = await controllers.ingestSnapshot({ request })
 
     expect(response.status).toBe(403)
+  })
+
+  it('persists the snapshot and marks the sync request as FAILED when parse_error is present', async () => {
+    const deps = createDeps({
+      findLeasedSyncRequest: vi.fn(async () =>
+        createSyncRequestRow({
+          provider: 'pil',
+          ref_value: 'PCIU8712104',
+        }),
+      ),
+      findContainersByNumber: vi.fn(async () => [
+        {
+          id: 'container-1',
+          containerNumber: 'PCIU8712104',
+          carrierCode: 'pil',
+        },
+      ]),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request('http://localhost/api/tracking/snapshots/ingest', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-123',
+        'x-agent-id': 'agent-1',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        provider: 'pil',
+        ref: { type: 'container', value: 'PCIU8712104' },
+        observed_at: '2026-04-01T10:01:00.000Z',
+        raw: { success: true, data: '<div>broken html</div>' },
+        parse_error: 'PIL payload missing detailed event table',
+        sync_request_id: SYNC_REQUEST_ID,
+      }),
+    })
+
+    const response = await controllers.ingestSnapshot({ request })
+    const body = IngestSnapshotFailedResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(422)
+    expect(body.snapshot_id).toBe(SNAPSHOT_ID)
+    expect(deps.saveAndProcess).toHaveBeenCalledWith({
+      containerId: 'container-1',
+      containerNumber: 'PCIU8712104',
+      provider: 'pil',
+      payload: { success: true, data: '<div>broken html</div>' },
+      parseError: 'PIL payload missing detailed event table',
+      fetchedAt: '2026-04-01T10:01:00.000Z',
+    })
+    expect(deps.markSyncRequestFailed).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      syncRequestId: SYNC_REQUEST_ID,
+      agentId: AGENT_ID,
+      errorMessage: 'PIL payload missing detailed event table',
+    })
+    expect(deps.markSyncRequestDone).not.toHaveBeenCalled()
+  })
+
+  it('treats whitespace-only parse_error values as absent', async () => {
+    const deps = createDeps({
+      findLeasedSyncRequest: vi.fn(async () =>
+        createSyncRequestRow({
+          provider: 'pil',
+          ref_value: 'PCIU8712104',
+        }),
+      ),
+      findContainersByNumber: vi.fn(async () => [
+        {
+          id: 'container-1',
+          containerNumber: 'PCIU8712104',
+          carrierCode: 'pil',
+        },
+      ]),
+    })
+    const controllers = createAgentSyncControllers(deps)
+
+    const request = new Request('http://localhost/api/tracking/snapshots/ingest', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token-123',
+        'x-agent-id': 'agent-1',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        provider: 'pil',
+        ref: { type: 'container', value: 'PCIU8712104' },
+        observed_at: '2026-04-01T10:01:00.000Z',
+        raw: { success: true, data: '<div>broken html</div>' },
+        parse_error: '   ',
+        sync_request_id: SYNC_REQUEST_ID,
+      }),
+    })
+
+    const response = await controllers.ingestSnapshot({ request })
+    const body = IngestSnapshotAcceptedResponseSchema.parse(await response.json())
+
+    expect(response.status).toBe(202)
+    expect(body.snapshot_id).toBe(SNAPSHOT_ID)
+    expect(deps.saveAndProcess).toHaveBeenCalledWith({
+      containerId: 'container-1',
+      containerNumber: 'PCIU8712104',
+      provider: 'pil',
+      payload: { success: true, data: '<div>broken html</div>' },
+      parseError: null,
+      fetchedAt: '2026-04-01T10:01:00.000Z',
+    })
+    expect(deps.markSyncRequestDone).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      syncRequestId: SYNC_REQUEST_ID,
+      agentId: AGENT_ID,
+    })
+    expect(deps.markSyncRequestFailed).not.toHaveBeenCalled()
   })
 
   it('marks sync request as FAILED when container is not found', async () => {

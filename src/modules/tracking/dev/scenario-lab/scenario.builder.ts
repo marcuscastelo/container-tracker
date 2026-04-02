@@ -24,12 +24,14 @@ function providerFromBlueprint(snapshot: ScenarioSnapshotBlueprint): Provider {
 function providerToCarrierCode(provider: Provider): string {
   if (provider === 'maersk') return 'MAEU'
   if (provider === 'msc') return 'MSCU'
+  if (provider === 'pil') return 'PCIU'
   return 'CMAU'
 }
 
 function providerToContainerPrefix(provider: Provider): string {
   if (provider === 'maersk') return 'MAEU'
   if (provider === 'msc') return 'MSCU'
+  if (provider === 'pil') return 'PCIU'
   return 'CMAU'
 }
 

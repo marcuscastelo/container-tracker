@@ -18,11 +18,10 @@ export function jsonResponse<T extends z.ZodTypeAny>(
   if (schema) schema.parse(data)
   const serialized = JSON.stringify(data)
   recordReadResponseMetrics(serialized, status)
+  const responseHeaders = new Headers(headers ?? undefined)
+  responseHeaders.set('Content-Type', 'application/json')
   return new Response(serialized, {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
+    headers: responseHeaders,
   })
 }

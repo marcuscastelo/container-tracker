@@ -10,6 +10,7 @@ export type PlatformPathResolution = {
 
 export type StartRuntimeCommand = {
   readonly scriptPath: string
+  readonly execArgv?: readonly string[]
   readonly env: NodeJS.ProcessEnv
   readonly stdio: 'inherit' | 'pipe'
 }

@@ -27,7 +27,32 @@ import type { ObservationDraft } from '~/modules/tracking/features/observation/d
  * @see docs/master-consolidated-0209.md §4.2.1
  * @see Issue: Canonical differentiation between ACTUAL vs EXPECTED
  */
-export function computeFingerprint(draft: ObservationDraft): string {
+function normalizeDisplayText(value: string | null | undefined): string {
+  return (
+    value
+      ?.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .toUpperCase() ?? ''
+  )
+}
+
+function normalizeCarrierLabel(value: string | null | undefined): string {
+  return (
+    value
+      ?.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .toLowerCase() ?? ''
+  )
+}
+
+function toTemporalFingerprintParts(draft: ObservationDraft): {
+  readonly temporalKind: string
+  readonly temporalValue: string
+} {
   const temporalKind = draft.event_time?.kind ?? ''
   let temporalValue = ''
   if (draft.event_time !== null) {
@@ -37,17 +62,46 @@ export function computeFingerprint(draft: ObservationDraft): string {
         : draft.event_time.value.toIsoDate()
   }
 
-  const parts = [
+  return {
+    temporalKind,
+    temporalValue,
+  }
+}
+
+function digestFingerprint(parts: readonly string[]): string {
+  const canonical = parts.join('|')
+  return createHash('sha256').update(canonical).digest('hex').slice(0, 32)
+}
+
+export function computeLegacyFingerprint(draft: ObservationDraft): string {
+  const temporal = toTemporalFingerprintParts(draft)
+
+  return digestFingerprint([
     draft.container_number.toUpperCase().trim(),
     draft.type,
     draft.event_time_type,
-    temporalKind,
-    temporalValue,
+    temporal.temporalKind,
+    temporal.temporalValue,
     (draft.location_code ?? '').toUpperCase().trim(),
     (draft.vessel_name ?? '').toUpperCase().trim(),
     (draft.voyage ?? '').toUpperCase().trim(),
-  ]
+  ])
+}
 
-  const canonical = parts.join('|')
-  return createHash('sha256').update(canonical).digest('hex').slice(0, 32)
+export function computeFingerprint(draft: ObservationDraft): string {
+  const temporal = toTemporalFingerprintParts(draft)
+
+  return digestFingerprint([
+    draft.provider,
+    draft.container_number.toUpperCase().trim(),
+    draft.type,
+    draft.event_time_type,
+    temporal.temporalKind,
+    temporal.temporalValue,
+    (draft.location_code ?? '').toUpperCase().trim(),
+    normalizeDisplayText(draft.location_display),
+    (draft.vessel_name ?? '').toUpperCase().trim(),
+    (draft.voyage ?? '').toUpperCase().trim(),
+    normalizeCarrierLabel(draft.carrier_label),
+  ])
 }

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computeFingerprint } from '~/modules/tracking/domain/identity/fingerprint'
+import {
+  computeFingerprint,
+  computeLegacyFingerprint,
+} from '~/modules/tracking/domain/identity/fingerprint'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import type { ObservationDraft } from '~/modules/tracking/features/observation/domain/model/observationDraft'
 import { resolveTemporalValue, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
@@ -40,6 +43,20 @@ describe('diffObservations', () => {
     const fingerprint = computeFingerprint(draft)
     const existing = new Set([fingerprint])
     const result = diffObservations(existing, [draft], CONTAINER_ID)
+    expect(result).toHaveLength(0)
+  })
+
+  it('should skip drafts whose legacy fingerprints are already known', () => {
+    const draft = makeDraft({
+      provider: 'pil',
+      location_code: null,
+      location_display: 'QINGDAO',
+      carrier_label: 'Vessel Loading',
+    })
+    const existing = new Set([computeLegacyFingerprint(draft)])
+
+    const result = diffObservations(existing, [draft], CONTAINER_ID)
+
     expect(result).toHaveLength(0)
   })
 

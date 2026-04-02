@@ -17,6 +17,12 @@ describe('carrierTrackUrl util', () => {
     expect(url).toContain('cma-cgm.com')
   })
 
+  it('returns PIL tracking URL when carrier includes pil', () => {
+    const url = carrierTrackUrl('PIL', 'PCIU8712104')
+    expect(url).toContain('pilship.com')
+    expect(url).toContain('PCIU8712104')
+  })
+
   it('returns google search fallback for unknown carrier', () => {
     const url = carrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
     expect(url).toContain('google.com/search')

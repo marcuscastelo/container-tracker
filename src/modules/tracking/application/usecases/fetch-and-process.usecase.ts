@@ -5,7 +5,7 @@ import {
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
-import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher'
+import type { FetchResult } from '~/modules/tracking/infrastructure/carriers/fetchers/fetch-result'
 import { getRestFetcher } from '~/modules/tracking/infrastructure/carriers/fetchers/rest.fetchers'
 import { systemClock } from '~/shared/time/clock'
 
@@ -83,7 +83,7 @@ export async function fetchAndProcess(
     provider: fetchResult.provider,
     fetched_at: fetchResult.fetchedAt,
     payload: fetchResult.payload,
-    parse_error: null,
+    parse_error: fetchResult.parseError ?? null,
   }
 
   const snapshot = await snapshotRepository.insert(newSnapshot)

@@ -53,6 +53,11 @@ describe('observationRowToDomain', () => {
     expect(result.carrier_label).toBe('Loaded on board')
   })
 
+  it('should accept PIL as a valid provider', () => {
+    const result = observationRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('pil')
+  })
+
   it('should accept TERMINAL_MOVE observation type', () => {
     const result = observationRowToDomain({ ...validRow, type: 'TERMINAL_MOVE' })
     expect(result.type).toBe('TERMINAL_MOVE')
@@ -141,6 +146,16 @@ describe('snapshotRowToDomain', () => {
     expect(result.id).toBe(validRow.id)
     expect(result.provider).toBe('msc')
     expect(result.payload).toEqual({ test: 'data' })
+  })
+
+  it('should accept PIL snapshot provider', () => {
+    const result = snapshotRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('pil')
+  })
+
+  it('should accept PIL snapshot provider', () => {
+    const result = snapshotRowToDomain({ ...validRow, provider: 'pil' })
+    expect(result.provider).toBe('pil')
   })
 
   it('should degrade unknown persisted provider to unknown', () => {
