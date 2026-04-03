@@ -568,3 +568,116 @@
   - não houve persistência de validation como alert
 - Próximo passo recomendado para a Fase 5:
   - expandir detectores advisory reais sobre inconsistências canônicas adicionais, ainda via registry/plugin system, sem mover semântica para UI nem inflar o dashboard
+
+## N. Kickoff da Fase 5 Hardening
+- Data de início: 2026-04-03
+- Fase atual: V1 pluginável / Fase 5 hardening
+- Estado herdado da branch:
+  - o detector `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` já existe no slice pluginável do Tracking BC
+  - o detector já está registrado via registry explícito, com cenário `post_carriage_maritime_inconsistent`, testes unitários e propagação E2E até DTO/VM/UI
+  - `pnpm check` já estava verde antes desta continuação
+- Drift identificado:
+  - os planos plugináveis ainda descrevem a Fase 5 como se fosse a primeira introdução desse detector
+  - o código e o log da Fase 4 mostram que o advisory mínimo já entrou na branch antes desta etapa
+  - a rota dev `tracking-scenarios` ainda recomputa `attentionSeverity` localmente para o preview de dashboard, criando um caminho presentation-only fora do dado backend-derived
+- Entendimento inicial:
+  - esta continuação deve ser tratada como hardening/alinhamento, não como greenfield
+  - o recorte mínimo do detector deve permanecer objetivo: apenas contexto marítimo forte dentro de `post-carriage` no read model canônico
+  - shipment deve continuar timeline-first e o dashboard deve continuar leve
+- Plano desta continuação:
+  - auditar detector e sinais derivados para confirmar que a inconsistência nasce antes da UI
+  - remover a composição paralela residual no preview dev e voltar a consumir a severidade backend-derived do dashboard
+  - reforçar teste negativo para provar que contexto marítimo normal dentro da perna canônica não vira advisory
+  - atualizar o log com o drift encontrado, o hardening aplicado, QA manual e próximo passo da Fase 6
+
+## O. Fechamento da Fase 5 Hardening
+- Data de fechamento: 2026-04-03
+- Escopo entregue:
+  - hardening do trilho pluginável já existente para `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - remoção do único caminho paralelo residual identificado fora da cadeia backend-derived
+  - reforço de regressão para blindar o recorte mínimo do detector
+
+### O.1 O que foi implementado
+- Preview dev / dashboard:
+  - a rota `src/routes/dev/tracking-scenarios.tsx` deixou de montar um `ProcessSummaryVM` derivado do shipment detail
+  - o preview de dashboard passou a consumir diretamente `fetchDashboardProcessSummaries()`, preservando `attentionSeverity` e `trackingValidation` como dados backend-derived
+  - com isso, o cenário de laboratório parou de recompor severidade localmente a partir de alertas + validation
+- Detector / recorte mínimo:
+  - o detector `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` e o sinal `canonicalTimeline.postCarriageMaritimeEvents` foram auditados
+  - o recorte mínimo foi mantido sem expansão:
+    - contexto marítimo objetivo em bloco terminal `post-carriage`
+    - severidade `ADVISORY`
+    - scope `TIMELINE`
+  - nenhuma nova heurística frouxa foi adicionada
+- Boundaries:
+  - tracking continua dono exclusivo da semântica de validation
+  - HTTP continuou expondo apenas `tracking_validation` compacto e `attention_severity`
+  - UI continuou consumindo somente `Response DTO -> ViewModel`, sem findings brutos nem nova derivação local
+
+### O.2 Arquivos tocados nesta continuação
+- Alterados:
+  - `src/routes/dev/tracking-scenarios.tsx`
+  - `src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts`
+  - `docs/plans/TRACKING_VALIDATION_IMPLEMENTATION_LOG.md`
+
+### O.3 Contratos alterados
+- Públicos:
+  - nenhum contrato público mudou
+  - nenhum campo novo foi adicionado ao dashboard ou shipment
+- Internos:
+  - nenhum contrato interno canônico mudou
+  - o hardening foi comportamental, removendo recomposição local no preview dev
+
+### O.4 Testes criados / ajustados
+- Reforço de regressão:
+  - `src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts`
+- Cenário adicional coberto:
+  - contexto marítimo normal dentro da perna canônica não dispara advisory
+- Baseline revalidado:
+  - detector advisory segue positivo apenas no caso objetivo de `post-carriage`
+  - agregação container/processo continua preservando `ADVISORY`
+  - DTO -> VM e presenter continuam compactos e presentation-only
+  - detectores `CONFLICTING_CRITICAL_ACTUALS` e `POST_COMPLETION_TRACKING_CONTINUED` seguem verdes
+
+### O.5 QA manual realizado
+- Ambiente:
+  - dev server iniciado com `pnpm run dev -- --host localhost --port 3009`
+  - runtime local serviu a aplicação em `http://localhost:3003`
+- Rotas verificadas:
+  - scenario-lab `/dev/tracking-scenarios`
+- Cenários usados:
+  - `post_carriage_maritime_inconsistent` step 1 como clean
+  - `post_carriage_maritime_inconsistent` step 2 como advisory
+  - `delivery_post_completion_continued` step 2 como critical
+- Superfícies validadas:
+  - `Dashboard Row Preview` com `DashboardProcessTable` alimentado por `fetchDashboardProcessSummaries()`
+  - `Shipment Preview` com `ShipmentDataView` alimentado por `fetchProcess()`
+- Viewports verificados:
+  - desktop `1440x900`
+  - mobile `393x851`
+- Evidências geradas:
+  - `phase5-hardening-clean-desktop.png`
+  - `phase5-hardening-advisory-desktop.png`
+  - `phase5-hardening-critical-desktop.png`
+  - `phase5-hardening-advisory-mobile.png`
+  - `phase5-hardening-critical-mobile.png`
+- Comportamento observado:
+  - clean: o preview de dashboard permaneceu sem badge de validation e o shipment preview não exibiu banner/chip de validation
+  - advisory: o preview de dashboard exibiu `Validação necessária` sem escalada agressiva de triagem, e o shipment preview mostrou banner agregador + chip por container com leitura timeline-first preservada
+  - critical: o preview de dashboard exibiu `Validação necessária` com destaque coerente de severidade e o shipment preview mostrou banner/chip em tom mais forte sem esconder fatos
+  - a troca entre cenários e steps atualizou corretamente o preview de dashboard a partir do payload backend-derived, sem recomposição local visível de `attentionSeverity`
+  - nenhuma quebra relevante de layout foi observada em desktop ou mobile
+  - console do browser sem erros durante a passada manual
+
+### O.6 Problemas encontrados
+- O problema arquitetural concreto desta continuação foi o drift entre planos/log e estado real da branch.
+- O único desvio de implementação encontrado no código ativo foi a recomposição local de `attentionSeverity` no preview dev.
+
+### O.7 Limitações intencionais
+- O detector advisory não foi ampliado além do subconjunto mínimo já fechado.
+- Não houve mudança de `affectedScope` para `TIMELINE_BLOCK`.
+- Não houve integração de validation issue com `TrackingAlert` persistido.
+
+### O.8 Próximo passo recomendado para a Fase 6
+- Iniciar a fase seguinte real do trilho pluginável sem reabrir o advisory já consolidado.
+- Priorizar evolução em cima de observabilidade/histórico operacional ou do próximo detector ainda não implementado, sempre preservando o registry/plugin system como único caminho canônico.

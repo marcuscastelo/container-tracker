@@ -2,26 +2,17 @@ import { A, useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js'
 import { z } from 'zod'
-import type { fetchDashboardProcessSummaries } from '~/modules/process/ui/api/process.api'
+import { fetchDashboardProcessSummaries } from '~/modules/process/ui/api/process.api'
 import { DashboardProcessTable } from '~/modules/process/ui/components/DashboardProcessTable'
 import { ShipmentDataView } from '~/modules/process/ui/components/ShipmentDataView'
 import { fetchProcess } from '~/modules/process/ui/fetchProcess'
-import { processStatusToRank } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
 import { toSortedActiveAlerts } from '~/modules/process/ui/screens/shipment/lib/shipmentAlerts.sorting'
 import { nextDashboardSortSelection } from '~/modules/process/ui/viewmodels/dashboard-sort.service'
 import type { DashboardSortField } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
-import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DEFAULT_LOCALE } from '~/shared/localization/defaultLocale'
 import { systemClock } from '~/shared/time/clock'
-import { toComparableInstant } from '~/shared/time/compare-temporal'
-import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
-import {
-  parseCalendarDateFromDdMmYyyy,
-  parseTemporalValueFromCanonicalString,
-} from '~/shared/time/parsing'
-import { calendarDateValue } from '~/shared/time/temporal-value'
 
 const SCENARIO_LAB_ENABLED = import.meta.env.DEV
 
@@ -73,18 +64,6 @@ const ScenarioLoadResponseSchema = z.object({
 type ScenarioCatalogResponse = z.infer<typeof ScenarioCatalogResponseSchema>
 type ScenarioSummary = z.infer<typeof ScenarioSummarySchema>
 type ScenarioLoadResult = z.infer<typeof ScenarioLoadResponseSchema>['result']
-
-function parseShipmentEtaLabelToDto(etaLabel: string | null): TemporalValueDto | null {
-  if (etaLabel === null) return null
-
-  const parsedCanonical = parseTemporalValueFromCanonicalString(etaLabel)
-  if (parsedCanonical !== null) return toTemporalValueDto(parsedCanonical)
-
-  const parsedLocaleDate = parseCalendarDateFromDdMmYyyy(etaLabel)
-  if (parsedLocaleDate !== null) return toTemporalValueDto(calendarDateValue(parsedLocaleDate))
-
-  return null
-}
 
 const DISABLED_TIME_TRAVEL_CONTROLLER: TrackingTimeTravelControllerResult = {
   isActive: () => false,
@@ -495,92 +474,8 @@ export default function TrackingScenariosPage(): JSX.Element {
       return { processId: result.processId, refresh: refreshToken() }
     },
     async (source) => {
-      // Fetch a single process detail and map to a dashboard summary to avoid
-      // loading the entire dashboard list for the preview.
-      const shipment = await fetchProcess(source.processId, DEFAULT_LOCALE, {
-        mode: 'network-only',
-        dedupeInFlight: false,
-      })
-
-      if (!shipment) return null
-
-      const containerNumbers = shipment.containers.map((c) => c.number.trim().toUpperCase())
-      const hasTransshipment = shipment.containers.some((c) => c.transshipment?.hasTransshipment)
-      const eta = parseShipmentEtaLabelToDto(shipment.eta)
-      const etaDisplay: ProcessSummaryVM['etaDisplay'] = (() => {
-        if (shipment.processEtaDisplayVm.kind === 'delivered') return { kind: 'delivered' }
-        if (
-          (shipment.processEtaDisplayVm.kind === 'date' ||
-            shipment.processEtaDisplayVm.kind === 'arrived') &&
-          eta !== null
-        ) {
-          return {
-            kind: shipment.processEtaDisplayVm.kind,
-            value: eta,
-          }
-        }
-        return { kind: 'unavailable' }
-      })()
-
-      // Derive a minimal ProcessSummaryVM from the full ShipmentDetailVM so the
-      // Dashboard preview can render without fetching the full list.
-      const highestSeverity = shipment.alerts.reduce<'danger' | 'warning' | 'info' | null>(
-        (acc, a) => {
-          if (acc === 'danger') return 'danger'
-          if (a.severity === 'danger') return 'danger'
-          if (a.severity === 'warning') return acc === 'info' || acc === null ? 'warning' : acc
-          return acc === null ? 'info' : acc
-        },
-        null,
-      )
-      const attentionSeverity =
-        shipment.trackingValidation.highestSeverity === 'danger' ? 'danger' : highestSeverity
-
-      return {
-        id: shipment.id,
-        reference: shipment.reference ?? null,
-        origin: { display_name: shipment.origin },
-        destination: { display_name: shipment.destination },
-        importerId: null,
-        importerName: shipment.importer_name ?? null,
-        exporterName: shipment.exporter_name ?? null,
-        containerCount: shipment.containers.length,
-        containerNumbers,
-        status: shipment.status,
-        statusCode: shipment.statusCode,
-        statusMicrobadge: shipment.statusMicrobadge ?? null,
-        statusRank: processStatusToRank(shipment.statusCode),
-        eta,
-        etaDisplay,
-        etaMsOrNull:
-          eta === null
-            ? null
-            : (() => {
-                const parsedCanonical = parseTemporalValueFromCanonicalString(shipment.eta ?? '')
-                const temporalValue =
-                  parsedCanonical ??
-                  (() => {
-                    const parsedLocaleDate = parseCalendarDateFromDdMmYyyy(shipment.eta ?? '')
-                    return parsedLocaleDate ? calendarDateValue(parsedLocaleDate) : null
-                  })()
-                if (!temporalValue) return null
-                return toComparableInstant(temporalValue, {
-                  timezone: 'UTC',
-                  strategy: 'start-of-day',
-                }).toEpochMs()
-              })(),
-        carrier: shipment.carrier ?? null,
-        alertsCount: shipment.alerts.length,
-        highestAlertSeverity: highestSeverity,
-        attentionSeverity,
-        dominantAlertCreatedAt: null,
-        trackingValidation: shipment.trackingValidation,
-        redestinationNumber: shipment.redestination_number ?? null,
-        hasTransshipment,
-        lastEventAt: null,
-        syncStatus: 'idle' as const,
-        lastSyncAt: null,
-      } satisfies ProcessSummaryVM
+      const processes = await fetchDashboardProcessSummaries()
+      return processes.find((process) => process.id === source.processId) ?? null
     },
   )
 
