@@ -12,7 +12,7 @@ import type {
   TrackingObservationRow,
   TrackingSnapshotRow,
 } from '~/modules/tracking/infrastructure/persistence/tracking.row'
-import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
+import { temporalCanonicalText, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 // ---------------------------------------------------------------------------
 // Observation mappers
@@ -28,7 +28,7 @@ describe('observationRowToDomain', () => {
     type: 'LOAD',
     temporal_kind: 'instant',
     event_time_instant: '2026-01-15T10:00:00.000Z',
-    event_time: '2026-01-15T10:00:00.000Z',
+    event_time: null,
     event_date: null,
     event_time_local: null,
     event_time_zone: null,
@@ -55,6 +55,7 @@ describe('observationRowToDomain', () => {
     expect(result.confidence).toBe('high')
     expect(result.event_time_type).toBe('ACTUAL')
     expect(result.carrier_label).toBe('Loaded on board')
+    expect(temporalCanonicalText(result.event_time)).toBe('2026-01-15T10:00:00.000Z')
   })
 
   it('should accept PIL as a valid provider', () => {
@@ -99,7 +100,7 @@ describe('observationRowToDomain', () => {
     )
   })
 
-  it('should handle null event_time', () => {
+  it('should return null when temporal columns are null', () => {
     const result = observationRowToDomain({
       ...validRow,
       temporal_kind: null,
@@ -111,6 +112,48 @@ describe('observationRowToDomain', () => {
       event_time: null,
     })
     expect(result.event_time).toBeNull()
+  })
+
+  it('should ignore deprecated event_time column when temporal columns are null', () => {
+    const result = observationRowToDomain({
+      ...validRow,
+      temporal_kind: null,
+      event_time_instant: null,
+      event_date: null,
+      event_time_local: null,
+      event_time_zone: null,
+      event_time_source: null,
+      event_time: '2026-01-15T10:00:00.000Z',
+    })
+
+    expect(result.event_time).toBeNull()
+  })
+
+  it('should throw when temporal columns exist without temporal_kind', () => {
+    expect(() =>
+      observationRowToDomain({
+        ...validRow,
+        temporal_kind: null,
+        event_time_instant: '2026-01-15T10:00:00.000Z',
+        event_date: null,
+        event_time_local: null,
+        event_time_zone: null,
+        event_time_source: null,
+      }),
+    ).toThrow(
+      'tracking persistence mapper: observation temporal columns are inconsistent (missing temporal_kind)',
+    )
+  })
+
+  it('should throw when temporal columns conflict with declared temporal_kind', () => {
+    expect(() =>
+      observationRowToDomain({
+        ...validRow,
+        event_date: '2026-01-15',
+      }),
+    ).toThrow(
+      'tracking persistence mapper: instant observation cannot persist date/local temporal columns together with event_time_instant',
+    )
   })
 })
 

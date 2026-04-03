@@ -39,7 +39,7 @@ function makeObservationRow(
     type: 'LOAD',
     temporal_kind: 'instant',
     event_time_instant: '2026-01-15T10:00:00.000Z',
-    event_time: '2026-01-15T10:00:00.000Z',
+    event_time: null,
     event_date: null,
     event_time_local: null,
     event_time_zone: null,
@@ -71,6 +71,9 @@ describe('supabaseObservationRepository', () => {
     const observations = await supabaseObservationRepository.findAllByContainerId('container-1')
 
     expect(mocks.from).toHaveBeenCalledWith('container_observations')
+    expect(query.select).toHaveBeenCalled()
+    const [selectArg] = query.select.mock.calls[0]
+    expect(selectArg).not.toContain('event_time,')
     expect(observations.map((observation) => observation.id)).toEqual([
       'obs-actual',
       'obs-expected',
