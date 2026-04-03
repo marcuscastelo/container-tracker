@@ -307,4 +307,18 @@ describe('toProcessSummaryVMs', () => {
     ])
     expect(requireAt(result, 0).redestinationNumber).toBeNull()
   })
+
+  it('normalizes empty redestination_number to null', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({ id: 'p-empty-redest', redestination_number: '' }),
+    ])
+    expect(requireAt(result, 0).redestinationNumber).toBeNull()
+  })
+
+  it('normalizes whitespace-only redestination_number to null', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({ id: 'p-blank-redest', redestination_number: '   ' }),
+    ])
+    expect(requireAt(result, 0).redestinationNumber).toBeNull()
+  })
 })

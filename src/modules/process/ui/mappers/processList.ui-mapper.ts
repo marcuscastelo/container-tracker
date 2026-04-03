@@ -4,6 +4,7 @@ import {
   toProcessStatusCode,
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
+import { toOptionalNonBlankString } from '~/modules/process/ui/mappers/toOptionalNonBlankString'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
 import { toComparableInstant } from '~/shared/time/compare-temporal'
 import type { TemporalValueDto } from '~/shared/time/dto'
@@ -61,12 +62,6 @@ export type ProcessListItemSource = {
   redestination_number?: string | null | undefined
   last_sync_status?: 'DONE' | 'FAILED' | 'RUNNING' | 'UNKNOWN' | undefined
   last_sync_at?: string | null | undefined
-}
-
-function toOptionalNonBlankString(value: string | null | undefined): string | null {
-  if (value == null) return null
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? value : null
 }
 
 function normalizeContainerNumber(containerNumber: string): string {
@@ -166,7 +161,7 @@ export function toProcessSummaryVMs(
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,
       dominantAlertCreatedAt: process.dominant_alert_created_at ?? null,
-      redestinationNumber: process.redestination_number ?? null,
+      redestinationNumber: toOptionalNonBlankString(process.redestination_number),
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,
       syncStatus: toProcessSyncStatus(process.last_sync_status),

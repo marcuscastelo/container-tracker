@@ -213,6 +213,69 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(firstAlert.messageKey).toBe('alerts.transshipmentDetected')
     expect(result.processEtaDisplayVm.kind).toBe('unavailable')
   })
+
+  it('keeps non-blank redestination_number values', () => {
+    const example: ProcessDetailResponse = {
+      id: 'proc-redest',
+      tracking_freshness_token: 'token-proc-redest',
+      reference: 'REF-RED',
+      origin: { display_name: 'Origin' },
+      destination: { display_name: 'Destination' },
+      carrier: null,
+      bill_of_lading: null,
+      booking_number: null,
+      redestination_number: 'RD-12345',
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      containers: [
+        {
+          id: 'c-redest',
+          container_number: 'MSCU7654321',
+          status: 'IN_TRANSIT',
+          timeline: [],
+        },
+      ],
+      containersSync: [],
+      alerts: [],
+    }
+
+    const result = toShipmentDetailVM(example)
+    expect(result.redestination_number).toBe('RD-12345')
+  })
+
+  it('normalizes blank redestination_number values to null', () => {
+    const makeExample = (redestination_number: string | null | undefined): ProcessDetailResponse => ({
+      id: 'proc-redest-blank',
+      tracking_freshness_token: 'token-proc-redest-blank',
+      reference: 'REF-RED-BLANK',
+      origin: { display_name: 'Origin' },
+      destination: { display_name: 'Destination' },
+      carrier: null,
+      bill_of_lading: null,
+      booking_number: null,
+      redestination_number,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      containers: [
+        {
+          id: 'c-redest-blank',
+          container_number: 'MSCU7654321',
+          status: 'IN_TRANSIT',
+          timeline: [],
+        },
+      ],
+      containersSync: [],
+      alerts: [],
+    })
+
+    const blankResult = toShipmentDetailVM(makeExample(''))
+    const whitespaceResult = toShipmentDetailVM(makeExample('   '))
+
+    expect(blankResult.redestination_number).toBeNull()
+    expect(whitespaceResult.redestination_number).toBeNull()
+  })
 })
 
 describe('toShipmentDetailVM tracking mapping', () => {

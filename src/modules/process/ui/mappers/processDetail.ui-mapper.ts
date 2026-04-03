@@ -15,6 +15,7 @@ import {
   toTrackingStatusCode,
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import { toOptionalNonBlankString } from '~/modules/process/ui/mappers/toOptionalNonBlankString'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
@@ -411,7 +412,7 @@ export function toShipmentDetailVM(
     exporter_name: data.exporter_name ?? null,
     reference_importer: data.reference_importer ?? null,
     product: data.product ?? null,
-    redestination_number: data.redestination_number ?? null,
+    redestination_number: toOptionalNonBlankString(data.redestination_number),
     origin: data.origin?.display_name || '—',
     destination: data.destination?.display_name || '—',
     status: processAggregatedStatusToVariant(processAggregatedStatus),
