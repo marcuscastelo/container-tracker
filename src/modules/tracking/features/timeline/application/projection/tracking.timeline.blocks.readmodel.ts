@@ -14,7 +14,6 @@ export type TerminalSegmentKind = 'pre-carriage' | 'transshipment-terminal' | 'p
 
 type TerminalSegment = {
   readonly kind: TerminalSegmentKind
-  readonly title: string
   readonly location: string | null
   readonly events: readonly TrackingTimelineItem[]
 }
@@ -108,14 +107,8 @@ function groupTerminalSegments(
         else if (runPosition === 'after') kind = 'post-carriage'
         else kind = 'transshipment-terminal'
 
-        let title: string
-        if (kind === 'pre-carriage') title = 'Pre-carriage'
-        else if (kind === 'transshipment-terminal') title = 'Transshipment Terminal'
-        else title = 'Post-carriage / Delivery'
-
         segments.push({
           kind,
-          title,
           location: dominantLocation(currentRun),
           events: currentRun,
         })
@@ -140,7 +133,6 @@ function groupTerminalSegments(
         : 'post-carriage'
     segments.push({
       kind,
-      title: kind === 'post-carriage' ? 'Post-carriage / Delivery' : 'Pre-carriage',
       location: dominantLocation(currentRun),
       events: currentRun,
     })
@@ -165,7 +157,6 @@ export type VoyageBlock = {
 export type TerminalBlock = {
   readonly blockType: 'terminal'
   readonly kind: TerminalSegmentKind
-  readonly title: string
   readonly location: string | null
   readonly events: readonly TrackingTimelineItem[]
 }
@@ -519,7 +510,6 @@ export function buildTimelineRenderList(
     const termBlock: TerminalBlock = {
       blockType: 'terminal',
       kind: ts.kind,
-      title: ts.title,
       location: ts.location,
       events: ts.events,
     }
@@ -583,7 +573,6 @@ export function buildTimelineRenderList(
           const termBlock: TerminalBlock = {
             blockType: 'terminal',
             kind: ts.kind,
-            title: ts.title,
             location: ts.location,
             events: ts.events,
           }
@@ -605,7 +594,6 @@ export function buildTimelineRenderList(
         const termBlock: TerminalBlock = {
           blockType: 'terminal',
           kind: 'pre-carriage',
-          title: 'Terminal / Inland',
           location: dominantLocation(segment.events),
           events: segment.events,
         }
@@ -625,7 +613,6 @@ export function buildTimelineRenderList(
     const termBlock: TerminalBlock = {
       blockType: 'terminal',
       kind: ts.kind,
-      title: ts.title,
       location: ts.location,
       events: ts.events,
     }
