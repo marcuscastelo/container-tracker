@@ -256,6 +256,30 @@ describe('process.http.mappers', () => {
     })
   })
 
+  it('keeps post-completion validation issues on the compact process response contract', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(Object.keys(parsed.tracking_validation).sort()).toEqual([
+      'affected_container_count',
+      'has_issues',
+      'highest_severity',
+    ])
+    expect(parsed.tracking_validation.highest_severity).toBe('danger')
+  })
+
   it('keeps status microbadge nullable when there is no advanced subset status', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),

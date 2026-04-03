@@ -312,6 +312,53 @@ describe('toShipmentDetailVM tracking mapping', () => {
     })
   })
 
+  it('maps a critical post-completion validation summary without deriving reason in the UI', () => {
+    const example = makeProcessDetailResponse({
+      id: 'proc-post-completion-validation',
+      tracking_freshness_token: 'token-post-completion-validation',
+      reference: 'REF-POST-COMPLETION',
+      origin: { display_name: 'Busan' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      bill_of_lading: null,
+      booking_number: null,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tracking_validation: {
+        has_issues: true,
+        highest_severity: 'danger',
+        affected_container_count: 1,
+      },
+      containers: [
+        makeContainerResponse({
+          id: 'container-post-completion',
+          container_number: 'FCIU2000205',
+          tracking_validation: {
+            has_issues: true,
+            highest_severity: 'danger',
+            finding_count: 1,
+          },
+        }),
+      ],
+    })
+
+    const result = toShipmentDetailVM(example)
+
+    expect(result.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'danger',
+      affectedContainerCount: 1,
+    })
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'danger',
+      findingCount: 1,
+    })
+  })
+})
+
+describe('toShipmentDetailVM operational support mapping', () => {
   it('maps compact shipment alert incidents when the additive payload is present', () => {
     const example = makeProcessDetailResponse({
       id: 'proc-incident',

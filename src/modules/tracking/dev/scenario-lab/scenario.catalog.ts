@@ -538,6 +538,15 @@ const EVT_EMPTY_RETURN_ACTUAL = maerskEvent({
   isEmpty: true,
 })
 
+const EVT_POST_COMPLETION_LOAD_ACTUAL = maerskEvent({
+  activity: 'LOAD',
+  eventTime: atPast(15, 8),
+  eventTimeType: 'ACTUAL',
+  location: LOC_POL,
+  vesselName: 'LAB GAMMA',
+  voyage: 'LG309E',
+})
+
 const EVT_CUSTOMS_HOLD = maerskEvent({
   activity: 'CUSTOMS HOLD',
   eventTime: atPast(9, 16),
@@ -1400,6 +1409,67 @@ function buildLifecycleScenarios(): readonly TrackingScenario[] {
             EVT_DISCHARGE_ACTUAL,
             EVT_EMPTY_RETURN_ACTUAL,
           ],
+        },
+      ]),
+    }),
+    createScenario({
+      id: 'delivery_post_completion_continued',
+      title: 'Pathology · Delivered With Continued Tracking',
+      description: 'A delivered container starts a new incompatible load cycle.',
+      category: 'data_pathologies',
+      stage: 9,
+      tags: ['pathology', 'post-completion', 'delivery', 'reused-container'],
+      containers: singleContainer('maersk'),
+      steps: buildProgressiveMaerskSteps('c1', [
+        {
+          id: 'step-1',
+          title: 'Delivered',
+          description: 'Container reaches strong delivery completion.',
+          newEvents: [
+            EVT_GATE_IN_ACTUAL,
+            EVT_LOAD_ACTUAL,
+            EVT_DEPARTURE_ACTUAL,
+            EVT_ARRIVAL_ACTUAL,
+            EVT_DISCHARGE_ACTUAL,
+            EVT_DELIVERY_ACTUAL,
+          ],
+        },
+        {
+          id: 'step-2',
+          title: 'Incompatible new cycle',
+          description: 'A later load appears as if the same process resumed.',
+          newEvents: [EVT_POST_COMPLETION_LOAD_ACTUAL],
+        },
+      ]),
+    }),
+    createScenario({
+      id: 'empty_return_post_completion_continued',
+      title: 'Pathology · Empty Return With Continued Tracking',
+      description: 'An empty returned container starts a new incompatible load cycle.',
+      category: 'data_pathologies',
+      stage: 10,
+      tags: ['pathology', 'post-completion', 'empty-return', 'reused-container'],
+      containers: singleContainer('maersk'),
+      steps: buildProgressiveMaerskSteps('c1', [
+        {
+          id: 'step-1',
+          title: 'Empty returned',
+          description: 'Container reaches strong empty-return completion.',
+          newEvents: [
+            EVT_GATE_IN_ACTUAL,
+            EVT_LOAD_ACTUAL,
+            EVT_DEPARTURE_ACTUAL,
+            EVT_ARRIVAL_ACTUAL,
+            EVT_DISCHARGE_ACTUAL,
+            EVT_DELIVERY_ACTUAL,
+            EVT_EMPTY_RETURN_ACTUAL,
+          ],
+        },
+        {
+          id: 'step-2',
+          title: 'Incompatible new cycle',
+          description: 'A later load appears as if the same process resumed.',
+          newEvents: [EVT_POST_COMPLETION_LOAD_ACTUAL],
         },
       ]),
     }),

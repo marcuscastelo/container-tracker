@@ -280,3 +280,142 @@
 - Iniciar a Fase 3 adicionando novos detectores plugináveis sem abrir caminhos paralelos fora do registry
 - Definir o próximo incremento de lifecycle/histórico de validation issue mantendo os conflitos históricos visíveis
 - Avaliar se a próxima fase precisa expor detalhe adicional no shipment sem inflar o payload nem quebrar a filosofia timeline-first
+
+## K. Kickoff da Fase 3
+- Data de início: 2026-04-03
+- Fase atual: V1 pluginável / Fase 3
+- Estado herdado das Fases 1 e 2:
+  - framework pluginável do Tracking BC já está estável, explícito e determinístico
+  - detector `CONFLICTING_CRITICAL_ACTUALS` já está ativo via registry, com payload público compacto preservado
+  - dashboard, shipment header e container chip já consomem apenas o agregado `tracking_validation`, sem findings brutos
+  - naming visual já foi fechado em `Validação necessária`
+- Entendimento inicial:
+  - a Fase 3 precisa adicionar apenas o detector real `POST_COMPLETION_TRACKING_CONTINUED`
+  - o detector deve identificar tracking incompatível após encerramento forte (`DELIVERED` ou `EMPTY_RETURNED`) sem truncar fatos
+  - a cadeia pública deve continuar leve; findings completos permanecem internos ao Tracking
+  - shipment deve continuar timeline-first e o dashboard deve continuar recebendo só agregados mínimos
+- Plano da Fase 3:
+  - extrair helper semântico compartilhado no status domain para localizar marcos fortes e reduzir drift com `deriveStatus`
+  - implementar `postCompletionTrackingContinued.detector.ts` como plugin isolado no slice `validation`
+  - registrar o detector apenas no registry explícito
+  - manter DTO/VM/UI sem expansão de payload por padrão
+  - adicionar testes unitários do detector e ajustes leves nos testes de agregação/mappers
+  - criar cenários de QA no scenario-lab para delivery + novo ciclo e empty return + novo ciclo
+  - executar QA manual real, rodar `pnpm check` e fechar com commit único
+
+## L. Fechamento da Fase 3
+- Data de fechamento: 2026-04-03
+- Escopo entregue:
+  - detector pluginável real `POST_COMPLETION_TRACKING_CONTINUED` adicionado ao registry explícito do Tracking BC
+  - helper semântico compartilhado extraído para localizar marcos fortes de encerramento sem drift com `deriveStatus`
+  - agregação container/processo mantida canônica e propagada até DTO/VM/UI sem inflar o contrato público
+  - cenários de QA adicionados ao scenario-lab para validar continuação espúria após `DELIVERED` e `EMPTY_RETURNED`
+
+### L.1 O que foi implementado
+- Tracking BC:
+  - `postCompletionTrackingContinued.detector.ts` criado no slice pluginável e ligado via `domain/detectors/index.ts`
+  - regra conservadora: detecta apenas continuação objetivamente incompatível após encerramento forte
+  - findings permanecem internos ao Tracking e continuam resumidos publicamente como agregado compacto
+- Status / semântica de encerramento:
+  - `strongCompletionMilestone.ts` extraído para consolidar marcos fortes explícitos (`DELIVERY`, `EMPTY_RETURN`) e os fallbacks terminais por `GATE_OUT`
+  - `deriveStatus.ts` passou a reutilizar o helper compartilhado para evitar drift semântico entre status final e detector
+  - fallback terminal por `GATE_OUT` deixa de se sustentar quando há continuação ACTUAL posterior do lifecycle
+- Fronteiras:
+  - DTO/VM/UI públicos permaneceram compactos; nenhuma reason/detail extra foi exposta
+  - dashboard continua recebendo apenas o resumo mínimo `tracking_validation`
+  - shipment continua timeline-first com banner agregador já existente
+
+### L.2 Arquivos tocados na Fase 3
+- Criados:
+  - `src/modules/tracking/features/status/domain/derive/strongCompletionMilestone.ts`
+  - `src/modules/tracking/features/validation/domain/detectors/postCompletionTrackingContinued.detector.ts`
+  - `src/modules/tracking/features/validation/domain/tests/postCompletionTrackingContinued.detector.test.ts`
+- Alterados:
+  - `src/modules/tracking/features/status/domain/derive/deriveStatus.ts`
+  - `src/modules/tracking/features/status/domain/tests/deriveStatus.deliveryGateOut.test.ts`
+  - `src/modules/tracking/features/status/domain/tests/deriveStatus.emptyGateOut.test.ts`
+  - `src/modules/tracking/features/validation/domain/detectors/index.ts`
+  - `src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts`
+  - `src/modules/process/application/usecases/tests/list-processes-with-operational-summary.usecase.test.ts`
+  - `src/modules/process/interface/http/tests/process.http.mappers.test.ts`
+  - `src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts`
+  - `src/modules/tracking/dev/scenario-lab/scenario.catalog.ts`
+  - `docs/plans/TRACKING_VALIDATION_IMPLEMENTATION_LOG.md`
+
+### L.3 Contratos alterados
+- Públicos:
+  - nenhum shape público adicional foi criado ou inflado
+  - `tracking_validation` permaneceu resumido em `has_issues`, `highest_severity`, `affected_container_count` e `finding_count` por container
+- Internos:
+  - novo helper semântico para strong completion milestones
+  - novo detector pluginável `POST_COMPLETION_TRACKING_CONTINUED`
+  - evidência interna do finding agora inclui marco forte e primeiro sinal incompatível posterior
+
+### L.4 Testes criados / ajustados
+- Detector e helper semântico:
+  - `src/modules/tracking/features/validation/domain/tests/postCompletionTrackingContinued.detector.test.ts`
+  - `src/modules/tracking/features/status/domain/tests/deriveStatus.deliveryGateOut.test.ts`
+  - `src/modules/tracking/features/status/domain/tests/deriveStatus.emptyGateOut.test.ts`
+- Agregação:
+  - `src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts`
+  - `src/modules/process/application/usecases/tests/list-processes-with-operational-summary.usecase.test.ts`
+- DTO -> VM:
+  - `src/modules/process/interface/http/tests/process.http.mappers.test.ts`
+  - `src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts`
+- Cobertura mínima validada:
+  - `DELIVERED` sem tracking incompatível posterior não dispara
+  - `EMPTY_RETURNED` sem tracking incompatível posterior não dispara
+  - `DELIVERED` seguido de novo ciclo incompatível dispara
+  - `EMPTY_RETURNED` seguido de novo ciclo incompatível dispara
+  - continuação legítima `DELIVERED -> EMPTY_RETURN` não dispara
+  - dashboard continua recebendo agregado mínimo
+  - shipment continua recebendo detalhe suficiente apenas via agregado
+
+### L.5 QA manual realizado
+- Ambiente:
+  - app local validado em `http://localhost:3000`
+  - dev server iniciado com `pnpm run dev -- --host localhost --port 3009` e servido localmente em `3000`
+- Rotas verificadas:
+  - dashboard `/`
+  - shipment positivo delivery `/shipments/a8e002fc-7a49-4b7e-bb56-2f42241834c3`
+  - shipment positivo empty return `/shipments/ad24748c-f280-4397-a82a-ad57a87685e8`
+  - shipment controle delivery `/shipments/ee70ad6f-5cc6-4a6e-b593-c4998abea659`
+  - shipment controle empty return `/shipments/c996f1d2-ac8a-4df1-91f7-d4ad012d3fe4`
+  - scenario-lab `/dev/tracking-scenarios`
+- Cenários carregados:
+  - `delivery_post_completion_continued` step 2
+  - `empty_return_post_completion_continued` step 2
+  - `delivery_post_completion_continued` step 1 como controle sem issue
+  - `empty_return_post_completion_continued` step 1 como controle sem issue
+- Viewports verificados:
+  - desktop
+  - mobile
+- Evidências geradas:
+  - `phase3-dashboard-desktop.png`
+  - `phase3-dashboard-mobile.png`
+  - `phase3-shipment-delivery-positive-desktop.png`
+  - `phase3-shipment-delivery-positive-mobile.png`
+  - `phase3-shipment-delivery-control-desktop.png`
+  - `phase3-shipment-empty-return-positive-desktop.png`
+  - `phase3-shipment-empty-return-positive-mobile.png`
+- Comportamento observado:
+  - dashboard positivo mostra o chip `Validação necessária`
+  - dashboard controle permanece limpo, sem chip extra
+  - shipment positivo mostra banner agregador e chip no container afetado
+  - timeline histórica continua visível e mantém leitura timeline-first
+  - facts posteriores ao encerramento continuam visíveis; nada é truncado
+  - mobile permaneceu legível, sem quebra relevante de layout
+  - detector da Fase 2 continuou funcional durante a passada manual
+
+### L.6 Problemas encontrados
+- O seed do cenário histórico `delivery_explicit` step 2 falhou em runtime com erro de persistência em `tracking_alerts.autoResolveMany`
+- O bloqueio não impactou o escopo da Fase 3 porque os cenários novos do scenario-lab cobriram o caso positivo e o controle necessários para a validação manual
+
+### L.7 Limitações intencionais
+- A Fase 3 não introduz corte manual, truncamento automático ou reassociação de processo/container
+- O payload público continua compacto e não expõe findings completos nem reason-specific UI
+- O banner/copy visual permanece genérico em `Validação necessária`; o motivo específico segue interno ao Tracking BC
+
+### L.8 Próximo passo recomendado para a Fase 4
+- Consolidar a severidade `ADVISORY | CRITICAL` como comportamento E2E real, preservando dashboard leve e shipment timeline-first
+- Avaliar se o shipment precisa de detalhe compacto adicional de motivo sem expor findings brutos nem abrir payload paralelo
