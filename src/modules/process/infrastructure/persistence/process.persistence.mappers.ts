@@ -13,6 +13,15 @@ import type {
   ProcessUpdateRow,
 } from '~/modules/process/infrastructure/persistence/process.row'
 import { Instant } from '~/shared/time/instant'
+import { normalizeTimestamptz } from '~/shared/utils/normalizeTimestamptz'
+
+function requireTimestamp(value: unknown, field: string): string {
+  const normalized = normalizeTimestamptz(value)
+  if (normalized === null) {
+    throw new Error(`process persistence mapper: ${field} is not a valid timestamp: ${String(value)}`)
+  }
+  return normalized
+}
 
 // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/13
 export const processMappers = {
@@ -32,8 +41,8 @@ export const processMappers = {
       redestinationNumber:
         row.redestination_number == null ? null : String(row.redestination_number),
       source: toProcessSource(row.source),
-      createdAt: Instant.fromIso(String(row.created_at)),
-      updatedAt: Instant.fromIso(String(row.updated_at)),
+      createdAt: Instant.fromIso(requireTimestamp(row.created_at, 'process.created_at')),
+      updatedAt: Instant.fromIso(requireTimestamp(row.updated_at, 'process.updated_at')),
     })
   },
 
