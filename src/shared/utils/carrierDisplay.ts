@@ -17,7 +17,7 @@ const CARRIER_DISPLAY_BY_KEY: Readonly<Record<string, string>> = {
   unknown: 'UNKNOWN',
 }
 
-function normalizeCarrierKey(value: string): string {
+export function normalizeCarrierKey(value: string): string {
   return value
     .trim()
     .toLowerCase()

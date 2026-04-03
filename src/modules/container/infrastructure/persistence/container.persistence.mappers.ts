@@ -40,9 +40,5 @@ export const containerMappers = {
   toUpdate: (container: UpdateContainerRecord): ContainerUpdate => ({
     carrier_code: container.carrierCode,
     container_number: container.containerNumber,
-    container_size: null, // TODO: Implement container size and type inference based on events or external data
-    // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/7
-    container_type: null, // TODO: Implement container size and type inference based on events or external data
-    // Issue URL: https://github.com/marcuscastelo/container-tracker/issues/6
   }),
 }

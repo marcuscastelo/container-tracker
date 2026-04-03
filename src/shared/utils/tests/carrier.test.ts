@@ -29,6 +29,12 @@ describe('carrierTrackUrl util', () => {
     expect(url).toContain('DRYU2434190')
   })
 
+  it('returns ONE tracking URL for Ocean Network Express aliases', () => {
+    const url = carrierTrackUrl('Ocean Network Express', 'DRYU2434190')
+    expect(url).toContain('one-line.com')
+    expect(url).toContain('DRYU2434190')
+  })
+
   it('returns google search fallback for unknown carrier', () => {
     const url = carrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
     expect(url).toContain('google.com/search')
