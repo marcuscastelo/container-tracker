@@ -59,17 +59,17 @@ printf '%s' "\${AGENT_UPDATE_MANIFEST_CHANNEL:-}" > "\${CAPTURE_FILE}"
 }
 
 describe('run-linux launcher', () => {
-  it('defaults AGENT_UPDATE_MANIFEST_CHANNEL to stable', () => {
+  it('defaults AGENT_UPDATE_MANIFEST_CHANNEL to disabled', () => {
     const { result, capturedChannel } = runLauncher()
 
     expect(result.status).toBe(0)
-    expect(capturedChannel).toBe('stable')
+    expect(capturedChannel).toBe('disabled')
   })
 
   it('respects explicit AGENT_UPDATE_MANIFEST_CHANNEL overrides', () => {
-    const { result, capturedChannel } = runLauncher('disabled')
+    const { result, capturedChannel } = runLauncher('canary')
 
     expect(result.status).toBe(0)
-    expect(capturedChannel).toBe('disabled')
+    expect(capturedChannel).toBe('canary')
   })
 })
