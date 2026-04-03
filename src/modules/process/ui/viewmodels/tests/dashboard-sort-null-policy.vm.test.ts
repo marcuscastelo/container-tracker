@@ -44,6 +44,7 @@ function createProcess(
     carrier: input.carrier ?? null,
     alertsCount: 0,
     highestAlertSeverity: null,
+    attentionSeverity: null,
     dominantAlertCreatedAt: null,
     trackingValidation: {
       hasIssues: false,

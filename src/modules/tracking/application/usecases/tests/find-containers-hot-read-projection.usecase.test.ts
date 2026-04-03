@@ -259,6 +259,85 @@ describe('findContainersHotReadProjection', () => {
     })
   })
 
+  it('marks the container with ADVISORY when a stray maritime event lands in post-carriage', async () => {
+    const advisoryObservations = [
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-load-1',
+        fingerprint: 'fp-c1-load-1',
+        type: 'LOAD',
+        event_time: temporalValueFromCanonical('2026-02-10T08:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T08:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-departure-1',
+        fingerprint: 'fp-c1-departure-1',
+        type: 'DEPARTURE',
+        event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T10:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-arrival-1',
+        fingerprint: 'fp-c1-arrival-1',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-02-15T08:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T08:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-1',
+        fingerprint: 'fp-c1-discharge-1',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-15T11:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T11:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-post-carriage-departure',
+        fingerprint: 'fp-c1-post-carriage-departure',
+        type: 'DEPARTURE',
+        event_time: temporalValueFromCanonical('2026-02-16T09:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-16T09:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC SIGMA',
+        voyage: '202W',
+      }),
+    ]
+    const { deps } = createDeps({
+      observations: advisoryObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-02-17T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'ADVISORY',
+    })
+  })
+
   it('fails explicitly when the batch active-alert read fails', async () => {
     const { deps } = createDeps({
       observations: [makeObservation('c1', 'MSCU1111111')],

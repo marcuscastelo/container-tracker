@@ -28,8 +28,10 @@ describe('tracking-review-display.presenter', () => {
       visible: true,
       tone: 'warning',
     })
+    expect(toTrackingValidationBadgeClasses(state)).toContain('bg-tone-warning-bg/70')
     expect(toTrackingValidationBadgeClasses(state)).toContain('border-tone-warning-border')
     expect(toTrackingValidationBannerClasses(state)).toContain('border-tone-warning-border')
+    expect(toTrackingValidationBannerClasses(state)).toContain('border-l-tone-warning-strong')
   })
 
   it('uses danger tone when the process/container aggregate is critical', () => {
@@ -44,5 +46,6 @@ describe('tracking-review-display.presenter', () => {
     })
     expect(toTrackingValidationBadgeClasses(state)).toContain('border-tone-danger-border')
     expect(toTrackingValidationBannerClasses(state)).toContain('border-tone-danger-border')
+    expect(toTrackingValidationBannerClasses(state)).toContain('border-l-tone-danger-strong')
   })
 })

@@ -419,3 +419,152 @@
 ### L.8 Próximo passo recomendado para a Fase 4
 - Consolidar a severidade `ADVISORY | CRITICAL` como comportamento E2E real, preservando dashboard leve e shipment timeline-first
 - Avaliar se o shipment precisa de detalhe compacto adicional de motivo sem expor findings brutos nem abrir payload paralelo
+
+## M. Kickoff da Fase 4
+- Data de início: 2026-04-03
+- Fase atual: V1 pluginável / Fase 4
+- Estado herdado das Fases 1, 2 e 3:
+  - framework pluginável do Tracking BC segue explícito, determinístico e centralizado no registry
+  - detectores ativos em produção: `CONFLICTING_CRITICAL_ACTUALS` e `POST_COMPLETION_TRACKING_CONTINUED`
+  - `tracking_validation` público segue compacto em dashboard e shipment, sem findings brutos
+  - naming visual já está fechado em `Validação necessária`
+- Entendimento inicial:
+  - a severidade interna já existe no domínio (`ADVISORY | CRITICAL`), mas ainda não está exercitada E2E com advisory real no runtime
+  - o dashboard ainda não recebe um sinal backend-derived de triagem que considere validation crítica sem empurrar composição para a UI
+  - a integração com alertas nesta fase deve permanecer apenas visual/operacional no dashboard; não haverá `TrackingAlert` novo nem lifecycle paralelo
+- Plano da Fase 4:
+  - expandir o contexto pluginável com sinais derivados owned pelo Tracking validation, populados a partir de projeções canônicas já existentes
+  - adicionar um detector pluginável advisory mínimo e conservador para um subconjunto objetivo de `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - manter os detectores críticos atuais intactos e cobertos por regressão
+  - preservar o contrato público de `tracking_validation` e acrescentar um único campo leve de triagem backend-derived no payload de processo/dashboard
+  - mapear esse novo sinal até VM e usar o campo pronto em row/filter/sort do dashboard, sem composição local na UI
+  - reforçar a diferença visual advisory vs critical em banner/chips sem mudar o naming nem poluir a timeline
+
+### M.1 Implementação concluída
+- A severidade passou a atravessar a cadeia inteira de forma explícita:
+  - detector pluginável
+  - finding/sumário agregado
+  - projection/read model
+  - DTO HTTP
+  - mapper UI
+  - ViewModel
+  - rendering final
+- O contexto pluginável recebeu sinais derivados owned pelo Tracking BC via `trackingValidationContext.signals`, sem importar read models de process para o domínio.
+- Foi adicionado o detector advisory mínimo `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`, limitado a um subconjunto objetivo de inconsistência canônica de timeline marítima pós-chegada.
+- Os detectores críticos herdados (`CONFLICTING_CRITICAL_ACTUALS` e `POST_COMPLETION_TRACKING_CONTINUED`) permaneceram ativos e cobertos por regressão.
+- O dashboard passou a receber `attention_severity` como sinal backend-derived leve:
+  - `CRITICAL` em validation eleva a triagem visual para `danger`
+  - `ADVISORY` não cria destaque agressivo extra
+  - `highest_alert_severity` continua separado e preservado
+- Shipment/detail manteve o banner agregador e os chips por container, mas agora com distinção visual mais clara entre advisory e critical.
+
+### M.2 Contratos alterados
+- Internos Tracking validation:
+  - `TrackingValidationContext` agora inclui `signals`
+  - novo shape `canonicalTimeline.postCarriageMaritimeEvents`
+  - novo detector pluginável `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+- Processo/read model:
+  - `ProcessOperationalSummary` agora inclui `attention_severity`
+- HTTP:
+  - `ProcessResponseSchema` passou a expor `attention_severity`
+  - `tracking_validation.highest_severity` continuou compacto em `info | warning | danger | null`
+- UI/VM:
+  - `ProcessSummaryVM` passou a carregar `attentionSeverity`
+  - dashboard consome esse campo pronto em row accent, filter e sort
+
+### M.3 Comportamento final de severidade
+- Domínio:
+  - `ADVISORY | CRITICAL` seguem canônicos dentro do Tracking BC
+- HTTP/UI:
+  - domínio `ADVISORY` -> DTO/VM `warning`
+  - domínio `CRITICAL` -> DTO/VM `danger`
+- Agregação:
+  - por container e por processo, a maior severidade vence
+  - `ADVISORY` continua visível corretamente mesmo quando é o único tipo presente
+  - `CRITICAL` preserva prioridade até a UI
+- Dashboard:
+  - permanece binário no topo para validation (`tem issue` / `não tem issue`)
+  - passa a destacar visualmente `CRITICAL` via `attention_severity`
+  - não recebe findings, reasons nem payload extra pesado
+- Shipment:
+  - continua timeline-first
+  - banner/chip usam a severidade já pronta, sem rederivação local
+
+### M.4 Integração com alertas
+- Não houve integração com `TrackingAlert` persistido nesta fase.
+- Decisão explícita:
+  - não criar lifecycle paralelo de ack/resolution para validation issues
+  - não duplicar a semântica de alertas operacionais
+  - manter a integração apenas como triagem visual backend-derived no dashboard via `attention_severity`
+
+### M.5 Testes criados / ajustados
+- Tracking validation:
+  - `src/modules/tracking/features/validation/domain/tests/canonicalTimelineClassificationInconsistent.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/trackingValidation.registry.test.ts`
+  - regressões mantidas em:
+    - `conflictingCriticalActuals.detector.test.ts`
+    - `postCompletionTrackingContinued.detector.test.ts`
+- Agregação / projeção:
+  - `src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts`
+  - `src/modules/process/features/operational-projection/application/tests/aggregateOperationalSummary.test.ts`
+  - `src/modules/process/application/usecases/tests/list-processes-with-operational-summary.usecase.test.ts`
+- DTO -> VM / UI:
+  - `src/modules/process/interface/http/tests/process.http.mappers.test.ts`
+  - `src/modules/process/ui/mappers/tests/processList.ui-mapper.test.ts`
+  - `src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts`
+  - `src/modules/process/ui/viewmodels/tests/dashboard-filter-interaction.vm.test.ts`
+  - `src/modules/process/ui/viewmodels/tests/dashboard-sort-interaction.vm.test.ts`
+  - `src/modules/process/ui/components/tests/tracking-review-display.presenter.test.ts`
+- Cenários mínimos cobertos:
+  - critical preserva severidade até a UI
+  - advisory preserva severidade até a UI
+  - agregação escolhe highest severity
+  - dashboard continua leve
+  - shipment/detail reflete melhor a severidade
+  - detectores das Fases 2 e 3 continuam funcionando
+
+### M.6 QA manual realizado
+- Ambiente:
+  - dev server iniciado com `pnpm run dev -- --host localhost --port 3009`
+  - runtime local serviu a aplicação em `http://localhost:3002`
+- Rotas verificadas:
+  - dashboard `/`
+  - shipment clean `/shipments/77f8a69a-0684-4395-8bdb-5318a127871f`
+  - shipment advisory `/shipments/7a16c9a5-ba0d-4ad3-ba49-9a722fe295ae`
+  - shipment critical `/shipments/e7b7c531-7e96-4a61-982b-8e03ee846254`
+  - scenario-lab `/dev/tracking-scenarios`
+- Cenários usados:
+  - `post_carriage_maritime_inconsistent` step 1 como clean
+  - `post_carriage_maritime_inconsistent` step 2 como advisory
+  - `delivery_post_completion_continued` step 2 como critical
+- Viewports verificados:
+  - desktop
+  - mobile
+- Evidências geradas:
+  - `phase4-dashboard-desktop.png`
+  - `phase4-dashboard-mobile.png`
+  - `phase4-shipment-clean-desktop-mcp.png`
+  - `phase4-shipment-advisory-desktop-mcp.png`
+  - `phase4-shipment-advisory-mobile-mcp.png`
+  - `phase4-shipment-critical-desktop-mcp.png`
+  - `phase4-shipment-critical-mobile-mcp.png`
+  - capturas complementares em `/tmp/phase4-shipment-*.png`
+- Comportamento observado:
+  - dashboard clean permaneceu sem badge de validation
+  - dashboard advisory mostrou `Validação necessária` sem inflar triagem agressiva
+  - dashboard critical mostrou `Validação necessária` com destaque coerente via triagem backend-derived
+  - shipment advisory exibiu banner/chip em tom warning e preservou a timeline como artefato principal
+  - shipment critical exibiu banner/chip em tom danger mais forte e preservou o histórico posterior
+  - refresh, prefetch e reconciliation não apresentaram regressão visível na passada manual
+
+### M.7 Problemas encontrados
+- O preview da rota dev `tracking-scenarios` precisou ser alinhado ao novo `attentionSeverity` para continuar compatível com `ProcessSummaryVM`.
+- O lint falhou ao final da implementação por excesso de linhas em dois blocos de teste; a correção foi estrutural, dividindo os `describe` sem reduzir cobertura.
+
+### M.8 Limitações intencionais e próximo passo
+- Limitações intencionais:
+  - advisory entrou apenas no subconjunto objetivo necessário para validar a cadeia E2E
+  - nenhum finding bruto foi exposto publicamente
+  - não houve persistência de validation como alert
+- Próximo passo recomendado para a Fase 5:
+  - expandir detectores advisory reais sobre inconsistências canônicas adicionais, ainda via registry/plugin system, sem mover semântica para UI nem inflar o dashboard

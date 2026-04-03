@@ -24,7 +24,10 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
-import { deriveTrackingValidationProjection } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import {
+  createTrackingValidationContext,
+  deriveTrackingValidationProjection,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
@@ -262,15 +265,17 @@ export async function getContainerSummary(
     now: referenceNow,
     dataIssue: alertsResult.dataIssue,
   })
-  const trackingValidation = deriveTrackingValidationProjection({
-    containerId: cmd.containerId,
-    containerNumber: cmd.containerNumber,
-    observations: projectionObservations,
-    timeline,
-    status,
-    transshipment,
-    now: referenceNow,
-  }).summary
+  const trackingValidation = deriveTrackingValidationProjection(
+    createTrackingValidationContext({
+      containerId: cmd.containerId,
+      containerNumber: cmd.containerNumber,
+      observations: projectionObservations,
+      timeline,
+      status,
+      transshipment,
+      now: referenceNow,
+    }),
+  ).summary
 
   return {
     containerId: cmd.containerId,

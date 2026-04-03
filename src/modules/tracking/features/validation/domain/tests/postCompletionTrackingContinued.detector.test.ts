@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { postCompletionTrackingContinuedDetector } from '~/modules/tracking/features/validation/domain/detectors/postCompletionTrackingContinued.detector'
-import type { TrackingValidationContext } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
+import {
+  createEmptyTrackingValidationDerivedSignals,
+  type TrackingValidationContext,
+} from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import { Instant } from '~/shared/time/instant'
 import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
@@ -48,6 +51,7 @@ function makeContext(observations: readonly Observation[]): TrackingValidationCo
       transshipmentCount: 0,
       ports: [],
     },
+    signals: createEmptyTrackingValidationDerivedSignals(),
     now: Instant.fromIso('2026-04-03T12:00:00.000Z'),
   }
 }

@@ -93,6 +93,7 @@ function createSummary(
     },
     alerts_count: 0,
     highest_alert_severity: null,
+    attention_severity: null,
     dominant_alert_created_at: null,
     tracking_validation: createEmptyTrackingValidationProcessProjectionSummary(),
     has_transshipment: false,
@@ -237,6 +238,7 @@ describe('process.http.mappers', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),
       createSummary({
+        attention_severity: 'danger',
         tracking_validation: {
           hasIssues: true,
           affectedContainerCount: 1,
@@ -254,6 +256,31 @@ describe('process.http.mappers', () => {
       highest_severity: 'danger',
       affected_container_count: 1,
     })
+    expect(parsed.attention_severity).toBe('danger')
+  })
+
+  it('maps internal ADVISORY validation severity to warning only at the HTTP boundary', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.tracking_validation).toEqual({
+      has_issues: true,
+      highest_severity: 'warning',
+      affected_container_count: 1,
+    })
+    expect(parsed.attention_severity).toBeNull()
   })
 
   it('keeps post-completion validation issues on the compact process response contract', () => {

@@ -1,5 +1,12 @@
+import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
+import { buildTimelineRenderList } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel'
+import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { TRACKING_VALIDATION_DETECTORS } from '~/modules/tracking/features/validation/domain/detectors'
-import type { TrackingValidationContext } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
+import {
+  createEmptyTrackingValidationDerivedSignals,
+  type TrackingValidationContext,
+  type TrackingValidationDerivedSignals,
+} from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
 import type {
   TrackingValidationContainerSummary,
@@ -17,11 +24,68 @@ const trackingValidationRegistry = createTrackingValidationRegistry(TRACKING_VAL
 
 export type { TrackingValidationContainerSummary, TrackingValidationProcessSummary }
 
+type TrackingValidationContextBase = Omit<TrackingValidationContext, 'signals'>
+
 export type TrackingValidationContainerProjection = {
   readonly containerId: string
   readonly containerNumber: string
   readonly findings: readonly TrackingValidationFinding[]
   readonly summary: TrackingValidationContainerSummary
+}
+
+function deriveTrackingValidationDerivedSignals(
+  context: TrackingValidationContextBase,
+): TrackingValidationDerivedSignals {
+  const timelineItems = deriveTimelineWithSeriesReadModel(
+    toTrackingObservationProjections(context.observations),
+    context.now,
+    { includeSeriesHistory: false },
+  )
+  const renderList = buildTimelineRenderList(timelineItems, context.now)
+  const postCarriageMaritimeEvents = renderList.flatMap((item) => {
+    if (item.type !== 'terminal-block' || item.block.kind !== 'post-carriage') {
+      return []
+    }
+
+    return item.block.events.flatMap((event) => {
+      const hasVesselContext = (event.vesselName?.trim().length ?? 0) > 0
+      const hasVoyageContext = (event.voyage?.trim().length ?? 0) > 0
+      const hasStrongMaritimeType = event.type === 'LOAD' || event.type === 'DEPARTURE'
+
+      if (!hasVesselContext && !hasVoyageContext && !hasStrongMaritimeType) {
+        return []
+      }
+
+      return [
+        {
+          type: event.type,
+          eventTimeType: event.eventTimeType,
+          location: event.location ?? null,
+          hasVesselContext,
+          hasVoyageContext,
+        },
+      ]
+    })
+  })
+
+  if (postCarriageMaritimeEvents.length === 0) {
+    return createEmptyTrackingValidationDerivedSignals()
+  }
+
+  return {
+    canonicalTimeline: {
+      postCarriageMaritimeEvents,
+    },
+  }
+}
+
+export function createTrackingValidationContext(
+  context: TrackingValidationContextBase,
+): TrackingValidationContext {
+  return {
+    ...context,
+    signals: deriveTrackingValidationDerivedSignals(context),
+  }
 }
 
 export function deriveTrackingValidationProjection(

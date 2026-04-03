@@ -267,6 +267,51 @@ describe('toShipmentDetailVM base mapping', () => {
 })
 
 describe('toShipmentDetailVM tracking mapping', () => {
+  it('maps advisory validation summaries for shipment and container support UI', () => {
+    const example = makeProcessDetailResponse({
+      id: 'proc-validation-advisory',
+      tracking_freshness_token: 'token-proc-validation-advisory',
+      reference: 'REF-VALIDATION-ADVISORY',
+      origin: { display_name: 'Busan' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      bill_of_lading: null,
+      booking_number: null,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tracking_validation: {
+        has_issues: true,
+        highest_severity: 'warning',
+        affected_container_count: 1,
+      },
+      containers: [
+        makeContainerResponse({
+          id: 'container-validation-advisory',
+          container_number: 'FCIU2000205',
+          tracking_validation: {
+            has_issues: true,
+            highest_severity: 'warning',
+            finding_count: 1,
+          },
+        }),
+      ],
+    })
+
+    const result = toShipmentDetailVM(example)
+
+    expect(result.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 1,
+    })
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      findingCount: 1,
+    })
+  })
+
   it('maps tracking validation summaries for shipment and container support UI', () => {
     const example = makeProcessDetailResponse({
       id: 'proc-validation',

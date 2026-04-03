@@ -26,6 +26,11 @@ function makeSummary(
     status?: OperationalStatus
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
+    trackingValidation?: {
+      readonly hasIssues: boolean
+      readonly findingCount: number
+      readonly highestSeverity: 'ADVISORY' | 'CRITICAL' | null
+    }
     operational?: {
       etaEventTime?: string | null
       etaState?: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
@@ -57,7 +62,8 @@ function makeSummary(
   return {
     status: overrides.status ?? 'UNKNOWN',
     alerts: overrides.alerts ?? [],
-    tracking_validation: createEmptyTrackingValidationContainerProjectionSummary(),
+    tracking_validation:
+      overrides.trackingValidation ?? createEmptyTrackingValidationContainerProjectionSummary(),
     has_observations: (overrides.observations?.length ?? 0) > 0,
     last_event_at:
       overrides.observations === undefined || overrides.observations.length === 0
@@ -450,6 +456,40 @@ describe('aggregateOperationalSummary', () => {
 
     expect(result.highest_alert_severity).toBe('warning')
     expect(result.dominant_alert_created_at).toBe('2026-03-03T11:00:00.000Z')
+  })
+
+  it('elevates attention severity to danger when tracking validation is critical', () => {
+    const summaries = [
+      makeSummary({
+        trackingValidation: {
+          hasIssues: true,
+          findingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
+
+    expect(result.highest_alert_severity).toBeNull()
+    expect(result.attention_severity).toBe('danger')
+  })
+
+  it('keeps attention severity null when tracking validation is advisory only', () => {
+    const summaries = [
+      makeSummary({
+        trackingValidation: {
+          hasIssues: true,
+          findingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
+
+    expect(result.highest_alert_severity).toBeNull()
+    expect(result.attention_severity).toBeNull()
   })
 
   it('detects transshipment alert at process level', () => {

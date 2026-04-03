@@ -21,7 +21,10 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
-import { deriveTrackingValidationProjection } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import {
+  createTrackingValidationContext,
+  deriveTrackingValidationProjection,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
 import { systemClock } from '~/shared/time/clock'
 
@@ -150,15 +153,17 @@ export async function processSnapshot(
 
   // Derive transshipment info
   const transshipment = deriveTransshipment(timeline)
-  const trackingValidation = deriveTrackingValidationProjection({
-    containerId,
-    containerNumber,
-    observations: allObservations,
-    timeline,
-    status,
-    transshipment,
-    now: systemClock.now(),
-  }).summary
+  const trackingValidation = deriveTrackingValidationProjection(
+    createTrackingValidationContext({
+      containerId,
+      containerNumber,
+      observations: allObservations,
+      timeline,
+      status,
+      transshipment,
+      now: systemClock.now(),
+    }),
+  ).summary
 
   return {
     newObservations,

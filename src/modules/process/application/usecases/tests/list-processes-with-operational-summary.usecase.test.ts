@@ -241,6 +241,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       affectedContainerCount: 0,
       totalFindingCount: 0,
     })
+    expect(result.processes[0]?.summary.attention_severity).toBe('danger')
   })
 
   it('aggregates container validation into the process summary without inflating the dashboard payload', async () => {
@@ -308,6 +309,75 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       affectedContainerCount: 1,
       totalFindingCount: 1,
     })
+    expect(result.processes[0]?.summary.attention_severity).toBe('danger')
+  })
+
+  it('keeps advisory validation visible in the process summary without escalating dashboard attention', async () => {
+    const { deps } = createDeps({
+      hotReadResult: {
+        containers: [
+          {
+            containerId: 'container-1',
+            containerNumber: 'MSCU1111111',
+            status: 'DISCHARGED',
+            timeline: [],
+            operational: makeOperationalSummary({
+              status: 'DISCHARGED',
+              eta: null,
+              etaApplicable: false,
+              lifecycleBucket: 'post_arrival_pre_delivery',
+              dataIssue: false,
+            }),
+            trackingValidation: {
+              hasIssues: true,
+              findingCount: 1,
+              highestSeverity: 'ADVISORY',
+            },
+            activeAlerts: [],
+            hasObservations: true,
+            lastEventAt: temporalValueFromCanonical('2026-03-11T12:00:00.000Z'),
+          },
+          {
+            containerId: 'container-2',
+            containerNumber: 'MSCU2222222',
+            status: 'IN_TRANSIT',
+            timeline: [],
+            operational: makeOperationalSummary({
+              status: 'IN_TRANSIT',
+              eta: null,
+              etaApplicable: true,
+              lifecycleBucket: 'pre_arrival',
+              dataIssue: false,
+            }),
+            trackingValidation: EMPTY_TRACKING_VALIDATION,
+            activeAlerts: [],
+            hasObservations: true,
+            lastEventAt: temporalValueFromCanonical('2026-03-10T12:00:00.000Z'),
+          },
+        ],
+        activeAlerts: [],
+        activeAlertIncidents: {
+          summary: {
+            activeIncidentCount: 0,
+            affectedContainerCount: 0,
+            recognizedIncidentCount: 0,
+          },
+          active: [],
+          recognized: [],
+        },
+      },
+    })
+    const useCase = createListProcessesWithOperationalSummaryUseCase(deps)
+
+    const result = await useCase()
+
+    expect(result.processes[0]?.summary.tracking_validation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'ADVISORY',
+      affectedContainerCount: 1,
+      totalFindingCount: 1,
+    })
+    expect(result.processes[0]?.summary.attention_severity).toBeNull()
   })
 
   it('aggregates post-completion continuation into the process summary without inflating the dashboard payload', async () => {
@@ -375,6 +445,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       affectedContainerCount: 1,
       totalFindingCount: 1,
     })
+    expect(result.processes[0]?.summary.attention_severity).toBe('danger')
   })
 
   it('fails explicitly when the hot-read projection omits a requested container', async () => {

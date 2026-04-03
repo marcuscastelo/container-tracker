@@ -33,16 +33,16 @@ export function toTrackingValidationDisplayState(
 
 export function toTrackingValidationBadgeClasses(state: TrackingReviewDisplayState): string {
   if (state.visible && state.tone === 'danger') {
-    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
+    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg shadow-[0_1px_2px_rgb(0_0_0_/6%)]'
   }
 
-  return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+  return 'border-tone-warning-border bg-tone-warning-bg/70 text-tone-warning-fg'
 }
 
 export function toTrackingValidationBannerClasses(state: TrackingReviewDisplayState): string {
   if (state.visible && state.tone === 'danger') {
-    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
+    return 'border border-tone-danger-border border-l-4 border-l-tone-danger-strong bg-tone-danger-bg text-tone-danger-fg shadow-[0_1px_2px_rgb(0_0_0_/8%)]'
   }
 
-  return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+  return 'border border-tone-warning-border border-l-4 border-l-tone-warning-strong bg-tone-warning-bg/70 text-tone-warning-fg'
 }

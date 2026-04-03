@@ -123,6 +123,14 @@ const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
 }
 
 function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
+  const attentionSeverity = process.attentionSeverity
+  if (attentionSeverity === 'danger') return 'danger'
+  if (attentionSeverity === 'warning') return 'warning'
+  if (attentionSeverity === 'info') return 'info'
+  return 'none'
+}
+
+function toAlertBadgeSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
   const highestSeverity = process.highestAlertSeverity
   if (highestSeverity === 'danger') return 'danger'
   if (highestSeverity === 'warning') return 'warning'
@@ -515,7 +523,7 @@ function TrackingValidationChip(props: {
 }
 
 function AlertsCell(ctx: CellContext): JSX.Element {
-  const dominantSeverity = () => toDominantSeverity(ctx.process)
+  const dominantSeverity = () => toAlertBadgeSeverity(ctx.process)
   const dominantAlertLabel = () => toDominantAlertLabel(ctx.process, ctx.t, ctx.keys)
   const hasTrackingValidation = () => ctx.process.trackingValidation.hasIssues
   const trackingValidationLabel = () => {

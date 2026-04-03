@@ -131,6 +131,28 @@ function toTrackingValidationSeverityResponse(
   return null
 }
 
+function toTrackingValidationAttentionSeverity(
+  severity: TrackingValidationProcessSummary['highestSeverity'],
+): 'danger' | null {
+  if (severity === 'CRITICAL') return 'danger'
+  return null
+}
+
+function toProcessAttentionSeverity(command: {
+  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly trackingValidation: TrackingValidationProcessSummary
+}): 'info' | 'warning' | 'danger' | null {
+  const validationSeverity = toTrackingValidationAttentionSeverity(
+    command.trackingValidation.highestSeverity,
+  )
+
+  if (command.highestAlertSeverity === 'danger' || validationSeverity === 'danger') {
+    return 'danger'
+  }
+
+  return command.highestAlertSeverity
+}
+
 type TrackingAlertRecord = TrackingAlert
 type AlertTriggeredSortItem = {
   readonly id: string
@@ -212,6 +234,7 @@ export function toProcessResponse(pwc: ProcessWithContainers) {
   return {
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
+    attention_severity: null,
     tracking_validation: createEmptyProcessTrackingValidationResponse(),
   }
 }
@@ -241,6 +264,7 @@ export function toProcessResponseWithSummary(
     },
     alerts_count: summary.alerts_count,
     highest_alert_severity: summary.highest_alert_severity,
+    attention_severity: summary.attention_severity,
     dominant_alert_created_at: summary.dominant_alert_created_at,
     tracking_validation: toProcessTrackingValidationResponse(summary.tracking_validation),
     has_transshipment: summary.has_transshipment,
@@ -757,9 +781,10 @@ export function toProcessDetailResponse(
     .sort(compareAlertsByTriggeredAtDesc)
     .map(toTrackingAlertResponse)
   const processOperational = toProcessOperationalResponse(summariesForProcess)
-  const trackingValidation = toProcessTrackingValidationResponse(
-    aggregateTrackingValidationProjection(validationSummariesForProcess),
+  const trackingValidationSummary = aggregateTrackingValidationProjection(
+    validationSummariesForProcess,
   )
+  const trackingValidation = toProcessTrackingValidationResponse(trackingValidationSummary)
   const activeAlertIncidentResponses = activeAlertIncidents.active.map(
     toShipmentAlertIncidentResponse,
   )
@@ -777,6 +802,18 @@ export function toProcessDetailResponse(
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
     alerts: alertsResponse,
+    attention_severity: toProcessAttentionSeverity({
+      highestAlertSeverity: alertsResponse.reduce<'info' | 'warning' | 'danger' | null>(
+        (current, alert) => {
+          if (alert.severity === 'danger') return 'danger'
+          if (alert.severity === 'warning' && current !== 'danger') return 'warning'
+          if (alert.severity === 'info' && current === null) return 'info'
+          return current
+        },
+        null,
+      ),
+      trackingValidation: trackingValidationSummary,
+    }),
     tracking_validation: trackingValidation,
     alert_incidents: {
       summary: {

@@ -3,7 +3,10 @@ import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/tran
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
-import type { TrackingValidationContext } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
+import {
+  createEmptyTrackingValidationDerivedSignals,
+  type TrackingValidationContext,
+} from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import type { TrackingValidationDetector } from '~/modules/tracking/features/validation/domain/model/trackingValidationDetector'
 import { createTrackingValidationRegistry } from '~/modules/tracking/features/validation/domain/registry/trackingValidationRegistry'
 import { aggregateTrackingValidation } from '~/modules/tracking/features/validation/domain/services/aggregateTrackingValidation'
@@ -35,6 +38,7 @@ function createContext(
     timeline,
     status,
     transshipment,
+    signals: createEmptyTrackingValidationDerivedSignals(),
     now: Instant.fromIso('2026-04-03T00:00:00.000Z'),
     ...overrides,
   }
@@ -149,6 +153,23 @@ describe('tracking validation registry and aggregation', () => {
       affectedContainerCount: 2,
       totalFindingCount: 3,
       highestSeverity: 'CRITICAL',
+    })
+  })
+
+  it('keeps advisory summaries active without escalating process severity to critical', () => {
+    const result = aggregateTrackingValidation([
+      {
+        hasIssues: true,
+        findingCount: 1,
+        highestSeverity: 'ADVISORY',
+      },
+    ])
+
+    expect(result).toEqual({
+      hasIssues: true,
+      affectedContainerCount: 1,
+      totalFindingCount: 1,
+      highestSeverity: 'ADVISORY',
     })
   })
 })

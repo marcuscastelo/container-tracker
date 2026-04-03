@@ -547,6 +547,15 @@ const EVT_POST_COMPLETION_LOAD_ACTUAL = maerskEvent({
   voyage: 'LG309E',
 })
 
+const EVT_POST_CARRIAGE_DEPARTURE_ACTUAL = maerskEvent({
+  activity: 'CONTAINER DEPARTURE',
+  eventTime: atPast(10, 18),
+  eventTimeType: 'ACTUAL',
+  location: LOC_POD,
+  vesselName: 'LAB SIGMA',
+  voyage: 'LS401W',
+})
+
 const EVT_CUSTOMS_HOLD = maerskEvent({
   activity: 'CUSTOMS HOLD',
   eventTime: atPast(9, 16),
@@ -1470,6 +1479,35 @@ function buildLifecycleScenarios(): readonly TrackingScenario[] {
           title: 'Incompatible new cycle',
           description: 'A later load appears as if the same process resumed.',
           newEvents: [EVT_POST_COMPLETION_LOAD_ACTUAL],
+        },
+      ]),
+    }),
+    createScenario({
+      id: 'post_carriage_maritime_inconsistent',
+      title: 'Pathology · Post-Carriage Maritime Event',
+      description: 'A maritime departure appears after the last voyage has already discharged.',
+      category: 'data_pathologies',
+      stage: 10,
+      tags: ['pathology', 'advisory', 'post-carriage', 'timeline-classification'],
+      containers: singleContainer('maersk'),
+      steps: buildProgressiveMaerskSteps('c1', [
+        {
+          id: 'step-1',
+          title: 'Discharged',
+          description: 'Container finishes the last maritime leg with a discharge.',
+          newEvents: [
+            EVT_GATE_IN_ACTUAL,
+            EVT_LOAD_ACTUAL,
+            EVT_DEPARTURE_ACTUAL,
+            EVT_ARRIVAL_ACTUAL,
+            EVT_DISCHARGE_ACTUAL,
+          ],
+        },
+        {
+          id: 'step-2',
+          title: 'Stray maritime departure',
+          description: 'A departure appears in post-carriage without a new canonical voyage leg.',
+          newEvents: [EVT_POST_CARRIAGE_DEPARTURE_ACTUAL],
         },
       ]),
     }),

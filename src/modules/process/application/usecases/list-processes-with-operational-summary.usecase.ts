@@ -88,6 +88,13 @@ type ProcessWithOperationalSummary = {
   readonly sync: ProcessSyncSummaryReadModel
 }
 
+function toTrackingValidationAttentionSeverity(summary: {
+  readonly highestSeverity: 'ADVISORY' | 'CRITICAL' | null
+}): 'danger' | null {
+  if (summary.highestSeverity === 'CRITICAL') return 'danger'
+  return null
+}
+
 type ListProcessesWithOperationalSummaryResult = {
   readonly processes: readonly ProcessWithOperationalSummary[]
 }
@@ -492,6 +499,9 @@ export function aggregateOperationalSummary(
         summary.tracking_validation ?? createEmptyTrackingValidationContainerProjectionSummary(),
     ),
   )
+  const validationAttentionSeverity = toTrackingValidationAttentionSeverity(trackingValidation)
+  const attentionSeverity =
+    validationAttentionSeverity === null ? highestAlertSeverity : validationAttentionSeverity
 
   // --- Last Event ---
   let lastEventAt: TemporalValue | null = null
@@ -531,6 +541,7 @@ export function aggregateOperationalSummary(
     },
     alerts_count: alertsCount,
     highest_alert_severity: highestAlertSeverity,
+    attention_severity: attentionSeverity,
     dominant_alert_created_at: dominantAlertCreatedAt,
     tracking_validation: trackingValidation,
     has_transshipment: hasTransshipment,

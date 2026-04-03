@@ -56,6 +56,7 @@ export type ProcessListItemSource = {
     | undefined
   alerts_count?: number | undefined
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null | undefined
+  attention_severity?: 'info' | 'warning' | 'danger' | null | undefined
   dominant_alert_created_at?: string | null | undefined
   tracking_validation?:
     | {
@@ -183,6 +184,7 @@ export function toProcessSummaryVMs(
       carrier: toOptionalNonBlankString(process.carrier),
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,
+      attentionSeverity: process.attention_severity ?? process.highest_alert_severity ?? null,
       dominantAlertCreatedAt: process.dominant_alert_created_at ?? null,
       trackingValidation: toProcessTrackingValidationVm(process.tracking_validation),
       redestinationNumber: process.redestination_number ?? null,

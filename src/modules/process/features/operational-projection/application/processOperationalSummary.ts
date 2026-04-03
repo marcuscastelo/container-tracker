@@ -59,6 +59,7 @@ export type ProcessOperationalSummary = {
 
   readonly alerts_count: number
   readonly highest_alert_severity: OperationalAlertSeverity | null
+  readonly attention_severity: OperationalAlertSeverity | null
   readonly dominant_alert_created_at: string | null
   readonly tracking_validation: TrackingValidationProcessSummary
 

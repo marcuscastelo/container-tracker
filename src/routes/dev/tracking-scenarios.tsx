@@ -533,6 +533,8 @@ export default function TrackingScenariosPage(): JSX.Element {
         },
         null,
       )
+      const attentionSeverity =
+        shipment.trackingValidation.highestSeverity === 'danger' ? 'danger' : highestSeverity
 
       return {
         id: shipment.id,
@@ -570,6 +572,7 @@ export default function TrackingScenariosPage(): JSX.Element {
         carrier: shipment.carrier ?? null,
         alertsCount: shipment.alerts.length,
         highestAlertSeverity: highestSeverity,
+        attentionSeverity,
         dominantAlertCreatedAt: null,
         trackingValidation: shipment.trackingValidation,
         redestinationNumber: shipment.redestination_number ?? null,

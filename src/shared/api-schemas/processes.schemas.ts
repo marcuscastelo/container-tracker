@@ -113,6 +113,8 @@ export const ProcessResponseSchema = z.object({
   alerts_count: z.number().optional(),
   /** Highest alert severity across containers */
   highest_alert_severity: z.enum(['info', 'warning', 'danger']).nullish(),
+  /** Dashboard triage severity derived in backend from alerts + critical validation */
+  attention_severity: z.enum(['info', 'warning', 'danger']).nullish(),
   /** Timestamp for dominant alert age rendering in dashboard */
   dominant_alert_created_at: z.string().nullish(),
   /** Tracking-owned validation signal aggregated across containers */
