@@ -110,6 +110,18 @@ function createSyncSummary(
 }
 
 describe('process.http.mappers', () => {
+  it('serializes canonical lowercase source in process responses', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary(),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.source).toBe('manual')
+  })
+
   it('preserves explicit null values so update requests can clear process fields', () => {
     const dto: Partial<CreateProcessInput> = {
       reference: null,

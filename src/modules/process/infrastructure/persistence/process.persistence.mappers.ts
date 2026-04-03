@@ -50,7 +50,7 @@ export const processMappers = {
       reference_importer: record.reference_importer,
       product: record.product ?? null,
       redestination_number: record.redestination_number ?? null,
-      source: record.source,
+      source: toProcessSource(record.source),
       created_at: nowIso,
       updated_at: nowIso,
     }
@@ -73,7 +73,7 @@ export const processMappers = {
       ...(record.redestination_number !== undefined
         ? { redestination_number: record.redestination_number ?? null }
         : {}),
-      ...(record.source !== undefined ? { source: record.source } : {}),
+      ...(record.source !== undefined ? { source: toProcessSource(record.source) } : {}),
       updated_at: nowIso,
     }
   },
