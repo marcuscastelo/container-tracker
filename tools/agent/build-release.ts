@@ -586,6 +586,89 @@ function resolvePackageEntryPath(nodeModulesDir: string, packageName: string): s
   return path.join(nodeModulesDir, ...toPackageNameSegments(packageName))
 }
 
+function normalizeInstallerCommandLine(line: string): string {
+  return line.replaceAll('""', '"').toLowerCase()
+}
+
+export function collectInstallerTaskRegistrationErrors(
+  installerContentRaw: string,
+): readonly string[] {
+  const taskRegistrationLines = installerContentRaw
+    .split(/\r?\n/)
+    .map(normalizeInstallerCommandLine)
+    .filter(
+      (line) =>
+        (line.includes('filename: "schtasks.exe"') && line.includes('/create')) ||
+        line.includes('register-scheduledtask'),
+    )
+
+  if (taskRegistrationLines.length < 2) {
+    return ['installer.iss must include two ONLOGON task registration commands']
+  }
+
+  const errors: string[] = []
+  const hasAgentCreate = taskRegistrationLines.some(
+    (line) =>
+      line.includes('powershell.exe') &&
+      line.includes('-windowstyle hidden') &&
+      line.includes('agent-tray-host.ps1'),
+  )
+  const hasUpdaterCreate = taskRegistrationLines.some(
+    (line) =>
+      line.includes('powershell.exe') &&
+      line.includes('-windowstyle hidden') &&
+      line.includes('updater-hidden.ps1'),
+  )
+
+  if (!hasAgentCreate || !hasUpdaterCreate) {
+    errors.push('installer.iss missing expected ONLOGON task registrations for agent/updater')
+  }
+
+  for (const line of taskRegistrationLines) {
+    const usesSchtasksCreate = line.includes('filename: "schtasks.exe"') && line.includes('/create')
+
+    if (usesSchtasksCreate) {
+      if (!line.includes('/sc onlogon') || !line.includes('/it') || !line.includes('/rl limited')) {
+        errors.push(
+          'installer.iss schtasks registrations must include /SC ONLOGON, /IT and /RL LIMITED',
+        )
+        break
+      }
+
+      if (line.includes('/ru system') || line.includes('/rl highest')) {
+        errors.push('installer.iss task registrations must not use SYSTEM or highest privileges')
+        break
+      }
+
+      continue
+    }
+
+    if (
+      !line.includes('new-scheduledtasktrigger -atlogon') ||
+      !line.includes('logontype interactive') ||
+      !line.includes('runlevel limited')
+    ) {
+      errors.push(
+        'installer.iss Register-ScheduledTask registrations must use AtLogOn, Interactive logon and RunLevel Limited',
+      )
+      break
+    }
+
+    if (
+      line.includes('-userid system') ||
+      line.includes('/ru system') ||
+      line.includes('runlevel highest') ||
+      line.includes('/rl highest') ||
+      line.includes('highest privileges')
+    ) {
+      errors.push('installer.iss task registrations must not use SYSTEM or highest privileges')
+      break
+    }
+  }
+
+  return errors
+}
+
 async function listPackageNamesInNodeModules(nodeModulesDir: string): Promise<readonly string[]> {
   const packageNames: string[] = []
   const entries = await fs.readdir(nodeModulesDir, { withFileTypes: true })
@@ -1146,52 +1229,7 @@ async function runPreflightChecks(command: {
       errors.push('installer.iss must include tray/updater launcher scripts in [Files]/[Run]')
     }
 
-    const schtasksCreateLines = installerContentRaw
-      .split(/\r?\n/)
-      .filter(
-        (line) =>
-          line.includes('Filename: "schtasks.exe"') && line.toLowerCase().includes('/create'),
-      )
-
-    if (schtasksCreateLines.length >= 2) {
-      const normalizedCreateLines = schtasksCreateLines.map((line) =>
-        line.replaceAll('""', '"').toLowerCase(),
-      )
-      const hasAgentCreate = normalizedCreateLines.some(
-        (line) =>
-          line.includes('powershell.exe') &&
-          line.includes('-windowstyle hidden') &&
-          line.includes('agent-tray-host.ps1'),
-      )
-      const hasUpdaterCreate = normalizedCreateLines.some(
-        (line) =>
-          line.includes('powershell.exe') &&
-          line.includes('-windowstyle hidden') &&
-          line.includes('updater-hidden.ps1'),
-      )
-
-      if (!hasAgentCreate || !hasUpdaterCreate) {
-        errors.push('installer.iss missing expected ONLOGON task commands for agent/updater')
-      }
-
-      for (const line of normalizedCreateLines) {
-        if (
-          !line.includes('/sc onlogon') ||
-          !line.includes('/it') ||
-          !line.includes('/rl limited')
-        ) {
-          errors.push('installer.iss task commands must include /SC ONLOGON, /IT and /RL LIMITED')
-          break
-        }
-
-        if (line.includes('/ru system') || line.includes('highest privileges')) {
-          errors.push('installer.iss task commands must not use SYSTEM or highest privileges')
-          break
-        }
-      }
-    } else {
-      errors.push('installer.iss must include two schtasks /Create commands')
-    }
+    errors.push(...collectInstallerTaskRegistrationErrors(installerContentRaw))
   } else {
     errors.push(`installer.iss not found: ${command.installerFilePath}`)
   }
@@ -1387,7 +1425,12 @@ async function buildRelease(): Promise<void> {
   })
 }
 
-void buildRelease().catch((error) => {
-  console.error(`[agent:release] failed: ${toErrorMessage(error)}`)
-  process.exit(1)
-})
+const isDirectExecution =
+  process.argv[1] != null && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isDirectExecution) {
+  void buildRelease().catch((error) => {
+    console.error(`[agent:release] failed: ${toErrorMessage(error)}`)
+    process.exit(1)
+  })
+}
