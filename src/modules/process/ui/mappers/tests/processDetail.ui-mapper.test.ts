@@ -282,7 +282,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
       updated_at: new Date().toISOString(),
       tracking_validation: {
         has_issues: true,
-        highest_severity: 'warning',
+        highest_severity: 'danger',
         affected_container_count: 1,
       },
       containers: [
@@ -291,7 +291,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
           container_number: 'FCIU2000205',
           tracking_validation: {
             has_issues: true,
-            highest_severity: 'warning',
+            highest_severity: 'danger',
             finding_count: 2,
           },
         }),
@@ -302,12 +302,12 @@ describe('toShipmentDetailVM tracking mapping', () => {
 
     expect(result.trackingValidation).toEqual({
       hasIssues: true,
-      highestSeverity: 'warning',
+      highestSeverity: 'danger',
       affectedContainerCount: 1,
     })
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: true,
-      highestSeverity: 'warning',
+      highestSeverity: 'danger',
       findingCount: 2,
     })
   })

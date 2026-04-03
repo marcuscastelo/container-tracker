@@ -25,6 +25,10 @@ import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import { toDashboardProcessRowClass } from '~/modules/process/ui/utils/dashboard-process-row-style'
 import {
   hasDashboardRowSelectedText,
@@ -153,17 +157,6 @@ function toUnifiedAlertIcon(severity: DashboardProcessSeverity): JSX.Element {
   if (severity === 'warning') return <TriangleAlert class="w-3 h-3" />
   if (severity === 'info') return <CircleAlert class="w-3 h-3" />
   return <Check class="w-3 h-3" />
-}
-
-function toTrackingValidationBadgeClasses(
-  severity: ProcessSummaryVM['trackingValidation']['highestSeverity'],
-): string {
-  if (severity === 'danger')
-    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
-  if (severity === 'warning')
-    return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
-  if (severity === 'info') return 'border-tone-info-border bg-tone-info-bg text-tone-info-fg'
-  return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
 }
 
 // ---------------------------------------------------------------------------
@@ -501,11 +494,17 @@ function TrackingValidationChip(props: {
   readonly chipLabel: string
   readonly severity: ProcessSummaryVM['trackingValidation']['highestSeverity']
 }): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.visible,
+      highestSeverity: props.severity,
+    })
+
   return (
     <Show when={props.visible}>
       <span
-        class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-semibold leading-none ${toTrackingValidationBadgeClasses(
-          props.severity,
+        class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-semibold leading-none whitespace-nowrap ${toTrackingValidationBadgeClasses(
+          displayState(),
         )}`}
         title={props.label}
       >

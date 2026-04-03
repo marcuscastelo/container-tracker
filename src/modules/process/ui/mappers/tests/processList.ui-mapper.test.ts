@@ -167,7 +167,7 @@ describe('toProcessSummaryVMs', () => {
         id: 'p-validation',
         tracking_validation: {
           has_issues: true,
-          highest_severity: 'warning',
+          highest_severity: 'danger',
           affected_container_count: 2,
         },
       }),
@@ -175,7 +175,7 @@ describe('toProcessSummaryVMs', () => {
 
     expect(result[0]?.trackingValidation).toEqual({
       hasIssues: true,
-      highestSeverity: 'warning',
+      highestSeverity: 'danger',
       affectedContainerCount: 2,
     })
   })

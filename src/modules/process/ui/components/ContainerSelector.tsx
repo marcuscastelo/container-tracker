@@ -1,6 +1,10 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -44,6 +48,12 @@ function ContainerSelectorItem(props: {
     return 'border-border bg-surface hover:border-border-strong hover:bg-surface-muted'
   }
 
+  const trackingValidationDisplayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.container.trackingValidation.hasIssues,
+      highestSeverity: props.container.trackingValidation.highestSeverity,
+    })
+
   return (
     <button
       type="button"
@@ -81,7 +91,11 @@ function ContainerSelectorItem(props: {
           </span>
         </Show>
         <Show when={props.container.trackingValidation.hasIssues}>
-          <span class="inline-flex rounded-md border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-medium text-tone-warning-fg">
+          <span
+            class={`inline-flex rounded-md border px-1.5 py-0.5 text-micro font-medium whitespace-nowrap ${toTrackingValidationBadgeClasses(
+              trackingValidationDisplayState(),
+            )}`}
+          >
             {props.labels.trackingValidation}
           </span>
         </Show>

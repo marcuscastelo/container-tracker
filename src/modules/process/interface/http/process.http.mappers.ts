@@ -123,6 +123,14 @@ type TrackingObservationRecord = {
   readonly created_at: string
 }
 
+function toTrackingValidationSeverityResponse(
+  severity: TrackingValidationContainerSummary['highestSeverity'],
+): 'info' | 'warning' | 'danger' | null {
+  if (severity === 'CRITICAL') return 'danger'
+  if (severity === 'ADVISORY') return 'warning'
+  return null
+}
+
 type TrackingAlertRecord = TrackingAlert
 type AlertTriggeredSortItem = {
   readonly id: string
@@ -436,7 +444,7 @@ function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
 function toContainerTrackingValidationResponse(summary: TrackingValidationContainerSummary) {
   return {
     has_issues: summary.hasIssues,
-    highest_severity: summary.highestSeverity,
+    highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
     finding_count: summary.findingCount,
   }
 }
@@ -446,7 +454,7 @@ function toProcessTrackingValidationResponse(summary?: TrackingValidationProcess
 
   return {
     has_issues: currentSummary.hasIssues,
-    highest_severity: currentSummary.highestSeverity,
+    highest_severity: toTrackingValidationSeverityResponse(currentSummary.highestSeverity),
     affected_container_count: currentSummary.affectedContainerCount,
   }
 }

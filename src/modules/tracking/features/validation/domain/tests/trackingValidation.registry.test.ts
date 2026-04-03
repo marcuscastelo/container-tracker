@@ -46,6 +46,7 @@ function createDetector(
 ): TrackingValidationDetector {
   return {
     id,
+    version: '1',
     detect: () => findings,
   }
 }
@@ -56,17 +57,25 @@ describe('tracking validation registry and aggregation', () => {
       createDetector('timeline-gap', [
         {
           detectorId: 'timeline-gap',
-          code: 'timeline_gap',
-          severity: 'warning',
-          affectedScope: 'timeline',
+          detectorVersion: '1',
+          code: 'TIMELINE_GAP',
+          severity: 'ADVISORY',
+          affectedScope: 'TIMELINE',
+          summaryKey: 'tracking.validation.timelineGap',
+          evidenceSummary: 'Gap in canonical timeline.',
+          isActive: true,
         },
       ]),
       createDetector('status-conflict', [
         {
           detectorId: 'status-conflict',
-          code: 'status_conflict',
-          severity: 'danger',
-          affectedScope: 'status',
+          detectorVersion: '1',
+          code: 'STATUS_CONFLICT',
+          severity: 'CRITICAL',
+          affectedScope: 'STATUS',
+          summaryKey: 'tracking.validation.statusConflict',
+          evidenceSummary: 'Conflicting status facts.',
+          isActive: true,
         },
       ]),
     ])
@@ -77,13 +86,42 @@ describe('tracking validation registry and aggregation', () => {
     })
 
     expect(result.findings.map((finding) => finding.code)).toEqual([
-      'timeline_gap',
-      'status_conflict',
+      'TIMELINE_GAP',
+      'STATUS_CONFLICT',
     ])
     expect(result.summary).toEqual({
       hasIssues: true,
       findingCount: 2,
-      highestSeverity: 'danger',
+      highestSeverity: 'CRITICAL',
+    })
+  })
+
+  it('ignores inactive findings when summarizing the active container state', () => {
+    const registry = createTrackingValidationRegistry([
+      createDetector('inactive-detector', [
+        {
+          detectorId: 'inactive-detector',
+          detectorVersion: '1',
+          code: 'INACTIVE_FINDING',
+          severity: 'CRITICAL',
+          affectedScope: 'SERIES',
+          summaryKey: 'tracking.validation.inactiveFinding',
+          evidenceSummary: 'Inactive finding kept for audit only.',
+          isActive: false,
+        },
+      ]),
+    ])
+
+    const result = deriveTrackingValidation({
+      context: createContext(),
+      registry,
+    })
+
+    expect(result.findings).toHaveLength(1)
+    expect(result.summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
     })
   })
 
@@ -97,12 +135,12 @@ describe('tracking validation registry and aggregation', () => {
       {
         hasIssues: true,
         findingCount: 1,
-        highestSeverity: 'warning',
+        highestSeverity: 'ADVISORY',
       },
       {
         hasIssues: true,
         findingCount: 2,
-        highestSeverity: 'danger',
+        highestSeverity: 'CRITICAL',
       },
     ])
 
@@ -110,7 +148,7 @@ describe('tracking validation registry and aggregation', () => {
       hasIssues: true,
       affectedContainerCount: 2,
       totalFindingCount: 3,
-      highestSeverity: 'danger',
+      highestSeverity: 'CRITICAL',
     })
   })
 })

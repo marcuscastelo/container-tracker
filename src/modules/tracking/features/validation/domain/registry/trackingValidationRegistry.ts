@@ -32,6 +32,11 @@ export function createTrackingValidationRegistry(
               `Tracking validation finding detector mismatch: ${detector.id} != ${finding.detectorId}`,
             )
           }
+          if (finding.detectorVersion !== detector.version) {
+            throw new Error(
+              `Tracking validation finding detector version mismatch: ${detector.version} != ${finding.detectorVersion}`,
+            )
+          }
 
           findings.push(finding)
         }

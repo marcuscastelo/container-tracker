@@ -3,6 +3,10 @@ import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
 import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
+import {
+  toTrackingValidationBannerClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
@@ -208,9 +212,20 @@ function HeaderMeta(props: {
 function TrackingValidationBanner(props: {
   readonly title: string
   readonly description: string
+  readonly highestSeverity: ShipmentDetailVM['trackingValidation']['highestSeverity']
 }): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: true,
+      highestSeverity: props.highestSeverity,
+    })
+
   return (
-    <div class="mt-4 flex items-start gap-3 rounded-lg border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-tone-warning-fg">
+    <div
+      class={`mt-4 flex items-start gap-3 rounded-lg px-3 py-2 ${toTrackingValidationBannerClasses(
+        displayState(),
+      )}`}
+    >
       <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" />
       <div class="min-w-0">
         <p class="text-sm-ui font-semibold">{props.title}</p>
@@ -335,6 +350,7 @@ export function ShipmentHeader(props: Props): JSX.Element {
           description={t(keys.shipmentView.validation.bannerDescription, {
             count: props.data.trackingValidation.affectedContainerCount,
           })}
+          highestSeverity={props.data.trackingValidation.highestSeverity}
         />
       </Show>
 

@@ -233,6 +233,29 @@ describe('process.http.mappers', () => {
     })
   })
 
+  it('maps internal CRITICAL validation severity to danger only at the HTTP boundary', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.tracking_validation).toEqual({
+      has_issues: true,
+      highest_severity: 'danger',
+      affected_container_count: 1,
+    })
+  })
+
   it('keeps status microbadge nullable when there is no advanced subset status', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),

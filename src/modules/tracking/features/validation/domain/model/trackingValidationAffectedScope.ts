@@ -1,1 +1,7 @@
-export type TrackingValidationAffectedScope = 'timeline' | 'status' | 'operational' | 'process'
+export type TrackingValidationAffectedScope =
+  | 'CONTAINER'
+  | 'OPERATIONAL'
+  | 'PROCESS'
+  | 'SERIES'
+  | 'STATUS'
+  | 'TIMELINE'

@@ -3,5 +3,6 @@ import type { TrackingValidationFinding } from '~/modules/tracking/features/vali
 
 export type TrackingValidationDetector = {
   readonly id: string
+  readonly version: string
   detect(context: TrackingValidationContext): readonly TrackingValidationFinding[]
 }

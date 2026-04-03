@@ -173,6 +173,41 @@ describe('findContainersHotReadProjection', () => {
     expect(result.activeAlertIncidents.summary.affectedContainerCount).toBe(1)
   })
 
+  it('marks the container when conflicting critical ACTUALs exist in the same series', async () => {
+    const conflictingObservations = [
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-1',
+        fingerprint: 'fp-c1-discharge-1',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T10:30:00.000Z',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-2',
+        fingerprint: 'fp-c1-discharge-2',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-11T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-11T10:30:00.000Z',
+      }),
+    ]
+    const { deps } = createDeps({
+      observations: conflictingObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'CRITICAL',
+    })
+  })
+
   it('fails explicitly when the batch active-alert read fails', async () => {
     const { deps } = createDeps({
       observations: [makeObservation('c1', 'MSCU1111111')],

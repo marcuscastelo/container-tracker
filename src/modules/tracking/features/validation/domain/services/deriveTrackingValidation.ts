@@ -18,8 +18,9 @@ export function deriveTrackingValidation(command: {
   readonly registry: TrackingValidationRegistry
 }): TrackingValidationDerivation {
   const findings = command.registry.evaluate(command.context)
+  const activeFindings = findings.filter((finding) => finding.isActive)
 
-  if (findings.length === 0) {
+  if (activeFindings.length === 0) {
     return {
       findings,
       summary: createEmptyTrackingValidationContainerSummary(),
@@ -27,7 +28,7 @@ export function deriveTrackingValidation(command: {
   }
 
   let highestSeverity: TrackingValidationSeverity | null = null
-  for (const finding of findings) {
+  for (const finding of activeFindings) {
     highestSeverity = pickHighestTrackingValidationSeverity(highestSeverity, finding.severity)
   }
 
@@ -35,7 +36,7 @@ export function deriveTrackingValidation(command: {
     findings,
     summary: {
       hasIssues: true,
-      findingCount: findings.length,
+      findingCount: activeFindings.length,
       highestSeverity,
     },
   }
