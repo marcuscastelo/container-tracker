@@ -1,6 +1,6 @@
 import type { SyncMode } from '~/capabilities/sync/application/commands/enqueue-sync.command'
 
-export type SupportedSyncProvider = 'msc' | 'maersk' | 'cmacgm' | 'pil'
+export type SupportedSyncProvider = 'msc' | 'maersk' | 'cmacgm' | 'pil' | 'one'
 
 export type SyncRequestStatus = 'PENDING' | 'LEASED' | 'DONE' | 'FAILED' | 'NOT_FOUND'
 

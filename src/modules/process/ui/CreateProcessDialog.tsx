@@ -4,6 +4,11 @@ import { createEffect, createMemo, createSignal } from 'solid-js'
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import { CreateProcessDialogView } from '~/modules/process/ui/CreateProcessDialog.view'
 import {
+  buildProcessCarrierOptions,
+  isProcessDialogCarrier,
+  type ProcessDialogCarrier,
+} from '~/modules/process/ui/carrierCatalog'
+import {
   MAX_CONTAINERS_PER_PASTE,
   mergeBulkPastedContainers,
   parseContainerBulkPaste,
@@ -40,7 +45,7 @@ import { isRecord } from '~/shared/utils/typeGuards'
 
 type TranslationApi = ReturnType<typeof useTranslation>
 
-type Carrier = 'maersk' | 'msc' | 'cmacgm' | 'pil' | 'hapag' | 'one' | 'evergreen' | 'unknown'
+type Carrier = ProcessDialogCarrier
 
 export type ContainerInput = {
   readonly id: string
@@ -334,10 +339,6 @@ function createEmptyContainer(): ContainerInput {
   return { id: generateId(), containerNumber: '' }
 }
 
-function isCarrier(value: string): value is Carrier {
-  return ['maersk', 'msc', 'cmacgm', 'pil', 'hapag', 'one', 'evergreen', 'unknown'].includes(value)
-}
-
 function normalizeContainerNumber(value: string): string {
   return value.toUpperCase().trim()
 }
@@ -472,7 +473,7 @@ async function validateSubmitWithServerCheck(params: {
   readonly carrier: Carrier | ''
   readonly buildData: (carrier: Carrier) => CreateProcessDialogFormData
 }): Promise<SubmitValidationResult> {
-  if (!isCarrier(params.carrier)) return { type: 'invalid-carrier' }
+  if (!isProcessDialogCarrier(params.carrier)) return { type: 'invalid-carrier' }
 
   const entries = params.containers
     .map((container) => {
@@ -737,18 +738,6 @@ function createContainerValidationTracker(): ContainerValidationTracker {
       ticketsByContainerId.clear()
     },
   }
-}
-
-function buildCarrierOptions(
-  unknownLabel: string,
-): readonly { readonly value: Carrier; readonly label: string }[] {
-  return [
-    { value: 'maersk', label: 'Maersk' },
-    { value: 'msc', label: 'MSC' },
-    { value: 'cmacgm', label: 'CMA CGM' },
-    { value: 'pil', label: 'PIL' },
-    { value: 'unknown', label: unknownLabel },
-  ]
 }
 
 function createDialogState(): DialogState {
@@ -1601,7 +1590,9 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   })
 
   const mode = createMemo(() => props.mode ?? 'create')
-  const carrierOptions = createMemo(() => buildCarrierOptions(t(keys.createProcess.carrierUnknown)))
+  const carrierOptions = createMemo(() =>
+    buildProcessCarrierOptions(t(keys.createProcess.carrierUnknown)),
+  )
   let requestSmartPasteClose = () => {}
 
   const smartPasteController = createSmartPasteController({
@@ -1749,7 +1740,7 @@ export function CreateProcessDialog(props: Props): JSX.Element {
   })
 
   const handleCarrierInput = (value: string) => {
-    if (value === '' || isCarrier(value)) {
+    if (value === '' || isProcessDialogCarrier(value)) {
       state.setCarrier(value)
     }
   }

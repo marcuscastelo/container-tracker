@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type {
   ContainerRepository,
   InsertContainerRecord,
+  UpdateContainerRecord,
 } from '~/modules/container/application/container.repository'
 import { createReconcileContainersUseCase } from '~/modules/container/application/usecases/reconcile-containers.usecase'
 import { createContainerEntity } from '~/modules/container/domain/container.entity'
@@ -24,6 +25,7 @@ function createInsertedEntity(record: InsertContainerRecord, id: string) {
 
 function createContainerRepositoryDouble() {
   const inserted: InsertContainerRecord[] = []
+  const updated: UpdateContainerRecord[] = []
   const deleted: string[] = []
   let insertCounter = 0
 
@@ -34,6 +36,16 @@ function createContainerRepositoryDouble() {
       return createInsertedEntity(record, `inserted-${insertCounter}`)
     }),
     insertMany: vi.fn(async () => []),
+    update: vi.fn(async (record) => {
+      updated.push(record)
+      return createContainerEntity({
+        id: toContainerId(record.id),
+        processId: toProcessId('process-1'),
+        carrierCode: toCarrierCode(record.carrierCode),
+        containerNumber: toContainerNumber(record.containerNumber),
+        createdAt: Instant.fromIso('2026-03-09T10:00:00.000Z'),
+      })
+    }),
     delete: vi.fn(async (id) => {
       deleted.push(id)
     }),
@@ -45,19 +57,19 @@ function createContainerRepositoryDouble() {
     listByProcessIds: vi.fn(async () => new Map()),
   }
 
-  return { repository, inserted, deleted }
+  return { repository, inserted, updated, deleted }
 }
 
 describe('reconcile-containers.usecase', () => {
   it('reconciles additions and removals based on final incoming payload', async () => {
-    const { repository, inserted, deleted } = createContainerRepositoryDouble()
+    const { repository, inserted, updated, deleted } = createContainerRepositoryDouble()
     const reconcile = createReconcileContainersUseCase({ repository })
 
     const result = await reconcile({
       processId: 'process-1',
       existing: [
-        { id: 'container-a', containerNumber: 'MSCU1111111' },
-        { id: 'container-b', containerNumber: 'MSCU2222222' },
+        { id: 'container-a', containerNumber: 'MSCU1111111', carrierCode: 'MSC' },
+        { id: 'container-b', containerNumber: 'MSCU2222222', carrierCode: 'MSC' },
       ],
       incoming: [
         { containerNumber: 'MSCU1111111', carrierCode: 'MSC' },
@@ -72,27 +84,29 @@ describe('reconcile-containers.usecase', () => {
         carrierCode: 'MSC',
       },
     ])
+    expect(updated).toEqual([])
     expect(deleted).toEqual(['container-b'])
     expect(result.removed).toEqual(['container-b'])
     expect(result.added).toHaveLength(1)
+    expect(result.updated).toEqual([])
   })
 
   it('allows re-adding a container that was removed in a prior reconciliation', async () => {
-    const { repository, inserted, deleted } = createContainerRepositoryDouble()
+    const { repository, inserted, updated, deleted } = createContainerRepositoryDouble()
     const reconcile = createReconcileContainersUseCase({ repository })
 
     await reconcile({
       processId: 'process-1',
       existing: [
-        { id: 'container-a', containerNumber: 'MSCU1111111' },
-        { id: 'container-b', containerNumber: 'MSCU2222222' },
+        { id: 'container-a', containerNumber: 'MSCU1111111', carrierCode: 'MSC' },
+        { id: 'container-b', containerNumber: 'MSCU2222222', carrierCode: 'MSC' },
       ],
       incoming: [{ containerNumber: 'MSCU1111111', carrierCode: 'MSC' }],
     })
 
     await reconcile({
       processId: 'process-1',
-      existing: [{ id: 'container-a', containerNumber: 'MSCU1111111' }],
+      existing: [{ id: 'container-a', containerNumber: 'MSCU1111111', carrierCode: 'MSC' }],
       incoming: [
         { containerNumber: 'MSCU1111111', carrierCode: 'MSC' },
         { containerNumber: 'MSCU2222222', carrierCode: 'MSC' },
@@ -107,6 +121,37 @@ describe('reconcile-containers.usecase', () => {
         carrierCode: 'MSC',
       },
     ])
+    expect(updated).toEqual([])
+  })
+
+  it('updates the carrier code for an existing container when the process carrier changes', async () => {
+    const { repository, inserted, updated, deleted } = createContainerRepositoryDouble()
+    const reconcile = createReconcileContainersUseCase({ repository })
+
+    const result = await reconcile({
+      processId: 'process-1',
+      existing: [
+        {
+          id: 'container-a',
+          containerNumber: 'MSCU1111111',
+          carrierCode: 'unknown',
+        },
+      ],
+      incoming: [{ containerNumber: 'MSCU1111111', carrierCode: 'one' }],
+    })
+
+    expect(inserted).toEqual([])
+    expect(updated).toEqual([
+      {
+        id: 'container-a',
+        containerNumber: 'MSCU1111111',
+        carrierCode: 'one',
+      },
+    ])
+    expect(deleted).toEqual([])
+    expect(result.added).toEqual([])
+    expect(result.updated).toHaveLength(1)
+    expect(result.updated[0]?.carrierCode).toBe('one')
   })
 
   it('rejects duplicate container numbers in the final incoming payload', async () => {
@@ -117,8 +162,8 @@ describe('reconcile-containers.usecase', () => {
       reconcile({
         processId: 'process-1',
         existing: [
-          { id: 'container-a', containerNumber: 'MSCU1111111' },
-          { id: 'container-b', containerNumber: 'MSCU2222222' },
+          { id: 'container-a', containerNumber: 'MSCU1111111', carrierCode: 'MSC' },
+          { id: 'container-b', containerNumber: 'MSCU2222222', carrierCode: 'MSC' },
         ],
         incoming: [
           { containerNumber: 'MSCU1111111', carrierCode: 'MSC' },

@@ -23,6 +23,7 @@ Before implementing anything non-trivial, consult:
 - UI philosophy: `docs/UI_PHILOSOPHY.md`
 - UI design prompt baseline: `docs/UI_DESIGN_PROMPT.md`
 - Roadmap: `docs/ROADMAP.md`
+- Carrier/provider integration guide: `docs/PROVIDER_INTEGRATION_GUIDE.md`
 
 If any canonical file is missing/renamed, stop and ask for the correct path.
 
@@ -181,6 +182,7 @@ If you modify:
 - boundaries/dependencies -> re-read `docs/BOUNDARIES.md`
 - type/DTO contracts -> re-read `docs/TYPE_ARCHITECTURE.md`
 - product/domain wording -> re-read `docs/MASTER_v2.md`
+- carrier/provider integration, fetchers, normalizers, sync provider registries, or agent capability wiring -> re-read `docs/PROVIDER_INTEGRATION_GUIDE.md` and `docs/SYNC_ARCHITECTURE_BOUNDARIES.md`
 
 ---
 

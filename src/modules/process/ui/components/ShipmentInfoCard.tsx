@@ -3,6 +3,7 @@ import { For, Show } from 'solid-js'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 type Props = {
   readonly data: ShipmentDetailVM
@@ -30,7 +31,7 @@ export function ShipmentInfoCard(props: Props): JSX.Element {
   const fields = (): readonly InfoField[] => [
     {
       label: t(keys.shipmentView.shipmentInfo.carrier),
-      value: props.data.carrier?.toUpperCase(),
+      value: toCarrierDisplayLabel(props.data.carrier),
     },
     {
       label: t(keys.shipmentView.shipmentInfo.bl),

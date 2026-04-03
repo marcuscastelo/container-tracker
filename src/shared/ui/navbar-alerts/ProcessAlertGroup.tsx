@@ -3,6 +3,7 @@ import { For } from 'solid-js'
 import { useTranslation } from '~/shared/localization/i18n'
 import { ContainerAlertGroup } from '~/shared/ui/navbar-alerts/ContainerAlertGroup'
 import type { NavbarProcessAlertGroupVM } from '~/shared/ui/navbar-alerts/navbar-alerts.vm'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 type ProcessAlertGroupProps = {
   readonly process: NavbarProcessAlertGroupVM
@@ -27,7 +28,10 @@ export function ProcessAlertGroup(props: ProcessAlertGroupProps): JSX.Element {
             {toDisplayValue(props.process.processReference, props.process.processId)}
           </p>
           <p class="truncate text-xs-ui text-text-muted">
-            {toDisplayValue(props.process.carrier, t(keys.header.alertsPanel.valueUnavailable))}
+            {toDisplayValue(
+              toCarrierDisplayLabel(props.process.carrier),
+              t(keys.header.alertsPanel.valueUnavailable),
+            )}
           </p>
           <p class="truncate text-xs-ui text-text-muted">{props.process.routeSummary}</p>
         </div>

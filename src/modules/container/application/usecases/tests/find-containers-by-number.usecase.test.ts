@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type {
   ContainerRepository,
   InsertContainerRecord,
+  UpdateContainerRecord,
 } from '~/modules/container/application/container.repository'
 import { createFindContainersByNumberUseCase } from '~/modules/container/application/usecases/find-containers-by-number.usecase'
 import {
@@ -23,6 +24,9 @@ function createRepository(overrides: {
       throw new Error('Not implemented in findByNumbers tests')
     }),
     insertMany: vi.fn(async (_records: InsertContainerRecord[]): Promise<ContainerEntity[]> => {
+      throw new Error('Not implemented in findByNumbers tests')
+    }),
+    update: vi.fn(async (_record: UpdateContainerRecord): Promise<ContainerEntity> => {
       throw new Error('Not implemented in findByNumbers tests')
     }),
     delete: vi.fn(async (_id: string): Promise<void> => {

@@ -31,6 +31,9 @@ const LOCATION_CODE_TIMEZONES: Readonly<Record<string, string>> = {
   ESTUD: 'Europe/Madrid',
   ITNAP: 'Europe/Rome',
   MAPTM: 'Africa/Casablanca',
+  PKKHI: 'Asia/Karachi',
+  PKLHE: 'Asia/Karachi',
+  SGSIN: 'Asia/Singapore',
 }
 
 const LOCATION_DISPLAY_TIMEZONES: Readonly<Record<string, string>> = {
@@ -42,8 +45,14 @@ const LOCATION_DISPLAY_TIMEZONES: Readonly<Record<string, string>> = {
   'PORT TANGIER MEDITERRANEE MA': 'Africa/Casablanca',
   QINGDAO: 'Asia/Shanghai',
   'QINGDAO CNTAO': 'Asia/Shanghai',
+  KARACHI: 'Asia/Karachi',
+  'KARACHI PAKISTAN': 'Asia/Karachi',
+  LAHORE: 'Asia/Karachi',
+  'LAHORE PAKISTAN': 'Asia/Karachi',
   SANTOS: 'America/Sao_Paulo',
   'SANTOS BR': 'America/Sao_Paulo',
+  SINGAPORE: 'Asia/Singapore',
+  'SINGAPORE SINGAPORE': 'Asia/Singapore',
   'TANGER MED': 'Africa/Casablanca',
   TUDELA: 'Europe/Madrid',
   ZARAGOZA: 'Europe/Madrid',

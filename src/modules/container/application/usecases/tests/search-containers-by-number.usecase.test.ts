@@ -4,6 +4,7 @@ import type { ContainerSearchProjection } from '~/modules/container/application/
 import type {
   ContainerRepository,
   InsertContainerRecord,
+  UpdateContainerRecord,
 } from '~/modules/container/application/container.repository'
 import { createSearchContainersByNumberUseCase } from '~/modules/container/application/usecases/search-containers-by-number.usecase'
 import type { ContainerEntity } from '~/modules/container/domain/container.entity'
@@ -14,6 +15,9 @@ function createRepository(projections: readonly ContainerSearchProjection[]): Co
       throw new Error('Not implemented in search tests')
     }),
     insertMany: vi.fn(async (_records: InsertContainerRecord[]): Promise<ContainerEntity[]> => {
+      throw new Error('Not implemented in search tests')
+    }),
+    update: vi.fn(async (_record: UpdateContainerRecord): Promise<ContainerEntity> => {
       throw new Error('Not implemented in search tests')
     }),
     delete: vi.fn(async (_id: string): Promise<void> => {

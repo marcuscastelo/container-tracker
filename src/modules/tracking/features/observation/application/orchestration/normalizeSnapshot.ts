@@ -4,6 +4,7 @@ import type { ObservationDraft } from '~/modules/tracking/features/observation/d
 import { normalizeCmaCgmSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/cmacgm.normalizer'
 import { normalizeMaerskSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/maersk.normalizer'
 import { normalizeMscSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/msc.normalizer'
+import { normalizeOneSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/one.normalizer'
 import { normalizePilSnapshot } from '~/modules/tracking/infrastructure/carriers/normalizers/pil.normalizer'
 
 /**
@@ -17,6 +18,7 @@ const NORMALIZERS: Record<Provider, (snapshot: Snapshot) => ObservationDraft[]> 
   maersk: normalizeMaerskSnapshot,
   cmacgm: normalizeCmaCgmSnapshot,
   pil: normalizePilSnapshot,
+  one: normalizeOneSnapshot,
 }
 
 /**

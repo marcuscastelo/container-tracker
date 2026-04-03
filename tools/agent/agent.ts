@@ -15,6 +15,8 @@ import { createMaerskCaptureService } from '../../src/modules/tracking/infrastru
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchMscStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/msc.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { fetchOneStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/one.fetcher.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchPilStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
@@ -621,7 +623,7 @@ async function resolveRuntimeConfigWithBootstrap(paths: PathLayout): Promise<Run
 
 const AgentTargetSchema = z.object({
   sync_request_id: z.string().uuid(),
-  provider: z.enum(['maersk', 'msc', 'cmacgm', 'pil']),
+  provider: z.enum(['maersk', 'msc', 'cmacgm', 'pil', 'one']),
   ref_type: z.literal('container'),
   ref: z.string().min(1),
 })
@@ -723,8 +725,8 @@ function buildHeaders(config: RuntimeConfig, contentType: boolean): Headers {
 }
 
 function resolveAgentCapabilities(config: RuntimeConfig): readonly string[] {
-  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'pil', 'maersk']
-  return ['msc', 'cmacgm', 'pil']
+  if (config.MAERSK_ENABLED) return ['msc', 'cmacgm', 'pil', 'one', 'maersk']
+  return ['msc', 'cmacgm', 'pil', 'one']
 }
 
 async function sendHeartbeat(command: {
@@ -950,6 +952,15 @@ async function performScrapeTarget(
 
   if (target.provider === 'pil') {
     const result = await fetchPilStatus(target.ref)
+    return {
+      raw: result.payload,
+      observedAt: result.fetchedAt,
+      parseError: result.parseError ?? null,
+    }
+  }
+
+  if (target.provider === 'one') {
+    const result = await fetchOneStatus(target.ref)
     return {
       raw: result.payload,
       observedAt: result.fetchedAt,

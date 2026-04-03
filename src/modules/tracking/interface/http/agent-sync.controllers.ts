@@ -130,7 +130,7 @@ function normalizeCarrierCode(value: string): string {
   return value.toLowerCase().trim()
 }
 
-const PROCESSABLE_PROVIDER_ORDER: readonly Provider[] = ['maersk', 'msc', 'cmacgm', 'pil']
+const PROCESSABLE_PROVIDER_ORDER: readonly Provider[] = ['maersk', 'msc', 'cmacgm', 'pil', 'one']
 
 function toProcessableProviders(capabilities: readonly string[]): readonly Provider[] {
   const capabilitySet = new Set(capabilities)

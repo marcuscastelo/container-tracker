@@ -1,7 +1,12 @@
+import { normalizeCarrierKey } from '~/shared/utils/carrierDisplay'
+
+const ONE_CARRIER_KEYS = new Set(['one', 'oneline', 'oceannetworkexpress'])
+
 // Carrier tracking URL helpers
 export function carrierTrackUrl(carrier: string | null, containerNumber: string): string | null {
   if (!carrier || !containerNumber) return null
   const c = carrier.toLowerCase()
+  const normalizedCarrier = normalizeCarrierKey(carrier)
   const cn = encodeURIComponent(containerNumber)
 
   if (c.includes('maersk')) {
@@ -15,6 +20,9 @@ export function carrierTrackUrl(carrier: string | null, containerNumber: string)
   }
   if (c.includes('pil')) {
     return `https://www.pilship.com/digital-solutions/?tab=customer&id=track-trace&label=containerTandT&module=TrackContStatus&refNo=${cn}`
+  }
+  if (ONE_CARRIER_KEYS.has(normalizedCarrier)) {
+    return `https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking?containerNo=${cn}`
   }
 
   return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} container ${containerNumber}`)}`

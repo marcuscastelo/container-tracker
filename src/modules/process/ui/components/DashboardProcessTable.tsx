@@ -43,6 +43,7 @@ import { useTranslation } from '~/shared/localization/i18n'
 import { EmptyState } from '~/shared/ui/EmptyState'
 import { buildProcessHref } from '~/shared/ui/navigation/app-navigation'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -312,7 +313,7 @@ function CarrierCell(ctx: CellContext): JSX.Element {
         class="row-link block truncate text-sm-ui leading-tight text-foreground"
         onClick={ctx.handleProcessLinkClick}
       >
-        {displayTruncatedText(ctx.process.carrier?.toUpperCase() ?? null)}
+        {displayTruncatedText(toCarrierDisplayLabel(ctx.process.carrier))}
       </A>
     </div>
   )

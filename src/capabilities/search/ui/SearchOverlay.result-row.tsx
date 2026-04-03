@@ -4,6 +4,7 @@ import type { SearchResultItemVm } from '~/capabilities/search/ui/search.vm'
 import { getBrowserLocale } from '~/shared/time/browser-locale'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { formatTemporalDate } from '~/shared/time/temporal-formatters'
+import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
 function formatNullableText(value: string | null, fallbackText: string): string {
   if (value === null) return fallbackText
@@ -89,7 +90,7 @@ export function SearchResultRow(props: SearchResultRowProps): JSX.Element {
         </div>
         <div class="min-w-0 truncate">
           <span class="font-medium text-text-muted">{props.labels.carrier}:</span>{' '}
-          {formatNullableText(props.item.carrier, props.fallbackText)}
+          {formatNullableText(toCarrierDisplayLabel(props.item.carrier), props.fallbackText)}
         </div>
         <div class="min-w-0 truncate">
           <span class="font-medium text-text-muted">{props.labels.vesselName}:</span>{' '}
