@@ -45,6 +45,11 @@ function createProcess(
     alertsCount: 0,
     highestAlertSeverity: null,
     dominantAlertCreatedAt: null,
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+    },
     hasTransshipment: false,
     lastEventAt: input.lastEventAt ?? null,
     syncStatus: 'idle',

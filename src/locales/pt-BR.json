@@ -225,6 +225,11 @@
       "alertTooltip": {
         "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
       },
+      "trackingValidation": {
+        "chip": "VAL",
+        "affectedSingle": "Validação de tracking pendente",
+        "affectedMultiple": "Validação de tracking em {{count}} containers"
+      },
       "filters": {
         "title": "Filtros",
         "all": "Todos",
@@ -320,6 +325,11 @@
         "noEta": "ETA indisponível",
         "incomplete": "parcial"
       }
+    },
+    "validation": {
+      "bannerTitle": "Tracking com validação pendente",
+      "bannerDescription": "A leitura atual merece revisão em {{count}} container(s).",
+      "containerChip": "Validação"
     },
     "actions": {
       "refresh": "Atualizar",

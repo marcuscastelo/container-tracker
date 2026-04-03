@@ -155,6 +155,17 @@ function toUnifiedAlertIcon(severity: DashboardProcessSeverity): JSX.Element {
   return <Check class="w-3 h-3" />
 }
 
+function toTrackingValidationBadgeClasses(
+  severity: ProcessSummaryVM['trackingValidation']['highestSeverity'],
+): string {
+  if (severity === 'danger')
+    return 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-fg'
+  if (severity === 'warning')
+    return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+  if (severity === 'info') return 'border-tone-info-border bg-tone-info-bg text-tone-info-fg'
+  return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg'
+}
+
 // ---------------------------------------------------------------------------
 // Display helpers
 // ---------------------------------------------------------------------------
@@ -450,9 +461,74 @@ function SyncCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function AlertsSummaryBadge(props: {
+  readonly dominantSeverity: DashboardProcessSeverity
+  readonly dominantAlertLabel: string
+  readonly severityLabel: string
+  readonly alertTooltip: string | undefined
+  readonly alertsCount: number
+}): JSX.Element {
+  return (
+    <Show
+      when={props.dominantSeverity !== 'none'}
+      fallback={
+        <span
+          class="text-xs-ui text-tone-success-strong"
+          role="img"
+          aria-label={props.dominantAlertLabel}
+        >
+          <Check class="w-3.5 h-3.5" aria-hidden="true" />
+        </span>
+      }
+    >
+      <span
+        class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(
+          props.dominantSeverity,
+        )}`}
+        title={props.alertTooltip}
+      >
+        <span aria-hidden="true">{toUnifiedAlertIcon(props.dominantSeverity)}</span>
+        {props.alertsCount}
+        <span class="sr-only">{`${props.severityLabel}: ${props.dominantAlertLabel}`}</span>
+      </span>
+    </Show>
+  )
+}
+
+function TrackingValidationChip(props: {
+  readonly visible: boolean
+  readonly label: string
+  readonly chipLabel: string
+  readonly severity: ProcessSummaryVM['trackingValidation']['highestSeverity']
+}): JSX.Element {
+  return (
+    <Show when={props.visible}>
+      <span
+        class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-semibold leading-none ${toTrackingValidationBadgeClasses(
+          props.severity,
+        )}`}
+        title={props.label}
+      >
+        {props.chipLabel}
+      </span>
+    </Show>
+  )
+}
+
 function AlertsCell(ctx: CellContext): JSX.Element {
   const dominantSeverity = () => toDominantSeverity(ctx.process)
   const dominantAlertLabel = () => toDominantAlertLabel(ctx.process, ctx.t, ctx.keys)
+  const hasTrackingValidation = () => ctx.process.trackingValidation.hasIssues
+  const trackingValidationLabel = () => {
+    const affectedCount = ctx.process.trackingValidation.affectedContainerCount
+    if (affectedCount > 1) {
+      return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedMultiple, {
+        count: affectedCount,
+      })
+    }
+
+    return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedSingle)
+  }
 
   const severityLabel = () => {
     if (dominantSeverity() === 'danger')
@@ -492,27 +568,21 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         class="row-link flex justify-center"
         onClick={ctx.handleProcessLinkClick}
       >
-        <Show
-          when={dominantSeverity() !== 'none'}
-          fallback={
-            <span
-              class="text-xs-ui text-tone-success-strong"
-              role="img"
-              aria-label={dominantAlertLabel()}
-            >
-              <Check class="w-3.5 h-3.5" aria-hidden="true" />
-            </span>
-          }
-        >
-          <span
-            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
-            title={alertTooltip()}
-          >
-            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
-            {ctx.process.alertsCount}
-            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-          </span>
-        </Show>
+        <div class="flex items-center justify-center gap-1">
+          <AlertsSummaryBadge
+            dominantSeverity={dominantSeverity()}
+            dominantAlertLabel={dominantAlertLabel()}
+            severityLabel={severityLabel()}
+            alertTooltip={alertTooltip()}
+            alertsCount={ctx.process.alertsCount}
+          />
+          <TrackingValidationChip
+            visible={hasTrackingValidation()}
+            label={trackingValidationLabel()}
+            chipLabel={ctx.t(ctx.keys.dashboard.table.trackingValidation.chip)}
+            severity={ctx.process.trackingValidation.highestSeverity}
+          />
+        </div>
       </A>
     </div>
   )

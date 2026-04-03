@@ -21,6 +21,8 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import { deriveTrackingValidationProjection } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
 import { systemClock } from '~/shared/time/clock'
 
 /**
@@ -37,6 +39,8 @@ export type PipelineResult = {
   readonly status: ContainerStatus
   /** Transshipment info */
   readonly transshipment: TransshipmentInfo
+  /** Minimal canonical tracking validation summary */
+  readonly trackingValidation: TrackingValidationContainerSummary
 }
 
 /**
@@ -146,6 +150,15 @@ export async function processSnapshot(
 
   // Derive transshipment info
   const transshipment = deriveTransshipment(timeline)
+  const trackingValidation = deriveTrackingValidationProjection({
+    containerId,
+    containerNumber,
+    observations: allObservations,
+    timeline,
+    status,
+    transshipment,
+    now: systemClock.now(),
+  }).summary
 
   return {
     newObservations,
@@ -153,5 +166,6 @@ export async function processSnapshot(
     timeline,
     status,
     transshipment,
+    trackingValidation,
   }
 }

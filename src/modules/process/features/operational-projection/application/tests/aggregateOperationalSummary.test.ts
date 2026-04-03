@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateOperationalSummary } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { OperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import { createEmptyTrackingValidationContainerProjectionSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { resolveTemporalValue, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type TrackingAlertLike = {
@@ -56,6 +57,7 @@ function makeSummary(
   return {
     status: overrides.status ?? 'UNKNOWN',
     alerts: overrides.alerts ?? [],
+    tracking_validation: createEmptyTrackingValidationContainerProjectionSummary(),
     has_observations: (overrides.observations?.length ?? 0) > 0,
     last_event_at:
       overrides.observations === undefined || overrides.observations.length === 0

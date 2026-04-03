@@ -81,6 +81,11 @@ function buildDefaultShipmentDetailVm(): ShipmentDetailVM {
     eta: '2026-04-10',
     processEtaDisplayVm: buildDefaultProcessEtaDisplayVm(),
     processEtaSecondaryVm: buildDefaultProcessEtaSecondaryVm(),
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+    },
     containers: [],
     alerts: [],
     alertIncidents: buildDefaultAlertIncidents(),

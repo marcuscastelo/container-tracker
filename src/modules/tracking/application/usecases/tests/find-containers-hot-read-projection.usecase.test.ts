@@ -163,6 +163,11 @@ describe('findContainersHotReadProjection', () => {
     expect(result.containers).toHaveLength(2)
     expect(result.containers[0]?.containerId).toBe('c1')
     expect(result.containers[0]?.activeAlerts).toHaveLength(1)
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+    })
     expect(result.activeAlerts).toHaveLength(1)
     expect(result.activeAlertIncidents.summary.activeIncidentCount).toBe(1)
     expect(result.activeAlertIncidents.summary.affectedContainerCount).toBe(1)

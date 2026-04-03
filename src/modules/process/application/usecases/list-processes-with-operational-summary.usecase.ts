@@ -12,6 +12,11 @@ import {
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import {
+  aggregateTrackingValidationProjection,
+  createEmptyTrackingValidationContainerProjectionSummary,
+  type TrackingValidationContainerSummary,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { systemClock } from '~/shared/time/clock'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
@@ -38,6 +43,7 @@ type ContainerTrackingSummary = {
     readonly type: string
     readonly triggered_at: string
   }[]
+  readonly tracking_validation: TrackingValidationContainerSummary
   readonly has_observations: boolean
   readonly last_event_at: TemporalValue | null
 }
@@ -480,6 +486,12 @@ export function aggregateOperationalSummary(
 
   // --- Transshipment ---
   const hasTransshipment = allActiveAlerts.some((a) => a.type === 'TRANSSHIPMENT')
+  const trackingValidation = aggregateTrackingValidationProjection(
+    summaries.map(
+      (summary) =>
+        summary.tracking_validation ?? createEmptyTrackingValidationContainerProjectionSummary(),
+    ),
+  )
 
   // --- Last Event ---
   let lastEventAt: TemporalValue | null = null
@@ -520,6 +532,7 @@ export function aggregateOperationalSummary(
     alerts_count: alertsCount,
     highest_alert_severity: highestAlertSeverity,
     dominant_alert_created_at: dominantAlertCreatedAt,
+    tracking_validation: trackingValidation,
     has_transshipment: hasTransshipment,
     last_event_at: lastEventAt ? toTemporalValueDto(lastEventAt) : null,
   }
@@ -590,6 +603,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
               type: alert.type,
               triggered_at: alert.triggered_at,
             })),
+            tracking_validation: hotRead.trackingValidation,
             has_observations: hotRead.hasObservations,
             last_event_at: hotRead.lastEventAt,
           } satisfies ContainerTrackingSummary

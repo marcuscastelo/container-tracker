@@ -11,6 +11,7 @@ import {
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import { createEmptyTrackingValidationProcessProjectionSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { ProcessResponseSchema } from '~/shared/api-schemas/processes.schemas'
 import { Instant } from '~/shared/time/instant'
 
@@ -93,6 +94,7 @@ function createSummary(
     alerts_count: 0,
     highest_alert_severity: null,
     dominant_alert_created_at: null,
+    tracking_validation: createEmptyTrackingValidationProcessProjectionSummary(),
     has_transshipment: false,
     last_event_at: null,
     ...overrides,

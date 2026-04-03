@@ -161,6 +161,25 @@ describe('toProcessSummaryVMs', () => {
     expect(third.syncStatus).toBe('idle')
   })
 
+  it('maps tracking validation summary into the dashboard VM without re-deriving it', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-validation',
+        tracking_validation: {
+          has_issues: true,
+          highest_severity: 'warning',
+          affected_container_count: 2,
+        },
+      }),
+    ])
+
+    expect(result[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 2,
+    })
+  })
+
   it('maps DELIVERED status correctly', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p4', process_status: 'DELIVERED' })])
     const first = requireAt(result, 0)

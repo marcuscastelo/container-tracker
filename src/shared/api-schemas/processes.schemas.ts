@@ -49,6 +49,20 @@ const EtaDisplayResponseSchema = z.discriminatedUnion('kind', [
   }),
 ])
 
+const TrackingValidationSeveritySchema = z.enum(['info', 'warning', 'danger'])
+
+const ProcessTrackingValidationResponseSchema = z.object({
+  has_issues: z.boolean(),
+  highest_severity: TrackingValidationSeveritySchema.nullable(),
+  affected_container_count: z.number().int().nonnegative(),
+})
+
+const ContainerTrackingValidationResponseSchema = z.object({
+  has_issues: z.boolean(),
+  highest_severity: TrackingValidationSeveritySchema.nullable(),
+  finding_count: z.number().int().nonnegative(),
+})
+
 export const ProcessResponseSchema = z.object({
   id: z.string(),
   reference: z.string().nullish(),
@@ -101,6 +115,8 @@ export const ProcessResponseSchema = z.object({
   highest_alert_severity: z.enum(['info', 'warning', 'danger']).nullish(),
   /** Timestamp for dominant alert age rendering in dashboard */
   dominant_alert_created_at: z.string().nullish(),
+  /** Tracking-owned validation signal aggregated across containers */
+  tracking_validation: ProcessTrackingValidationResponseSchema,
   /** Whether any container has a transshipment alert */
   has_transshipment: z.boolean().optional(),
   /** Latest event time across all container timelines */
@@ -362,6 +378,8 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       timeline: z.array(TrackingTimelineItemResponseSchema).optional(),
       /** Container-level operational projection */
       operational: ContainerOperationalResponseSchema.optional(),
+      /** Tracking validation summary owned by Tracking BC */
+      tracking_validation: ContainerTrackingValidationResponseSchema,
     }),
   ),
   /** Active tracking alerts for this process (across all containers) */

@@ -33,6 +33,12 @@ import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import {
+  aggregateTrackingValidationProjection,
+  createEmptyTrackingValidationProcessProjectionSummary,
+  type TrackingValidationContainerSummary,
+  type TrackingValidationProcessSummary,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
@@ -186,10 +192,19 @@ function processToResponseFields(p: ProcessEntity) {
   }
 }
 
+function createEmptyProcessTrackingValidationResponse() {
+  return {
+    has_issues: false,
+    highest_severity: null,
+    affected_container_count: 0,
+  }
+}
+
 export function toProcessResponse(pwc: ProcessWithContainers) {
   return {
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
+    tracking_validation: createEmptyProcessTrackingValidationResponse(),
   }
 }
 
@@ -219,6 +234,7 @@ export function toProcessResponseWithSummary(
     alerts_count: summary.alerts_count,
     highest_alert_severity: summary.highest_alert_severity,
     dominant_alert_created_at: summary.dominant_alert_created_at,
+    tracking_validation: toProcessTrackingValidationResponse(summary.tracking_validation),
     has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
     last_sync_status: sync.lastSyncStatus,
@@ -414,6 +430,24 @@ function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
     type: eta.type,
     location_code: eta.locationCode,
     location_display: eta.locationDisplay,
+  }
+}
+
+function toContainerTrackingValidationResponse(summary: TrackingValidationContainerSummary) {
+  return {
+    has_issues: summary.hasIssues,
+    highest_severity: summary.highestSeverity,
+    finding_count: summary.findingCount,
+  }
+}
+
+function toProcessTrackingValidationResponse(summary?: TrackingValidationProcessSummary) {
+  const currentSummary = summary ?? createEmptyTrackingValidationProcessProjectionSummary()
+
+  return {
+    has_issues: currentSummary.hasIssues,
+    highest_severity: currentSummary.highestSeverity,
+    affected_container_count: currentSummary.affectedContainerCount,
   }
 }
 
@@ -614,17 +648,20 @@ function toTrackingFreshnessToken(command: {
   readonly containers: ReadonlyArray<
     ContainerWithTrackingResponse & {
       readonly operational: ReturnType<typeof toContainerOperationalResponse>
+      readonly tracking_validation: ReturnType<typeof toContainerTrackingValidationResponse>
     }
   >
   readonly alerts: readonly ReturnType<typeof toTrackingAlertResponse>[]
   readonly activeAlertIncidents: readonly ReturnType<typeof toShipmentAlertIncidentResponse>[]
   readonly processOperational: ReturnType<typeof toProcessOperationalResponse>
+  readonly trackingValidation: ReturnType<typeof toProcessTrackingValidationResponse>
 }): string {
   const stablePayload = {
     containers: command.containers.map((container) => ({
       id: container.id,
       status: container.status,
       operational: container.operational,
+      tracking_validation: container.tracking_validation,
       timeline: container.timeline,
     })),
     alerts: command.alerts.map((alert) => ({
@@ -644,6 +681,7 @@ function toTrackingFreshnessToken(command: {
       triggered_at: incident.triggered_at,
     })),
     process_operational: command.processOperational,
+    tracking_validation: command.trackingValidation,
   }
 
   return createHash('sha1').update(JSON.stringify(stablePayload)).digest('hex')
@@ -655,6 +693,7 @@ export function toProcessDetailResponse(
   alerts: readonly TrackingAlertRecord[],
   activeAlertIncidents: ShipmentAlertIncidentsReadModel,
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
+  trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>,
   containersSync: readonly ContainerSyncRecord[],
 ) {
   const containers = containersWithTracking.map((container) => {
@@ -664,10 +703,17 @@ export function toProcessDetailResponse(
         `toProcessDetailResponse missing operational summary for container ${container.id}`,
       )
     }
+    const trackingValidation = trackingValidationByContainerId.get(container.id)
+    if (trackingValidation === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing tracking validation summary for container ${container.id}`,
+      )
+    }
 
     return {
       ...container,
       operational: toContainerOperationalResponse(summary),
+      tracking_validation: toContainerTrackingValidationResponse(trackingValidation),
     }
   })
 
@@ -676,6 +722,15 @@ export function toProcessDetailResponse(
     if (summary === undefined) {
       throw new Error(
         `toProcessDetailResponse missing process operational summary for container ${container.id}`,
+      )
+    }
+    return summary
+  })
+  const validationSummariesForProcess = containersWithTracking.map((container) => {
+    const summary = trackingValidationByContainerId.get(container.id)
+    if (summary === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing process tracking validation summary for container ${container.id}`,
       )
     }
     return summary
@@ -694,6 +749,9 @@ export function toProcessDetailResponse(
     .sort(compareAlertsByTriggeredAtDesc)
     .map(toTrackingAlertResponse)
   const processOperational = toProcessOperationalResponse(summariesForProcess)
+  const trackingValidation = toProcessTrackingValidationResponse(
+    aggregateTrackingValidationProjection(validationSummariesForProcess),
+  )
   const activeAlertIncidentResponses = activeAlertIncidents.active.map(
     toShipmentAlertIncidentResponse,
   )
@@ -702,6 +760,7 @@ export function toProcessDetailResponse(
     alerts: alertsResponse,
     activeAlertIncidents: activeAlertIncidentResponses,
     processOperational,
+    trackingValidation,
   })
 
   return {
@@ -710,6 +769,7 @@ export function toProcessDetailResponse(
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
     alerts: alertsResponse,
+    tracking_validation: trackingValidation,
     alert_incidents: {
       summary: {
         active_incidents: activeAlertIncidents.summary.activeIncidentCount,

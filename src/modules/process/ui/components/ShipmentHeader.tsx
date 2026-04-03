@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-solid'
+import { RefreshCw, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
@@ -205,6 +205,21 @@ function HeaderMeta(props: {
   )
 }
 
+function TrackingValidationBanner(props: {
+  readonly title: string
+  readonly description: string
+}): JSX.Element {
+  return (
+    <div class="mt-4 flex items-start gap-3 rounded-lg border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-tone-warning-fg">
+      <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" />
+      <div class="min-w-0">
+        <p class="text-sm-ui font-semibold">{props.title}</p>
+        <p class="text-xs-ui">{props.description}</p>
+      </div>
+    </div>
+  )
+}
+
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const translate = (key: string, options?: Record<string, unknown>): string =>
@@ -313,6 +328,15 @@ export function ShipmentHeader(props: Props): JSX.Element {
           </Show>
         </div>
       </div>
+
+      <Show when={props.data.trackingValidation.hasIssues}>
+        <TrackingValidationBanner
+          title={t(keys.shipmentView.validation.bannerTitle)}
+          description={t(keys.shipmentView.validation.bannerDescription, {
+            count: props.data.trackingValidation.affectedContainerCount,
+          })}
+        />
+      </Show>
 
       <UnknownCarrierDialog
         open={showUnknownCarrierDialog()}

@@ -14,6 +14,7 @@ function requireAt<T>(items: readonly T[], index: number): T {
 type ContainerOperationalResponse = NonNullable<
   ProcessDetailResponse['containers'][number]['operational']
 >
+type ContainerResponse = ProcessDetailResponse['containers'][number]
 type OperationalCurrentContextResponse = ContainerOperationalResponse['current_context']
 type OperationalNextLocationResponse = NonNullable<ContainerOperationalResponse['next_location']>
 
@@ -69,9 +70,68 @@ function makeContainerOperational(
   }
 }
 
+function makeProcessTrackingValidationResponse(
+  overrides: Partial<ProcessDetailResponse['tracking_validation']> = {},
+): ProcessDetailResponse['tracking_validation'] {
+  return {
+    has_issues: false,
+    highest_severity: null,
+    affected_container_count: 0,
+    ...overrides,
+  }
+}
+
+function makeContainerTrackingValidationResponse(
+  overrides: Partial<ContainerResponse['tracking_validation']> = {},
+): ContainerResponse['tracking_validation'] {
+  return {
+    has_issues: false,
+    highest_severity: null,
+    finding_count: 0,
+    ...overrides,
+  }
+}
+
+function makeContainerResponse(
+  overrides: Omit<Partial<ContainerResponse>, 'tracking_validation'> & {
+    readonly tracking_validation?: ContainerResponse['tracking_validation']
+  } = {},
+): ContainerResponse {
+  return {
+    id: overrides.id ?? 'container-default',
+    container_number: overrides.container_number ?? 'MSCU0000000',
+    tracking_validation: overrides.tracking_validation ?? makeContainerTrackingValidationResponse(),
+    ...overrides,
+  }
+}
+
+function makeProcessDetailResponse(
+  overrides: Omit<Partial<ProcessDetailResponse>, 'tracking_validation' | 'containers'> & {
+    readonly tracking_validation?: ProcessDetailResponse['tracking_validation']
+    readonly containers?: ProcessDetailResponse['containers']
+  } = {},
+): ProcessDetailResponse {
+  return {
+    id: overrides.id ?? 'process-default',
+    tracking_freshness_token: overrides.tracking_freshness_token ?? 'token-process-default',
+    reference: overrides.reference ?? null,
+    origin: overrides.origin ?? null,
+    destination: overrides.destination ?? null,
+    carrier: overrides.carrier ?? null,
+    source: overrides.source ?? 'api',
+    created_at: overrides.created_at ?? new Date().toISOString(),
+    updated_at: overrides.updated_at ?? new Date().toISOString(),
+    tracking_validation: overrides.tracking_validation ?? makeProcessTrackingValidationResponse(),
+    containers: overrides.containers ?? [],
+    containersSync: overrides.containersSync ?? [],
+    alerts: overrides.alerts ?? [],
+    ...overrides,
+  }
+}
+
 describe('toShipmentDetailVM base mapping', () => {
   it('maps a minimal API payload into shipment detail view model', () => {
-    const example: ProcessDetailResponse = {
+    const example = makeProcessDetailResponse({
       id: 'proc-1',
       tracking_freshness_token: 'token-proc-1',
       reference: 'REF-1',
@@ -80,11 +140,8 @@ describe('toShipmentDetailVM base mapping', () => {
       carrier: 'maersk',
       bill_of_lading: null,
       booking_number: null,
-      source: 'api',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       containers: [
-        {
+        makeContainerResponse({
           id: 'c1',
           container_number: 'MRKU1234567',
           carrier_code: 'MAERSK',
@@ -105,11 +162,9 @@ describe('toShipmentDetailVM base mapping', () => {
               series_history: null,
             },
           ],
-        },
+        }),
       ],
-      containersSync: [],
-      alerts: [],
-    }
+    })
 
     const result = toShipmentDetailVM(example)
     const firstContainer = requireAt(result.containers, 0)
@@ -138,7 +193,7 @@ describe('toShipmentDetailVM base mapping', () => {
   })
 
   it('maps process-level status and alerts from tracking data', () => {
-    const example: ProcessDetailResponse = {
+    const example = makeProcessDetailResponse({
       id: 'proc-2',
       tracking_freshness_token: 'token-proc-2',
       reference: 'REF-2',
@@ -147,15 +202,12 @@ describe('toShipmentDetailVM base mapping', () => {
       carrier: 'msc',
       bill_of_lading: null,
       booking_number: null,
-      source: 'api',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       containers: [
-        {
+        makeContainerResponse({
           id: 'c2',
           container_number: 'MSCU1234567',
           status: 'IN_TRANSIT',
-        },
+        }),
       ],
       process_operational: {
         derived_status: 'IN_TRANSIT',
@@ -172,7 +224,6 @@ describe('toShipmentDetailVM base mapping', () => {
           with_eta: 0,
         },
       },
-      containersSync: [],
       alerts: [
         {
           id: 'alert-1',
@@ -193,7 +244,7 @@ describe('toShipmentDetailVM base mapping', () => {
           acked_at: null,
         },
       ],
-    }
+    })
 
     const result = toShipmentDetailVM(example)
     const firstAlert = requireAt(result.alerts, 0)
@@ -216,11 +267,11 @@ describe('toShipmentDetailVM base mapping', () => {
 })
 
 describe('toShipmentDetailVM tracking mapping', () => {
-  it('maps compact shipment alert incidents when the additive payload is present', () => {
-    const example: ProcessDetailResponse = {
-      id: 'proc-incident',
-      tracking_freshness_token: 'token-proc-incident',
-      reference: 'REF-INCIDENT',
+  it('maps tracking validation summaries for shipment and container support UI', () => {
+    const example = makeProcessDetailResponse({
+      id: 'proc-validation',
+      tracking_freshness_token: 'token-proc-validation',
+      reference: 'REF-VALIDATION',
       origin: { display_name: 'Busan' },
       destination: { display_name: 'Santos' },
       carrier: 'msc',
@@ -229,14 +280,54 @@ describe('toShipmentDetailVM tracking mapping', () => {
       source: 'api',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      tracking_validation: {
+        has_issues: true,
+        highest_severity: 'warning',
+        affected_container_count: 1,
+      },
       containers: [
-        {
+        makeContainerResponse({
+          id: 'container-validation',
+          container_number: 'FCIU2000205',
+          tracking_validation: {
+            has_issues: true,
+            highest_severity: 'warning',
+            finding_count: 2,
+          },
+        }),
+      ],
+    })
+
+    const result = toShipmentDetailVM(example)
+
+    expect(result.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 1,
+    })
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      findingCount: 2,
+    })
+  })
+
+  it('maps compact shipment alert incidents when the additive payload is present', () => {
+    const example = makeProcessDetailResponse({
+      id: 'proc-incident',
+      tracking_freshness_token: 'token-proc-incident',
+      reference: 'REF-INCIDENT',
+      origin: { display_name: 'Busan' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      bill_of_lading: null,
+      booking_number: null,
+      containers: [
+        makeContainerResponse({
           id: 'container-1',
           container_number: 'FCIU2000205',
-        },
+        }),
       ],
-      containersSync: [],
-      alerts: [],
       alert_incidents: {
         summary: {
           active_incidents: 1,
@@ -302,7 +393,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
         ],
         recognized: [],
       },
-    }
+    })
 
     const result = toShipmentDetailVM(example)
     expect(result.alertIncidents.summary.activeIncidents).toBe(1)
@@ -317,23 +408,20 @@ describe('toShipmentDetailVM tracking mapping', () => {
   })
 
   it('maps container sync metadata by normalized container number', () => {
-    const example: ProcessDetailResponse = {
+    const example = makeProcessDetailResponse({
       id: 'proc-sync',
       tracking_freshness_token: 'token-proc-sync',
       reference: 'REF-SYNC',
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
       carrier: 'msc',
-      source: 'api',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       containers: [
-        {
+        makeContainerResponse({
           id: 'c-sync',
           container_number: 'MSCU8888888',
           carrier_code: 'MSC',
           status: 'IN_TRANSIT',
-        },
+        }),
       ],
       containersSync: [
         {
@@ -346,8 +434,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
           lastErrorAt: '2026-02-03T10:00:00.000Z',
         },
       ],
-      alerts: [],
-    }
+    })
 
     const result = toShipmentDetailVM(example, 'en-US')
     const firstContainer = requireAt(result.containers, 0)
@@ -358,18 +445,14 @@ describe('toShipmentDetailVM tracking mapping', () => {
 
 describe('toShipmentDetailVM fallback mapping', () => {
   it('keeps acknowledged alerts and exposes ackedAtIso', () => {
-    const example: ProcessDetailResponse = {
+    const example = makeProcessDetailResponse({
       id: 'proc-3',
       tracking_freshness_token: 'token-proc-3',
       reference: null,
       origin: null,
       destination: null,
       carrier: null,
-      source: 'api',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      containers: [{ id: 'c3', container_number: 'TEST1234567' }],
-      containersSync: [],
+      containers: [makeContainerResponse({ id: 'c3', container_number: 'TEST1234567' })],
       alerts: [
         {
           id: 'alert-acked',
@@ -391,7 +474,7 @@ describe('toShipmentDetailVM fallback mapping', () => {
           acked_at: '2026-03-05T12:00:00.000Z',
         },
       ],
-    }
+    })
 
     const result = toShipmentDetailVM(example)
     const firstAlert = requireAt(result.alerts, 0)
@@ -400,26 +483,21 @@ describe('toShipmentDetailVM fallback mapping', () => {
   })
 
   it('shows placeholder timeline when no observations', () => {
-    const example: ProcessDetailResponse = {
+    const example = makeProcessDetailResponse({
       id: 'proc-4',
       tracking_freshness_token: 'token-proc-4',
       reference: 'EMPTY',
       origin: null,
       destination: null,
       carrier: null,
-      source: 'api',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       containers: [
-        {
+        makeContainerResponse({
           id: 'c4',
           container_number: 'NONE1234567',
           status: 'UNKNOWN',
-        },
+        }),
       ],
-      containersSync: [],
-      alerts: [],
-    }
+    })
 
     const result = toShipmentDetailVM(example)
     const firstContainer = requireAt(result.containers, 0)
@@ -431,7 +509,7 @@ describe('toShipmentDetailVM fallback mapping', () => {
 })
 
 function createOperationalMultiContainerResponse(): ProcessDetailResponse {
-  return {
+  return makeProcessDetailResponse({
     id: 'proc-5',
     tracking_freshness_token: 'token-proc-5',
     reference: 'OPS-5',
@@ -442,7 +520,7 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
     created_at: '2026-02-01T10:00:00.000Z',
     updated_at: '2026-02-01T10:00:00.000Z',
     containers: [
-      {
+      makeContainerResponse({
         id: 'c5-1',
         container_number: 'MSCU1111111',
         status: 'IN_TRANSIT',
@@ -475,8 +553,8 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
           },
           data_issue: true,
         }),
-      },
-      {
+      }),
+      makeContainerResponse({
         id: 'c5-2',
         container_number: 'MSCU2222222',
         status: 'IN_TRANSIT',
@@ -505,10 +583,8 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
           },
           data_issue: false,
         }),
-      },
+      }),
     ],
-    containersSync: [],
-    alerts: [],
     process_operational: {
       derived_status: 'IN_TRANSIT',
       eta_max: {
@@ -528,11 +604,11 @@ function createOperationalMultiContainerResponse(): ProcessDetailResponse {
         with_eta: 1,
       },
     },
-  }
+  })
 }
 
 function createOperationalHiddenIntResponse(): ProcessDetailResponse {
-  return {
+  return makeProcessDetailResponse({
     id: 'proc-6',
     tracking_freshness_token: 'token-proc-6',
     reference: 'OPS-6',
@@ -543,7 +619,7 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
     created_at: '2026-02-01T10:00:00.000Z',
     updated_at: '2026-02-01T10:00:00.000Z',
     containers: [
-      {
+      makeContainerResponse({
         id: 'c6-1',
         container_number: 'MSCU3333333',
         status: 'IN_TRANSIT',
@@ -565,15 +641,13 @@ function createOperationalHiddenIntResponse(): ProcessDetailResponse {
           },
           data_issue: false,
         }),
-      },
+      }),
     ],
-    containersSync: [],
-    alerts: [],
-  }
+  })
 }
 
 function createOperationalFullCoverageResponse(): ProcessDetailResponse {
-  return {
+  return makeProcessDetailResponse({
     id: 'proc-7',
     tracking_freshness_token: 'token-proc-7',
     reference: 'OPS-7',
@@ -584,7 +658,7 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
     created_at: '2026-02-01T10:00:00.000Z',
     updated_at: '2026-02-01T10:00:00.000Z',
     containers: [
-      {
+      makeContainerResponse({
         id: 'c7-1',
         container_number: 'MSCU4444444',
         status: 'IN_TRANSIT',
@@ -614,8 +688,8 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
           },
           data_issue: false,
         }),
-      },
-      {
+      }),
+      makeContainerResponse({
         id: 'c7-2',
         container_number: 'MSCU5555555',
         status: 'IN_TRANSIT',
@@ -645,10 +719,8 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
           },
           data_issue: false,
         }),
-      },
+      }),
     ],
-    containersSync: [],
-    alerts: [],
     process_operational: {
       derived_status: 'IN_TRANSIT',
       eta_max: {
@@ -668,7 +740,7 @@ function createOperationalFullCoverageResponse(): ProcessDetailResponse {
         with_eta: 2,
       },
     },
-  }
+  })
 }
 
 describe('toShipmentDetailVM operational mapping', () => {
@@ -729,7 +801,7 @@ describe('toShipmentDetailVM operational mapping', () => {
 })
 
 function createDeliveredOperationalResponse(): ProcessDetailResponse {
-  return {
+  return makeProcessDetailResponse({
     id: 'proc-delivered',
     tracking_freshness_token: 'token-proc-delivered',
     reference: 'OPS-DELIVERED',
@@ -740,7 +812,7 @@ function createDeliveredOperationalResponse(): ProcessDetailResponse {
     created_at: '2026-02-01T10:00:00.000Z',
     updated_at: '2026-02-01T10:00:00.000Z',
     containers: [
-      {
+      makeContainerResponse({
         id: 'c-delivered-1',
         container_number: 'MSCU9999999',
         status: 'EMPTY_RETURNED',
@@ -767,10 +839,8 @@ function createDeliveredOperationalResponse(): ProcessDetailResponse {
           },
           data_issue: false,
         },
-      },
+      }),
     ],
-    containersSync: [],
-    alerts: [],
     process_operational: {
       derived_status: 'DELIVERED',
       eta_max: null,
@@ -785,11 +855,11 @@ function createDeliveredOperationalResponse(): ProcessDetailResponse {
       final_delivery_complete: true,
       full_logistics_complete: true,
     },
-  }
+  })
 }
 
 function createArrivedOperationalResponse(): ProcessDetailResponse {
-  return {
+  return makeProcessDetailResponse({
     id: 'proc-arrived-eta',
     tracking_freshness_token: 'token-proc-arrived-eta',
     reference: 'OPS-ARRIVED',
@@ -800,14 +870,12 @@ function createArrivedOperationalResponse(): ProcessDetailResponse {
     created_at: '2026-02-01T10:00:00.000Z',
     updated_at: '2026-02-01T10:00:00.000Z',
     containers: [
-      {
+      makeContainerResponse({
         id: 'c-arrived-eta-1',
         container_number: 'FCIU2000205',
         status: 'LOADED',
-      },
+      }),
     ],
-    containersSync: [],
-    alerts: [],
     process_operational: {
       derived_status: 'IN_TRANSIT',
       eta_max: {
@@ -827,5 +895,5 @@ function createArrivedOperationalResponse(): ProcessDetailResponse {
         with_eta: 1,
       },
     },
-  }
+  })
 }

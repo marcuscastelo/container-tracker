@@ -19,6 +19,10 @@ import {
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import {
+  deriveTrackingValidationProjection,
+  type TrackingValidationContainerProjection,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -46,6 +50,8 @@ export type ContainerOperationalSummaryProjection = {
   readonly hasObservations: boolean
   readonly lastEventAt: TemporalValue | null
 }
+
+export type ContainerTrackingValidationProjection = TrackingValidationContainerProjection
 
 export type ContainersActiveAlertIncidentsProjection = {
   readonly activeAlerts: readonly TrackingAlert[]
@@ -145,6 +151,37 @@ export function findContainersOperationalSummaryProjection(command: {
   }
 
   return summariesByContainerId
+}
+
+export function findContainersTrackingValidationProjection(command: {
+  readonly containers: readonly ContainerTarget[]
+  readonly observationsByContainerId: ReadonlyMap<string, readonly Observation[]>
+  readonly timelineMainByContainerId: ReadonlyMap<string, ContainerTimelineMainProjection>
+  readonly now: Instant
+}): ReadonlyMap<string, ContainerTrackingValidationProjection> {
+  const validationByContainerId = new Map<string, ContainerTrackingValidationProjection>()
+
+  for (const container of command.containers) {
+    const observations = command.observationsByContainerId.get(container.containerId) ?? []
+    const projectionObservations = suppressSupersededObservationsForProjection(observations)
+    const timelineProjection = command.timelineMainByContainerId.get(container.containerId)
+    if (timelineProjection === undefined) continue
+
+    const transshipment = deriveTransshipment(timelineProjection.domainTimeline)
+    const validation = deriveTrackingValidationProjection({
+      containerId: container.containerId,
+      containerNumber: container.containerNumber,
+      observations: projectionObservations,
+      timeline: timelineProjection.domainTimeline,
+      status: timelineProjection.status,
+      transshipment,
+      now: command.now,
+    })
+
+    validationByContainerId.set(container.containerId, validation)
+  }
+
+  return validationByContainerId
 }
 
 export function findContainersActiveAlertIncidentsProjection(command: {

@@ -16,6 +16,7 @@ import type {
   FindContainersHotReadProjectionResult,
 } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
 import type { ContainerSyncRecord } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import {
   ProcessDetailResponseSchema,
   ProcessesV2ResponseSchema,
@@ -51,6 +52,12 @@ const CONTAINER_SUMMARY_STATUSES: readonly ContainerSummaryStatus[] = [
   'DELIVERED',
   'EMPTY_RETURNED',
 ]
+
+const EMPTY_TRACKING_VALIDATION: TrackingValidationContainerSummary = {
+  hasIssues: false,
+  findingCount: 0,
+  highestSeverity: null,
+}
 
 function isContainerStatus(value: string): value is ContainerSummaryStatus {
   return CONTAINER_SUMMARY_STATUSES.some((item) => item === value)
@@ -138,6 +145,7 @@ function createHotReadContainer(
     timeline: [],
     status,
     operational,
+    trackingValidation: EMPTY_TRACKING_VALIDATION,
     activeAlerts: alerts,
     hasObservations: operational.dataIssue !== true,
     lastEventAt: temporalValueFromDto(operational.eta?.eventTime ?? null),

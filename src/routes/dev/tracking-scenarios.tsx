@@ -571,6 +571,7 @@ export default function TrackingScenariosPage(): JSX.Element {
         alertsCount: shipment.alerts.length,
         highestAlertSeverity: highestSeverity,
         dominantAlertCreatedAt: null,
+        trackingValidation: shipment.trackingValidation,
         redestinationNumber: shipment.redestination_number ?? null,
         hasTransshipment,
         lastEventAt: null,

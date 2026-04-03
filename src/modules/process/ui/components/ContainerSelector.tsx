@@ -14,6 +14,7 @@ type ContainerSelectorItemLabels = {
   readonly etaDelivered: string
   readonly etaMissing: string
   readonly dataIssue: string
+  readonly trackingValidation: string
   readonly etaLabel: string
 }
 
@@ -79,6 +80,11 @@ function ContainerSelectorItem(props: {
             {props.labels.dataIssue}
           </span>
         </Show>
+        <Show when={props.container.trackingValidation.hasIssues}>
+          <span class="inline-flex rounded-md border border-tone-warning-border bg-tone-warning-bg px-1.5 py-0.5 text-micro font-medium text-tone-warning-fg">
+            {props.labels.trackingValidation}
+          </span>
+        </Show>
       </div>
     </button>
   )
@@ -98,6 +104,7 @@ export function ContainerSelector(props: {
     etaDelivered: t(keys.tracking.status.DELIVERED),
     etaMissing: t(keys.shipmentView.operational.chips.etaMissing),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
+    trackingValidation: t(keys.shipmentView.validation.containerChip),
     etaLabel: t(keys.shipmentView.currentStatus.eta),
   }
 

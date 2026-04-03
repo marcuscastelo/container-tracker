@@ -12,8 +12,15 @@ import {
   type TrackingOperationalSummary,
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { Instant } from '~/shared/time/instant'
 import { temporalDtoFromCanonical, temporalValueFromCanonical } from '~/shared/time/tests/helpers'
+
+const EMPTY_TRACKING_VALIDATION: TrackingValidationContainerSummary = {
+  hasIssues: false,
+  findingCount: 0,
+  highestSeverity: null,
+}
 
 function makeProcess(processId: string) {
   return createProcessEntity({
@@ -94,6 +101,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
             },
             dataIssue: false,
           }),
+          trackingValidation: EMPTY_TRACKING_VALIDATION,
           activeAlerts: [
             {
               id: 'alert-1',
@@ -134,6 +142,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
             },
             dataIssue: false,
           }),
+          trackingValidation: EMPTY_TRACKING_VALIDATION,
           activeAlerts: [],
           hasObservations: true,
           lastEventAt: temporalValueFromCanonical('2026-03-11T12:00:00.000Z'),
@@ -226,6 +235,12 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
     expect(result.processes[0]?.summary.process_status).toBe('IN_TRANSIT')
     expect(result.processes[0]?.summary.alerts_count).toBe(1)
     expect(result.processes[0]?.summary.container_count).toBe(2)
+    expect(result.processes[0]?.summary.tracking_validation).toEqual({
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      totalFindingCount: 0,
+    })
   })
 
   it('fails explicitly when the hot-read projection omits a requested container', async () => {
@@ -249,6 +264,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               },
               dataIssue: false,
             }),
+            trackingValidation: EMPTY_TRACKING_VALIDATION,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: null,

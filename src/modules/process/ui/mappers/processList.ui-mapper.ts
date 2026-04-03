@@ -5,6 +5,7 @@ import {
 } from '~/modules/process/ui/mappers/processStatus.ui-mapper'
 import { toProcessStatusMicrobadgeVM } from '~/modules/process/ui/mappers/processStatusMicrobadge.ui-mapper'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import type { ProcessTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-validation.vm'
 import { toComparableInstant } from '~/shared/time/compare-temporal'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
@@ -56,6 +57,13 @@ export type ProcessListItemSource = {
   alerts_count?: number | undefined
   highest_alert_severity?: 'info' | 'warning' | 'danger' | null | undefined
   dominant_alert_created_at?: string | null | undefined
+  tracking_validation?:
+    | {
+        readonly has_issues?: boolean | undefined
+        readonly highest_severity?: 'info' | 'warning' | 'danger' | null | undefined
+        readonly affected_container_count?: number | undefined
+      }
+    | undefined
   has_transshipment?: boolean | undefined
   last_event_at?: TemporalValueDto | null | undefined
   redestination_number?: string | null | undefined
@@ -133,6 +141,16 @@ function toEtaMsOrNull(etaDisplay: ProcessSummaryVM['etaDisplay']): number | nul
   return null
 }
 
+function toProcessTrackingValidationVm(
+  trackingValidation: ProcessListItemSource['tracking_validation'],
+): ProcessTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    affectedContainerCount: trackingValidation?.affected_container_count ?? 0,
+  }
+}
+
 export function toProcessSummaryVMs(
   data: readonly ProcessListItemSource[],
 ): readonly ProcessSummaryVM[] {
@@ -166,6 +184,7 @@ export function toProcessSummaryVMs(
       alertsCount: process.alerts_count ?? 0,
       highestAlertSeverity: process.highest_alert_severity ?? null,
       dominantAlertCreatedAt: process.dominant_alert_created_at ?? null,
+      trackingValidation: toProcessTrackingValidationVm(process.tracking_validation),
       redestinationNumber: process.redestination_number ?? null,
       hasTransshipment: process.has_transshipment ?? false,
       lastEventAt: process.last_event_at ?? null,

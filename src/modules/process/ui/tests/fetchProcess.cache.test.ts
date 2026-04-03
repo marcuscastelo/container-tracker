@@ -42,6 +42,11 @@ function buildProcessDetailResponse(
         container_number: command.containerNumber,
         carrier_code: 'MSC',
         status: 'IN_TRANSIT',
+        tracking_validation: {
+          has_issues: false,
+          highest_severity: null,
+          finding_count: 0,
+        },
         timeline: [],
         operational: {
           status: 'IN_TRANSIT',
@@ -63,6 +68,11 @@ function buildProcessDetailResponse(
         },
       },
     ],
+    tracking_validation: {
+      has_issues: false,
+      highest_severity: null,
+      affected_container_count: 0,
+    },
     alerts: [
       {
         id: `alert-${command.processId}`,
