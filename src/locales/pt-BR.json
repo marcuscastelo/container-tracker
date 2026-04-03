@@ -407,6 +407,11 @@
         "transshipmentPort": "Transbordo — {{port}}",
         "vesselChange": "Troca de navio",
         "vesselChangeDetail": "{{from}} → {{to}}",
+        "transshipmentReason": {
+          "voyageChange": "Mudança de viagem",
+          "vesselChange": "Troca de navio",
+          "vesselAndVoyageChange": "Mudança de navio e viagem"
+        },
         "currentLeg": "Atual",
         "destinationEta": "→ {{destination}} · ETA {{eta}}",
         "destinationNoEta": "→ {{destination}}",

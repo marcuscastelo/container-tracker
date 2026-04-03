@@ -173,7 +173,7 @@ export type TerminalBlock = {
 export type TransshipmentBlock = {
   readonly blockType: 'transshipment'
   readonly port: string | null
-  readonly reason: string | null
+  readonly reasonCode: TransshipmentReason
   readonly fromVessel: string | null
   readonly toVessel: string | null
 }
@@ -197,17 +197,22 @@ export type PortRiskMarker = {
 // Phase 5 — Transshipment Detection
 // ---------------------------------------------------------------------------
 
+export type TransshipmentReason =
+  | 'voyage-change'
+  | 'vessel-change'
+  | 'vessel-and-voyage-change'
+
 function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegment[]): readonly {
   readonly afterVoyageIndex: number
   readonly port: string | null
-  readonly reason: string
+  readonly reasonCode: TransshipmentReason
   readonly fromVessel: string | null
   readonly toVessel: string | null
 }[] {
   const transshipments: {
     afterVoyageIndex: number
     port: string | null
-    reason: string
+    reasonCode: TransshipmentReason
     fromVessel: string | null
     toVessel: string | null
   }[] = []
@@ -230,17 +235,17 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
     // Transshipment when vessel or voyage differs
     if (vesselChanged || voyageChanged) {
       const port = current.seg.destination ?? next.seg.origin ?? null
-      let reason = 'Voyage change'
+      let reasonCode: TransshipmentReason = 'voyage-change'
       if (vesselChanged && voyageChanged) {
-        reason = 'Vessel and voyage change'
+        reasonCode = 'vessel-and-voyage-change'
       } else if (vesselChanged) {
-        reason = 'Vessel change'
+        reasonCode = 'vessel-change'
       }
 
       transshipments.push({
         afterVoyageIndex: current.idx,
         port,
-        reason,
+        reasonCode,
         fromVessel: current.seg.vessel,
         toVessel: next.seg.vessel,
       })
@@ -468,7 +473,7 @@ export function buildTimelineRenderList(
     transshipmentMap.set(ts.afterVoyageIndex, {
       blockType: 'transshipment',
       port: ts.port,
-      reason: ts.reason,
+      reasonCode: ts.reasonCode,
       fromVessel: ts.fromVessel,
       toVessel: ts.toVessel,
     })

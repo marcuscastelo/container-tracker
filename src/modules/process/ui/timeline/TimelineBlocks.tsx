@@ -158,7 +158,22 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
 export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlock }): JSX.Element {
   const { t, keys } = useTranslation()
 
-  const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
+  const isVesselChange = () =>
+    props.block.reasonCode === 'vessel-change' || props.block.reasonCode === 'vessel-and-voyage-change'
+  const hasVesselNames = () => Boolean(props.block.fromVessel || props.block.toVessel)
+
+  const vesselChangeDetailVisible = () => isVesselChange() && hasVesselNames()
+
+  const reasonLabel = () => {
+    switch (props.block.reasonCode) {
+      case 'vessel-change':
+        return t(keys.shipmentView.timeline.blocks.transshipmentReason.vesselChange)
+      case 'vessel-and-voyage-change':
+        return t(keys.shipmentView.timeline.blocks.transshipmentReason.vesselAndVoyageChange)
+      default:
+        return t(keys.shipmentView.timeline.blocks.transshipmentReason.voyageChange)
+    }
+  }
 
   return (
     <div class="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
@@ -172,12 +187,8 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
         {(port) => <p class="mt-0.5 text-micro font-medium text-tone-warning-fg">{port()}</p>}
       </Show>
       <Show
-        when={hasVesselChange()}
-        fallback={
-          <Show when={props.block.reason}>
-            {(reason) => <p class="mt-0.5 text-micro text-tone-warning-fg">{reason()}</p>}
-          </Show>
-        }
+        when={vesselChangeDetailVisible()}
+        fallback={<p class="mt-0.5 text-micro text-tone-warning-fg">{reasonLabel()}</p>}
       >
         <div class="mt-1 flex items-center gap-1 rounded bg-tone-warning-border/50 px-2 py-0.5 text-micro">
           <span class="text-tone-warning-fg font-semibold shrink-0" aria-hidden="true">

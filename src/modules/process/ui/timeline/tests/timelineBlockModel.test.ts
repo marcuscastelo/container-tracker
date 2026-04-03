@@ -120,7 +120,7 @@ describe('buildTimelineRenderList voyage grouping', () => {
     const transshipmentBlock = requireDefined(tsBlocks[0])
     if (transshipmentBlock.type === 'transshipment-block') {
       expect(transshipmentBlock.block.port).toBe('B')
-      expect(transshipmentBlock.block.reason).toBe('Vessel and voyage change')
+      expect(transshipmentBlock.block.reasonCode).toBe('vessel-and-voyage-change')
       expect(transshipmentBlock.block.fromVessel).toBe('V1')
       expect(transshipmentBlock.block.toVessel).toBe('V2')
     }
@@ -142,7 +142,7 @@ describe('buildTimelineRenderList voyage grouping', () => {
     expect(tsBlocks).toHaveLength(1)
     const transshipmentBlock = requireDefined(tsBlocks[0])
     if (transshipmentBlock.type === 'transshipment-block') {
-      expect(transshipmentBlock.block.reason).toBe('Voyage change')
+      expect(transshipmentBlock.block.reasonCode).toBe('voyage-change')
     }
   })
 
@@ -162,7 +162,7 @@ describe('buildTimelineRenderList voyage grouping', () => {
     expect(tsBlocks).toHaveLength(1)
     const transshipmentBlock = requireDefined(tsBlocks[0])
     if (transshipmentBlock.type === 'transshipment-block') {
-      expect(transshipmentBlock.block.reason).toBe('Vessel change')
+      expect(transshipmentBlock.block.reasonCode).toBe('vessel-change')
     }
   })
 
