@@ -67,5 +67,10 @@ describe('tracking-time-travel.ui-mapper', () => {
       highestSeverity: 'danger',
       findingCount: 2,
     })
+    expect(Object.keys(result.syncs[0]?.trackingValidation ?? {}).sort()).toEqual([
+      'findingCount',
+      'hasIssues',
+      'highestSeverity',
+    ])
   })
 })

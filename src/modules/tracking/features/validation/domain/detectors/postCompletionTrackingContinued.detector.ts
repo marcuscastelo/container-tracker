@@ -85,8 +85,7 @@ function createFinding(
     affectedScope: 'TIMELINE',
     summaryKey: SUMMARY_KEY,
     evidenceSummary: describeEvidence(milestone, incompatibleObservation),
-    isActive: true,
-    metadata: {
+    debugEvidence: {
       completionObservationId: milestone.observation.id,
       completionSource: milestone.source,
       completionStatus: milestone.status,
@@ -94,6 +93,7 @@ function createFinding(
       continuationObservationId: incompatibleObservation.id,
       continuationType: incompatibleObservation.type,
     },
+    isActive: true,
   }
 }
 

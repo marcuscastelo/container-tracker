@@ -82,14 +82,14 @@ function createFinding(
     affectedScope: 'SERIES',
     summaryKey: SUMMARY_KEY,
     evidenceSummary: describeEvidence(classification.primary),
-    isActive: true,
-    metadata: {
+    debugEvidence: {
       conflictingActualCount: classification.conflictingActualCount,
       locationCode: classification.primary.location_code,
       primaryObservationId: classification.primary.id,
       seriesKey,
       seriesType: classification.primary.type,
     },
+    isActive: true,
   }
 }
 

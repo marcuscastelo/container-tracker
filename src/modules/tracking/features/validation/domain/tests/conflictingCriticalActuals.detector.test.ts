@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { conflictingCriticalActualsDetector } from '~/modules/tracking/features/validation/domain/detectors/conflictingCriticalActuals.detector'
 import {
-  createEmptyTrackingValidationDerivedSignals,
+  createEmptyTrackingValidationDetectorSignals,
   type TrackingValidationContext,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import { Instant } from '~/shared/time/instant'
@@ -51,7 +51,7 @@ function makeContext(observations: readonly Observation[]): TrackingValidationCo
       transshipmentCount: 0,
       ports: [],
     },
-    signals: createEmptyTrackingValidationDerivedSignals(),
+    derivedSignals: createEmptyTrackingValidationDetectorSignals(),
     now: Instant.fromIso('2026-04-03T12:00:00.000Z'),
   }
 }
@@ -94,7 +94,7 @@ describe('conflictingCriticalActualsDetector', () => {
       affectedScope: 'SERIES',
       summaryKey: 'tracking.validation.conflictingCriticalActuals',
       isActive: true,
-      metadata: {
+      debugEvidence: {
         conflictingActualCount: 1,
         locationCode: 'BRSSZ',
         primaryObservationId: 'discharge-2',
@@ -163,7 +163,7 @@ describe('conflictingCriticalActualsDetector', () => {
     )
 
     expect(findings).toHaveLength(2)
-    expect(findings.map((finding) => finding.metadata?.seriesType)).toEqual([
+    expect(findings.map((finding) => finding.debugEvidence?.seriesType)).toEqual([
       'DISCHARGE',
       'DELIVERY',
     ])

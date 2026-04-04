@@ -1,11 +1,15 @@
+import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import { toTrackingObservationProjections } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
+import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { buildTimelineRenderList } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 import { TRACKING_VALIDATION_DETECTORS } from '~/modules/tracking/features/validation/domain/detectors'
 import {
-  createEmptyTrackingValidationDerivedSignals,
+  createEmptyTrackingValidationDetectorSignals,
   type TrackingValidationContext,
-  type TrackingValidationDerivedSignals,
+  type TrackingValidationDetectorSignals,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
 import type {
@@ -19,12 +23,21 @@ import {
 import { createTrackingValidationRegistry } from '~/modules/tracking/features/validation/domain/registry/trackingValidationRegistry'
 import { aggregateTrackingValidation } from '~/modules/tracking/features/validation/domain/services/aggregateTrackingValidation'
 import { deriveTrackingValidation } from '~/modules/tracking/features/validation/domain/services/deriveTrackingValidation'
+import type { Instant } from '~/shared/time/instant'
 
 const trackingValidationRegistry = createTrackingValidationRegistry(TRACKING_VALIDATION_DETECTORS)
 
 export type { TrackingValidationContainerSummary, TrackingValidationProcessSummary }
 
-export type TrackingValidationProjectionInput = Omit<TrackingValidationContext, 'signals'>
+export type TrackingValidationProjectionInput = {
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly observations: readonly Observation[]
+  readonly timeline: Timeline
+  readonly status: ContainerStatus
+  readonly transshipment: TransshipmentInfo
+  readonly now: Instant
+}
 
 export type TrackingValidationContainerProjection = {
   readonly containerId: string
@@ -33,9 +46,9 @@ export type TrackingValidationContainerProjection = {
   readonly summary: TrackingValidationContainerSummary
 }
 
-function deriveTrackingValidationDerivedSignals(
+function deriveTrackingValidationDetectorSignals(
   context: TrackingValidationProjectionInput,
-): TrackingValidationDerivedSignals {
+): TrackingValidationDetectorSignals {
   const timelineItems = deriveTimelineWithSeriesReadModel(
     toTrackingObservationProjections(context.observations),
     context.now,
@@ -69,7 +82,7 @@ function deriveTrackingValidationDerivedSignals(
   })
 
   if (postCarriageMaritimeEvents.length === 0) {
-    return createEmptyTrackingValidationDerivedSignals()
+    return createEmptyTrackingValidationDetectorSignals()
   }
 
   return {
@@ -84,7 +97,7 @@ export function createTrackingValidationContext(
 ): TrackingValidationContext {
   return {
     ...context,
-    signals: deriveTrackingValidationDerivedSignals(context),
+    derivedSignals: deriveTrackingValidationDetectorSignals(context),
   }
 }
 

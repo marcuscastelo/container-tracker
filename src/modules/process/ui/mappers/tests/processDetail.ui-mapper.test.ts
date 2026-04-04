@@ -305,11 +305,21 @@ describe('toShipmentDetailVM tracking mapping', () => {
       highestSeverity: 'warning',
       affectedContainerCount: 1,
     })
+    expect(Object.keys(result.trackingValidation).sort()).toEqual([
+      'affectedContainerCount',
+      'hasIssues',
+      'highestSeverity',
+    ])
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'warning',
       findingCount: 1,
     })
+    expect(Object.keys(result.containers[0]?.trackingValidation ?? {}).sort()).toEqual([
+      'findingCount',
+      'hasIssues',
+      'highestSeverity',
+    ])
   })
 
   it('maps tracking validation summaries for shipment and container support UI', () => {
@@ -355,6 +365,7 @@ describe('toShipmentDetailVM tracking mapping', () => {
       highestSeverity: 'danger',
       findingCount: 2,
     })
+    expect(result.containers[0]?.trackingValidation).not.toHaveProperty('debugEvidence')
   })
 
   it('maps a critical post-completion validation summary without deriving reason in the UI', () => {

@@ -1053,3 +1053,185 @@
   - replay por sync como fonte histórica da UI
   - dashboard leve
   - shipment timeline-first
+
+## T. Kickoff da Fase 8
+- Data de início: 2026-04-04
+- Fase atual: V1 pluginável / Fase 8 hardening do framework pluginável
+- Estado herdado das fases anteriores:
+  - o framework pluginável segue centralizado no Tracking BC, com registry explícito e determinístico
+  - detectores ativos em produção:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - severidade `ADVISORY | CRITICAL` já atravessa domínio -> projection -> DTO -> VM -> UI
+  - dashboard permanece com payload mínimo e shipment permanece timeline-first
+  - lifecycle operacional por transição já existe, mas continua auxiliar e não governa render atual/histórico
+- Drift identificado:
+  - o crosswalk canônico preserva o plano antigo de time travel/payload na Fase 7 e reserva a Fase 8 pluginável para hardening/documentação do framework
+  - o próximo passo sugerido ao fim da Fase 7 fala em leitura operacional do lifecycle, mas isso não substitui o objetivo canônico desta Fase 8
+  - o slice ainda usa `metadata` como campo genérico do finding, sem uma separação explícita entre evidência de produto e evidência técnica
+  - o detector advisory ainda usa `detectorId` em kebab-case, divergindo da convenção desejada em `UPPER_SNAKE_CASE`
+- Entendimento inicial:
+  - esta fase deve endurecer contratos e convenções do slice `validation` antes da entrada de novos detectores na Fase 9
+  - `evidenceSummary` deve continuar curta, segura e apropriada para summary/lifecycle/UI controlada
+  - `debugEvidence` deve permanecer interna ao domínio, útil para troubleshooting, sem vazar para dashboard, shipment current ou time travel
+  - a implementação precisa manter o framework explícito e local ao Tracking BC, sem virar engine genérica
+- Decisão fechada desta fase:
+  - normalizar `detectorId` agora para a convenção única em `UPPER_SNAKE_CASE`
+  - aceitar e documentar explicitamente o drift de identidade no lifecycle persistido já gravado, sem backfill nesta etapa
+- Plano cirúrgico:
+  - substituir `metadata` por `debugEvidence` em `TrackingValidationFinding`
+  - tornar o input de projeção explícito em vez de usar `Omit<TrackingValidationContext, 'signals'>`
+  - deixar o bloco de sinais derivados mais explícito no contrato do contexto sem expandir abstração
+  - endurecer o registry com validações de `detectorId`, `code`, `summaryKey` e `evidenceSummary`
+  - normalizar os detectores ativos para a convenção única de `detectorId` e `code`
+  - preservar payloads públicos compactos e adicionar regressões de non-leak para HTTP/UI/time travel
+  - criar documentação interna prática em `src/modules/tracking/features/validation/README.md`
+
+## U. Fechamento da Fase 8
+- Data de fechamento: 2026-04-04
+- Status final: concluído
+- Resultado geral:
+  - o framework pluginável de Tracking Validation ficou mais explícito, mais rígido e mais documentado
+  - `evidenceSummary` e `debugEvidence` agora têm papéis separados no contrato do domínio
+  - dashboard permaneceu leve e shipment permaneceu timeline-first
+  - detectores atuais seguiram funcionando sem abrir caminho paralelo fora do registry
+
+### U.1 Contracts refinados
+- `TrackingValidationFinding`:
+  - `metadata` foi removido
+  - `debugEvidence` foi introduzido como evidência técnica interna, leve e tipada
+  - `evidenceSummary` permaneceu como texto curto, seguro para produto e apropriado para lifecycle
+- `TrackingValidationContext`:
+  - o bloco de sinais derivados passou a se chamar `derivedSignals`
+  - os helpers foram renomeados para refletir que esses sinais existem para a fase detector/projection, sem parecer contrato público genérico
+- Projeção:
+  - `TrackingValidationProjectionInput` deixou de depender de `Omit<TrackingValidationContext, 'signals'>`
+  - a entrada passou a ser explícita, reduzindo fragilidade estrutural e ambiguidade sem inflar abstração
+- Registry:
+  - passou a validar convenções de `detectorId`, `code`, `summaryKey` e `evidenceSummary`
+  - reforço de paridade:
+    - `detectorId === code`
+    - `detectorId` em `UPPER_SNAKE_CASE`
+    - `summaryKey` sob `tracking.validation.*`
+    - `evidenceSummary` obrigatória, curta e não vazia
+
+### U.2 Convenções consolidadas
+- Detectores ativos normalizados para a convenção única:
+  - `CONFLICTING_CRITICAL_ACTUALS`
+  - `POST_COMPLETION_TRACKING_CONTINUED`
+  - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+- `code` e `detectorId` agora seguem a mesma convenção canônica no framework.
+- `affectedScope` permaneceu conservador nesta fase.
+- A decisão operacional desta fase foi não abrir novos scopes persistidos e não expandir o framework para uma engine genérica.
+
+### U.3 Documentação interna criada
+- Arquivo novo:
+  - `src/modules/tracking/features/validation/README.md`
+- Conteúdo consolidado:
+  - onde criar detector
+  - como registrar no registry
+  - convenção de `detectorId`/`code`
+  - uso de `evidenceSummary` vs `debugEvidence`
+  - guidance de severidade `ADVISORY | CRITICAL`
+  - guidance de `affectedScope`
+  - práticas proibidas
+  - como testar sem vazar semântica para UI/capability
+- `src/modules/tracking/README.md` foi atualizado para apontar para a documentação do slice.
+
+### U.4 Mudanças em payload / DTO / VM
+- Dashboard:
+  - payload permaneceu compacto
+  - `tracking_validation` continua expondo só:
+    - `has_issues`
+    - `highest_severity`
+    - `affected_container_count`
+- Shipment current:
+  - `tracking_validation` de processo/container permaneceu no mesmo shape enxuto
+  - nenhuma evidência técnica foi exposta
+- Time travel:
+  - checkpoints continuam carregando só resumo compacto
+  - nenhuma transição operacional, finding bruto ou `debugEvidence` foi exposta
+- UI mappers / VMs:
+  - permaneceram consumindo apenas Response DTO -> ViewModel
+  - foram adicionadas regressões explícitas de non-leak para bloquear `debugEvidence`
+
+### U.5 Testes criados / ajustados
+- Framework / domain:
+  - `src/modules/tracking/features/validation/domain/tests/trackingValidation.registry.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/conflictingCriticalActuals.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/postCompletionTrackingContinued.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/canonicalTimelineClassificationInconsistent.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/deriveTrackingValidationLifecycleTransitions.test.ts`
+- DTO / UI / replay:
+  - `src/modules/process/interface/http/tests/process.http.mappers.test.ts`
+  - `src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts`
+  - `src/modules/process/ui/mappers/tests/tracking-time-travel.ui-mapper.test.ts`
+- Cobertura adicionada/fortalecida:
+  - enforcement das convenções do registry
+  - separação entre `evidenceSummary` e `debugEvidence`
+  - non-leak de `debugEvidence` em DTO/VM/time travel
+  - compatibilidade dos detectores ativos após o hardening
+  - lifecycle continuando a comparar/persistir apenas `evidenceSummary`
+
+### U.6 QA manual realizado
+- Ambiente:
+  - app local em `http://localhost:3001`
+- Dashboard:
+  - rota `/`
+  - API `/api/processes` inspecionada no browser
+  - resultado observado:
+    - `tracking_validation` continuou com chaves compactas
+    - sem `debugEvidence`
+    - sem findings brutos
+    - sem lifecycle interno exposto
+- Shipment advisory:
+  - processo `d49d648e-da45-4e3a-4e2d-80aa-63e240013d12`
+  - resultado observado:
+    - banner/chip de `Validação necessária` corretos no current
+    - shipment seguiu timeline-first
+    - time travel histórico alternou entre sync limpo e sync com issue sem poluição técnica
+- Shipment advisory resolvido/histórico:
+  - processo `dee611e9-0ee6-494c-998e-18702d729e3d`
+  - API de time travel do container validada
+  - resultado observado:
+    - checkpoints com warning durante a janela problemática
+    - checkpoint final limpo
+    - shape do payload histórico permaneceu mínimo
+- Shipment critical:
+  - processo `a3ab094f-4e3a-4e2d-80aa-63e240013d12`
+  - resultado observado:
+    - banner/chip críticos corretos no current
+    - time travel em `sync 3/3` e `sync 2/3` com issue
+    - `sync 1/3` limpo
+    - nenhum detalhe técnico visível na UI
+- Mobile:
+  - captura crítica mobile realizada com fallback mínimo de screenshot Playwright CLI quando o resize do MCP foi bloqueado
+  - o shipment crítico permaneceu visualmente coerente e sem vazamento técnico
+
+### U.7 Problemas encontrados
+- O Playwright MCP bloqueou um `resize` usado apenas para o viewport mobile durante o QA manual.
+- Tratamento aplicado:
+  - mantivemos o fluxo principal de QA pelo MCP
+  - usamos apenas um fallback mínimo de screenshot Playwright CLI para fechar a evidência mobile
+- Impacto conhecido e intencional:
+  - a normalização de `detectorId` nesta fase cria drift de identidade para registros antigos do lifecycle persistido
+  - não houve backfill nesta etapa
+
+### U.8 Limitações intencionais
+- Não foram adicionados detectores novos da Fase 9.
+- Não foi criada infra externa nova.
+- Não foi criada leitura pública do lifecycle operacional.
+- `debugEvidence` continua restrito ao domínio e não sai para payload público.
+- O framework continua explícito e local ao Tracking BC, sem shared kernel e sem engine genérica.
+
+### U.9 Checks executados
+- Testes direcionados do slice/plugin framework e das fronteiras HTTP/UI
+- `pnpm run type-check`
+- `pnpm check`
+- Resultado final:
+  - verde em 2026-04-04
+
+### U.10 Próximo passo recomendado para a Fase 9
+- Implementar os detectores V1.1 em cima desta base endurecida.
+- Reaproveitar a convenção única de `detectorId/code`, manter `debugEvidence` interno e abrir novos `affectedScope` apenas quando o detector realmente exigir e junto do respectivo contrato/persistência.

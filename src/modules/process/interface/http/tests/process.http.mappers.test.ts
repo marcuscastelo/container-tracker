@@ -304,6 +304,7 @@ describe('process.http.mappers', () => {
       'has_issues',
       'highest_severity',
     ])
+    expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
     expect(parsed.tracking_validation.highest_severity).toBe('danger')
   })
 

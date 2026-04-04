@@ -9,7 +9,7 @@ import {
   normalizeTrackingValidationFingerprintPart,
 } from '~/modules/tracking/features/validation/domain/services/trackingValidationFingerprint'
 
-const DETECTOR_ID = 'canonical-timeline-classification-inconsistent'
+const DETECTOR_ID = 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT'
 const DETECTOR_VERSION = '1'
 const SUMMARY_KEY = 'tracking.validation.canonicalTimelineClassificationInconsistent'
 
@@ -50,20 +50,20 @@ function createFinding(
   return {
     detectorId: DETECTOR_ID,
     detectorVersion: DETECTOR_VERSION,
-    code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+    code: DETECTOR_ID,
     lifecycleKey: `${DETECTOR_ID}:${containerId}`,
     stateFingerprint: digestTrackingValidationFingerprint(sortedSignalParts),
     severity: 'ADVISORY',
     affectedScope: 'TIMELINE',
     summaryKey: SUMMARY_KEY,
     evidenceSummary: describeEvidence(signals),
-    isActive: true,
-    metadata: {
+    debugEvidence: {
       maritimeEventCount: signals.length,
       maritimeEventTypes: eventTypes,
       hasVesselContext,
       hasVoyageContext,
     },
+    isActive: true,
   }
 }
 
@@ -71,7 +71,7 @@ export const canonicalTimelineClassificationInconsistentDetector: TrackingValida
   id: DETECTOR_ID,
   version: DETECTOR_VERSION,
   detect(context: TrackingValidationContext): readonly TrackingValidationFinding[] {
-    const signals = context.signals.canonicalTimeline.postCarriageMaritimeEvents
+    const signals = context.derivedSignals.canonicalTimeline.postCarriageMaritimeEvents
     if (signals.length === 0) return []
 
     return [createFinding(context.containerId, signals)]

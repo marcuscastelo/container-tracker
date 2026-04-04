@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { postCompletionTrackingContinuedDetector } from '~/modules/tracking/features/validation/domain/detectors/postCompletionTrackingContinued.detector'
 import {
-  createEmptyTrackingValidationDerivedSignals,
+  createEmptyTrackingValidationDetectorSignals,
   type TrackingValidationContext,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import { Instant } from '~/shared/time/instant'
@@ -51,7 +51,7 @@ function makeContext(observations: readonly Observation[]): TrackingValidationCo
       transshipmentCount: 0,
       ports: [],
     },
-    signals: createEmptyTrackingValidationDerivedSignals(),
+    derivedSignals: createEmptyTrackingValidationDetectorSignals(),
     now: Instant.fromIso('2026-04-03T12:00:00.000Z'),
   }
 }
@@ -157,7 +157,7 @@ describe('postCompletionTrackingContinuedDetector', () => {
       affectedScope: 'TIMELINE',
       summaryKey: 'tracking.validation.postCompletionTrackingContinued',
       isActive: true,
-      metadata: {
+      debugEvidence: {
         completionObservationId: 'delivery-1',
         completionSource: 'DELIVERY',
         completionStatus: 'DELIVERED',
@@ -201,7 +201,7 @@ describe('postCompletionTrackingContinuedDetector', () => {
     )
 
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.metadata).toMatchObject({
+    expect(findings[0]?.debugEvidence).toMatchObject({
       completionStatus: 'EMPTY_RETURNED',
       continuationType: 'LOAD',
     })
@@ -271,7 +271,7 @@ describe('postCompletionTrackingContinuedDetector', () => {
     )
 
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.metadata).toMatchObject({
+    expect(findings[0]?.debugEvidence).toMatchObject({
       completionSource: 'DELIVERY_GATE_OUT',
       completionStatus: 'DELIVERED',
       continuationType: 'LOAD',
@@ -313,7 +313,7 @@ describe('postCompletionTrackingContinuedDetector', () => {
     )
 
     expect(findings).toHaveLength(1)
-    expect(findings[0]?.metadata).toMatchObject({
+    expect(findings[0]?.debugEvidence).toMatchObject({
       completionSource: 'EMPTY_RETURN_GATE_OUT',
       completionStatus: 'EMPTY_RETURNED',
       continuationType: 'GATE_IN',

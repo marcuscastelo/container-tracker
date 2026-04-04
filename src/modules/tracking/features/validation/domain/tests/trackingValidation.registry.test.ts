@@ -4,7 +4,7 @@ import type { Observation } from '~/modules/tracking/features/observation/domain
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 import {
-  createEmptyTrackingValidationDerivedSignals,
+  createEmptyTrackingValidationDetectorSignals,
   type TrackingValidationContext,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import type { TrackingValidationDetector } from '~/modules/tracking/features/validation/domain/model/trackingValidationDetector'
@@ -38,7 +38,7 @@ function createContext(
     timeline,
     status,
     transshipment,
-    signals: createEmptyTrackingValidationDerivedSignals(),
+    derivedSignals: createEmptyTrackingValidationDetectorSignals(),
     now: Instant.fromIso('2026-04-03T00:00:00.000Z'),
     ...overrides,
   }
@@ -58,12 +58,12 @@ function createDetector(
 describe('tracking validation registry and aggregation', () => {
   it('keeps detector evaluation order deterministic and summarizes highest severity', () => {
     const registry = createTrackingValidationRegistry([
-      createDetector('timeline-gap', [
+      createDetector('TIMELINE_GAP', [
         {
-          detectorId: 'timeline-gap',
+          detectorId: 'TIMELINE_GAP',
           detectorVersion: '1',
           code: 'TIMELINE_GAP',
-          lifecycleKey: 'timeline-gap:container-1',
+          lifecycleKey: 'TIMELINE_GAP:container-1',
           stateFingerprint: 'fp-timeline-gap',
           severity: 'ADVISORY',
           affectedScope: 'TIMELINE',
@@ -72,12 +72,12 @@ describe('tracking validation registry and aggregation', () => {
           isActive: true,
         },
       ]),
-      createDetector('status-conflict', [
+      createDetector('STATUS_CONFLICT', [
         {
-          detectorId: 'status-conflict',
+          detectorId: 'STATUS_CONFLICT',
           detectorVersion: '1',
           code: 'STATUS_CONFLICT',
-          lifecycleKey: 'status-conflict:container-1',
+          lifecycleKey: 'STATUS_CONFLICT:container-1',
           stateFingerprint: 'fp-status-conflict',
           severity: 'CRITICAL',
           affectedScope: 'STATUS',
@@ -106,12 +106,12 @@ describe('tracking validation registry and aggregation', () => {
 
   it('ignores inactive findings when summarizing the active container state', () => {
     const registry = createTrackingValidationRegistry([
-      createDetector('inactive-detector', [
+      createDetector('INACTIVE_DETECTOR', [
         {
-          detectorId: 'inactive-detector',
+          detectorId: 'INACTIVE_DETECTOR',
           detectorVersion: '1',
-          code: 'INACTIVE_FINDING',
-          lifecycleKey: 'inactive-detector:container-1',
+          code: 'INACTIVE_DETECTOR',
+          lifecycleKey: 'INACTIVE_DETECTOR:container-1',
           stateFingerprint: 'fp-inactive',
           severity: 'CRITICAL',
           affectedScope: 'SERIES',
@@ -177,5 +177,101 @@ describe('tracking validation registry and aggregation', () => {
       totalFindingCount: 1,
       highestSeverity: 'ADVISORY',
     })
+  })
+
+  it('preserves debugEvidence internally while keeping the summary compact', () => {
+    const registry = createTrackingValidationRegistry([
+      createDetector('TIMELINE_GAP', [
+        {
+          detectorId: 'TIMELINE_GAP',
+          detectorVersion: '1',
+          code: 'TIMELINE_GAP',
+          lifecycleKey: 'TIMELINE_GAP:container-1',
+          stateFingerprint: 'fp-timeline-gap',
+          severity: 'ADVISORY',
+          affectedScope: 'TIMELINE',
+          summaryKey: 'tracking.validation.timelineGap',
+          evidenceSummary: 'Gap in canonical timeline.',
+          debugEvidence: {
+            gapCount: 2,
+            source: 'projection',
+          },
+          isActive: true,
+        },
+      ]),
+    ])
+
+    const result = deriveTrackingValidation({
+      context: createContext(),
+      registry,
+    })
+
+    expect(result.findings[0]?.debugEvidence).toEqual({
+      gapCount: 2,
+      source: 'projection',
+    })
+    expect(result.summary).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'ADVISORY',
+    })
+  })
+
+  it('rejects detector ids outside the UPPER_SNAKE_CASE convention', () => {
+    expect(() => createTrackingValidationRegistry([createDetector('timeline-gap', [])])).toThrow(
+      'UPPER_SNAKE_CASE',
+    )
+  })
+
+  it('rejects findings whose code diverges from the detector id', () => {
+    const registry = createTrackingValidationRegistry([
+      createDetector('TIMELINE_GAP', [
+        {
+          detectorId: 'TIMELINE_GAP',
+          detectorVersion: '1',
+          code: 'TIMELINE_GAP_DETAIL',
+          lifecycleKey: 'TIMELINE_GAP:container-1',
+          stateFingerprint: 'fp-timeline-gap',
+          severity: 'ADVISORY',
+          affectedScope: 'TIMELINE',
+          summaryKey: 'tracking.validation.timelineGap',
+          evidenceSummary: 'Gap in canonical timeline.',
+          isActive: true,
+        },
+      ]),
+    ])
+
+    expect(() =>
+      deriveTrackingValidation({
+        context: createContext(),
+        registry,
+      }),
+    ).toThrow('finding code mismatch')
+  })
+
+  it('rejects findings whose evidenceSummary is too long for the compact product contract', () => {
+    const registry = createTrackingValidationRegistry([
+      createDetector('TIMELINE_GAP', [
+        {
+          detectorId: 'TIMELINE_GAP',
+          detectorVersion: '1',
+          code: 'TIMELINE_GAP',
+          lifecycleKey: 'TIMELINE_GAP:container-1',
+          stateFingerprint: 'fp-timeline-gap',
+          severity: 'ADVISORY',
+          affectedScope: 'TIMELINE',
+          summaryKey: 'tracking.validation.timelineGap',
+          evidenceSummary: 'A'.repeat(201),
+          isActive: true,
+        },
+      ]),
+    ])
+
+    expect(() =>
+      deriveTrackingValidation({
+        context: createContext(),
+        registry,
+      }),
+    ).toThrow('evidenceSummary exceeds 200 characters')
   })
 })

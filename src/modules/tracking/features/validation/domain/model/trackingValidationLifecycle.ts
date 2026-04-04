@@ -12,6 +12,7 @@ export type TrackingValidationLifecycleState = {
   readonly affectedScope: TrackingValidationAffectedScope
   readonly severity: TrackingValidationSeverity
   readonly stateFingerprint: string
+  // Persist only the product-safe summary; debugEvidence remains internal to the detector finding.
   readonly evidenceSummary: string
   readonly provider: PersistedProvider
   readonly snapshotId: string

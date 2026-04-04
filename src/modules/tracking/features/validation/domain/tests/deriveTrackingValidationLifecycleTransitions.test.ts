@@ -10,17 +10,17 @@ function createFinding(
   overrides: Partial<TrackingValidationFinding> = {},
 ): TrackingValidationFinding {
   return {
-    detectorId: overrides.detectorId ?? 'detector-1',
+    detectorId: overrides.detectorId ?? 'DETECTOR_1',
     detectorVersion: overrides.detectorVersion ?? '1',
-    code: overrides.code ?? 'ISSUE_1',
-    lifecycleKey: overrides.lifecycleKey ?? 'detector-1:container-1',
+    code: overrides.code ?? 'DETECTOR_1',
+    lifecycleKey: overrides.lifecycleKey ?? 'DETECTOR_1:container-1',
     stateFingerprint: overrides.stateFingerprint ?? 'state-a',
     severity: overrides.severity ?? 'ADVISORY',
     affectedScope: overrides.affectedScope ?? 'TIMELINE',
-    summaryKey: overrides.summaryKey ?? 'tracking.validation.issue1',
+    summaryKey: overrides.summaryKey ?? 'tracking.validation.detector1',
     evidenceSummary: overrides.evidenceSummary ?? 'Evidence A',
     isActive: overrides.isActive ?? true,
-    ...(overrides.metadata === undefined ? {} : { metadata: overrides.metadata }),
+    ...(overrides.debugEvidence === undefined ? {} : { debugEvidence: overrides.debugEvidence }),
   }
 }
 
@@ -28,9 +28,9 @@ function createState(
   overrides: Partial<TrackingValidationLifecycleState> = {},
 ): TrackingValidationLifecycleState {
   return {
-    lifecycleKey: overrides.lifecycleKey ?? 'detector-1:container-1',
-    issueCode: overrides.issueCode ?? 'ISSUE_1',
-    detectorId: overrides.detectorId ?? 'detector-1',
+    lifecycleKey: overrides.lifecycleKey ?? 'DETECTOR_1:container-1',
+    issueCode: overrides.issueCode ?? 'DETECTOR_1',
+    detectorId: overrides.detectorId ?? 'DETECTOR_1',
     detectorVersion: overrides.detectorVersion ?? '1',
     affectedScope: overrides.affectedScope ?? 'TIMELINE',
     severity: overrides.severity ?? 'ADVISORY',
@@ -56,7 +56,13 @@ function createContext(
 describe('deriveTrackingValidationLifecycleTransitions', () => {
   it('emits activated when a new active finding appears', () => {
     const transitions = deriveTrackingValidationLifecycleTransitions({
-      activeFindings: [createFinding()],
+      activeFindings: [
+        createFinding({
+          debugEvidence: {
+            lifecycleSource: 'detector',
+          },
+        }),
+      ],
       existingActiveStates: [],
       context: createContext(),
     })
@@ -65,9 +71,9 @@ describe('deriveTrackingValidationLifecycleTransitions', () => {
       {
         containerId: 'container-1',
         transitionType: 'activated',
-        lifecycleKey: 'detector-1:container-1',
-        issueCode: 'ISSUE_1',
-        detectorId: 'detector-1',
+        lifecycleKey: 'DETECTOR_1:container-1',
+        issueCode: 'DETECTOR_1',
+        detectorId: 'DETECTOR_1',
         detectorVersion: '1',
         affectedScope: 'TIMELINE',
         severity: 'ADVISORY',
@@ -78,6 +84,7 @@ describe('deriveTrackingValidationLifecycleTransitions', () => {
         occurredAt: '2026-04-03T10:00:00.000Z',
       },
     ])
+    expect(transitions[0]).not.toHaveProperty('debugEvidence')
   })
 
   it('emits changed when the active finding fingerprint changes', () => {
@@ -92,7 +99,7 @@ describe('deriveTrackingValidationLifecycleTransitions', () => {
     expect(transitions).toHaveLength(1)
     expect(transitions[0]).toMatchObject({
       transitionType: 'changed',
-      lifecycleKey: 'detector-1:container-1',
+      lifecycleKey: 'DETECTOR_1:container-1',
       stateFingerprint: 'state-b',
       evidenceSummary: 'Evidence B',
       snapshotId: 'snapshot-next',
@@ -114,9 +121,9 @@ describe('deriveTrackingValidationLifecycleTransitions', () => {
       {
         containerId: 'container-1',
         transitionType: 'resolved',
-        lifecycleKey: 'detector-1:container-1',
-        issueCode: 'ISSUE_1',
-        detectorId: 'detector-1',
+        lifecycleKey: 'DETECTOR_1:container-1',
+        issueCode: 'DETECTOR_1',
+        detectorId: 'DETECTOR_1',
         detectorVersion: '1',
         affectedScope: 'TIMELINE',
         severity: 'ADVISORY',

@@ -12,13 +12,13 @@ export type TrackingValidationPostCarriageMaritimeEventSignal = {
   readonly hasVoyageContext: boolean
 }
 
-export type TrackingValidationDerivedSignals = {
+export type TrackingValidationDetectorSignals = {
   readonly canonicalTimeline: {
     readonly postCarriageMaritimeEvents: readonly TrackingValidationPostCarriageMaritimeEventSignal[]
   }
 }
 
-export function createEmptyTrackingValidationDerivedSignals(): TrackingValidationDerivedSignals {
+export function createEmptyTrackingValidationDetectorSignals(): TrackingValidationDetectorSignals {
   return {
     canonicalTimeline: {
       postCarriageMaritimeEvents: [],
@@ -33,6 +33,6 @@ export type TrackingValidationContext = {
   readonly timeline: Timeline
   readonly status: ContainerStatus
   readonly transshipment: TransshipmentInfo
-  readonly signals: TrackingValidationDerivedSignals
+  readonly derivedSignals: TrackingValidationDetectorSignals
   readonly now: Instant
 }
