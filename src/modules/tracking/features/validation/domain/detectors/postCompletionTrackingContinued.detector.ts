@@ -106,7 +106,12 @@ export const postCompletionTrackingContinuedDetector: TrackingValidationDetector
     const sortedTimelineObservations = toSortedTimelineObservations(context.timeline.observations)
     const completionMilestones = findStrongCompletionMilestones(sortedTimelineObservations)
 
-    for (const milestone of completionMilestones) {
+    for (let index = completionMilestones.length - 1; index >= 0; index -= 1) {
+      const milestone = completionMilestones[index]
+      if (milestone === undefined) {
+        continue
+      }
+
       const incompatibleObservation = findFirstIncompatibleObservation(
         milestone,
         sortedTimelineObservations,

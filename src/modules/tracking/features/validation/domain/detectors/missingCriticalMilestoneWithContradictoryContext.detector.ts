@@ -149,7 +149,9 @@ export const missingCriticalMilestoneWithContradictoryContextDetector: TrackingV
     id: DETECTOR_ID,
     version: DETECTOR_VERSION,
     detect(context) {
-      const maritimeObservations = toActualMaritimeObservationChronology(context.timeline.observations)
+      const maritimeObservations = toActualMaritimeObservationChronology(
+        context.timeline.observations,
+      )
 
       return detectMaritimeSequenceGaps(maritimeObservations)
         .filter((signal) => hasAdditionalContradictoryEvidence(signal, maritimeObservations))

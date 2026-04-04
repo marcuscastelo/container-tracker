@@ -175,6 +175,7 @@ export function findContainersTrackingValidationProjection(command: {
       timeline: timelineProjection.domainTimeline,
       status: timelineProjection.status,
       transshipment,
+      timelineItems: timelineProjection.timeline,
       now: command.now,
     })
 

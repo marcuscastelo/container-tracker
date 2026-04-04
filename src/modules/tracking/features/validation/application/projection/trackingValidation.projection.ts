@@ -18,7 +18,7 @@ import {
   type TrackingValidationDisplayIssue,
   toTrackingValidationAffectedArea,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
-import { TRACKING_VALIDATION_DETECTORS } from '~/modules/tracking/features/validation/domain/detectors'
+import { TRACKING_VALIDATION_DETECTORS } from '~/modules/tracking/features/validation/domain/detectors/trackingValidationDetectors'
 import {
   createEmptyTrackingValidationDetectorSignals,
   type TrackingValidationCanonicalTimelineDuplicatedMilestoneType,
@@ -58,6 +58,8 @@ export type TrackingValidationProjectionInput = {
   readonly timeline: Timeline
   readonly status: ContainerStatus
   readonly transshipment: TransshipmentInfo
+  readonly timelineItems?: readonly TrackingTimelineItem[]
+  readonly derivedSignals?: TrackingValidationDetectorSignals
   readonly now: Instant
 }
 
@@ -485,11 +487,15 @@ function deriveDuplicatedSegmentSignals(
 function deriveTrackingValidationDetectorSignals(
   context: TrackingValidationProjectionInput,
 ): TrackingValidationDetectorSignals {
-  const timelineItems = deriveTimelineWithSeriesReadModel(
-    toTrackingObservationProjections(context.observations),
-    context.now,
-    { includeSeriesHistory: false },
-  )
+  const timelineItems =
+    context.timelineItems ??
+    deriveTimelineWithSeriesReadModel(
+      toTrackingObservationProjections(context.observations),
+      context.now,
+      {
+        includeSeriesHistory: false,
+      },
+    )
   const renderList = buildTimelineRenderList(timelineItems, context.now)
   const postCarriageMaritimeEvents = renderList.flatMap((item) => {
     if (item.type !== 'terminal-block' || item.block.kind !== 'post-carriage') {
@@ -534,8 +540,14 @@ export function createTrackingValidationContext(
   context: TrackingValidationProjectionInput,
 ): TrackingValidationContext {
   return {
-    ...context,
-    derivedSignals: deriveTrackingValidationDetectorSignals(context),
+    containerId: context.containerId,
+    containerNumber: context.containerNumber,
+    observations: context.observations,
+    timeline: context.timeline,
+    status: context.status,
+    transshipment: context.transshipment,
+    derivedSignals: context.derivedSignals ?? deriveTrackingValidationDetectorSignals(context),
+    now: context.now,
   }
 }
 

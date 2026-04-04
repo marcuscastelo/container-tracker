@@ -769,6 +769,14 @@ export function toProcessDetailResponse(
   trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>,
   containersSync: readonly ContainerSyncRecord[],
 ) {
+  const summariesForProcess: TrackingOperationalSummary[] = []
+  const validationSummariesForProcess: TrackingValidationContainerSummary[] = []
+  const trackingValidationTopIssueCandidates: {
+    readonly containerNumber: string
+    readonly topIssue: TrackingValidationDisplayIssue | null
+  }[] = []
+  const containerNumberByContainerId = new Map<string, string>()
+
   const containers = containersWithTracking.map((container) => {
     const summary = operationalByContainerId.get(container.id)
     if (summary === undefined) {
@@ -783,36 +791,20 @@ export function toProcessDetailResponse(
       )
     }
 
+    summariesForProcess.push(summary)
+    validationSummariesForProcess.push(trackingValidation)
+    trackingValidationTopIssueCandidates.push({
+      containerNumber: container.container_number,
+      topIssue: trackingValidation.topIssue,
+    })
+    containerNumberByContainerId.set(container.id, container.container_number)
+
     return {
       ...container,
       operational: toContainerOperationalResponse(summary),
       tracking_validation: toContainerTrackingValidationResponse(trackingValidation),
     }
   })
-
-  const summariesForProcess = containersWithTracking.map((container) => {
-    const summary = operationalByContainerId.get(container.id)
-    if (summary === undefined) {
-      throw new Error(
-        `toProcessDetailResponse missing process operational summary for container ${container.id}`,
-      )
-    }
-    return summary
-  })
-  const validationSummariesForProcess = containersWithTracking.map((container) => {
-    const summary = trackingValidationByContainerId.get(container.id)
-    if (summary === undefined) {
-      throw new Error(
-        `toProcessDetailResponse missing process tracking validation summary for container ${container.id}`,
-      )
-    }
-    return summary
-  })
-
-  const containerNumberByContainerId = new Map<string, string>()
-  for (const container of containersWithTracking) {
-    containerNumberByContainerId.set(container.id, container.container_number)
-  }
 
   const alertDisplayReadModel = toTrackingAlertDisplayReadModels(
     alerts,
@@ -826,10 +818,7 @@ export function toProcessDetailResponse(
     validationSummariesForProcess,
   )
   const trackingValidationTopIssue = pickTopTrackingValidationIssueForProcess(
-    containersWithTracking.map((container) => ({
-      containerNumber: container.container_number,
-      topIssue: trackingValidationByContainerId.get(container.id)?.topIssue ?? null,
-    })),
+    trackingValidationTopIssueCandidates,
   )
   const trackingValidation = toProcessTrackingValidationResponse(
     trackingValidationSummary,

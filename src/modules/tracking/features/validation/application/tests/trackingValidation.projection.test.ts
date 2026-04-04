@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import {
+  createTrackingValidationContext,
   deriveTrackingValidationSummaryFromState,
   pickTopTrackingValidationIssueForProcess,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
@@ -148,6 +149,57 @@ describe('trackingValidation.projection', () => {
       affectedArea: 'timeline',
       affectedLocation: null,
       affectedBlockLabelKey: null,
+    })
+  })
+
+  it('reuses provided derived signals when building the validation context', () => {
+    const context = createTrackingValidationContext({
+      containerId: 'container-1',
+      containerNumber: 'MSCU1234567',
+      observations: [],
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'MSCU1234567',
+        observations: [],
+        derived_at: '2026-04-04T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'UNKNOWN',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      derivedSignals: {
+        canonicalTimeline: {
+          postCarriageMaritimeEvents: [
+            {
+              type: 'DEPARTURE',
+              eventTimeType: 'ACTUAL',
+              location: 'Santos',
+              hasVesselContext: true,
+              hasVoyageContext: true,
+            },
+          ],
+          duplicatedSegments: [],
+        },
+      },
+      now: Instant.fromIso('2026-04-04T10:00:00.000Z'),
+    })
+
+    expect(context.derivedSignals).toEqual({
+      canonicalTimeline: {
+        postCarriageMaritimeEvents: [
+          {
+            type: 'DEPARTURE',
+            eventTimeType: 'ACTUAL',
+            location: 'Santos',
+            hasVesselContext: true,
+            hasVoyageContext: true,
+          },
+        ],
+        duplicatedSegments: [],
+      },
     })
   })
 

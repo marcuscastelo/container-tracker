@@ -38,7 +38,7 @@ These detectors are the agreed V1-V1.2 set. Final polish phases must keep them o
 ## Detector Conventions
 
 - Add one detector per file in `domain/detectors/`.
-- Register it explicitly in `domain/detectors/index.ts`.
+- Register it explicitly in `domain/detectors/trackingValidationDetectors.ts`.
 - `detectorId` and `code` must be the same value.
 - `detectorId` and `code` must use `UPPER_SNAKE_CASE`.
 - `summaryKey` must stay under `tracking.validation.*`.
@@ -104,7 +104,7 @@ Do not invent new scopes in UI or capability code.
    - stable `stateFingerprint`
    - safe `evidenceSummary`
    - optional `debugEvidence`
-4. Register the detector in `domain/detectors/index.ts`.
+4. Register the detector in `domain/detectors/trackingValidationDetectors.ts`.
 5. Add detector unit tests.
 6. Add regression coverage for aggregation and non-leak where relevant.
 

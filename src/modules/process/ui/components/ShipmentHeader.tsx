@@ -232,7 +232,7 @@ function TrackingValidationBanner(props: {
         displayState(),
       )}`}
     >
-      <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" />
+      <TriangleAlert aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0" />
       <div class="min-w-0">
         <p class="text-sm-ui font-semibold">{props.title}</p>
         <p class="text-xs-ui">{props.description}</p>

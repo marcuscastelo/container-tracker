@@ -17,7 +17,7 @@ create table if not exists public.tracking_validation_issue_transitions (
   provider text not null,
   snapshot_id uuid not null references public.container_snapshots (id) on delete cascade,
   occurred_at timestamptz not null,
-  created_at timestamptz not null default timezone('utc', now())
+  created_at timestamptz not null default now()
 );
 
 alter table if exists public.tracking_validation_issue_transitions

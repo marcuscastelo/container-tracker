@@ -19,8 +19,8 @@ function makeObservation(overrides: Partial<Observation> = {}): Observation {
     event_time_type: overrides.event_time_type ?? 'ACTUAL',
     location_code: overrides.location_code ?? 'BRSSZ',
     location_display: overrides.location_display ?? 'Santos',
-    vessel_name: overrides.vessel_name ?? 'MSC VICTORY',
-    voyage: overrides.voyage ?? '001W',
+    vessel_name: overrides.vessel_name === undefined ? 'MSC VICTORY' : overrides.vessel_name,
+    voyage: overrides.voyage === undefined ? '001W' : overrides.voyage,
     is_empty: overrides.is_empty ?? false,
     confidence: overrides.confidence ?? 'high',
     provider: overrides.provider ?? 'msc',
@@ -209,6 +209,53 @@ describe('postCompletionTrackingContinuedDetector', () => {
     })
     expect(findings[0]?.affectedLocation).toBeNull()
     expect(findings[0]?.affectedBlockLabelKey).toBeNull()
+  })
+
+  it('anchors the finding to the latest completion milestone when empty return follows delivery', () => {
+    const findings = postCompletionTrackingContinuedDetector.detect(
+      makeContext([
+        makeObservation({
+          id: 'delivery-1',
+          type: 'DELIVERY',
+          event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+          created_at: '2026-04-01T10:30:00.000Z',
+          location_code: 'BRIOA',
+          location_display: 'Itapoa',
+          vessel_name: null,
+          voyage: null,
+        }),
+        makeObservation({
+          id: 'empty-return-1',
+          type: 'EMPTY_RETURN',
+          event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
+          created_at: '2026-04-02T10:30:00.000Z',
+          location_code: 'BRIOA',
+          location_display: 'Itapoa',
+          vessel_name: null,
+          voyage: null,
+          is_empty: true,
+        }),
+        makeObservation({
+          id: 'load-1',
+          type: 'LOAD',
+          event_time: temporalValueFromCanonical('2026-04-03T10:00:00.000Z'),
+          created_at: '2026-04-03T10:30:00.000Z',
+          location_code: 'ITNAP',
+          location_display: 'Naples',
+          vessel_name: 'MSC RESUME',
+          voyage: '777E',
+        }),
+      ]),
+    )
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.debugEvidence).toMatchObject({
+      completionObservationId: 'empty-return-1',
+      completionSource: 'EMPTY_RETURN',
+      completionStatus: 'EMPTY_RETURNED',
+      continuationObservationId: 'load-1',
+      continuationType: 'LOAD',
+    })
   })
 
   it('does not emit a finding for the legitimate delivered to empty-return continuation', () => {

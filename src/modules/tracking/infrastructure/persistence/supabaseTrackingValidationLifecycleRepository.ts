@@ -70,6 +70,7 @@ export const supabaseTrackingValidationLifecycleRepository: TrackingValidationLi
             .select(TRACKING_VALIDATION_LIFECYCLE_SELECT)
             .eq('container_id', containerId)
             .order('occurred_at', { ascending: false })
+            .order('created_at', { ascending: false })
             .order('id', { ascending: false }),
         resultSelector: (queryResult) => queryResult.data ?? [],
       })
@@ -123,7 +124,13 @@ export const supabaseTrackingValidationLifecycleRepository: TrackingValidationLi
         })
       })
 
-      const result = await supabase.from(TABLE).insert(rows).select('id')
+      const result = await supabase
+        .from(TABLE)
+        .upsert(rows, {
+          onConflict: 'container_id,lifecycle_key,transition_type,state_fingerprint,snapshot_id',
+          ignoreDuplicates: true,
+        })
+        .select('id')
       unwrapSupabaseResultOrThrow(result, {
         operation: 'insertMany',
         table: TABLE,
