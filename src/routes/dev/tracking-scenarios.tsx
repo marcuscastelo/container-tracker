@@ -54,6 +54,7 @@ const ScenarioLoadResponseSchema = z.object({
     appliedStep: z.number().int().min(1),
     processId: z.string(),
     processReference: z.string(),
+    reusedExistingProcess: z.boolean(),
     stage: z.number().int().min(0).max(10),
     containerIds: z.array(z.string()),
     containerNumbers: z.array(z.string()),
@@ -91,10 +92,12 @@ async function fetchScenarioCatalog(): Promise<ScenarioCatalogResponse> {
 async function loadScenario(params: {
   scenarioId: string
   step: number
+  reuseProcessId?: string
 }): Promise<ScenarioLoadResult> {
   const payload = {
     scenario_id: params.scenarioId,
     step: params.step,
+    ...(params.reuseProcessId === undefined ? {} : { reuse_process_id: params.reuseProcessId }),
   }
 
   const response = await typedFetch(
@@ -267,6 +270,11 @@ function ScenarioPlayback(props: {
                 <div class="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs-ui text-green-900">
                   <div>
                     Loaded process <code>{result().processReference}</code>
+                    <Show when={result().reusedExistingProcess}>
+                      <span class="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-micro font-medium text-emerald-800">
+                        reused
+                      </span>
+                    </Show>
                   </div>
                   <div class="mt-1 flex flex-wrap gap-3">
                     <A class="underline" href={`/shipments/${result().processId}`}>
@@ -521,9 +529,17 @@ export default function TrackingScenariosPage(): JSX.Element {
     setLoadError(null)
 
     try {
+      const previousResult = loadResult()
+      const reuseProcessId =
+        previousResult !== null &&
+        previousResult.scenarioId === scenarioId &&
+        selectedStep() >= previousResult.appliedStep
+          ? previousResult.processId
+          : undefined
       const result = await loadScenario({
         scenarioId,
         step: selectedStep(),
+        ...(reuseProcessId === undefined ? {} : { reuseProcessId }),
       })
 
       setLoadResult(result)
@@ -540,6 +556,7 @@ export default function TrackingScenariosPage(): JSX.Element {
     setSelectedScenarioId(scenarioId)
     setSelectedStep(1)
     setLoadError(null)
+    setLoadResult(null)
   }
 
   return (

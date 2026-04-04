@@ -7,6 +7,7 @@ import {
 } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { TrackingValidationDetector } from '~/modules/tracking/features/validation/domain/model/trackingValidationDetector'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
+import { digestTrackingValidationFingerprint } from '~/modules/tracking/features/validation/domain/services/trackingValidationFingerprint'
 import type { Instant } from '~/shared/time/instant'
 
 const DETECTOR_ID = 'CONFLICTING_CRITICAL_ACTUALS'
@@ -45,6 +46,19 @@ function describeEvidence(primary: Observation): string {
   return `Multiple ACTUAL ${primary.type} observations conflict in the same series at ${locationCode}.`
 }
 
+function buildLifecycleKey(seriesKey: string): string {
+  return `${DETECTOR_ID}:${seriesKey}`
+}
+
+function buildStateFingerprint(series: readonly Observation[]): string {
+  const actualFingerprints = series
+    .filter((observation) => observation.event_time_type === 'ACTUAL')
+    .map((observation) => observation.fingerprint)
+    .sort()
+
+  return digestTrackingValidationFingerprint(actualFingerprints)
+}
+
 function createFinding(
   seriesKey: string,
   series: ObservationSeries,
@@ -62,6 +76,8 @@ function createFinding(
     detectorId: DETECTOR_ID,
     detectorVersion: DETECTOR_VERSION,
     code: DETECTOR_ID,
+    lifecycleKey: buildLifecycleKey(seriesKey),
+    stateFingerprint: buildStateFingerprint(sortedSeries),
     severity: 'CRITICAL',
     affectedScope: 'SERIES',
     summaryKey: SUMMARY_KEY,

@@ -681,3 +681,199 @@
 ### O.8 Próximo passo recomendado para a Fase 6
 - Iniciar a fase seguinte real do trilho pluginável sem reabrir o advisory já consolidado.
 - Priorizar evolução em cima de observabilidade/histórico operacional ou do próximo detector ainda não implementado, sempre preservando o registry/plugin system como único caminho canônico.
+
+## P. Kickoff da Fase 6
+- Data de início: 2026-04-03
+- Fase atual: V1 pluginável / Fase 6 lifecycle operacional por transição
+- Estado herdado das fases anteriores:
+  - o framework pluginável de validation já estava estabelecido dentro do Tracking BC
+  - os detectores ativos eram:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - `severity` já atravessava a cadeia como semântica canônica no domínio (`ADVISORY | CRITICAL`) e como compactação DTO/VM na UI (`warning | danger`)
+  - dashboard já permanecia leve com `tracking_validation` compacto e `attention_severity`
+  - shipment já permanecia timeline-first, sem findings brutos nem heurística local
+- Entendimento consolidado:
+  - a Fase 6 precisava persistir apenas transições `activated | changed | resolved`
+  - esse dado teria natureza operacional/auxiliar, não truth canônica
+  - a fonte de verdade continuaria sendo `snapshot -> observations -> timeline/status/alerts/validation derivada`
+  - a persistência deveria ser econômica, baseada em transição, sem snapshot completo por sync
+- Riscos arquiteturais identificados antes de codar:
+  - deixar a identidade de issue fora do plugin system
+  - mover semântica de lifecycle para UI/capability
+  - inflar o banco com payloads ou estado redundante por sync
+  - acoplar a persistência operacional ao shape público de shipment/dashboard
+- Plano fechado para a fase:
+  - tornar `lifecycleKey` e `stateFingerprint` obrigatórios no finding pluginável
+  - atualizar os detectores ativos para produzirem identidade operacional própria
+  - criar serviço de derivação de transições `activated | changed | resolved`
+  - criar tabela/repositório operacional leve para transições
+  - integrar a persistência ao pipeline canônico sem alterar `PipelineResult`, DTOs ou VMs públicos
+  - estender o scenario-lab com reuse incremental no mesmo processo/container para QA real da sequência `activated -> changed -> resolved`
+
+## Q. Fechamento da Fase 6
+- Data de fechamento: 2026-04-03
+- Escopo entregue:
+  - lifecycle operacional por transição para tracking validation issues
+  - persistência `activated | changed | resolved` sem snapshot completo por sync
+  - identidade operacional detector-owned dentro do sistema pluginável
+  - harness dev-only para reaplicar steps no mesmo processo/container
+
+### Q.1 O que foi implementado
+- Contrato pluginável:
+  - `TrackingValidationFinding` agora exige `lifecycleKey` e `stateFingerprint`
+  - o registry passou a validar explicitamente que esses campos existem e não estão vazios
+- Detectores ativos:
+  - `CONFLICTING_CRITICAL_ACTUALS` passou a emitir `lifecycleKey` estável por série e fingerprint derivado dos ACTUAL fingerprints conflitantes
+  - `POST_COMPLETION_TRACKING_CONTINUED` passou a emitir `lifecycleKey` estável por container e fingerprint do marco forte + continuação incompatível
+  - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT` passou a emitir `lifecycleKey` estável por container e fingerprint do conjunto relevante de sinais marítimos
+- Domínio / serviço:
+  - criado `deriveTrackingValidationLifecycleTransitions()`
+  - regras:
+    - finding novo -> `activated`
+    - finding com mesmo `lifecycleKey` mas `stateFingerprint` diferente -> `changed`
+    - state ativo persistido sem finding atual correspondente -> `resolved`
+    - state inalterado -> nada persiste
+- Persistência operacional:
+  - criado o port `TrackingValidationLifecycleRepository`
+  - criada a migration `20260403_01_tracking_validation_issue_lifecycle_transitions.sql`
+  - criada a tabela operacional `tracking_validation_issue_transitions`
+  - criada a infra `supabaseTrackingValidationLifecycleRepository`
+  - a persistência grava somente:
+    - `process_id`
+    - `container_id`
+    - `issue_code`
+    - `detector_id`
+    - `detector_version`
+    - `affected_scope`
+    - `severity`
+    - `transition_type`
+    - `lifecycle_key`
+    - `state_fingerprint`
+    - `evidence_summary`
+    - `provider`
+    - `snapshot_id`
+    - `occurred_at`
+  - lookup de `process_id` permanece na infra, via `containers`, sem puxar semântica de Process BC para o domínio de tracking validation
+  - foi criado índice de dedupe por `(container_id, lifecycle_key, transition_type, state_fingerprint, snapshot_id)`
+- Pipeline:
+  - `processSnapshot()` agora:
+    - deriva validation pelo caminho pluginável já existente
+    - lê active states persistidos
+    - deriva transições
+    - persiste apenas transições novas/relevantes
+  - `PipelineResult` continuou inalterado
+  - shipment/dashboard continuaram consumindo apenas summaries/read models já existentes
+- Scenario-lab:
+  - `ScenarioLoadCommand` ganhou `reuseProcessId`
+  - `ScenarioBuildResult` agora carrega `containerNumbersByKey`
+  - o seeder passou a suportar reuso do mesmo processo/container quando solicitado
+  - a rota `/api/dev/scenarios/load` expõe `reuse_process_id`
+  - a UI `tracking-scenarios` passou a reutilizar automaticamente o processo atual ao avançar steps do mesmo cenário
+  - o cenário `post_carriage_maritime_inconsistent` foi expandido para:
+    - step 1: clean
+    - step 2: advisory activated
+    - step 3: advisory changed
+    - step 4: advisory resolved via reclassificação canônica do trecho
+
+### Q.2 Estrutura persistida criada
+- Tabela:
+  - `public.tracking_validation_issue_transitions`
+- Natureza:
+  - operacional
+  - append-only por transição relevante
+  - sem snapshot completo por sync
+  - sem payload bruto
+  - sem findings completos serializados
+- Leituras suportadas:
+  - active states por `container_id`
+  - histórico por `container_id`
+  - histórico por `process_id`
+  - reconstrução futura por `lifecycle_key`
+
+### Q.3 Decisões de retenção / volume
+- Mantido o princípio da V1:
+  - persistir transição, não snapshot completo
+- Não foi implementado pruning nesta fase.
+- A contenção de volume veio de:
+  - dedupe por batch
+  - dedupe por índice único operacional
+  - `stateFingerprint` detector-owned
+  - `evidence_summary` string leve, sem metadata pesada nem payload de snapshot
+
+### Q.4 Testes criados / ajustados
+- Domínio:
+  - `src/modules/tracking/features/validation/domain/tests/deriveTrackingValidationLifecycleTransitions.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/trackingValidation.registry.test.ts`
+- Infra:
+  - `src/modules/tracking/infrastructure/persistence/tests/tracking.validation-lifecycle.persistence.mappers.test.ts`
+- Pipeline / integração:
+  - `src/modules/tracking/application/tests/pipeline.validation-lifecycle.integration.test.ts`
+  - revalidação de:
+    - `src/modules/tracking/application/tests/pipeline.integration.test.ts`
+    - `src/modules/tracking/application/tests/pipeline.alert-idempotency.integration.test.ts`
+- Scenario-lab:
+  - `src/modules/tracking/dev/scenario-lab/tests/scenario.seed.test.ts`
+- Coberturas mínimas exigidas nesta fase:
+  - `activated`
+  - `changed`
+  - `resolved`
+  - dedupe de transições redundantes
+  - persistência com contexto mínimo útil
+  - ausência de snapshot completo por sync no contrato persistido
+  - integração com detectores já existentes
+
+### Q.5 QA manual realizado
+- Ambiente:
+  - dev server iniciado com `pnpm run dev -- --host localhost --port 3009`
+  - runtime local serviu a aplicação em `http://localhost:3003`
+- QA backend funcional:
+  - fluxo incremental `activated -> changed -> resolved` validado no pipeline por integração local com repositório lifecycle in-memory e cenário real `post_carriage_maritime_inconsistent`
+  - dedupe de `activated` reprocessado validado com `discharge_multiple_actual`
+- QA visual/manual da app:
+  - dashboard `/`
+  - shipment `/shipments/9adec171-a71e-43a5-9b81-4aef5df91a84`
+  - inspeção manual adicional da resposta `/api/processes` no browser para confirmar rows existentes de scenarios lab
+- Viewports verificados:
+  - desktop
+  - mobile
+- Evidências geradas:
+  - `/tmp/phase6-dashboard.png`
+  - `/tmp/phase6-dashboard-mobile.png`
+  - `/tmp/phase6-shipment.png`
+  - `/tmp/phase6-shipment-mobile.png`
+- Comportamento observado:
+  - dashboard continuou leve e íntegro
+  - shipment continuou timeline-first
+  - `tracking_validation` continuou chegando compacto nas projeções existentes
+  - nenhum finding bruto ou detalhe de lifecycle vazou para as telas
+  - os cenários já existentes de advisory/critical continuaram renderizando consistentemente
+
+### Q.6 Problemas encontrados
+- O tooling Supabase disponível nesta sessão está em modo read-only para DDL.
+- Consequência objetiva:
+  - não foi possível aplicar a migration remota via MCP
+  - a tabela `tracking_validation_issue_transitions` não existe ainda no banco remoto desta sessão
+  - o runtime local registrou falha operacional ao tentar processar writes reais contra essa tabela ausente
+- Tratamento adotado:
+  - a migration foi criada no repositório
+  - `database.types.ts` foi atualizado
+  - a lógica foi validada por testes de integração locais
+  - a limitação foi registrada explicitamente aqui, sem mascarar a ausência do schema remoto
+
+### Q.7 Limitações intencionais
+- Nenhuma UI pública nova foi criada para lifecycle.
+- Nenhuma observabilidade externa (Sentry/email/etc.) foi adicionada.
+- Nenhuma truth canônica nova foi criada.
+- Nenhum snapshot completo de validation por sync foi persistido.
+
+### Q.8 Próximo passo recomendado para a Fase 7
+- Expor leitura operacional controlada do lifecycle persistido, ainda dentro do Tracking BC, para suportar:
+  - duração de issues
+  - incidência por provider/detector
+  - comparação antes/depois de correções
+- Fazer isso sem:
+  - mover semântica para UI
+  - transformar lifecycle em source of truth
+  - inflar dashboard ou quebrar shipment timeline-first

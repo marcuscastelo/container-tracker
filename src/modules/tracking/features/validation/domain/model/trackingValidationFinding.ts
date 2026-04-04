@@ -7,6 +7,8 @@ export type TrackingValidationFinding = {
   readonly detectorId: string
   readonly detectorVersion: string
   readonly code: string
+  readonly lifecycleKey: string
+  readonly stateFingerprint: string
   readonly severity: TrackingValidationSeverity
   readonly affectedScope: TrackingValidationAffectedScope
   readonly summaryKey: string

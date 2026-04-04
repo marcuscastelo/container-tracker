@@ -556,6 +556,24 @@ const EVT_POST_CARRIAGE_DEPARTURE_ACTUAL = maerskEvent({
   voyage: 'LS401W',
 })
 
+const EVT_POST_CARRIAGE_ARRIVAL_ACTUAL = maerskEvent({
+  activity: 'CONTAINER ARRIVAL',
+  eventTime: atPast(11, 6),
+  eventTimeType: 'ACTUAL',
+  location: LOC_DELIVERY,
+  vesselName: 'LAB SIGMA',
+  voyage: 'LS401W',
+})
+
+const EVT_POST_CARRIAGE_LOAD_ACTUAL = maerskEvent({
+  activity: 'LOAD',
+  eventTime: atPast(10, 12),
+  eventTimeType: 'ACTUAL',
+  location: LOC_POD,
+  vesselName: 'LAB SIGMA',
+  voyage: 'LS401W',
+})
+
 const EVT_CUSTOMS_HOLD = maerskEvent({
   activity: 'CUSTOMS HOLD',
   eventTime: atPast(9, 16),
@@ -1485,7 +1503,8 @@ function buildLifecycleScenarios(): readonly TrackingScenario[] {
     createScenario({
       id: 'post_carriage_maritime_inconsistent',
       title: 'Pathology · Post-Carriage Maritime Event',
-      description: 'A maritime departure appears after the last voyage has already discharged.',
+      description:
+        'A maritime departure appears after discharge, then evolves and is later reconciled into a new predicted leg.',
       category: 'data_pathologies',
       stage: 10,
       tags: ['pathology', 'advisory', 'post-carriage', 'timeline-classification'],
@@ -1508,6 +1527,19 @@ function buildLifecycleScenarios(): readonly TrackingScenario[] {
           title: 'Stray maritime departure',
           description: 'A departure appears in post-carriage without a new canonical voyage leg.',
           newEvents: [EVT_POST_CARRIAGE_DEPARTURE_ACTUAL],
+        },
+        {
+          id: 'step-3',
+          title: 'Stray arrival joins the anomaly',
+          description: 'A follow-up arrival changes the advisory evidence without resolving it.',
+          newEvents: [EVT_POST_CARRIAGE_ARRIVAL_ACTUAL],
+        },
+        {
+          id: 'step-4',
+          title: 'Retroactive load legitimizes the leg',
+          description:
+            'A retroactive load anchors the events into a canonical voyage leg and resolves the advisory.',
+          newEvents: [EVT_POST_CARRIAGE_LOAD_ACTUAL],
         },
       ]),
     }),

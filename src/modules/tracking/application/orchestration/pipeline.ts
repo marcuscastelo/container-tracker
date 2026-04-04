@@ -1,6 +1,10 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
+import {
+  noopTrackingValidationLifecycleRepository,
+  type TrackingValidationLifecycleRepository,
+} from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import {
@@ -26,6 +30,7 @@ import {
   deriveTrackingValidationProjection,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
+import { deriveTrackingValidationLifecycleTransitions } from '~/modules/tracking/features/validation/domain/services/deriveTrackingValidationLifecycleTransitions'
 import { systemClock } from '~/shared/time/clock'
 
 /**
@@ -53,6 +58,7 @@ type PipelineDeps = {
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
+  readonly trackingValidationLifecycleRepository?: TrackingValidationLifecycleRepository
 }
 
 /**
@@ -153,7 +159,7 @@ export async function processSnapshot(
 
   // Derive transshipment info
   const transshipment = deriveTransshipment(timeline)
-  const trackingValidation = deriveTrackingValidationProjection(
+  const trackingValidationProjection = deriveTrackingValidationProjection(
     createTrackingValidationContext({
       containerId,
       containerNumber,
@@ -163,7 +169,26 @@ export async function processSnapshot(
       transshipment,
       now: systemClock.now(),
     }),
-  ).summary
+  )
+  const existingValidationLifecycleStates = await (
+    deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
+  ).findActiveStatesByContainerId(containerId)
+  const validationLifecycleTransitions = deriveTrackingValidationLifecycleTransitions({
+    activeFindings: trackingValidationProjection.findings,
+    existingActiveStates: existingValidationLifecycleStates,
+    context: {
+      containerId,
+      provider: snapshot.provider,
+      snapshotId: snapshot.id,
+      occurredAt: snapshot.fetched_at,
+    },
+  })
+
+  if (validationLifecycleTransitions.length > 0) {
+    await (
+      deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
+    ).insertMany(validationLifecycleTransitions)
+  }
 
   return {
     newObservations,
@@ -171,6 +196,6 @@ export async function processSnapshot(
     timeline,
     status,
     transshipment,
-    trackingValidation,
+    trackingValidation: trackingValidationProjection.summary,
   }
 }

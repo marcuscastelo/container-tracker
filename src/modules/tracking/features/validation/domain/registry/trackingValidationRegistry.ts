@@ -37,6 +37,12 @@ export function createTrackingValidationRegistry(
               `Tracking validation finding detector version mismatch: ${detector.version} != ${finding.detectorVersion}`,
             )
           }
+          if (finding.lifecycleKey.trim().length === 0) {
+            throw new Error(`Tracking validation finding lifecycleKey is empty: ${detector.id}`)
+          }
+          if (finding.stateFingerprint.trim().length === 0) {
+            throw new Error(`Tracking validation finding stateFingerprint is empty: ${detector.id}`)
+          }
 
           findings.push(finding)
         }

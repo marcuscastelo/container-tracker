@@ -5,6 +5,7 @@ import type { ObservationRepository } from '~/modules/tracking/application/ports
 // Ports (agora em application, como você moveu)
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import type { SyncMetadataRepository } from '~/modules/tracking/application/ports/tracking.sync-metadata.repository'
+import type { TrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import {
   createTrackingUseCases,
   type TrackingUseCases,
@@ -14,12 +15,14 @@ import { supabaseObservationRepository } from '~/modules/tracking/infrastructure
 import { supabaseSnapshotRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSnapshotRepository'
 import { supabaseSyncMetadataRepository } from '~/modules/tracking/infrastructure/persistence/supabaseSyncMetadataRepository'
 import { supabaseTrackingAlertRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingAlertRepository'
+import { supabaseTrackingValidationLifecycleRepository } from '~/modules/tracking/infrastructure/persistence/supabaseTrackingValidationLifecycleRepository'
 
 type TrackingBootstrapOverrides = Partial<{
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
   readonly syncMetadataRepository: SyncMetadataRepository
+  readonly trackingValidationLifecycleRepository: TrackingValidationLifecycleRepository
 }>
 
 type TrackingModule = {
@@ -41,12 +44,15 @@ export function bootstrapTrackingModule(
   const trackingAlertRepository =
     overrides.trackingAlertRepository ?? supabaseTrackingAlertRepository
   const syncMetadataRepository = overrides.syncMetadataRepository ?? supabaseSyncMetadataRepository
+  const trackingValidationLifecycleRepository =
+    overrides.trackingValidationLifecycleRepository ?? supabaseTrackingValidationLifecycleRepository
 
   const trackingUseCases = createTrackingUseCases({
     snapshotRepository,
     observationRepository,
     trackingAlertRepository,
     syncMetadataRepository,
+    trackingValidationLifecycleRepository,
   })
 
   return { trackingUseCases }

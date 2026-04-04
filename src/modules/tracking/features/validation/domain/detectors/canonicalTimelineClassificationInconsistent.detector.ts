@@ -4,6 +4,10 @@ import type {
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
 import type { TrackingValidationDetector } from '~/modules/tracking/features/validation/domain/model/trackingValidationDetector'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
+import {
+  digestTrackingValidationFingerprint,
+  normalizeTrackingValidationFingerprintPart,
+} from '~/modules/tracking/features/validation/domain/services/trackingValidationFingerprint'
 
 const DETECTOR_ID = 'canonical-timeline-classification-inconsistent'
 const DETECTOR_VERSION = '1'
@@ -25,16 +29,30 @@ function describeEvidence(
 }
 
 function createFinding(
+  containerId: string,
   signals: readonly TrackingValidationPostCarriageMaritimeEventSignal[],
 ): TrackingValidationFinding {
   const eventTypes = [...new Set(signals.map((signal) => signal.type))].join(', ')
   const hasVesselContext = signals.some((signal) => signal.hasVesselContext)
   const hasVoyageContext = signals.some((signal) => signal.hasVoyageContext)
+  const sortedSignalParts = [...signals]
+    .map((signal) =>
+      [
+        signal.type,
+        signal.eventTimeType,
+        normalizeTrackingValidationFingerprintPart(signal.location),
+        signal.hasVesselContext ? '1' : '0',
+        signal.hasVoyageContext ? '1' : '0',
+      ].join(':'),
+    )
+    .sort()
 
   return {
     detectorId: DETECTOR_ID,
     detectorVersion: DETECTOR_VERSION,
     code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+    lifecycleKey: `${DETECTOR_ID}:${containerId}`,
+    stateFingerprint: digestTrackingValidationFingerprint(sortedSignalParts),
     severity: 'ADVISORY',
     affectedScope: 'TIMELINE',
     summaryKey: SUMMARY_KEY,
@@ -56,6 +74,6 @@ export const canonicalTimelineClassificationInconsistentDetector: TrackingValida
     const signals = context.signals.canonicalTimeline.postCarriageMaritimeEvents
     if (signals.length === 0) return []
 
-    return [createFinding(signals)]
+    return [createFinding(context.containerId, signals)]
   },
 }

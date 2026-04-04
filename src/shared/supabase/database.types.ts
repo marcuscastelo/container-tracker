@@ -669,6 +669,85 @@ export type Database = {
           },
         ]
       }
+      tracking_validation_issue_transitions: {
+        Row: {
+          affected_scope: string
+          container_id: string
+          created_at: string
+          detector_id: string
+          detector_version: string
+          evidence_summary: string
+          id: string
+          issue_code: string
+          lifecycle_key: string
+          occurred_at: string
+          process_id: string
+          provider: string
+          severity: string
+          snapshot_id: string
+          state_fingerprint: string
+          transition_type: string
+        }
+        Insert: {
+          affected_scope: string
+          container_id: string
+          created_at?: string
+          detector_id: string
+          detector_version: string
+          evidence_summary: string
+          id?: string
+          issue_code: string
+          lifecycle_key: string
+          occurred_at: string
+          process_id: string
+          provider: string
+          severity: string
+          snapshot_id: string
+          state_fingerprint: string
+          transition_type: string
+        }
+        Update: {
+          affected_scope?: string
+          container_id?: string
+          created_at?: string
+          detector_id?: string
+          detector_version?: string
+          evidence_summary?: string
+          id?: string
+          issue_code?: string
+          lifecycle_key?: string
+          occurred_at?: string
+          process_id?: string
+          provider?: string
+          severity?: string
+          snapshot_id?: string
+          state_fingerprint?: string
+          transition_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_container_id_fkey'
+            columns: ['container_id']
+            isOneToOne: false
+            referencedRelation: 'containers'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_process_id_fkey'
+            columns: ['process_id']
+            isOneToOne: false
+            referencedRelation: 'processes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tracking_validation_issue_transitions_snapshot_id_fkey'
+            columns: ['snapshot_id']
+            isOneToOne: false
+            referencedRelation: 'container_snapshots'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

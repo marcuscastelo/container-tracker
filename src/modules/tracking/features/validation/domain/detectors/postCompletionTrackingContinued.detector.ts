@@ -9,6 +9,7 @@ import {
 import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { TrackingValidationDetector } from '~/modules/tracking/features/validation/domain/model/trackingValidationDetector'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
+import { digestTrackingValidationFingerprint } from '~/modules/tracking/features/validation/domain/services/trackingValidationFingerprint'
 
 const DETECTOR_ID = 'POST_COMPLETION_TRACKING_CONTINUED'
 const DETECTOR_VERSION = '1'
@@ -62,6 +63,7 @@ function describeEvidence(
 }
 
 function createFinding(
+  containerId: string,
   milestone: StrongCompletionMilestone,
   incompatibleObservation: Observation,
 ): TrackingValidationFinding {
@@ -69,6 +71,16 @@ function createFinding(
     detectorId: DETECTOR_ID,
     detectorVersion: DETECTOR_VERSION,
     code: DETECTOR_ID,
+    lifecycleKey: `${DETECTOR_ID}:${containerId}`,
+    stateFingerprint: digestTrackingValidationFingerprint([
+      milestone.status,
+      milestone.source,
+      milestone.observation.id,
+      incompatibleObservation.type,
+      incompatibleObservation.event_time_type,
+      incompatibleObservation.id,
+      incompatibleObservation.fingerprint,
+    ]),
     severity: 'CRITICAL',
     affectedScope: 'TIMELINE',
     summaryKey: SUMMARY_KEY,
@@ -98,7 +110,7 @@ export const postCompletionTrackingContinuedDetector: TrackingValidationDetector
         sortedTimelineObservations,
       )
       if (incompatibleObservation !== null) {
-        return [createFinding(milestone, incompatibleObservation)]
+        return [createFinding(context.containerId, milestone, incompatibleObservation)]
       }
     }
 
