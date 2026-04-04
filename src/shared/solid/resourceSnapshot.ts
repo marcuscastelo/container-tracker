@@ -1,6 +1,9 @@
-import type { Resource } from 'solid-js'
+export type ResourceSnapshotLike<T> = {
+  readonly state: 'unresolved' | 'pending' | 'ready' | 'refreshing' | 'errored'
+  readonly latest: T | undefined
+}
 
-export function readResourceSnapshot<T>(resource: Resource<T>): T | undefined {
+export function readResourceSnapshot<T>(resource: ResourceSnapshotLike<T>): T | undefined {
   if (resource.state === 'ready' || resource.state === 'refreshing') {
     return resource.latest
   }

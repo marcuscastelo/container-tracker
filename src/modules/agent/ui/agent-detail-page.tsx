@@ -10,6 +10,7 @@ import {
   Show,
   untrack,
 } from 'solid-js'
+import { readAgentDetailSnapshot } from '~/modules/agent/ui/agentResourceSnapshot'
 import {
   fetchAgentDetail,
   requestAgentRestart,
@@ -216,6 +217,7 @@ function extractRealtimeRowId(value: unknown): string | null {
 export function AgentDetailPage(props: Props): JSX.Element {
   const navigate = useNavigate()
   const [detail, { refetch }] = createResource(() => props.agentId, fetchAgentDetail)
+  const detailSnapshot = () => readAgentDetailSnapshot(detail)
   const [lastRefreshed, setLastRefreshed] = createSignal(new Date())
   const [actionMessage, setActionMessage] = createSignal<string | null>(null)
   const [actionError, setActionError] = createSignal<string | null>(null)
@@ -250,7 +252,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
   })
 
   createEffect(() => {
-    const tenantId = detail()?.tenantId
+    const tenantId = detailSnapshot()?.tenantId
     if (!tenantId) return
 
     const subscription = subscribeToTrackingAgentsByTenant({
@@ -271,7 +273,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
 
   const now = createMemo(() => lastRefreshed())
   const vm = createMemo(() => {
-    const dto = detail()
+    const dto = detailSnapshot()
     if (!dto) return null
     return toAgentDetailVM(dto, now())
   })
@@ -367,7 +369,7 @@ export function AgentDetailPage(props: Props): JSX.Element {
             <DetailError onRetry={handleRefresh} />
           </Show>
 
-          <Show when={!detail.loading && !detail.error && !detail()}>
+          <Show when={!detail.loading && !detail.error && !detailSnapshot()}>
             <AgentNotFound />
           </Show>
 

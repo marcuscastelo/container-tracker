@@ -86,7 +86,9 @@
     }
   },
   "app": {
-    "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes."
+    "unexpectedRenderError": "Ocorreu um erro inesperado. Verifique o console para mais detalhes.",
+    "serverProblemBanner": "Servidor com problemas, informações podem estar incompletas.",
+    "dismissServerProblemBanner": "Dispensar"
   },
   "process": {
     "containerSelector": {

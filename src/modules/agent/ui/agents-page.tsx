@@ -1,6 +1,7 @@
 import { useNavigate } from '@solidjs/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, createResource, createSignal, onCleanup } from 'solid-js'
+import { readAgentListResponseSnapshot } from '~/modules/agent/ui/agentResourceSnapshot'
 import { type AgentListQuery, fetchAgentList } from '~/modules/agent/ui/api/agent.api'
 import { AgentCardList } from '~/modules/agent/ui/components/AgentCardList'
 import {
@@ -59,11 +60,12 @@ export function AgentsPage(): JSX.Element {
   })
 
   const [agentsResponse, { refetch }] = createResource(listQuery, (query) => fetchAgentList(query))
+  const agentsResponseSnapshot = () => readAgentListResponseSnapshot(agentsResponse)
 
   const now = createMemo(() => lastRefreshed())
 
   const agentVMs = createMemo<readonly AgentListItemVM[]>(() => {
-    const response = agentsResponse()
+    const response = agentsResponseSnapshot()
     if (!response) return []
     return response.agents.map((dto) => toAgentListItemVM(dto, now()))
   })
@@ -79,13 +81,13 @@ export function AgentsPage(): JSX.Element {
   })
 
   const fleetSummary = createMemo(() => {
-    const response = agentsResponse()
+    const response = agentsResponseSnapshot()
     if (!response) return null
     return toFleetSummaryVM(response.summary)
   })
 
   const tenantIdForRealtime = createMemo(() => {
-    const response = agentsResponse()
+    const response = agentsResponseSnapshot()
     return response?.agents[0]?.tenantId ?? null
   })
 
