@@ -451,6 +451,115 @@ describe('processSnapshot validation lifecycle integration', () => {
     })
   })
 
+  it('derives validation lifecycle from snapshot fetched_at instead of retry wall clock time', async () => {
+    const containerId = randomUUID()
+    const containerNumber = 'MSCU1234567'
+    const snapshotRepository = new InMemorySnapshotRepository()
+    const observationRepository = new InMemoryObservationRepository()
+    const alertRepository = new InMemoryTrackingAlertRepository()
+    const lifecycleRepository = new InMemoryTrackingValidationLifecycleRepository()
+    const seedSnapshotId = randomUUID()
+    const retrySnapshot = createSnapshot({
+      containerId,
+      provider: 'pil',
+      fetchedAt: '2026-04-03T12:00:00.000Z',
+      payload: PIL_MISSING_TABLE_PAYLOAD,
+    })
+
+    await observationRepository.insertMany([
+      createNewObservation({
+        fingerprint: 'fp-discharge-1',
+        containerId,
+        containerNumber,
+        type: 'DISCHARGE',
+        eventTime: '2026-04-01T10:00:00.000Z',
+        eventTimeType: 'ACTUAL',
+        locationCode: 'BRSSZ',
+        locationDisplay: 'Santos',
+        vesselName: 'MSC ALPHA',
+        voyage: '101E',
+        snapshotId: seedSnapshotId,
+      }),
+      createNewObservation({
+        fingerprint: 'fp-delivery-1',
+        containerId,
+        containerNumber,
+        type: 'DELIVERY',
+        eventTime: '2026-04-02T10:00:00.000Z',
+        eventTimeType: 'ACTUAL',
+        locationCode: 'BRIOA',
+        locationDisplay: 'Itapoa',
+        vesselName: null,
+        voyage: null,
+        snapshotId: seedSnapshotId,
+      }),
+      createNewObservation({
+        fingerprint: 'fp-arrival-expected-1',
+        containerId,
+        containerNumber,
+        type: 'ARRIVAL',
+        eventTime: '2026-04-04T09:00:00.000Z',
+        eventTimeType: 'EXPECTED',
+        locationCode: 'USLAX',
+        locationDisplay: 'Los Angeles',
+        vesselName: 'MSC SIGMA',
+        voyage: '202W',
+        snapshotId: seedSnapshotId,
+      }),
+    ])
+
+    vi.useFakeTimers()
+
+    try {
+      vi.setSystemTime(new Date('2026-04-10T12:00:00.000Z'))
+      const firstResult = await processSnapshot(
+        retrySnapshot,
+        containerId,
+        containerNumber,
+        {
+          snapshotRepository,
+          observationRepository,
+          trackingAlertRepository: alertRepository,
+          trackingValidationLifecycleRepository: lifecycleRepository,
+        },
+        false,
+      )
+
+      vi.setSystemTime(new Date('2026-04-12T12:00:00.000Z'))
+      const secondResult = await processSnapshot(
+        retrySnapshot,
+        containerId,
+        containerNumber,
+        {
+          snapshotRepository,
+          observationRepository,
+          trackingAlertRepository: alertRepository,
+          trackingValidationLifecycleRepository: lifecycleRepository,
+        },
+        false,
+      )
+
+      expect(firstResult.trackingValidation).toMatchObject({
+        hasIssues: true,
+        highestSeverity: 'CRITICAL',
+        findingCount: 1,
+      })
+      expect(secondResult.trackingValidation).toMatchObject({
+        hasIssues: true,
+        highestSeverity: 'CRITICAL',
+        findingCount: 1,
+      })
+      expect(lifecycleRepository.transitions).toHaveLength(1)
+      expect(lifecycleRepository.transitions[0]).toMatchObject({
+        transitionType: 'activated',
+        issueCode: 'POST_COMPLETION_TRACKING_CONTINUED',
+        occurredAt: '2026-04-03T12:00:00.000Z',
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('persists lifecycle activation for duplicated canonical voyage segments without leaking debug evidence', async () => {
     const containerId = randomUUID()
     const containerNumber = 'PCIU8712104'

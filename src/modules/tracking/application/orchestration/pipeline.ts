@@ -34,6 +34,7 @@ import type { TrackingValidationContainerSummary } from '~/modules/tracking/feat
 import { deriveTrackingValidationLifecycleTransitions } from '~/modules/tracking/features/validation/domain/services/deriveTrackingValidationLifecycleTransitions'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
+import { Instant } from '~/shared/time/instant'
 
 /**
  * Result of processing a single snapshot through the pipeline.
@@ -211,15 +212,24 @@ export async function processSnapshot(
 
   // Derive transshipment info
   const transshipment = deriveTransshipment(timeline)
+  const snapshotValidationNow = Instant.fromIso(snapshot.fetched_at)
+  const validationTimeline = deriveTimeline(
+    containerId,
+    containerNumber,
+    allObservations,
+    snapshotValidationNow,
+  )
+  const validationStatus = deriveStatus(validationTimeline)
+  const validationTransshipment = deriveTransshipment(validationTimeline)
   const trackingValidationProjection = deriveTrackingValidationProjection(
     createTrackingValidationContext({
       containerId,
       containerNumber,
       observations: allObservations,
-      timeline,
-      status,
-      transshipment,
-      now: systemClock.now(),
+      timeline: validationTimeline,
+      status: validationStatus,
+      transshipment: validationTransshipment,
+      now: snapshotValidationNow,
     }),
   )
   const trackingValidationLifecycleRepository =

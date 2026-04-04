@@ -12,7 +12,7 @@ function normalizePart(part: string | null | undefined): string {
 }
 
 export function digestTrackingValidationFingerprint(parts: readonly string[]): string {
-  return createHash('sha256').update(parts.join('|'), 'utf8').digest('hex').slice(0, 32)
+  return createHash('sha256').update(JSON.stringify(parts), 'utf8').digest('hex').slice(0, 32)
 }
 
 export function normalizeTrackingValidationFingerprintPart(
