@@ -463,6 +463,79 @@ describe('toShipmentDetailVM critical tracking mapping', () => {
   })
 })
 
+describe('toShipmentDetailVM duplicated segment tracking mapping', () => {
+  it('maps duplicated canonical voyage segment reasons through the compact VM contract', () => {
+    const example = makeProcessDetailResponse({
+      id: 'proc-validation-duplicated-segment',
+      tracking_freshness_token: 'token-proc-validation-duplicated-segment',
+      reference: 'REF-VALIDATION-DUPLICATED-SEGMENT',
+      origin: { display_name: 'Qingdao' },
+      destination: { display_name: 'Santos' },
+      carrier: 'pil',
+      bill_of_lading: null,
+      booking_number: null,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tracking_validation: {
+        has_issues: true,
+        highest_severity: 'danger',
+        affected_container_count: 1,
+        top_issue: {
+          code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+          severity: 'danger',
+          reason_key: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+          affected_area: 'timeline',
+          affected_location: 'SANTOS',
+          affected_block_label_key: 'shipmentView.timeline.blocks.voyage',
+        },
+      },
+      containers: [
+        makeContainerResponse({
+          id: 'container-validation-duplicated-segment',
+          container_number: 'PCIU8712104',
+          tracking_validation: {
+            has_issues: true,
+            highest_severity: 'danger',
+            finding_count: 1,
+            active_issues: [
+              {
+                code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+                severity: 'danger',
+                reason_key: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+                affected_area: 'timeline',
+                affected_location: 'SANTOS',
+                affected_block_label_key: 'shipmentView.timeline.blocks.voyage',
+              },
+            ],
+          },
+        }),
+      ],
+    })
+
+    const result = toShipmentDetailVM(example)
+
+    expect(result.trackingValidation.topIssue).toEqual({
+      code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+      severity: 'danger',
+      reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+      affectedArea: 'timeline',
+      affectedLocation: 'SANTOS',
+      affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+    })
+    expect(result.containers[0]?.trackingValidation.activeIssues).toEqual([
+      {
+        code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+        severity: 'danger',
+        reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+        affectedArea: 'timeline',
+        affectedLocation: 'SANTOS',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+      },
+    ])
+  })
+})
+
 describe('toShipmentDetailVM post-completion tracking mapping', () => {
   it('maps a critical post-completion validation summary without deriving reason in the UI', () => {
     const example = makeProcessDetailResponse({

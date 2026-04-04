@@ -831,6 +831,7 @@
       "conflictingCriticalActuals": "Há fatos críticos conflitantes na mesma série de eventos.",
       "postCompletionTrackingContinued": "O tracking continuou depois de um marco forte de conclusão.",
       "canonicalTimelineClassificationInconsistent": "A classificação canônica da timeline ficou inconsistente com os eventos atuais.",
+      "canonicalTimelineSegmentDuplicated": "A mesma etapa da jornada apareceu duplicada na timeline atual.",
       "expectedPlanNotReconcilable": "Há previsão remanescente que não se reconcilia com o fato ACTUAL confirmado.",
       "missingCriticalMilestoneWithContradictoryContext": "Há milestone marítimo crítico ausente em um contexto canônico contraditório."
     }

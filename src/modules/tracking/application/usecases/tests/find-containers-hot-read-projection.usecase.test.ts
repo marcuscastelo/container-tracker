@@ -463,6 +463,91 @@ describe('findContainersHotReadProjection', () => {
     })
   })
 
+  it('marks the container when the same canonical voyage leg is duplicated across timeline blocks', async () => {
+    const duplicatedSegmentObservations = [
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'load-legacy',
+        fingerprint: 'fp-load-legacy',
+        type: 'LOAD',
+        location_code: null,
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-03-14T04:10:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-03-14T04:15:00.000Z',
+      }),
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'discharge-legacy',
+        fingerprint: 'fp-discharge-legacy',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-03-20T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        created_at: '2026-03-20T10:15:00.000Z',
+      }),
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'load-coded',
+        fingerprint: 'fp-load-coded',
+        type: 'LOAD',
+        location_code: 'CNTAO',
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-03-21T04:10:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-03-21T04:15:00.000Z',
+      }),
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'discharge-coded',
+        fingerprint: 'fp-discharge-coded',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-04-23T19:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        created_at: '2026-04-23T19:15:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+    const { deps } = createDeps({
+      observations: duplicatedSegmentObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'PCIU8712104', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-04-24T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+          affectedArea: 'timeline',
+          affectedLocation: 'QINGDAO',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+        },
+      ],
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+        affectedArea: 'timeline',
+        affectedLocation: 'QINGDAO',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+      },
+    })
+  })
+
   it('fails explicitly when the batch active-alert read fails', async () => {
     const { deps } = createDeps({
       observations: [makeObservation('c1', 'MSCU1111111')],

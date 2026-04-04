@@ -12,9 +12,39 @@ export type TrackingValidationPostCarriageMaritimeEventSignal = {
   readonly hasVoyageContext: boolean
 }
 
+export type TrackingValidationCanonicalTimelineDuplicatedMilestoneType =
+  | 'LOAD'
+  | 'DEPARTURE'
+  | 'ARRIVAL'
+  | 'DISCHARGE'
+
+export type TrackingValidationCanonicalTimelineSegmentDuplicatedMilestoneSignal = {
+  readonly type: TrackingValidationCanonicalTimelineDuplicatedMilestoneType
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly location: string
+  readonly timelineItemIds: readonly string[]
+}
+
+export type TrackingValidationCanonicalTimelineSegmentDuplicatedBlockSignal = {
+  readonly order: number
+  readonly origin: string | null
+  readonly destination: string | null
+  readonly timelineItemIds: readonly string[]
+}
+
+export type TrackingValidationCanonicalTimelineSegmentDuplicatedSignal = {
+  readonly vessel: string
+  readonly voyage: string
+  readonly identityKey: string
+  readonly blocks: readonly TrackingValidationCanonicalTimelineSegmentDuplicatedBlockSignal[]
+  readonly repeatedMilestones: readonly TrackingValidationCanonicalTimelineSegmentDuplicatedMilestoneSignal[]
+  readonly includesLatestVoyageBlock: boolean
+}
+
 export type TrackingValidationDetectorSignals = {
   readonly canonicalTimeline: {
     readonly postCarriageMaritimeEvents: readonly TrackingValidationPostCarriageMaritimeEventSignal[]
+    readonly duplicatedSegments: readonly TrackingValidationCanonicalTimelineSegmentDuplicatedSignal[]
   }
 }
 
@@ -22,6 +52,7 @@ export function createEmptyTrackingValidationDetectorSignals(): TrackingValidati
   return {
     canonicalTimeline: {
       postCarriageMaritimeEvents: [],
+      duplicatedSegments: [],
     },
   }
 }

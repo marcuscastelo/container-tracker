@@ -26,8 +26,10 @@ import type {
   TrackingValidationLifecycleTransition,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
 import { toTrackingValidationLifecycleState } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
+import { PIL_MISSING_TABLE_PAYLOAD } from '~/modules/tracking/infrastructure/carriers/tests/helpers/pil.fixture'
 import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { Instant } from '~/shared/time/instant'
+import { temporalValueFromCanonical } from '~/shared/time/tests/helpers'
 
 class InMemorySnapshotRepository implements SnapshotRepository {
   async insert(snapshot: NewSnapshot): Promise<Snapshot> {
@@ -253,6 +255,41 @@ function createSnapshot(params: {
   }
 }
 
+function createNewObservation(params: {
+  readonly fingerprint: string
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly type: Observation['type']
+  readonly eventTime: Parameters<typeof temporalValueFromCanonical>[0]
+  readonly eventTimeType: Observation['event_time_type']
+  readonly locationCode: string | null
+  readonly locationDisplay: string | null
+  readonly vesselName: string | null
+  readonly voyage: string | null
+  readonly snapshotId: string
+}): NewObservation {
+  return {
+    fingerprint: params.fingerprint,
+    container_id: params.containerId,
+    container_number: params.containerNumber,
+    type: params.type,
+    event_time: temporalValueFromCanonical(params.eventTime),
+    event_time_type: params.eventTimeType,
+    location_code: params.locationCode,
+    location_display: params.locationDisplay,
+    vessel_name: params.vesselName,
+    voyage: params.voyage,
+    is_empty: false,
+    confidence: 'high',
+    provider: 'pil',
+    created_from_snapshot_id: params.snapshotId,
+    carrier_label: params.type,
+    raw_event_time: params.eventTime,
+    event_time_source: 'carrier_local_port_time',
+    retroactive: false,
+  }
+}
+
 async function processScenarioBuild(params: {
   buildResult: ScenarioBuildResult
   containerId: string
@@ -412,6 +449,122 @@ describe('processSnapshot validation lifecycle integration', () => {
       issueCode: 'CONFLICTING_CRITICAL_ACTUALS',
       severity: 'CRITICAL',
     })
+  })
+
+  it('persists lifecycle activation for duplicated canonical voyage segments without leaking debug evidence', async () => {
+    const containerId = randomUUID()
+    const containerNumber = 'PCIU8712104'
+    const snapshotRepository = new InMemorySnapshotRepository()
+    const observationRepository = new InMemoryObservationRepository()
+    const alertRepository = new InMemoryTrackingAlertRepository()
+    const lifecycleRepository = new InMemoryTrackingValidationLifecycleRepository()
+    const seedSnapshotId = randomUUID()
+
+    await observationRepository.insertMany([
+      createNewObservation({
+        fingerprint: 'fp-load-legacy',
+        containerId,
+        containerNumber,
+        type: 'LOAD',
+        eventTime: '2026-03-14T04:10:00.000Z',
+        eventTimeType: 'ACTUAL',
+        locationCode: null,
+        locationDisplay: 'QINGDAO',
+        vesselName: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        snapshotId: seedSnapshotId,
+      }),
+      createNewObservation({
+        fingerprint: 'fp-discharge-legacy',
+        containerId,
+        containerNumber,
+        type: 'DISCHARGE',
+        eventTime: '2026-03-20T10:00:00.000Z',
+        eventTimeType: 'EXPECTED',
+        locationCode: null,
+        locationDisplay: 'SANTOS',
+        vesselName: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        snapshotId: seedSnapshotId,
+      }),
+      createNewObservation({
+        fingerprint: 'fp-load-coded',
+        containerId,
+        containerNumber,
+        type: 'LOAD',
+        eventTime: '2026-03-21T04:10:00.000Z',
+        eventTimeType: 'ACTUAL',
+        locationCode: 'CNTAO',
+        locationDisplay: 'QINGDAO',
+        vesselName: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        snapshotId: seedSnapshotId,
+      }),
+      createNewObservation({
+        fingerprint: 'fp-discharge-coded',
+        containerId,
+        containerNumber,
+        type: 'DISCHARGE',
+        eventTime: '2026-04-23T19:00:00.000Z',
+        eventTimeType: 'EXPECTED',
+        locationCode: 'BRSSZ',
+        locationDisplay: 'SANTOS',
+        vesselName: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        snapshotId: seedSnapshotId,
+      }),
+    ])
+
+    const result = await processSnapshot(
+      createSnapshot({
+        containerId,
+        provider: 'pil',
+        fetchedAt: '2026-04-24T10:00:00.000Z',
+        payload: PIL_MISSING_TABLE_PAYLOAD,
+      }),
+      containerId,
+      containerNumber,
+      {
+        snapshotRepository,
+        observationRepository,
+        trackingAlertRepository: alertRepository,
+        trackingValidationLifecycleRepository: lifecycleRepository,
+      },
+      false,
+    )
+
+    expect(result.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'CRITICAL',
+      findingCount: 1,
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+          affectedArea: 'timeline',
+          affectedLocation: 'QINGDAO',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+        },
+      ],
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+        affectedArea: 'timeline',
+        affectedLocation: 'QINGDAO',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+      },
+    })
+    expect(lifecycleRepository.transitions).toHaveLength(1)
+    expect(lifecycleRepository.transitions[0]).toMatchObject({
+      transitionType: 'activated',
+      issueCode: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+      severity: 'CRITICAL',
+      affectedScope: 'TIMELINE',
+      evidenceSummary: expect.stringContaining('CMA CGM KRYPTON / VCGK0001W'),
+    })
+    expect(lifecycleRepository.transitions[0]).not.toHaveProperty('debugEvidence')
   })
 
   it('keeps canonical validation derivation when lifecycle persistence is unavailable', async () => {

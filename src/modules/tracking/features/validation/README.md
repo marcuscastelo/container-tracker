@@ -16,15 +16,16 @@ It does not create a new status, rewrite facts, or move semantics to UI/capabili
 - Aggregation/lifecycle services: `domain/services/*`
 - Compact projection for application/read models: `application/projection/trackingValidation.projection.ts`
 
-## Active Detectors In V1 / V1.1
+## Active Detectors
 
 - `CONFLICTING_CRITICAL_ACTUALS`
 - `POST_COMPLETION_TRACKING_CONTINUED`
 - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+- `CANONICAL_TIMELINE_SEGMENT_DUPLICATED`
 - `EXPECTED_PLAN_NOT_RECONCILABLE`
 - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
 
-These five detectors are the agreed V1/V1.1 set. Final polish phases must keep them on the same registry path instead of opening any parallel wiring.
+These detectors are the agreed V1-V1.2 set. Final polish phases must keep them on the same registry path instead of opening any parallel wiring.
 
 ## Contract Ownership By Layer
 

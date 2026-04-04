@@ -70,4 +70,20 @@ describe('tracking-validation-copy.presenter', () => {
       ].join('\n'),
     )
   })
+
+  it('keeps timeline metadata readable for duplicated voyage segment reasons', () => {
+    expect(
+      toTrackingValidationIssueMetadataText({
+        issue: makeIssue({
+          code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+          reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+          affectedLocation: 'SANTOS',
+        }),
+        labels,
+        resolveBlockLabel: (key) =>
+          key === 'shipmentView.timeline.blocks.voyage' ? 'Viagem' : key,
+      }),
+    ).toBe('Área: Timeline · Bloco: Viagem · Local: SANTOS')
+  })
 })

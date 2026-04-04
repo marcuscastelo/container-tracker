@@ -53,6 +53,7 @@ describe('canonicalTimelineClassificationInconsistentDetector', () => {
                 hasVoyageContext: true,
               },
             ],
+            duplicatedSegments: [],
           },
         },
       }),

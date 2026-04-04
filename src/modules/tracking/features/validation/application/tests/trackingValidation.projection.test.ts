@@ -233,4 +233,317 @@ describe('trackingValidation.projection', () => {
     ])
     expect(summary.activeIssues[0]).not.toHaveProperty('debugEvidence')
   })
+
+  it('flags duplicated canonical voyage segments when the same rendered leg appears twice', () => {
+    const observations = [
+      makeObservation({
+        id: 'load-legacy',
+        type: 'LOAD',
+        location_code: null,
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-14T04:10:00.000Z'),
+        created_at: '2026-03-14T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-legacy',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-03-20T10:00:00.000Z'),
+        created_at: '2026-03-20T10:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'load-coded',
+        type: 'LOAD',
+        location_code: 'CNTAO',
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-21T04:10:00.000Z'),
+        created_at: '2026-03-21T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-coded',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-04-23T19:00:00.000Z'),
+        created_at: '2026-04-23T19:15:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'PCIU8712104',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'PCIU8712104',
+        observations,
+        derived_at: '2026-04-24T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      now: Instant.fromIso('2026-04-24T10:00:00.000Z'),
+    })
+
+    expect(summary).toMatchObject({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'CRITICAL',
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+        affectedArea: 'timeline',
+        affectedLocation: 'QINGDAO',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+      },
+    })
+    expect(summary.activeIssues).toEqual([
+      {
+        code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+        affectedArea: 'timeline',
+        affectedLocation: 'QINGDAO',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+      },
+    ])
+  })
+
+  it('does not flag duplicated segments when the repeated vessel belongs to a different voyage', () => {
+    const observations = [
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        location_code: null,
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-14T04:10:00.000Z'),
+        created_at: '2026-03-14T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-03-20T10:00:00.000Z'),
+        created_at: '2026-03-20T10:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'load-2',
+        type: 'LOAD',
+        location_code: 'CNTAO',
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0002W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-21T04:10:00.000Z'),
+        created_at: '2026-03-21T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0002W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-04-23T19:00:00.000Z'),
+        created_at: '2026-04-23T19:15:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'PCIU8712104',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'PCIU8712104',
+        observations,
+        derived_at: '2026-04-24T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      now: Instant.fromIso('2026-04-24T10:00:00.000Z'),
+    })
+
+    expect(summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
+  })
+
+  it('does not flag duplicated segments when the same voyage identity points to a different origin', () => {
+    const observations = [
+      makeObservation({
+        id: 'load-qingdao',
+        type: 'LOAD',
+        location_code: 'CNTAO',
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-14T04:10:00.000Z'),
+        created_at: '2026-03-14T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-qingdao',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-03-20T10:00:00.000Z'),
+        created_at: '2026-03-20T10:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'load-ningbo',
+        type: 'LOAD',
+        location_code: 'CNNGB',
+        location_display: 'NINGBO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-21T04:10:00.000Z'),
+        created_at: '2026-03-21T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-ningbo',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-04-23T19:00:00.000Z'),
+        created_at: '2026-04-23T19:15:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'PCIU8712104',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'PCIU8712104',
+        observations,
+        derived_at: '2026-04-24T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      now: Instant.fromIso('2026-04-24T10:00:00.000Z'),
+    })
+
+    expect(summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
+  })
+
+  it('does not flag expected updates that stay inside a single voyage block', () => {
+    const observations = [
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        location_code: 'CNTAO',
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'ACTUAL',
+        event_time: temporalValueFromCanonical('2026-03-14T04:10:00.000Z'),
+        created_at: '2026-03-14T04:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-older',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-03-20T10:00:00.000Z'),
+        created_at: '2026-03-20T10:15:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-newer',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-04-23T19:00:00.000Z'),
+        created_at: '2026-04-23T19:15:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'PCIU8712104',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'PCIU8712104',
+        observations,
+        derived_at: '2026-04-24T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      now: Instant.fromIso('2026-04-24T10:00:00.000Z'),
+    })
+
+    expect(summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
+  })
 })
