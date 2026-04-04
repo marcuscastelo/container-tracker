@@ -110,4 +110,63 @@ describe('tracking-time-travel.ui-mapper', () => {
       'highestSeverity',
     ])
   })
+
+  it('maps the new advisory validation reasons through historical checkpoints unchanged', () => {
+    const response = makeTimeTravelResponse()
+    const checkpoint = response.syncs[0]
+
+    if (!checkpoint) {
+      throw new Error('Expected time-travel sync fixture')
+    }
+
+    checkpoint.tracking_validation = {
+      has_issues: true,
+      highest_severity: 'warning',
+      finding_count: 2,
+      active_issues: [
+        {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'warning',
+          reason_key: 'tracking.validation.expectedPlanNotReconcilable',
+          affected_area: 'series',
+          affected_location: 'BRSSZ',
+          affected_block_label_key: null,
+        },
+        {
+          code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+          severity: 'warning',
+          reason_key: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+          affected_area: 'timeline',
+          affected_location: 'BRSSZ',
+          affected_block_label_key: null,
+        },
+      ],
+    }
+
+    const result = toTrackingTimeTravelVm(response, 'pt-BR')
+
+    expect(result.syncs[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      findingCount: 2,
+      activeIssues: [
+        {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'warning',
+          reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+        {
+          code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+          severity: 'warning',
+          reasonKey: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+          affectedArea: 'timeline',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      ],
+    })
+  })
 })

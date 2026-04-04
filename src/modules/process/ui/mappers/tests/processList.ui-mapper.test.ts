@@ -221,6 +221,42 @@ describe('toProcessSummaryVMs', () => {
     expect(result[0]?.attentionSeverity).toBe('danger')
   })
 
+  it('maps the new advisory top issue into the dashboard VM without re-deriving semantics', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-validation-advisory',
+        tracking_validation: {
+          has_issues: true,
+          highest_severity: 'warning',
+          affected_container_count: 1,
+          top_issue: {
+            code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+            severity: 'warning',
+            reason_key: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+            affected_area: 'timeline',
+            affected_location: 'BRSSZ',
+            affected_block_label_key: null,
+          },
+        },
+      }),
+    ])
+
+    expect(result[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 1,
+      topIssue: {
+        code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+        severity: 'warning',
+        reasonKey: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+        affectedArea: 'timeline',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+    expect(result[0]?.attentionSeverity).toBeNull()
+  })
+
   it('falls back to alert severity when legacy payloads do not include attention_severity', () => {
     const result = toProcessSummaryVMs([
       makeSource({

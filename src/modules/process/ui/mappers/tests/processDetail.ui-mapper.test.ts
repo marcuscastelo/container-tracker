@@ -546,6 +546,105 @@ describe('toShipmentDetailVM post-completion tracking mapping', () => {
   })
 })
 
+describe('toShipmentDetailVM advisory tracking mapping', () => {
+  it('maps the new advisory validation detectors through shipment and container VMs', () => {
+    const example = makeProcessDetailResponse({
+      id: 'proc-advisory-validation',
+      tracking_freshness_token: 'token-advisory-validation',
+      reference: 'REF-ADVISORY',
+      origin: { display_name: 'Shanghai' },
+      destination: { display_name: 'Santos' },
+      carrier: 'msc',
+      bill_of_lading: null,
+      booking_number: null,
+      source: 'api',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tracking_validation: {
+        has_issues: true,
+        highest_severity: 'warning',
+        affected_container_count: 1,
+        top_issue: {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'warning',
+          reason_key: 'tracking.validation.expectedPlanNotReconcilable',
+          affected_area: 'series',
+          affected_location: 'BRSSZ',
+          affected_block_label_key: null,
+        },
+      },
+      containers: [
+        makeContainerResponse({
+          id: 'container-advisory',
+          container_number: 'FCIU2000205',
+          tracking_validation: {
+            has_issues: true,
+            highest_severity: 'warning',
+            finding_count: 2,
+            active_issues: [
+              {
+                code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+                severity: 'warning',
+                reason_key: 'tracking.validation.expectedPlanNotReconcilable',
+                affected_area: 'series',
+                affected_location: 'BRSSZ',
+                affected_block_label_key: null,
+              },
+              {
+                code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+                severity: 'warning',
+                reason_key: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+                affected_area: 'timeline',
+                affected_location: 'BRSSZ',
+                affected_block_label_key: null,
+              },
+            ],
+          },
+        }),
+      ],
+    })
+
+    const result = toShipmentDetailVM(example)
+
+    expect(result.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 1,
+      topIssue: {
+        code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+        severity: 'warning',
+        reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      findingCount: 2,
+      activeIssues: [
+        {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'warning',
+          reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+        {
+          code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+          severity: 'warning',
+          reasonKey: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+          affectedArea: 'timeline',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      ],
+    })
+  })
+})
+
 describe('toShipmentDetailVM operational support mapping', () => {
   it('maps compact shipment alert incidents when the additive payload is present', () => {
     const example = makeProcessDetailResponse({

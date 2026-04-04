@@ -150,4 +150,87 @@ describe('trackingValidation.projection', () => {
       affectedBlockLabelKey: null,
     })
   })
+
+  it('surfaces the new advisory detectors through the compact projection without leaking technical detail', () => {
+    const observations = [
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+        created_at: '2026-04-01T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'arrival-actual',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+        created_at: '2026-04-10T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'arrival-expected-late',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-04-11T10:00:00.000Z'),
+        created_at: '2026-04-11T10:30:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'MSCU1234567',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'MSCU1234567',
+        observations,
+        derived_at: '2026-04-12T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'ARRIVED_AT_POD',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      now: Instant.fromIso('2026-04-12T10:00:00.000Z'),
+    })
+
+    expect(summary).toMatchObject({
+      hasIssues: true,
+      findingCount: 2,
+      highestSeverity: 'ADVISORY',
+      topIssue: {
+        code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+        severity: 'ADVISORY',
+        reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+    expect(summary.activeIssues).toEqual([
+      {
+        code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+        severity: 'ADVISORY',
+        reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+      {
+        code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+        severity: 'ADVISORY',
+        reasonKey: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+        affectedArea: 'timeline',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    ])
+    expect(summary.activeIssues[0]).not.toHaveProperty('debugEvidence')
+  })
 })

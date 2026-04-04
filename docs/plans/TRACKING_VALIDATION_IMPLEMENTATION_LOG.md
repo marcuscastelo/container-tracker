@@ -1443,3 +1443,170 @@
   - aprofundar a família de detectores plugináveis
   - decidir quando vale expor `evidenceSummary` em superfícies especializadas sem contaminar dashboard/shipment default
   - considerar ordenação/agrupamento multi-finding por família sem perder a regra timeline-first
+
+## X. Kickoff da Fase 9
+- Data de início: 2026-04-04
+- Fase atual: V1 pluginável / Fase 9 detectores V1.1 conservadores
+- Estado herdado das fases anteriores:
+  - o framework pluginável segue centralizado no Tracking BC, com registry explícito, ordem determinística e sem caminho paralelo
+  - detectores ativos em produção:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - `severity` já cruza domínio -> projection -> DTO -> VM -> UI
+  - `debugEvidence` permanece interno; dashboard/process/shipment/time travel continuam consumindo apenas contrato público compacto
+  - dashboard segue leve com `top_issue`; shipment e time travel seguem timeline-first com `active_issues`
+  - lifecycle operacional continua auxiliar e não governa a renderização atual/histórica
+- Entendimento inicial:
+  - a Fase 9 precisa ampliar a cobertura semântica com exatamente 2 detectores novos, mantendo a feature inteiramente dentro do framework pluginável da Fase 1
+  - os candidatos válidos são `UNRECONCILABLE_TRACKING_STATE`, `EXPECTED_PLAN_NOT_RECONCILABLE` e `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+  - a escolha deve privilegiar critério formal, baixo falso positivo e alto valor operacional
+  - a fase não pode transformar dado apenas incompleto em validation issue; a ausência simples continua válida sem contradição objetiva
+- Detectores escolhidos para esta fase:
+  - `EXPECTED_PLAN_NOT_RECONCILABLE`
+    - regra inicial fechada: série crítica com `ACTUAL` primário e `EXPECTED` remanescente classificado como `REDUNDANT_AFTER_ACTUAL` no mesmo `seriesKey`
+    - allowlist inicial: `LOAD | DEPARTURE | ARRIVAL | DISCHARGE | DELIVERY`
+    - severidade inicial: `ADVISORY`
+  - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+    - regra inicial fechada: cronologia ACTUAL com `DISCHARGE` e contradição marítima forte por milestone intermediário ausente
+    - subcasos iniciais:
+      - `LOAD -> DISCHARGE` sem `DEPARTURE`
+      - `DEPARTURE -> DISCHARGE` sem `ARRIVAL`
+    - severidade inicial: `ADVISORY`
+- Detector conscientemente deixado de fora:
+  - `UNRECONCILABLE_TRACKING_STATE`
+    - permanece fora da Fase 9 porque ainda está amplo demais e tenderia a virar umbrella/catch-all ou duplicar detectores mais específicos da V2
+- Justificativa da escolha:
+  - ambos os detectores escolhidos podem ser ancorados em semântica canônica já disponível no Tracking BC (`classifySeries`, cronologia ACTUAL, series/timeline/status read models)
+  - ambos têm cenário de controle claro e conseguem distinguir comportamento legítimo de ruído sem jogar semântica para a UI
+  - o detector excluído exigiria, nesta altura, critérios amplos demais para continuar conservador
+- Plano cirúrgico:
+  - registrar os dois plugins em `domain/detectors/*` e conectá-los ao registry existente
+  - manter o contrato público intacto, adicionando apenas novos `code` / `reasonKey`
+  - cobrir os novos detectores com testes unitários positivos/negativos e regressões de projection/DTO/VM
+  - atualizar `pt-BR` com as novas chaves de razão
+  - executar QA manual real com Scenario Lab para:
+    - `expected_after_actual`
+    - `missing_departure`
+    - `missing_arrival`
+  - validar dashboard, shipment e time travel pelo mesmo pipeline já existente
+
+## Y. Fechamento da Fase 9
+- Data de fechamento: 2026-04-04
+- Escopo entregue:
+  - exatamente 2 detectores V1.1 conservadores adicionados ao registry pluginável do Tracking BC
+  - cadeia E2E preservada sem novo payload público, sem nova rota e sem novo caminho fora do slice `validation`
+  - dashboard permaneceu leve com `top_issue` compacto e shipment/time travel permaneceram timeline-first com `active_issues`
+
+### Y.1 O que foi implementado
+- Detectores novos:
+  - `EXPECTED_PLAN_NOT_RECONCILABLE`
+    - dispara apenas quando a própria série crítica já tem `ACTUAL` primário e ainda preserva `EXPECTED` classificado como `REDUNDANT_AFTER_ACTUAL`
+    - allowlist fechada nesta fase:
+      - `LOAD`
+      - `DEPARTURE`
+      - `ARRIVAL`
+      - `DISCHARGE`
+      - `DELIVERY`
+    - `affectedScope = SERIES`
+    - severidade: `ADVISORY`
+  - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+    - dispara apenas em cronologia ACTUAL com contradição marítima forte já concluída por milestone posterior
+    - subcasos fechados nesta fase:
+      - `LOAD -> ARRIVAL` sem `DEPARTURE`
+      - `LOAD -> DISCHARGE` sem `DEPARTURE`
+      - `DEPARTURE -> DISCHARGE` sem `ARRIVAL`
+    - `affectedScope = TIMELINE`
+    - severidade: `ADVISORY`
+- Registry / framework:
+  - os dois detectores foram ligados exclusivamente via `domain/detectors/index.ts`
+  - nenhum helper genérico novo ou trilho paralelo foi introduzido
+  - `UNRECONCILABLE_TRACKING_STATE` permaneceu explicitamente fora desta fase
+- Fronteiras:
+  - nenhum shape público novo foi criado
+  - a mudança pública foi só a entrada de novos `code` e `reason_key` dentro do contrato já existente
+  - `debugEvidence` e `evidenceSummary` continuaram internos ao Tracking BC
+
+### Y.2 Critérios objetivos adotados
+- `EXPECTED_PLAN_NOT_RECONCILABLE` só considera a mesma série e só dispara quando o `EXPECTED` remanescente já é formalmente redundante frente a um `ACTUAL` confirmado.
+- `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT` só considera ACTUALs marítimos fortes e exige milestone posterior objetiva para provar a contradição.
+- Ambas as regras foram limitadas a `ADVISORY` nesta fase porque exigem revisão humana, mas não provam sozinhas risco operacional tão forte quanto os detectores críticos já existentes.
+- O candidato excluído `UNRECONCILABLE_TRACKING_STATE` ficou fora porque ainda exigiria umbrella semântica ampla demais para continuar conservador.
+
+### Y.3 Contratos alterados
+- Públicos:
+  - nenhum campo adicional em DTO/VM/read model público
+  - `tracking_validation` continuou compacto em dashboard, shipment detail e time travel
+- Internos:
+  - novos plugins:
+    - `expectedPlanNotReconcilable.detector.ts`
+    - `missingCriticalMilestoneWithContradictoryContext.detector.ts`
+  - novas chaves i18n:
+    - `tracking.validation.expectedPlanNotReconcilable`
+    - `tracking.validation.missingCriticalMilestoneWithContradictoryContext`
+
+### Y.4 Testes criados / ajustados
+- Detectores:
+  - `src/modules/tracking/features/validation/domain/tests/expectedPlanNotReconcilable.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/missingCriticalMilestoneWithContradictoryContext.detector.test.ts`
+- Agregação / projection:
+  - `src/modules/tracking/features/validation/application/tests/trackingValidation.projection.test.ts`
+- DTO -> VM:
+  - `src/modules/process/interface/http/tests/process.http.mappers.test.ts`
+  - `src/modules/process/ui/mappers/tests/processList.ui-mapper.test.ts`
+  - `src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts`
+  - `src/modules/process/ui/mappers/tests/tracking-time-travel.ui-mapper.test.ts`
+- Cobertura mínima validada:
+  - disparo positivo e negativo dos dois detectores novos
+  - agregação por container/processo com `top_issue`
+  - mapeamento estável até dashboard, shipment e time travel
+  - compatibilidade com detectores anteriores e ausência de leak de payload técnico
+
+### Y.5 QA manual realizado
+- Ambiente:
+  - app local validado em `http://localhost:3002`
+- Scenario Lab utilizado:
+  - `expected_after_actual` step 2 reutilizando o mesmo processo do step 1
+  - `missing_departure` step 1
+  - `missing_arrival` step 1
+  - `booking.basic` step 1 como controle sem issue
+- APIs inspecionadas:
+  - `/api/processes`
+  - `/api/processes/:id`
+  - `/api/tracking/containers/:id/time-travel`
+- Validações executadas:
+  - dashboard mostra processo com `top_issue` compacto dos detectores novos
+  - shipment com `EXPECTED_PLAN_NOT_RECONCILABLE` mostra banner/chip/motivo sem poluir a timeline
+  - shipment com `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT` mostra banner/chip/motivo sem rederivar semântica na UI
+  - shipment controle permanece sem banner/chip indevido
+  - time travel preserva `tracking_validation.active_issues` no sync histórico sem expor `debugEvidence`
+  - mobile e desktop permaneceram legíveis e consistentes
+- Evidências geradas:
+  - `phase9-dashboard-desktop.png`
+  - `phase9-dashboard-mobile.png`
+  - `phase9-shipment-expected-after-actual-desktop.png`
+  - `phase9-shipment-expected-after-actual-mobile.png`
+  - `phase9-shipment-missing-arrival-desktop.png`
+  - `phase9-shipment-control-desktop.png`
+  - `phase9-time-travel-missing-arrival-desktop.png`
+
+### Y.6 Problemas encontrados
+- O Playwright MCP começou a sessão preso a um browser anterior e precisou de limpeza do processo antes da passada manual final.
+- O `pnpm check` inicial falhou apenas por formatação/import order dos detectores novos e por um detalhe de tipagem em fixture de `tracking-time-travel.ui-mapper.test.ts`; ambos foram corrigidos antes do fechamento final.
+
+### Y.7 Limitações intencionais
+- A fase não implementa `UNRECONCILABLE_TRACKING_STATE`.
+- Não houve mudança de severidade para `CRITICAL` nesses dois detectores.
+- Não houve expansão do payload do dashboard nem detalhe técnico adicional no shipment/time travel além dos novos `code`/`reason_key`.
+
+### Y.8 Checks finais
+- `pnpm run type-check`
+- `pnpm vitest run src/modules/tracking/features/validation/domain/tests/expectedPlanNotReconcilable.detector.test.ts src/modules/tracking/features/validation/domain/tests/missingCriticalMilestoneWithContradictoryContext.detector.test.ts src/modules/tracking/features/validation/application/tests/trackingValidation.projection.test.ts src/modules/process/interface/http/tests/process.http.mappers.test.ts src/modules/process/ui/mappers/tests/processList.ui-mapper.test.ts src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts src/modules/process/ui/mappers/tests/tracking-time-travel.ui-mapper.test.ts`
+- `pnpm check`
+- Resultado final:
+  - verde em 2026-04-04
+
+### Y.9 Próximo passo recomendado para a Fase 10
+- Introduzir o próximo detector pluginável apenas se ele puder nascer com critério tão fechado quanto os dois desta fase.
+- O melhor candidato parece ser um detector de reconciliação impossível focado em regressão/mutação estrutural específica, não um umbrella geral.
+- Se a Fase 10 precisar de detalhe extra para triagem, priorizar superfícies especializadas e manter dashboard e shipment default compactos.

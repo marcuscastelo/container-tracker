@@ -328,6 +328,47 @@ describe('process.http.mappers', () => {
     })
   })
 
+  it('maps the new advisory validation detector without changing the compact response shape', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+        tracking_validation_top_issue: {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'ADVISORY',
+          reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(Object.keys(parsed.tracking_validation).sort()).toEqual([
+      'affected_container_count',
+      'has_issues',
+      'highest_severity',
+      'top_issue',
+    ])
+    expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
+    expect(parsed.tracking_validation.top_issue).toEqual({
+      code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+      severity: 'warning',
+      reason_key: 'tracking.validation.expectedPlanNotReconcilable',
+      affected_area: 'series',
+      affected_location: 'BRSSZ',
+      affected_block_label_key: null,
+    })
+  })
+
   it('keeps status microbadge nullable when there is no advanced subset status', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),
