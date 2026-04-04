@@ -35,6 +35,25 @@ function toSeverityLabel(
   return severity === 'danger' ? labels.danger : labels.warning
 }
 
+export function resolveTrackingValidationDetailsDescription(command: {
+  readonly mode: 'current' | 'historical'
+  readonly containerNumber: string | null
+  readonly translate: (key: string, options?: Record<string, unknown>) => string
+  readonly unknownContainerLabel: string
+}): string {
+  const container = command.containerNumber ?? command.unknownContainerLabel
+
+  if (command.mode === 'historical') {
+    return command.translate('shipmentView.validation.historicalDetailsDescription', {
+      container,
+    })
+  }
+
+  return command.translate('shipmentView.validation.detailsDescription', {
+    container,
+  })
+}
+
 function TrackingValidationIssueCard(props: IssueCardProps): JSX.Element {
   const { t } = useTranslation()
   const displayState = createMemo(() =>
@@ -93,15 +112,11 @@ export function TrackingReviewIssuesPanel(props: Props): JSX.Element {
   }))
 
   const description = createMemo(() => {
-    const container = props.containerNumber ?? t(keys.shipmentView.currentStatus.unknown)
-    if (props.mode === 'historical') {
-      return t(keys.shipmentView.validation.historicalDetailsDescription, {
-        container,
-      })
-    }
-
-    return t(keys.shipmentView.validation.detailsDescription, {
-      container,
+    return resolveTrackingValidationDetailsDescription({
+      mode: props.mode,
+      containerNumber: props.containerNumber,
+      translate: t,
+      unknownContainerLabel: t(keys.shipmentView.currentStatus.unknown),
     })
   })
 

@@ -40,7 +40,7 @@ import {
   type TrackingValidationContainerSummary,
   type TrackingValidationProcessSummary,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
-import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'

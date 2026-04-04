@@ -47,7 +47,7 @@ describe('tracking-validation-copy.presenter', () => {
   it('formats the compact dashboard tooltip without exposing technical evidence', () => {
     expect(
       toTrackingValidationTooltipText({
-        aggregateLabel: 'Este processo contém 1 container com validação necessária',
+        aggregateLabel: 'Este processo contém 1 container que requer validação',
         issue: makeIssue({
           code: 'POST_COMPLETION_TRACKING_CONTINUED',
           severity: 'danger',
@@ -64,7 +64,7 @@ describe('tracking-validation-copy.presenter', () => {
       }),
     ).toBe(
       [
-        'Este processo contém 1 container com validação necessária',
+        'Este processo contém 1 container que requer validação',
         'O tracking continuou depois de um marco forte de conclusão.',
         'Área: Timeline',
       ].join('\n'),

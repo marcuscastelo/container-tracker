@@ -9,7 +9,7 @@ import type {
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingValidationProcessSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
-import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type { TemporalValueDto } from '~/shared/time/dto'
 
 /**

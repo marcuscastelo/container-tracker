@@ -5,17 +5,17 @@ import type { ContainerStatus } from '~/modules/tracking/features/status/domain/
 import { buildTimelineRenderList } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.blocks.readmodel'
 import { deriveTimelineWithSeriesReadModel } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import {
+  compareTrackingValidationDisplayIssues,
+  type TrackingValidationDisplayIssue,
+  toTrackingValidationAffectedArea,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import { TRACKING_VALIDATION_DETECTORS } from '~/modules/tracking/features/validation/domain/detectors'
 import {
   createEmptyTrackingValidationDetectorSignals,
   type TrackingValidationContext,
   type TrackingValidationDetectorSignals,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
-import {
-  compareTrackingValidationDisplayIssues,
-  type TrackingValidationDisplayIssue,
-  toTrackingValidationAffectedArea,
-} from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
 import type {
   TrackingValidationContainerSummary as TrackingValidationContainerSummaryModel,

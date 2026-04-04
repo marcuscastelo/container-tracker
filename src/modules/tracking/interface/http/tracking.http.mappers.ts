@@ -17,7 +17,7 @@ import type {
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
-import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,

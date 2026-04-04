@@ -227,8 +227,8 @@
       },
       "trackingValidation": {
         "chip": "Validação necessária",
-        "affectedSingle": "Este processo contém 1 container com validação necessária",
-        "affectedMultiple": "Este processo contém {{count}} containers com validação necessária"
+        "affectedSingle": "Este processo contém 1 container que requer validação",
+        "affectedMultiple": "Este processo contém {{count}} containers que requerem validação"
       },
       "filters": {
         "title": "Filtros",
@@ -328,12 +328,13 @@
     },
     "validation": {
       "bannerTitle": "Validação necessária",
-      "bannerDescription": "A leitura atual requer validação em {{count}} container(s).",
+      "bannerDescriptionSingle": "A leitura atual requer validação em 1 container.",
+      "bannerDescriptionMultiple": "A leitura atual requer validação em {{count}} containers.",
       "historicalBannerDescription": "O snapshot selecionado do container {{container}} requer validação.",
       "containerChip": "Validação necessária",
-      "detailsTitle": "Motivo da validação",
-      "detailsDescription": "Confira abaixo por que o container {{container}} precisa de validação e onde revisar a inconsistência.",
-      "historicalDetailsDescription": "Confira abaixo por que o snapshot do container {{container}} exigia validação neste momento histórico.",
+      "detailsTitle": "Motivos da validação",
+      "detailsDescription": "Confira abaixo por que o container {{container}} requer validação agora e onde revisar a inconsistência.",
+      "historicalDetailsDescription": "Confira abaixo por que o snapshot histórico do container {{container}} exigia validação neste momento.",
       "labels": {
         "area": "Área",
         "block": "Bloco",

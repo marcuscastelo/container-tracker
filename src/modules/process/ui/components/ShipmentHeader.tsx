@@ -3,6 +3,7 @@ import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
 import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
+import { resolveShipmentTrackingValidationBannerDescription } from '~/modules/process/ui/components/shipment-header-tracking-review.presenter'
 import {
   toTrackingValidationBannerClasses,
   toTrackingValidationDisplayState,
@@ -292,16 +293,12 @@ export function ShipmentHeader(props: Props): JSX.Element {
     return `${t(keys.shipmentView.eta)}: ${value}`
   })
   const trackingValidationDescription = createMemo(() => {
-    if (props.trackingValidationMode === 'historical') {
-      return t(keys.shipmentView.validation.historicalBannerDescription, {
-        container:
-          props.historicalTrackingValidationContainerNumber ??
-          t(keys.shipmentView.currentStatus.unknown),
-      })
-    }
-
-    return t(keys.shipmentView.validation.bannerDescription, {
-      count: trackingValidation().affectedContainerCount,
+    return resolveShipmentTrackingValidationBannerDescription({
+      trackingValidationMode: props.trackingValidationMode,
+      affectedContainerCount: trackingValidation().affectedContainerCount,
+      historicalContainerNumber: props.historicalTrackingValidationContainerNumber,
+      translate,
+      unknownContainerLabel: t(keys.shipmentView.currentStatus.unknown),
     })
   })
 

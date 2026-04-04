@@ -16,6 +16,24 @@ It does not create a new status, rewrite facts, or move semantics to UI/capabili
 - Aggregation/lifecycle services: `domain/services/*`
 - Compact projection for application/read models: `application/projection/trackingValidation.projection.ts`
 
+## Active Detectors In V1 / V1.1
+
+- `CONFLICTING_CRITICAL_ACTUALS`
+- `POST_COMPLETION_TRACKING_CONTINUED`
+- `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+- `EXPECTED_PLAN_NOT_RECONCILABLE`
+- `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+
+These five detectors are the agreed V1/V1.1 set. Final polish phases must keep them on the same registry path instead of opening any parallel wiring.
+
+## Contract Ownership By Layer
+
+- Domain-only detector output: `TrackingValidationFinding`
+- Application/read-model display contract: `TrackingValidationDisplayIssue`
+- HTTP/UI consume only compact summaries derived from the application projection
+
+`TrackingValidationDisplayIssue` is intentionally not a detector/domain contract. It exists to expose compact product-safe explanation metadata without leaking detector internals across BC boundaries.
+
 ## Detector Conventions
 
 - Add one detector per file in `domain/detectors/`.

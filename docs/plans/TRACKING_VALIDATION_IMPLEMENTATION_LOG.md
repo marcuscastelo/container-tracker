@@ -1610,3 +1610,148 @@
 - Introduzir o próximo detector pluginável apenas se ele puder nascer com critério tão fechado quanto os dois desta fase.
 - O melhor candidato parece ser um detector de reconciliação impossível focado em regressão/mutação estrutural específica, não um umbrella geral.
 - Se a Fase 10 precisar de detalhe extra para triagem, priorizar superfícies especializadas e manter dashboard e shipment default compactos.
+
+## Z. Kickoff da Fase 10
+- Data de início: 2026-04-04
+- Fase atual: V1 pluginável / Fase 10 fechamento final
+- Estado herdado das fases anteriores:
+  - o framework pluginável segue centralizado no Tracking BC, com registry explícito, ordem determinística e sem caminho paralelo
+  - detectores ativos em produção:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+    - `EXPECTED_PLAN_NOT_RECONCILABLE`
+    - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+  - `severity` já cruza domínio -> projection -> DTO -> VM -> UI
+  - dashboard segue leve com `top_issue`; shipment e time travel seguem timeline-first com `active_issues`
+  - `debugEvidence` segue interna ao Tracking BC e não vaza para contratos públicos
+  - lifecycle operacional continua auxiliar e não governa a renderização atual/histórica
+- Entendimento inicial:
+  - a Fase 10 é de fechamento da V1/V1.1 pluginável, não de abertura de detector novo, payload novo ou rota nova
+  - o principal resíduo arquitetural remanescente é `TrackingValidationDisplayIssue` ainda viver em `domain/model` mesmo sendo consumido como contrato de projection/read model pela cadeia application -> HTTP -> UI
+  - a fase precisa revisar coerência completa detector -> projection -> DTO -> mapper -> VM -> UI, garantir que não exista drift e deixar microcopy atual/histórica mais consistente
+  - o naming visual final `Validação necessária` permanece preservado nesta fase
+- Plano cirúrgico:
+  - mover `TrackingValidationDisplayIssue` e seus helpers para `application/projection`, mantendo `TrackingValidationFinding` como contrato estritamente de domínio
+  - atualizar imports em Tracking HTTP, Process application e Process HTTP para o novo contrato application-level
+  - polir microcopy do dashboard/shipment sem expandir payload nem mover semântica para a UI
+  - adicionar regressão focada do shipment header para copy atual vs histórica
+  - revisar README do slice e registrar claramente o fechamento V1/V1.1 e o que fica para V2
+
+## AA. Fechamento da Fase 10
+- Data de fechamento: 2026-04-04
+- Escopo efetivamente entregue:
+  - fechamento final da V1 pluginável sem abrir detector novo, sem criar rota nova e sem expandir payload público
+  - cleanup arquitetural do contrato `TrackingValidationDisplayIssue`, agora owned por `application/projection` do Tracking BC
+  - polimento final de copy/i18n do dashboard, shipment atual e shipment histórico
+  - regressões finais cobrindo banner e painel de motivos em modo atual vs histórico
+
+### AA.1 Implementação concluída
+- Boundary cleanup:
+  - `TrackingValidationDisplayIssue` e helpers de ordenação/área afetada foram movidos de `domain/model` para `application/projection`
+  - Process application, Process HTTP e Tracking HTTP passaram a consumir o contrato application-level
+  - o arquivo antigo em `domain/model` foi removido, eliminando o resíduo cross-BC/domain
+- UX / microcopy:
+  - dashboard manteve o naming visual `Validação necessária`, mas com texto agregador mais natural para singular/plural
+  - shipment atual passou a usar copy explícita para singular/plural sem truques de fallback
+  - shipment histórico manteve copy específica por container/snapshot
+  - o painel lateral de motivos foi alinhado para `Motivos da validação`, com descrição distinta entre modo atual e histórico
+- Documentação interna:
+  - README do slice de validation foi atualizado com os detectores ativos da V1/V1.1 e com a ownership rule do contrato application-level
+
+### AA.2 Contratos e payloads revisados
+- Domínio:
+  - `TrackingValidationFinding` continua sendo o contrato canônico do detector/plugin
+- Application / projection:
+  - summary + `TrackingValidationDisplayIssue` seguem como read model compacto owned pelo Tracking BC
+- HTTP / DTO:
+  - nenhum shape público novo
+  - dashboard continua apenas com `has_issues`, `highest_severity`, `affected_container_count`, `top_issue`
+  - shipment e time travel continuam apenas com `finding_count`, `active_issues`, `affected_area`, `affected_location`, `affected_block_label_key`
+- Segurança de payload:
+  - `debugEvidence` continua interna ao Tracking BC e não vazou para dashboard, shipment ou time travel
+
+### AA.3 Testes criados / ajustados
+- Ajustados:
+  - `src/modules/process/ui/components/tests/tracking-validation-copy.presenter.test.ts`
+- Criados:
+  - `src/modules/process/ui/components/tests/ShipmentHeader.validation.test.tsx`
+  - `src/modules/process/ui/components/tests/TrackingReviewIssuesPanel.validation.test.tsx`
+- Suíte focada revalidada:
+  - projection do tracking validation
+  - process HTTP mappers
+  - process UI mappers
+  - shipment tracking review display
+  - copy atual/histórica do banner
+  - copy atual/histórica do painel de motivos
+
+### AA.4 QA manual amplo realizado
+- Ambiente:
+  - app local validado em `http://localhost:3003`
+- Scenario Lab validado:
+  - `booking.basic` step 1
+  - `conflict.double_actual` step 2
+  - `delivery_post_completion_continued` step 2
+  - `post_carriage_maritime_inconsistent` step 4 no presente + sync histórico com issue
+  - `expected_after_actual` step 2
+  - `missing_departure` step 1
+  - `missing_arrival` step 1
+- APIs inspecionadas:
+  - `/api/processes`
+  - `/api/processes/:id`
+  - `/api/tracking/containers/:id/time-travel`
+- Validações executadas:
+  - dashboard continua leve, com `top_issue` compacto e sem detalhe técnico indevido
+  - shipment atual continua timeline-first e renderiza banner/chip/painel sem rederivar semântica
+  - shipment histórico continua coerente por sync e usa copy específica de snapshot/container
+  - detectores críticos e advisory continuam atravessando domínio -> projection -> DTO -> VM -> UI
+  - detectores extras da Fase 9 continuam corretos em payload e UI
+  - shipment controle sem issue permanece sem banner/chip indevido
+  - o modo histórico não expõe `debugEvidence`
+- Evidências geradas:
+  - `phase10-dashboard-desktop.png`
+  - `phase10-dashboard-mobile.png`
+  - `phase10-shipment-post-completion-desktop.png`
+  - `phase10-shipment-expected-after-actual-desktop.png`
+  - `phase10-shipment-expected-after-actual-mobile.png`
+  - `phase10-shipment-time-travel-historical-desktop.png`
+
+### AA.5 Resíduos removidos e decisões preservadas
+- Removido:
+  - caminho residual em que um contrato de projection vivia sob `domain/model`
+- Preservado explicitamente:
+  - Tracking segue único dono da semântica de validation issues
+  - UI continua sem detectar issue
+  - capabilities continuam sem definir regra canônica
+  - dashboard segue leve
+  - shipment segue timeline-first
+  - lifecycle operacional e time travel seguem integrados sem virarem fonte de verdade
+
+### AA.6 Riscos residuais pequenos
+- Ainda existe risco futuro de surgir drift de copy entre superfícies se novos modos históricos forem adicionados sem reaproveitar os presenters criados nesta fase.
+- O conjunto atual de detectores continua intencionalmente conservador; alguns casos de “estado impossível” ainda permanecem fora da V1/V1.1 para evitar umbrella semântica ampla demais.
+
+### AA.7 Fechamento explícito V1 / V1.1 / V2
+- V1 entregue:
+  - framework pluginável centralizado no Tracking BC
+  - registry determinístico
+  - cadeia detector -> projection -> DTO -> VM -> UI
+  - dashboard leve com `top_issue`
+  - shipment/time travel com `active_issues`
+  - severidade `ADVISORY` / `CRITICAL`
+  - detectores:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+- V1.1 entregue:
+  - detectores:
+    - `EXPECTED_PLAN_NOT_RECONCILABLE`
+    - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
+  - endurecimento de contracts/evidence/debug
+  - integração final consistente com lifecycle operacional e time travel
+- Fica explicitamente para V2:
+  - `UNRECONCILABLE_TRACKING_STATE`
+  - regressões impossíveis pós-marco forte
+  - incompatibilidades estruturais mais amplas entre `EXPECTED` e `ACTUAL`
+  - mistura de ciclos logísticos ou blocos canônicos estruturalmente impossíveis
+  - plugins agregados de provider/parser health
