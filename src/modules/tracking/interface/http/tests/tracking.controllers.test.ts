@@ -404,6 +404,12 @@ describe('tracking controllers', () => {
     expect(body.sync_count).toBe(1)
     expect(body.selected_snapshot_id).toBe('snapshot-1')
     expect(body.syncs[0]?.snapshot_id).toBe('snapshot-1')
+    expect(body.syncs[0]?.tracking_validation).toEqual({
+      has_issues: false,
+      highest_severity: null,
+      finding_count: 0,
+      active_issues: [],
+    })
     expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
   })
 

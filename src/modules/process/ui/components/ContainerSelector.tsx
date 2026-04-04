@@ -1,6 +1,10 @@
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { computeRowDistribution } from '~/modules/process/ui/components/container-distribution'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import { toContainerEtaChipLabel } from '~/modules/process/ui/utils/eta-labels'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -14,6 +18,7 @@ type ContainerSelectorItemLabels = {
   readonly etaDelivered: string
   readonly etaMissing: string
   readonly dataIssue: string
+  readonly trackingValidation: string
   readonly etaLabel: string
 }
 
@@ -42,6 +47,12 @@ function ContainerSelectorItem(props: {
     }
     return 'border-border bg-surface hover:border-border-strong hover:bg-surface-muted'
   }
+
+  const trackingValidationDisplayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.container.trackingValidation.hasIssues,
+      highestSeverity: props.container.trackingValidation.highestSeverity,
+    })
 
   return (
     <button
@@ -79,6 +90,15 @@ function ContainerSelectorItem(props: {
             {props.labels.dataIssue}
           </span>
         </Show>
+        <Show when={props.container.trackingValidation.hasIssues}>
+          <span
+            class={`inline-flex rounded-md border px-1.5 py-0.5 text-micro font-medium whitespace-nowrap ${toTrackingValidationBadgeClasses(
+              trackingValidationDisplayState(),
+            )}`}
+          >
+            {props.labels.trackingValidation}
+          </span>
+        </Show>
       </div>
     </button>
   )
@@ -98,6 +118,7 @@ export function ContainerSelector(props: {
     etaDelivered: t(keys.tracking.status.DELIVERED),
     etaMissing: t(keys.shipmentView.operational.chips.etaMissing),
     dataIssue: t(keys.shipmentView.operational.chips.dataIssue),
+    trackingValidation: t(keys.shipmentView.validation.containerChip),
     etaLabel: t(keys.shipmentView.currentStatus.eta),
   }
 

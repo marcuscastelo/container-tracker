@@ -65,6 +65,7 @@ export function ShipmentScreen(props: ShipmentScreenProps) {
 
   const trackingTimeTravel = useTrackingTimeTravelController({
     selectedContainer: selection.selectedContainer,
+    trackingFreshnessToken: () => resource.latestShipment()?.trackingFreshnessToken ?? null,
   })
 
   useShipmentAlertNavigation({

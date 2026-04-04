@@ -225,6 +225,11 @@
       "alertTooltip": {
         "additionalAlerts": "+{{count}} alerta(s) adicional(ais)"
       },
+      "trackingValidation": {
+        "chip": "Validação necessária",
+        "affectedSingle": "Este processo contém 1 container que requer validação",
+        "affectedMultiple": "Este processo contém {{count}} containers que requerem validação"
+      },
       "filters": {
         "title": "Filtros",
         "all": "Todos",
@@ -319,6 +324,29 @@
         "processEtaTitle": "ETA (processo)",
         "noEta": "ETA indisponível",
         "incomplete": "parcial"
+      }
+    },
+    "validation": {
+      "bannerTitle": "Validação necessária",
+      "bannerDescriptionSingle": "A leitura atual requer validação em 1 container.",
+      "bannerDescriptionMultiple": "A leitura atual requer validação em {{count}} containers.",
+      "historicalBannerDescription": "O snapshot selecionado do container {{container}} requer validação.",
+      "containerChip": "Validação necessária",
+      "detailsTitle": "Motivos da validação",
+      "detailsDescription": "Confira abaixo por que o container {{container}} requer validação agora e onde revisar a inconsistência.",
+      "historicalDetailsDescription": "Confira abaixo por que o snapshot histórico do container {{container}} exigia validação neste momento.",
+      "labels": {
+        "area": "Área",
+        "block": "Bloco",
+        "location": "Local"
+      },
+      "areas": {
+        "container": "Container",
+        "operational": "Operacional",
+        "process": "Processo",
+        "series": "Série de eventos",
+        "status": "Status",
+        "timeline": "Timeline"
       }
     },
     "actions": {
@@ -798,6 +826,14 @@
       "info": "Informação",
       "warning": "Aviso",
       "danger": "Crítico"
+    },
+    "validation": {
+      "conflictingCriticalActuals": "Há fatos críticos conflitantes na mesma série de eventos.",
+      "postCompletionTrackingContinued": "O tracking continuou depois de um marco forte de conclusão.",
+      "canonicalTimelineClassificationInconsistent": "A classificação canônica da timeline ficou inconsistente com os eventos atuais.",
+      "canonicalTimelineSegmentDuplicated": "A mesma etapa da jornada apareceu duplicada na timeline atual.",
+      "expectedPlanNotReconcilable": "Há previsão remanescente que não se reconcilia com o fato ACTUAL confirmado.",
+      "missingCriticalMilestoneWithContradictoryContext": "Há milestone marítimo crítico ausente em um contexto canônico contraditório."
     }
   },
   "alerts": {

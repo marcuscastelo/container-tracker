@@ -12,6 +12,11 @@ import {
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import type { FindContainersHotReadProjectionResult } from '~/modules/tracking/application/usecases/find-containers-hot-read-projection.usecase'
+import {
+  aggregateTrackingValidationProjection,
+  pickTopTrackingValidationIssueForProcess,
+  type TrackingValidationContainerSummary,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { systemClock } from '~/shared/time/clock'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
@@ -24,6 +29,7 @@ import type { TemporalValue } from '~/shared/time/temporal-value'
  * Matches the subset of GetContainerSummaryResult we consume.
  */
 type ContainerTrackingSummary = {
+  readonly container_number: string
   readonly status: string
   readonly operational?: {
     readonly eta: {
@@ -38,6 +44,7 @@ type ContainerTrackingSummary = {
     readonly type: string
     readonly triggered_at: string
   }[]
+  readonly tracking_validation: TrackingValidationContainerSummary
   readonly has_observations: boolean
   readonly last_event_at: TemporalValue | null
 }
@@ -80,6 +87,13 @@ type ProcessWithOperationalSummary = {
   readonly pwc: ProcessWithContainers
   readonly summary: ProcessOperationalSummary
   readonly sync: ProcessSyncSummaryReadModel
+}
+
+function toTrackingValidationAttentionSeverity(summary: {
+  readonly highestSeverity: 'ADVISORY' | 'CRITICAL' | null
+}): 'danger' | null {
+  if (summary.highestSeverity === 'CRITICAL') return 'danger'
+  return null
 }
 
 type ListProcessesWithOperationalSummaryResult = {
@@ -480,6 +494,18 @@ export function aggregateOperationalSummary(
 
   // --- Transshipment ---
   const hasTransshipment = allActiveAlerts.some((a) => a.type === 'TRANSSHIPMENT')
+  const trackingValidation = aggregateTrackingValidationProjection(
+    summaries.map((summary) => summary.tracking_validation),
+  )
+  const trackingValidationTopIssue = pickTopTrackingValidationIssueForProcess(
+    summaries.map((summary) => ({
+      containerNumber: summary.container_number,
+      topIssue: summary.tracking_validation.topIssue,
+    })),
+  )
+  const validationAttentionSeverity = toTrackingValidationAttentionSeverity(trackingValidation)
+  const attentionSeverity =
+    validationAttentionSeverity === null ? highestAlertSeverity : validationAttentionSeverity
 
   // --- Last Event ---
   let lastEventAt: TemporalValue | null = null
@@ -519,7 +545,10 @@ export function aggregateOperationalSummary(
     },
     alerts_count: alertsCount,
     highest_alert_severity: highestAlertSeverity,
+    attention_severity: attentionSeverity,
     dominant_alert_created_at: dominantAlertCreatedAt,
+    tracking_validation: trackingValidation,
+    tracking_validation_top_issue: trackingValidationTopIssue,
     has_transshipment: hasTransshipment,
     last_event_at: lastEventAt ? toTemporalValueDto(lastEventAt) : null,
   }
@@ -574,6 +603,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
           }
 
           return {
+            container_number: hotRead.containerNumber,
             status: hotRead.status,
             operational: toContainerTrackingOperational({
               eta: hotRead.operational.eta
@@ -590,6 +620,7 @@ export function createListProcessesWithOperationalSummaryUseCase(
               type: alert.type,
               triggered_at: alert.triggered_at,
             })),
+            tracking_validation: hotRead.trackingValidation,
             has_observations: hotRead.hasObservations,
             last_event_at: hotRead.lastEventAt,
           } satisfies ContainerTrackingSummary

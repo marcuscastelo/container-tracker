@@ -130,4 +130,42 @@ describe('deriveStatus empty gate-out fallback', () => {
 
     expect(deriveStatus(timeline)).toBe('DELIVERED')
   })
+
+  it('does not keep EMPTY_RETURNED when a new lifecycle continuation appears after empty gate-out', () => {
+    const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000440',
+        fingerprint: 'fp-discharge-pod',
+        type: 'DISCHARGE',
+        event_time: '2026-02-01T09:00:00.000Z',
+        created_at: '2026-02-01T09:00:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000441',
+        fingerprint: 'fp-empty-gate-out',
+        type: 'GATE_OUT',
+        event_time: '2026-02-03T10:00:00.000Z',
+        created_at: '2026-02-03T10:00:00.000Z',
+        location_code: 'BRIOA',
+        location_display: 'ITAPOA, BR',
+        is_empty: true,
+      }),
+      makeObs({
+        id: '00000000-0000-0000-0000-000000000442',
+        fingerprint: 'fp-load-after-empty-return',
+        type: 'LOAD',
+        event_time: '2026-02-07T08:00:00.000Z',
+        created_at: '2026-02-07T08:00:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'NAPLES, IT',
+        vessel_name: 'MSC RESUME',
+        voyage: '777E',
+        is_empty: false,
+      }),
+    ])
+
+    expect(deriveStatus(timeline)).toBe('LOADED')
+  })
 })

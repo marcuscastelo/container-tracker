@@ -126,19 +126,19 @@ function toProcessNumberSortValue(process: ProcessSummaryVM): string | null {
   return normalizeSortableString(process.reference)
 }
 
-/** Severity weight for sort ordering (lower = higher priority). */
+/** Severity weight for sort ordering (higher = higher priority). */
 const SEVERITY_RANK: Record<string, number> = {
-  danger: 0,
-  warning: 1,
-  info: 2,
-  none: 3,
+  danger: 3,
+  warning: 2,
+  info: 1,
+  none: 0,
 }
 
 function toAlertsSortValue(process: ProcessSummaryVM): number {
-  const sevRank = SEVERITY_RANK[process.highestAlertSeverity ?? 'none'] ?? 3
-  // Pack severity and count into a single number: lower severity rank = higher priority,
-  // then higher count = higher priority within the same severity tier.
-  return sevRank * 10_000 - process.alertsCount
+  const sevRank = SEVERITY_RANK[process.attentionSeverity ?? 'none'] ?? 3
+  // Pack severity and count into a single number so higher values are sorted first:
+  // severity wins, then higher alert count wins within the same tier.
+  return sevRank * 10_000 + process.alertsCount
 }
 
 function compareBySortField(

@@ -16,6 +16,8 @@ import type {
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
@@ -256,6 +258,48 @@ function toTrackingTimeTravelDiffResponseDto(
   }
 }
 
+function toTrackingValidationSeverityResponse(
+  severity: TrackingValidationContainerSummary['highestSeverity'],
+): 'warning' | 'danger' | null {
+  switch (severity) {
+    case 'ADVISORY':
+      return 'warning'
+    case 'CRITICAL':
+      return 'danger'
+    default:
+      return null
+  }
+}
+
+function toTrackingValidationDisplayIssueResponseDto(issue: TrackingValidationDisplayIssue) {
+  const severity = toTrackingValidationSeverityResponse(issue.severity)
+  if (severity === null) {
+    throw new Error(`tracking validation issue severity missing: ${issue.code}`)
+  }
+
+  return {
+    code: issue.code,
+    severity,
+    reason_key: issue.reasonKey,
+    affected_area: issue.affectedArea,
+    affected_location: issue.affectedLocation,
+    affected_block_label_key: issue.affectedBlockLabelKey,
+  }
+}
+
+function toTrackingTimeTravelTrackingValidationResponseDto(
+  summary: TrackingValidationContainerSummary,
+) {
+  return {
+    has_issues: summary.hasIssues,
+    highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
+    finding_count: summary.findingCount,
+    active_issues: summary.activeIssues.map((issue) =>
+      toTrackingValidationDisplayIssueResponseDto(issue),
+    ),
+  }
+}
+
 function toTrackingTimeTravelCheckpointResponseDto(
   checkpoint: TrackingTimeTravelCheckpoint,
   containerNumber: string | null,
@@ -269,6 +313,9 @@ function toTrackingTimeTravelCheckpointResponseDto(
     alerts: [...toReplayAlertsResponseDto(checkpoint.alerts, containerNumber)],
     eta: toTrackingOperationalEtaResponseDto(checkpoint.eta),
     operational: toTrackingOperationalSummaryResponseDto(checkpoint.operational),
+    tracking_validation: toTrackingTimeTravelTrackingValidationResponseDto(
+      checkpoint.trackingValidation,
+    ),
     diff_from_previous: toTrackingTimeTravelDiffResponseDto(checkpoint.diffFromPrevious),
     debug_available: true,
   }

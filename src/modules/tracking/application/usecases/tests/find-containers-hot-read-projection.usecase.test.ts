@@ -163,9 +163,389 @@ describe('findContainersHotReadProjection', () => {
     expect(result.containers).toHaveLength(2)
     expect(result.containers[0]?.containerId).toBe('c1')
     expect(result.containers[0]?.activeAlerts).toHaveLength(1)
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
     expect(result.activeAlerts).toHaveLength(1)
     expect(result.activeAlertIncidents.summary.activeIncidentCount).toBe(1)
     expect(result.activeAlertIncidents.summary.affectedContainerCount).toBe(1)
+  })
+
+  it('marks the container when conflicting critical ACTUALs exist in the same series', async () => {
+    const conflictingObservations = [
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-1',
+        fingerprint: 'fp-c1-discharge-1',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T10:30:00.000Z',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-2',
+        fingerprint: 'fp-c1-discharge-2',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-11T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-11T10:30:00.000Z',
+      }),
+    ]
+    const { deps } = createDeps({
+      observations: conflictingObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      ],
+      topIssue: {
+        code: 'CONFLICTING_CRITICAL_ACTUALS',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.conflictingCriticalActuals',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+  })
+
+  it('marks the container when tracking continues after a strong completion milestone', async () => {
+    const postCompletionObservations = [
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-1',
+        fingerprint: 'fp-c1-discharge-1',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T10:30:00.000Z',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-delivery-1',
+        fingerprint: 'fp-c1-delivery-1',
+        type: 'DELIVERY',
+        event_time: temporalValueFromCanonical('2026-02-11T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-11T10:30:00.000Z',
+        location_code: 'BRIOA',
+        location_display: 'Itapoa',
+        vessel_name: null,
+        voyage: null,
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-load-1',
+        fingerprint: 'fp-c1-load-1',
+        type: 'LOAD',
+        event_time: temporalValueFromCanonical('2026-02-15T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T10:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC RESUME',
+        voyage: '777E',
+      }),
+    ]
+    const { deps } = createDeps({
+      observations: postCompletionObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      ],
+      topIssue: {
+        code: 'POST_COMPLETION_TRACKING_CONTINUED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+        affectedArea: 'timeline',
+        affectedLocation: null,
+        affectedBlockLabelKey: null,
+      },
+    })
+  })
+
+  it('does not mark the container when maritime context stays inside the canonical voyage block', async () => {
+    const voyageObservations = [
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-load-voyage',
+        fingerprint: 'fp-c1-load-voyage',
+        type: 'LOAD',
+        event_time: temporalValueFromCanonical('2026-02-10T08:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T08:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-departure-voyage',
+        fingerprint: 'fp-c1-departure-voyage',
+        type: 'DEPARTURE',
+        event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T10:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-arrival-voyage',
+        fingerprint: 'fp-c1-arrival-voyage',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-02-15T08:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T08:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-voyage',
+        fingerprint: 'fp-c1-discharge-voyage',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-15T11:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T11:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+    ]
+    const { deps } = createDeps({
+      observations: voyageObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-02-17T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
+  })
+
+  it('marks the container with ADVISORY when a stray maritime event lands in post-carriage', async () => {
+    const advisoryObservations = [
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-load-1',
+        fingerprint: 'fp-c1-load-1',
+        type: 'LOAD',
+        event_time: temporalValueFromCanonical('2026-02-10T08:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T08:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-departure-1',
+        fingerprint: 'fp-c1-departure-1',
+        type: 'DEPARTURE',
+        event_time: temporalValueFromCanonical('2026-02-10T10:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-10T10:30:00.000Z',
+        location_code: 'ITNAP',
+        location_display: 'Naples',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-arrival-1',
+        fingerprint: 'fp-c1-arrival-1',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-02-15T08:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T08:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-discharge-1',
+        fingerprint: 'fp-c1-discharge-1',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-02-15T11:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-15T11:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC ALPHA',
+        voyage: '101E',
+      }),
+      makeObservation('c1', 'MSCU1111111', {
+        id: 'obs-c1-post-carriage-departure',
+        fingerprint: 'fp-c1-post-carriage-departure',
+        type: 'DEPARTURE',
+        event_time: temporalValueFromCanonical('2026-02-16T09:00:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-02-16T09:30:00.000Z',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        vessel_name: 'MSC SIGMA',
+        voyage: '202W',
+      }),
+    ]
+    const { deps } = createDeps({
+      observations: advisoryObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'MSCU1111111', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-02-17T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'ADVISORY',
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+          severity: 'ADVISORY',
+          reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+          affectedArea: 'timeline',
+          affectedLocation: 'Santos',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+        },
+      ],
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+        severity: 'ADVISORY',
+        reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+        affectedArea: 'timeline',
+        affectedLocation: 'Santos',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+      },
+    })
+  })
+
+  it('marks the container when the same canonical voyage leg is duplicated across timeline blocks', async () => {
+    const duplicatedSegmentObservations = [
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'load-legacy',
+        fingerprint: 'fp-load-legacy',
+        type: 'LOAD',
+        location_code: null,
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-03-14T04:10:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-03-14T04:15:00.000Z',
+      }),
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'discharge-legacy',
+        fingerprint: 'fp-discharge-legacy',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-03-20T10:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        created_at: '2026-03-20T10:15:00.000Z',
+      }),
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'load-coded',
+        fingerprint: 'fp-load-coded',
+        type: 'LOAD',
+        location_code: 'CNTAO',
+        location_display: 'QINGDAO',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-03-21T04:10:00.000Z'),
+        event_time_type: 'ACTUAL',
+        created_at: '2026-03-21T04:15:00.000Z',
+      }),
+      makeObservation('c1', 'PCIU8712104', {
+        id: 'discharge-coded',
+        fingerprint: 'fp-discharge-coded',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS',
+        vessel_name: 'CMA CGM KRYPTON',
+        voyage: 'VCGK0001W',
+        event_time: temporalValueFromCanonical('2026-04-23T19:00:00.000Z'),
+        event_time_type: 'EXPECTED',
+        created_at: '2026-04-23T19:15:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+    const { deps } = createDeps({
+      observations: duplicatedSegmentObservations,
+    })
+
+    const result = await findContainersHotReadProjection(deps, {
+      containers: [{ containerId: 'c1', containerNumber: 'PCIU8712104', podLocationCode: 'BRSSZ' }],
+      now: instantFromIsoText('2026-04-24T00:00:00.000Z'),
+    })
+
+    expect(result.containers[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+          affectedArea: 'timeline',
+          affectedLocation: 'QINGDAO',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+        },
+      ],
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
+        affectedArea: 'timeline',
+        affectedLocation: 'QINGDAO',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
+      },
+    })
   })
 
   it('fails explicitly when the batch active-alert read fails', async () => {

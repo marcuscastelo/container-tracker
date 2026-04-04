@@ -72,4 +72,5 @@ UI (currently `process/ui`) is responsible for mapping:
 - Ingestion/orchestration: `application/orchestration/pipeline.ts`
 - Normalizers/fetchers: `infrastructure/carriers/*`
 - Timeline read model: `application/projection/tracking.timeline.readmodel.ts`
+- Validation plugin framework: `features/validation/README.md`
 - Domain tests: `domain/tests/*`

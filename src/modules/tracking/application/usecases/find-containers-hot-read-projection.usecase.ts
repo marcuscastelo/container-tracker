@@ -3,6 +3,7 @@ import {
   findContainersActiveAlertIncidentsProjection,
   findContainersOperationalSummaryProjection,
   findContainersTimelineMainProjection,
+  findContainersTrackingValidationProjection,
 } from '~/modules/tracking/application/projection/tracking.hot-read.projections'
 import type { TrackingOperationalSummary } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import {
@@ -15,6 +16,7 @@ import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/mo
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 
@@ -30,6 +32,7 @@ export type ContainerHotReadProjection = {
   readonly status: ContainerStatus
   readonly timeline: readonly TrackingTimelineItem[]
   readonly operational: TrackingOperationalSummary
+  readonly trackingValidation: TrackingValidationContainerSummary
   readonly activeAlerts: readonly TrackingAlert[]
   readonly hasObservations: boolean
   readonly lastEventAt: TemporalValue | null
@@ -185,6 +188,17 @@ export async function findContainersHotReadProjection(
     'tracking.findContainersHotReadProjection.operational',
     new Set(operationalByContainerId.keys()),
   )
+  const trackingValidationByContainerId = findContainersTrackingValidationProjection({
+    containers: command.containers,
+    observationsByContainerId: readEnrichedObservationsByContainerId,
+    timelineMainByContainerId,
+    now: command.now,
+  })
+  assertProjectionCoverage(
+    command.containers,
+    'tracking.findContainersHotReadProjection.validation',
+    new Set(trackingValidationByContainerId.keys()),
+  )
 
   const activeAlertProjection = findContainersActiveAlertIncidentsProjection({
     containers: command.containers,
@@ -194,8 +208,13 @@ export async function findContainersHotReadProjection(
   const containers = command.containers.map((container) => {
     const timelineProjection = timelineMainByContainerId.get(container.containerId)
     const operationalProjection = operationalByContainerId.get(container.containerId)
+    const validationProjection = trackingValidationByContainerId.get(container.containerId)
 
-    if (timelineProjection === undefined || operationalProjection === undefined) {
+    if (
+      timelineProjection === undefined ||
+      operationalProjection === undefined ||
+      validationProjection === undefined
+    ) {
       throw new Error(
         `tracking.findContainersHotReadProjection coverage mismatch for ${container.containerId}`,
       )
@@ -207,6 +226,7 @@ export async function findContainersHotReadProjection(
       status: timelineProjection.status,
       timeline: timelineProjection.timeline,
       operational: operationalProjection.operational,
+      trackingValidation: validationProjection.summary,
       activeAlerts:
         activeAlertProjection.activeAlertsByContainerId.get(container.containerId) ?? [],
       hasObservations: operationalProjection.hasObservations,

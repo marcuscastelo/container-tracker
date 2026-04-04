@@ -1,6 +1,10 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
+import {
+  noopTrackingValidationLifecycleRepository,
+  type TrackingValidationLifecycleRepository,
+} from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import {
@@ -21,7 +25,16 @@ import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/d
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
+import {
+  createTrackingValidationContext,
+  deriveTrackingValidationProjection,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationLifecycleState } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
+import { deriveTrackingValidationLifecycleTransitions } from '~/modules/tracking/features/validation/domain/services/deriveTrackingValidationLifecycleTransitions'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
+import { Instant } from '~/shared/time/instant'
 
 /**
  * Result of processing a single snapshot through the pipeline.
@@ -37,6 +50,8 @@ export type PipelineResult = {
   readonly status: ContainerStatus
   /** Transshipment info */
   readonly transshipment: TransshipmentInfo
+  /** Minimal canonical tracking validation summary */
+  readonly trackingValidation: TrackingValidationContainerSummary
 }
 
 /**
@@ -46,6 +61,57 @@ type PipelineDeps = {
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
+  readonly trackingValidationLifecycleRepository?: TrackingValidationLifecycleRepository
+}
+
+async function loadTrackingValidationLifecycleStates(command: {
+  readonly repository: TrackingValidationLifecycleRepository
+  readonly containerId: string
+  readonly containerNumber: string
+}): Promise<readonly TrackingValidationLifecycleState[]> {
+  try {
+    return await command.repository.findActiveStatesByContainerId(command.containerId)
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.processSnapshot.validation_lifecycle_unavailable', {
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      operation: 'findActiveStatesByContainerId',
+      error: error.message,
+    })
+
+    return []
+  }
+}
+
+async function persistTrackingValidationLifecycleTransitions(command: {
+  readonly repository: TrackingValidationLifecycleRepository
+  readonly transitions: ReturnType<typeof deriveTrackingValidationLifecycleTransitions>
+  readonly containerId: string
+  readonly containerNumber: string
+}): Promise<void> {
+  if (command.transitions.length === 0) {
+    return
+  }
+
+  try {
+    await command.repository.insertMany(command.transitions)
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.processSnapshot.validation_lifecycle_unavailable', {
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      operation: 'insertMany',
+      transitionCount: command.transitions.length,
+      error: error.message,
+    })
+  }
 }
 
 /**
@@ -146,6 +212,50 @@ export async function processSnapshot(
 
   // Derive transshipment info
   const transshipment = deriveTransshipment(timeline)
+  const snapshotValidationNow = Instant.fromIso(snapshot.fetched_at)
+  const validationTimeline = deriveTimeline(
+    containerId,
+    containerNumber,
+    allObservations,
+    snapshotValidationNow,
+  )
+  const validationStatus = deriveStatus(validationTimeline)
+  const validationTransshipment = deriveTransshipment(validationTimeline)
+  const trackingValidationProjection = deriveTrackingValidationProjection(
+    createTrackingValidationContext({
+      containerId,
+      containerNumber,
+      observations: allObservations,
+      timeline: validationTimeline,
+      status: validationStatus,
+      transshipment: validationTransshipment,
+      now: snapshotValidationNow,
+    }),
+  )
+  const trackingValidationLifecycleRepository =
+    deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
+  const existingValidationLifecycleStates = await loadTrackingValidationLifecycleStates({
+    repository: trackingValidationLifecycleRepository,
+    containerId,
+    containerNumber,
+  })
+  const validationLifecycleTransitions = deriveTrackingValidationLifecycleTransitions({
+    activeFindings: trackingValidationProjection.findings,
+    existingActiveStates: existingValidationLifecycleStates,
+    context: {
+      containerId,
+      provider: snapshot.provider,
+      snapshotId: snapshot.id,
+      occurredAt: snapshot.fetched_at,
+    },
+  })
+
+  await persistTrackingValidationLifecycleTransitions({
+    repository: trackingValidationLifecycleRepository,
+    transitions: validationLifecycleTransitions,
+    containerId,
+    containerNumber,
+  })
 
   return {
     newObservations,
@@ -153,5 +263,6 @@ export async function processSnapshot(
     timeline,
     status,
     transshipment,
+    trackingValidation: trackingValidationProjection.summary,
   }
 }

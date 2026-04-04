@@ -33,6 +33,14 @@ import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
 } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
+import {
+  aggregateTrackingValidationProjection,
+  createEmptyTrackingValidationProcessProjectionSummary,
+  pickTopTrackingValidationIssueForProcess,
+  type TrackingValidationContainerSummary,
+  type TrackingValidationProcessSummary,
+} from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
@@ -117,6 +125,43 @@ type TrackingObservationRecord = {
   readonly created_at: string
 }
 
+function toTrackingValidationSeverityResponse(
+  severity: TrackingValidationContainerSummary['highestSeverity'],
+): 'info' | 'warning' | 'danger' | null {
+  if (severity === 'CRITICAL') return 'danger'
+  if (severity === 'ADVISORY') return 'warning'
+  return null
+}
+
+function toTrackingValidationIssueSeverityResponse(
+  severity: TrackingValidationDisplayIssue['severity'],
+): 'warning' | 'danger' {
+  if (severity === 'CRITICAL') return 'danger'
+  return 'warning'
+}
+
+function toTrackingValidationAttentionSeverity(
+  severity: TrackingValidationProcessSummary['highestSeverity'],
+): 'danger' | null {
+  if (severity === 'CRITICAL') return 'danger'
+  return null
+}
+
+function toProcessAttentionSeverity(command: {
+  readonly highestAlertSeverity: 'info' | 'warning' | 'danger' | null
+  readonly trackingValidation: TrackingValidationProcessSummary
+}): 'info' | 'warning' | 'danger' | null {
+  const validationSeverity = toTrackingValidationAttentionSeverity(
+    command.trackingValidation.highestSeverity,
+  )
+
+  if (command.highestAlertSeverity === 'danger' || validationSeverity === 'danger') {
+    return 'danger'
+  }
+
+  return command.highestAlertSeverity
+}
+
 type TrackingAlertRecord = TrackingAlert
 type AlertTriggeredSortItem = {
   readonly id: string
@@ -186,10 +231,21 @@ function processToResponseFields(p: ProcessEntity) {
   }
 }
 
+function createEmptyProcessTrackingValidationResponse() {
+  return {
+    has_issues: false,
+    highest_severity: null,
+    affected_container_count: 0,
+    top_issue: null,
+  }
+}
+
 export function toProcessResponse(pwc: ProcessWithContainers) {
   return {
     ...processToResponseFields(pwc.process),
     containers: pwc.containers.map(toContainerResponse),
+    attention_severity: null,
+    tracking_validation: createEmptyProcessTrackingValidationResponse(),
   }
 }
 
@@ -218,7 +274,12 @@ export function toProcessResponseWithSummary(
     },
     alerts_count: summary.alerts_count,
     highest_alert_severity: summary.highest_alert_severity,
+    attention_severity: summary.attention_severity,
     dominant_alert_created_at: summary.dominant_alert_created_at,
+    tracking_validation: toProcessTrackingValidationResponse(
+      summary.tracking_validation,
+      summary.tracking_validation_top_issue,
+    ),
     has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
     last_sync_status: sync.lastSyncStatus,
@@ -414,6 +475,52 @@ function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
     type: eta.type,
     location_code: eta.locationCode,
     location_display: eta.locationDisplay,
+  }
+}
+
+function toTrackingValidationDisplayIssueResponse(issue: TrackingValidationDisplayIssue) {
+  return {
+    code: issue.code,
+    severity: toTrackingValidationIssueSeverityResponse(issue.severity),
+    reason_key: issue.reasonKey,
+    affected_area: issue.affectedArea,
+    affected_location: issue.affectedLocation,
+    affected_block_label_key: issue.affectedBlockLabelKey,
+  }
+}
+
+function toOptionalTrackingValidationDisplayIssueResponse(
+  issue: TrackingValidationDisplayIssue | null,
+) {
+  if (issue === null) {
+    return null
+  }
+
+  return toTrackingValidationDisplayIssueResponse(issue)
+}
+
+function toContainerTrackingValidationResponse(summary: TrackingValidationContainerSummary) {
+  return {
+    has_issues: summary.hasIssues,
+    highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
+    finding_count: summary.findingCount,
+    active_issues: summary.activeIssues.map((issue) =>
+      toTrackingValidationDisplayIssueResponse(issue),
+    ),
+  }
+}
+
+function toProcessTrackingValidationResponse(
+  summary?: TrackingValidationProcessSummary,
+  topIssue: TrackingValidationDisplayIssue | null = null,
+) {
+  const currentSummary = summary ?? createEmptyTrackingValidationProcessProjectionSummary()
+
+  return {
+    has_issues: currentSummary.hasIssues,
+    highest_severity: toTrackingValidationSeverityResponse(currentSummary.highestSeverity),
+    affected_container_count: currentSummary.affectedContainerCount,
+    top_issue: toOptionalTrackingValidationDisplayIssueResponse(topIssue),
   }
 }
 
@@ -614,17 +721,20 @@ function toTrackingFreshnessToken(command: {
   readonly containers: ReadonlyArray<
     ContainerWithTrackingResponse & {
       readonly operational: ReturnType<typeof toContainerOperationalResponse>
+      readonly tracking_validation: ReturnType<typeof toContainerTrackingValidationResponse>
     }
   >
   readonly alerts: readonly ReturnType<typeof toTrackingAlertResponse>[]
   readonly activeAlertIncidents: readonly ReturnType<typeof toShipmentAlertIncidentResponse>[]
   readonly processOperational: ReturnType<typeof toProcessOperationalResponse>
+  readonly trackingValidation: ReturnType<typeof toProcessTrackingValidationResponse>
 }): string {
   const stablePayload = {
     containers: command.containers.map((container) => ({
       id: container.id,
       status: container.status,
       operational: container.operational,
+      tracking_validation: container.tracking_validation,
       timeline: container.timeline,
     })),
     alerts: command.alerts.map((alert) => ({
@@ -644,6 +754,7 @@ function toTrackingFreshnessToken(command: {
       triggered_at: incident.triggered_at,
     })),
     process_operational: command.processOperational,
+    tracking_validation: command.trackingValidation,
   }
 
   return createHash('sha1').update(JSON.stringify(stablePayload)).digest('hex')
@@ -655,8 +766,17 @@ export function toProcessDetailResponse(
   alerts: readonly TrackingAlertRecord[],
   activeAlertIncidents: ShipmentAlertIncidentsReadModel,
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
+  trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>,
   containersSync: readonly ContainerSyncRecord[],
 ) {
+  const summariesForProcess: TrackingOperationalSummary[] = []
+  const validationSummariesForProcess: TrackingValidationContainerSummary[] = []
+  const trackingValidationTopIssueCandidates: {
+    readonly containerNumber: string
+    readonly topIssue: TrackingValidationDisplayIssue | null
+  }[] = []
+  const containerNumberByContainerId = new Map<string, string>()
+
   const containers = containersWithTracking.map((container) => {
     const summary = operationalByContainerId.get(container.id)
     if (summary === undefined) {
@@ -664,27 +784,27 @@ export function toProcessDetailResponse(
         `toProcessDetailResponse missing operational summary for container ${container.id}`,
       )
     }
+    const trackingValidation = trackingValidationByContainerId.get(container.id)
+    if (trackingValidation === undefined) {
+      throw new Error(
+        `toProcessDetailResponse missing tracking validation summary for container ${container.id}`,
+      )
+    }
+
+    summariesForProcess.push(summary)
+    validationSummariesForProcess.push(trackingValidation)
+    trackingValidationTopIssueCandidates.push({
+      containerNumber: container.container_number,
+      topIssue: trackingValidation.topIssue,
+    })
+    containerNumberByContainerId.set(container.id, container.container_number)
 
     return {
       ...container,
       operational: toContainerOperationalResponse(summary),
+      tracking_validation: toContainerTrackingValidationResponse(trackingValidation),
     }
   })
-
-  const summariesForProcess = containersWithTracking.map((container) => {
-    const summary = operationalByContainerId.get(container.id)
-    if (summary === undefined) {
-      throw new Error(
-        `toProcessDetailResponse missing process operational summary for container ${container.id}`,
-      )
-    }
-    return summary
-  })
-
-  const containerNumberByContainerId = new Map<string, string>()
-  for (const container of containersWithTracking) {
-    containerNumberByContainerId.set(container.id, container.container_number)
-  }
 
   const alertDisplayReadModel = toTrackingAlertDisplayReadModels(
     alerts,
@@ -694,6 +814,16 @@ export function toProcessDetailResponse(
     .sort(compareAlertsByTriggeredAtDesc)
     .map(toTrackingAlertResponse)
   const processOperational = toProcessOperationalResponse(summariesForProcess)
+  const trackingValidationSummary = aggregateTrackingValidationProjection(
+    validationSummariesForProcess,
+  )
+  const trackingValidationTopIssue = pickTopTrackingValidationIssueForProcess(
+    trackingValidationTopIssueCandidates,
+  )
+  const trackingValidation = toProcessTrackingValidationResponse(
+    trackingValidationSummary,
+    trackingValidationTopIssue,
+  )
   const activeAlertIncidentResponses = activeAlertIncidents.active.map(
     toShipmentAlertIncidentResponse,
   )
@@ -702,6 +832,7 @@ export function toProcessDetailResponse(
     alerts: alertsResponse,
     activeAlertIncidents: activeAlertIncidentResponses,
     processOperational,
+    trackingValidation,
   })
 
   return {
@@ -710,6 +841,19 @@ export function toProcessDetailResponse(
     containers,
     containersSync: containersSync.map(toContainerSyncResponse),
     alerts: alertsResponse,
+    attention_severity: toProcessAttentionSeverity({
+      highestAlertSeverity: alertsResponse.reduce<'info' | 'warning' | 'danger' | null>(
+        (current, alert) => {
+          if (alert.severity === 'danger') return 'danger'
+          if (alert.severity === 'warning' && current !== 'danger') return 'warning'
+          if (alert.severity === 'info' && current === null) return 'info'
+          return current
+        },
+        null,
+      ),
+      trackingValidation: trackingValidationSummary,
+    }),
+    tracking_validation: trackingValidation,
     alert_incidents: {
       summary: {
         active_incidents: activeAlertIncidents.summary.activeIncidentCount,

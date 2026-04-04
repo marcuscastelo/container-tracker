@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateOperationalSummary } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { OperationalStatus } from '~/modules/process/features/operational-projection/application/operationalSemantics'
+import { createEmptyTrackingValidationContainerProjectionSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { resolveTemporalValue, temporalDtoFromCanonical } from '~/shared/time/tests/helpers'
 
 type TrackingAlertLike = {
@@ -22,9 +23,13 @@ function makeAlert(overrides: Partial<TrackingAlertLike> = {}): TrackingAlertLik
 
 function makeSummary(
   overrides: {
+    containerNumber?: string
     status?: OperationalStatus
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
+    trackingValidation?: Partial<
+      ReturnType<typeof createEmptyTrackingValidationContainerProjectionSummary>
+    >
     operational?: {
       etaEventTime?: string | null
       etaState?: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
@@ -52,10 +57,19 @@ function makeSummary(
             ? {}
             : { lifecycleBucket: overrides.operational.lifecycleBucket }),
         }
+  const defaultTrackingValidation = createEmptyTrackingValidationContainerProjectionSummary()
 
   return {
+    container_number: overrides.containerNumber ?? 'MSCU1234567',
     status: overrides.status ?? 'UNKNOWN',
     alerts: overrides.alerts ?? [],
+    tracking_validation:
+      overrides.trackingValidation === undefined
+        ? defaultTrackingValidation
+        : {
+            ...defaultTrackingValidation,
+            ...overrides.trackingValidation,
+          },
     has_observations: (overrides.observations?.length ?? 0) > 0,
     last_event_at:
       overrides.observations === undefined || overrides.observations.length === 0
@@ -448,6 +462,40 @@ describe('aggregateOperationalSummary', () => {
 
     expect(result.highest_alert_severity).toBe('warning')
     expect(result.dominant_alert_created_at).toBe('2026-03-03T11:00:00.000Z')
+  })
+
+  it('elevates attention severity to danger when tracking validation is critical', () => {
+    const summaries = [
+      makeSummary({
+        trackingValidation: {
+          hasIssues: true,
+          findingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
+
+    expect(result.highest_alert_severity).toBeNull()
+    expect(result.attention_severity).toBe('danger')
+  })
+
+  it('keeps attention severity null when tracking validation is advisory only', () => {
+    const summaries = [
+      makeSummary({
+        trackingValidation: {
+          hasIssues: true,
+          findingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+      }),
+    ]
+
+    const result = aggregateOperationalSummary('p1', null, null, 1, summaries)
+
+    expect(result.highest_alert_severity).toBeNull()
+    expect(result.attention_severity).toBeNull()
   })
 
   it('detects transshipment alert at process level', () => {

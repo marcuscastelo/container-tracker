@@ -8,6 +8,7 @@ import {
   toTrackingTimeTravelVm,
 } from '~/modules/process/ui/mappers/tracking-time-travel.ui-mapper'
 import { toReadableErrorMessage } from '~/modules/process/ui/screens/shipment/lib/shipmentError.presenter'
+import { toTrackingTimeTravelResourceKey } from '~/modules/process/ui/screens/shipment/lib/tracking-time-travel.resource-key'
 import {
   findTrackingTimeTravelSync,
   selectAdjacentTrackingTimeTravelSnapshotId,
@@ -22,6 +23,7 @@ import { useTranslation } from '~/shared/localization/i18n'
 
 type UseTrackingTimeTravelControllerCommand = {
   readonly selectedContainer: Accessor<ContainerDetailVM | null>
+  readonly trackingFreshnessToken: Accessor<string | null>
 }
 
 export type TrackingTimeTravelControllerResult = {
@@ -53,12 +55,13 @@ export function useTrackingTimeTravelController(
   const [activeContainerId, setActiveContainerId] = createSignal<string | null>(null)
 
   const [timeTravelResponse] = createResource(
-    () => {
-      const container = command.selectedContainer()
-      if (!isActive() || !container) return null
-      return container.id
-    },
-    async (containerId) => fetchTrackingTimeTravel(containerId),
+    () =>
+      toTrackingTimeTravelResourceKey({
+        isActive: isActive(),
+        containerId: command.selectedContainer()?.id ?? null,
+        trackingFreshnessToken: command.trackingFreshnessToken(),
+      }),
+    async ([containerId]) => fetchTrackingTimeTravel(containerId),
   )
 
   const value = createMemo<TrackingTimeTravelVM | null>(() => {

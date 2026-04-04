@@ -25,6 +25,14 @@ import {
   SyncCell as SyncCellComponent,
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
+import {
+  type TrackingValidationCopyLabels,
+  toTrackingValidationTooltipText,
+} from '~/modules/process/ui/components/tracking-review-copy.presenter'
+import {
+  toTrackingValidationBadgeClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import { toDashboardProcessRowClass } from '~/modules/process/ui/utils/dashboard-process-row-style'
 import {
   hasDashboardRowSelectedText,
@@ -119,6 +127,14 @@ const SEVERITY_ORDER: Record<DashboardProcessSeverity, number> = {
 }
 
 function toDominantSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
+  const attentionSeverity = process.attentionSeverity
+  if (attentionSeverity === 'danger') return 'danger'
+  if (attentionSeverity === 'warning') return 'warning'
+  if (attentionSeverity === 'info') return 'info'
+  return 'none'
+}
+
+function toAlertBadgeSeverity(process: ProcessSummaryVM): DashboardProcessSeverity {
   const highestSeverity = process.highestAlertSeverity
   if (highestSeverity === 'danger') return 'danger'
   if (highestSeverity === 'warning') return 'warning'
@@ -450,9 +466,103 @@ function SyncCell(ctx: CellContext): JSX.Element {
   )
 }
 
+function AlertsSummaryBadge(props: {
+  readonly dominantSeverity: DashboardProcessSeverity
+  readonly dominantAlertLabel: string
+  readonly severityLabel: string
+  readonly alertTooltip: string | undefined
+  readonly alertsCount: number
+}): JSX.Element {
+  return (
+    <Show
+      when={props.dominantSeverity !== 'none'}
+      fallback={
+        <span
+          class="text-xs-ui text-tone-success-strong"
+          role="img"
+          aria-label={props.dominantAlertLabel}
+        >
+          <Check class="w-3.5 h-3.5" aria-hidden="true" />
+        </span>
+      }
+    >
+      <span
+        class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(
+          props.dominantSeverity,
+        )}`}
+        title={props.alertTooltip}
+      >
+        <span aria-hidden="true">{toUnifiedAlertIcon(props.dominantSeverity)}</span>
+        {props.alertsCount}
+        <span class="sr-only">{`${props.severityLabel}: ${props.dominantAlertLabel}`}</span>
+      </span>
+    </Show>
+  )
+}
+
+function TrackingValidationChip(props: {
+  readonly visible: boolean
+  readonly label: string
+  readonly chipLabel: string
+  readonly severity: ProcessSummaryVM['trackingValidation']['highestSeverity']
+}): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: props.visible,
+      highestSeverity: props.severity,
+    })
+
+  return (
+    <Show when={props.visible}>
+      <span
+        class={`inline-flex items-center rounded border px-1.5 py-0.5 text-micro font-semibold leading-none whitespace-nowrap ${toTrackingValidationBadgeClasses(
+          displayState(),
+        )}`}
+        title={props.label}
+      >
+        {props.chipLabel}
+      </span>
+    </Show>
+  )
+}
+
 function AlertsCell(ctx: CellContext): JSX.Element {
-  const dominantSeverity = () => toDominantSeverity(ctx.process)
+  const dominantSeverity = () => toAlertBadgeSeverity(ctx.process)
   const dominantAlertLabel = () => toDominantAlertLabel(ctx.process, ctx.t, ctx.keys)
+  const hasTrackingValidation = () => ctx.process.trackingValidation.hasIssues
+  const trackingValidationLabel = () => {
+    const affectedCount = ctx.process.trackingValidation.affectedContainerCount
+    if (affectedCount > 1) {
+      return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedMultiple, {
+        count: affectedCount,
+      })
+    }
+
+    return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedSingle)
+  }
+  const trackingValidationTooltip = () => {
+    const trackingValidationCopyLabels: TrackingValidationCopyLabels = {
+      areaLabel: ctx.t(ctx.keys.shipmentView.validation.labels.area),
+      blockLabel: ctx.t(ctx.keys.shipmentView.validation.labels.block),
+      locationLabel: ctx.t(ctx.keys.shipmentView.validation.labels.location),
+      affectedAreaLabels: {
+        container: ctx.t(ctx.keys.shipmentView.validation.areas.container),
+        operational: ctx.t(ctx.keys.shipmentView.validation.areas.operational),
+        process: ctx.t(ctx.keys.shipmentView.validation.areas.process),
+        series: ctx.t(ctx.keys.shipmentView.validation.areas.series),
+        status: ctx.t(ctx.keys.shipmentView.validation.areas.status),
+        timeline: ctx.t(ctx.keys.shipmentView.validation.areas.timeline),
+      },
+    }
+
+    return toTrackingValidationTooltipText({
+      aggregateLabel: trackingValidationLabel(),
+      issue: ctx.process.trackingValidation.topIssue,
+      labels: trackingValidationCopyLabels,
+      resolveBlockLabel: (key) => ctx.t(key),
+      resolveReason: (key) => ctx.t(key),
+    })
+  }
 
   const severityLabel = () => {
     if (dominantSeverity() === 'danger')
@@ -492,27 +602,21 @@ function AlertsCell(ctx: CellContext): JSX.Element {
         class="row-link flex justify-center"
         onClick={ctx.handleProcessLinkClick}
       >
-        <Show
-          when={dominantSeverity() !== 'none'}
-          fallback={
-            <span
-              class="text-xs-ui text-tone-success-strong"
-              role="img"
-              aria-label={dominantAlertLabel()}
-            >
-              <Check class="w-3.5 h-3.5" aria-hidden="true" />
-            </span>
-          }
-        >
-          <span
-            class={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-micro font-bold leading-none cursor-default ${toSeverityBadgeClasses(dominantSeverity())}`}
-            title={alertTooltip()}
-          >
-            <span aria-hidden="true">{toUnifiedAlertIcon(dominantSeverity())}</span>
-            {ctx.process.alertsCount}
-            <span class="sr-only">{`${severityLabel()}: ${dominantAlertLabel()}`}</span>
-          </span>
-        </Show>
+        <div class="flex items-center justify-center gap-1">
+          <AlertsSummaryBadge
+            dominantSeverity={dominantSeverity()}
+            dominantAlertLabel={dominantAlertLabel()}
+            severityLabel={severityLabel()}
+            alertTooltip={alertTooltip()}
+            alertsCount={ctx.process.alertsCount}
+          />
+          <TrackingValidationChip
+            visible={hasTrackingValidation()}
+            label={trackingValidationTooltip()}
+            chipLabel={ctx.t(ctx.keys.dashboard.table.trackingValidation.chip)}
+            severity={ctx.process.trackingValidation.highestSeverity}
+          />
+        </div>
       </A>
     </div>
   )

@@ -81,6 +81,12 @@ function buildDefaultShipmentDetailVm(): ShipmentDetailVM {
     eta: '2026-04-10',
     processEtaDisplayVm: buildDefaultProcessEtaDisplayVm(),
     processEtaSecondaryVm: buildDefaultProcessEtaSecondaryVm(),
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
+    },
     containers: [],
     alerts: [],
     alertIncidents: buildDefaultAlertIncidents(),
@@ -161,6 +167,19 @@ describe('useShipmentScreenResource', () => {
         total: 2,
         incomplete: true,
       },
+      trackingValidation: {
+        hasIssues: true,
+        highestSeverity: 'danger',
+        affectedContainerCount: 1,
+        topIssue: {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'danger',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      },
       alerts: [],
       alertIncidents: {
         summary: {
@@ -222,6 +241,19 @@ describe('useShipmentScreenResource', () => {
       withEta: 0,
       total: 2,
       incomplete: true,
+    })
+    expect(merged.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'danger',
+      affectedContainerCount: 1,
+      topIssue: {
+        code: 'POST_COMPLETION_TRACKING_CONTINUED',
+        severity: 'danger',
+        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+        affectedArea: 'timeline',
+        affectedLocation: null,
+        affectedBlockLabelKey: null,
+      },
     })
     expect(merged.alerts).toEqual([])
     expect(merged.alertIncidents.summary).toEqual({

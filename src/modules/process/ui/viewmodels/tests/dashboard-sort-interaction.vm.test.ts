@@ -28,6 +28,9 @@ function createProcess(
     readonly eta?: ProcessSummaryVM['eta']
     readonly etaMsOrNull?: number | null
     readonly lastEventAt?: ProcessSummaryVM['lastEventAt']
+    readonly alertsCount?: number
+    readonly highestAlertSeverity?: ProcessSummaryVM['highestAlertSeverity']
+    readonly attentionSeverity?: ProcessSummaryVM['attentionSeverity']
     readonly dominantAlertCreatedAt?: string | null
   },
 ): ProcessSummaryVM {
@@ -54,9 +57,16 @@ function createProcess(
     etaDisplay,
     etaMsOrNull,
     carrier: input.carrier ?? null,
-    alertsCount: 0,
-    highestAlertSeverity: null,
+    alertsCount: input.alertsCount ?? 0,
+    highestAlertSeverity: input.highestAlertSeverity ?? null,
+    attentionSeverity: input.attentionSeverity ?? input.highestAlertSeverity ?? null,
     dominantAlertCreatedAt: input.dominantAlertCreatedAt ?? null,
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
+    },
     hasTransshipment: false,
     lastEventAt: input.lastEventAt ?? null,
     syncStatus: 'idle',
@@ -196,6 +206,30 @@ describe('dashboard sort interactions by field', () => {
     expect(ascResult.map((process) => process.id)).toEqual(['B', 'C', 'A'])
   })
 
+  it('sorts alerts by backend-derived attention severity before alert count', () => {
+    const baseline = [
+      createProcess({
+        id: 'A',
+        attentionSeverity: 'warning',
+        alertsCount: 3,
+      }),
+      createProcess({
+        id: 'B',
+        attentionSeverity: 'danger',
+        alertsCount: 0,
+      }),
+      createProcess({
+        id: 'C',
+        attentionSeverity: null,
+        alertsCount: 0,
+      }),
+    ] as const
+
+    const descResult = sortDashboardProcesses(baseline, { field: 'alerts', direction: 'desc' })
+
+    expect(descResult.map((process) => process.id)).toEqual(['B', 'A', 'C'])
+  })
+
   it('sorts created date using timestamp order', () => {
     const baseline = [
       createProcess({ id: 'A', lastEventAt: temporalDtoFromCanonical('2025-03-01T00:00:00.000Z') }),
@@ -273,7 +307,9 @@ describe('dashboard sort interactions by field', () => {
     expect(ascResult.map((process) => process.id)).toEqual(['C', 'A', 'B'])
     expect(descResult.map((process) => process.id)).toEqual(['A', 'C', 'B'])
   })
+})
 
+describe('dashboard sort interactions by ETA chronology', () => {
   it('sorts ETA chronologically across same month, different months, and different years', () => {
     const baseline = [
       createProcess({

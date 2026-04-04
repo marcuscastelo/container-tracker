@@ -8,6 +8,7 @@ import {
   createContainerSyncMetadataFallback,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
 
@@ -21,6 +22,7 @@ type ProcessTrackingResult = {
   readonly activeAlerts: readonly TrackingAlert[]
   readonly activeAlertIncidents: ShipmentAlertIncidentsReadModel
   readonly operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>
+  readonly trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>
   readonly containersSync: readonly ContainerSyncRecord[]
 }
 
@@ -124,8 +126,10 @@ export async function resolveProcessDetailTracking(
     trackingProjection.containers.map((container) => [container.containerId, container] as const),
   )
   const operationalByContainerId = new Map<string, TrackingOperationalSummary>()
+  const trackingValidationByContainerId = new Map<string, TrackingValidationContainerSummary>()
   for (const container of trackingProjection.containers) {
     operationalByContainerId.set(container.containerId, container.operational)
+    trackingValidationByContainerId.set(container.containerId, container.trackingValidation)
   }
 
   const containersWithTracking = processWithContainers.containers.map((container) => {
@@ -148,6 +152,7 @@ export async function resolveProcessDetailTracking(
     activeAlerts: trackingProjection.activeAlerts,
     activeAlertIncidents: trackingProjection.activeAlertIncidents,
     operationalByContainerId,
+    trackingValidationByContainerId,
     containersSync,
   }
 }

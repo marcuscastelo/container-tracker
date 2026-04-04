@@ -1,16 +1,26 @@
-import { RefreshCw } from 'lucide-solid'
+import { RefreshCw, TriangleAlert } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { DeleteShipmentDialog } from '~/modules/process/ui/components/DeleteShipmentDialog'
 import { toProcessStatusBadgesDisplay } from '~/modules/process/ui/components/process-status-badges.presenter'
+import { resolveShipmentTrackingValidationBannerDescription } from '~/modules/process/ui/components/shipment-header-tracking-review.presenter'
+import {
+  toTrackingValidationBannerClasses,
+  toTrackingValidationDisplayState,
+} from '~/modules/process/ui/components/tracking-review-display.presenter'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
 import { Dialog } from '~/shared/ui/Dialog'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
+type ShipmentHeaderTrackingReview = ShipmentDetailVM['trackingValidation']
+
 type Props = {
   data: ShipmentDetailVM
+  trackingValidation?: ShipmentHeaderTrackingReview
+  trackingValidationMode?: 'current' | 'historical'
+  historicalTrackingValidationContainerNumber?: string | null
   isRefreshing: boolean
   refreshRetry: {
     readonly current: number
@@ -205,12 +215,41 @@ function HeaderMeta(props: {
   )
 }
 
+function TrackingValidationBanner(props: {
+  readonly title: string
+  readonly description: string
+  readonly highestSeverity: ShipmentDetailVM['trackingValidation']['highestSeverity']
+}): JSX.Element {
+  const displayState = () =>
+    toTrackingValidationDisplayState({
+      hasIssues: true,
+      highestSeverity: props.highestSeverity,
+    })
+
+  return (
+    <div
+      class={`mt-4 flex items-start gap-3 rounded-lg px-3 py-2 ${toTrackingValidationBannerClasses(
+        displayState(),
+      )}`}
+    >
+      <TriangleAlert aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0" />
+      <div class="min-w-0">
+        <p class="text-sm-ui font-semibold">{props.title}</p>
+        <p class="text-xs-ui">{props.description}</p>
+      </div>
+    </div>
+  )
+}
+
 export function ShipmentHeader(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
   const translate = (key: string, options?: Record<string, unknown>): string =>
     options === undefined ? t(key) : t(key, options)
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
+  const trackingValidation = createMemo(
+    () => props.trackingValidation ?? props.data.trackingValidation,
+  )
 
   const statusBadge = createMemo(
     () =>
@@ -252,6 +291,15 @@ export function ShipmentHeader(props: Props): JSX.Element {
     })()
 
     return `${t(keys.shipmentView.eta)}: ${value}`
+  })
+  const trackingValidationDescription = createMemo(() => {
+    return resolveShipmentTrackingValidationBannerDescription({
+      trackingValidationMode: props.trackingValidationMode,
+      affectedContainerCount: trackingValidation().affectedContainerCount,
+      historicalContainerNumber: props.historicalTrackingValidationContainerNumber,
+      translate,
+      unknownContainerLabel: t(keys.shipmentView.currentStatus.unknown),
+    })
   })
 
   const handleRefresh = () => {
@@ -313,6 +361,14 @@ export function ShipmentHeader(props: Props): JSX.Element {
           </Show>
         </div>
       </div>
+
+      <Show when={trackingValidation().hasIssues}>
+        <TrackingValidationBanner
+          title={t(keys.shipmentView.validation.bannerTitle)}
+          description={trackingValidationDescription()}
+          highestSeverity={trackingValidation().highestSeverity}
+        />
+      </Show>
 
       <UnknownCarrierDialog
         open={showUnknownCarrierDialog()}

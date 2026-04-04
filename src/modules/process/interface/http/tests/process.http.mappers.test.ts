@@ -11,6 +11,7 @@ import {
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
 import type { CreateProcessInput } from '~/modules/process/interface/http/process.schemas'
+import { createEmptyTrackingValidationProcessProjectionSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { ProcessResponseSchema } from '~/shared/api-schemas/processes.schemas'
 import { Instant } from '~/shared/time/instant'
 
@@ -92,7 +93,10 @@ function createSummary(
     },
     alerts_count: 0,
     highest_alert_severity: null,
+    attention_severity: null,
     dominant_alert_created_at: null,
+    tracking_validation: createEmptyTrackingValidationProcessProjectionSummary(),
+    tracking_validation_top_issue: null,
     has_transshipment: false,
     last_event_at: null,
     ...overrides,
@@ -228,6 +232,140 @@ describe('process.http.mappers', () => {
         kind: 'instant',
         value: '2026-03-28T12:00:00.000Z',
       },
+    })
+  })
+
+  it('maps internal CRITICAL validation severity to danger only at the HTTP boundary', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        attention_severity: 'danger',
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.tracking_validation).toEqual({
+      has_issues: true,
+      highest_severity: 'danger',
+      affected_container_count: 1,
+      top_issue: null,
+    })
+    expect(parsed.attention_severity).toBe('danger')
+  })
+
+  it('maps internal ADVISORY validation severity to warning only at the HTTP boundary', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(parsed.tracking_validation).toEqual({
+      has_issues: true,
+      highest_severity: 'warning',
+      affected_container_count: 1,
+      top_issue: null,
+    })
+    expect(parsed.attention_severity).toBeNull()
+  })
+
+  it('keeps post-completion validation issues on the compact process response contract', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'CRITICAL',
+        },
+        tracking_validation_top_issue: {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(Object.keys(parsed.tracking_validation).sort()).toEqual([
+      'affected_container_count',
+      'has_issues',
+      'highest_severity',
+      'top_issue',
+    ])
+    expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
+    expect(parsed.tracking_validation.highest_severity).toBe('danger')
+    expect(parsed.tracking_validation.top_issue).toEqual({
+      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      severity: 'danger',
+      reason_key: 'tracking.validation.postCompletionTrackingContinued',
+      affected_area: 'timeline',
+      affected_location: null,
+      affected_block_label_key: null,
+    })
+  })
+
+  it('maps the new advisory validation detector without changing the compact response shape', () => {
+    const response = toProcessResponseWithSummary(
+      createProcessWithContainers(),
+      createSummary({
+        tracking_validation: {
+          hasIssues: true,
+          affectedContainerCount: 1,
+          totalFindingCount: 1,
+          highestSeverity: 'ADVISORY',
+        },
+        tracking_validation_top_issue: {
+          code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+          severity: 'ADVISORY',
+          reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      }),
+      createSyncSummary(),
+    )
+
+    const parsed = ProcessResponseSchema.parse(response)
+
+    expect(Object.keys(parsed.tracking_validation).sort()).toEqual([
+      'affected_container_count',
+      'has_issues',
+      'highest_severity',
+      'top_issue',
+    ])
+    expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
+    expect(parsed.tracking_validation.top_issue).toEqual({
+      code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
+      severity: 'warning',
+      reason_key: 'tracking.validation.expectedPlanNotReconcilable',
+      affected_area: 'series',
+      affected_location: 'BRSSZ',
+      affected_block_label_key: null,
     })
   })
 

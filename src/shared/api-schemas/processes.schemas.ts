@@ -1,5 +1,8 @@
 import { z } from 'zod'
-import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
+import {
+  AlertResponseDtoSchema,
+  TrackingValidationIssueResponseDtoSchema,
+} from '~/modules/tracking/interface/http/tracking.schemas'
 import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
@@ -48,6 +51,22 @@ const EtaDisplayResponseSchema = z.discriminatedUnion('kind', [
     kind: z.literal('delivered'),
   }),
 ])
+
+const TrackingValidationSeveritySchema = z.enum(['info', 'warning', 'danger'])
+
+const ProcessTrackingValidationResponseSchema = z.object({
+  has_issues: z.boolean(),
+  highest_severity: TrackingValidationSeveritySchema.nullable(),
+  affected_container_count: z.number().int().nonnegative(),
+  top_issue: TrackingValidationIssueResponseDtoSchema.nullable(),
+})
+
+const ContainerTrackingValidationResponseSchema = z.object({
+  has_issues: z.boolean(),
+  highest_severity: TrackingValidationSeveritySchema.nullable(),
+  finding_count: z.number().int().nonnegative(),
+  active_issues: z.array(TrackingValidationIssueResponseDtoSchema),
+})
 
 export const ProcessResponseSchema = z.object({
   id: z.string(),
@@ -99,8 +118,12 @@ export const ProcessResponseSchema = z.object({
   alerts_count: z.number().optional(),
   /** Highest alert severity across containers */
   highest_alert_severity: z.enum(['info', 'warning', 'danger']).nullish(),
+  /** Dashboard triage severity derived in backend from alerts + critical validation */
+  attention_severity: z.enum(['info', 'warning', 'danger']).nullish(),
   /** Timestamp for dominant alert age rendering in dashboard */
   dominant_alert_created_at: z.string().nullish(),
+  /** Tracking-owned validation signal aggregated across containers */
+  tracking_validation: ProcessTrackingValidationResponseSchema,
   /** Whether any container has a transshipment alert */
   has_transshipment: z.boolean().optional(),
   /** Latest event time across all container timelines */
@@ -362,6 +385,8 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       timeline: z.array(TrackingTimelineItemResponseSchema).optional(),
       /** Container-level operational projection */
       operational: ContainerOperationalResponseSchema.optional(),
+      /** Tracking validation summary owned by Tracking BC */
+      tracking_validation: ContainerTrackingValidationResponseSchema,
     }),
   ),
   /** Active tracking alerts for this process (across all containers) */

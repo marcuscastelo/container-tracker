@@ -16,6 +16,11 @@ import {
   trackingStatusToVariant,
 } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type {
+  ContainerTrackingValidationVM,
+  ProcessTrackingValidationVM,
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
@@ -34,10 +39,17 @@ type OperationalEta = NonNullable<ContainerOperational['eta']>
 type OperationalTransshipment = ContainerOperational['transshipment']
 type OperationalCurrentContext = ContainerOperational['current_context']
 type OperationalNextLocation = ContainerOperational['next_location']
+type ContainerTrackingValidationResponse =
+  ProcessDetailResponse['containers'][number]['tracking_validation']
+type ProcessTrackingValidationResponse = ProcessDetailResponse['tracking_validation']
 
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
 >[number]
+
+type TrackingValidationIssueResponse = NonNullable<
+  ProcessDetailResponse['tracking_validation']['top_issue']
+>
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
   const normalizedStatus = toProcessStatusCode(status)
@@ -286,6 +298,47 @@ function toTransshipmentVm(
   }
 }
 
+function toProcessTrackingValidationVm(
+  trackingValidation: ProcessTrackingValidationResponse | undefined,
+): ProcessTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    affectedContainerCount: trackingValidation?.affected_container_count ?? 0,
+    topIssue: toTrackingValidationIssueVm(trackingValidation?.top_issue),
+  }
+}
+
+function toTrackingValidationIssueVm(
+  issue: TrackingValidationIssueResponse | null | undefined,
+): TrackingValidationIssueVM | null {
+  if (issue === null || issue === undefined) {
+    return null
+  }
+
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
+  }
+}
+
+function toContainerTrackingValidationVm(
+  trackingValidation: ContainerTrackingValidationResponse | undefined,
+): ContainerTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation?.has_issues === true,
+    highestSeverity: trackingValidation?.highest_severity ?? null,
+    findingCount: trackingValidation?.finding_count ?? 0,
+    activeIssues: (trackingValidation?.active_issues ?? [])
+      .map((issue) => toTrackingValidationIssueVm(issue))
+      .filter((issue): issue is TrackingValidationIssueVM => issue !== null),
+  }
+}
+
 function toTsChipVm(
   transshipment: ShipmentDetailVM['containers'][number]['transshipment'],
 ): ShipmentDetailVM['containers'][number]['tsChipVm'] {
@@ -384,6 +437,7 @@ export function toShipmentDetailVM(
       dataIssueChipVm: {
         visible: container.operational?.data_issue === true,
       },
+      trackingValidation: toContainerTrackingValidationVm(container.tracking_validation),
       transshipment,
       timeline,
     }
@@ -420,6 +474,7 @@ export function toShipmentDetailVM(
     eta: toProcessEtaDate(processEtaDisplayVm),
     processEtaDisplayVm,
     processEtaSecondaryVm,
+    trackingValidation: toProcessTrackingValidationVm(data.tracking_validation),
     containers,
     alerts: toAlertDisplayVMs(toAlertProjectionSources(data.alerts), locale),
     alertIncidents: toAlertIncidentsVm(data.alert_incidents),

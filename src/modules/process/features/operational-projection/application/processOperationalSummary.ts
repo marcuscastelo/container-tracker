@@ -8,6 +8,8 @@ import type {
   ProcessAggregatedStatus,
 } from '~/modules/process/features/operational-projection/application/operationalSemantics'
 import type { TrackingLifecycleBucket } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
+import type { TrackingValidationProcessSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/application/projection/trackingValidationDisplayIssue'
 import type { TemporalValueDto } from '~/shared/time/dto'
 
 /**
@@ -58,7 +60,10 @@ export type ProcessOperationalSummary = {
 
   readonly alerts_count: number
   readonly highest_alert_severity: OperationalAlertSeverity | null
+  readonly attention_severity: OperationalAlertSeverity | null
   readonly dominant_alert_created_at: string | null
+  readonly tracking_validation: TrackingValidationProcessSummary
+  readonly tracking_validation_top_issue: TrackingValidationDisplayIssue | null
 
   readonly has_transshipment: boolean
   readonly last_event_at: TemporalValueDto | null

@@ -367,6 +367,32 @@ export type TrackingTimeTravelDiffResponseDto = z.infer<
   typeof TrackingTimeTravelDiffResponseDtoSchema
 >
 
+const TrackingValidationSeverityResponseDtoSchema = z.enum(['info', 'warning', 'danger'])
+const TrackingValidationIssueSeverityResponseDtoSchema = z.enum(['warning', 'danger'])
+export const TrackingValidationAffectedAreaResponseDtoSchema = z.enum([
+  'container',
+  'operational',
+  'process',
+  'series',
+  'status',
+  'timeline',
+])
+export const TrackingValidationIssueResponseDtoSchema = z.object({
+  code: z.string(),
+  severity: TrackingValidationIssueSeverityResponseDtoSchema,
+  reason_key: z.string(),
+  affected_area: TrackingValidationAffectedAreaResponseDtoSchema,
+  affected_location: z.string().nullable(),
+  affected_block_label_key: z.string().nullable(),
+})
+
+const TrackingTimeTravelTrackingValidationResponseDtoSchema = z.object({
+  has_issues: z.boolean(),
+  highest_severity: TrackingValidationSeverityResponseDtoSchema.nullable(),
+  finding_count: z.number().int().nonnegative(),
+  active_issues: z.array(TrackingValidationIssueResponseDtoSchema),
+})
+
 export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
   snapshot_id: z.string(),
   fetched_at: z.string(),
@@ -376,6 +402,7 @@ export const TrackingTimeTravelCheckpointResponseDtoSchema = z.object({
   alerts: z.array(AlertResponseDtoSchema),
   eta: TrackingOperationalEtaResponseDtoSchema.nullable(),
   operational: TrackingOperationalSummaryResponseDtoSchema,
+  tracking_validation: TrackingTimeTravelTrackingValidationResponseDtoSchema,
   diff_from_previous: TrackingTimeTravelDiffResponseDtoSchema,
   debug_available: z.literal(true),
 })

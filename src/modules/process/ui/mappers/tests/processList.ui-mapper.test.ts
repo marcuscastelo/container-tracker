@@ -80,6 +80,7 @@ function assertMapsProcessStatusFromApiToStatusCodeAndVariant(): void {
       },
       alerts_count: 2,
       highest_alert_severity: 'warning',
+      attention_severity: 'warning',
       dominant_alert_created_at: '2025-04-29T08:00:00Z',
       has_transshipment: true,
       last_event_at: temporalDtoFromCanonical('2025-05-01T00:00:00Z'),
@@ -105,6 +106,7 @@ function assertMapsProcessStatusFromApiToStatusCodeAndVariant(): void {
   expect(first.etaMsOrNull).toBe(Date.parse('2025-06-01T00:00:00Z'))
   expect(first.alertsCount).toBe(2)
   expect(first.highestAlertSeverity).toBe('warning')
+  expect(first.attentionSeverity).toBe('warning')
   expect(first.dominantAlertCreatedAt).toBe('2025-04-29T08:00:00Z')
   expect(first.hasTransshipment).toBe(true)
   expect(first.lastEventAt).toEqual(temporalDtoFromCanonical('2025-05-01T00:00:00Z'))
@@ -161,6 +163,113 @@ describe('toProcessSummaryVMs', () => {
     expect(third.syncStatus).toBe('idle')
   })
 
+  it('maps tracking validation summary into the dashboard VM without re-deriving it', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-validation',
+        tracking_validation: {
+          has_issues: true,
+          highest_severity: 'warning',
+          affected_container_count: 2,
+        },
+      }),
+    ])
+
+    expect(result[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 2,
+      topIssue: null,
+    })
+    expect(result[0]?.attentionSeverity).toBeNull()
+  })
+
+  it('maps backend-derived critical attention severity into the dashboard VM', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-validation-critical',
+        attention_severity: 'danger',
+        tracking_validation: {
+          has_issues: true,
+          highest_severity: 'danger',
+          affected_container_count: 2,
+          top_issue: {
+            code: 'CONFLICTING_CRITICAL_ACTUALS',
+            severity: 'danger',
+            reason_key: 'tracking.validation.conflictingCriticalActuals',
+            affected_area: 'series',
+            affected_location: 'BRSSZ',
+            affected_block_label_key: null,
+          },
+        },
+      }),
+    ])
+
+    expect(result[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'danger',
+      affectedContainerCount: 2,
+      topIssue: {
+        code: 'CONFLICTING_CRITICAL_ACTUALS',
+        severity: 'danger',
+        reasonKey: 'tracking.validation.conflictingCriticalActuals',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+    expect(result[0]?.attentionSeverity).toBe('danger')
+  })
+
+  it('maps the new advisory top issue into the dashboard VM without re-deriving semantics', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-validation-advisory',
+        tracking_validation: {
+          has_issues: true,
+          highest_severity: 'warning',
+          affected_container_count: 1,
+          top_issue: {
+            code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+            severity: 'warning',
+            reason_key: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+            affected_area: 'timeline',
+            affected_location: 'BRSSZ',
+            affected_block_label_key: null,
+          },
+        },
+      }),
+    ])
+
+    expect(result[0]?.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'warning',
+      affectedContainerCount: 1,
+      topIssue: {
+        code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+        severity: 'warning',
+        reasonKey: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+        affectedArea: 'timeline',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+    expect(result[0]?.attentionSeverity).toBeNull()
+  })
+
+  it('falls back to alert severity when legacy payloads do not include attention_severity', () => {
+    const result = toProcessSummaryVMs([
+      makeSource({
+        id: 'p-legacy-alert-severity',
+        highest_alert_severity: 'warning',
+      }),
+    ])
+
+    expect(result[0]?.attentionSeverity).toBe('warning')
+  })
+})
+
+describe('toProcessSummaryVMs presentation details', () => {
   it('maps DELIVERED status correctly', () => {
     const result = toProcessSummaryVMs([makeSource({ id: 'p4', process_status: 'DELIVERED' })])
     const first = requireAt(result, 0)

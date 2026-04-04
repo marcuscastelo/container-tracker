@@ -48,6 +48,12 @@ function makeShipment(containers: ShipmentDetailVM['containers']): ShipmentDetai
       total: containers.length,
       incomplete: false,
     },
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
+    },
     containers,
     alerts: [],
     alertIncidents: {
@@ -99,6 +105,12 @@ function makeContainer(id: string, number: string): ShipmentDetailVM['containers
     },
     dataIssueChipVm: {
       visible: false,
+    },
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+      activeIssues: [],
     },
     transshipment: {
       hasTransshipment: false,

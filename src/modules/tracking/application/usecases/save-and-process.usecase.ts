@@ -2,6 +2,7 @@ import {
   type PipelineResult,
   processSnapshot,
 } from '~/modules/tracking/application/orchestration/pipeline'
+import { noopTrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
 import type { NewSnapshot, Snapshot } from '~/modules/tracking/domain/model/snapshot'
@@ -38,7 +39,13 @@ export async function saveAndProcess(
   cmd: SaveAndProcessCommand,
 ): Promise<SaveAndProcessResult> {
   const { snapshotRepository, observationRepository, trackingAlertRepository } = deps
-  const pipelineDeps = { snapshotRepository, observationRepository, trackingAlertRepository }
+  const pipelineDeps = {
+    snapshotRepository,
+    observationRepository,
+    trackingAlertRepository,
+    trackingValidationLifecycleRepository:
+      deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository,
+  }
 
   const newSnapshot: NewSnapshot = {
     container_id: cmd.containerId,
