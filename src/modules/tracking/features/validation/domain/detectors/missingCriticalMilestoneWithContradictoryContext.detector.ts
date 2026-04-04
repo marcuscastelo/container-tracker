@@ -13,29 +13,39 @@ type MaritimeObservationType = Extract<
   Observation['type'],
   'ARRIVAL' | 'DEPARTURE' | 'DISCHARGE' | 'LOAD'
 >
+type MaritimeObservation = Observation & {
+  readonly type: MaritimeObservationType
+}
 
 type ContradictionSignal = {
   readonly missingMilestone: MissingMilestone
-  readonly previousObservation: Observation
-  readonly anchorObservation: Observation
+  readonly previousObservation: MaritimeObservation
+  readonly anchorObservation: MaritimeObservation
+  readonly anchorChronologyIndex: number
 }
 
 function isMaritimeObservationType(type: Observation['type']): type is MaritimeObservationType {
   return type === 'LOAD' || type === 'DEPARTURE' || type === 'ARRIVAL' || type === 'DISCHARGE'
 }
 
-function detectContradictionSignals(
+function isMaritimeObservation(observation: Observation): observation is MaritimeObservation {
+  return isMaritimeObservationType(observation.type)
+}
+
+function toActualMaritimeObservationChronology(
   observations: readonly Observation[],
+): readonly MaritimeObservation[] {
+  return toActualObservationChronology(observations).filter(isMaritimeObservation)
+}
+
+function detectMaritimeSequenceGaps(
+  maritimeObservations: readonly MaritimeObservation[],
 ): readonly ContradictionSignal[] {
-  let previousMaritimeObservation: Observation | null = null
+  let previousMaritimeObservation: MaritimeObservation | null = null
   let missingDeparture: ContradictionSignal | null = null
   let missingArrival: ContradictionSignal | null = null
 
-  for (const observation of toActualObservationChronology(observations)) {
-    if (!isMaritimeObservationType(observation.type)) {
-      continue
-    }
-
+  for (const [chronologyIndex, observation] of maritimeObservations.entries()) {
     if (
       previousMaritimeObservation !== null &&
       missingDeparture === null &&
@@ -46,6 +56,7 @@ function detectContradictionSignals(
         missingMilestone: 'DEPARTURE',
         previousObservation: previousMaritimeObservation,
         anchorObservation: observation,
+        anchorChronologyIndex: chronologyIndex,
       }
     }
 
@@ -59,6 +70,7 @@ function detectContradictionSignals(
         missingMilestone: 'ARRIVAL',
         previousObservation: previousMaritimeObservation,
         anchorObservation: observation,
+        anchorChronologyIndex: chronologyIndex,
       }
     }
 
@@ -68,6 +80,30 @@ function detectContradictionSignals(
   return [missingDeparture, missingArrival].filter(
     (signal): signal is ContradictionSignal => signal !== null,
   )
+}
+
+function hasRepeatedDownstreamMilestone(
+  signal: ContradictionSignal,
+  maritimeObservations: readonly MaritimeObservation[],
+): boolean {
+  for (
+    let chronologyIndex = signal.anchorChronologyIndex + 1;
+    chronologyIndex < maritimeObservations.length;
+    chronologyIndex += 1
+  ) {
+    if (maritimeObservations[chronologyIndex]?.type === signal.anchorObservation.type) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function hasAdditionalContradictoryEvidence(
+  signal: ContradictionSignal,
+  maritimeObservations: readonly MaritimeObservation[],
+): boolean {
+  return hasRepeatedDownstreamMilestone(signal, maritimeObservations)
 }
 
 function describeEvidence(signal: ContradictionSignal): string {
@@ -113,8 +149,10 @@ export const missingCriticalMilestoneWithContradictoryContextDetector: TrackingV
     id: DETECTOR_ID,
     version: DETECTOR_VERSION,
     detect(context) {
-      return detectContradictionSignals(context.timeline.observations).map((signal) =>
-        createFinding(context.containerId, signal),
-      )
+      const maritimeObservations = toActualMaritimeObservationChronology(context.timeline.observations)
+
+      return detectMaritimeSequenceGaps(maritimeObservations)
+        .filter((signal) => hasAdditionalContradictoryEvidence(signal, maritimeObservations))
+        .map((signal) => createFinding(context.containerId, signal))
     },
   }

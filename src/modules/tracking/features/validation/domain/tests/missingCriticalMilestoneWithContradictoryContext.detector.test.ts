@@ -56,73 +56,202 @@ function makeContext(observations: readonly Observation[]): TrackingValidationCo
   }
 }
 
+function detectFindings(observations: readonly Observation[]) {
+  return missingCriticalMilestoneWithContradictoryContextDetector.detect(makeContext(observations))
+}
+
 describe('missingCriticalMilestoneWithContradictoryContextDetector', () => {
   it('does not emit a finding when the ACTUAL maritime sequence is complete', () => {
-    const findings = missingCriticalMilestoneWithContradictoryContextDetector.detect(
-      makeContext([
-        makeObservation({
-          id: 'load-1',
-          type: 'LOAD',
-          created_at: '2026-04-01T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'departure-1',
-          type: 'DEPARTURE',
-          location_code: 'CNSHA',
-          location_display: 'Shanghai',
-          created_at: '2026-04-02T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'arrival-1',
-          type: 'ARRIVAL',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-          created_at: '2026-04-10T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'discharge-1',
-          type: 'DISCHARGE',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-          created_at: '2026-04-11T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-11T10:00:00.000Z'),
-        }),
-      ]),
-    )
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'departure-1',
+        type: 'DEPARTURE',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        created_at: '2026-04-02T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'arrival-1',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-11T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-11T10:00:00.000Z'),
+      }),
+    ])
 
     expect(findings).toEqual([])
   })
 
-  it('emits one ADVISORY finding for missing DEPARTURE when ARRIVAL appears after LOAD', () => {
-    const findings = missingCriticalMilestoneWithContradictoryContextDetector.detect(
-      makeContext([
-        makeObservation({
-          id: 'load-1',
-          type: 'LOAD',
-          created_at: '2026-04-01T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'arrival-1',
-          type: 'ARRIVAL',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-          created_at: '2026-04-10T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'discharge-1',
-          type: 'DISCHARGE',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-          created_at: '2026-04-11T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-11T10:00:00.000Z'),
-        }),
-      ]),
-    )
+  it('does not emit for a plain LOAD -> DISCHARGE gap', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toEqual([])
+  })
+
+  it('does not emit for a plain DEPARTURE -> DISCHARGE gap', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'departure-1',
+        type: 'DEPARTURE',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        created_at: '2026-04-02T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toEqual([])
+  })
+
+  it('does not emit for LOAD -> ARRIVAL -> DISCHARGE when the only issue is the missing DEPARTURE', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'arrival-1',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-11T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-11T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toEqual([])
+  })
+
+  it('does not emit for a plausible transshipment flow with a missing ARRIVAL milestone', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'departure-1',
+        type: 'DEPARTURE',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        created_at: '2026-04-02T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'MAPTM',
+        location_display: 'Tangier',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'load-2',
+        type: 'LOAD',
+        location_code: 'MAPTM',
+        location_display: 'Tangier',
+        vessel_name: 'MSC LEON',
+        voyage: '614S',
+        created_at: '2026-04-11T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-11T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'departure-2',
+        type: 'DEPARTURE',
+        location_code: 'MAPTM',
+        location_display: 'Tangier',
+        vessel_name: 'MSC LEON',
+        voyage: '614S',
+        created_at: '2026-04-12T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toEqual([])
+  })
+
+  it('emits one ADVISORY finding when DISCHARGE repeats after a missing ARRIVAL gap', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'departure-1',
+        fingerprint: 'departure-1',
+        type: 'DEPARTURE',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        created_at: '2026-04-02T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        fingerprint: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        fingerprint: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        created_at: '2026-04-12T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+      }),
+    ])
 
     expect(findings).toHaveLength(1)
     expect(findings[0]).toMatchObject({
@@ -136,74 +265,113 @@ describe('missingCriticalMilestoneWithContradictoryContextDetector', () => {
       affectedBlockLabelKey: null,
       isActive: true,
       debugEvidence: {
-        anchorObservationId: 'arrival-1',
-        anchorObservationType: 'ARRIVAL',
+        anchorObservationId: 'discharge-1',
+        anchorObservationType: 'DISCHARGE',
         locationCode: 'BRSSZ',
-        missingMilestone: 'DEPARTURE',
-        previousObservationId: 'load-1',
-        previousObservationType: 'LOAD',
+        missingMilestone: 'ARRIVAL',
+        previousObservationId: 'departure-1',
+        previousObservationType: 'DEPARTURE',
       },
     })
   })
 
-  it('emits one ADVISORY finding for missing ARRIVAL when DISCHARGE appears after DEPARTURE', () => {
-    const findings = missingCriticalMilestoneWithContradictoryContextDetector.detect(
-      makeContext([
-        makeObservation({
-          id: 'load-1',
-          type: 'LOAD',
-          created_at: '2026-04-01T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'departure-1',
-          type: 'DEPARTURE',
-          location_code: 'CNSHA',
-          location_display: 'Shanghai',
-          created_at: '2026-04-02T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'discharge-1',
-          type: 'DISCHARGE',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-          created_at: '2026-04-10T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
-        }),
-      ]),
-    )
+  it('emits one ADVISORY finding when ARRIVAL repeats after a missing DEPARTURE gap', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        fingerprint: 'load-1',
+        type: 'LOAD',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'arrival-1',
+        fingerprint: 'arrival-1',
+        type: 'ARRIVAL',
+        location_code: 'MAPTM',
+        location_display: 'Tangier',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'arrival-2',
+        fingerprint: 'arrival-2',
+        type: 'ARRIVAL',
+        location_code: 'ESALG',
+        location_display: 'Algeciras',
+        created_at: '2026-04-12T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+      }),
+    ])
 
     expect(findings).toHaveLength(1)
     expect(findings[0]?.debugEvidence).toMatchObject({
-      missingMilestone: 'ARRIVAL',
-      previousObservationType: 'DEPARTURE',
-      anchorObservationType: 'DISCHARGE',
+      missingMilestone: 'DEPARTURE',
+      previousObservationType: 'LOAD',
+      anchorObservationType: 'ARRIVAL',
     })
-    expect(findings[0]?.affectedLocation).toBe('BRSSZ')
+    expect(findings[0]?.affectedLocation).toBe('MAPTM')
   })
 
   it('does not emit a finding from EXPECTED-only contradictory context', () => {
-    const findings = missingCriticalMilestoneWithContradictoryContextDetector.detect(
-      makeContext([
-        makeObservation({
-          id: 'load-1',
-          type: 'LOAD',
-          created_at: '2026-04-01T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
-        }),
-        makeObservation({
-          id: 'arrival-expected-1',
-          type: 'ARRIVAL',
-          location_code: 'BRSSZ',
-          location_display: 'Santos',
-          event_time_type: 'EXPECTED',
-          created_at: '2026-04-10T10:30:00.000Z',
-          event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
-        }),
-      ]),
-    )
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'arrival-expected-1',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        event_time_type: 'EXPECTED',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+    ])
 
     expect(findings).toEqual([])
+  })
+
+  it('keeps lifecycleKey and stateFingerprint stable for the same contradictory input', () => {
+    const observations = [
+      makeObservation({
+        id: 'departure-1',
+        fingerprint: 'departure-1',
+        type: 'DEPARTURE',
+        created_at: '2026-04-02T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-02T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        fingerprint: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        fingerprint: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        created_at: '2026-04-12T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+      }),
+    ] satisfies readonly Observation[]
+
+    const firstFindings = detectFindings(observations)
+    const secondFindings = detectFindings(observations)
+
+    expect(firstFindings).toHaveLength(1)
+    expect(secondFindings).toHaveLength(1)
+    expect(firstFindings[0]?.lifecycleKey).toBe(secondFindings[0]?.lifecycleKey)
+    expect(firstFindings[0]?.stateFingerprint).toBe(secondFindings[0]?.stateFingerprint)
   })
 })

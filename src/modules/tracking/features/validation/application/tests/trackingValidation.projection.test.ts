@@ -151,7 +151,7 @@ describe('trackingValidation.projection', () => {
     })
   })
 
-  it('surfaces the new advisory detectors through the compact projection without leaking technical detail', () => {
+  it('suppresses the missing milestone advisory for a plain maritime gap while keeping other advisory detectors', () => {
     const observations = [
       makeObservation({
         id: 'load-1',
@@ -202,7 +202,7 @@ describe('trackingValidation.projection', () => {
 
     expect(summary).toMatchObject({
       hasIssues: true,
-      findingCount: 2,
+      findingCount: 1,
       highestSeverity: 'ADVISORY',
       topIssue: {
         code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
@@ -222,6 +222,72 @@ describe('trackingValidation.projection', () => {
         affectedLocation: 'BRSSZ',
         affectedBlockLabelKey: null,
       },
+    ])
+    expect(summary.activeIssues[0]).not.toHaveProperty('debugEvidence')
+  })
+
+  it('surfaces missing critical milestone only when repeated downstream ACTUAL reinforces the gap', () => {
+    const observations = [
+      makeObservation({
+        id: 'departure-1',
+        type: 'DEPARTURE',
+        location_code: 'CNSHA',
+        location_display: 'Shanghai',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+        created_at: '2026-04-01T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+        created_at: '2026-04-10T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: 'NLRTM',
+        location_display: 'Rotterdam',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+        created_at: '2026-04-12T10:30:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'MSCU1234567',
+      observations,
+      timeline: {
+        container_id: 'container-1',
+        container_number: 'MSCU1234567',
+        observations,
+        derived_at: '2026-04-12T10:00:00.000Z',
+        holes: [],
+      },
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      now: Instant.fromIso('2026-04-12T10:00:00.000Z'),
+    })
+
+    expect(summary).toMatchObject({
+      hasIssues: true,
+      findingCount: 1,
+      highestSeverity: 'ADVISORY',
+      topIssue: {
+        code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
+        severity: 'ADVISORY',
+        reasonKey: 'tracking.validation.missingCriticalMilestoneWithContradictoryContext',
+        affectedArea: 'timeline',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
+    })
+    expect(summary.activeIssues).toEqual([
       {
         code: 'MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT',
         severity: 'ADVISORY',
