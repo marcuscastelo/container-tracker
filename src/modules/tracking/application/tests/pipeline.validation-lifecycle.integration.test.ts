@@ -466,6 +466,24 @@ describe('processSnapshot validation lifecycle integration', () => {
         hasIssues: true,
         highestSeverity: 'ADVISORY',
         findingCount: 1,
+        activeIssues: [
+          {
+            code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+            severity: 'ADVISORY',
+            reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+            affectedArea: 'timeline',
+            affectedLocation: expect.any(String),
+            affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+          },
+        ],
+        topIssue: {
+          code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+          severity: 'ADVISORY',
+          reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+          affectedArea: 'timeline',
+          affectedLocation: expect.any(String),
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+        },
       })
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'tracking.processSnapshot.validation_lifecycle_unavailable',

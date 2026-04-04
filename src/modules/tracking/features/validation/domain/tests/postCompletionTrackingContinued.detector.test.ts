@@ -156,6 +156,8 @@ describe('postCompletionTrackingContinuedDetector', () => {
       severity: 'CRITICAL',
       affectedScope: 'TIMELINE',
       summaryKey: 'tracking.validation.postCompletionTrackingContinued',
+      affectedLocation: null,
+      affectedBlockLabelKey: null,
       isActive: true,
       debugEvidence: {
         completionObservationId: 'delivery-1',
@@ -205,6 +207,8 @@ describe('postCompletionTrackingContinuedDetector', () => {
       completionStatus: 'EMPTY_RETURNED',
       continuationType: 'LOAD',
     })
+    expect(findings[0]?.affectedLocation).toBeNull()
+    expect(findings[0]?.affectedBlockLabelKey).toBeNull()
   })
 
   it('does not emit a finding for the legitimate delivered to empty-return continuation', () => {
@@ -276,6 +280,8 @@ describe('postCompletionTrackingContinuedDetector', () => {
       completionStatus: 'DELIVERED',
       continuationType: 'LOAD',
     })
+    expect(findings[0]?.affectedLocation).toBeNull()
+    expect(findings[0]?.affectedBlockLabelKey).toBeNull()
   })
 
   it('uses empty-return gate-out fallback as a strong completion anchor', () => {
@@ -318,5 +324,7 @@ describe('postCompletionTrackingContinuedDetector', () => {
       completionStatus: 'EMPTY_RETURNED',
       continuationType: 'GATE_IN',
     })
+    expect(findings[0]?.affectedLocation).toBeNull()
+    expect(findings[0]?.affectedBlockLabelKey).toBeNull()
   })
 })

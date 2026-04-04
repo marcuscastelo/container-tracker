@@ -19,7 +19,8 @@ import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.
 import type {
   ContainerTrackingValidationVM,
   ProcessTrackingValidationVM,
-} from '~/modules/process/ui/viewmodels/tracking-validation.vm'
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schemas'
@@ -45,6 +46,10 @@ type ProcessTrackingValidationResponse = ProcessDetailResponse['tracking_validat
 type TimelineResponseItem = NonNullable<
   ProcessDetailResponse['containers'][number]['timeline']
 >[number]
+
+type TrackingValidationIssueResponse = NonNullable<
+  ProcessDetailResponse['tracking_validation']['top_issue']
+>
 
 function toProcessAggregatedStatus(status: string | null | undefined): ProcessAggregatedStatus {
   const normalizedStatus = toProcessStatusCode(status)
@@ -300,6 +305,24 @@ function toProcessTrackingValidationVm(
     hasIssues: trackingValidation?.has_issues === true,
     highestSeverity: trackingValidation?.highest_severity ?? null,
     affectedContainerCount: trackingValidation?.affected_container_count ?? 0,
+    topIssue: toTrackingValidationIssueVm(trackingValidation?.top_issue),
+  }
+}
+
+function toTrackingValidationIssueVm(
+  issue: TrackingValidationIssueResponse | null | undefined,
+): TrackingValidationIssueVM | null {
+  if (issue === null || issue === undefined) {
+    return null
+  }
+
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
   }
 }
 
@@ -310,6 +333,9 @@ function toContainerTrackingValidationVm(
     hasIssues: trackingValidation?.has_issues === true,
     highestSeverity: trackingValidation?.highest_severity ?? null,
     findingCount: trackingValidation?.finding_count ?? 0,
+    activeIssues: (trackingValidation?.active_issues ?? [])
+      .map((issue) => toTrackingValidationIssueVm(issue))
+      .filter((issue): issue is TrackingValidationIssueVM => issue !== null),
   }
 }
 

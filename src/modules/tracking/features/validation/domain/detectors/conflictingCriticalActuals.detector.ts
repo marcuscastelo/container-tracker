@@ -81,6 +81,8 @@ function createFinding(
     severity: 'CRITICAL',
     affectedScope: 'SERIES',
     summaryKey: SUMMARY_KEY,
+    affectedLocation: classification.primary.location_code ?? null,
+    affectedBlockLabelKey: null,
     evidenceSummary: describeEvidence(classification.primary),
     debugEvidence: {
       conflictingActualCount: classification.conflictingActualCount,

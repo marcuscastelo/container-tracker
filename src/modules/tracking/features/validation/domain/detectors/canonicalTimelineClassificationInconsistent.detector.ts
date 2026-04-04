@@ -28,6 +28,20 @@ function describeEvidence(
   return `Post-carriage block contains maritime events (${eventTypes}) at ${locations.join(', ')}.`
 }
 
+function describeAffectedLocation(
+  signals: readonly TrackingValidationPostCarriageMaritimeEventSignal[],
+): string | null {
+  const locations = [
+    ...new Set(signals.map((signal) => signal.location).filter((value) => value !== null)),
+  ]
+
+  if (locations.length === 0) {
+    return null
+  }
+
+  return locations.join(', ')
+}
+
 function createFinding(
   containerId: string,
   signals: readonly TrackingValidationPostCarriageMaritimeEventSignal[],
@@ -56,6 +70,8 @@ function createFinding(
     severity: 'ADVISORY',
     affectedScope: 'TIMELINE',
     summaryKey: SUMMARY_KEY,
+    affectedLocation: describeAffectedLocation(signals),
+    affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
     evidenceSummary: describeEvidence(signals),
     debugEvidence: {
       maritimeEventCount: signals.length,

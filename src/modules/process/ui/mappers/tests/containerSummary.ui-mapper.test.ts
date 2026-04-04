@@ -59,6 +59,7 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
       hasIssues: false,
       highestSeverity: null,
       findingCount: 0,
+      activeIssues: [],
     },
     transshipment: {
       hasTransshipment: false,

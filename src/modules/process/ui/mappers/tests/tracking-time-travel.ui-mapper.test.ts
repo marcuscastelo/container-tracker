@@ -47,6 +47,24 @@ function makeTimeTravelResponse(): TrackingTimeTravelResponseDto {
           has_issues: true,
           highest_severity: 'danger',
           finding_count: 2,
+          active_issues: [
+            {
+              code: 'CONFLICTING_CRITICAL_ACTUALS',
+              severity: 'danger',
+              reason_key: 'tracking.validation.conflictingCriticalActuals',
+              affected_area: 'series',
+              affected_location: 'BRSSZ',
+              affected_block_label_key: null,
+            },
+            {
+              code: 'POST_COMPLETION_TRACKING_CONTINUED',
+              severity: 'danger',
+              reason_key: 'tracking.validation.postCompletionTrackingContinued',
+              affected_area: 'timeline',
+              affected_location: null,
+              affected_block_label_key: null,
+            },
+          ],
         },
         diff_from_previous: {
           kind: 'initial',
@@ -66,8 +84,27 @@ describe('tracking-time-travel.ui-mapper', () => {
       hasIssues: true,
       highestSeverity: 'danger',
       findingCount: 2,
+      activeIssues: [
+        {
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
+          severity: 'danger',
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+        {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'danger',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      ],
     })
     expect(Object.keys(result.syncs[0]?.trackingValidation ?? {}).sort()).toEqual([
+      'activeIssues',
       'findingCount',
       'hasIssues',
       'highestSeverity',

@@ -1,6 +1,6 @@
 import type { ProcessStatusCode } from '~/modules/process/ui/process-status-color'
 import type { ProcessStatusMicrobadgeVM } from '~/modules/process/ui/viewmodels/process-status-microbadge.vm'
-import type { ProcessTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-validation.vm'
+import type { ProcessTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import type { StatusVariant } from '~/shared/ui/StatusBadge'
 

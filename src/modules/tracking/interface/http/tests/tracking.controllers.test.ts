@@ -408,6 +408,7 @@ describe('tracking controllers', () => {
       has_issues: false,
       highest_severity: null,
       finding_count: 0,
+      active_issues: [],
     })
     expect(body.syncs[0]?.diff_from_previous.kind).toBe('initial')
   })

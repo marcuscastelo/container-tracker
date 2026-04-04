@@ -77,6 +77,7 @@ function makeProcessTrackingValidationResponse(
     has_issues: false,
     highest_severity: null,
     affected_container_count: 0,
+    top_issue: null,
     ...overrides,
   }
 }
@@ -88,6 +89,7 @@ function makeContainerTrackingValidationResponse(
     has_issues: false,
     highest_severity: null,
     finding_count: 0,
+    active_issues: [],
     ...overrides,
   }
 }
@@ -266,7 +268,7 @@ describe('toShipmentDetailVM base mapping', () => {
   })
 })
 
-describe('toShipmentDetailVM tracking mapping', () => {
+describe('toShipmentDetailVM advisory tracking mapping', () => {
   it('maps advisory validation summaries for shipment and container support UI', () => {
     const example = makeProcessDetailResponse({
       id: 'proc-validation-advisory',
@@ -284,6 +286,14 @@ describe('toShipmentDetailVM tracking mapping', () => {
         has_issues: true,
         highest_severity: 'warning',
         affected_container_count: 1,
+        top_issue: {
+          code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+          severity: 'warning',
+          reason_key: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+          affected_area: 'timeline',
+          affected_location: 'Santos',
+          affected_block_label_key: 'shipmentView.timeline.blocks.postCarriage',
+        },
       },
       containers: [
         makeContainerResponse({
@@ -293,6 +303,16 @@ describe('toShipmentDetailVM tracking mapping', () => {
             has_issues: true,
             highest_severity: 'warning',
             finding_count: 1,
+            active_issues: [
+              {
+                code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+                severity: 'warning',
+                reason_key: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+                affected_area: 'timeline',
+                affected_location: 'Santos',
+                affected_block_label_key: 'shipmentView.timeline.blocks.postCarriage',
+              },
+            ],
           },
         }),
       ],
@@ -304,24 +324,46 @@ describe('toShipmentDetailVM tracking mapping', () => {
       hasIssues: true,
       highestSeverity: 'warning',
       affectedContainerCount: 1,
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+        severity: 'warning',
+        reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+        affectedArea: 'timeline',
+        affectedLocation: 'Santos',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+      },
     })
     expect(Object.keys(result.trackingValidation).sort()).toEqual([
       'affectedContainerCount',
       'hasIssues',
       'highestSeverity',
+      'topIssue',
     ])
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'warning',
       findingCount: 1,
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+          severity: 'warning',
+          reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+          affectedArea: 'timeline',
+          affectedLocation: 'Santos',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+        },
+      ],
     })
     expect(Object.keys(result.containers[0]?.trackingValidation ?? {}).sort()).toEqual([
+      'activeIssues',
       'findingCount',
       'hasIssues',
       'highestSeverity',
     ])
   })
+})
 
+describe('toShipmentDetailVM critical tracking mapping', () => {
   it('maps tracking validation summaries for shipment and container support UI', () => {
     const example = makeProcessDetailResponse({
       id: 'proc-validation',
@@ -339,6 +381,14 @@ describe('toShipmentDetailVM tracking mapping', () => {
         has_issues: true,
         highest_severity: 'danger',
         affected_container_count: 1,
+        top_issue: {
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
+          severity: 'danger',
+          reason_key: 'tracking.validation.conflictingCriticalActuals',
+          affected_area: 'series',
+          affected_location: 'BRSSZ',
+          affected_block_label_key: null,
+        },
       },
       containers: [
         makeContainerResponse({
@@ -348,6 +398,24 @@ describe('toShipmentDetailVM tracking mapping', () => {
             has_issues: true,
             highest_severity: 'danger',
             finding_count: 2,
+            active_issues: [
+              {
+                code: 'CONFLICTING_CRITICAL_ACTUALS',
+                severity: 'danger',
+                reason_key: 'tracking.validation.conflictingCriticalActuals',
+                affected_area: 'series',
+                affected_location: 'BRSSZ',
+                affected_block_label_key: null,
+              },
+              {
+                code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                severity: 'danger',
+                reason_key: 'tracking.validation.postCompletionTrackingContinued',
+                affected_area: 'timeline',
+                affected_location: null,
+                affected_block_label_key: null,
+              },
+            ],
           },
         }),
       ],
@@ -359,15 +427,43 @@ describe('toShipmentDetailVM tracking mapping', () => {
       hasIssues: true,
       highestSeverity: 'danger',
       affectedContainerCount: 1,
+      topIssue: {
+        code: 'CONFLICTING_CRITICAL_ACTUALS',
+        severity: 'danger',
+        reasonKey: 'tracking.validation.conflictingCriticalActuals',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
     })
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'danger',
       findingCount: 2,
+      activeIssues: [
+        {
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
+          severity: 'danger',
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+        {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'danger',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      ],
     })
     expect(result.containers[0]?.trackingValidation).not.toHaveProperty('debugEvidence')
   })
+})
 
+describe('toShipmentDetailVM post-completion tracking mapping', () => {
   it('maps a critical post-completion validation summary without deriving reason in the UI', () => {
     const example = makeProcessDetailResponse({
       id: 'proc-post-completion-validation',
@@ -385,6 +481,14 @@ describe('toShipmentDetailVM tracking mapping', () => {
         has_issues: true,
         highest_severity: 'danger',
         affected_container_count: 1,
+        top_issue: {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'danger',
+          reason_key: 'tracking.validation.postCompletionTrackingContinued',
+          affected_area: 'timeline',
+          affected_location: null,
+          affected_block_label_key: null,
+        },
       },
       containers: [
         makeContainerResponse({
@@ -394,6 +498,16 @@ describe('toShipmentDetailVM tracking mapping', () => {
             has_issues: true,
             highest_severity: 'danger',
             finding_count: 1,
+            active_issues: [
+              {
+                code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                severity: 'danger',
+                reason_key: 'tracking.validation.postCompletionTrackingContinued',
+                affected_area: 'timeline',
+                affected_location: null,
+                affected_block_label_key: null,
+              },
+            ],
           },
         }),
       ],
@@ -405,11 +519,29 @@ describe('toShipmentDetailVM tracking mapping', () => {
       hasIssues: true,
       highestSeverity: 'danger',
       affectedContainerCount: 1,
+      topIssue: {
+        code: 'POST_COMPLETION_TRACKING_CONTINUED',
+        severity: 'danger',
+        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+        affectedArea: 'timeline',
+        affectedLocation: null,
+        affectedBlockLabelKey: null,
+      },
     })
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'danger',
       findingCount: 1,
+      activeIssues: [
+        {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'danger',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      ],
     })
   })
 })

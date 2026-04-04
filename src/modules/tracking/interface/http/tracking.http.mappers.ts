@@ -17,6 +17,7 @@ import type {
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
 import type {
   AlertResponseDto,
   SnapshotResponseDto,
@@ -270,6 +271,22 @@ function toTrackingValidationSeverityResponse(
   }
 }
 
+function toTrackingValidationDisplayIssueResponseDto(issue: TrackingValidationDisplayIssue) {
+  const severity = toTrackingValidationSeverityResponse(issue.severity)
+  if (severity === null) {
+    throw new Error(`tracking validation issue severity missing: ${issue.code}`)
+  }
+
+  return {
+    code: issue.code,
+    severity,
+    reason_key: issue.reasonKey,
+    affected_area: issue.affectedArea,
+    affected_location: issue.affectedLocation,
+    affected_block_label_key: issue.affectedBlockLabelKey,
+  }
+}
+
 function toTrackingTimeTravelTrackingValidationResponseDto(
   summary: TrackingValidationContainerSummary,
 ) {
@@ -277,6 +294,9 @@ function toTrackingTimeTravelTrackingValidationResponseDto(
     has_issues: summary.hasIssues,
     highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
     finding_count: summary.findingCount,
+    active_issues: summary.activeIssues.map((issue) =>
+      toTrackingValidationDisplayIssueResponseDto(issue),
+    ),
   }
 }
 

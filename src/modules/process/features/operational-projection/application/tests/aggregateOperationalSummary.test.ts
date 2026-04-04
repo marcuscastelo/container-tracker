@@ -23,14 +23,13 @@ function makeAlert(overrides: Partial<TrackingAlertLike> = {}): TrackingAlertLik
 
 function makeSummary(
   overrides: {
+    containerNumber?: string
     status?: OperationalStatus
     alerts?: readonly TrackingAlertLike[]
     observations?: readonly { event_time: string | null }[]
-    trackingValidation?: {
-      readonly hasIssues: boolean
-      readonly findingCount: number
-      readonly highestSeverity: 'ADVISORY' | 'CRITICAL' | null
-    }
+    trackingValidation?: Partial<
+      ReturnType<typeof createEmptyTrackingValidationContainerProjectionSummary>
+    >
     operational?: {
       etaEventTime?: string | null
       etaState?: 'ACTUAL' | 'ACTIVE_EXPECTED' | 'EXPIRED_EXPECTED'
@@ -58,12 +57,19 @@ function makeSummary(
             ? {}
             : { lifecycleBucket: overrides.operational.lifecycleBucket }),
         }
+  const defaultTrackingValidation = createEmptyTrackingValidationContainerProjectionSummary()
 
   return {
+    container_number: overrides.containerNumber ?? 'MSCU1234567',
     status: overrides.status ?? 'UNKNOWN',
     alerts: overrides.alerts ?? [],
     tracking_validation:
-      overrides.trackingValidation ?? createEmptyTrackingValidationContainerProjectionSummary(),
+      overrides.trackingValidation === undefined
+        ? defaultTrackingValidation
+        : {
+            ...defaultTrackingValidation,
+            ...overrides.trackingValidation,
+          },
     has_observations: (overrides.observations?.length ?? 0) > 0,
     last_event_at:
       overrides.observations === undefined || overrides.observations.length === 0

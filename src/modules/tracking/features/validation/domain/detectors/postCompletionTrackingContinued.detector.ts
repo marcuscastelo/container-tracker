@@ -84,6 +84,8 @@ function createFinding(
     severity: 'CRITICAL',
     affectedScope: 'TIMELINE',
     summaryKey: SUMMARY_KEY,
+    affectedLocation: null,
+    affectedBlockLabelKey: null,
     evidenceSummary: describeEvidence(milestone, incompatibleObservation),
     debugEvidence: {
       completionObservationId: milestone.observation.id,

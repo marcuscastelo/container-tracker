@@ -26,6 +26,7 @@ function makeSync(snapshotId: string, position: number): TrackingTimeTravelSyncV
       hasIssues: false,
       highestSeverity: null,
       findingCount: 0,
+      activeIssues: [],
     },
     nextLocation: null,
     diff:

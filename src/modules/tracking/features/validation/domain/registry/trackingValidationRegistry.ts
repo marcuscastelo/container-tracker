@@ -45,6 +45,16 @@ function assertEvidenceSummary(evidenceSummary: string): void {
   }
 }
 
+function assertOptionalNonBlank(value: string | null, label: string): void {
+  if (value === null) {
+    return
+  }
+
+  if (value.trim().length === 0) {
+    throw new Error(`Tracking validation ${label} is empty`)
+  }
+}
+
 export function createTrackingValidationRegistry(
   detectors: readonly TrackingValidationDetector[],
 ): TrackingValidationRegistry {
@@ -92,6 +102,8 @@ export function createTrackingValidationRegistry(
           if (finding.stateFingerprint.trim().length === 0) {
             throw new Error(`Tracking validation finding stateFingerprint is empty: ${detector.id}`)
           }
+          assertOptionalNonBlank(finding.affectedLocation, 'affectedLocation')
+          assertOptionalNonBlank(finding.affectedBlockLabelKey, 'affectedBlockLabelKey')
 
           findings.push(finding)
         }

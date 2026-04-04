@@ -57,6 +57,8 @@ const EMPTY_TRACKING_VALIDATION: TrackingValidationContainerSummary = {
   hasIssues: false,
   findingCount: 0,
   highestSeverity: null,
+  activeIssues: [],
+  topIssue: null,
 }
 
 function isContainerStatus(value: string): value is ContainerSummaryStatus {

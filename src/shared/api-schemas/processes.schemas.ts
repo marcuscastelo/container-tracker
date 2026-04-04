@@ -1,5 +1,8 @@
 import { z } from 'zod'
-import { AlertResponseDtoSchema } from '~/modules/tracking/interface/http/tracking.schemas'
+import {
+  AlertResponseDtoSchema,
+  TrackingValidationIssueResponseDtoSchema,
+} from '~/modules/tracking/interface/http/tracking.schemas'
 import { TemporalValueDtoSchema } from '~/shared/api-schemas/temporal.schemas'
 
 const ProcessLastSyncStatusSchema = z.enum(['DONE', 'FAILED', 'RUNNING', 'UNKNOWN'])
@@ -55,12 +58,14 @@ const ProcessTrackingValidationResponseSchema = z.object({
   has_issues: z.boolean(),
   highest_severity: TrackingValidationSeveritySchema.nullable(),
   affected_container_count: z.number().int().nonnegative(),
+  top_issue: TrackingValidationIssueResponseDtoSchema.nullable(),
 })
 
 const ContainerTrackingValidationResponseSchema = z.object({
   has_issues: z.boolean(),
   highest_severity: TrackingValidationSeveritySchema.nullable(),
   finding_count: z.number().int().nonnegative(),
+  active_issues: z.array(TrackingValidationIssueResponseDtoSchema),
 })
 
 export const ProcessResponseSchema = z.object({

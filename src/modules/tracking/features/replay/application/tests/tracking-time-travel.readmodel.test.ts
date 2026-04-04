@@ -177,6 +177,24 @@ describe('buildTrackingTimeTravelReadModel', () => {
       hasIssues: true,
       findingCount: 1,
       highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      ],
+      topIssue: {
+        code: 'POST_COMPLETION_TRACKING_CONTINUED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+        affectedArea: 'timeline',
+        affectedLocation: null,
+        affectedBlockLabelKey: null,
+      },
     })
   })
 })

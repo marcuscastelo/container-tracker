@@ -16,7 +16,10 @@ import type {
   TrackingTimeTravelSyncVM,
   TrackingTimeTravelVM,
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
-import type { ContainerTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-validation.vm'
+import type {
+  ContainerTrackingValidationVM,
+  TrackingValidationIssueVM,
+} from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -160,6 +163,22 @@ function toTrackingValidationVm(
     hasIssues: trackingValidation.has_issues === true,
     highestSeverity: trackingValidation.highest_severity ?? null,
     findingCount: trackingValidation.finding_count,
+    activeIssues: trackingValidation.active_issues.map((issue) =>
+      toTrackingValidationIssueVm(issue),
+    ),
+  }
+}
+
+function toTrackingValidationIssueVm(
+  issue: TrackingTimeTravelResponseDto['syncs'][number]['tracking_validation']['active_issues'][number],
+): TrackingValidationIssueVM {
+  return {
+    code: issue.code,
+    severity: issue.severity,
+    reasonKey: issue.reason_key,
+    affectedArea: issue.affected_area,
+    affectedLocation: issue.affected_location ?? null,
+    affectedBlockLabelKey: issue.affected_block_label_key ?? null,
   }
 }
 

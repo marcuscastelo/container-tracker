@@ -65,6 +65,7 @@ function createProcess(
       hasIssues: false,
       highestSeverity: null,
       affectedContainerCount: 0,
+      topIssue: null,
     },
     hasTransshipment: false,
     lastEventAt: input.lastEventAt ?? null,

@@ -19,6 +19,8 @@ function createFinding(
     affectedScope: overrides.affectedScope ?? 'TIMELINE',
     summaryKey: overrides.summaryKey ?? 'tracking.validation.detector1',
     evidenceSummary: overrides.evidenceSummary ?? 'Evidence A',
+    affectedLocation: overrides.affectedLocation ?? null,
+    affectedBlockLabelKey: overrides.affectedBlockLabelKey ?? null,
     isActive: overrides.isActive ?? true,
     ...(overrides.debugEvidence === undefined ? {} : { debugEvidence: overrides.debugEvidence }),
   }

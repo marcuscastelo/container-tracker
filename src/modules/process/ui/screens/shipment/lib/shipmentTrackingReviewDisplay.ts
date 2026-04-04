@@ -19,6 +19,7 @@ function toHistoricalShipmentTrackingValidation(
     hasIssues: sync.trackingValidation.hasIssues,
     highestSeverity: sync.trackingValidation.highestSeverity,
     affectedContainerCount: sync.trackingValidation.hasIssues ? 1 : 0,
+    topIssue: sync.trackingValidation.activeIssues[0] ?? null,
   }
 }
 

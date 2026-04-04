@@ -16,7 +16,7 @@ import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/mo
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
-import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
+import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import type { TemporalValue } from '~/shared/time/temporal-value'
 

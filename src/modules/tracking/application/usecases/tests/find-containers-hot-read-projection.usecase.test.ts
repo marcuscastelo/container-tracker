@@ -167,6 +167,8 @@ describe('findContainersHotReadProjection', () => {
       hasIssues: false,
       findingCount: 0,
       highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
     })
     expect(result.activeAlerts).toHaveLength(1)
     expect(result.activeAlertIncidents.summary.activeIncidentCount).toBe(1)
@@ -205,6 +207,24 @@ describe('findContainersHotReadProjection', () => {
       hasIssues: true,
       findingCount: 1,
       highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
+          affectedBlockLabelKey: null,
+        },
+      ],
+      topIssue: {
+        code: 'CONFLICTING_CRITICAL_ACTUALS',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.conflictingCriticalActuals',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
     })
   })
 
@@ -256,6 +276,24 @@ describe('findContainersHotReadProjection', () => {
       hasIssues: true,
       findingCount: 1,
       highestSeverity: 'CRITICAL',
+      activeIssues: [
+        {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
+      ],
+      topIssue: {
+        code: 'POST_COMPLETION_TRACKING_CONTINUED',
+        severity: 'CRITICAL',
+        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+        affectedArea: 'timeline',
+        affectedLocation: null,
+        affectedBlockLabelKey: null,
+      },
     })
   })
 
@@ -323,6 +361,8 @@ describe('findContainersHotReadProjection', () => {
       hasIssues: false,
       findingCount: 0,
       highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
     })
   })
 
@@ -402,6 +442,24 @@ describe('findContainersHotReadProjection', () => {
       hasIssues: true,
       findingCount: 1,
       highestSeverity: 'ADVISORY',
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+          severity: 'ADVISORY',
+          reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+          affectedArea: 'timeline',
+          affectedLocation: 'Santos',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+        },
+      ],
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+        severity: 'ADVISORY',
+        reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+        affectedArea: 'timeline',
+        affectedLocation: 'Santos',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+      },
     })
   })
 

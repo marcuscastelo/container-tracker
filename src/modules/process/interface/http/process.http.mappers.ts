@@ -36,9 +36,11 @@ import type {
 import {
   aggregateTrackingValidationProjection,
   createEmptyTrackingValidationProcessProjectionSummary,
+  pickTopTrackingValidationIssueForProcess,
   type TrackingValidationContainerSummary,
   type TrackingValidationProcessSummary,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationDisplayIssue } from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
 import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
@@ -129,6 +131,13 @@ function toTrackingValidationSeverityResponse(
   if (severity === 'CRITICAL') return 'danger'
   if (severity === 'ADVISORY') return 'warning'
   return null
+}
+
+function toTrackingValidationIssueSeverityResponse(
+  severity: TrackingValidationDisplayIssue['severity'],
+): 'warning' | 'danger' {
+  if (severity === 'CRITICAL') return 'danger'
+  return 'warning'
 }
 
 function toTrackingValidationAttentionSeverity(
@@ -227,6 +236,7 @@ function createEmptyProcessTrackingValidationResponse() {
     has_issues: false,
     highest_severity: null,
     affected_container_count: 0,
+    top_issue: null,
   }
 }
 
@@ -266,7 +276,10 @@ export function toProcessResponseWithSummary(
     highest_alert_severity: summary.highest_alert_severity,
     attention_severity: summary.attention_severity,
     dominant_alert_created_at: summary.dominant_alert_created_at,
-    tracking_validation: toProcessTrackingValidationResponse(summary.tracking_validation),
+    tracking_validation: toProcessTrackingValidationResponse(
+      summary.tracking_validation,
+      summary.tracking_validation_top_issue,
+    ),
     has_transshipment: summary.has_transshipment,
     last_event_at: summary.last_event_at,
     last_sync_status: sync.lastSyncStatus,
@@ -465,21 +478,49 @@ function toOperationalEtaResponse(eta: TrackingOperationalSummary['eta']) {
   }
 }
 
+function toTrackingValidationDisplayIssueResponse(issue: TrackingValidationDisplayIssue) {
+  return {
+    code: issue.code,
+    severity: toTrackingValidationIssueSeverityResponse(issue.severity),
+    reason_key: issue.reasonKey,
+    affected_area: issue.affectedArea,
+    affected_location: issue.affectedLocation,
+    affected_block_label_key: issue.affectedBlockLabelKey,
+  }
+}
+
+function toOptionalTrackingValidationDisplayIssueResponse(
+  issue: TrackingValidationDisplayIssue | null,
+) {
+  if (issue === null) {
+    return null
+  }
+
+  return toTrackingValidationDisplayIssueResponse(issue)
+}
+
 function toContainerTrackingValidationResponse(summary: TrackingValidationContainerSummary) {
   return {
     has_issues: summary.hasIssues,
     highest_severity: toTrackingValidationSeverityResponse(summary.highestSeverity),
     finding_count: summary.findingCount,
+    active_issues: summary.activeIssues.map((issue) =>
+      toTrackingValidationDisplayIssueResponse(issue),
+    ),
   }
 }
 
-function toProcessTrackingValidationResponse(summary?: TrackingValidationProcessSummary) {
+function toProcessTrackingValidationResponse(
+  summary?: TrackingValidationProcessSummary,
+  topIssue: TrackingValidationDisplayIssue | null = null,
+) {
   const currentSummary = summary ?? createEmptyTrackingValidationProcessProjectionSummary()
 
   return {
     has_issues: currentSummary.hasIssues,
     highest_severity: toTrackingValidationSeverityResponse(currentSummary.highestSeverity),
     affected_container_count: currentSummary.affectedContainerCount,
+    top_issue: toOptionalTrackingValidationDisplayIssueResponse(topIssue),
   }
 }
 
@@ -784,7 +825,16 @@ export function toProcessDetailResponse(
   const trackingValidationSummary = aggregateTrackingValidationProjection(
     validationSummariesForProcess,
   )
-  const trackingValidation = toProcessTrackingValidationResponse(trackingValidationSummary)
+  const trackingValidationTopIssue = pickTopTrackingValidationIssueForProcess(
+    containersWithTracking.map((container) => ({
+      containerNumber: container.container_number,
+      topIssue: trackingValidationByContainerId.get(container.id)?.topIssue ?? null,
+    })),
+  )
+  const trackingValidation = toProcessTrackingValidationResponse(
+    trackingValidationSummary,
+    trackingValidationTopIssue,
+  )
   const activeAlertIncidentResponses = activeAlertIncidents.active.map(
     toShipmentAlertIncidentResponse,
   )

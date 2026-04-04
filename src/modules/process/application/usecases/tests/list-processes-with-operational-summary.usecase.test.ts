@@ -20,6 +20,8 @@ const EMPTY_TRACKING_VALIDATION: TrackingValidationContainerSummary = {
   hasIssues: false,
   findingCount: 0,
   highestSeverity: null,
+  activeIssues: [],
+  topIssue: null,
 }
 
 function makeProcess(processId: string) {
@@ -241,6 +243,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       affectedContainerCount: 0,
       totalFindingCount: 0,
     })
+    expect(result.processes[0]?.summary.tracking_validation_top_issue).toBeNull()
     expect(result.processes[0]?.summary.attention_severity).toBe('danger')
   })
 
@@ -264,6 +267,24 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               hasIssues: true,
               findingCount: 1,
               highestSeverity: 'CRITICAL',
+              activeIssues: [
+                {
+                  code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                  severity: 'CRITICAL',
+                  reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+                  affectedArea: 'timeline',
+                  affectedLocation: null,
+                  affectedBlockLabelKey: null,
+                },
+              ],
+              topIssue: {
+                code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                severity: 'CRITICAL',
+                reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+                affectedArea: 'timeline',
+                affectedLocation: null,
+                affectedBlockLabelKey: null,
+              },
             },
             activeAlerts: [],
             hasObservations: true,
@@ -309,6 +330,14 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       affectedContainerCount: 1,
       totalFindingCount: 1,
     })
+    expect(result.processes[0]?.summary.tracking_validation_top_issue).toEqual({
+      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      severity: 'CRITICAL',
+      reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+      affectedArea: 'timeline',
+      affectedLocation: null,
+      affectedBlockLabelKey: null,
+    })
     expect(result.processes[0]?.summary.attention_severity).toBe('danger')
   })
 
@@ -332,6 +361,24 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               hasIssues: true,
               findingCount: 1,
               highestSeverity: 'ADVISORY',
+              activeIssues: [
+                {
+                  code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+                  severity: 'ADVISORY',
+                  reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+                  affectedArea: 'timeline',
+                  affectedLocation: 'Santos',
+                  affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+                },
+              ],
+              topIssue: {
+                code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+                severity: 'ADVISORY',
+                reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+                affectedArea: 'timeline',
+                affectedLocation: 'Santos',
+                affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+              },
             },
             activeAlerts: [],
             hasObservations: true,
@@ -377,6 +424,14 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       affectedContainerCount: 1,
       totalFindingCount: 1,
     })
+    expect(result.processes[0]?.summary.tracking_validation_top_issue).toEqual({
+      code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+      severity: 'ADVISORY',
+      reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+      affectedArea: 'timeline',
+      affectedLocation: 'Santos',
+      affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+    })
     expect(result.processes[0]?.summary.attention_severity).toBeNull()
   })
 
@@ -400,6 +455,24 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               hasIssues: true,
               findingCount: 1,
               highestSeverity: 'CRITICAL',
+              activeIssues: [
+                {
+                  code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                  severity: 'CRITICAL',
+                  reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+                  affectedArea: 'timeline',
+                  affectedLocation: null,
+                  affectedBlockLabelKey: null,
+                },
+              ],
+              topIssue: {
+                code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                severity: 'CRITICAL',
+                reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+                affectedArea: 'timeline',
+                affectedLocation: null,
+                affectedBlockLabelKey: null,
+              },
             },
             activeAlerts: [],
             hasObservations: true,
@@ -444,6 +517,14 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       highestSeverity: 'CRITICAL',
       affectedContainerCount: 1,
       totalFindingCount: 1,
+    })
+    expect(result.processes[0]?.summary.tracking_validation_top_issue).toEqual({
+      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      severity: 'CRITICAL',
+      reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+      affectedArea: 'timeline',
+      affectedLocation: null,
+      affectedBlockLabelKey: null,
     })
     expect(result.processes[0]?.summary.attention_severity).toBe('danger')
   })

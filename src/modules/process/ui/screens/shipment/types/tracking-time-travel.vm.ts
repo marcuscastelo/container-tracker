@@ -1,5 +1,5 @@
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
-import type { ContainerTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-validation.vm'
+import type { ContainerTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-review.vm'
 import type { TrackingStatusCode } from '~/modules/tracking/features/status/application/projection/tracking.status.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TemporalValueDto } from '~/shared/time/dto'

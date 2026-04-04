@@ -69,6 +69,8 @@ describe('tracking validation registry and aggregation', () => {
           affectedScope: 'TIMELINE',
           summaryKey: 'tracking.validation.timelineGap',
           evidenceSummary: 'Gap in canonical timeline.',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
           isActive: true,
         },
       ]),
@@ -83,6 +85,8 @@ describe('tracking validation registry and aggregation', () => {
           affectedScope: 'STATUS',
           summaryKey: 'tracking.validation.statusConflict',
           evidenceSummary: 'Conflicting status facts.',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
           isActive: true,
         },
       ]),
@@ -117,6 +121,8 @@ describe('tracking validation registry and aggregation', () => {
           affectedScope: 'SERIES',
           summaryKey: 'tracking.validation.inactiveFinding',
           evidenceSummary: 'Inactive finding kept for audit only.',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
           isActive: false,
         },
       ]),
@@ -192,6 +198,8 @@ describe('tracking validation registry and aggregation', () => {
           affectedScope: 'TIMELINE',
           summaryKey: 'tracking.validation.timelineGap',
           evidenceSummary: 'Gap in canonical timeline.',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
           debugEvidence: {
             gapCount: 2,
             source: 'projection',
@@ -236,6 +244,8 @@ describe('tracking validation registry and aggregation', () => {
           affectedScope: 'TIMELINE',
           summaryKey: 'tracking.validation.timelineGap',
           evidenceSummary: 'Gap in canonical timeline.',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
           isActive: true,
         },
       ]),
@@ -262,6 +272,8 @@ describe('tracking validation registry and aggregation', () => {
           affectedScope: 'TIMELINE',
           summaryKey: 'tracking.validation.timelineGap',
           evidenceSummary: 'A'.repeat(201),
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
           isActive: true,
         },
       ]),
@@ -273,5 +285,33 @@ describe('tracking validation registry and aggregation', () => {
         registry,
       }),
     ).toThrow('evidenceSummary exceeds 200 characters')
+  })
+
+  it('rejects findings whose public location metadata is blank', () => {
+    const registry = createTrackingValidationRegistry([
+      createDetector('TIMELINE_GAP', [
+        {
+          detectorId: 'TIMELINE_GAP',
+          detectorVersion: '1',
+          code: 'TIMELINE_GAP',
+          lifecycleKey: 'TIMELINE_GAP:container-1',
+          stateFingerprint: 'fp-timeline-gap',
+          severity: 'ADVISORY',
+          affectedScope: 'TIMELINE',
+          summaryKey: 'tracking.validation.timelineGap',
+          evidenceSummary: 'Gap in canonical timeline.',
+          affectedLocation: '   ',
+          affectedBlockLabelKey: null,
+          isActive: true,
+        },
+      ]),
+    ])
+
+    expect(() =>
+      deriveTrackingValidation({
+        context: createContext(),
+        registry,
+      }),
+    ).toThrow('affectedLocation is empty')
   })
 })

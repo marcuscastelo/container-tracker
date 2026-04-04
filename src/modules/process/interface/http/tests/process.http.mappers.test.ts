@@ -96,6 +96,7 @@ function createSummary(
     attention_severity: null,
     dominant_alert_created_at: null,
     tracking_validation: createEmptyTrackingValidationProcessProjectionSummary(),
+    tracking_validation_top_issue: null,
     has_transshipment: false,
     last_event_at: null,
     ...overrides,
@@ -255,6 +256,7 @@ describe('process.http.mappers', () => {
       has_issues: true,
       highest_severity: 'danger',
       affected_container_count: 1,
+      top_issue: null,
     })
     expect(parsed.attention_severity).toBe('danger')
   })
@@ -279,6 +281,7 @@ describe('process.http.mappers', () => {
       has_issues: true,
       highest_severity: 'warning',
       affected_container_count: 1,
+      top_issue: null,
     })
     expect(parsed.attention_severity).toBeNull()
   })
@@ -293,6 +296,14 @@ describe('process.http.mappers', () => {
           totalFindingCount: 1,
           highestSeverity: 'CRITICAL',
         },
+        tracking_validation_top_issue: {
+          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          severity: 'CRITICAL',
+          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          affectedArea: 'timeline',
+          affectedLocation: null,
+          affectedBlockLabelKey: null,
+        },
       }),
       createSyncSummary(),
     )
@@ -303,9 +314,18 @@ describe('process.http.mappers', () => {
       'affected_container_count',
       'has_issues',
       'highest_severity',
+      'top_issue',
     ])
     expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
     expect(parsed.tracking_validation.highest_severity).toBe('danger')
+    expect(parsed.tracking_validation.top_issue).toEqual({
+      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      severity: 'danger',
+      reason_key: 'tracking.validation.postCompletionTrackingContinued',
+      affected_area: 'timeline',
+      affected_location: null,
+      affected_block_label_key: null,
+    })
   })
 
   it('keeps status microbadge nullable when there is no advanced subset status', () => {

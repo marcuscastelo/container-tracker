@@ -15,6 +15,8 @@ export type TrackingValidationFinding = {
   readonly severity: TrackingValidationSeverity
   readonly affectedScope: TrackingValidationAffectedScope
   readonly summaryKey: string
+  readonly affectedLocation: string | null
+  readonly affectedBlockLabelKey: string | null
   readonly evidenceSummary: string
   readonly debugEvidence?: TrackingValidationDebugEvidence
   readonly isActive: boolean

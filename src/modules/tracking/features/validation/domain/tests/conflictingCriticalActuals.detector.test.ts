@@ -93,6 +93,8 @@ describe('conflictingCriticalActualsDetector', () => {
       severity: 'CRITICAL',
       affectedScope: 'SERIES',
       summaryKey: 'tracking.validation.conflictingCriticalActuals',
+      affectedLocation: 'BRSSZ',
+      affectedBlockLabelKey: null,
       isActive: true,
       debugEvidence: {
         conflictingActualCount: 1,
@@ -167,5 +169,7 @@ describe('conflictingCriticalActualsDetector', () => {
       'DISCHARGE',
       'DELIVERY',
     ])
+    expect(findings.map((finding) => finding.affectedLocation)).toEqual(['BRSSZ', 'BRSSZ'])
+    expect(findings.map((finding) => finding.affectedBlockLabelKey)).toEqual([null, null])
   })
 })

@@ -253,6 +253,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
               containers={trackingValidationDisplay().containers}
               selectedId={props.selectedContainerId}
               onSelect={props.onSelectContainer}
+              trackingValidationMode={trackingValidationDisplay().mode}
             />
           </section>
 

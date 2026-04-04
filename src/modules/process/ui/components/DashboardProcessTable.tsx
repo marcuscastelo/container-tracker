@@ -26,6 +26,10 @@ import {
   type SyncCellState,
 } from '~/modules/process/ui/components/SyncCell'
 import {
+  type TrackingValidationCopyLabels,
+  toTrackingValidationTooltipText,
+} from '~/modules/process/ui/components/tracking-review-copy.presenter'
+import {
   toTrackingValidationBadgeClasses,
   toTrackingValidationDisplayState,
 } from '~/modules/process/ui/components/tracking-review-display.presenter'
@@ -536,6 +540,29 @@ function AlertsCell(ctx: CellContext): JSX.Element {
 
     return ctx.t(ctx.keys.dashboard.table.trackingValidation.affectedSingle)
   }
+  const trackingValidationTooltip = () => {
+    const trackingValidationCopyLabels: TrackingValidationCopyLabels = {
+      areaLabel: ctx.t(ctx.keys.shipmentView.validation.labels.area),
+      blockLabel: ctx.t(ctx.keys.shipmentView.validation.labels.block),
+      locationLabel: ctx.t(ctx.keys.shipmentView.validation.labels.location),
+      affectedAreaLabels: {
+        container: ctx.t(ctx.keys.shipmentView.validation.areas.container),
+        operational: ctx.t(ctx.keys.shipmentView.validation.areas.operational),
+        process: ctx.t(ctx.keys.shipmentView.validation.areas.process),
+        series: ctx.t(ctx.keys.shipmentView.validation.areas.series),
+        status: ctx.t(ctx.keys.shipmentView.validation.areas.status),
+        timeline: ctx.t(ctx.keys.shipmentView.validation.areas.timeline),
+      },
+    }
+
+    return toTrackingValidationTooltipText({
+      aggregateLabel: trackingValidationLabel(),
+      issue: ctx.process.trackingValidation.topIssue,
+      labels: trackingValidationCopyLabels,
+      resolveBlockLabel: (key) => ctx.t(key),
+      resolveReason: (key) => ctx.t(key),
+    })
+  }
 
   const severityLabel = () => {
     if (dominantSeverity() === 'danger')
@@ -585,7 +612,7 @@ function AlertsCell(ctx: CellContext): JSX.Element {
           />
           <TrackingValidationChip
             visible={hasTrackingValidation()}
-            label={trackingValidationLabel()}
+            label={trackingValidationTooltip()}
             chipLabel={ctx.t(ctx.keys.dashboard.table.trackingValidation.chip)}
             severity={ctx.process.trackingValidation.highestSeverity}
           />

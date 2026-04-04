@@ -46,6 +46,7 @@ function buildProcessDetailResponse(
           has_issues: false,
           highest_severity: null,
           finding_count: 0,
+          active_issues: [],
         },
         timeline: [],
         operational: {
@@ -72,6 +73,7 @@ function buildProcessDetailResponse(
       has_issues: false,
       highest_severity: null,
       affected_container_count: 0,
+      top_issue: null,
     },
     alerts: [
       {

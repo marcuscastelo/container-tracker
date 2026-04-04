@@ -179,6 +179,7 @@ describe('toProcessSummaryVMs', () => {
       hasIssues: true,
       highestSeverity: 'warning',
       affectedContainerCount: 2,
+      topIssue: null,
     })
     expect(result[0]?.attentionSeverity).toBeNull()
   })
@@ -192,6 +193,14 @@ describe('toProcessSummaryVMs', () => {
           has_issues: true,
           highest_severity: 'danger',
           affected_container_count: 2,
+          top_issue: {
+            code: 'CONFLICTING_CRITICAL_ACTUALS',
+            severity: 'danger',
+            reason_key: 'tracking.validation.conflictingCriticalActuals',
+            affected_area: 'series',
+            affected_location: 'BRSSZ',
+            affected_block_label_key: null,
+          },
         },
       }),
     ])
@@ -200,6 +209,14 @@ describe('toProcessSummaryVMs', () => {
       hasIssues: true,
       highestSeverity: 'danger',
       affectedContainerCount: 2,
+      topIssue: {
+        code: 'CONFLICTING_CRITICAL_ACTUALS',
+        severity: 'danger',
+        reasonKey: 'tracking.validation.conflictingCriticalActuals',
+        affectedArea: 'series',
+        affectedLocation: 'BRSSZ',
+        affectedBlockLabelKey: null,
+      },
     })
     expect(result[0]?.attentionSeverity).toBe('danger')
   })

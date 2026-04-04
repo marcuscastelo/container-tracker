@@ -330,7 +330,23 @@
       "bannerTitle": "Validação necessária",
       "bannerDescription": "A leitura atual requer validação em {{count}} container(s).",
       "historicalBannerDescription": "O snapshot selecionado do container {{container}} requer validação.",
-      "containerChip": "Validação necessária"
+      "containerChip": "Validação necessária",
+      "detailsTitle": "Motivo da validação",
+      "detailsDescription": "Confira abaixo por que o container {{container}} precisa de validação e onde revisar a inconsistência.",
+      "historicalDetailsDescription": "Confira abaixo por que o snapshot do container {{container}} exigia validação neste momento histórico.",
+      "labels": {
+        "area": "Área",
+        "block": "Bloco",
+        "location": "Local"
+      },
+      "areas": {
+        "container": "Container",
+        "operational": "Operacional",
+        "process": "Processo",
+        "series": "Série de eventos",
+        "status": "Status",
+        "timeline": "Timeline"
+      }
     },
     "actions": {
       "refresh": "Atualizar",
@@ -809,6 +825,11 @@
       "info": "Informação",
       "warning": "Aviso",
       "danger": "Crítico"
+    },
+    "validation": {
+      "conflictingCriticalActuals": "Há fatos críticos conflitantes na mesma série de eventos.",
+      "postCompletionTrackingContinued": "O tracking continuou depois de um marco forte de conclusão.",
+      "canonicalTimelineClassificationInconsistent": "A classificação canônica da timeline ficou inconsistente com os eventos atuais."
     }
   },
   "alerts": {

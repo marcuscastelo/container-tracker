@@ -37,6 +37,14 @@ function makeShipmentDetailVm(): ShipmentDetailVM {
       hasIssues: true,
       highestSeverity: 'warning',
       affectedContainerCount: 2,
+      topIssue: {
+        code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+        severity: 'warning',
+        reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+        affectedArea: 'timeline',
+        affectedLocation: 'Santos',
+        affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+      },
     },
     containers: [
       {
@@ -79,6 +87,16 @@ function makeShipmentDetailVm(): ShipmentDetailVM {
           hasIssues: true,
           highestSeverity: 'warning',
           findingCount: 1,
+          activeIssues: [
+            {
+              code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+              severity: 'warning',
+              reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+              affectedArea: 'timeline',
+              affectedLocation: 'Santos',
+              affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+            },
+          ],
         },
         transshipment: {
           hasTransshipment: false,
@@ -127,6 +145,16 @@ function makeShipmentDetailVm(): ShipmentDetailVM {
           hasIssues: true,
           highestSeverity: 'warning',
           findingCount: 1,
+          activeIssues: [
+            {
+              code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+              severity: 'warning',
+              reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+              affectedArea: 'timeline',
+              affectedLocation: 'Campinas',
+              affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+            },
+          ],
         },
         transshipment: {
           hasTransshipment: false,
@@ -171,6 +199,7 @@ function makeHistoricalSync(): TrackingTimeTravelSyncVM {
       hasIssues: false,
       highestSeverity: null,
       findingCount: 0,
+      activeIssues: [],
     },
     diff: {
       kind: 'comparison',
@@ -219,16 +248,28 @@ describe('shipmentTrackingReviewDisplay', () => {
       hasIssues: false,
       highestSeverity: null,
       affectedContainerCount: 0,
+      topIssue: null,
     })
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: false,
       highestSeverity: null,
       findingCount: 0,
+      activeIssues: [],
     })
     expect(result.containers[1]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'warning',
       findingCount: 1,
+      activeIssues: [
+        {
+          code: 'CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT',
+          severity: 'warning',
+          reasonKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+          affectedArea: 'timeline',
+          affectedLocation: 'Campinas',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
+        },
+      ],
     })
   })
 })

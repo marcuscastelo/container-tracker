@@ -11,10 +11,15 @@ import {
   type TrackingValidationContext,
   type TrackingValidationDetectorSignals,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationContext'
+import {
+  compareTrackingValidationDisplayIssues,
+  type TrackingValidationDisplayIssue,
+  toTrackingValidationAffectedArea,
+} from '~/modules/tracking/features/validation/domain/model/trackingValidationDisplayIssue'
 import type { TrackingValidationFinding } from '~/modules/tracking/features/validation/domain/model/trackingValidationFinding'
 import type {
-  TrackingValidationContainerSummary,
-  TrackingValidationProcessSummary,
+  TrackingValidationContainerSummary as TrackingValidationContainerSummaryModel,
+  TrackingValidationProcessSummary as TrackingValidationProcessSummaryModel,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
 import {
   createEmptyTrackingValidationContainerSummary as createEmptyTrackingValidationContainerSummaryModel,
@@ -27,7 +32,12 @@ import type { Instant } from '~/shared/time/instant'
 
 const trackingValidationRegistry = createTrackingValidationRegistry(TRACKING_VALIDATION_DETECTORS)
 
-export type { TrackingValidationContainerSummary, TrackingValidationProcessSummary }
+export type TrackingValidationContainerSummary = TrackingValidationContainerSummaryModel & {
+  readonly activeIssues: readonly TrackingValidationDisplayIssue[]
+  readonly topIssue: TrackingValidationDisplayIssue | null
+}
+
+export type TrackingValidationProcessSummary = TrackingValidationProcessSummaryModel
 
 export type TrackingValidationProjectionInput = {
   readonly containerId: string
@@ -44,6 +54,63 @@ export type TrackingValidationContainerProjection = {
   readonly containerNumber: string
   readonly findings: readonly TrackingValidationFinding[]
   readonly summary: TrackingValidationContainerSummary
+}
+
+type TrackingValidationTopIssueCandidate = {
+  readonly containerNumber: string
+  readonly topIssue: TrackingValidationDisplayIssue | null
+}
+
+function toTrackingValidationDisplayIssue(
+  finding: TrackingValidationFinding,
+): TrackingValidationDisplayIssue {
+  return {
+    code: finding.code,
+    severity: finding.severity,
+    reasonKey: finding.summaryKey,
+    affectedArea: toTrackingValidationAffectedArea(finding.affectedScope),
+    affectedLocation: finding.affectedLocation,
+    affectedBlockLabelKey: finding.affectedBlockLabelKey,
+  }
+}
+
+function toActiveIssues(
+  findings: readonly TrackingValidationFinding[],
+): readonly TrackingValidationDisplayIssue[] {
+  return findings
+    .filter((finding) => finding.isActive)
+    .map(toTrackingValidationDisplayIssue)
+    .sort(compareTrackingValidationDisplayIssues)
+}
+
+function toContainerSummary(
+  summary: TrackingValidationContainerSummaryModel,
+  activeIssues: readonly TrackingValidationDisplayIssue[],
+): TrackingValidationContainerSummary {
+  return {
+    ...summary,
+    activeIssues,
+    topIssue: activeIssues[0] ?? null,
+  }
+}
+
+function compareTopIssueCandidates(
+  left: TrackingValidationTopIssueCandidate,
+  right: TrackingValidationTopIssueCandidate,
+): number {
+  if (left.topIssue === null) {
+    return right.topIssue === null ? 0 : 1
+  }
+  if (right.topIssue === null) {
+    return -1
+  }
+
+  const issueCompare = compareTrackingValidationDisplayIssues(left.topIssue, right.topIssue)
+  if (issueCompare !== 0) {
+    return issueCompare
+  }
+
+  return left.containerNumber.localeCompare(right.containerNumber, 'en')
 }
 
 function deriveTrackingValidationDetectorSignals(
@@ -126,12 +193,13 @@ export function deriveTrackingValidationProjection(
     context,
     registry: trackingValidationRegistry,
   })
+  const activeIssues = toActiveIssues(derivation.findings)
 
   return {
     containerId: context.containerId,
     containerNumber: context.containerNumber,
     findings: derivation.findings,
-    summary: derivation.summary,
+    summary: toContainerSummary(derivation.summary, activeIssues),
   }
 }
 
@@ -141,8 +209,20 @@ export function aggregateTrackingValidationProjection(
   return aggregateTrackingValidation(summaries)
 }
 
+export function pickTopTrackingValidationIssueForProcess(
+  candidates: readonly TrackingValidationTopIssueCandidate[],
+): TrackingValidationDisplayIssue | null {
+  const sortedCandidates = [...candidates].sort(compareTopIssueCandidates)
+
+  return sortedCandidates[0]?.topIssue ?? null
+}
+
 export function createEmptyTrackingValidationContainerProjectionSummary(): TrackingValidationContainerSummary {
-  return createEmptyTrackingValidationContainerSummaryModel()
+  return {
+    ...createEmptyTrackingValidationContainerSummaryModel(),
+    activeIssues: [],
+    topIssue: null,
+  }
 }
 
 export function createEmptyTrackingValidationProcessProjectionSummary(): TrackingValidationProcessSummary {

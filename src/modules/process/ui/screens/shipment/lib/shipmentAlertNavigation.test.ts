@@ -52,6 +52,7 @@ function makeShipment(containers: ShipmentDetailVM['containers']): ShipmentDetai
       hasIssues: false,
       highestSeverity: null,
       affectedContainerCount: 0,
+      topIssue: null,
     },
     containers,
     alerts: [],
@@ -109,6 +110,7 @@ function makeContainer(id: string, number: string): ShipmentDetailVM['containers
       hasIssues: false,
       highestSeverity: null,
       findingCount: 0,
+      activeIssues: [],
     },
     transshipment: {
       hasTransshipment: false,

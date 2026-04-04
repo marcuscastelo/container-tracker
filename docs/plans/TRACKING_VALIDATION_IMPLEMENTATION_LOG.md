@@ -1235,3 +1235,211 @@
 ### U.10 Próximo passo recomendado para a Fase 9
 - Implementar os detectores V1.1 em cima desta base endurecida.
 - Reaproveitar a convenção única de `detectorId/code`, manter `debugEvidence` interno e abrir novos `affectedScope` apenas quando o detector realmente exigir e junto do respectivo contrato/persistência.
+
+## V. Kickoff da Fase 8.5
+- Data de início: 2026-04-04
+- Fase atual: V1 pluginável / Fase 8.5 explicabilidade pluginável user-facing
+- Estado herdado das fases anteriores:
+  - o framework pluginável continua centralizado no Tracking BC, com registry explícito e sem trilhos paralelos
+  - detectores ativos em produção:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - `severity` já atravessa domínio -> projection -> DTO -> VM -> UI
+  - `evidenceSummary` e `debugEvidence` já foram separados na Fase 8
+  - dashboard segue leve e shipment segue timeline-first
+  - time travel já reconstrói `tracking_validation` por sync a partir da derivação canônica do Tracking BC
+- Entendimento inicial:
+  - a Fase 8.5 precisa explicar ao operador por que a validation issue existe e onde ela impacta, sem mover semântica para a UI
+  - essa explicabilidade deve nascer no backend/read model a partir do finding pluginável, não de heurística em mapper/componente
+  - o dashboard continua sendo superfície de triagem, então deve receber apenas `topIssue` leve para tooltip
+  - o shipment continua sendo a superfície principal de entendimento, então deve receber uma lista curta ordenada de reasons do container selecionado
+- Decisões fechadas antes de codar:
+  - reaproveitar `summaryKey` como `reasonKey` público, sem criar chave semântica paralela
+  - usar contrato público `key + metadados` em vez de texto final serializado no backend
+  - manter `debugEvidence` estritamente interno e não expor `evidenceSummary` nesta fase
+  - dashboard fica em `chip + tooltip`; shipment fica em `banner agregador + detalhe compacto do container selecionado`
+- Plano cirúrgico:
+  - estender `TrackingValidationFinding` com metadados públicos mínimos detector-owned (`affectedLocation`, `affectedBlockLabelKey`)
+  - criar read model compacto `TrackingValidationDisplayIssue` e derivá-lo no Tracking BC a partir de findings ativos ordenados
+  - expandir hot-read e replay/time travel para carregar explicabilidade sem criar use case paralelo
+  - expor `top_issue` apenas no agregado de processo e `active_issues` apenas em container/detail/time travel
+  - mapear DTO -> VM explicitamente e renderizar explicabilidade sem rederivar semântica na UI
+
+## W. Fase 8.5 concluída
+### W.1 O que foi implementado
+- O Tracking BC passou a publicar explicabilidade canônica curta para validation issues ativas via `TrackingValidationDisplayIssue`.
+- O finding pluginável ganhou metadados públicos mínimos e seguros para produto:
+  - `affectedLocation`
+  - `affectedBlockLabelKey`
+- A projeção pluginável agora deriva e ordena:
+  - `activeIssues` por container (`severity desc`, depois `code asc`)
+  - `topIssue` por processo (`severity desc`, `containerNumber asc`, `code asc`)
+- Hot-read, process summary e replay/time travel foram estendidos pelo mesmo trilho pluginável, sem use case paralelo.
+- DTOs públicos foram ajustados para expor:
+  - dashboard/process list: `tracking_validation.top_issue`
+  - shipment/time travel: `tracking_validation.active_issues`
+- A UI passou a consumir esses campos apenas via DTO -> VM, sem montar motivo semântico por heurística.
+
+### W.2 Contrato final escolhido para explicabilidade
+- Chave semântica pública:
+  - `reasonKey` reaproveitando o `summaryKey` do finding
+- Metadados públicos:
+  - `code`
+  - `severity`
+  - `reasonKey`
+  - `affectedArea`
+  - `affectedLocation`
+  - `affectedBlockLabelKey`
+- Separação preservada:
+  - explicação de produto: `reasonKey` + metadados públicos
+  - evidência técnica curta: continua interna nesta fase
+  - `debugEvidence`: continua estritamente interna e fora dos payloads públicos
+
+### W.3 Shipment após a Fase 8.5
+- O shipment permaneceu timeline-first.
+- O banner agregador continuou compacto.
+- Foi adicionada uma superfície discreta logo abaixo do seletor de container:
+  - título `Motivo da validação`
+  - descrição curta por container selecionado
+  - chip/lista compacta com severidade, motivo e metadados de área/bloco/local
+- O operador agora consegue identificar no shipment:
+  - por que a validação é necessária
+  - qual container está afetado
+  - onde revisar (`timeline`, `série`, bloco e/ou local quando aplicável)
+
+### W.4 Dashboard após a Fase 8.5
+- O dashboard permaneceu agregado e leve.
+- A linha continua com `chip + tooltip`.
+- O tooltip agora usa `topIssue` backend-derived para mostrar:
+  - resumo agregado
+  - motivo curto
+  - área/bloco/local quando aplicável
+- O dashboard não recebe lista de findings, não vira tela diagnóstica e não serializa `debugEvidence`.
+
+### W.5 Detectores cobertos
+- `CONFLICTING_CRITICAL_ACTUALS`
+  - shipment/time travel exibem motivo curto e `affectedArea = series`
+  - localização pública exibida via `affectedLocation = location_code`
+- `POST_COMPLETION_TRACKING_CONTINUED`
+  - shipment/dashboard exibem motivo curto e `affectedArea = timeline`
+- `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - shipment/dashboard/time travel exibem motivo curto e `affectedArea = timeline`
+  - bloco público via `shipmentView.timeline.blocks.postCarriage`
+  - localização pública curta quando disponível
+
+### W.6 Testes criados / ajustados
+- Tracking projection / lifecycle / detectores:
+  - `src/modules/tracking/features/validation/application/tests/trackingValidation.projection.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/conflictingCriticalActuals.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/postCompletionTrackingContinued.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/canonicalTimelineClassificationInconsistent.detector.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/deriveTrackingValidationLifecycleTransitions.test.ts`
+  - `src/modules/tracking/features/validation/domain/tests/trackingValidation.registry.test.ts`
+- Hot-read / HTTP / replay:
+  - `src/modules/tracking/application/usecases/tests/find-containers-hot-read-projection.usecase.test.ts`
+  - `src/modules/tracking/features/replay/application/tests/tracking-time-travel.readmodel.test.ts`
+  - `src/modules/tracking/interface/http/tests/tracking.controllers.test.ts`
+  - `src/modules/process/interface/http/tests/process.http.mappers.test.ts`
+  - `src/modules/process/interface/http/tests/process.controllers.test.ts`
+- DTO -> VM / UI:
+  - `src/modules/process/ui/mappers/tests/processList.ui-mapper.test.ts`
+  - `src/modules/process/ui/mappers/tests/processDetail.ui-mapper.test.ts`
+  - `src/modules/process/ui/mappers/tests/tracking-time-travel.ui-mapper.test.ts`
+  - `src/modules/process/ui/components/tests/tracking-validation-copy.presenter.test.ts`
+  - regressões auxiliares em `fetchProcess.cache`, `useShipmentScreenResource`, `shipmentTrackingReviewDisplay`, `dashboard-sort/filter`
+
+### W.7 QA manual real executado
+- Ambiente:
+  - app local em `http://localhost:3002`
+  - rota dev usada para seed real: `/dev/tracking-scenarios`
+- Seed manual executado via `/api/dev/scenarios/load`:
+  - `post_carriage_maritime_inconsistent` step 2
+    - processo `9dde34d0-f0b7-42d9-9f4b-aae8c4723ab0`
+    - container `c32a73cb-8ed0-49a6-8e82-de7a83b09853`
+  - `delivery_post_completion_continued` step 2
+    - processo `0d8d9a2f-1362-4b47-aa59-13c73900f132`
+    - container `b67f5b21-d875-4493-9eba-619289874dcf`
+  - `post_carriage_maritime_inconsistent` step 1 como controle sem issue
+    - processo `dd5a58e3-d049-4ade-b02a-bb195635f8cb`
+  - `discharge_multiple_actual` step 1
+    - processo `7c601e8e-489f-4f8e-8a3c-8f53d6abfb9b`
+    - container `c5046f10-f361-4ad4-b066-d6586eacdc90`
+- Dashboard:
+  - rota `/`
+  - confirmação manual:
+    - linha advisory com chip compacto e tooltip leve usando `top_issue`
+    - linha critical com chip compacto e tooltip leve usando `top_issue`
+    - linha clean (`post_carriage_maritime_inconsistent` step 1) sem chip de validation
+    - nenhuma linha virou superfície diagnóstica verborrágica
+- Shipment advisory:
+  - rota `/shipments/9dde34d0-f0b7-42d9-9f4b-aae8c4723ab0`
+  - confirmação manual:
+    - motivo curto visível
+    - container afetado identificado (`MAEU6360143`)
+    - localização visível (`SANTOS, BR`)
+    - bloco visível (`Pós-transporte / Entrega`)
+    - timeline continua como artefato principal
+- Shipment critical:
+  - rota `/shipments/0d8d9a2f-1362-4b47-aa59-13c73900f132`
+  - confirmação manual:
+    - motivo curto visível
+    - container afetado identificado (`MAEU1729252`)
+    - área visível (`Timeline`)
+    - timeline segue principal e a explicação não compete com ela
+- Shipment conflicting actuals:
+  - rota `/shipments/7c601e8e-489f-4f8e-8a3c-8f53d6abfb9b`
+  - confirmação manual:
+    - motivo curto renderizado para `CONFLICTING_CRITICAL_ACTUALS`
+    - área visível (`Série de eventos`)
+    - localização visível (`BRSSZ`)
+- Time travel / reconstruction:
+  - rota `/shipments/9dde34d0-f0b7-42d9-9f4b-aae8c4723ab0`
+  - `Sync 3/3` mostrou explicação advisory completa
+  - `Sync 1/3` removeu o bloco `Motivo da validação`, confirmando paridade com o estado histórico limpo
+- Screenshots gerados:
+  - `qa-dashboard-desktop.png`
+  - `qa-dashboard-mobile.png`
+  - `qa-shipment-advisory-desktop.png`
+  - `qa-shipment-advisory-mobile.png`
+  - `qa-shipment-critical-desktop.png`
+  - `qa-shipment-advisory-historical-desktop.png`
+
+### W.8 Inspeção de payloads públicos
+- `/api/processes`
+  - confirmou `tracking_validation.top_issue` compacto no dashboard
+- `/api/processes/:id`
+  - confirmou `tracking_validation.top_issue` no processo
+  - confirmou `containers[].tracking_validation.active_issues`
+- `/api/tracking/containers/:id/time-travel`
+  - confirmou `tracking_validation.active_issues` por checkpoint
+- Verificação explícita:
+  - `debugEvidence` ausente
+  - `evidenceSummary` ausente
+  - nenhuma lista pública de findings técnicos fora do contrato leve definido
+
+### W.9 Problemas encontrados
+- O Playwright MCP estava preso a um browser anterior (`mcp-chrome-818ffda`) e precisou de limpeza local do processo antes do QA.
+- O lint da camada visual trata imports contendo `validation` como suspeitos de schema/parsing.
+  - ajuste aplicado:
+    - contratos/viewmodels e helpers de copy foram movidos para paths neutros (`tracking-review*`)
+    - a semântica permaneceu intacta
+
+### W.10 Limitações intencionais
+- O contrato público continua baseado em `key + metadados`, não em frase final serializada no backend.
+- `evidenceSummary` continua separado, mas não foi exposto publicamente nesta fase.
+- O dashboard continua mostrando apenas `topIssue`, não a lista completa de findings.
+- A fase não introduziu i18n paralela nem rederivação de `affectedArea`/severity no frontend.
+
+### W.11 Checks finais
+- `pnpm run type-check`
+- `pnpm run lint`
+- `pnpm check`
+- Resultado final:
+  - verde em 2026-04-04
+
+### W.12 Próximo passo recomendado
+- Fase 9:
+  - aprofundar a família de detectores plugináveis
+  - decidir quando vale expor `evidenceSummary` em superfícies especializadas sem contaminar dashboard/shipment default
+  - considerar ordenação/agrupamento multi-finding por família sem perder a regra timeline-first

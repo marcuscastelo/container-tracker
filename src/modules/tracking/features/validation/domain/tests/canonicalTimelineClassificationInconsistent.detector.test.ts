@@ -66,6 +66,8 @@ describe('canonicalTimelineClassificationInconsistentDetector', () => {
       severity: 'ADVISORY',
       affectedScope: 'TIMELINE',
       summaryKey: 'tracking.validation.canonicalTimelineClassificationInconsistent',
+      affectedLocation: 'Santos',
+      affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
       isActive: true,
       debugEvidence: {
         maritimeEventCount: 1,
