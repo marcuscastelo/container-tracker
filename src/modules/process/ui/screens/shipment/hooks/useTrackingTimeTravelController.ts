@@ -2,6 +2,8 @@ import { type Accessor, createEffect, createMemo, createResource, createSignal }
 import {
   fetchTrackingReplayDebug,
   fetchTrackingTimeTravel,
+  type TrackingReplayDebugResponseDto,
+  type TrackingTimeTravelResponseDto,
 } from '~/modules/process/ui/api/tracking-time-travel.api'
 import {
   toTrackingReplayDebugVm,
@@ -20,6 +22,7 @@ import type {
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import { useTranslation } from '~/shared/localization/i18n'
+import { type ResourceSnapshotLike, readResourceSnapshot } from '~/shared/solid/resourceSnapshot'
 
 type UseTrackingTimeTravelControllerCommand = {
   readonly selectedContainer: Accessor<ContainerDetailVM | null>
@@ -45,6 +48,24 @@ export type TrackingTimeTravelControllerResult = {
   readonly selectNext: () => void
 }
 
+export function toTrackingTimeTravelValue(
+  resource: ResourceSnapshotLike<TrackingTimeTravelResponseDto | undefined>,
+  currentLocale: string,
+): TrackingTimeTravelVM | null {
+  const response = readResourceSnapshot(resource)
+  if (!response) return null
+  return toTrackingTimeTravelVm(response, currentLocale)
+}
+
+export function toTrackingReplayDebugValue(
+  resource: ResourceSnapshotLike<TrackingReplayDebugResponseDto | undefined>,
+  currentLocale: string,
+): TrackingReplayDebugVM | null {
+  const response = readResourceSnapshot(resource)
+  if (!response) return null
+  return toTrackingReplayDebugVm(response, currentLocale)
+}
+
 export function useTrackingTimeTravelController(
   command: UseTrackingTimeTravelControllerCommand,
 ): TrackingTimeTravelControllerResult {
@@ -64,11 +85,9 @@ export function useTrackingTimeTravelController(
     async ([containerId]) => fetchTrackingTimeTravel(containerId),
   )
 
-  const value = createMemo<TrackingTimeTravelVM | null>(() => {
-    const response = timeTravelResponse()
-    if (!response) return null
-    return toTrackingTimeTravelVm(response, locale())
-  })
+  const value = createMemo<TrackingTimeTravelVM | null>(() =>
+    toTrackingTimeTravelValue(timeTravelResponse, locale()),
+  )
 
   createEffect(() => {
     const containerId = command.selectedContainer()?.id ?? null
@@ -120,11 +139,9 @@ export function useTrackingTimeTravelController(
     async (request) => fetchTrackingReplayDebug(request.containerId, request.snapshotId),
   )
 
-  const debugValue = createMemo<TrackingReplayDebugVM | null>(() => {
-    const response = debugResponse()
-    if (!response) return null
-    return toTrackingReplayDebugVm(response, locale())
-  })
+  const debugValue = createMemo<TrackingReplayDebugVM | null>(() =>
+    toTrackingReplayDebugValue(debugResponse, locale()),
+  )
 
   const open = () => {
     if (!command.selectedContainer()) return
@@ -188,7 +205,7 @@ export function useTrackingTimeTravelController(
       return error ? toReadableErrorMessage(error) : null
     },
     debugValue,
-    debugPayload: () => debugResponse() ?? null,
+    debugPayload: () => readResourceSnapshot(debugResponse) ?? null,
     open,
     close,
     toggleDebug,

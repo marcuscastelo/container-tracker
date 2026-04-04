@@ -7,6 +7,10 @@ import { getAppErrorDetails } from '~/app-error-details'
 import { AppInitialRoutePrefetchBoundary } from '~/modules/process/ui/screens/app/AppInitialRoutePrefetchBoundary'
 import { AppRouteSkeleton } from '~/modules/process/ui/screens/app/AppRouteSkeleton'
 import { DashboardKeepWarmBoundary } from '~/modules/process/ui/screens/dashboard/DashboardKeepWarmBoundary'
+import {
+  dismissServerProblemBanner,
+  useServerProblemBanner,
+} from '~/shared/api/httpDegradationReporter'
 import { useTranslation } from '~/shared/localization/i18n'
 import '~/app.css'
 
@@ -41,6 +45,28 @@ function AppErrorBoundaryFallback(props: AppErrorBoundaryFallbackProps): JSX.Ele
   )
 }
 
+function GlobalServerProblemBanner(): JSX.Element {
+  const { t, keys } = useTranslation()
+  const bannerState = useServerProblemBanner()
+
+  return (
+    <Show when={bannerState().visible}>
+      <div class="border-b border-tone-warning-border bg-tone-warning-bg text-tone-warning-fg">
+        <div class="mx-auto flex max-w-(--dashboard-container-max-width) items-start justify-between gap-4 px-[var(--dashboard-container-px)] py-2.5 text-sm-ui">
+          <p class="font-medium">{t(keys.app.serverProblemBanner)}</p>
+          <button
+            type="button"
+            class="shrink-0 text-sm-ui font-medium underline underline-offset-2"
+            onClick={() => dismissServerProblemBanner()}
+          >
+            {t(keys.app.dismissServerProblemBanner)}
+          </button>
+        </div>
+      </div>
+    </Show>
+  )
+}
+
 function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
   const location = useLocation()
   const preloadRoute = usePreloadRoute()
@@ -50,6 +76,7 @@ function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
     <div class="root">
       <AppInitialRoutePrefetchBoundary pathname={() => location.pathname} locale={locale} />
       <DashboardKeepWarmBoundary pathname={() => location.pathname} preloadRoute={preloadRoute} />
+      <GlobalServerProblemBanner />
       <ErrorBoundary fallback={(err) => <AppErrorBoundaryFallback error={err} />}>
         <Suspense fallback={<AppRouteSkeleton pathname={() => location.pathname} />}>
           {props.children}

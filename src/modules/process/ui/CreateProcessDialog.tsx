@@ -38,6 +38,7 @@ import {
   type SmartPasteFormSnapshot,
   type SmartPasteScalarField,
 } from '~/modules/process/ui/validation/trelloSmartPasteApply.validation'
+import { fetchWithHttpDegradationReporting } from '~/shared/api/httpDegradationReporter'
 import { useTranslation } from '~/shared/localization/i18n'
 import { navigateToAppHref } from '~/shared/ui/navigation/app-navigation'
 import { findDuplicateStrings } from '~/shared/utils/findDuplicateStrings'
@@ -450,7 +451,7 @@ async function requestContainerConflicts(
   | { readonly ok: true; readonly conflicts: readonly ContainerConflict[] }
   | { readonly ok: false; readonly message: string }
 > {
-  const response = await fetch('/api/containers/check', {
+  const response = await fetchWithHttpDegradationReporting('/api/containers/check', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ containers: containerNumbers }),

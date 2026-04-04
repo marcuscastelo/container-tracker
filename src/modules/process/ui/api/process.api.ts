@@ -18,6 +18,7 @@ import type {
   DashboardSortField,
 } from '~/modules/process/ui/viewmodels/dashboard-sort.vm'
 import type { ProcessSummaryVM } from '~/modules/process/ui/viewmodels/process-summary.vm'
+import { fetchWithHttpDegradationReporting } from '~/shared/api/httpDegradationReporter'
 import { typedFetch } from '~/shared/api/typedFetch'
 import { DashboardOperationalSummaryResponseSchema } from '~/shared/api-schemas/dashboard.schemas'
 import {
@@ -295,9 +296,12 @@ export async function updateProcessRequest(id: string, input: CreateProcessInput
 }
 
 export async function deleteProcessRequest(processId: string): Promise<void> {
-  const response = await fetch(`/api/processes/${encodeURIComponent(processId)}`, {
-    method: 'DELETE',
-  })
+  const response = await fetchWithHttpDegradationReporting(
+    `/api/processes/${encodeURIComponent(processId)}`,
+    {
+      method: 'DELETE',
+    },
+  )
 
   if (response.ok) return
 
