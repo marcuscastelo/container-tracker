@@ -166,6 +166,11 @@ describe('useShipmentScreenResource', () => {
         total: 2,
         incomplete: true,
       },
+      trackingValidation: {
+        hasIssues: true,
+        highestSeverity: 'danger',
+        affectedContainerCount: 1,
+      },
       alerts: [],
       alertIncidents: {
         summary: {
@@ -227,6 +232,11 @@ describe('useShipmentScreenResource', () => {
       withEta: 0,
       total: 2,
       incomplete: true,
+    })
+    expect(merged.trackingValidation).toEqual({
+      hasIssues: true,
+      highestSeverity: 'danger',
+      affectedContainerCount: 1,
     })
     expect(merged.alerts).toEqual([])
     expect(merged.alertIncidents.summary).toEqual({

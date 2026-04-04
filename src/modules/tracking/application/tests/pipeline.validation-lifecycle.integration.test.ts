@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { processSnapshot } from '~/modules/tracking/application/orchestration/pipeline'
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
@@ -26,6 +26,7 @@ import type {
   TrackingValidationLifecycleTransition,
 } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
 import { toTrackingValidationLifecycleState } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { Instant } from '~/shared/time/instant'
 
 class InMemorySnapshotRepository implements SnapshotRepository {
@@ -220,6 +221,22 @@ class InMemoryTrackingValidationLifecycleRepository
   }
 }
 
+class UnavailableTrackingValidationLifecycleRepository
+  implements TrackingValidationLifecycleRepository
+{
+  async findActiveStatesByContainerId(): Promise<readonly TrackingValidationLifecycleState[]> {
+    throw new InfrastructureError(
+      'Database error on tracking_validation_issue_transitions during findActiveStatesByContainerId',
+    )
+  }
+
+  async insertMany(): Promise<void> {
+    throw new InfrastructureError(
+      'Database error on tracking_validation_issue_transitions during insertMany',
+    )
+  }
+}
+
 function createSnapshot(params: {
   containerId: string
   provider: Snapshot['provider']
@@ -395,5 +412,71 @@ describe('processSnapshot validation lifecycle integration', () => {
       issueCode: 'CONFLICTING_CRITICAL_ACTUALS',
       severity: 'CRITICAL',
     })
+  })
+
+  it('keeps canonical validation derivation when lifecycle persistence is unavailable', async () => {
+    const runToken = 'phase7resilience'
+    const containerId = randomUUID()
+    const snapshotRepository = new InMemorySnapshotRepository()
+    const observationRepository = new InMemoryObservationRepository()
+    const alertRepository = new InMemoryTrackingAlertRepository()
+    const lifecycleRepository = new UnavailableTrackingValidationLifecycleRepository()
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const step2 = buildScenario({
+      command: { scenarioId: 'post_carriage_maritime_inconsistent', step: 2 },
+      runToken,
+    })
+
+    const [container] = step2.scenario.containers
+    if (container === undefined) {
+      throw new Error('Scenario build must contain at least one container')
+    }
+
+    const containerNumber = step2.containerNumbersByKey.get(container.key)
+    if (!containerNumber) {
+      throw new Error(`Missing container number for key ${container.key}`)
+    }
+
+    try {
+      let lastResult: Awaited<ReturnType<typeof processSnapshot>> | null = null
+
+      for (const scenarioSnapshot of step2.snapshots) {
+        lastResult = await processSnapshot(
+          createSnapshot({
+            containerId,
+            provider: scenarioSnapshot.provider,
+            fetchedAt: scenarioSnapshot.fetchedAt,
+            payload: scenarioSnapshot.payload,
+          }),
+          containerId,
+          containerNumber,
+          {
+            snapshotRepository,
+            observationRepository,
+            trackingAlertRepository: alertRepository,
+            trackingValidationLifecycleRepository: lifecycleRepository,
+          },
+          false,
+        )
+      }
+
+      expect(lastResult).not.toBeNull()
+      expect(lastResult?.trackingValidation).toEqual({
+        hasIssues: true,
+        highestSeverity: 'ADVISORY',
+        findingCount: 1,
+      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'tracking.processSnapshot.validation_lifecycle_unavailable',
+        expect.objectContaining({
+          containerId,
+          containerNumber,
+          operation: 'findActiveStatesByContainerId',
+        }),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 })

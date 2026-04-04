@@ -13,8 +13,13 @@ import { Dialog } from '~/shared/ui/Dialog'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
 import { toCarrierDisplayLabel } from '~/shared/utils/carrierDisplay'
 
+type ShipmentHeaderTrackingReview = ShipmentDetailVM['trackingValidation']
+
 type Props = {
   data: ShipmentDetailVM
+  trackingValidation?: ShipmentHeaderTrackingReview
+  trackingValidationMode?: 'current' | 'historical'
+  historicalTrackingValidationContainerNumber?: string | null
   isRefreshing: boolean
   refreshRetry: {
     readonly current: number
@@ -241,6 +246,9 @@ export function ShipmentHeader(props: Props): JSX.Element {
     options === undefined ? t(key) : t(key, options)
   const [showUnknownCarrierDialog, setShowUnknownCarrierDialog] = createSignal(false)
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false)
+  const trackingValidation = createMemo(
+    () => props.trackingValidation ?? props.data.trackingValidation,
+  )
 
   const statusBadge = createMemo(
     () =>
@@ -282,6 +290,19 @@ export function ShipmentHeader(props: Props): JSX.Element {
     })()
 
     return `${t(keys.shipmentView.eta)}: ${value}`
+  })
+  const trackingValidationDescription = createMemo(() => {
+    if (props.trackingValidationMode === 'historical') {
+      return t(keys.shipmentView.validation.historicalBannerDescription, {
+        container:
+          props.historicalTrackingValidationContainerNumber ??
+          t(keys.shipmentView.currentStatus.unknown),
+      })
+    }
+
+    return t(keys.shipmentView.validation.bannerDescription, {
+      count: trackingValidation().affectedContainerCount,
+    })
   })
 
   const handleRefresh = () => {
@@ -344,13 +365,11 @@ export function ShipmentHeader(props: Props): JSX.Element {
         </div>
       </div>
 
-      <Show when={props.data.trackingValidation.hasIssues}>
+      <Show when={trackingValidation().hasIssues}>
         <TrackingValidationBanner
           title={t(keys.shipmentView.validation.bannerTitle)}
-          description={t(keys.shipmentView.validation.bannerDescription, {
-            count: props.data.trackingValidation.affectedContainerCount,
-          })}
-          highestSeverity={props.data.trackingValidation.highestSeverity}
+          description={trackingValidationDescription()}
+          highestSeverity={trackingValidation().highestSeverity}
         />
       </Show>
 

@@ -29,8 +29,10 @@ import {
   createTrackingValidationContext,
   deriveTrackingValidationProjection,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
+import type { TrackingValidationLifecycleState } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/domain/model/trackingValidationSummary'
 import { deriveTrackingValidationLifecycleTransitions } from '~/modules/tracking/features/validation/domain/services/deriveTrackingValidationLifecycleTransitions'
+import { InfrastructureError } from '~/shared/errors/httpErrors'
 import { systemClock } from '~/shared/time/clock'
 
 /**
@@ -59,6 +61,56 @@ type PipelineDeps = {
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
   readonly trackingValidationLifecycleRepository?: TrackingValidationLifecycleRepository
+}
+
+async function loadTrackingValidationLifecycleStates(command: {
+  readonly repository: TrackingValidationLifecycleRepository
+  readonly containerId: string
+  readonly containerNumber: string
+}): Promise<readonly TrackingValidationLifecycleState[]> {
+  try {
+    return await command.repository.findActiveStatesByContainerId(command.containerId)
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.processSnapshot.validation_lifecycle_unavailable', {
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      operation: 'findActiveStatesByContainerId',
+      error: error.message,
+    })
+
+    return []
+  }
+}
+
+async function persistTrackingValidationLifecycleTransitions(command: {
+  readonly repository: TrackingValidationLifecycleRepository
+  readonly transitions: ReturnType<typeof deriveTrackingValidationLifecycleTransitions>
+  readonly containerId: string
+  readonly containerNumber: string
+}): Promise<void> {
+  if (command.transitions.length === 0) {
+    return
+  }
+
+  try {
+    await command.repository.insertMany(command.transitions)
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.processSnapshot.validation_lifecycle_unavailable', {
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      operation: 'insertMany',
+      transitionCount: command.transitions.length,
+      error: error.message,
+    })
+  }
 }
 
 /**
@@ -170,9 +222,13 @@ export async function processSnapshot(
       now: systemClock.now(),
     }),
   )
-  const existingValidationLifecycleStates = await (
+  const trackingValidationLifecycleRepository =
     deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
-  ).findActiveStatesByContainerId(containerId)
+  const existingValidationLifecycleStates = await loadTrackingValidationLifecycleStates({
+    repository: trackingValidationLifecycleRepository,
+    containerId,
+    containerNumber,
+  })
   const validationLifecycleTransitions = deriveTrackingValidationLifecycleTransitions({
     activeFindings: trackingValidationProjection.findings,
     existingActiveStates: existingValidationLifecycleStates,
@@ -184,11 +240,12 @@ export async function processSnapshot(
     },
   })
 
-  if (validationLifecycleTransitions.length > 0) {
-    await (
-      deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
-    ).insertMany(validationLifecycleTransitions)
-  }
+  await persistTrackingValidationLifecycleTransitions({
+    repository: trackingValidationLifecycleRepository,
+    transitions: validationLifecycleTransitions,
+    containerId,
+    containerNumber,
+  })
 
   return {
     newObservations,

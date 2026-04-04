@@ -329,6 +329,7 @@
     "validation": {
       "bannerTitle": "Validação necessária",
       "bannerDescription": "A leitura atual requer validação em {{count}} container(s).",
+      "historicalBannerDescription": "O snapshot selecionado do container {{container}} requer validação.",
       "containerChip": "Validação necessária"
     },
     "actions": {

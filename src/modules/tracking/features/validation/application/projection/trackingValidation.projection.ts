@@ -24,7 +24,7 @@ const trackingValidationRegistry = createTrackingValidationRegistry(TRACKING_VAL
 
 export type { TrackingValidationContainerSummary, TrackingValidationProcessSummary }
 
-type TrackingValidationContextBase = Omit<TrackingValidationContext, 'signals'>
+export type TrackingValidationProjectionInput = Omit<TrackingValidationContext, 'signals'>
 
 export type TrackingValidationContainerProjection = {
   readonly containerId: string
@@ -34,7 +34,7 @@ export type TrackingValidationContainerProjection = {
 }
 
 function deriveTrackingValidationDerivedSignals(
-  context: TrackingValidationContextBase,
+  context: TrackingValidationProjectionInput,
 ): TrackingValidationDerivedSignals {
   const timelineItems = deriveTimelineWithSeriesReadModel(
     toTrackingObservationProjections(context.observations),
@@ -80,12 +80,30 @@ function deriveTrackingValidationDerivedSignals(
 }
 
 export function createTrackingValidationContext(
-  context: TrackingValidationContextBase,
+  context: TrackingValidationProjectionInput,
 ): TrackingValidationContext {
   return {
     ...context,
     signals: deriveTrackingValidationDerivedSignals(context),
   }
+}
+
+function deriveTrackingValidationProjectionFromInput(
+  context: TrackingValidationProjectionInput,
+): TrackingValidationContainerProjection {
+  return deriveTrackingValidationProjection(createTrackingValidationContext(context))
+}
+
+export function deriveTrackingValidationProjectionFromState(
+  context: TrackingValidationProjectionInput,
+): TrackingValidationContainerProjection {
+  return deriveTrackingValidationProjectionFromInput(context)
+}
+
+export function deriveTrackingValidationSummaryFromState(
+  context: TrackingValidationProjectionInput,
+): TrackingValidationContainerSummary {
+  return deriveTrackingValidationProjectionFromInput(context).summary
 }
 
 export function deriveTrackingValidationProjection(

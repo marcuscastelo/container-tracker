@@ -22,6 +22,11 @@ function makeSync(snapshotId: string, position: number): TrackingTimeTravelSyncV
       voyage: null,
       vesselVisible: true,
     },
+    trackingValidation: {
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+    },
     nextLocation: null,
     diff:
       position === 1

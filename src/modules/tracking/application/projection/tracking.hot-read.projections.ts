@@ -20,8 +20,7 @@ import {
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import type { Timeline } from '~/modules/tracking/features/timeline/domain/model/timeline'
 import {
-  createTrackingValidationContext,
-  deriveTrackingValidationProjection,
+  deriveTrackingValidationProjectionFromState,
   type TrackingValidationContainerProjection,
 } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
@@ -169,17 +168,15 @@ export function findContainersTrackingValidationProjection(command: {
     if (timelineProjection === undefined) continue
 
     const transshipment = deriveTransshipment(timelineProjection.domainTimeline)
-    const validation = deriveTrackingValidationProjection(
-      createTrackingValidationContext({
-        containerId: container.containerId,
-        containerNumber: container.containerNumber,
-        observations: projectionObservations,
-        timeline: timelineProjection.domainTimeline,
-        status: timelineProjection.status,
-        transshipment,
-        now: command.now,
-      }),
-    )
+    const validation = deriveTrackingValidationProjectionFromState({
+      containerId: container.containerId,
+      containerNumber: container.containerNumber,
+      observations: projectionObservations,
+      timeline: timelineProjection.domainTimeline,
+      status: timelineProjection.status,
+      transshipment,
+      now: command.now,
+    })
 
     validationByContainerId.set(container.containerId, validation)
   }

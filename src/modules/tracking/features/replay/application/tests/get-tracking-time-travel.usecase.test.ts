@@ -299,6 +299,7 @@ describe('getTrackingTimeTravel', () => {
 
     const latestSync = timeTravel.syncs[1]
     expect(latestSync?.status).toBe(latestLiveSummary.status)
+    expect(latestSync?.trackingValidation).toEqual(latestLiveSummary.trackingValidation)
     expect(normalizeTimelineForParity(latestSync?.timeline ?? [])).toEqual(
       normalizeTimelineForParity(
         deriveTimelineWithSeriesReadModel(

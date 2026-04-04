@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js'
-import { ErrorBoundary, Show } from 'solid-js'
+import { createMemo, ErrorBoundary, Show } from 'solid-js'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
 import { ContainersPanel } from '~/modules/process/ui/components/ContainersPanel'
 import { ShipmentCurrentStatus } from '~/modules/process/ui/components/ShipmentCurrentStatus'
@@ -13,6 +13,7 @@ import { TrackingTimeTravelDiffSummary } from '~/modules/process/ui/screens/ship
 import { TrackingTimeTravelStatusPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelStatusPanel'
 import { TrackingTimeTravelTimelinePanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelTimelinePanel'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
+import { resolveShipmentTrackingValidationDisplay } from '~/modules/process/ui/screens/shipment/lib/shipmentTrackingReviewDisplay'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { ShipmentDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
@@ -178,11 +179,25 @@ function ShipmentSidebarRegion(props: ShipmentSidebarRegionProps): JSX.Element {
 export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
   const { t, keys } = useTranslation()
   const isHistoricalMode = () => props.trackingTimeTravel.isActive()
+  const trackingValidationDisplay = createMemo(() =>
+    resolveShipmentTrackingValidationDisplay({
+      shipment: props.data,
+      selectedContainerId: props.selectedContainerId,
+      selectedSync: props.trackingTimeTravel.selectedSync(),
+    }),
+  )
 
   return (
     <div class="space-y-4">
       <ShipmentHeader
         data={props.data}
+        trackingValidation={trackingValidationDisplay().shipmentTrackingValidation}
+        trackingValidationMode={trackingValidationDisplay().mode}
+        historicalTrackingValidationContainerNumber={
+          trackingValidationDisplay().mode === 'historical'
+            ? (props.selectedContainer?.number ?? null)
+            : null
+        }
         isRefreshing={props.isRefreshing}
         refreshRetry={props.refreshRetry}
         refreshHint={props.refreshHint}
@@ -235,7 +250,7 @@ export function ShipmentDataView(props: ShipmentDataViewProps): JSX.Element {
         <div class="space-y-4">
           <section id="shipment-containers" class="scroll-mt-30">
             <ContainersPanel
-              containers={props.data.containers}
+              containers={trackingValidationDisplay().containers}
               selectedId={props.selectedContainerId}
               onSelect={props.onSelectContainer}
             />

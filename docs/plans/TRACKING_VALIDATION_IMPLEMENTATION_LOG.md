@@ -877,3 +877,179 @@
   - mover semântica para UI
   - transformar lifecycle em source of truth
   - inflar dashboard ou quebrar shipment timeline-first
+
+## R. Kickoff da Fase 7
+- Data de início: 2026-04-04
+- Fase atual: V1 pluginável / Fase 7 time travel, refresh, realtime e payload refinement
+- Estado herdado das fases anteriores:
+  - o framework pluginável continua centralizado no Tracking BC e o registry permanece explícito
+  - os detectores ativos seguem:
+    - `CONFLICTING_CRITICAL_ACTUALS`
+    - `POST_COMPLETION_TRACKING_CONTINUED`
+    - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
+  - o payload público atual permanece compacto:
+    - dashboard com agregado mínimo
+    - shipment current com resumo por processo/container
+  - a Fase 6 já persiste lifecycle operacional por transição sem snapshot completo por sync
+- Entendimento inicial:
+  - a UI histórica por snapshot precisa refletir `tracking_validation` derivado do checkpoint selecionado, não o resumo atual do shipment
+  - o lifecycle persistido continua operacional/observável, mas não deve governar o render histórico principal
+  - a integração desta fase deve acontecer no replay/time-travel read model, preservando dashboard leve e shipment timeline-first
+- Auditoria consolidada antes de codar:
+  - o gap principal identificado está no trilho de time travel:
+    - timeline/status/alerts históricos já trocam por snapshot
+    - banner de validation e chip do selector ainda dependem do `ShipmentDetailVM` atual
+  - o endpoint lazy de time travel ainda não expõe `tracking_validation` por checkpoint
+  - o controller de time travel ainda não depende do `trackingFreshnessToken`, então pode ficar defasado após refresh/reconciliation/realtime
+- Plano fechado para a fase:
+  - consolidar helper tracking-owned para derivação compacta de validation a partir de um estado já reconstruído
+  - reutilizar esse helper no hot-read atual e no replay histórico
+  - estender `TrackingTimeTravelCheckpoint` e o DTO HTTP com `tracking_validation` compacto
+  - mapear esse resumo até `TrackingTimeTravelSyncVM`
+  - ajustar a composição do shipment em modo histórico para:
+    - usar banner do container/snapshot selecionado
+    - sobrescrever apenas o chip do container selecionado no selector
+    - não inventar agregado histórico do processo inteiro
+  - fazer o resource de time travel refetchar quando o `trackingFreshnessToken` mudar
+
+## S. Fechamento da Fase 7
+- Data de fechamento: 2026-04-04
+- Escopo entregue:
+  - `tracking_validation` passou a ser derivado por checkpoint no replay/time travel, sem snapshot completo persistido por sync
+  - shipment histórico passou a consumir VM histórico pronto, sem heurística local de UI
+  - time travel passou a refetchar com mudanças de `trackingFreshnessToken`
+  - dashboard permaneceu com payload mínimo
+  - lifecycle persistido continuou como apoio operacional, não como source of truth histórica
+
+### S.1 O que foi implementado
+- Tracking BC:
+  - `trackingValidation.projection.ts` passou a expor derivação compacta a partir de estado já reconstruído
+  - `tracking.hot-read.projections.ts` foi alinhado a esse helper para manter paridade entre presente e replay
+  - `tracking-time-travel.readmodel.ts` passou a incluir `trackingValidation` compacto em cada checkpoint
+  - o replay histórico continua derivando a partir de:
+    - observations
+    - timeline
+    - status
+    - transshipment
+    - `effectiveNow`
+- HTTP / DTO / VM:
+  - `tracking.schemas.ts` e `tracking.http.mappers.ts` passaram a expor `tracking_validation` por checkpoint apenas com:
+    - `has_issues`
+    - `highest_severity`
+    - `finding_count`
+  - `tracking-time-travel.ui-mapper.ts` e `tracking-time-travel.vm.ts` passaram a carregar esse resumo até `TrackingTimeTravelSyncVM`
+- UI / shipment:
+  - o modo histórico do shipment passou a usar banner do container/snapshot selecionado
+  - o chip do selector/container passou a refletir o sync selecionado apenas no container ativo
+  - o modo atual continua usando o resumo do `ShipmentDetailVM`
+- Refresh / realtime:
+  - `useTrackingTimeTravelController` agora usa chave com `trackingFreshnessToken`
+  - o resource lazy de time travel refaz a leitura quando o shipment atual é reconciliado/refrescado
+
+### S.2 Como ficou a reconstrução por sync
+- A visão histórica agora vem do replay por sync no Tracking BC.
+- O endpoint lazy de time travel carrega só o resumo compacto de validation por checkpoint.
+- Não foi criado snapshot completo de validation por sync.
+- A paridade entre presente e histórico passou a depender do mesmo caminho canônico de derivação pluginável.
+
+### S.3 Como o lifecycle persistido está sendo usado
+- Continua sendo operacional/observável:
+  - `activated`
+  - `changed`
+  - `resolved`
+- Não governa o render histórico do shipment.
+- Não substitui a derivação do replay por sync.
+- Nesta fase o pipeline ficou resiliente a indisponibilidade do repositório/tabela de lifecycle:
+  - falha operacional é logada
+  - derivação canônica de timeline/status/alerts/validation continua
+  - a UI histórica não fica bloqueada por ausência da tabela operacional
+
+### S.4 Ajustes de payload / VM
+- Dashboard:
+  - payload mantido mínimo
+  - confirmado sem `findings`, `lifecycle` ou detalhe histórico embutido
+- Shipment current:
+  - payload atual mantido
+  - sem inflação por dados de replay
+- Time travel:
+  - checkpoint ganhou só resumo compacto de validation
+  - nenhuma evidência detalhada, transitions ou debug de validation foi exposta
+
+### S.5 Testes criados / ajustados
+- Replay / time travel:
+  - `src/modules/tracking/features/replay/application/tests/tracking-time-travel.readmodel.test.ts`
+  - `src/modules/tracking/features/replay/application/tests/get-tracking-time-travel.usecase.test.ts`
+  - `src/modules/tracking/interface/http/tests/tracking.controllers.test.ts`
+- Pipeline / resiliência operacional:
+  - `src/modules/tracking/application/tests/pipeline.validation-lifecycle.integration.test.ts`
+- UI / composição histórica:
+  - `src/modules/process/ui/mappers/tests/tracking-time-travel.ui-mapper.test.ts`
+  - `src/modules/process/ui/screens/shipment/lib/shipmentTrackingReviewDisplay.test.ts`
+  - `src/modules/process/ui/screens/shipment/lib/tracking-time-travel.resource-key.test.ts`
+  - `src/modules/process/ui/screens/shipment/lib/tracking-time-travel.selection.service.test.ts`
+  - `src/modules/process/ui/screens/shipment/hooks/useShipmentScreenResource.test.ts`
+
+### S.6 QA manual realizado
+- Ambiente:
+  - app local rodando em `http://localhost:3000`
+- Cenário advisory:
+  - `post_carriage_maritime_inconsistent`
+  - validação feita em:
+    - preview step 2
+    - shipment real step 2
+    - shipment real step 4 com navegação `sync 1/4 -> 4/4`
+  - resultado observado:
+    - current step 4 limpo
+    - sync 2/4 e 3/4 com `Validação necessária`
+    - sync 1/4 e 4/4 sem banner/chip histórico
+- Cenário critical:
+  - `delivery_post_completion_continued`
+  - validação feita em:
+    - preview step 2
+    - shipment real current
+    - shipment real time travel `sync 1/2 -> 2/2`
+  - resultado observado:
+    - current com banner/chip críticos
+    - sync 1/2 limpo
+    - sync 2/2 com banner histórico crítico
+- Dashboard:
+  - rota `/` validada em desktop e mobile
+  - row com chip de validation exibida corretamente
+  - `fetch('/api/processes')` conferido no browser:
+    - `tracking_validation` contém só agregado mínimo
+    - sem `findings`
+    - sem `lifecycle`
+- Coerência dinâmica:
+  - shipment com time travel aberto foi revalidado após avanço do mesmo processo via Scenario Lab (`reuse_process_id`)
+  - o resource histórico passou a refletir novos syncs após mudança do `trackingFreshnessToken`
+- Evidências:
+  - `phase7-dashboard-desktop.png`
+  - `phase7-dashboard-mobile.png`
+  - `phase7-shipment-advisory-historical-desktop.png`
+  - `phase7-shipment-critical-mobile.png`
+
+### S.7 Problemas encontrados
+- O ambiente local usado no QA não tinha a tabela operacional `tracking_validation_issue_transitions` disponível no banco remoto da sessão.
+- Sem resiliência, isso quebrava o Scenario Lab e o runtime local com `500`.
+- Tratamento aplicado nesta fase:
+  - a falha do lifecycle operacional passou a degradar graciosamente no pipeline
+  - a derivação canônica seguiu funcionando
+  - o problema operacional continua explícito via log
+- Durante a retomada pós-crash, o dev server também revelou uma incompatibilidade de parser com um type annotation intermediário; o contrato foi simplificado e alinhado com runtime + build.
+
+### S.8 Limitações intencionais
+- Não foi criada leitura pública de lifecycle operacional.
+- Não foi adicionada observabilidade externa nova.
+- Não foi criado snapshot completo por sync.
+- Não foi movida nenhuma semântica de validation para UI.
+- O dashboard continua sem detalhe histórico de validation por design.
+
+### S.9 Próximo passo recomendado para a Fase 8
+- Fechar a camada de leitura operacional do lifecycle persistido dentro do Tracking BC para:
+  - duração de issues
+  - incidência por detector/provider
+  - debugging operacional interno
+- Fazer isso mantendo:
+  - replay por sync como fonte histórica da UI
+  - dashboard leve
+  - shipment timeline-first

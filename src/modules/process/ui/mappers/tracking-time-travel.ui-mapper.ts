@@ -16,6 +16,7 @@ import type {
   TrackingTimeTravelSyncVM,
   TrackingTimeTravelVM,
 } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
+import type { ContainerTrackingValidationVM } from '~/modules/process/ui/viewmodels/tracking-validation.vm'
 import type { TrackingAlertProjectionSource } from '~/modules/tracking/features/alerts/application/projection/tracking.alert.projection'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
@@ -152,6 +153,16 @@ function toDiffVm(
   }
 }
 
+function toTrackingValidationVm(
+  trackingValidation: TrackingTimeTravelResponseDto['syncs'][number]['tracking_validation'],
+): ContainerTrackingValidationVM {
+  return {
+    hasIssues: trackingValidation.has_issues === true,
+    highestSeverity: trackingValidation.highest_severity ?? null,
+    findingCount: trackingValidation.finding_count,
+  }
+}
+
 function toSyncVm(
   checkpoint: TrackingTimeTravelResponseDto['syncs'][number],
   locale: string,
@@ -169,6 +180,7 @@ function toSyncVm(
     eta: toEtaVm(checkpoint.eta, locale),
     currentContext: toCurrentContextVm(checkpoint.operational.current_context),
     nextLocation: toNextLocationVm(checkpoint.operational.next_location, locale),
+    trackingValidation: toTrackingValidationVm(checkpoint.tracking_validation),
     diff: toDiffVm(checkpoint.diff_from_previous, locale),
     debugAvailable: checkpoint.debug_available,
   }

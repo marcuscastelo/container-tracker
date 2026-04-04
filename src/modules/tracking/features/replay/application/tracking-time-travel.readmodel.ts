@@ -10,6 +10,7 @@ import type {
   TrackingTimeTravelResult,
 } from '~/modules/tracking/features/replay/application/tracking.replay.types'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { deriveTrackingValidationSummaryFromState } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import { Instant } from '~/shared/time/instant'
 
 type TrackingTimeTravelCheckpointBase = Omit<TrackingTimeTravelCheckpoint, 'diffFromPrevious'>
@@ -88,10 +89,20 @@ function buildCheckpointState(command: {
     projectionObservations,
     effectiveNow,
   )
+  const transshipment = deriveTransshipment(timelineDomain)
   const operational = deriveTrackingOperationalSummary({
     observations: toTrackingObservationProjections(projectionObservations),
     status: state.status,
-    transshipment: deriveTransshipment(timelineDomain),
+    transshipment,
+    now: effectiveNow,
+  })
+  const trackingValidation = deriveTrackingValidationSummaryFromState({
+    containerId: command.run.containerId,
+    containerNumber,
+    observations: projectionObservations,
+    timeline: timelineDomain,
+    status: state.status,
+    transshipment,
     now: effectiveNow,
   })
 
@@ -104,6 +115,7 @@ function buildCheckpointState(command: {
     alerts: state.alerts,
     eta: operational.eta,
     operational,
+    trackingValidation,
     debugAvailable: true,
   }
 }
