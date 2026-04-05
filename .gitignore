@@ -6,6 +6,7 @@ node_modules/
 tools/agent/dist/
 tools/agent/.cache/
 dist/agent-installer-bundle.zip
+dist/agent-control-ui/tools/
 **/.pnpm-store/**
 
 marucs-src/

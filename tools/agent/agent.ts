@@ -6,8 +6,13 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import { createClient } from '@supabase/supabase-js'
+import {
+  acknowledgeRemoteCommand,
+  applyRemoteCommand,
+  type ControlRuntimeConfig,
+  syncAgentControlState,
+} from '@tools/agent/control-core/agent-control-core'
 import { z } from 'zod/v4'
-
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchCmaCgmStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -226,6 +231,42 @@ const bootstrapConfigSchema = z.object({
 })
 
 type BootstrapConfig = z.infer<typeof bootstrapConfigSchema>
+
+function toControlRuntimeConfig(config: RuntimeConfig): ControlRuntimeConfig {
+  return {
+    AGENT_ID: config.AGENT_ID,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+    BACKEND_URL: config.BACKEND_URL,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR ?? null,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ?? null,
+    SUPABASE_URL: config.SUPABASE_URL ?? null,
+    TENANT_ID: config.TENANT_ID,
+  }
+}
+
+function toRuntimeConfigFromControlConfig(config: ControlRuntimeConfig): RuntimeConfig {
+  return runtimeConfigSchema.parse({
+    BACKEND_URL: config.BACKEND_URL,
+    SUPABASE_URL: config.SUPABASE_URL ?? undefined,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ?? undefined,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    TENANT_ID: config.TENANT_ID,
+    AGENT_ID: config.AGENT_ID,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR ?? undefined,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+}
 
 const enrollResponseSchema = z.object({
   agentToken: z.string().min(1),
@@ -687,6 +728,14 @@ type AgentActivityType =
   | 'UPDATE_APPLY_FAILED'
   | 'RESTART_FOR_UPDATE'
   | 'ROLLBACK_EXECUTED'
+  | 'LOCAL_UPDATE_PAUSED'
+  | 'LOCAL_UPDATE_RESUMED'
+  | 'CHANNEL_CHANGED'
+  | 'CONFIG_UPDATED'
+  | 'RELEASE_ACTIVATED'
+  | 'LOCAL_RESET'
+  | 'REMOTE_RESET'
+  | 'REMOTE_FORCE_UPDATE'
 
 type AgentRuntimeActivity = {
   readonly type: AgentActivityType
@@ -1320,6 +1369,7 @@ async function runUpdateCheck(command: {
   readonly releaseStatePath: string
   readonly agentLayout: AgentPathLayout
   readonly supervisorControlPath: string
+  readonly effectiveBlockedVersions: readonly string[]
 }): Promise<{
   readonly activities: readonly AgentRuntimeActivity[]
   readonly shouldDrain: boolean
@@ -1335,6 +1385,7 @@ async function runUpdateCheck(command: {
       agentToken: command.config.AGENT_TOKEN,
       agentId: command.config.AGENT_ID,
       platform: resolveAgentPlatformKey(),
+      updateChannelOverride: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
     })
 
     command.state.desiredVersion = manifest.desired_version
@@ -1364,10 +1415,16 @@ async function runUpdateCheck(command: {
     }
 
     const releaseState = readReleaseState(command.releaseStatePath, command.agentVersion)
+    const effectiveReleaseState = {
+      ...releaseState,
+      blocked_versions: [
+        ...new Set([...releaseState.blocked_versions, ...command.effectiveBlockedVersions]),
+      ],
+    }
     const stagedRelease = await stageReleaseFromManifest({
       manifest,
       layout: command.agentLayout,
-      state: releaseState,
+      state: effectiveReleaseState,
     })
 
     if (stagedRelease.kind === 'no_update') {
@@ -1492,8 +1549,13 @@ async function runUpdateCheck(command: {
 async function main(): Promise<void> {
   const agentLayout = runtimePaths.resolveAgentPathLayout()
   runtimePaths.ensureAgentPathLayout(agentLayout)
-  const runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
-  const updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
+  let runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
+  let controlSync = await syncAgentControlState({
+    layout: agentLayout,
+    currentConfig: toControlRuntimeConfig(runtimeConfig),
+  })
+  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+  let updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
   const agentVersion = resolveAgentVersion()
   const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
@@ -1516,9 +1578,9 @@ async function main(): Promise<void> {
     lastError: null,
     bootStatus: 'starting',
     updateState: 'idle',
-    desiredVersion: null,
-    updateReadyVersion: null,
-    restartRequestedAt: null,
+    desiredVersion: controlSync.remotePolicy.desiredVersion,
+    updateReadyVersion: controlSync.releaseState.target_version,
+    restartRequestedAt: controlSync.remotePolicy.restartRequestedAt,
     updaterLastCheckedAt: null,
   }
 
@@ -1553,6 +1615,44 @@ async function main(): Promise<void> {
     runCycle: async (reason) => {
       const cycleActivities: AgentRuntimeActivity[] = []
 
+      controlSync = await syncAgentControlState({
+        layout: agentLayout,
+        currentConfig: toControlRuntimeConfig(runtimeConfig),
+      })
+      runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+      updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
+
+      const pendingRemoteCommand = controlSync.remoteCommands[0]
+      if (pendingRemoteCommand) {
+        const remoteCommandResult = await applyRemoteCommand({
+          layout: agentLayout,
+          currentConfig: toControlRuntimeConfig(runtimeConfig),
+          remoteCommand: pendingRemoteCommand,
+        })
+        controlSync = remoteCommandResult.result
+        runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+
+        try {
+          await acknowledgeRemoteCommand({
+            config: toControlRuntimeConfig(runtimeConfig),
+            remoteCommandId: pendingRemoteCommand.id,
+            status: 'APPLIED',
+          })
+        } catch (error) {
+          console.warn(`[agent] failed to acknowledge remote command: ${toErrorMessage(error)}`)
+        }
+
+        if (remoteCommandResult.requiresRestart) {
+          runtimeState.updateState = 'draining'
+          runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
+          supervisorControl.writeSupervisorControl(supervisorPaths.controlPath, {
+            drain_requested: true,
+            reason: 'restart',
+            requested_at: pendingRemoteCommand.requestedAt,
+          })
+        }
+      }
+
       const controlState = supervisorControl.readSupervisorControl(supervisorPaths.controlPath)
       if (controlState?.drain_requested) {
         runtimeState.updateState = 'draining'
@@ -1570,6 +1670,7 @@ async function main(): Promise<void> {
       const nowMs = Date.now()
       const shouldRunUpdateCheck =
         !updateManifestChecksDisabled &&
+        !controlSync.snapshot.updates.paused.value &&
         runtimeState.updateState !== 'draining' &&
         nowMs - lastUpdateCheckAtMs >= UPDATE_CHECK_INTERVAL_MS
 
@@ -1581,6 +1682,7 @@ async function main(): Promise<void> {
           releaseStatePath: agentLayout.releaseStatePath,
           agentLayout,
           supervisorControlPath: supervisorPaths.controlPath,
+          effectiveBlockedVersions: controlSync.snapshot.updates.blockedVersions.effective,
         })
         lastUpdateCheckAtMs = nowMs
         cycleActivities.push(...updateResult.activities)

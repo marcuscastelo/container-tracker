@@ -54,6 +54,7 @@ export type UpdateFetchCommand = {
   readonly agentToken: string
   readonly agentId: string
   readonly platform?: AgentPlatformKey
+  readonly updateChannelOverride?: string
 }
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
@@ -105,6 +106,12 @@ function buildAuthHeaders(command: UpdateFetchCommand, includeContentType: boole
   headers.set('x-agent-id', command.agentId)
   headers.set('x-agent-platform', command.platform ?? resolveAgentPlatformKey())
   headers.set('user-agent', `container-tracker-agent/${command.agentId}`)
+  if (
+    typeof command.updateChannelOverride === 'string' &&
+    command.updateChannelOverride.length > 0
+  ) {
+    headers.set('x-agent-update-channel', command.updateChannelOverride)
+  }
   if (includeContentType) {
     headers.set('content-type', 'application/json')
   }

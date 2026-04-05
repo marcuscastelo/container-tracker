@@ -14,6 +14,7 @@ function createLayout(baseDir: string): AgentPathLayout {
   const layout: AgentPathLayout = {
     dataDir: baseDir,
     configPath: path.join(baseDir, 'config.env'),
+    baseRuntimeConfigPath: path.join(baseDir, 'control-base.runtime.json'),
     bootstrapPath: path.join(baseDir, 'bootstrap.env'),
     consumedBootstrapPath: path.join(baseDir, 'bootstrap.env.consumed'),
     releasesDir: path.join(baseDir, 'releases'),
@@ -25,6 +26,10 @@ function createLayout(baseDir: string): AgentPathLayout {
     runtimeHealthPath: path.join(baseDir, 'runtime-health.json'),
     supervisorControlPath: path.join(baseDir, 'supervisor-control.json'),
     pendingActivityPath: path.join(baseDir, 'pending-activity-events.json'),
+    controlOverridesPath: path.join(baseDir, 'control-overrides.local.json'),
+    controlRemoteCachePath: path.join(baseDir, 'control-remote-cache.json'),
+    infraConfigPath: path.join(baseDir, 'infra-config.json'),
+    auditLogPath: path.join(baseDir, 'agent-control-audit.ndjson'),
   }
 
   fs.mkdirSync(layout.releasesDir, { recursive: true })

@@ -195,6 +195,94 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },
 
+  async getRemoteControlState({ tenantId, agentId }) {
+    const agentResult = await supabaseServer
+      .from('tracking_agents')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('id', agentId)
+      .is('revoked_at', null)
+      .maybeSingle()
+
+    const agentRow = unwrapSupabaseSingleOrNull(agentResult, {
+      operation: 'getRemoteControlState/tracking_agents',
+      table: 'tracking_agents',
+    })
+
+    if (!agentRow) {
+      return null
+    }
+
+    const commandsResult = await supabaseServer
+      .from('agent_control_commands')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('agent_id', agentId)
+      .is('acknowledged_at', null)
+      .order('requested_at', { ascending: true })
+
+    const commandRows = unwrapSupabaseResultOrThrow(commandsResult, {
+      operation: 'getRemoteControlState/agent_control_commands',
+      table: 'agent_control_commands',
+    })
+
+    return {
+      policy: agentMonitoringPersistenceMappers.toRemotePolicyRecord(agentRow),
+      commands: commandRows.map(agentMonitoringPersistenceMappers.fromControlCommandRow),
+    }
+  },
+
+  async getInfraConfig({ tenantId, agentId }) {
+    const result = await supabaseServer
+      .from('tracking_agents')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('id', agentId)
+      .is('revoked_at', null)
+      .maybeSingle()
+
+    const row = unwrapSupabaseSingleOrNull(result, {
+      operation: 'getInfraConfig',
+      table: 'tracking_agents',
+    })
+
+    if (!row) {
+      return null
+    }
+
+    return agentMonitoringPersistenceMappers.toInfraConfigRecord(row)
+  },
+
+  async acknowledgeRemoteControlCommand({
+    tenantId,
+    agentId,
+    commandId,
+    acknowledgedAt,
+    status,
+    detail,
+  }) {
+    const result = await supabaseServer
+      .from('agent_control_commands')
+      .update({
+        acknowledged_at: acknowledgedAt,
+        acknowledged_status: status,
+        acknowledgement_detail: detail,
+        acknowledged_by: 'agent-runtime',
+      })
+      .eq('tenant_id', tenantId)
+      .eq('agent_id', agentId)
+      .eq('id', commandId)
+      .is('acknowledged_at', null)
+      .select('id')
+
+    const rows = unwrapSupabaseResultOrThrow(result, {
+      operation: 'acknowledgeRemoteControlCommand',
+      table: 'agent_control_commands',
+    })
+
+    return rows.length > 0
+  },
+
   async requestAgentUpdate({ tenantId, agentId, desiredVersion, updateChannel, requestedAt }) {
     const result = await supabaseServer
       .from('tracking_agents')
@@ -239,6 +327,24 @@ export const supabaseAgentMonitoringRepository: AgentMonitoringRepository = {
     })
 
     if (!row) return null
+
+    const commandResult = await supabaseServer
+      .from('agent_control_commands')
+      .insert({
+        tenant_id: tenantId,
+        agent_id: agentId,
+        command_type: 'RESTART_AGENT',
+        requested_at: requestedAt,
+        payload: {},
+        requested_by: 'control-plane',
+      })
+      .select('id')
+
+    unwrapSupabaseResultOrThrow(commandResult, {
+      operation: 'requestAgentRestart/agent_control_commands',
+      table: 'agent_control_commands',
+    })
+
     return agentMonitoringPersistenceMappers.fromTrackingAgentRow(row)
   },
 

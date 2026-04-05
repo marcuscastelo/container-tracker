@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "../../dist/agent-control-ui",
+    "rootDir": "../..",
+    "types": ["node", "electron"]
+  },
+  "include": ["./main.ts", "./preload.ts", "./ipc.ts", "../agent/runtime/alias-loader.ts"]
+}

@@ -54,6 +54,7 @@ export function resolveCurrentRelease(currentLinkPath: string): string | null {
 export type AgentPathLayout = {
   readonly dataDir: string
   readonly configPath: string
+  readonly baseRuntimeConfigPath: string
   readonly bootstrapPath: string
   readonly consumedBootstrapPath: string
   readonly releasesDir: string
@@ -65,6 +66,10 @@ export type AgentPathLayout = {
   readonly runtimeHealthPath: string
   readonly supervisorControlPath: string
   readonly pendingActivityPath: string
+  readonly controlOverridesPath: string
+  readonly controlRemoteCachePath: string
+  readonly infraConfigPath: string
+  readonly auditLogPath: string
 }
 
 export function resolveAgentPathLayout(): AgentPathLayout {
@@ -77,6 +82,7 @@ export function resolveAgentPathLayout(): AgentPathLayout {
   return {
     dataDir,
     configPath,
+    baseRuntimeConfigPath: path.join(dataDir, 'control-base.runtime.json'),
     bootstrapPath,
     consumedBootstrapPath: `${bootstrapPath}.consumed`,
     releasesDir: resolveReleasesDir(dataDir),
@@ -88,6 +94,10 @@ export function resolveAgentPathLayout(): AgentPathLayout {
     runtimeHealthPath: path.join(dataDir, 'runtime-health.json'),
     supervisorControlPath: path.join(dataDir, 'supervisor-control.json'),
     pendingActivityPath: path.join(dataDir, 'pending-activity-events.json'),
+    controlOverridesPath: path.join(dataDir, 'control-overrides.local.json'),
+    controlRemoteCachePath: path.join(dataDir, 'control-remote-cache.json'),
+    infraConfigPath: path.join(dataDir, 'infra-config.json'),
+    auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
   }
 }
 

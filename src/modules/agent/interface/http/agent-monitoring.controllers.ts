@@ -348,7 +348,7 @@ export function createAgentMonitoringControllers(deps: AgentMonitoringController
       await deps.agentMonitoringUseCases.recordActivity({
         agentId,
         tenantId: deps.defaultTenantId,
-        type: 'UPDATE_AVAILABLE',
+        type: 'REMOTE_FORCE_UPDATE',
         message: `Update requested to ${parsedBody.data.desired_version}`,
         severity: 'info',
         metadata: {

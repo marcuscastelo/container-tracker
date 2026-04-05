@@ -244,12 +244,12 @@ function resolveFallbackRuntimeEntrypoint(scriptDir: string): string {
 }
 
 function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
-  const loaderPath = path.resolve(path.dirname(scriptPath), 'runtime', 'alias-loader.js')
-  if (!fs.existsSync(loaderPath) || !fs.statSync(loaderPath).isFile()) {
+  const registerPath = path.resolve(path.dirname(scriptPath), 'runtime', 'register-alias-loader.js')
+  if (!fs.existsSync(registerPath) || !fs.statSync(registerPath).isFile()) {
     return []
   }
 
-  return ['--loader', loaderPath]
+  return [`--import=${registerPath}`]
 }
 
 function areUpdateManifestChecksDisabled(env: NodeJS.ProcessEnv): boolean {
