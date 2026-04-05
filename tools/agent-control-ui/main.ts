@@ -28,7 +28,7 @@ function createMainWindow(): ElectronBrowserWindow {
     show: false,
     backgroundColor: '#f2efe8',
     webPreferences: {
-      preload: path.join(currentDir, 'preload.js'),
+      preload: path.join(currentDir, 'preload.cjs'),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,

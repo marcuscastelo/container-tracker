@@ -58,7 +58,7 @@ async function waitForUrl(url, timeoutMs = 30000) {
 }
 
 async function main() {
-  const build = run('pnpm', ['exec', 'tsc', '-p', 'tools/agent-control-ui/tsconfig.build.json'])
+  const build = run('node', ['scripts/agent-control-ui/build-main.mjs'])
   const buildExitCode = await new Promise((resolve, reject) => {
     build.once('error', reject)
     build.once('exit', (code) => resolve(code ?? 1))

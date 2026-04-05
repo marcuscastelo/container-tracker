@@ -9,6 +9,7 @@ import type {
   ResolvedSource,
 } from '@tools/agent/control-core/contracts'
 import { AgentControlLogChannelSchema } from '@tools/agent/control-core/contracts'
+import type { AgentControlRendererApi } from '@tools/agent-control-ui/ipc'
 import { createMemo, createSignal, For, type JSX, onMount, Show } from 'solid-js'
 
 type LoadState = 'loading' | 'ready' | 'error'
@@ -177,6 +178,20 @@ function parseLogChannel(value: string): AgentControlLogChannel {
   return parsed.success ? parsed.data : 'all'
 }
 
+function getAgentControlBridge(): AgentControlRendererApi {
+  if (
+    typeof window.agentControl?.getSnapshot !== 'function' ||
+    typeof window.agentControl?.getLogs !== 'function' ||
+    typeof window.agentControl?.startAgent !== 'function'
+  ) {
+    throw new Error(
+      'Electron preload bridge is unavailable. Close the window and open the app again with pnpm run agent-control-ui:start.',
+    )
+  }
+
+  return window.agentControl
+}
+
 export function AgentControlApp() {
   const [loadState, setLoadState] = createSignal<LoadState>('loading')
   const [snapshot, setSnapshot] = createSignal<AgentOperationalSnapshot | null>(null)
@@ -207,7 +222,7 @@ export function AgentControlApp() {
 
   async function refreshLogs(): Promise<void> {
     try {
-      const logs = await window.agentControl.getLogs({
+      const logs = await getAgentControlBridge().getLogs({
         channel: selectedLogChannel(),
         tail: Number.parseInt(tail(), 10) || 200,
       })
@@ -221,10 +236,11 @@ export function AgentControlApp() {
     setLoadState('loading')
     setError(null)
     try {
+      const agentControl = getAgentControlBridge()
       const [nextSnapshot, nextReleases, nextPaths] = await Promise.all([
-        window.agentControl.getSnapshot(),
-        window.agentControl.getReleaseInventory(),
-        window.agentControl.getPaths(),
+        agentControl.getSnapshot(),
+        agentControl.getReleaseInventory(),
+        agentControl.getPaths(),
       ])
       setSnapshot(nextSnapshot)
       setReleases(nextReleases.releases)
@@ -254,7 +270,7 @@ export function AgentControlApp() {
       setMessage(result.message)
       setSnapshot(result.snapshot)
       syncDrafts(result.snapshot)
-      setReleases((await window.agentControl.getReleaseInventory()).releases)
+      setReleases((await getAgentControlBridge().getReleaseInventory()).releases)
       await refreshLogs()
     } catch (commandError) {
       setError(toErrorMessage(commandError))
@@ -266,7 +282,7 @@ export function AgentControlApp() {
   async function activateRelease(version: string): Promise<void> {
     await runAction(
       `activate-${version}`,
-      () => window.agentControl.activateRelease({ version }),
+      () => getAgentControlBridge().activateRelease({ version }),
       `Activate release ${version}? The runtime will be drained and restarted.`,
     )
   }
@@ -281,7 +297,7 @@ export function AgentControlApp() {
   function applyChannelDraft(): void {
     const normalized = channelDraft().trim()
     const channel = normalized.length > 0 ? normalized : null
-    void runAction('change-channel', () => window.agentControl.changeChannel({ channel }))
+    void runAction('change-channel', () => getAgentControlBridge().changeChannel({ channel }))
   }
 
   function saveBlockedVersionsDraft(): void {
@@ -289,12 +305,14 @@ export function AgentControlApp() {
       .split(/\r?\n/u)
       .map((value) => value.trim())
       .filter((value) => value.length > 0)
-    void runAction('blocked-versions', () => window.agentControl.setBlockedVersions({ versions }))
+    void runAction('blocked-versions', () =>
+      getAgentControlBridge().setBlockedVersions({ versions }),
+    )
   }
 
   function saveConfigDraft(): void {
     const patch = configDraft()
-    void runAction('update-config', () => window.agentControl.updateConfig({ patch }))
+    void runAction('update-config', () => getAgentControlBridge().updateConfig({ patch }))
   }
 
   onMount(() => {
@@ -317,7 +335,7 @@ export function AgentControlApp() {
             type="button"
             class="action-button"
             disabled={busyAction() !== null}
-            onClick={() => void runAction('start', () => window.agentControl.startAgent())}
+            onClick={() => void runAction('start', () => getAgentControlBridge().startAgent())}
           >
             Start
           </button>
@@ -328,7 +346,7 @@ export function AgentControlApp() {
             onClick={() =>
               void runAction(
                 'stop',
-                () => window.agentControl.stopAgent(),
+                () => getAgentControlBridge().stopAgent(),
                 'Stop the agent runtime now?',
               )
             }
@@ -342,7 +360,7 @@ export function AgentControlApp() {
             onClick={() =>
               void runAction(
                 'restart',
-                () => window.agentControl.restartAgent(),
+                () => getAgentControlBridge().restartAgent(),
                 'Restart the agent runtime now?',
               )
             }
@@ -356,7 +374,7 @@ export function AgentControlApp() {
             onClick={() =>
               void runAction(
                 'local-reset',
-                () => window.agentControl.executeLocalReset(),
+                () => getAgentControlBridge().executeLocalReset(),
                 'Run a local reset? Local overrides will be cleared and the runtime will restart.',
               )
             }
@@ -427,7 +445,7 @@ export function AgentControlApp() {
                     class="action-button"
                     disabled={busyAction() !== null}
                     onClick={() =>
-                      void runAction('pause-updates', () => window.agentControl.pauseUpdates())
+                      void runAction('pause-updates', () => getAgentControlBridge().pauseUpdates())
                     }
                   >
                     Pause locally
@@ -437,7 +455,9 @@ export function AgentControlApp() {
                     class="action-button"
                     disabled={busyAction() !== null}
                     onClick={() =>
-                      void runAction('resume-updates', () => window.agentControl.resumeUpdates())
+                      void runAction('resume-updates', () =>
+                        getAgentControlBridge().resumeUpdates(),
+                      )
                     }
                   >
                     Resume locally
@@ -505,7 +525,7 @@ export function AgentControlApp() {
             onClick={() =>
               void runAction(
                 'rollback',
-                () => window.agentControl.rollbackRelease(),
+                () => getAgentControlBridge().rollbackRelease(),
                 'Execute rollback to the previous release?',
               )
             }

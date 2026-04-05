@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "bash scripts/dev.sh",
     "dev:server": "vinxi dev",
-    "agent-control-ui:build:main": "pnpm exec tsc -p tools/agent-control-ui/tsconfig.build.json",
+    "agent-control-ui:build:main": "node scripts/agent-control-ui/build-main.mjs",
     "agent-control-ui:build:renderer": "node scripts/agent-control-ui/build-renderer.mjs",
     "agent-control-ui:build": "run-s agent-control-ui:build:main agent-control-ui:build:renderer",
     "agent-control-ui:dev": "node scripts/agent-control-ui/dev.mjs",

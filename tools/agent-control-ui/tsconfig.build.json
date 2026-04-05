@@ -6,5 +6,5 @@
     "rootDir": "../..",
     "types": ["node", "electron"]
   },
-  "include": ["./main.ts", "./preload.ts", "./ipc.ts", "../agent/runtime/alias-loader.ts"]
+  "include": ["./main.ts", "./ipc.ts", "../agent/runtime/alias-loader.ts"]
 }
