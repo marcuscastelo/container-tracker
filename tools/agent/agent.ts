@@ -52,6 +52,8 @@ import * as runtimePaths from './runtime-paths.ts'
 // biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
 import * as supervisorControl from './supervisor-control.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { resolveAutomaticUpdateChecksMode } from './update-checks.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchUpdateManifest, stageReleaseFromManifest } from './updater.core.ts'
 
 function unquoteValue(value: string): string {
@@ -105,10 +107,6 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
   if (normalized === '1' || normalized === 'true') return true
   if (normalized === '0' || normalized === 'false') return false
   return fallback
-}
-
-function isUpdateManifestChecksDisabled(config: RuntimeConfig): boolean {
-  return config.AGENT_UPDATE_MANIFEST_CHANNEL === 'disabled'
 }
 
 function sanitizeText(value: string, secrets: readonly string[]): string {
@@ -1651,7 +1649,11 @@ async function main(): Promise<void> {
     currentConfig: toControlRuntimeConfig(runtimeConfig),
   })
   runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
-  let updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
+  let updateChecksMode = resolveAutomaticUpdateChecksMode({
+    env: process.env,
+    configuredChannel: runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+  let updateManifestChecksDisabled = updateChecksMode.disabled
   const agentVersion = resolveAgentVersion()
   const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
@@ -1659,9 +1661,15 @@ async function main(): Promise<void> {
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
   if (updateManifestChecksDisabled) {
-    console.log(
-      '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
-    )
+    if (updateChecksMode.reason === 'EXPLICIT_DISABLE_FLAG') {
+      console.log(
+        `[agent:update] manifest checks disabled by AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS; configured channel=${updateChecksMode.configuredChannel ?? 'unknown'}; using current runtime only`,
+      )
+    } else {
+      console.log(
+        '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
+      )
+    }
   }
 
   const runtimeState: AgentRuntimeState = {
@@ -1716,7 +1724,11 @@ async function main(): Promise<void> {
         currentConfig: toControlRuntimeConfig(runtimeConfig),
       })
       runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
-      updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
+      updateChecksMode = resolveAutomaticUpdateChecksMode({
+        env: process.env,
+        configuredChannel: runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+      })
+      updateManifestChecksDisabled = updateChecksMode.disabled
 
       const pendingRemoteCommand = controlSync.remoteCommands[0]
       if (pendingRemoteCommand) {

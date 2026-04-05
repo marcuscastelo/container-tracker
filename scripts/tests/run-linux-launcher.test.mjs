@@ -18,18 +18,26 @@ function writeExecutable(filePath, contents) {
   fs.chmodSync(filePath, 0o755)
 }
 
-function runLauncher(agentUpdateManifestChannel) {
+function runLauncher(command = {}) {
   const agentDataDir = makeTempDir('run-linux-launcher-agent-data-')
   const mockNodeDir = makeTempDir('run-linux-launcher-node-')
   const captureFile = path.join(agentDataDir, 'captured-channel.txt')
+  const captureDisableFlagFile = path.join(agentDataDir, 'captured-disable-flag.txt')
 
-  fs.writeFileSync(path.join(agentDataDir, 'config.env'), '# config present\n', 'utf8')
+  fs.writeFileSync(
+    path.join(agentDataDir, 'config.env'),
+    `# config present
+AGENT_UPDATE_MANIFEST_CHANNEL=${command.configChannel ?? 'stable'}
+`,
+    'utf8',
+  )
 
   writeExecutable(
     path.join(mockNodeDir, 'node'),
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s' "\${AGENT_UPDATE_MANIFEST_CHANNEL:-}" > "\${CAPTURE_FILE}"
+printf '%s' "\${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}" > "\${CAPTURE_DISABLE_FLAG_FILE}"
 `,
   )
 
@@ -37,13 +45,20 @@ printf '%s' "\${AGENT_UPDATE_MANIFEST_CHANNEL:-}" > "\${CAPTURE_FILE}"
     ...process.env,
     AGENT_DATA_DIR: agentDataDir,
     CAPTURE_FILE: captureFile,
+    CAPTURE_DISABLE_FLAG_FILE: captureDisableFlagFile,
     PATH: [mockNodeDir, process.env.PATH ?? ''].filter(Boolean).join(path.delimiter),
   }
 
-  if (agentUpdateManifestChannel === undefined) {
+  if (command.agentUpdateManifestChannel === undefined) {
     delete env.AGENT_UPDATE_MANIFEST_CHANNEL
   } else {
-    env.AGENT_UPDATE_MANIFEST_CHANNEL = agentUpdateManifestChannel
+    env.AGENT_UPDATE_MANIFEST_CHANNEL = command.agentUpdateManifestChannel
+  }
+
+  if (command.disableAutomaticUpdateChecks === undefined) {
+    delete env.AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS
+  } else {
+    env.AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS = command.disableAutomaticUpdateChecks
   }
 
   const result = spawnSync('bash', [launcherPath], {
@@ -55,21 +70,39 @@ printf '%s' "\${AGENT_UPDATE_MANIFEST_CHANNEL:-}" > "\${CAPTURE_FILE}"
   return {
     result,
     capturedChannel: fs.readFileSync(captureFile, 'utf8'),
+    capturedDisableFlag: fs.readFileSync(captureDisableFlagFile, 'utf8'),
   }
 }
 
 describe('run-linux launcher', () => {
-  it('defaults AGENT_UPDATE_MANIFEST_CHANNEL to disabled', () => {
-    const { result, capturedChannel } = runLauncher()
+  it('defaults AGENT_UPDATE_MANIFEST_CHANNEL from config when no env override is present', () => {
+    const { result, capturedChannel, capturedDisableFlag } = runLauncher({
+      configChannel: 'stable',
+    })
 
     expect(result.status).toBe(0)
-    expect(capturedChannel).toBe('disabled')
+    expect(capturedChannel).toBe('stable')
+    expect(capturedDisableFlag).toBe('')
   })
 
   it('respects explicit AGENT_UPDATE_MANIFEST_CHANNEL overrides', () => {
-    const { result, capturedChannel } = runLauncher('canary')
+    const { result, capturedChannel } = runLauncher({
+      configChannel: 'stable',
+      agentUpdateManifestChannel: 'canary',
+    })
 
     expect(result.status).toBe(0)
     expect(capturedChannel).toBe('canary')
+  })
+
+  it('passes through AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS separately from channel', () => {
+    const { result, capturedChannel, capturedDisableFlag } = runLauncher({
+      configChannel: 'canary',
+      disableAutomaticUpdateChecks: '1',
+    })
+
+    expect(result.status).toBe(0)
+    expect(capturedChannel).toBe('canary')
+    expect(capturedDisableFlag).toBe('1')
   })
 })

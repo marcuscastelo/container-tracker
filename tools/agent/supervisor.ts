@@ -20,6 +20,7 @@ import {
 import { readRuntimeHealth } from './runtime-health.ts'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
 import { clearSupervisorControl } from './supervisor-control.ts'
+import { resolveAutomaticUpdateChecksMode } from './update-checks.ts'
 
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000
 const DEFAULT_HEALTH_GRACE_MS = 120_000
@@ -252,10 +253,6 @@ function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
   return [`--import=${registerPath}`]
 }
 
-function areUpdateManifestChecksDisabled(env: NodeJS.ProcessEnv): boolean {
-  return normalizeOptionalEnv(env.AGENT_UPDATE_MANIFEST_CHANNEL)?.toLowerCase() === 'disabled'
-}
-
 function findPackageJsonPath(startDir: string): string | null {
   let current = startDir
 
@@ -478,12 +475,22 @@ async function main(): Promise<void> {
   ensureAgentPathLayout(layout)
   clearSupervisorControl(layout.supervisorControlPath)
   appendSupervisorLog(layout.logsDir, 'supervisor started')
-  const updateManifestChecksDisabled = areUpdateManifestChecksDisabled(process.env)
+  const updateChecksMode = resolveAutomaticUpdateChecksMode({
+    env: process.env,
+  })
+  const updateManifestChecksDisabled = updateChecksMode.disabled
   if (updateManifestChecksDisabled) {
-    appendSupervisorLog(
-      layout.logsDir,
-      'automatic update checks disabled; forcing fallback runtime selection',
-    )
+    if (updateChecksMode.reason === 'EXPLICIT_DISABLE_FLAG') {
+      appendSupervisorLog(
+        layout.logsDir,
+        `automatic update checks disabled by AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS; forcing fallback runtime selection (configured channel=${updateChecksMode.configuredChannel ?? 'unknown'})`,
+      )
+    } else {
+      appendSupervisorLog(
+        layout.logsDir,
+        'automatic update checks disabled; forcing fallback runtime selection',
+      )
+    }
   }
 
   let shuttingDown = false
