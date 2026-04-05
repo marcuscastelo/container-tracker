@@ -24,6 +24,8 @@ import { fetchOneStatus } from '../../src/modules/tracking/infrastructure/carrie
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchPilStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import type { SyncRequestsRealtimeStatusUpdate } from '../../src/shared/supabase/sync-requests.realtime.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { type AgentRunReason, createAgentScheduler } from './agent.scheduler.ts'
@@ -86,6 +88,13 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
   if (typeof value !== 'string') return undefined
   const normalized = value.trim()
   if (normalized.length === 0) return undefined
+  return normalized
+}
+
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  if (normalized.length === 0) return null
   return normalized
 }
 
@@ -745,6 +754,19 @@ type AgentRuntimeActivity = {
   readonly occurredAt?: string
 }
 
+type AgentRealtimeSignalMetadata = {
+  readonly channelState: SyncRequestsRealtimeStatusUpdate['state']
+  readonly scope: SyncRequestsRealtimeStatusUpdate['scope']
+  readonly key: string
+  readonly errorMessage: string | null
+}
+
+type AgentRealtimeSignal = {
+  readonly state: AgentRealtimeState
+  readonly message: string | null
+  readonly metadata: AgentRealtimeSignalMetadata | null
+}
+
 type AgentRuntimeState = {
   realtimeState: AgentRealtimeState
   processingState: AgentProcessingState
@@ -1297,19 +1319,78 @@ function shouldWakeForRealtimeEvent(event: {
   return event.row?.status === 'PENDING'
 }
 
+function buildRealtimeSignalFingerprint(signal: AgentRealtimeSignal): string {
+  const metadataFingerprint = signal.metadata
+    ? `${signal.metadata.channelState}|${signal.metadata.scope}|${signal.metadata.key}|${signal.metadata.errorMessage ?? 'none'}`
+    : 'none'
+
+  return `${signal.state}|${signal.message ?? 'none'}|${metadataFingerprint}`
+}
+
+function buildRealtimeDegradedMessage(status: SyncRequestsRealtimeStatusUpdate): string {
+  const errorMessage = normalizeOptionalText(status.errorMessage)
+  const detail =
+    errorMessage ??
+    (status.state === 'TIMED_OUT'
+      ? 'subscription timed out without an explicit error from Supabase Realtime'
+      : 'Supabase Realtime did not provide an explicit error message')
+
+  return `Realtime ${status.state.toLowerCase()} for ${status.scope} (${status.key}): ${detail}`
+}
+
+function toRealtimeSignal(status: SyncRequestsRealtimeStatusUpdate): AgentRealtimeSignal {
+  const metadata: AgentRealtimeSignalMetadata = {
+    channelState: status.state,
+    scope: status.scope,
+    key: status.key,
+    errorMessage: normalizeOptionalText(status.errorMessage),
+  }
+
+  if (status.state === 'SUBSCRIBED') {
+    return {
+      state: 'SUBSCRIBED',
+      message: 'Realtime subscribed for tenant sync requests',
+      metadata,
+    }
+  }
+
+  if (status.state === 'CLOSED') {
+    return {
+      state: 'DISCONNECTED',
+      message: `Realtime channel closed for ${status.scope} (${status.key})`,
+      metadata,
+    }
+  }
+
+  return {
+    state: 'CHANNEL_ERROR',
+    message: buildRealtimeDegradedMessage(status),
+    metadata,
+  }
+}
+
 function subscribeToRealtimeIfConfigured(command: {
   readonly config: RuntimeConfig
   readonly onWake: () => void
-  readonly onRealtimeStateChange: (state: AgentRealtimeState) => void
+  readonly onRealtimeStateChange: (signal: AgentRealtimeSignal) => void
 }): { readonly unsubscribe: () => void } | null {
   if (!command.config.SUPABASE_URL || !command.config.SUPABASE_ANON_KEY) {
     console.warn('[agent] realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured')
-    command.onRealtimeStateChange('DISCONNECTED')
+    command.onRealtimeStateChange({
+      state: 'DISCONNECTED',
+      message: 'Realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured',
+      metadata: null,
+    })
     return null
   }
 
   try {
-    command.onRealtimeStateChange('CONNECTING')
+    command.onRealtimeStateChange({
+      state: 'CONNECTING',
+      message: 'Connecting to Supabase Realtime',
+      metadata: null,
+    })
+    let lastLoggedSignalFingerprint: string | null = null
 
     const supabaseRealtime = createClient(
       command.config.SUPABASE_URL,
@@ -1336,28 +1417,43 @@ function subscribeToRealtimeIfConfigured(command: {
         command.onWake()
       },
       onStatus(status) {
-        if (status.state === 'SUBSCRIBED') {
-          console.log('[agent] realtime subscribed for tenant sync requests')
-          command.onRealtimeStateChange('SUBSCRIBED')
+        const signal = toRealtimeSignal(status)
+        const signalFingerprint = buildRealtimeSignalFingerprint(signal)
+        const shouldLogSignal = lastLoggedSignalFingerprint !== signalFingerprint
+        lastLoggedSignalFingerprint = signalFingerprint
+
+        if (signal.state === 'SUBSCRIBED') {
+          if (shouldLogSignal) {
+            console.log('[agent] realtime subscribed for tenant sync requests')
+          }
+          command.onRealtimeStateChange(signal)
           return
         }
 
-        if (status.state === 'CHANNEL_ERROR' || status.state === 'TIMED_OUT') {
-          console.warn('[agent] realtime channel degraded; interval sweep remains active', status)
-          command.onRealtimeStateChange('CHANNEL_ERROR')
+        if (signal.state === 'CHANNEL_ERROR') {
+          if (shouldLogSignal) {
+            console.warn('[agent] realtime channel degraded; interval sweep remains active', {
+              ...status,
+              diagnostic: signal.message,
+            })
+          }
+          command.onRealtimeStateChange(signal)
           return
         }
 
-        if (status.state === 'CLOSED') {
-          command.onRealtimeStateChange('DISCONNECTED')
+        if (signal.state === 'DISCONNECTED') {
+          command.onRealtimeStateChange(signal)
         }
       },
     })
   } catch (error) {
-    console.warn(
-      `[agent] realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`,
-    )
-    command.onRealtimeStateChange('CHANNEL_ERROR')
+    const message = `Realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`
+    console.warn(`[agent] ${message}`)
+    command.onRealtimeStateChange({
+      state: 'CHANNEL_ERROR',
+      message,
+      metadata: null,
+    })
     return null
   }
 }
@@ -1604,7 +1700,7 @@ async function main(): Promise<void> {
     healthPath: supervisorPaths.healthPath,
   })
 
-  let lastRealtimeState: AgentRealtimeState = runtimeState.realtimeState
+  let lastRealtimeSignalFingerprint: string | null = null
   let lastUpdateCheckAtMs = 0
   let requestRestartAfterHeartbeat = false
   let scheduler: ReturnType<typeof createAgentScheduler> | null = null
@@ -1756,12 +1852,14 @@ async function main(): Promise<void> {
     onWake() {
       scheduler?.triggerRun('realtime')
     },
-    onRealtimeStateChange(state) {
-      if (lastRealtimeState === state) return
-      lastRealtimeState = state
-      runtimeState.realtimeState = state
+    onRealtimeStateChange(signal) {
+      const fingerprint = buildRealtimeSignalFingerprint(signal)
+      if (lastRealtimeSignalFingerprint === fingerprint) return
+      lastRealtimeSignalFingerprint = fingerprint
+      runtimeState.realtimeState = signal.state
 
-      if (state === 'SUBSCRIBED') {
+      if (signal.state === 'SUBSCRIBED') {
+        runtimeState.lastError = null
         void sendHeartbeatAndPersistHealth({
           config: runtimeConfig,
           agentVersion,
@@ -1769,9 +1867,9 @@ async function main(): Promise<void> {
           activity: [
             {
               type: 'REALTIME_SUBSCRIBED',
-              message: 'Realtime subscribed for tenant sync requests',
+              message: signal.message ?? 'Realtime subscribed for tenant sync requests',
               severity: 'success',
-              metadata: {},
+              metadata: signal.metadata ?? {},
             },
           ],
           healthPath: supervisorPaths.healthPath,
@@ -1779,8 +1877,8 @@ async function main(): Promise<void> {
         return
       }
 
-      if (state === 'CHANNEL_ERROR') {
-        runtimeState.lastError = 'Realtime channel degraded'
+      if (signal.state === 'CHANNEL_ERROR') {
+        runtimeState.lastError = signal.message ?? 'Realtime channel degraded'
         void sendHeartbeatAndPersistHealth({
           config: runtimeConfig,
           agentVersion,
@@ -1788,9 +1886,9 @@ async function main(): Promise<void> {
           activity: [
             {
               type: 'REALTIME_CHANNEL_ERROR',
-              message: 'Realtime channel error; interval sweep is active',
+              message: signal.message ?? 'Realtime channel error; interval sweep is active',
               severity: 'warning',
-              metadata: {},
+              metadata: signal.metadata ?? {},
             },
           ],
           healthPath: supervisorPaths.healthPath,
