@@ -59,12 +59,14 @@ export function createAgentControlControllers(
         agentId: auth.agentId,
       })
 
-      const fallbackUrl = serverEnv.AGENT_ENROLL_SUPABASE_URL ?? serverEnv.SUPABASE_URL
-      const fallbackAnonKey = serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null
-      const response = infraConfig ?? {
-        supabaseUrl: fallbackUrl,
-        supabaseAnonKey: fallbackAnonKey,
+      const backendInfraConfig = {
+        supabaseUrl: serverEnv.AGENT_ENROLL_SUPABASE_URL ?? serverEnv.SUPABASE_URL,
+        supabaseAnonKey: serverEnv.AGENT_ENROLL_SUPABASE_ANON_KEY ?? null,
       }
+      const response =
+        backendInfraConfig.supabaseAnonKey !== null
+          ? backendInfraConfig
+          : (infraConfig ?? backendInfraConfig)
 
       if (response.supabaseAnonKey === null) {
         return jsonResponse({ error: 'Infra config unavailable' }, 404)
