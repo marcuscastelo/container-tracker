@@ -22,11 +22,6 @@ import {
 } from '@tools/agent/control-core/public-control-files'
 import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
 import { readAgentControlPublicState } from '@tools/agent/control-core/public-control-state'
-import {
-  resolveAgentPublicBackendStatePath,
-  resolveAgentPublicLogsPath,
-  resolveAgentPublicStatePath,
-} from '@tools/agent/runtime/paths'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import {
   AgentControlBackendUrlInputSchema,
@@ -70,16 +65,15 @@ function runCommand(
 }
 
 function readPublicState() {
-  const publicStatePath = resolveAgentPublicStatePath()
-  return readAgentControlPublicState(publicStatePath)
+  return readAgentControlPublicState(resolveInstalledLinuxPublicStatePath())
 }
 
 function readPublicBackendState() {
-  return readAgentControlPublicBackendState(resolveAgentPublicBackendStatePath())
+  return readAgentControlPublicBackendState(resolveInstalledLinuxPublicBackendStatePath())
 }
 
 function readPublicLogs() {
-  return readAgentControlPublicLogs(resolveAgentPublicLogsPath())
+  return readAgentControlPublicLogs(resolveInstalledLinuxPublicLogsPath())
 }
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
@@ -119,6 +113,22 @@ function resolveInstalledLinuxLayout(): AgentPathLayout {
     infraConfigPath: path.join(dataDir, 'infra-config.json'),
     auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
   }
+}
+
+function resolveInstalledLinuxPublicStateDir(): string {
+  return normalizeOptionalEnv(process.env.AGENT_PUBLIC_STATE_DIR) || '/run/container-tracker-agent'
+}
+
+function resolveInstalledLinuxPublicStatePath(): string {
+  return path.join(resolveInstalledLinuxPublicStateDir(), 'control-ui-state.json')
+}
+
+function resolveInstalledLinuxPublicBackendStatePath(): string {
+  return path.join(resolveInstalledLinuxPublicStateDir(), 'control-ui-backend-state.json')
+}
+
+function resolveInstalledLinuxPublicLogsPath(): string {
+  return path.join(resolveInstalledLinuxPublicStateDir(), 'control-ui-logs.json')
 }
 
 async function runAdminCommand<T>(command: {
@@ -185,7 +195,9 @@ export function createInstalledLinuxControlService() {
         return publicState.snapshot
       }
 
-      return (await fallbackLocalService.getAgentOperationalSnapshot()).snapshot
+      throw new Error(
+        `Agent public state unavailable at ${resolveInstalledLinuxPublicStatePath()}. Confirm the system service is running.`,
+      )
     },
     async getLogs(
       query?: z.input<typeof AgentControlLogsQuerySchema>,
@@ -213,7 +225,9 @@ export function createInstalledLinuxControlService() {
         return publicState.releaseInventory
       }
 
-      return fallbackLocalService.getReleaseInventory()
+      return {
+        releases: [],
+      }
     },
     async getPaths(): Promise<AgentControlPaths> {
       const publicState = readPublicState()
