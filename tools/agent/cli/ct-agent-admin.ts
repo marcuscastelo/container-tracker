@@ -10,11 +10,16 @@ import {
   AgentControlCommandResultSchema,
   AgentControlLogChannelSchema,
   AgentControlLogsResponseSchema,
+  AgentControlPathsSchema,
   AgentOperationalSnapshotSchema,
+  AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
 import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
-import { publishAgentControlPublicSnapshot } from '@tools/agent/control-core/public-control-files'
-import { readAgentControlPublicState } from '@tools/agent/control-core/public-control-state'
+import { writeAgentControlPublicBackendState } from '@tools/agent/control-core/public-control-files'
+import {
+  readAgentControlPublicState,
+  writeAgentControlPublicState,
+} from '@tools/agent/control-core/public-control-state'
 import { EXIT_CONFIG_ERROR, EXIT_FATAL, EXIT_OK } from '@tools/agent/runtime/lifecycle-exit-codes'
 import {
   resolveAgentPublicBackendStatePath,
@@ -104,13 +109,26 @@ function isRunningAsRoot(): boolean {
   return process.getuid() === 0
 }
 
-async function persistPublicState(_service: CtAgentAdminService, snapshot: unknown): Promise<void> {
-  AgentOperationalSnapshotSchema.parse(snapshot)
-  await publishAgentControlPublicSnapshot({
+function persistPublicState(service: CtAgentAdminService, snapshot: unknown): void {
+  const normalizedSnapshot = AgentOperationalSnapshotSchema.parse(snapshot)
+  const releaseInventory = AgentReleaseInventorySchema.parse(service.getReleaseInventory())
+  const paths = AgentControlPathsSchema.parse(service.getPaths())
+  const backendState = AgentControlBackendStateSchema.parse({
+    ...service.getBackendState(),
+    publicStateAvailable: true,
+  })
+
+  writeAgentControlPublicState({
     filePath: resolveAgentPublicStatePath(),
-    backendStatePath: resolveAgentPublicBackendStatePath(),
-    layout: resolveCtAgentAdminLayout(),
-    forceRemoteFetch: false,
+    snapshot: normalizedSnapshot,
+    releaseInventory,
+    paths,
+    backendState,
+  })
+
+  writeAgentControlPublicBackendState({
+    filePath: resolveAgentPublicBackendStatePath(),
+    state: backendState,
   })
 }
 
