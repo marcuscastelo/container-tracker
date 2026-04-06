@@ -19,9 +19,7 @@ export type UiAppLike = {
   readonly on: (event: 'second-instance', listener: () => void) => void
 }
 
-export function createWindowLifecycleController(command: {
-  readonly mode: UiLaunchMode
-}) {
+export function createWindowLifecycleController(command: { readonly mode: UiLaunchMode }) {
   let quitting = false
 
   function openWindow(window: UiWindowLike): void {

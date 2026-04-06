@@ -9,7 +9,10 @@ import type {
   AgentReleaseInventory,
   ResolvedSource,
 } from '@tools/agent/control-core/contracts'
-import { AgentControlLogChannelSchema } from '@tools/agent/control-core/contracts'
+import {
+  AgentControlLogChannelSchema,
+  AgentControlLogsResponseSchema,
+} from '@tools/agent/control-core/contracts'
 import type { AgentControlRendererApi } from '@tools/agent-control-ui/ipc'
 import { createMemo, createSignal, For, type JSX, onMount, Show } from 'solid-js'
 
@@ -19,6 +22,10 @@ type CommandRunner = () => Promise<AgentControlCommandResult>
 
 function logsRequireAction(): boolean {
   return window.agentControlMeta?.logsRequireAction === true
+}
+
+function installedMode(): boolean {
+  return window.agentControlMeta?.installedMode === true
 }
 
 function resolvedSourceLabel(source: ResolvedSource): string {
@@ -42,12 +49,29 @@ function backendStatusLabel(status: AgentControlBackendState['status']): string 
   return 'Unconfigured'
 }
 
+function isMissingSupervisorSnapshotIssue(issue: string | null): boolean {
+  return typeof issue === 'string' && issue.includes('Agent public state unavailable at')
+}
+
+function isWaitingSupervisorSnapshotIssue(issue: string | null): boolean {
+  return typeof issue === 'string' && issue.includes('Waiting for the supervisor to publish')
+}
+
+function waitingForSupervisorSnapshot(backendState: AgentControlBackendState | null): boolean {
+  return backendState?.status === 'ENROLLED' || backendState?.status === 'BOOTSTRAP_ONLY'
+}
+
 function snapshotStatusText(
   snapshot: AgentOperationalSnapshot | null,
   backendState: AgentControlBackendState | null,
+  snapshotIssue: string | null,
 ): string {
   if (snapshot) {
     return `${snapshot.runtime.status} / ${snapshot.runtime.health}`
+  }
+
+  if (isWaitingSupervisorSnapshotIssue(snapshotIssue)) {
+    return 'Waiting for supervisor snapshot'
   }
 
   if (backendState?.status === 'BOOTSTRAP_ONLY') {
@@ -56,6 +80,10 @@ function snapshotStatusText(
 
   if (backendState?.status === 'UNCONFIGURED') {
     return 'Backend setup required'
+  }
+
+  if (waitingForSupervisorSnapshot(backendState)) {
+    return 'Waiting for supervisor snapshot'
   }
 
   return 'Loading control state...'
@@ -142,6 +170,25 @@ function SnapshotUnavailableBody(props: { readonly message: string }) {
   return <div class="empty-state">{props.message}</div>
 }
 
+function snapshotPendingMessage(
+  backendState: AgentControlBackendState | null,
+  snapshotIssue: string | null,
+): string {
+  if (isWaitingSupervisorSnapshotIssue(snapshotIssue)) {
+    return 'Operational snapshot is pending while the supervisor publishes the canonical control state.'
+  }
+
+  if (backendState?.status === 'ENROLLED') {
+    return 'Operational snapshot is pending while the supervisor publishes the canonical control state.'
+  }
+
+  if (backendState?.status === 'BOOTSTRAP_ONLY') {
+    return 'Waiting for the supervisor to publish the first control snapshot after enrollment completes.'
+  }
+
+  return 'Operational snapshot is unavailable until the supervisor publishes control state.'
+}
+
 function BackendPanel(props: {
   readonly state: AgentControlBackendState | null
   readonly draft: string
@@ -164,10 +211,7 @@ function BackendPanel(props: {
               <div class="kv-grid">
                 <KeyValue label="Status" value={backendStatusLabel(state.status)} />
                 <KeyValue label="Source" value={backendSourceLabel(state.source)} />
-                <KeyValue
-                  label="Current URL"
-                  value={state.backendUrl ?? 'not configured'}
-                />
+                <KeyValue label="Current URL" value={state.backendUrl ?? 'not configured'} />
                 <KeyValue
                   label="Installer token"
                   value={state.installerTokenAvailable ? 'available' : 'missing or redacted'}
@@ -289,8 +333,8 @@ function LogsPanel(props: {
       </div>
       <Show when={props.logsRequireAction && props.lines.length === 0}>
         <div class="banner banner-neutral">
-          Logs ficam sob demanda nesta instalacao Linux e podem pedir autenticacao local quando
-          voce clicar em refresh.
+          Logs ficam sob demanda nesta instalacao Linux e podem pedir autenticacao local quando voce
+          clicar em refresh.
         </div>
       </Show>
       <pre class="logs-surface">
@@ -324,9 +368,7 @@ export function AgentControlApp() {
   const [selectedLogChannel, setSelectedLogChannel] = createSignal<AgentControlLogChannel>('all')
   const [tail, setTail] = createSignal('200')
 
-  const runtimeConfigAvailable = createMemo(
-    () => backendState()?.runtimeConfigAvailable === true,
-  )
+  const runtimeConfigAvailable = createMemo(() => backendState()?.runtimeConfigAvailable === true)
   const runtimeOperationsAvailable = createMemo(() => backendState()?.status === 'ENROLLED')
 
   function toErrorMessage(value: unknown): string {
@@ -366,14 +408,41 @@ export function AgentControlApp() {
 
     try {
       const agentControl = getAgentControlBridge()
-      const [backendResult, snapshotResult, releaseResult, pathsResult] = await Promise.allSettled(
-        [
+      const canReadLogsWithoutAction = logsRequireAction() === false
+      const [backendResult, releaseResult, pathsResult, initialLogsResult] =
+        await Promise.allSettled([
           agentControl.getBackendState(),
-          agentControl.getSnapshot(),
           agentControl.getReleaseInventory(),
           agentControl.getPaths(),
-        ],
-      )
+          canReadLogsWithoutAction
+            ? agentControl.getLogs({
+                channel: selectedLogChannel(),
+                tail: Number.parseInt(tail(), 10) || 200,
+                interactive: false,
+              })
+            : Promise.resolve(
+                AgentControlLogsResponseSchema.parse({
+                  lines: [],
+                }),
+              ),
+        ])
+
+      const shouldSkipSnapshotCall =
+        installedMode() &&
+        backendResult.status === 'fulfilled' &&
+        backendResult.value.publicStateAvailable === false
+
+      const snapshotResult = shouldSkipSnapshotCall
+        ? ({
+            status: 'rejected',
+            reason: new Error(
+              'Waiting for the supervisor to publish the canonical control snapshot.',
+            ),
+          } as const)
+        : await agentControl.getSnapshot().then(
+            (value) => ({ status: 'fulfilled', value }) as const,
+            (reason: unknown) => ({ status: 'rejected', reason }) as const,
+          )
 
       let loadedAny = false
 
@@ -391,7 +460,22 @@ export function AgentControlApp() {
         loadedAny = true
       } else {
         setSnapshot(null)
-        setSnapshotIssue(toErrorMessage(snapshotResult.reason))
+        const snapshotError = toErrorMessage(snapshotResult.reason)
+        if (
+          shouldSkipSnapshotCall ||
+          (installedMode() &&
+            initialLogsResult.status === 'fulfilled' &&
+            initialLogsResult.value.lines.length > 0 &&
+            (isWaitingSupervisorSnapshotIssue(snapshotError) ||
+              isMissingSupervisorSnapshotIssue(snapshotError))) ||
+          (backendResult.status === 'fulfilled' &&
+            isMissingSupervisorSnapshotIssue(snapshotError) &&
+            waitingForSupervisorSnapshot(backendResult.value))
+        ) {
+          setSnapshotIssue('Waiting for the supervisor to publish the canonical control snapshot.')
+        } else {
+          setSnapshotIssue(snapshotError)
+        }
       }
 
       if (releaseResult.status === 'fulfilled') {
@@ -408,17 +492,13 @@ export function AgentControlApp() {
         setPaths(null)
       }
 
-      if (snapshotResult.status === 'fulfilled' && !logsRequireAction()) {
-        try {
-          const logs = await agentControl.getLogs({
-            channel: selectedLogChannel(),
-            tail: Number.parseInt(tail(), 10) || 200,
-            interactive: false,
-          })
-          setLogLines(logs.lines)
-        } catch {
-          setLogLines([])
+      if (initialLogsResult.status === 'fulfilled') {
+        setLogLines(initialLogsResult.value.lines)
+        if (canReadLogsWithoutAction || initialLogsResult.value.lines.length > 0) {
+          loadedAny = true
         }
+      } else if (canReadLogsWithoutAction) {
+        setLogLines([])
       } else {
         setLogLines([])
       }
@@ -528,7 +608,7 @@ export function AgentControlApp() {
         <div>
           <p class="eyebrow">Container Tracker Agent</p>
           <h1>Agent Control UI</h1>
-          <p class="subtle">{snapshotStatusText(snapshot(), backendState())}</p>
+          <p class="subtle">{snapshotStatusText(snapshot(), backendState(), snapshotIssue())}</p>
         </div>
         <div class="hero-actions">
           <button type="button" class="action-button" onClick={() => void refresh()}>
@@ -624,7 +704,9 @@ export function AgentControlApp() {
           <Show
             when={snapshot()}
             fallback={
-              <SnapshotUnavailableBody message="Operational snapshot is unavailable until the runtime publishes control state." />
+              <SnapshotUnavailableBody
+                message={snapshotPendingMessage(backendState(), snapshotIssue())}
+              />
             }
           >
             {(currentSnapshot) => (
@@ -648,7 +730,7 @@ export function AgentControlApp() {
           <Show
             when={snapshot()}
             fallback={
-              <SnapshotUnavailableBody message="Update policy appears here after enrollment completes and the runtime publishes a snapshot." />
+              <SnapshotUnavailableBody message="Update policy appears here after the supervisor publishes the canonical control snapshot." />
             }
           >
             {(currentSnapshot) => (
@@ -729,9 +811,7 @@ export function AgentControlApp() {
                   />
                   <KeyValue
                     label="Effective blocked"
-                    value={
-                      currentSnapshot().updates.blockedVersions.effective.join(', ') || 'none'
-                    }
+                    value={currentSnapshot().updates.blockedVersions.effective.join(', ') || 'none'}
                   />
                   <KeyValue
                     label="Forced target"
@@ -770,7 +850,7 @@ export function AgentControlApp() {
           <Show
             when={snapshot()}
             fallback={
-              <SnapshotUnavailableBody message="Editable runtime config unlocks after enrollment creates config.env." />
+              <SnapshotUnavailableBody message="Editable runtime config appears here after the supervisor publishes the canonical control snapshot." />
             }
           >
             {(currentSnapshot) => (

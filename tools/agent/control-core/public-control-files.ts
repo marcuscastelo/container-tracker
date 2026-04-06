@@ -1,15 +1,24 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-
 import {
+  readCurrentControlRuntimeConfig,
+  syncAgentControlState,
+} from '@tools/agent/control-core/agent-control-core'
+import {
+  type AgentControlBackendState,
   AgentControlBackendStateSchema,
   AgentControlLogChannelSchema,
-  AgentControlLogsResponseSchema,
-  type AgentControlBackendState,
   type AgentControlLogsResponse,
+  AgentControlLogsResponseSchema,
+  type AgentControlPublicState,
 } from '@tools/agent/control-core/contracts'
 import { readAgentControlBackendState } from '@tools/agent/control-core/local-control-service'
+import {
+  buildAgentControlPaths,
+  buildAgentReleaseInventory,
+  writeAgentControlPublicState,
+} from '@tools/agent/control-core/public-control-state'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import type { z } from 'zod/v4'
 
@@ -113,6 +122,66 @@ export function refreshAgentControlPublicBackendState(command: {
     filePath: command.filePath,
     state: readAgentControlBackendState(command.layout),
   })
+}
+
+export async function publishAgentControlPublicSnapshot(command: {
+  readonly filePath: string
+  readonly backendStatePath: string
+  readonly layout: AgentPathLayout
+  readonly forceRemoteFetch?: boolean
+  readonly controlSync?: Awaited<ReturnType<typeof syncAgentControlState>>
+}): Promise<AgentControlPublicState | null> {
+  const baseBackendState = readAgentControlBackendState(command.layout)
+  const controlSync =
+    typeof command.controlSync !== 'undefined'
+      ? command.controlSync
+      : await (async () => {
+          const currentConfig = readCurrentControlRuntimeConfig(command.layout)
+          if (!currentConfig) {
+            return null
+          }
+
+          return syncAgentControlState({
+            layout: command.layout,
+            currentConfig,
+            forceRemoteFetch: command.forceRemoteFetch ?? false,
+          })
+        })()
+
+  if (!controlSync) {
+    fs.rmSync(command.filePath, { force: true })
+    writeAgentControlPublicBackendState({
+      filePath: command.backendStatePath,
+      state: {
+        ...baseBackendState,
+        publicStateAvailable: false,
+      },
+    })
+    return null
+  }
+
+  const backendState = AgentControlBackendStateSchema.parse({
+    ...baseBackendState,
+    publicStateAvailable: true,
+  })
+
+  const publicState = writeAgentControlPublicState({
+    filePath: command.filePath,
+    snapshot: controlSync.snapshot,
+    releaseInventory: buildAgentReleaseInventory({
+      layout: command.layout,
+      releaseState: controlSync.releaseState,
+    }),
+    paths: buildAgentControlPaths(command.layout),
+    backendState,
+  })
+
+  writeAgentControlPublicBackendState({
+    filePath: command.backendStatePath,
+    state: backendState,
+  })
+
+  return publicState
 }
 
 export function readAgentControlPublicLogs(filePath: string): AgentControlLogsResponse | null {

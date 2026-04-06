@@ -18,10 +18,10 @@ import {
 import {
   AgentControlBackendStateSchema,
   AgentControlBackendUpdateResultSchema,
-  type AgentControlPaths,
   AgentControlCommandResultSchema,
   AgentControlLogChannelSchema,
   AgentControlLogsResponseSchema,
+  type AgentControlPaths,
 } from '@tools/agent/control-core/contracts'
 import {
   buildAgentControlPaths,
@@ -29,12 +29,12 @@ import {
   readAgentControlPublicState,
 } from '@tools/agent/control-core/public-control-state'
 import {
-  rollbackRelease as rollbackReleaseState,
   resolveReleaseEntrypoint,
+  rollbackRelease as rollbackReleaseState,
 } from '@tools/agent/release-manager'
 import { readReleaseState, writeReleaseState } from '@tools/agent/release-state'
-import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { resolveAgentPublicStatePath } from '@tools/agent/runtime/paths'
+import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { writeSupervisorControl } from '@tools/agent/supervisor-control'
 import type { z } from 'zod/v4'
 

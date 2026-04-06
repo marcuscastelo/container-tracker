@@ -45,8 +45,10 @@ declare module 'electron' {
     readonly click?: () => void
   }
 
-  export class Menu {
-    static buildFromTemplate(template: readonly MenuItemConstructorOptions[]): Menu
+  export type Menu = object
+
+  export const Menu: {
+    buildFromTemplate: (template: readonly MenuItemConstructorOptions[]) => Menu
   }
 
   export class Tray {
@@ -58,10 +60,7 @@ declare module 'electron' {
 
   export const app: {
     whenReady: () => Promise<void>
-    on: (
-      event: 'activate' | 'window-all-closed' | 'second-instance',
-      listener: () => void,
-    ) => void
+    on: (event: 'activate' | 'window-all-closed' | 'second-instance', listener: () => void) => void
     requestSingleInstanceLock: () => boolean
     quit: () => void
   }

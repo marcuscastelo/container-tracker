@@ -1,9 +1,6 @@
 import path from 'node:path'
 
-import {
-  resolveAgentDataDirFrom,
-  resolveAgentPublicStateDirFrom,
-} from '@tools/agent/runtime/paths'
+import { resolveAgentDataDirFrom, resolveAgentPublicStateDirFrom } from '@tools/agent/runtime/paths'
 import { describe, expect, it } from 'vitest'
 
 describe('runtime path abstraction', () => {

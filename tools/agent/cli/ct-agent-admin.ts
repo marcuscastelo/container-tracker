@@ -12,17 +12,14 @@ import {
   AgentControlLogsResponseSchema,
   AgentOperationalSnapshotSchema,
 } from '@tools/agent/control-core/contracts'
-import {
-  createAgentControlLocalService,
-  readAgentControlBackendState,
-} from '@tools/agent/control-core/local-control-service'
-import { writeAgentControlPublicBackendState } from '@tools/agent/control-core/public-control-files'
-import {
-  readAgentControlPublicState,
-  writeAgentControlPublicState,
-} from '@tools/agent/control-core/public-control-state'
+import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
+import { publishAgentControlPublicSnapshot } from '@tools/agent/control-core/public-control-files'
+import { readAgentControlPublicState } from '@tools/agent/control-core/public-control-state'
 import { EXIT_CONFIG_ERROR, EXIT_FATAL, EXIT_OK } from '@tools/agent/runtime/lifecycle-exit-codes'
-import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from '@tools/agent/runtime/paths'
+import {
+  resolveAgentPublicBackendStatePath,
+  resolveAgentPublicStatePath,
+} from '@tools/agent/runtime/paths'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { resolveAgentPathLayout } from '@tools/agent/runtime-paths'
 import { z } from 'zod/v4'
@@ -107,19 +104,13 @@ function isRunningAsRoot(): boolean {
   return process.getuid() === 0
 }
 
-async function persistPublicState(service: CtAgentAdminService, snapshot: unknown): Promise<void> {
-  const normalizedSnapshot = AgentOperationalSnapshotSchema.parse(snapshot)
-  const backendState = readAgentControlBackendState(resolveCtAgentAdminLayout())
-  writeAgentControlPublicState({
+async function persistPublicState(_service: CtAgentAdminService, snapshot: unknown): Promise<void> {
+  AgentOperationalSnapshotSchema.parse(snapshot)
+  await publishAgentControlPublicSnapshot({
     filePath: resolveAgentPublicStatePath(),
-    snapshot: normalizedSnapshot,
-    releaseInventory: service.getReleaseInventory(),
-    paths: service.getPaths(),
-    backendState,
-  })
-  writeAgentControlPublicBackendState({
-    filePath: resolveAgentPublicBackendStatePath(),
-    state: backendState,
+    backendStatePath: resolveAgentPublicBackendStatePath(),
+    layout: resolveCtAgentAdminLayout(),
+    forceRemoteFetch: false,
   })
 }
 

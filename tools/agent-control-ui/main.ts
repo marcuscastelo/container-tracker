@@ -2,8 +2,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import * as electron from 'electron'
-import type { BrowserWindow as ElectronBrowserWindow, Tray as ElectronTray } from 'electron'
 import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from '@tools/agent/runtime-paths'
 import {
@@ -21,16 +19,23 @@ import {
   setupSingleInstance,
   type UiLaunchMode,
 } from '@tools/agent-control-ui/window-controller'
+import {
+  app,
+  BrowserWindow,
+  type BrowserWindow as ElectronBrowserWindow,
+  ipcMain,
+  Menu,
+  Tray,
+} from 'electron'
+
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(currentDir, '../../../..')
-const { app, BrowserWindow, ipcMain, Menu, Tray } = electron
 
 const launchMode = resolveLaunchMode()
 const lifecycle = createWindowLifecycleController({
   mode: launchMode,
 })
 let mainWindow: ElectronBrowserWindow | null = null
-let tray: ElectronTray | null = null
 let openWindowRequested = lifecycle.shouldOpenOnReady()
 
 function resolveLaunchMode(): UiLaunchMode {
@@ -129,7 +134,7 @@ function openMainWindow(): void {
   lifecycle.openWindow(ensureMainWindow())
 }
 
-function createTrayHost(): ElectronTray {
+function createTrayHost(): Tray {
   const trayIconPath = resolveIconPath()
   if (!trayIconPath) {
     throw new Error('Tray icon asset was not found')
@@ -263,7 +268,7 @@ if (canRun) {
     registerIpcHandlers()
     ensureMainWindow()
     if (launchMode === 'tray') {
-      tray = createTrayHost()
+      createTrayHost()
     } else {
       openMainWindow()
     }

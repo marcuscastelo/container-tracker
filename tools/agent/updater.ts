@@ -4,6 +4,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { refreshAgentControlPublicLogs } from './control-core/public-control-files.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { appendPendingActivityEvents } from './pending-activity.ts'
@@ -13,6 +14,7 @@ import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
 import { readReleaseState, writeReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { EXIT_FATAL, EXIT_OK } from './runtime/lifecycle-exit-codes.ts'
+// biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { resolveAgentPublicLogsPath } from './runtime/paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import type { AgentPathLayout } from './runtime-paths.ts'

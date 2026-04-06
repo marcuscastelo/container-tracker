@@ -4,13 +4,13 @@ import process from 'node:process'
 
 import {
   type AgentControlBackendState,
-  AgentControlPathsSchema,
-  AgentControlPublicStateSchema,
-  AgentReleaseInventorySchema,
   type AgentControlPaths,
+  AgentControlPathsSchema,
   type AgentControlPublicState,
+  AgentControlPublicStateSchema,
   type AgentOperationalSnapshot,
   type AgentReleaseInventory,
+  AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
 import { resolveReleaseEntrypoint } from '@tools/agent/release-manager'
 import type { ReleaseState } from '@tools/agent/release-state'

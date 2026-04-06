@@ -6,6 +6,7 @@ declare global {
     agentControl: AgentControlRendererApi
     agentControlMeta?: {
       readonly logsRequireAction?: boolean
+      readonly installedMode?: boolean
     }
   }
 }

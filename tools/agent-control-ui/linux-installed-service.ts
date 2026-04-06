@@ -3,8 +3,8 @@ import path from 'node:path'
 import process from 'node:process'
 
 import {
-  AgentControlBackendStateSchema,
   type AgentControlBackendState,
+  AgentControlBackendStateSchema,
   type AgentControlBackendUpdateResult,
   AgentControlBackendUpdateResultSchema,
   type AgentControlCommandResult,
@@ -20,8 +20,10 @@ import {
   readAgentControlPublicLogs,
   selectAgentControlPublicLogs,
 } from '@tools/agent/control-core/public-control-files'
-import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
-import { readAgentControlPublicState } from '@tools/agent/control-core/public-control-state'
+import {
+  buildAgentControlPaths,
+  readAgentControlPublicState,
+} from '@tools/agent/control-core/public-control-state'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import {
   AgentControlBackendUrlInputSchema,
@@ -159,11 +161,11 @@ async function runAdminCommand<T>(command: {
   return command.parser.parse(parsedJson)
 }
 
-export function createInstalledLinuxControlService() {
-  const fallbackLocalService = createAgentControlLocalService({
-    layout: resolveInstalledLinuxLayout(),
-  })
+function buildInstalledLinuxDebugPaths(): AgentControlPaths {
+  return buildAgentControlPaths(resolveInstalledLinuxLayout())
+}
 
+export function createInstalledLinuxControlService() {
   return {
     async getBackendState(): Promise<AgentControlBackendState> {
       const publicState = readPublicState()
@@ -185,7 +187,7 @@ export function createInstalledLinuxControlService() {
         installerTokenAvailable: false,
         publicStateAvailable: publicState !== null,
         warnings: [
-          'Backend state has not been published by the service yet. Refresh after the agent finishes booting.',
+          'Backend state has not been published by the supervisor yet. Refresh after the agent finishes booting.',
         ],
       })
     },
@@ -193,6 +195,12 @@ export function createInstalledLinuxControlService() {
       const publicState = readPublicState()
       if (publicState) {
         return publicState.snapshot
+      }
+
+      if (readPublicBackendState() || readPublicLogs()) {
+        throw new Error(
+          `Waiting for the supervisor to publish the canonical control snapshot at ${resolveInstalledLinuxPublicStatePath()}.`,
+        )
       }
 
       throw new Error(
@@ -235,7 +243,7 @@ export function createInstalledLinuxControlService() {
         return publicState.paths
       }
 
-      return fallbackLocalService.getPaths()
+      return buildInstalledLinuxDebugPaths()
     },
     async startAgent(): Promise<AgentControlCommandResult> {
       return runAdminCommand({

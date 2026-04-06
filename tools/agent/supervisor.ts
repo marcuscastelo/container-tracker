@@ -7,7 +7,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import {
-  refreshAgentControlPublicBackendState,
+  publishAgentControlPublicSnapshot,
   refreshAgentControlPublicLogs,
 } from './control-core/public-control-files.ts'
 import { appendPendingActivityEvents } from './pending-activity.ts'
@@ -21,7 +21,11 @@ import {
   EXIT_OK,
   resolveSupervisorExitAction,
 } from './runtime/lifecycle-exit-codes.ts'
-import { resolveAgentPublicBackendStatePath, resolveAgentPublicLogsPath } from './runtime/paths.ts'
+import {
+  resolveAgentPublicBackendStatePath,
+  resolveAgentPublicLogsPath,
+  resolveAgentPublicStatePath,
+} from './runtime/paths.ts'
 import { readRuntimeHealth } from './runtime-health.ts'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
 import { clearSupervisorControl } from './supervisor-control.ts'
@@ -38,6 +42,7 @@ const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
 const RUNTIME_STDIO_ROTATION_CHECK_INTERVAL_MS = 2000
 const PUBLIC_ARTIFACT_REFRESH_DEBOUNCE_MS = 150
+const PUBLIC_SNAPSHOT_REFRESH_INTERVAL_MS = 5_000
 
 type PublicArtifactPublisher = {
   readonly requestRefresh: () => void
@@ -75,24 +80,37 @@ function toErrorMessage(error: unknown): string {
   return String(error)
 }
 
-function refreshPublicArtifacts(layout: ReturnType<typeof resolveAgentPathLayout>): void {
+async function publishSupervisorPublicSnapshot(
+  layout: ReturnType<typeof resolveAgentPathLayout>,
+): Promise<void> {
   if (process.platform !== 'linux') {
     return
   }
 
   try {
-    refreshAgentControlPublicBackendState({
-      filePath: resolveAgentPublicBackendStatePath(),
+    await publishAgentControlPublicSnapshot({
+      filePath: resolveAgentPublicStatePath(),
+      backendStatePath: resolveAgentPublicBackendStatePath(),
       layout,
+      forceRemoteFetch: false,
     })
+  } catch (error) {
+    console.warn(`[supervisor] failed to publish public control state: ${toErrorMessage(error)}`)
+  }
+}
+
+function refreshPublicLogArtifacts(layout: ReturnType<typeof resolveAgentPathLayout>): void {
+  if (process.platform !== 'linux') {
+    return
+  }
+
+  try {
     refreshAgentControlPublicLogs({
       filePath: resolveAgentPublicLogsPath(),
       layout,
     })
   } catch (error) {
-    console.warn(
-      `[supervisor] failed to refresh public control artifacts: ${toErrorMessage(error)}`,
-    )
+    console.warn(`[supervisor] failed to refresh public control logs: ${toErrorMessage(error)}`)
   }
 }
 
@@ -109,7 +127,7 @@ function createPublicArtifactPublisher(
 
       timer = setTimeout(() => {
         timer = null
-        refreshPublicArtifacts(layout)
+        refreshPublicLogArtifacts(layout)
       }, PUBLIC_ARTIFACT_REFRESH_DEBOUNCE_MS)
       timer.unref?.()
     },
@@ -119,13 +137,27 @@ function createPublicArtifactPublisher(
         timer = null
       }
 
-      refreshPublicArtifacts(layout)
+      refreshPublicLogArtifacts(layout)
     },
   }
 }
 
 function requestPublicArtifactRefresh(): void {
   publicArtifactPublisher?.requestRefresh()
+}
+
+function startPublicSnapshotRefreshLoop(
+  layout: ReturnType<typeof resolveAgentPathLayout>,
+): NodeJS.Timeout | null {
+  if (process.platform !== 'linux') {
+    return null
+  }
+
+  const timer = setInterval(() => {
+    void publishSupervisorPublicSnapshot(layout)
+  }, PUBLIC_SNAPSHOT_REFRESH_INTERVAL_MS)
+  timer.unref?.()
+  return timer
 }
 
 function resolveNumberEnv(value: string | undefined, fallback: number): number {
@@ -543,9 +575,11 @@ async function main(): Promise<void> {
   const layout = resolveAgentPathLayout()
   ensureAgentPathLayout(layout)
   publicArtifactPublisher = createPublicArtifactPublisher(layout)
+  const publicSnapshotRefreshLoop = startPublicSnapshotRefreshLoop(layout)
   clearSupervisorControl(layout.supervisorControlPath)
   appendSupervisorLog(layout.logsDir, 'supervisor started')
   publicArtifactPublisher.publishNow()
+  await publishSupervisorPublicSnapshot(layout)
   const updateChecksMode = resolveAutomaticUpdateChecksMode({
     env: process.env,
   })
@@ -569,9 +603,15 @@ async function main(): Promise<void> {
   let consecutiveReleaseRuntimeFailures = 0
   process.once('SIGINT', () => {
     shuttingDown = true
+    if (publicSnapshotRefreshLoop) {
+      clearInterval(publicSnapshotRefreshLoop)
+    }
   })
   process.once('SIGTERM', () => {
     shuttingDown = true
+    if (publicSnapshotRefreshLoop) {
+      clearInterval(publicSnapshotRefreshLoop)
+    }
   })
 
   for (;;) {
@@ -669,6 +709,8 @@ async function main(): Promise<void> {
           },
         ])
       }
+
+      await publishSupervisorPublicSnapshot(layout)
     }
 
     state = readReleaseState(layout.releaseStatePath, fallbackVersion)
@@ -687,6 +729,7 @@ async function main(): Promise<void> {
       layout.logsDir,
       `runtime selected source=${runtimeSelection.source} version=${runtimeSelection.version} entrypoint=${runtimeSelection.entrypointPath} activation_state=${state.activation_state}`,
     )
+    await publishSupervisorPublicSnapshot(layout)
 
     clearSupervisorControl(layout.supervisorControlPath)
 
@@ -728,6 +771,7 @@ async function main(): Promise<void> {
               layout.logsDir,
               `activation confirmed for version=${currentState.target_version}`,
             )
+            void publishSupervisorPublicSnapshot(layout)
           },
         })
       : await runChildWithoutHealthGate({
@@ -742,6 +786,7 @@ async function main(): Promise<void> {
     }
 
     const refreshedState = readReleaseState(layout.releaseStatePath, fallbackVersion)
+    await publishSupervisorPublicSnapshot(layout)
     const exitAction = resolveSupervisorExitAction(runResult.exitCode)
     if (exitAction === 'restart-for-update') {
       consecutiveReleaseRuntimeFailures = 0
@@ -827,6 +872,7 @@ async function main(): Promise<void> {
           occurred_at: new Date().toISOString(),
         },
       ])
+      await publishSupervisorPublicSnapshot(layout)
       await sleep(RESTART_BACKOFF_MS)
       continue
     }
@@ -896,6 +942,7 @@ async function main(): Promise<void> {
         },
       ])
       consecutiveReleaseRuntimeFailures = 0
+      await publishSupervisorPublicSnapshot(layout)
       await sleep(RESTART_BACKOFF_MS)
       continue
     }
@@ -921,6 +968,9 @@ async function main(): Promise<void> {
     await sleep(RESTART_BACKOFF_MS)
   }
 
+  if (publicSnapshotRefreshLoop) {
+    clearInterval(publicSnapshotRefreshLoop)
+  }
   process.exitCode = supervisorExitCode
 }
 

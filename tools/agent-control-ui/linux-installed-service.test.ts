@@ -76,25 +76,45 @@ describe('installed Linux control service', () => {
     const snapshot = createSnapshot()
     fs.writeFileSync(
       path.join(publicDir, 'control-ui-state.json'),
-      `${JSON.stringify({
-        snapshot,
-        releaseInventory: {
-          releases: [],
+      `${JSON.stringify(
+        {
+          snapshot,
+          releaseInventory: {
+            releases: [],
+          },
+          paths: {
+            dataDir,
+            configPath: path.join(dataDir, 'config.env'),
+            releasesDir: path.join(dataDir, 'releases'),
+            logsDir: path.join(dataDir, 'logs'),
+            releaseStatePath: path.join(dataDir, 'release-state.json'),
+            runtimeHealthPath: path.join(dataDir, 'runtime-health.json'),
+            supervisorControlPath: path.join(dataDir, 'supervisor-control.json'),
+            controlOverridesPath: path.join(dataDir, 'control-overrides.local.json'),
+            controlRemoteCachePath: path.join(dataDir, 'control-remote-cache.json'),
+            infraConfigPath: path.join(dataDir, 'infra-config.json'),
+            auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
+          },
+          backendState: {
+            backendUrl: 'http://localhost:3000',
+            source: 'RUNTIME_CONFIG',
+            status: 'ENROLLED',
+            runtimeConfigAvailable: true,
+            bootstrapConfigAvailable: true,
+            installerTokenAvailable: true,
+            publicStateAvailable: true,
+            warnings: [],
+          },
         },
-        paths: {
-          dataDir,
-          configPath: path.join(dataDir, 'config.env'),
-          releasesDir: path.join(dataDir, 'releases'),
-          logsDir: path.join(dataDir, 'logs'),
-          releaseStatePath: path.join(dataDir, 'release-state.json'),
-          runtimeHealthPath: path.join(dataDir, 'runtime-health.json'),
-          supervisorControlPath: path.join(dataDir, 'supervisor-control.json'),
-          controlOverridesPath: path.join(dataDir, 'control-overrides.local.json'),
-          controlRemoteCachePath: path.join(dataDir, 'control-remote-cache.json'),
-          infraConfigPath: path.join(dataDir, 'infra-config.json'),
-          auditLogPath: path.join(dataDir, 'agent-control-audit.ndjson'),
-        },
-        backendState: {
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+    fs.writeFileSync(
+      path.join(publicDir, 'control-ui-backend-state.json'),
+      `${JSON.stringify(
+        {
           backendUrl: 'http://localhost:3000',
           source: 'RUNTIME_CONFIG',
           status: 'ENROLLED',
@@ -104,35 +124,27 @@ describe('installed Linux control service', () => {
           publicStateAvailable: true,
           warnings: [],
         },
-      }, null, 2)}\n`,
-      'utf8',
-    )
-    fs.writeFileSync(
-      path.join(publicDir, 'control-ui-backend-state.json'),
-      `${JSON.stringify({
-        backendUrl: 'http://localhost:3000',
-        source: 'RUNTIME_CONFIG',
-        status: 'ENROLLED',
-        runtimeConfigAvailable: true,
-        bootstrapConfigAvailable: true,
-        installerTokenAvailable: true,
-        publicStateAvailable: true,
-        warnings: [],
-      }, null, 2)}\n`,
+        null,
+        2,
+      )}\n`,
       'utf8',
     )
     fs.writeFileSync(
       path.join(publicDir, 'control-ui-logs.json'),
-      `${JSON.stringify({
-        lines: [
-          {
-            channel: 'stdout',
-            message: 'ready',
-            filePath: path.join(dataDir, 'logs', 'agent.out.log'),
-            lineNumber: 1,
-          },
-        ],
-      }, null, 2)}\n`,
+      `${JSON.stringify(
+        {
+          lines: [
+            {
+              channel: 'stdout',
+              message: 'ready',
+              filePath: path.join(dataDir, 'logs', 'agent.out.log'),
+              lineNumber: 1,
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
       'utf8',
     )
 
@@ -158,6 +170,38 @@ describe('installed Linux control service', () => {
 
     await expect(service.getSnapshot()).rejects.toThrow(
       `Agent public state unavailable at ${path.join(publicDir, 'control-ui-state.json')}`,
+    )
+  })
+
+  it('reports a waiting state when the supervisor has published other public artifacts first', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ui-installed-data-'))
+    const publicDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-ui-installed-run-'))
+    process.env.AGENT_DATA_DIR = dataDir
+    process.env.AGENT_PUBLIC_STATE_DIR = publicDir
+
+    fs.writeFileSync(
+      path.join(publicDir, 'control-ui-logs.json'),
+      `${JSON.stringify(
+        {
+          lines: [
+            {
+              channel: 'supervisor',
+              message: 'supervisor started',
+              filePath: path.join(dataDir, 'logs', 'supervisor.log'),
+              lineNumber: 1,
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    const service = createInstalledLinuxControlService()
+
+    await expect(service.getSnapshot()).rejects.toThrow(
+      `Waiting for the supervisor to publish the canonical control snapshot at ${path.join(publicDir, 'control-ui-state.json')}`,
     )
   })
 })

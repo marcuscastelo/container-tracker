@@ -1,12 +1,12 @@
 import {
-  AgentControlBackendStateSchema,
-  AgentControlBackendUpdateResultSchema,
-  AgentControlCommandResultSchema,
+  type AgentControlBackendStateSchema,
+  type AgentControlBackendUpdateResultSchema,
+  type AgentControlCommandResultSchema,
   AgentControlLogChannelSchema,
-  AgentControlLogsResponseSchema,
-  AgentControlPathsSchema,
-  AgentOperationalSnapshotSchema,
-  AgentReleaseInventorySchema,
+  type AgentControlLogsResponseSchema,
+  type AgentControlPathsSchema,
+  type AgentOperationalSnapshotSchema,
+  type AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
 import { z } from 'zod/v4'
 

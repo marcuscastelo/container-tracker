@@ -7,12 +7,7 @@ import { rewriteEmittedImports } from './rewrite-emitted-imports.mjs'
 const repoRoot = path.resolve(import.meta.dirname, '../..')
 const distRoot = path.join(repoRoot, 'dist', 'agent-control-ui')
 const preloadSourcePath = path.join(repoRoot, 'tools', 'agent-control-ui', 'preload.cjs')
-const preloadTargetPath = path.join(
-  distRoot,
-  'tools',
-  'agent-control-ui',
-  'preload.cjs',
-)
+const preloadTargetPath = path.join(distRoot, 'tools', 'agent-control-ui', 'preload.cjs')
 const electronManifestPath = path.join(distRoot, 'package.json')
 
 function run(command, args) {

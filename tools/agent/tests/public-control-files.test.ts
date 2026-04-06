@@ -7,6 +7,7 @@ import {
   serializeRuntimeConfig,
 } from '@tools/agent/control-core/agent-control-core'
 import {
+  publishAgentControlPublicSnapshot,
   readAgentControlPublicBackendState,
   readAgentControlPublicLogs,
   refreshAgentControlPublicBackendState,
@@ -87,6 +88,108 @@ describe('agent control public artifacts', () => {
     expect(backendState?.backendUrl).toBe('https://backend.test.local')
     expect(backendState?.source).toBe('RUNTIME_CONFIG')
     expect(backendState?.installerTokenAvailable).toBe(true)
+  })
+
+  it('publishes the canonical public snapshot from local runtime files', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-public-snapshot-'))
+    const layout = createLayout(tempDir)
+    const publicStatePath = path.join(tempDir, 'run', 'control-ui-state.json')
+    const publicBackendStatePath = path.join(tempDir, 'run', 'control-ui-backend-state.json')
+    const runtimeConfig = createRuntimeConfig()
+
+    fs.writeFileSync(layout.configPath, serializeRuntimeConfig(runtimeConfig), 'utf8')
+    fs.writeFileSync(
+      layout.bootstrapPath,
+      ['BACKEND_URL=https://bootstrap.test.local', 'INSTALLER_TOKEN=bootstrap-token'].join('\n'),
+      'utf8',
+    )
+    fs.mkdirSync(path.join(layout.releasesDir, '0.3.0-alpha.1'), { recursive: true })
+    fs.writeFileSync(
+      path.join(layout.releasesDir, '0.3.0-alpha.1', 'agent.js'),
+      "console.log('ok')\n",
+      'utf8',
+    )
+    fs.writeFileSync(
+      layout.releaseStatePath,
+      `${JSON.stringify(
+        {
+          current_version: '0.3.0-alpha.1',
+          previous_version: null,
+          target_version: null,
+          last_known_good_version: '0.3.0-alpha.1',
+          blocked_versions: [],
+          activation_state: 'idle',
+          automatic_updates_blocked: false,
+          last_update_attempt: null,
+          last_error: null,
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+    fs.writeFileSync(
+      layout.runtimeHealthPath,
+      `${JSON.stringify(
+        {
+          agent_version: '0.3.0-alpha.1',
+          boot_status: 'healthy',
+          update_state: 'idle',
+          last_heartbeat_at: '2026-04-06T18:24:00.326Z',
+          last_heartbeat_ok_at: '2026-04-06T18:24:00.326Z',
+          active_jobs: 0,
+          processing_state: 'idle',
+          updated_at: '2026-04-06T18:24:00.326Z',
+          pid: 12345,
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    const publicState = await publishAgentControlPublicSnapshot({
+      filePath: publicStatePath,
+      backendStatePath: publicBackendStatePath,
+      layout,
+      forceRemoteFetch: false,
+    })
+
+    expect(publicState).not.toBeNull()
+    expect(publicState?.snapshot.runtime.status).toBe('RUNNING')
+    expect(publicState?.snapshot.release.current).toBe('0.3.0-alpha.1')
+    expect(publicState?.backendState?.status).toBe('ENROLLED')
+    expect(readAgentControlPublicBackendState(publicBackendStatePath)?.publicStateAvailable).toBe(
+      true,
+    )
+  })
+
+  it('removes a stale public snapshot when runtime config is unavailable', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-public-snapshot-stale-'))
+    const layout = createLayout(tempDir)
+    const publicStatePath = path.join(tempDir, 'run', 'control-ui-state.json')
+    const publicBackendStatePath = path.join(tempDir, 'run', 'control-ui-backend-state.json')
+
+    fs.mkdirSync(path.dirname(publicStatePath), { recursive: true })
+    fs.writeFileSync(publicStatePath, '{"stale":true}\n', 'utf8')
+    fs.writeFileSync(
+      layout.bootstrapPath,
+      ['BACKEND_URL=https://bootstrap.test.local', 'INSTALLER_TOKEN=bootstrap-token'].join('\n'),
+      'utf8',
+    )
+
+    const publicState = await publishAgentControlPublicSnapshot({
+      filePath: publicStatePath,
+      backendStatePath: publicBackendStatePath,
+      layout,
+      forceRemoteFetch: false,
+    })
+
+    expect(publicState).toBeNull()
+    expect(fs.existsSync(publicStatePath)).toBe(false)
+    expect(readAgentControlPublicBackendState(publicBackendStatePath)?.publicStateAvailable).toBe(
+      false,
+    )
   })
 
   it('publishes logs and lets the installed UI filter them without touching private log files', () => {

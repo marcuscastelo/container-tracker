@@ -12,13 +12,7 @@ import {
   type ControlRuntimeConfig,
   syncAgentControlState,
 } from '@tools/agent/control-core/agent-control-core'
-import { readAgentControlBackendState } from '@tools/agent/control-core/local-control-service'
-import { writeAgentControlPublicBackendState } from '@tools/agent/control-core/public-control-files'
-import {
-  buildAgentControlPaths,
-  buildAgentReleaseInventory,
-  writeAgentControlPublicState,
-} from '@tools/agent/control-core/public-control-state'
+import { publishAgentControlPublicSnapshot } from '@tools/agent/control-core/public-control-files'
 import { z } from 'zod/v4'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchCmaCgmStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts'
@@ -46,10 +40,10 @@ import { drainPendingActivityEvents } from './pending-activity.ts'
 import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { readReleaseState, writeReleaseState } from './release-state.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
-import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './runtime/paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './runtime/lifecycle-exit-codes.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
+import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './runtime/paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { writeRuntimeHealth } from './runtime-health.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -310,31 +304,21 @@ async function syncControlStateAndPersistPublicState(command: {
 
 function persistPublicControlState(command: {
   readonly layout: AgentPathLayout
-  readonly controlSync: Awaited<ReturnType<typeof syncAgentControlState>>
+  readonly controlSync?: Awaited<ReturnType<typeof syncAgentControlState>>
 }): void {
   if (process.platform !== 'linux') {
     return
   }
 
-  try {
-    const backendState = readAgentControlBackendState(command.layout)
-    writeAgentControlPublicState({
-      filePath: resolveAgentPublicStatePath(),
-      snapshot: command.controlSync.snapshot,
-      releaseInventory: buildAgentReleaseInventory({
-        layout: command.layout,
-        releaseState: command.controlSync.releaseState,
-      }),
-      paths: buildAgentControlPaths(command.layout),
-      backendState,
-    })
-    writeAgentControlPublicBackendState({
-      filePath: resolveAgentPublicBackendStatePath(),
-      state: backendState,
-    })
-  } catch (error) {
+  void publishAgentControlPublicSnapshot({
+    filePath: resolveAgentPublicStatePath(),
+    backendStatePath: resolveAgentPublicBackendStatePath(),
+    layout: command.layout,
+    forceRemoteFetch: false,
+    ...(typeof command.controlSync === 'undefined' ? {} : { controlSync: command.controlSync }),
+  }).catch((error) => {
     console.warn(`[agent] failed to write public control state: ${toErrorMessage(error)}`)
-  }
+  })
 }
 
 const enrollResponseSchema = z.object({
