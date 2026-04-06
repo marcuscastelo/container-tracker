@@ -13,6 +13,35 @@ pkg_dir="$repo_root/packaging/arch"
 agent_data_dir="/var/lib/container-tracker-agent"
 service_name="container-tracker-agent.service"
 
+restart_tray_for_current_session() {
+  local tray_command="ct-agent-tray"
+  local tray_log_dir tray_log_path user_id
+  user_id="$(id -u)"
+
+  if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    echo "[agent:rebuild-restart:linux] no graphical session detected; tray autostart will apply on next login."
+    return 0
+  fi
+
+  if ! command -v "$tray_command" >/dev/null 2>&1; then
+    echo "[agent:rebuild-restart:linux] $tray_command not available in PATH; skipping tray restart."
+    return 0
+  fi
+
+  if pgrep -u "$user_id" -f '/usr/bin/ct-agent-tray' >/dev/null 2>&1; then
+    echo "[agent:rebuild-restart:linux] restarting existing tray process..."
+    pkill -u "$user_id" -f '/usr/bin/ct-agent-tray' || true
+    sleep 1
+  fi
+
+  tray_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/container-tracker-agent"
+  tray_log_path="$tray_log_dir/tray.log"
+  mkdir -p "$tray_log_dir"
+  nohup "$tray_command" >"$tray_log_path" 2>&1 &
+  disown || true
+  echo "[agent:rebuild-restart:linux] started tray in current session (log: $tray_log_path)"
+}
+
 trim_value() {
   local value="$1"
   value="${value#"${value%%[![:space:]]*}"}"
@@ -164,3 +193,4 @@ sleep 2
 sudo systemctl status "$service_name" --no-pager
 echo "---"
 sudo journalctl -u "$service_name" -n 120 --no-pager
+restart_tray_for_current_session

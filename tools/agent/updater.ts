@@ -4,6 +4,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
+import { refreshAgentControlPublicLogs } from './control-core/public-control-files.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { appendPendingActivityEvents } from './pending-activity.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
@@ -12,6 +13,7 @@ import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
 import { readReleaseState, writeReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import { EXIT_FATAL, EXIT_OK } from './runtime/lifecycle-exit-codes.ts'
+import { resolveAgentPublicLogsPath } from './runtime/paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
 import type { AgentPathLayout } from './runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Updater runtime resolves direct .ts imports for staged releases.
@@ -133,6 +135,17 @@ function appendLogLine(layout: AgentPathLayout, message: string): void {
   fs.mkdirSync(logDir, { recursive: true })
   rotateLogIfNeeded(logPath)
   fs.appendFileSync(logPath, `${line}\n`, 'utf8')
+
+  if (process.platform === 'linux') {
+    try {
+      refreshAgentControlPublicLogs({
+        filePath: resolveAgentPublicLogsPath(),
+        layout,
+      })
+    } catch (error) {
+      console.warn(`[updater] failed to refresh public control logs: ${toErrorMessage(error)}`)
+    }
+  }
 }
 
 function findPackageJsonPath(startDir: string): string | null {

@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 const agentControlIpcChannels = {
+  getBackendState: 'agent-control/get-backend-state',
   getSnapshot: 'agent-control/get-snapshot',
   getLogs: 'agent-control/get-logs',
   getReleaseInventory: 'agent-control/get-release-inventory',
@@ -13,12 +14,16 @@ const agentControlIpcChannels = {
   changeChannel: 'agent-control/change-channel',
   setBlockedVersions: 'agent-control/set-blocked-versions',
   updateConfig: 'agent-control/update-config',
+  setBackendUrl: 'agent-control/set-backend-url',
   activateRelease: 'agent-control/activate-release',
   rollbackRelease: 'agent-control/rollback-release',
   executeLocalReset: 'agent-control/execute-local-reset',
 }
 
 const agentControl = {
+  getBackendState() {
+    return ipcRenderer.invoke(agentControlIpcChannels.getBackendState)
+  },
   getSnapshot() {
     return ipcRenderer.invoke(agentControlIpcChannels.getSnapshot)
   },
@@ -55,6 +60,9 @@ const agentControl = {
   updateConfig(input) {
     return ipcRenderer.invoke(agentControlIpcChannels.updateConfig, input)
   },
+  setBackendUrl(input) {
+    return ipcRenderer.invoke(agentControlIpcChannels.setBackendUrl, input)
+  },
   activateRelease(input) {
     return ipcRenderer.invoke(agentControlIpcChannels.activateRelease, input)
   },
@@ -67,3 +75,6 @@ const agentControl = {
 }
 
 contextBridge.exposeInMainWorld('agentControl', agentControl)
+contextBridge.exposeInMainWorld('agentControlMeta', {
+  logsRequireAction: false,
+})

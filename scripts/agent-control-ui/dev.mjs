@@ -2,16 +2,11 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
 import { setTimeout as delay } from 'node:timers/promises'
-import { pathToFileURL } from 'node:url'
 import { createServer } from 'vite'
 import { createAgentControlUiViteConfig } from './vite-shared.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
 const distRoot = path.join(repoRoot, 'dist', 'agent-control-ui')
-const mainEntryPath = path.join(distRoot, 'tools', 'agent-control-ui', 'main.js')
-const aliasRegisterPath = pathToFileURL(
-  path.join(repoRoot, 'scripts', 'agent-control-ui', 'register-alias-loader.mjs'),
-).href
 const fallbackRendererUrl = process.env.AGENT_CONTROL_UI_RENDERER_URL ?? 'http://127.0.0.1:4310'
 
 function run(command, args, options = {}) {
@@ -22,17 +17,10 @@ function run(command, args, options = {}) {
   })
 }
 
-function buildNodeOptions() {
-  const loaderOption = `--import=${aliasRegisterPath}`
-  const current = process.env.NODE_OPTIONS?.trim()
-  return current ? `${current} ${loaderOption}` : loaderOption
-}
-
 function buildElectronEnv(rendererUrl) {
   const env = {
     ...process.env,
     AGENT_CONTROL_UI_RENDERER_URL: rendererUrl,
-    NODE_OPTIONS: buildNodeOptions(),
   }
   delete env.ELECTRON_RUN_AS_NODE
   return env
@@ -96,7 +84,7 @@ async function main() {
     throw error
   }
 
-  const electron = run('pnpm', ['exec', 'electron', mainEntryPath], {
+  const electron = run('pnpm', ['exec', 'electron', distRoot], {
     env: buildElectronEnv(rendererUrl),
   })
   console.log('[agent-control-ui] launching Electron shell')

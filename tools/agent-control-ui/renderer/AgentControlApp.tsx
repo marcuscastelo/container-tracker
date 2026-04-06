@@ -1,4 +1,5 @@
 import type {
+  AgentControlBackendState,
   AgentControlCommandResult,
   AgentControlLogChannel,
   AgentControlLogsResponse,
@@ -16,15 +17,76 @@ type LoadState = 'loading' | 'ready' | 'error'
 
 type CommandRunner = () => Promise<AgentControlCommandResult>
 
-function SourceBadge(props: { readonly source: ResolvedSource }) {
-  const label = createMemo(() => {
-    if (props.source === 'REMOTE_COMMAND') return 'Remote Command'
-    if (props.source === 'REMOTE_POLICY') return 'Remote Policy'
-    if (props.source === 'LOCAL') return 'Local Override'
-    return 'Base'
-  })
+function logsRequireAction(): boolean {
+  return window.agentControlMeta?.logsRequireAction === true
+}
 
-  return <span class={`source-badge source-${props.source.toLowerCase()}`}>{label()}</span>
+function resolvedSourceLabel(source: ResolvedSource): string {
+  if (source === 'REMOTE_COMMAND') return 'Remote Command'
+  if (source === 'REMOTE_POLICY') return 'Remote Policy'
+  if (source === 'LOCAL') return 'Local Override'
+  return 'Base'
+}
+
+function backendSourceLabel(source: AgentControlBackendState['source']): string {
+  if (source === 'RUNTIME_CONFIG') return 'Runtime Config'
+  if (source === 'BASE_RUNTIME_CONFIG') return 'Base Runtime Config'
+  if (source === 'BOOTSTRAP') return 'Bootstrap'
+  if (source === 'CONSUMED_BOOTSTRAP') return 'Consumed Bootstrap'
+  return 'Unavailable'
+}
+
+function backendStatusLabel(status: AgentControlBackendState['status']): string {
+  if (status === 'ENROLLED') return 'Enrolled'
+  if (status === 'BOOTSTRAP_ONLY') return 'Bootstrap Only'
+  return 'Unconfigured'
+}
+
+function snapshotStatusText(
+  snapshot: AgentOperationalSnapshot | null,
+  backendState: AgentControlBackendState | null,
+): string {
+  if (snapshot) {
+    return `${snapshot.runtime.status} / ${snapshot.runtime.health}`
+  }
+
+  if (backendState?.status === 'BOOTSTRAP_ONLY') {
+    return 'Waiting for initial enrollment'
+  }
+
+  if (backendState?.status === 'UNCONFIGURED') {
+    return 'Backend setup required'
+  }
+
+  return 'Loading control state...'
+}
+
+function parseLogChannel(value: string): AgentControlLogChannel {
+  const parsed = AgentControlLogChannelSchema.safeParse(value)
+  return parsed.success ? parsed.data : 'all'
+}
+
+function getAgentControlBridge(): AgentControlRendererApi {
+  if (
+    typeof window.agentControl?.getBackendState !== 'function' ||
+    typeof window.agentControl?.getSnapshot !== 'function' ||
+    typeof window.agentControl?.getLogs !== 'function' ||
+    typeof window.agentControl?.startAgent !== 'function'
+  ) {
+    throw new Error(
+      'Electron preload bridge is unavailable. Close the window and open the app again with pnpm run agent-control-ui:start.',
+    )
+  }
+
+  return window.agentControl
+}
+
+function SourceBadge(props: { readonly source: ResolvedSource }) {
+  return (
+    <span class={`source-badge source-${props.source.toLowerCase()}`}>
+      {resolvedSourceLabel(props.source)}
+    </span>
+  )
 }
 
 function Section(props: { readonly title: string; readonly children: JSX.Element }) {
@@ -76,6 +138,75 @@ function ResolvedValueRow(props: {
   )
 }
 
+function SnapshotUnavailableBody(props: { readonly message: string }) {
+  return <div class="empty-state">{props.message}</div>
+}
+
+function BackendPanel(props: {
+  readonly state: AgentControlBackendState | null
+  readonly draft: string
+  readonly disabled: boolean
+  readonly onDraftChange: (value: string) => void
+  readonly onApply: () => Promise<void>
+}) {
+  return (
+    <Section title="Backend">
+      <Show
+        when={props.state}
+        fallback={
+          <SnapshotUnavailableBody message="Backend state is not available yet. Try refreshing the UI." />
+        }
+      >
+        {(stateAccessor) => {
+          const state = stateAccessor()
+          return (
+            <>
+              <div class="kv-grid">
+                <KeyValue label="Status" value={backendStatusLabel(state.status)} />
+                <KeyValue label="Source" value={backendSourceLabel(state.source)} />
+                <KeyValue
+                  label="Current URL"
+                  value={state.backendUrl ?? 'not configured'}
+                />
+                <KeyValue
+                  label="Installer token"
+                  value={state.installerTokenAvailable ? 'available' : 'missing or redacted'}
+                />
+              </div>
+              <label class="stack-field">
+                <span>Backend URL</span>
+                <input
+                  type="url"
+                  value={props.draft}
+                  onInput={(event) => props.onDraftChange(event.currentTarget.value)}
+                  placeholder="https://backend.example.com"
+                />
+              </label>
+              <div class="toolbar-row">
+                <button
+                  type="button"
+                  class="action-button"
+                  disabled={props.disabled || props.draft.trim().length === 0}
+                  onClick={() => void props.onApply()}
+                >
+                  Apply backend and restart
+                </button>
+              </div>
+              <Show when={state.warnings.length > 0}>
+                <div class="list-block">
+                  <For each={state.warnings}>
+                    {(warning) => <div class="banner banner-warning">{warning}</div>}
+                  </For>
+                </div>
+              </Show>
+            </>
+          )
+        }}
+      </Show>
+    </Section>
+  )
+}
+
 function ReleasesTable(props: {
   readonly releases: readonly AgentInstalledRelease[]
   readonly onActivate: (version: string) => Promise<void>
@@ -121,6 +252,7 @@ function LogsPanel(props: {
   readonly lines: readonly AgentControlLogsResponse['lines'][number][]
   readonly selectedChannel: AgentControlLogChannel
   readonly tail: string
+  readonly logsRequireAction: boolean
   readonly onChannelChange: (value: AgentControlLogChannel) => void
   readonly onTailChange: (value: string) => void
   readonly onRefresh: () => Promise<void>
@@ -155,6 +287,12 @@ function LogsPanel(props: {
           Refresh logs
         </button>
       </div>
+      <Show when={props.logsRequireAction && props.lines.length === 0}>
+        <div class="banner banner-neutral">
+          Logs ficam sob demanda nesta instalacao Linux e podem pedir autenticacao local quando
+          voce clicar em refresh.
+        </div>
+      </Show>
       <pre class="logs-surface">
         <For each={props.lines}>
           {(line) => (
@@ -168,51 +306,35 @@ function LogsPanel(props: {
   )
 }
 
-function snapshotStatusText(snapshot: AgentOperationalSnapshot | null): string {
-  if (!snapshot) return 'Loading snapshot...'
-  return `${snapshot.runtime.status} / ${snapshot.runtime.health}`
-}
-
-function parseLogChannel(value: string): AgentControlLogChannel {
-  const parsed = AgentControlLogChannelSchema.safeParse(value)
-  return parsed.success ? parsed.data : 'all'
-}
-
-function getAgentControlBridge(): AgentControlRendererApi {
-  if (
-    typeof window.agentControl?.getSnapshot !== 'function' ||
-    typeof window.agentControl?.getLogs !== 'function' ||
-    typeof window.agentControl?.startAgent !== 'function'
-  ) {
-    throw new Error(
-      'Electron preload bridge is unavailable. Close the window and open the app again with pnpm run agent-control-ui:start.',
-    )
-  }
-
-  return window.agentControl
-}
-
 export function AgentControlApp() {
   const [loadState, setLoadState] = createSignal<LoadState>('loading')
+  const [backendState, setBackendState] = createSignal<AgentControlBackendState | null>(null)
   const [snapshot, setSnapshot] = createSignal<AgentOperationalSnapshot | null>(null)
   const [releases, setReleases] = createSignal<AgentReleaseInventory['releases']>([])
   const [paths, setPaths] = createSignal<AgentControlPaths | null>(null)
   const [logLines, setLogLines] = createSignal<AgentControlLogsResponse['lines']>([])
   const [message, setMessage] = createSignal<string | null>(null)
   const [error, setError] = createSignal<string | null>(null)
+  const [snapshotIssue, setSnapshotIssue] = createSignal<string | null>(null)
   const [busyAction, setBusyAction] = createSignal<string | null>(null)
+  const [backendDraft, setBackendDraft] = createSignal('')
   const [channelDraft, setChannelDraft] = createSignal('')
   const [blockedDraft, setBlockedDraft] = createSignal('')
   const [configDraft, setConfigDraft] = createSignal<Record<string, string>>({})
   const [selectedLogChannel, setSelectedLogChannel] = createSignal<AgentControlLogChannel>('all')
   const [tail, setTail] = createSignal('200')
 
+  const runtimeConfigAvailable = createMemo(
+    () => backendState()?.runtimeConfigAvailable === true,
+  )
+  const runtimeOperationsAvailable = createMemo(() => backendState()?.status === 'ENROLLED')
+
   function toErrorMessage(value: unknown): string {
     if (value instanceof Error) return value.message
     return String(value)
   }
 
-  function syncDrafts(nextSnapshot: AgentOperationalSnapshot): void {
+  function syncSnapshotDrafts(nextSnapshot: AgentOperationalSnapshot): void {
     setChannelDraft(
       nextSnapshot.updates.channel.source === 'BASE' ? '' : nextSnapshot.updates.channel.value,
     )
@@ -220,11 +342,16 @@ export function AgentControlApp() {
     setConfigDraft(nextSnapshot.config.editable)
   }
 
+  function syncBackendDraft(nextBackendState: AgentControlBackendState): void {
+    setBackendDraft(nextBackendState.backendUrl ?? '')
+  }
+
   async function refreshLogs(): Promise<void> {
     try {
       const logs = await getAgentControlBridge().getLogs({
         channel: selectedLogChannel(),
         tail: Number.parseInt(tail(), 10) || 200,
+        interactive: true,
       })
       setLogLines(logs.lines)
     } catch (refreshError) {
@@ -235,18 +362,71 @@ export function AgentControlApp() {
   async function refresh(): Promise<void> {
     setLoadState('loading')
     setError(null)
+    setSnapshotIssue(null)
+
     try {
       const agentControl = getAgentControlBridge()
-      const [nextSnapshot, nextReleases, nextPaths] = await Promise.all([
-        agentControl.getSnapshot(),
-        agentControl.getReleaseInventory(),
-        agentControl.getPaths(),
-      ])
-      setSnapshot(nextSnapshot)
-      setReleases(nextReleases.releases)
-      setPaths(nextPaths)
-      syncDrafts(nextSnapshot)
-      await refreshLogs()
+      const [backendResult, snapshotResult, releaseResult, pathsResult] = await Promise.allSettled(
+        [
+          agentControl.getBackendState(),
+          agentControl.getSnapshot(),
+          agentControl.getReleaseInventory(),
+          agentControl.getPaths(),
+        ],
+      )
+
+      let loadedAny = false
+
+      if (backendResult.status === 'fulfilled') {
+        setBackendState(backendResult.value)
+        syncBackendDraft(backendResult.value)
+        loadedAny = true
+      } else {
+        setBackendState(null)
+      }
+
+      if (snapshotResult.status === 'fulfilled') {
+        setSnapshot(snapshotResult.value)
+        syncSnapshotDrafts(snapshotResult.value)
+        loadedAny = true
+      } else {
+        setSnapshot(null)
+        setSnapshotIssue(toErrorMessage(snapshotResult.reason))
+      }
+
+      if (releaseResult.status === 'fulfilled') {
+        setReleases(releaseResult.value.releases)
+        loadedAny = true
+      } else {
+        setReleases([])
+      }
+
+      if (pathsResult.status === 'fulfilled') {
+        setPaths(pathsResult.value)
+        loadedAny = true
+      } else {
+        setPaths(null)
+      }
+
+      if (snapshotResult.status === 'fulfilled' && !logsRequireAction()) {
+        try {
+          const logs = await agentControl.getLogs({
+            channel: selectedLogChannel(),
+            tail: Number.parseInt(tail(), 10) || 200,
+            interactive: false,
+          })
+          setLogLines(logs.lines)
+        } catch {
+          setLogLines([])
+        }
+      } else {
+        setLogLines([])
+      }
+
+      if (!loadedAny) {
+        throw new Error('The control service did not return any readable state.')
+      }
+
       setLoadState('ready')
     } catch (refreshError) {
       setError(toErrorMessage(refreshError))
@@ -268,10 +448,33 @@ export function AgentControlApp() {
     try {
       const result = await command()
       setMessage(result.message)
-      setSnapshot(result.snapshot)
-      syncDrafts(result.snapshot)
-      setReleases((await getAgentControlBridge().getReleaseInventory()).releases)
-      await refreshLogs()
+      await refresh()
+    } catch (commandError) {
+      setError(toErrorMessage(commandError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function applyBackendDraft(): Promise<void> {
+    if (
+      !window.confirm(
+        'Update BACKEND_URL and restart the installed agent service? The runtime will reconnect using this backend on the next boot cycle.',
+      )
+    ) {
+      return
+    }
+
+    setBusyAction('set-backend-url')
+    setError(null)
+    try {
+      const result = await getAgentControlBridge().setBackendUrl({
+        backendUrl: backendDraft().trim(),
+      })
+      setMessage(result.message)
+      setBackendState(result.state)
+      syncBackendDraft(result.state)
+      await refresh()
     } catch (commandError) {
       setError(toErrorMessage(commandError))
     } finally {
@@ -325,7 +528,7 @@ export function AgentControlApp() {
         <div>
           <p class="eyebrow">Container Tracker Agent</p>
           <h1>Agent Control UI</h1>
-          <p class="subtle">{snapshotStatusText(snapshot())}</p>
+          <p class="subtle">{snapshotStatusText(snapshot(), backendState())}</p>
         </div>
         <div class="hero-actions">
           <button type="button" class="action-button" onClick={() => void refresh()}>
@@ -334,7 +537,7 @@ export function AgentControlApp() {
           <button
             type="button"
             class="action-button"
-            disabled={busyAction() !== null}
+            disabled={busyAction() !== null || !runtimeOperationsAvailable()}
             onClick={() => void runAction('start', () => getAgentControlBridge().startAgent())}
           >
             Start
@@ -342,7 +545,7 @@ export function AgentControlApp() {
           <button
             type="button"
             class="action-button"
-            disabled={busyAction() !== null}
+            disabled={busyAction() !== null || !runtimeOperationsAvailable()}
             onClick={() =>
               void runAction(
                 'stop',
@@ -356,7 +559,7 @@ export function AgentControlApp() {
           <button
             type="button"
             class="action-button"
-            disabled={busyAction() !== null}
+            disabled={busyAction() !== null || !runtimeOperationsAvailable()}
             onClick={() =>
               void runAction(
                 'restart',
@@ -370,7 +573,7 @@ export function AgentControlApp() {
           <button
             type="button"
             class="danger-button"
-            disabled={busyAction() !== null}
+            disabled={busyAction() !== null || !runtimeConfigAvailable()}
             onClick={() =>
               void runAction(
                 'local-reset',
@@ -390,19 +593,40 @@ export function AgentControlApp() {
       <Show when={error()}>
         {(currentError) => <div class="banner banner-danger">{currentError()}</div>}
       </Show>
+      <Show when={snapshotIssue()}>
+        {(currentIssue) => <div class="banner banner-warning">{currentIssue()}</div>}
+      </Show>
+      <Show when={backendState()?.status !== 'ENROLLED'}>
+        <div class="banner banner-neutral">
+          Runtime controls that depend on `config.env` stay locked until the agent completes
+          enrollment. Backend selection remains available in bootstrap mode.
+        </div>
+      </Show>
       <Show when={snapshot()?.infra.source === 'FALLBACK'}>
         <div class="banner banner-warning">
           Infra config is using local fallback cache. Remote fetch is currently degraded.
         </div>
       </Show>
-
       <Show when={loadState() === 'loading'}>
-        <div class="banner banner-neutral">Loading operational snapshot...</div>
+        <div class="banner banner-neutral">Loading control state...</div>
       </Show>
 
       <div class="dashboard-grid">
+        <BackendPanel
+          state={backendState()}
+          draft={backendDraft()}
+          disabled={busyAction() !== null}
+          onDraftChange={setBackendDraft}
+          onApply={applyBackendDraft}
+        />
+
         <Section title="Status">
-          <Show when={snapshot()}>
+          <Show
+            when={snapshot()}
+            fallback={
+              <SnapshotUnavailableBody message="Operational snapshot is unavailable until the runtime publishes control state." />
+            }
+          >
             {(currentSnapshot) => (
               <div class="kv-grid">
                 <KeyValue label="Runtime" value={currentSnapshot().runtime.status} />
@@ -421,7 +645,12 @@ export function AgentControlApp() {
         </Section>
 
         <Section title="Updates">
-          <Show when={snapshot()}>
+          <Show
+            when={snapshot()}
+            fallback={
+              <SnapshotUnavailableBody message="Update policy appears here after enrollment completes and the runtime publishes a snapshot." />
+            }
+          >
             {(currentSnapshot) => (
               <>
                 <ResolvedValueRow
@@ -500,7 +729,9 @@ export function AgentControlApp() {
                   />
                   <KeyValue
                     label="Effective blocked"
-                    value={currentSnapshot().updates.blockedVersions.effective.join(', ') || 'none'}
+                    value={
+                      currentSnapshot().updates.blockedVersions.effective.join(', ') || 'none'
+                    }
                   />
                   <KeyValue
                     label="Forced target"
@@ -522,6 +753,7 @@ export function AgentControlApp() {
           <button
             type="button"
             class="danger-button"
+            disabled={busyAction() !== null || releases().length === 0}
             onClick={() =>
               void runAction(
                 'rollback',
@@ -535,7 +767,12 @@ export function AgentControlApp() {
         </Section>
 
         <Section title="Config">
-          <Show when={snapshot()}>
+          <Show
+            when={snapshot()}
+            fallback={
+              <SnapshotUnavailableBody message="Editable runtime config unlocks after enrollment creates config.env." />
+            }
+          >
             {(currentSnapshot) => (
               <>
                 <div class="config-grid">
@@ -569,6 +806,7 @@ export function AgentControlApp() {
         lines={logLines()}
         selectedChannel={selectedLogChannel()}
         tail={tail()}
+        logsRequireAction={logsRequireAction()}
         onChannelChange={setSelectedLogChannel}
         onTailChange={setTail}
         onRefresh={refreshLogs}

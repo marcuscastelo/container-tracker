@@ -1,14 +1,17 @@
 import {
-  type AgentControlCommandResultSchema,
+  AgentControlBackendStateSchema,
+  AgentControlBackendUpdateResultSchema,
+  AgentControlCommandResultSchema,
   AgentControlLogChannelSchema,
-  type AgentControlLogsResponseSchema,
-  type AgentControlPathsSchema,
-  type AgentOperationalSnapshotSchema,
-  type AgentReleaseInventorySchema,
+  AgentControlLogsResponseSchema,
+  AgentControlPathsSchema,
+  AgentOperationalSnapshotSchema,
+  AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
 import { z } from 'zod/v4'
 
 export const agentControlIpcChannels = {
+  getBackendState: 'agent-control/get-backend-state',
   getSnapshot: 'agent-control/get-snapshot',
   getLogs: 'agent-control/get-logs',
   getReleaseInventory: 'agent-control/get-release-inventory',
@@ -21,6 +24,7 @@ export const agentControlIpcChannels = {
   changeChannel: 'agent-control/change-channel',
   setBlockedVersions: 'agent-control/set-blocked-versions',
   updateConfig: 'agent-control/update-config',
+  setBackendUrl: 'agent-control/set-backend-url',
   activateRelease: 'agent-control/activate-release',
   rollbackRelease: 'agent-control/rollback-release',
   executeLocalReset: 'agent-control/execute-local-reset',
@@ -29,6 +33,7 @@ export const agentControlIpcChannels = {
 export const AgentControlLogsQuerySchema = z.object({
   channel: AgentControlLogChannelSchema.default('all'),
   tail: z.number().int().min(1).max(2000).default(200),
+  interactive: z.boolean().default(true),
 })
 
 export const AgentControlChannelInputSchema = z.object({
@@ -43,11 +48,16 @@ export const AgentControlConfigPatchInputSchema = z.object({
   patch: z.record(z.string(), z.string()),
 })
 
+export const AgentControlBackendUrlInputSchema = z.object({
+  backendUrl: z.string().trim().url(),
+})
+
 export const AgentControlReleaseVersionInputSchema = z.object({
   version: z.string().trim().min(1),
 })
 
 export type AgentControlRendererApi = {
+  readonly getBackendState: () => Promise<z.infer<typeof AgentControlBackendStateSchema>>
   readonly getSnapshot: () => Promise<z.infer<typeof AgentOperationalSnapshotSchema>>
   readonly getLogs: (
     query?: z.input<typeof AgentControlLogsQuerySchema>,
@@ -68,6 +78,9 @@ export type AgentControlRendererApi = {
   readonly updateConfig: (
     input: z.input<typeof AgentControlConfigPatchInputSchema>,
   ) => Promise<z.infer<typeof AgentControlCommandResultSchema>>
+  readonly setBackendUrl: (
+    input: z.input<typeof AgentControlBackendUrlInputSchema>,
+  ) => Promise<z.infer<typeof AgentControlBackendUpdateResultSchema>>
   readonly activateRelease: (
     input: z.input<typeof AgentControlReleaseVersionInputSchema>,
   ) => Promise<z.infer<typeof AgentControlCommandResultSchema>>

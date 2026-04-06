@@ -390,4 +390,54 @@ describe('agent control core', () => {
     expect(overrides.blockedVersions).toEqual([])
     expect(overrides.editableConfig).toEqual({})
   })
+
+  it('allows backend updates from bootstrap-only state and requests a restart', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-control-backend-bootstrap-'))
+    const layout = createLayout(tempDir)
+    fs.writeFileSync(
+      layout.bootstrapPath,
+      [
+        'BACKEND_URL=http://localhost:3000/',
+        'INSTALLER_TOKEN=installer-token-test',
+        'AGENT_ID=container-tracker-agent',
+        'INTERVAL_SEC=60',
+        'LIMIT=10',
+        'MAERSK_ENABLED=1',
+        'MAERSK_HEADLESS=1',
+        'MAERSK_TIMEOUT_MS=120000',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    let restartCalls = 0
+    const service = createAgentControlLocalService({
+      layout,
+      adapter: {
+        key: 'linux',
+        async startAgent() {},
+        async stopAgent() {},
+        async restartAgent() {
+          restartCalls += 1
+        },
+      },
+    })
+
+    expect(service.getBackendState()).toMatchObject({
+      backendUrl: 'http://localhost:3000',
+      source: 'BOOTSTRAP',
+      status: 'BOOTSTRAP_ONLY',
+      runtimeConfigAvailable: false,
+      installerTokenAvailable: true,
+    })
+
+    const result = await service.setBackendUrl('https://backend.changed.local/')
+
+    expect(restartCalls).toBe(1)
+    expect(result.state.backendUrl).toBe('https://backend.changed.local')
+    expect(result.state.source).toBe('BOOTSTRAP')
+    expect(fs.readFileSync(layout.bootstrapPath, 'utf8')).toContain(
+      'BACKEND_URL=https://backend.changed.local',
+    )
+  })
 })

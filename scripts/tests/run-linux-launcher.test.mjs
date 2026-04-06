@@ -23,6 +23,7 @@ function runLauncher(command = {}) {
   const mockNodeDir = makeTempDir('run-linux-launcher-node-')
   const captureFile = path.join(agentDataDir, 'captured-channel.txt')
   const captureDisableFlagFile = path.join(agentDataDir, 'captured-disable-flag.txt')
+  const captureArgsFile = path.join(agentDataDir, 'captured-args.txt')
 
   fs.writeFileSync(
     path.join(agentDataDir, 'config.env'),
@@ -38,6 +39,7 @@ AGENT_UPDATE_MANIFEST_CHANNEL=${command.configChannel ?? 'stable'}
 set -euo pipefail
 printf '%s' "\${AGENT_UPDATE_MANIFEST_CHANNEL:-}" > "\${CAPTURE_FILE}"
 printf '%s' "\${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}" > "\${CAPTURE_DISABLE_FLAG_FILE}"
+printf '%s\n' "$@" > "\${CAPTURE_ARGS_FILE}"
 `,
   )
 
@@ -46,6 +48,7 @@ printf '%s' "\${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}" > "\${CAPTURE_DISABLE_
     AGENT_DATA_DIR: agentDataDir,
     CAPTURE_FILE: captureFile,
     CAPTURE_DISABLE_FLAG_FILE: captureDisableFlagFile,
+    CAPTURE_ARGS_FILE: captureArgsFile,
     PATH: [mockNodeDir, process.env.PATH ?? ''].filter(Boolean).join(path.delimiter),
   }
 
@@ -71,6 +74,7 @@ printf '%s' "\${AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS:-}" > "\${CAPTURE_DISABLE_
     result,
     capturedChannel: fs.readFileSync(captureFile, 'utf8'),
     capturedDisableFlag: fs.readFileSync(captureDisableFlagFile, 'utf8'),
+    capturedArgs: fs.readFileSync(captureArgsFile, 'utf8').trim().split('\n').filter(Boolean),
   }
 }
 
@@ -104,5 +108,31 @@ describe('run-linux launcher', () => {
     expect(result.status).toBe(0)
     expect(capturedChannel).toBe('canary')
     expect(capturedDisableFlag).toBe('1')
+  })
+
+  it('starts supervisor with the alias loader when the compiled register module exists', () => {
+    const { result, capturedArgs } = runLauncher({
+      configChannel: 'stable',
+    })
+    const registerPath = path.join(
+      repoRoot,
+      'tools',
+      'agent',
+      'dist',
+      'tools',
+      'agent',
+      'runtime',
+      'register-alias-loader.js',
+    )
+
+    expect(result.status).toBe(0)
+    expect(capturedArgs.at(-1)).toBe('tools/agent/dist/tools/agent/supervisor.js')
+
+    if (fs.existsSync(registerPath)) {
+      expect(capturedArgs).toContain(`--import=${registerPath}`)
+      return
+    }
+
+    expect(capturedArgs.some((value) => value.startsWith('--import='))).toBe(false)
   })
 })

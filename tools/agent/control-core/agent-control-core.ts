@@ -179,7 +179,7 @@ function booleanToEnvString(value: boolean): string {
   return value ? 'true' : 'false'
 }
 
-function serializeRuntimeConfig(config: ControlRuntimeConfig): string {
+export function serializeRuntimeConfig(config: ControlRuntimeConfig): string {
   const lines = [
     `BACKEND_URL=${config.BACKEND_URL}`,
     `AGENT_TOKEN=${config.AGENT_TOKEN}`,

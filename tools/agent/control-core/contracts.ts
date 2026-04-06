@@ -205,6 +205,46 @@ export const AgentControlPathsSchema = z.object({
 
 export type AgentControlPaths = z.infer<typeof AgentControlPathsSchema>
 
+export const AgentControlBackendSourceSchema = z.enum([
+  'RUNTIME_CONFIG',
+  'BASE_RUNTIME_CONFIG',
+  'BOOTSTRAP',
+  'CONSUMED_BOOTSTRAP',
+  'NONE',
+])
+
+export type AgentControlBackendSource = z.infer<typeof AgentControlBackendSourceSchema>
+
+export const AgentControlBackendStatusSchema = z.enum([
+  'ENROLLED',
+  'BOOTSTRAP_ONLY',
+  'UNCONFIGURED',
+])
+
+export type AgentControlBackendStatus = z.infer<typeof AgentControlBackendStatusSchema>
+
+export const AgentControlBackendStateSchema = z.object({
+  backendUrl: z.string().url().nullable(),
+  source: AgentControlBackendSourceSchema,
+  status: AgentControlBackendStatusSchema,
+  runtimeConfigAvailable: z.boolean(),
+  bootstrapConfigAvailable: z.boolean(),
+  installerTokenAvailable: z.boolean(),
+  publicStateAvailable: z.boolean(),
+  warnings: z.array(z.string().min(1)).default([]),
+})
+
+export type AgentControlBackendState = z.infer<typeof AgentControlBackendStateSchema>
+
+export const AgentControlPublicStateSchema = z.object({
+  snapshot: AgentOperationalSnapshotSchema,
+  releaseInventory: AgentReleaseInventorySchema,
+  paths: AgentControlPathsSchema,
+  backendState: AgentControlBackendStateSchema.optional(),
+})
+
+export type AgentControlPublicState = z.infer<typeof AgentControlPublicStateSchema>
+
 export const AgentControlCommandResultSchema = z.object({
   ok: z.literal(true),
   message: z.string().min(1),
@@ -212,6 +252,14 @@ export const AgentControlCommandResultSchema = z.object({
 })
 
 export type AgentControlCommandResult = z.infer<typeof AgentControlCommandResultSchema>
+
+export const AgentControlBackendUpdateResultSchema = z.object({
+  ok: z.literal(true),
+  message: z.string().min(1),
+  state: AgentControlBackendStateSchema,
+})
+
+export type AgentControlBackendUpdateResult = z.infer<typeof AgentControlBackendUpdateResultSchema>
 
 export const AgentControlAuditEventTypeSchema = z.enum([
   'LOCAL_UPDATE_PAUSED',

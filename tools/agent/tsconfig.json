@@ -27,6 +27,7 @@
     "./pending-activity.ts",
     "./supervisor-control.ts",
     "./cli/ct-agent.ts",
+    "./cli/ct-agent-admin.ts",
     "./build-release.ts",
     "./bundle-release.ts"
   ]

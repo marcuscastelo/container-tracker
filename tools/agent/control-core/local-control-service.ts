@@ -4,9 +4,11 @@ import path from 'node:path'
 import process from 'node:process'
 import {
   type ControlRuntimeConfig,
+  ControlRuntimeConfigSchema,
   executeLocalReset,
   readCurrentControlRuntimeConfig,
   recordOperationalEvent,
+  serializeRuntimeConfig,
   setLocalBlockedVersions,
   setLocalChannel,
   setLocalUpdatesPaused,
@@ -14,18 +16,25 @@ import {
   updateLocalEditableConfig,
 } from '@tools/agent/control-core/agent-control-core'
 import {
+  AgentControlBackendStateSchema,
+  AgentControlBackendUpdateResultSchema,
+  type AgentControlPaths,
   AgentControlCommandResultSchema,
   AgentControlLogChannelSchema,
   AgentControlLogsResponseSchema,
-  AgentControlPathsSchema,
-  AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
 import {
-  resolveReleaseEntrypoint,
+  buildAgentControlPaths,
+  buildAgentReleaseInventory,
+  readAgentControlPublicState,
+} from '@tools/agent/control-core/public-control-state'
+import {
   rollbackRelease as rollbackReleaseState,
+  resolveReleaseEntrypoint,
 } from '@tools/agent/release-manager'
 import { readReleaseState, writeReleaseState } from '@tools/agent/release-state'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
+import { resolveAgentPublicStatePath } from '@tools/agent/runtime/paths'
 import { writeSupervisorControl } from '@tools/agent/supervisor-control'
 import type { z } from 'zod/v4'
 
@@ -48,12 +57,13 @@ type AgentLocalControlAdapter = {
 
 type AgentControlLocalService = {
   readonly getAgentOperationalSnapshot: () => ReturnType<typeof syncSnapshot>
+  readonly getBackendState: () => z.infer<typeof AgentControlBackendStateSchema>
   readonly getLogs: (command?: {
     readonly channel?: z.infer<typeof AgentControlLogChannelSchema>
     readonly tail?: number
   }) => ReturnType<typeof readLogs>
   readonly getReleaseInventory: () => ReturnType<typeof listReleaseInventory>
-  readonly getPaths: () => z.infer<typeof AgentControlPathsSchema>
+  readonly getPaths: () => AgentControlPaths
   readonly startAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly stopAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
   readonly restartAgent: () => Promise<z.infer<typeof AgentControlCommandResultSchema>>
@@ -68,6 +78,9 @@ type AgentControlLocalService = {
   readonly updateConfig: (
     patch: Record<string, string>,
   ) => Promise<z.infer<typeof AgentControlCommandResultSchema>>
+  readonly setBackendUrl: (
+    backendUrl: string,
+  ) => Promise<z.infer<typeof AgentControlBackendUpdateResultSchema>>
   readonly activateRelease: (
     version: string,
   ) => Promise<z.infer<typeof AgentControlCommandResultSchema>>
@@ -133,6 +146,184 @@ function resolveLocalControlAdapter(): AgentLocalControlAdapter {
   return createLinuxAdapter()
 }
 
+function writeFileAtomic(filePath: string, content: string): void {
+  const parentDir = path.dirname(filePath)
+  fs.mkdirSync(parentDir, { recursive: true })
+
+  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
+  fs.writeFileSync(tempPath, content, 'utf8')
+  fs.renameSync(tempPath, filePath)
+}
+
+function normalizeOptionalString(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function parseEnvLine(line: string): { readonly key: string; readonly value: string } | null {
+  const trimmed = line.trim()
+  if (trimmed.length === 0 || trimmed.startsWith('#')) {
+    return null
+  }
+
+  const separatorIndex = trimmed.indexOf('=')
+  if (separatorIndex <= 0) {
+    return null
+  }
+
+  return {
+    key: trimmed.slice(0, separatorIndex).trim(),
+    value: trimmed.slice(separatorIndex + 1).trim(),
+  }
+}
+
+function readEnvFileValues(filePath: string): Map<string, string> | null {
+  if (!fs.existsSync(filePath)) {
+    return null
+  }
+
+  const values = new Map<string, string>()
+  const raw = fs.readFileSync(filePath, 'utf8')
+  for (const line of raw.split(/\r?\n/u)) {
+    const parsed = parseEnvLine(line)
+    if (!parsed) {
+      continue
+    }
+
+    values.set(parsed.key, parsed.value)
+  }
+
+  return values
+}
+
+function normalizeBackendUrl(value: string): string {
+  const trimmed = value.trim()
+  const url = new URL(trimmed)
+  return url.toString().replace(/\/+$/u, '')
+}
+
+function readBackendUrlFromEnvFile(filePath: string): string | null {
+  const values = readEnvFileValues(filePath)
+  if (!values) {
+    return null
+  }
+
+  const backendUrl = normalizeOptionalString(values.get('BACKEND_URL'))
+  if (!backendUrl) {
+    return null
+  }
+
+  try {
+    return normalizeBackendUrl(backendUrl)
+  } catch {
+    return null
+  }
+}
+
+function hasInstallerToken(filePath: string): boolean {
+  const values = readEnvFileValues(filePath)
+  if (!values) {
+    return false
+  }
+
+  const installerToken = normalizeOptionalString(values.get('INSTALLER_TOKEN'))
+  return installerToken !== null && installerToken !== '[REDACTED]'
+}
+
+function upsertEnvFileValue(filePath: string, key: string, value: string): boolean {
+  if (!fs.existsSync(filePath)) {
+    return false
+  }
+
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/u)
+  let replaced = false
+  const nextLines = lines.map((line) => {
+    const parsed = parseEnvLine(line)
+    if (!parsed || parsed.key !== key) {
+      return line
+    }
+
+    replaced = true
+    return `${key}=${value}`
+  })
+
+  if (!replaced) {
+    const insertionIndex = nextLines.at(-1) === '' ? nextLines.length - 1 : nextLines.length
+    nextLines.splice(insertionIndex, 0, `${key}=${value}`)
+  }
+
+  writeFileAtomic(filePath, `${nextLines.join('\n')}\n`)
+  return true
+}
+
+function clearPublicStateFile(): void {
+  try {
+    fs.rmSync(resolveAgentPublicStatePath(), { force: true })
+  } catch {
+    // Ignore stale public state cleanup failures.
+  }
+}
+
+export function readAgentControlBackendState(layout: AgentPathLayout) {
+  const publicStateAvailable = readAgentControlPublicState(resolveAgentPublicStatePath()) !== null
+  const runtimeConfigAvailable =
+    readCurrentControlRuntimeConfig(layout) !== null &&
+    (fs.existsSync(layout.configPath) || fs.existsSync(layout.baseRuntimeConfigPath))
+  const currentConfig = readCurrentControlRuntimeConfig(layout)
+  const bootstrapConfigAvailable = fs.existsSync(layout.bootstrapPath)
+  const consumedBootstrapAvailable = fs.existsSync(layout.consumedBootstrapPath)
+  const installerTokenAvailable = hasInstallerToken(layout.bootstrapPath)
+  const bootstrapBackendUrl = readBackendUrlFromEnvFile(layout.bootstrapPath)
+  const consumedBootstrapBackendUrl = readBackendUrlFromEnvFile(layout.consumedBootstrapPath)
+
+  let backendUrl: string | null = null
+  let source: z.infer<typeof AgentControlBackendStateSchema>['source'] = 'NONE'
+
+  if (currentConfig) {
+    backendUrl = currentConfig.BACKEND_URL
+    source = fs.existsSync(layout.configPath) ? 'RUNTIME_CONFIG' : 'BASE_RUNTIME_CONFIG'
+  } else if (bootstrapBackendUrl) {
+    backendUrl = bootstrapBackendUrl
+    source = 'BOOTSTRAP'
+  } else if (consumedBootstrapBackendUrl) {
+    backendUrl = consumedBootstrapBackendUrl
+    source = 'CONSUMED_BOOTSTRAP'
+  }
+
+  let status: z.infer<typeof AgentControlBackendStateSchema>['status'] = 'UNCONFIGURED'
+  if (runtimeConfigAvailable) {
+    status = 'ENROLLED'
+  } else if (bootstrapConfigAvailable || consumedBootstrapAvailable) {
+    status = 'BOOTSTRAP_ONLY'
+  }
+
+  const warnings: string[] = []
+  if (!runtimeConfigAvailable && !installerTokenAvailable) {
+    warnings.push(
+      'No installer token is available in bootstrap.env. A valid bootstrap file is required before the agent can enroll.',
+    )
+  } else if (runtimeConfigAvailable && !installerTokenAvailable) {
+    warnings.push(
+      'This agent is already enrolled. Switching to a different backend may require a fresh bootstrap token if the current agent token is rejected.',
+    )
+  }
+
+  return AgentControlBackendStateSchema.parse({
+    backendUrl,
+    source,
+    status,
+    runtimeConfigAvailable,
+    bootstrapConfigAvailable,
+    installerTokenAvailable,
+    publicStateAvailable,
+    warnings,
+  })
+}
+
 function requireCurrentConfig(layout: AgentPathLayout): ControlRuntimeConfig {
   const config = readCurrentControlRuntimeConfig(layout)
   if (!config) {
@@ -150,32 +341,11 @@ async function syncSnapshot(layout: AgentPathLayout) {
 }
 
 function listReleaseInventory(layout: AgentPathLayout) {
-  const currentConfig = requireCurrentConfig(layout)
-  const state = readReleaseState(layout.releaseStatePath, currentConfig.AGENT_ID)
-  const entries = fs.existsSync(layout.releasesDir)
-    ? fs
-        .readdirSync(layout.releasesDir, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name)
-    : []
-
-  const releases = [...entries]
-    .sort((left, right) =>
-      right.localeCompare(left, undefined, { numeric: true, sensitivity: 'base' }),
-    )
-    .map((version) => {
-      const releaseDir = path.join(layout.releasesDir, version)
-      return {
-        version,
-        isCurrent: state.current_version === version,
-        isPrevious: state.previous_version === version,
-        isTarget: state.target_version === version,
-        entrypointPath: resolveReleaseEntrypoint(releaseDir),
-      }
-    })
-
-  return AgentReleaseInventorySchema.parse({
-    releases,
+  const currentConfig = readCurrentControlRuntimeConfig(layout)
+  const state = readReleaseState(layout.releaseStatePath, currentConfig?.AGENT_ID ?? 'unknown')
+  return buildAgentReleaseInventory({
+    layout,
+    releaseState: state,
   })
 }
 
@@ -218,19 +388,7 @@ function readLogs(
 }
 
 function getPaths(layout: AgentPathLayout) {
-  return AgentControlPathsSchema.parse({
-    dataDir: layout.dataDir,
-    configPath: layout.configPath,
-    releasesDir: layout.releasesDir,
-    logsDir: layout.logsDir,
-    releaseStatePath: layout.releaseStatePath,
-    runtimeHealthPath: layout.runtimeHealthPath,
-    supervisorControlPath: layout.supervisorControlPath,
-    controlOverridesPath: layout.controlOverridesPath,
-    controlRemoteCachePath: layout.controlRemoteCachePath,
-    infraConfigPath: layout.infraConfigPath,
-    auditLogPath: layout.auditLogPath,
-  })
+  return buildAgentControlPaths(layout)
 }
 
 async function withSnapshotResult(
@@ -253,6 +411,9 @@ export function createAgentControlLocalService(
   return {
     getAgentOperationalSnapshot() {
       return syncSnapshot(deps.layout)
+    },
+    getBackendState() {
+      return readAgentControlBackendState(deps.layout)
     },
     getLogs(command) {
       return readLogs(deps.layout, command)
@@ -312,6 +473,57 @@ export function createAgentControlLocalService(
         patch,
       })
       return withSnapshotResult(deps.layout, 'Local editable config updated')
+    },
+    async setBackendUrl(backendUrl) {
+      const normalizedBackendUrl = normalizeBackendUrl(backendUrl)
+      const currentConfig = readCurrentControlRuntimeConfig(deps.layout)
+      let updated = false
+
+      if (currentConfig) {
+        const nextConfig = ControlRuntimeConfigSchema.parse({
+          ...currentConfig,
+          BACKEND_URL: normalizedBackendUrl,
+        })
+        writeFileAtomic(deps.layout.configPath, serializeRuntimeConfig(nextConfig))
+        writeFileAtomic(
+          deps.layout.baseRuntimeConfigPath,
+          `${JSON.stringify(nextConfig, null, 2)}\n`,
+        )
+        updated = true
+      }
+
+      if (upsertEnvFileValue(deps.layout.bootstrapPath, 'BACKEND_URL', normalizedBackendUrl)) {
+        updated = true
+      } else if (
+        upsertEnvFileValue(deps.layout.consumedBootstrapPath, 'BACKEND_URL', normalizedBackendUrl)
+      ) {
+        updated = true
+      }
+
+      if (!updated) {
+        throw new Error(
+          `No runtime or bootstrap configuration is available to store BACKEND_URL under ${deps.layout.dataDir}`,
+        )
+      }
+
+      clearPublicStateFile()
+      recordOperationalEvent(deps.layout, {
+        type: 'CONFIG_UPDATED',
+        occurredAt: new Date().toISOString(),
+        source: 'LOCAL',
+        message: `Backend URL updated to ${normalizedBackendUrl}`,
+        metadata: {
+          backendUrl: normalizedBackendUrl,
+        },
+      })
+
+      await adapter.restartAgent()
+
+      return AgentControlBackendUpdateResultSchema.parse({
+        ok: true,
+        message: `Backend URL updated to ${normalizedBackendUrl} and service restart requested`,
+        state: readAgentControlBackendState(deps.layout),
+      })
     },
     async activateRelease(version) {
       const syncResult = await syncSnapshot(deps.layout)

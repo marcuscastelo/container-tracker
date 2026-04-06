@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install_root="/usr/lib/container-tracker-agent"
+register_path="$install_root/tools/agent/runtime/register-alias-loader.js"
+admin_path="$install_root/tools/agent/cli/ct-agent-admin.js"
+
+if [ -f "$register_path" ]; then
+  exec /usr/bin/node --import="$register_path" "$admin_path" "$@"
+fi
+
+exec /usr/bin/node "$admin_path" "$@"

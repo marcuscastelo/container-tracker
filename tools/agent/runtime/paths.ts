@@ -7,6 +7,7 @@ import { resolvePlatformAdapter } from '../platform/platform.adapter.ts'
 
 const LINUX_SYSTEM_DATA_DIR = '/var/lib/container-tracker-agent'
 const LINUX_CONFIG_DIR = '/etc/container-tracker-agent'
+const LINUX_PUBLIC_STATE_DIR = '/run/container-tracker-agent'
 const DEV_FALLBACK_DIR_NAME = '.agent-runtime'
 
 export type ResolveAgentDataDirCommand = {
@@ -15,6 +16,12 @@ export type ResolveAgentDataDirCommand = {
   readonly cwd: string
   readonly resolvePlatformDataDir: (env: NodeJS.ProcessEnv) => string
   readonly canUseLinuxSystemDir: (candidate: string) => boolean
+}
+
+export type ResolveAgentPublicStateDirCommand = {
+  readonly env: NodeJS.ProcessEnv
+  readonly platform: NodeJS.Platform
+  readonly resolveAgentDataDir: () => string
 }
 
 function normalizeOptionalEnv(value: string | undefined): string | undefined {
@@ -38,6 +45,10 @@ function canUseLinuxSystemDir(candidate: string): boolean {
 
 function resolvePlatformDataDir(env: NodeJS.ProcessEnv): string {
   return resolvePlatformAdapter().resolvePaths({ env }).dataDir
+}
+
+function isLinuxSystemDataDir(candidate: string): boolean {
+  return path.resolve(candidate) === path.resolve(LINUX_SYSTEM_DATA_DIR)
 }
 
 export function resolveAgentDataDirFrom(command: ResolveAgentDataDirCommand): string {
@@ -86,4 +97,39 @@ export function resolveLogsDir(): string {
 
 export function resolveReleaseStatePath(): string {
   return path.join(resolveAgentDataDir(), 'release-state.json')
+}
+
+export function resolveAgentPublicStateDir(): string {
+  return resolveAgentPublicStateDirFrom({
+    env: process.env,
+    platform: process.platform,
+    resolveAgentDataDir,
+  })
+}
+
+export function resolveAgentPublicStateDirFrom(command: ResolveAgentPublicStateDirCommand): string {
+  const publicStateDirFromEnv = normalizeOptionalEnv(command.env.AGENT_PUBLIC_STATE_DIR)
+  if (publicStateDirFromEnv) {
+    return publicStateDirFromEnv
+  }
+
+  const dataDir = command.resolveAgentDataDir()
+
+  if (command.platform === 'linux') {
+    return isLinuxSystemDataDir(dataDir) ? LINUX_PUBLIC_STATE_DIR : path.join(dataDir, 'run')
+  }
+
+  return path.join(dataDir, 'run')
+}
+
+export function resolveAgentPublicStatePath(): string {
+  return path.join(resolveAgentPublicStateDir(), 'control-ui-state.json')
+}
+
+export function resolveAgentPublicBackendStatePath(): string {
+  return path.join(resolveAgentPublicStateDir(), 'control-ui-backend-state.json')
+}
+
+export function resolveAgentPublicLogsPath(): string {
+  return path.join(resolveAgentPublicStateDir(), 'control-ui-logs.json')
 }

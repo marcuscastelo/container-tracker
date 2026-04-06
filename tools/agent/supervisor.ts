@@ -6,6 +6,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  refreshAgentControlPublicBackendState,
+  refreshAgentControlPublicLogs,
+} from './control-core/public-control-files.ts'
 import { appendPendingActivityEvents } from './pending-activity.ts'
 import { resolvePlatformAdapter } from './platform/platform.adapter.ts'
 // biome-ignore lint/performance/noNamespaceImport: Supervisor runtime keeps grouped release-manager symbols for resilient formatting.
@@ -17,6 +21,7 @@ import {
   EXIT_OK,
   resolveSupervisorExitAction,
 } from './runtime/lifecycle-exit-codes.ts'
+import { resolveAgentPublicBackendStatePath, resolveAgentPublicLogsPath } from './runtime/paths.ts'
 import { readRuntimeHealth } from './runtime-health.ts'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from './runtime-paths.ts'
 import { clearSupervisorControl } from './supervisor-control.ts'
@@ -32,6 +37,14 @@ const HEALTH_POLL_INTERVAL_MS = 500
 const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
 const RUNTIME_STDIO_ROTATION_CHECK_INTERVAL_MS = 2000
+const PUBLIC_ARTIFACT_REFRESH_DEBOUNCE_MS = 150
+
+type PublicArtifactPublisher = {
+  readonly requestRefresh: () => void
+  readonly publishNow: () => void
+}
+
+let publicArtifactPublisher: PublicArtifactPublisher | null = null
 
 type ChildRunOutcome = {
   readonly exitCode: number | null
@@ -60,6 +73,59 @@ function toErrorMessage(error: unknown): string {
     return error.message
   }
   return String(error)
+}
+
+function refreshPublicArtifacts(layout: ReturnType<typeof resolveAgentPathLayout>): void {
+  if (process.platform !== 'linux') {
+    return
+  }
+
+  try {
+    refreshAgentControlPublicBackendState({
+      filePath: resolveAgentPublicBackendStatePath(),
+      layout,
+    })
+    refreshAgentControlPublicLogs({
+      filePath: resolveAgentPublicLogsPath(),
+      layout,
+    })
+  } catch (error) {
+    console.warn(
+      `[supervisor] failed to refresh public control artifacts: ${toErrorMessage(error)}`,
+    )
+  }
+}
+
+function createPublicArtifactPublisher(
+  layout: ReturnType<typeof resolveAgentPathLayout>,
+): PublicArtifactPublisher {
+  let timer: NodeJS.Timeout | null = null
+
+  return {
+    requestRefresh() {
+      if (timer) {
+        return
+      }
+
+      timer = setTimeout(() => {
+        timer = null
+        refreshPublicArtifacts(layout)
+      }, PUBLIC_ARTIFACT_REFRESH_DEBOUNCE_MS)
+      timer.unref?.()
+    },
+    publishNow() {
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+
+      refreshPublicArtifacts(layout)
+    },
+  }
+}
+
+function requestPublicArtifactRefresh(): void {
+  publicArtifactPublisher?.requestRefresh()
 }
 
 function resolveNumberEnv(value: string | undefined, fallback: number): number {
@@ -99,6 +165,7 @@ function appendSupervisorLog(logsDir: string, message: string): void {
   fs.mkdirSync(path.dirname(logPath), { recursive: true })
   rotateLogIfNeeded(logPath, MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES)
   fs.appendFileSync(logPath, `${line}\n`, 'utf8')
+  requestPublicArtifactRefresh()
 }
 
 function isErrorCode(command: { readonly code: string; readonly error: unknown }): boolean {
@@ -204,6 +271,7 @@ function mirrorRuntimeOutput(command: {
     stdout.on('data', (chunk: Buffer | string) => {
       process.stdout.write(chunk)
       stdoutWriter.write(chunk)
+      requestPublicArtifactRefresh()
     })
     command.child.once('exit', () => {
       void stdoutWriter.close()
@@ -220,6 +288,7 @@ function mirrorRuntimeOutput(command: {
     stderr.on('data', (chunk: Buffer | string) => {
       process.stderr.write(chunk)
       stderrWriter.write(chunk)
+      requestPublicArtifactRefresh()
     })
     command.child.once('exit', () => {
       void stderrWriter.close()
@@ -473,8 +542,10 @@ async function main(): Promise<void> {
 
   const layout = resolveAgentPathLayout()
   ensureAgentPathLayout(layout)
+  publicArtifactPublisher = createPublicArtifactPublisher(layout)
   clearSupervisorControl(layout.supervisorControlPath)
   appendSupervisorLog(layout.logsDir, 'supervisor started')
+  publicArtifactPublisher.publishNow()
   const updateChecksMode = resolveAutomaticUpdateChecksMode({
     env: process.env,
   })
