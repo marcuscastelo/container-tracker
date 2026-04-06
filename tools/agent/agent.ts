@@ -749,6 +749,8 @@ const TargetsResponseSchema = z.object({
 const IngestAcceptedResponseSchema = z.object({
   ok: z.literal(true),
   snapshot_id: z.string().uuid(),
+  new_observations_count: z.number().int().min(0).optional(),
+  new_alerts_count: z.number().int().min(0).optional(),
 })
 
 const IngestFailedResponseSchema = z.object({
@@ -1204,7 +1206,14 @@ async function ingestSnapshot(
     throw new Error(`invalid ingest response: ${parsed.error.message}`)
   }
 
-  console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}`)
+  const newObservationsCount = parsed.data.new_observations_count
+  const newAlertsCount = parsed.data.new_alerts_count
+  const summary =
+    newObservationsCount === undefined
+      ? ''
+      : ` (${newObservationsCount} new observation${newObservationsCount === 1 ? '' : 's'}${newAlertsCount === undefined ? '' : `, ${newAlertsCount} new alert${newAlertsCount === 1 ? '' : 's'}`})`
+
+  console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}${summary}`)
   return { kind: 'accepted', snapshotId: parsed.data.snapshot_id }
 }
 
