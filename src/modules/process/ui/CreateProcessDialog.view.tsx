@@ -37,6 +37,8 @@ type FormSectionsProps = {
   readonly onExporterNameInput: (value: string) => void
   readonly referenceImporter: string
   readonly onReferenceImporterInput: (value: string) => void
+  readonly depositary: string
+  readonly onDepositaryInput: (value: string) => void
   readonly product: string
   readonly onProductInput: (value: string) => void
   readonly redestinationNumber: string
@@ -474,6 +476,13 @@ function IdentificationSection(
           placeholder={t(keys.createProcess.field.productPlaceholder)}
         />
         <FormInput
+          label={t(keys.createProcess.field.depositary)}
+          name="depositary"
+          value={props.depositary}
+          onInput={props.onDepositaryInput}
+          placeholder={t(keys.createProcess.field.depositaryPlaceholder)}
+        />
+        <FormInput
           label={t(keys.createProcess.field.redestinationNumber)}
           name="redestinationNumber"
           value={props.redestinationNumber}
@@ -725,6 +734,8 @@ export function CreateProcessDialogView(props: Props): JSX.Element {
             onExporterNameInput={props.form.onExporterNameInput}
             referenceImporter={props.form.referenceImporter}
             onReferenceImporterInput={props.form.onReferenceImporterInput}
+            depositary={props.form.depositary}
+            onDepositaryInput={props.form.onDepositaryInput}
             product={props.form.product}
             onProductInput={props.form.onProductInput}
             redestinationNumber={props.form.redestinationNumber}

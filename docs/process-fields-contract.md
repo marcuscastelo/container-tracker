@@ -5,7 +5,7 @@ This document defines the canonical field structure for Shipment (Process) entit
 ## Version
 F1.1 - Existência Operacional (UX básica)
 
-Last Updated: 2026-02-10
+Last Updated: 2026-04-07
 
 ## Canonical Field Names
 
@@ -23,6 +23,7 @@ All process/shipment fields MUST use these exact names across all layers (UI, AP
 | `redestination_number` | string   | No       | Redestination process number                   |
 | `origin`               | object   | No       | Planned origin location                        |
 | `destination`          | object   | No       | Planned destination location                   |
+| `depositary`           | string   | No       | Depositary / recinto / operador físico         |
 | `carrier`              | enum     | Yes*     | Shipping carrier                               |
 | `containers`           | array    | Yes      | At least one container required                |
 
@@ -64,6 +65,7 @@ The following fields MUST NOT exist in any layer:
 See `docs/migrations/f1-1-add-product-redestination.md` for:
 - `product`
 - `redestination_number`
+- `depositary`
 
 ### Legacy Columns (Deprecated, Do Not Use)
 - `operation_type` - Marked as legacy, not read or written by domain layer
@@ -79,6 +81,7 @@ When showing process fields in forms, use this order:
    - Exporter Name
    - Importer Reference
    - Product
+   - Depositary
    - Redestination Number
 
 2. **Planned Route Section**
@@ -108,6 +111,7 @@ When showing process fields in forms, use this order:
   importer_name?: string | null
   exporter_name?: string | null
   reference_importer?: string | null
+  depositary?: string | null
   product?: string | null
   redestination_number?: string | null
   containers: [
@@ -127,6 +131,8 @@ Same structure as request, plus:
 - `created_at`: string (ISO 8601)
 - `updated_at`: string (ISO 8601)
 
+`destination` and `depositary` remain independent response fields and must not be collapsed semantically.
+
 ## Implementation Status
 
 - [x] UI Updated (CreateProcessDialog)
@@ -135,8 +141,8 @@ Same structure as request, plus:
 - [x] DTOs/Schemas Updated
 - [x] Mappers Updated
 - [x] Tests Updated
-- [x] i18n Updated (EN, PT-BR, PT-PT)
-- [ ] Database Migration Applied (product, redestination_number)
+- [x] i18n Updated (PT-BR)
+- [x] Database Migration Added (`depositary`)
 
 ## References
 

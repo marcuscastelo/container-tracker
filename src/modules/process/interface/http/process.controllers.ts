@@ -347,6 +347,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
         ...(parsed.data.reference_importer !== undefined
           ? { reference_importer: parsed.data.reference_importer }
           : {}),
+        ...(parsed.data.depositary !== undefined ? { depositary: parsed.data.depositary } : {}),
         ...(parsed.data.product !== undefined ? { product: parsed.data.product } : {}),
         ...(parsed.data.redestination_number !== undefined
           ? { redestination_number: parsed.data.redestination_number }

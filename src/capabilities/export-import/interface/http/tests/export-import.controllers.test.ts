@@ -147,6 +147,7 @@ describe('export import controllers', () => {
           carrier: 'MSC',
           origin: 'Paquistão',
           destination: 'Santos',
+          depositary: 'Santos Brasil',
           billOfLading: 'MEDUP6003834',
           importerName: 'FLUSH',
           exporterName: 'WAQAS',

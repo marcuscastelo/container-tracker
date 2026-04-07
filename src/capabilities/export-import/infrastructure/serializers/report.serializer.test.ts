@@ -32,6 +32,7 @@ function createReport(scope: 'all_processes' | 'single_process') {
         carrier: 'MSC',
         origin: 'Paquistão',
         destination: 'Santos',
+        depositary: 'Santos Brasil',
         billOfLading: 'MEDUP6003834',
         importerName: 'FLUSH',
         exporterName: 'WAQAS',
@@ -83,6 +84,7 @@ function createReport(scope: 'all_processes' | 'single_process') {
         carrier: 'MAERSK',
         origin: 'Brasil',
         destination: 'Rotterdam',
+        depositary: null,
         billOfLading: null,
         importerName: null,
         exporterName: null,
@@ -119,6 +121,7 @@ describe('serializeReportExport trello', () => {
     expect(markdown).toContain('BL: MEDUP6003834')
     expect(markdown).toContain('CTNR: FCIU2000205 / MSBU3493578')
     expect(markdown).toContain('ORIGEM: Paquistão')
+    expect(markdown).toContain('DEPOSITARIO: Santos Brasil')
     expect(markdown).toContain('REDESTINACAO: 128598')
     expect(markdown).toContain('### Snapshot 2026-03-15')
     expect(markdown).toContain('process_status: ARRIVED_AT_POD')
@@ -139,5 +142,17 @@ describe('serializeReportExport trello', () => {
     expect(serialized.contentType).toBe('application/zip')
     expect(zipText).toContain('snapshot-CA064-25.md')
     expect(zipText).toContain('snapshot-CB111-25.md')
+  })
+
+  it('includes depositary in flat csv exports', async () => {
+    const serialized = await serializeReportExport({
+      report: createReport('single_process'),
+      format: 'csv',
+    })
+
+    const csv = Buffer.from(serialized.content).toString('utf-8')
+
+    expect(csv).toContain('process_reference,carrier,origin,destination,depositary,process_status')
+    expect(csv).toContain('CA064-25,MSC,Paquistão,Santos,Santos Brasil,ARRIVED_AT_POD')
   })
 })

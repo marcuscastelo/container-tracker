@@ -37,6 +37,7 @@ export const CreateProcessInputSchema = z.object({
   importer_name: z.string().nullable().optional(),
   exporter_name: z.string().nullable().optional(),
   reference_importer: z.string().nullable().optional(),
+  depositary: z.string().nullable().optional(),
   product: z.string().nullable().optional(),
   redestination_number: z.string().nullable().optional(),
   containers: z
