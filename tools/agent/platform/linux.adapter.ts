@@ -5,6 +5,7 @@ import process from 'node:process'
 
 // biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
 import { ensureDirectory, runCommand, tryCommand } from './common.ts'
+import { createLinuxLocalControlAdapter } from './local-control.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
 import type { AgentPlatformAdapter } from './platform.types.ts'
 
@@ -54,6 +55,7 @@ function extractArchive(command: {
 
 export const linuxPlatformAdapter: AgentPlatformAdapter = {
   key: 'linux-x64',
+  control: createLinuxLocalControlAdapter(),
   resolvePaths(command) {
     return {
       dataDir: resolveDataDir(command.env),

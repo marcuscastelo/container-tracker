@@ -620,7 +620,7 @@ export function collectInstallerTaskRegistrationErrors(
     (line) =>
       line.includes('powershell.exe') &&
       line.includes('-windowstyle hidden') &&
-      line.includes('agent-tray-host.ps1'),
+      line.includes('run-supervisor.ps1'),
   )
   const hasUpdaterCreate = taskRegistrationLines.some(
     (line) =>
@@ -631,6 +631,20 @@ export function collectInstallerTaskRegistrationErrors(
 
   if (!hasAgentCreate || !hasUpdaterCreate) {
     errors.push('installer.iss missing expected ONLOGON task registrations for agent/updater')
+  }
+
+  const usesLegacyAgentTrayHost = taskRegistrationLines.some((line) =>
+    line.includes('agent-tray-host.ps1'),
+  )
+  if (usesLegacyAgentTrayHost) {
+    errors.push('installer.iss agent task must launch run-supervisor.ps1 instead of agent-tray-host.ps1')
+  }
+
+  const launchesRuntimeShimDirectly = taskRegistrationLines.some((line) =>
+    line.includes('app\\dist\\agent.js'),
+  )
+  if (launchesRuntimeShimDirectly) {
+    errors.push('installer.iss agent task must not launch app\\dist\\agent.js directly')
   }
 
   for (const line of taskRegistrationLines) {
@@ -1232,10 +1246,10 @@ async function runPreflightChecks(command: {
     }
 
     if (
-      !installerContentRaw.includes('agent-tray-host.ps1') ||
+      !installerContentRaw.includes('run-supervisor.ps1') ||
       !installerContentRaw.includes('updater-hidden.ps1')
     ) {
-      errors.push('installer.iss must include tray/updater launcher scripts in [Files]/[Run]')
+      errors.push('installer.iss must include supervisor/updater launcher scripts in [Files]/[Run]')
     }
 
     errors.push(...collectInstallerTaskRegistrationErrors(installerContentRaw))
