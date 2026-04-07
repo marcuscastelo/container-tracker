@@ -343,13 +343,19 @@ function resolveFallbackRuntimeEntrypoint(scriptDir: string): string {
   throw new Error('could not resolve fallback runtime entrypoint for supervisor')
 }
 
-function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
-  const registerPath = path.resolve(path.dirname(scriptPath), '../runtime/register-alias-loader.js')
-  if (!fs.existsSync(registerPath) || !fs.statSync(registerPath).isFile()) {
-    return []
+export function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
+  const registerCandidates = [
+    path.resolve(path.dirname(scriptPath), './runtime/register-alias-loader.js'),
+    path.resolve(path.dirname(scriptPath), '../runtime/register-alias-loader.js'),
+  ]
+
+  for (const registerPath of registerCandidates) {
+    if (fs.existsSync(registerPath) && fs.statSync(registerPath).isFile()) {
+      return [`--import=${registerPath}`]
+    }
   }
 
-  return [`--import=${registerPath}`]
+  return []
 }
 
 function findPackageJsonPath(startDir: string): string | null {

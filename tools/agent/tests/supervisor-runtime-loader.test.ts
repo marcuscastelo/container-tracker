@@ -1,0 +1,20 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+import { resolveRuntimeExecArgv } from '@tools/agent/supervisor/supervisor.entry'
+import { describe, expect, it } from 'vitest'
+
+describe('supervisor runtime alias loader resolution', () => {
+  it('loads the sibling runtime/register-alias-loader.js for the fallback agent wrapper', () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-supervisor-loader-'))
+    const scriptPath = path.join(baseDir, 'tools', 'agent', 'agent.js')
+    const registerPath = path.join(baseDir, 'tools', 'agent', 'runtime', 'register-alias-loader.js')
+
+    fs.mkdirSync(path.dirname(registerPath), { recursive: true })
+    fs.writeFileSync(scriptPath, '', 'utf8')
+    fs.writeFileSync(registerPath, '', 'utf8')
+
+    expect(resolveRuntimeExecArgv(scriptPath)).toEqual([`--import=${registerPath}`])
+  })
+})
