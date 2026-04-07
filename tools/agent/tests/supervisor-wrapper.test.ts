@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest'
-
 import { isSupervisorEntrypoint } from '@tools/agent/supervisor'
+import { describe, expect, it } from 'vitest'
 
 describe('supervisor entry wrapper', () => {
   it('recognizes the compiled supervisor entrypoint', () => {
