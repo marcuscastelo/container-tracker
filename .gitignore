@@ -20,3 +20,4 @@ test-results/
 packaging/arch/pkg/
 packaging/arch/src/agent-app/
 packaging/arch/*.pkg.tar.zst
+.vercel
