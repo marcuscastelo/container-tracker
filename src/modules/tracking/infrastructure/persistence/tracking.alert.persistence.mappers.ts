@@ -7,14 +7,11 @@ import type {
   TrackingAlertMessageKey,
   TrackingAlertResolvedReason,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
-import { normalizeNoMovementThresholdDays } from '~/modules/tracking/features/alerts/domain/policy/no-movement-alert-policy'
 import { stringsToJson, toJson } from '~/modules/tracking/infrastructure/persistence/toJson'
 import {
   isRecord,
   normalizeAlertIso,
-  optionalFiniteNumber,
   optionalReadProvider,
-  requireFiniteNumber,
   requireString,
 } from '~/modules/tracking/infrastructure/persistence/tracking.persistence.mapper-primitives'
 import type {
@@ -36,7 +33,6 @@ const ALERT_TYPE_MAP: Record<string, AlertType> = {
   TRANSSHIPMENT: 'TRANSSHIPMENT',
   CUSTOMS_HOLD: 'CUSTOMS_HOLD',
   PORT_CHANGE: 'PORT_CHANGE',
-  NO_MOVEMENT: 'NO_MOVEMENT',
   ETA_PASSED: 'ETA_PASSED',
   ETA_MISSING: 'ETA_MISSING',
   DATA_INCONSISTENT: 'DATA_INCONSISTENT',
@@ -51,7 +47,6 @@ const ALERT_SEVERITY_MAP: Record<string, AlertSeverity> = {
 const ALERT_MESSAGE_KEY_MAP: Record<string, TrackingAlertMessageKey> = {
   'alerts.transshipmentDetected': 'alerts.transshipmentDetected',
   'alerts.customsHoldDetected': 'alerts.customsHoldDetected',
-  'alerts.noMovementDetected': 'alerts.noMovementDetected',
   'alerts.etaMissing': 'alerts.etaMissing',
   'alerts.etaPassed': 'alerts.etaPassed',
   'alerts.portChange': 'alerts.portChange',
@@ -173,23 +168,6 @@ function requireAlertMessageContract(
       message_key: messageKey,
       message_params: {
         location: requireString(params.location, `${field}.location`),
-      },
-    }
-  }
-
-  if (messageKey === 'alerts.noMovementDetected') {
-    const days = requireFiniteNumber(params.days, `${field}.days`)
-    const thresholdCandidate = optionalFiniteNumber(params.threshold_days) ?? days
-    const thresholdDays = normalizeNoMovementThresholdDays(thresholdCandidate)
-    const daysWithoutMovement = optionalFiniteNumber(params.days_without_movement) ?? days
-
-    return {
-      message_key: messageKey,
-      message_params: {
-        threshold_days: thresholdDays,
-        days_without_movement: daysWithoutMovement,
-        days,
-        lastEventDate: requireString(params.lastEventDate, `${field}.lastEventDate`),
       },
     }
   }

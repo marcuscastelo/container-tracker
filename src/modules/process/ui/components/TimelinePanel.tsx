@@ -53,8 +53,6 @@ function alertTypeToEventTypes(alertType: AlertDisplayVM['type']): readonly stri
   switch (alertType) {
     case 'transshipment':
       return ['DEPARTURE', 'ARRIVAL', 'LOAD', 'DISCHARGE']
-    case 'delay':
-      return ['ARRIVAL', 'DISCHARGE', 'DELIVERY']
     case 'customs':
       return ['CUSTOMS_HOLD', 'CUSTOMS_RELEASE']
     default:

@@ -486,16 +486,13 @@
           "movement": "Movimentação",
           "eta": "ETA",
           "customs": "Alfândega",
-          "data": "Dados",
-          "status": "Status"
+          "data": "Dados"
         },
         "summary": {
-          "activeLine": "{{incidents}} incidentes ativos · {{containers}} containers afetados",
-          "noMovement": "{{count}} containers afetados · último evento mais recente: {{date}}"
+          "activeLine": "{{incidents}} incidentes ativos · {{containers}} containers afetados"
         },
         "emptyFiltered": "Nenhum incidente corresponde ao filtro atual.",
         "title": {
-          "noMovementThreshold": "Sem movimentação há {{days}} dias",
           "transshipmentOccurrence": "ocorrência {{count}} na rota"
         },
         "timing": {
@@ -516,13 +513,10 @@
         },
         "details": {
           "containers": "Containers",
-          "history": "Histórico de thresholds",
           "transshipmentOrder": "Ocorrência na rota",
           "location": "Local",
           "fromVessel": "Origem",
-          "toVessel": "Destino",
-          "lastEvent": "Último evento",
-          "thresholdReachedOn": "atingido com último evento em {{date}}"
+          "toVessel": "Destino"
         }
       },
       "action": {
@@ -815,7 +809,6 @@
       "TRANSSHIPMENT": "Transbordo Detectado",
       "CUSTOMS_HOLD": "Retenção Alfandegária",
       "PORT_CHANGE": "Mudança de Porto",
-      "NO_MOVEMENT": "Sem Movimentação",
       "ETA_PASSED": "ETA Ultrapassado",
       "ETA_MISSING": "ETA Ausente",
       "DATA_INCONSISTENT": "Inconsistência de Dados"

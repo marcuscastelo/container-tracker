@@ -26,9 +26,6 @@ function makeTransshipmentIncident(command: {
     },
     detectedAtIso: '2026-02-28T00:00:00.000Z',
     triggeredAtIso: '2026-04-01T10:00:00.000Z',
-    thresholdDays: null,
-    daysWithoutMovement: null,
-    lastEventDate: null,
     transshipmentOrder: command.transshipmentOrder,
     port: command.port,
     fromVessel: command.fromVessel,
@@ -37,7 +34,6 @@ function makeTransshipmentIncident(command: {
     activeAlertIds: ['alert-1'],
     ackedAlertIds: [],
     members: [],
-    monitoringHistory: [],
   }
 }
 

@@ -35,13 +35,8 @@ describe('dashboard controllers - navbar message contract behavior', () => {
                   alertId: 'alert-1',
                   severity: 'danger',
                   category: 'monitoring',
-                  messageKey: 'alerts.noMovementDetected',
-                  messageParams: {
-                    threshold_days: 10,
-                    days_without_movement: 11,
-                    days: 11,
-                    lastEventDate: '2026-02-28',
-                  },
+                  messageKey: 'alerts.etaPassed',
+                  messageParams: {},
                   occurredAt: '2026-03-11T10:00:00.000Z',
                   retroactive: false,
                 },
@@ -74,8 +69,6 @@ describe('dashboard controllers - navbar message contract behavior', () => {
     expect(body.total_active_alerts).toBe(2)
     expect(body.processes).toHaveLength(1)
     expect(body.processes[0]?.process_id).toBe('process-1')
-    expect(body.processes[0]?.containers[0]?.alerts[0]?.message_key).toBe(
-      'alerts.noMovementDetected',
-    )
+    expect(body.processes[0]?.containers[0]?.alerts[0]?.message_key).toBe('alerts.etaPassed')
   })
 })

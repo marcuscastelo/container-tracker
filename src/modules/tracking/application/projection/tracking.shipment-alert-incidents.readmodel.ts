@@ -7,7 +7,7 @@ import {
   type TrackingAlertType,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
-export type ShipmentAlertIncidentCategory = 'movement' | 'eta' | 'customs' | 'status' | 'data'
+export type ShipmentAlertIncidentCategory = 'movement' | 'eta' | 'customs' | 'data'
 export type ShipmentAlertIncidentBucket = 'active' | 'recognized'
 
 export type ShipmentAlertIncidentRecordReadModel = {
@@ -18,9 +18,6 @@ export type ShipmentAlertIncidentRecordReadModel = {
   readonly ackedAt: string | null
   readonly resolvedAt: string | null
   readonly resolvedReason: TrackingAlertResolvedReason | null
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
 }
 
 export type ShipmentAlertIncidentMemberReadModel = {
@@ -29,9 +26,6 @@ export type ShipmentAlertIncidentMemberReadModel = {
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAt: string
   readonly records: readonly ShipmentAlertIncidentRecordReadModel[]
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -48,9 +42,6 @@ export type ShipmentAlertIncidentReadModel = {
   readonly messageParams: Record<string, string | number>
   readonly detectedAt: string
   readonly triggeredAt: string
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -59,7 +50,6 @@ export type ShipmentAlertIncidentReadModel = {
   readonly activeAlertIds: readonly string[]
   readonly ackedAlertIds: readonly string[]
   readonly members: readonly ShipmentAlertIncidentMemberReadModel[]
-  readonly monitoringHistory: readonly ShipmentAlertIncidentRecordReadModel[]
 }
 
 export type ShipmentAlertIncidentsReadModel = {
@@ -94,9 +84,6 @@ type PendingShipmentAlertIncidentMember = {
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAt: string
   readonly records: readonly ShipmentAlertIncidentRecordReadModel[]
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -112,7 +99,6 @@ type TransshipmentAlert = Extract<
   TrackingAlert,
   { readonly message_key: 'alerts.transshipmentDetected' }
 >
-type NoMovementAlert = Extract<TrackingAlert, { readonly message_key: 'alerts.noMovementDetected' }>
 type CustomsHoldAlert = Extract<
   TrackingAlert,
   { readonly message_key: 'alerts.customsHoldDetected' }
@@ -120,10 +106,6 @@ type CustomsHoldAlert = Extract<
 
 function isTransshipmentAlert(alert: TrackingAlert): alert is TransshipmentAlert {
   return alert.type === 'TRANSSHIPMENT' && alert.message_key === 'alerts.transshipmentDetected'
-}
-
-function isNoMovementAlert(alert: TrackingAlert): alert is NoMovementAlert {
-  return alert.type === 'NO_MOVEMENT' && alert.message_key === 'alerts.noMovementDetected'
 }
 
 function isCustomsHoldAlert(alert: TrackingAlert): alert is CustomsHoldAlert {
@@ -139,37 +121,21 @@ function toLifecycleState(alert: TrackingAlert): TrackingAlertLifecycleState {
 }
 
 function toAlertRecord(alert: TrackingAlert): ShipmentAlertIncidentRecordReadModel {
-  const lifecycleState = toLifecycleState(alert)
-  const thresholdDays = isNoMovementAlert(alert) ? alert.message_params.threshold_days : null
-  const daysWithoutMovement = isNoMovementAlert(alert)
-    ? alert.message_params.days_without_movement
-    : null
-  const lastEventDate = isNoMovementAlert(alert) ? alert.message_params.lastEventDate : null
-
   return {
     alertId: alert.id,
-    lifecycleState,
+    lifecycleState: toLifecycleState(alert),
     detectedAt: alert.detected_at,
     triggeredAt: alert.triggered_at,
     ackedAt: alert.acked_at,
     resolvedAt: alert.resolved_at ?? null,
     resolvedReason: alert.resolved_reason ?? null,
-    thresholdDays,
-    daysWithoutMovement,
-    lastEventDate,
   }
 }
 
 function toRepresentativeRecords<TAlert extends TrackingAlert>(
   alerts: readonly TAlert[],
 ): readonly ShipmentAlertIncidentRecordReadModel[] {
-  return [...alerts].map(toAlertRecord).sort((left, right) => {
-    const thresholdCompare = (left.thresholdDays ?? -1) - (right.thresholdDays ?? -1)
-    if (thresholdCompare !== 0) return thresholdCompare
-    const triggeredAtCompare = left.triggeredAt.localeCompare(right.triggeredAt)
-    if (triggeredAtCompare !== 0) return triggeredAtCompare
-    return left.alertId.localeCompare(right.alertId)
-  })
+  return [...alerts].map(toAlertRecord).sort(compareAlertRecordsByActionTimeDesc)
 }
 
 function toMessageParams(
@@ -192,8 +158,6 @@ function toIncidentCategory(type: TrackingAlertType): ShipmentAlertIncidentCateg
       return 'movement'
     case 'CUSTOMS_HOLD':
       return 'customs'
-    case 'NO_MOVEMENT':
-      return 'status'
     case 'ETA_MISSING':
     case 'ETA_PASSED':
       return 'eta'
@@ -288,31 +252,6 @@ function toLatestTriggeredAt(members: readonly PendingShipmentAlertIncidentMembe
   }
 
   return latest
-}
-
-function toLatestLastEventDate(
-  members: readonly PendingShipmentAlertIncidentMember[],
-): string | null {
-  const latest = [...members]
-    .map((member) => member.lastEventDate)
-    .filter((value): value is string => value !== null)
-    .sort((left, right) => right.localeCompare(left))[0]
-
-  return latest ?? null
-}
-
-function toMonitoringHistory(
-  members: readonly PendingShipmentAlertIncidentMember[],
-): readonly ShipmentAlertIncidentRecordReadModel[] {
-  return [...members]
-    .flatMap((member) => member.records)
-    .sort((left, right) => {
-      const thresholdCompare = (left.thresholdDays ?? -1) - (right.thresholdDays ?? -1)
-      if (thresholdCompare !== 0) return thresholdCompare
-      const lastEventCompare = (left.lastEventDate ?? '').localeCompare(right.lastEventDate ?? '')
-      if (lastEventCompare !== 0) return lastEventCompare
-      return compareAlertRecordsByActionTimeDesc(left, right)
-    })
 }
 
 function serializeMessageParams(
@@ -445,9 +384,6 @@ function buildTransshipmentMembers(
       lifecycleState,
       detectedAt: representative.detected_at,
       records,
-      thresholdDays: null,
-      daysWithoutMovement: null,
-      lastEventDate: null,
       transshipmentOrder,
       port,
       fromVessel,
@@ -463,92 +399,10 @@ function buildTransshipmentMembers(
   })
 }
 
-function toNoMovementCycleKey(alert: NoMovementAlert): string {
-  const fingerprint = alert.source_observation_fingerprints[0]
-  if (typeof fingerprint === 'string' && fingerprint.length > 0) {
-    return `fp:${fingerprint}`
-  }
-
-  return `date:${alert.message_params.lastEventDate}`
-}
-
-function buildNoMovementMembers(
-  container: ContainerAlertsInput,
-): readonly PendingShipmentAlertIncidentMember[] {
-  const noMovementAlerts = container.alerts.filter(isNoMovementAlert)
-  if (noMovementAlerts.length === 0) return []
-
-  const groupedByCycle = new Map<string, NoMovementAlert[]>()
-  for (const alert of noMovementAlerts) {
-    const cycleKey = toNoMovementCycleKey(alert)
-    const group = groupedByCycle.get(cycleKey)
-    if (group === undefined) {
-      groupedByCycle.set(cycleKey, [alert])
-      continue
-    }
-
-    group.push(alert)
-  }
-
-  return [...groupedByCycle.entries()].map(([cycleKey, alerts]) => {
-    const activeAlerts = alerts.filter((alert) => toLifecycleState(alert) === 'ACTIVE')
-    const candidateAlerts = activeAlerts.length > 0 ? activeAlerts : alerts
-    const representative = [...candidateAlerts].sort((left, right) => {
-      const thresholdCompare =
-        right.message_params.threshold_days - left.message_params.threshold_days
-      if (thresholdCompare !== 0) return thresholdCompare
-      const actionCompare = (
-        right.acked_at ??
-        right.resolved_at ??
-        right.triggered_at
-      ).localeCompare(left.acked_at ?? left.resolved_at ?? left.triggered_at)
-      if (actionCompare !== 0) return actionCompare
-      return right.id.localeCompare(left.id)
-    })[0]
-
-    if (representative === undefined) {
-      throw new Error('shipment alert incidents: NO_MOVEMENT representative missing')
-    }
-
-    const records = toRepresentativeRecords(alerts)
-    const lifecycleState = toMemberLifecycleState(records)
-
-    return {
-      incidentKey: `NO_MOVEMENT:${representative.message_params.threshold_days}:${cycleKey}`,
-      category: 'status',
-      type: 'NO_MOVEMENT',
-      severity: representative.severity,
-      messageKey: representative.message_key,
-      messageParams: toMessageParams(representative.message_params),
-      containerId: container.containerId,
-      containerNumber: container.containerNumber,
-      lifecycleState,
-      detectedAt: representative.detected_at,
-      records,
-      thresholdDays: representative.message_params.threshold_days,
-      daysWithoutMovement: representative.message_params.days_without_movement,
-      lastEventDate: representative.message_params.lastEventDate,
-      transshipmentOrder: null,
-      port: null,
-      fromVessel: null,
-      toVessel: null,
-      triggeredAt: representative.triggered_at,
-      activeAlertIds: records
-        .filter((record) => record.lifecycleState === 'ACTIVE')
-        .map((record) => record.alertId),
-      ackedAlertIds: records
-        .filter((record) => record.lifecycleState === 'ACKED')
-        .map((record) => record.alertId),
-    }
-  })
-}
-
 function buildGenericMembers(
   container: ContainerAlertsInput,
 ): readonly PendingShipmentAlertIncidentMember[] {
-  const genericAlerts = container.alerts.filter(
-    (alert) => alert.type !== 'TRANSSHIPMENT' && alert.type !== 'NO_MOVEMENT',
-  )
+  const genericAlerts = container.alerts.filter((alert) => alert.type !== 'TRANSSHIPMENT')
   if (genericAlerts.length === 0) return []
 
   const groupedByIncidentKey = new Map<string, TrackingAlert[]>()
@@ -580,9 +434,6 @@ function buildGenericMembers(
       lifecycleState: toMemberLifecycleState(records),
       detectedAt: representative.detected_at,
       records,
-      thresholdDays: null,
-      daysWithoutMovement: null,
-      lastEventDate: null,
       transshipmentOrder: null,
       port: null,
       fromVessel: null,
@@ -603,7 +454,6 @@ function buildPendingMembers(
 ): readonly PendingShipmentAlertIncidentMember[] {
   return command.containers.flatMap((container) => [
     ...buildTransshipmentMembers(container),
-    ...buildNoMovementMembers(container),
     ...buildGenericMembers(container),
   ])
 }
@@ -688,9 +538,6 @@ export function buildShipmentAlertIncidentsReadModel(
       messageParams: representativeMember.messageParams,
       detectedAt: toEarliestDetectedAt(sortedMembers),
       triggeredAt: toLatestTriggeredAt(sortedMembers),
-      thresholdDays: representativeMember.thresholdDays,
-      daysWithoutMovement: representativeMember.daysWithoutMovement,
-      lastEventDate: toLatestLastEventDate(sortedMembers),
       transshipmentOrder: representativeMember.transshipmentOrder,
       port: representativeMember.port,
       fromVessel: representativeMember.fromVessel,
@@ -704,16 +551,11 @@ export function buildShipmentAlertIncidentsReadModel(
         lifecycleState: member.lifecycleState,
         detectedAt: member.detectedAt,
         records: [...member.records].sort(compareAlertRecordsByActionTimeDesc),
-        thresholdDays: member.thresholdDays,
-        daysWithoutMovement: member.daysWithoutMovement,
-        lastEventDate: member.lastEventDate,
         transshipmentOrder: member.transshipmentOrder,
         port: member.port,
         fromVessel: member.fromVessel,
         toVessel: member.toVessel,
       })),
-      monitoringHistory:
-        representativeMember.type === 'NO_MOVEMENT' ? toMonitoringHistory(sortedMembers) : [],
     } satisfies ShipmentAlertIncidentReadModel
   })
 

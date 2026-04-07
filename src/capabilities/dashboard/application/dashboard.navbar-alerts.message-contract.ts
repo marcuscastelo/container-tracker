@@ -36,26 +36,6 @@ function isCustomsHoldParams(
   )
 }
 
-function isNoMovementParams(
-  params: TrackingActiveAlertReadModel['message_params'],
-): params is Extract<
-  NavbarAlertMessageContract,
-  { messageKey: 'alerts.noMovementDetected' }
->['messageParams'] {
-  return (
-    typeof params === 'object' &&
-    params !== null &&
-    'threshold_days' in params &&
-    typeof params.threshold_days === 'number' &&
-    'days_without_movement' in params &&
-    typeof params.days_without_movement === 'number' &&
-    'days' in params &&
-    typeof params.days === 'number' &&
-    'lastEventDate' in params &&
-    typeof params.lastEventDate === 'string'
-  )
-}
-
 export function toAlertItemReadModel(
   alert: TrackingActiveAlertReadModel,
 ): NavbarAlertItemReadModel {
@@ -83,19 +63,6 @@ export function toAlertItemReadModel(
       }
     case 'alerts.customsHoldDetected':
       if (!isCustomsHoldParams(alert.message_params)) {
-        return {
-          ...baseAlert,
-          messageKey: 'alerts.dataInconsistent',
-          messageParams: {},
-        }
-      }
-      return {
-        ...baseAlert,
-        messageKey: alert.message_key,
-        messageParams: alert.message_params,
-      }
-    case 'alerts.noMovementDetected':
-      if (!isNoMovementParams(alert.message_params)) {
         return {
           ...baseAlert,
           messageKey: 'alerts.dataInconsistent',

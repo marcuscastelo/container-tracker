@@ -363,7 +363,7 @@ describe('aggregateOperationalSummary', () => {
     const summaries = [
       makeSummary({
         alerts: [
-          makeAlert({ id: 'a1', severity: 'info', type: 'NO_MOVEMENT' }),
+          makeAlert({ id: 'a1', severity: 'info', type: 'ETA_PASSED' }),
           makeAlert({ id: 'a2', severity: 'warning', type: 'TRANSSHIPMENT' }),
         ],
       }),
@@ -383,7 +383,7 @@ describe('aggregateOperationalSummary', () => {
         alerts: [
           makeAlert({
             severity: 'info',
-            type: 'NO_MOVEMENT',
+            type: 'ETA_PASSED',
             triggered_at: '2026-03-03T10:00:00.000Z',
           }),
         ],
@@ -411,7 +411,7 @@ describe('aggregateOperationalSummary', () => {
         alerts: [
           makeAlert({
             severity: 'info',
-            type: 'NO_MOVEMENT',
+            type: 'ETA_PASSED',
             triggered_at: '2026-03-03T09:00:00.000Z',
           }),
           makeAlert({
@@ -441,7 +441,7 @@ describe('aggregateOperationalSummary', () => {
           makeAlert({
             id: 'a1',
             severity: 'warning',
-            type: 'NO_MOVEMENT',
+            type: 'ETA_PASSED',
             triggered_at: '2026-03-03T10:00:00.000Z',
           }),
         ],
@@ -514,7 +514,7 @@ describe('aggregateOperationalSummary', () => {
   it('returns false for transshipment when no such alert', () => {
     const summaries = [
       makeSummary({
-        alerts: [makeAlert({ type: 'NO_MOVEMENT' })],
+        alerts: [makeAlert({ type: 'ETA_PASSED' })],
       }),
     ]
 

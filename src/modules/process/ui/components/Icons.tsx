@@ -31,8 +31,6 @@ export function ArrowIcon(): JSX.Element {
 export function AlertIcon(props: { readonly type: AlertDisplayVM['type'] }): JSX.Element {
   const colorClass = () => {
     switch (props.type) {
-      case 'delay':
-        return 'text-tone-danger-strong'
       case 'customs':
         return 'text-tone-warning-strong'
       case 'missing-eta':
@@ -57,7 +55,6 @@ export function AlertIcon(props: { readonly type: AlertDisplayVM['type'] }): JSX
 
   const iconPath = () => {
     switch (props.type) {
-      case 'delay':
       case 'missing-eta':
         return delayPath()
       case 'transshipment':

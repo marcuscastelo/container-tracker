@@ -3,10 +3,7 @@ import {
   deriveAlerts,
   deriveTransshipment,
 } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
-import {
-  computeAlertFingerprint,
-  computeNoMovementAlertFingerprint,
-} from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
+import { computeAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
@@ -825,349 +822,24 @@ describe('deriveAlerts', () => {
     })
   })
 
-  describe('NO_MOVEMENT alert (monitoring)', () => {
-    it('emits NO_MOVEMENT(5) when the first breakpoint is crossed', () => {
-      const now = instantFromIsoText('2025-11-07T00:00:00.000Z')
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2025-11-01T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000011',
-          fingerprint: 'fp-breakpoint-5',
-        }),
-      ])
-
-      const alerts = deriveAlerts(timeline, 'LOADED', [], false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeDefined()
-      expect(noMoveAlert?.category).toBe('monitoring')
-      expect(noMoveAlert?.retroactive).toBe(false)
-      expect(noMoveAlert?.alert_fingerprint).toBe(
-        computeNoMovementAlertFingerprint(CONTAINER_ID, 5, '2025-11-01'),
-      )
-      expect(noMoveAlert?.message_key).toBe('alerts.noMovementDetected')
-      expect(noMoveAlert?.message_params).toEqual({
-        threshold_days: 5,
-        days_without_movement: 6,
-        days: 6,
-        lastEventDate: '2025-11-01',
-      })
-    })
-
-    it('emits NO_MOVEMENT(10) when escalation threshold is crossed', () => {
-      const now = instantFromIsoText('2025-11-12T00:00:00.000Z')
-      const cycleAnchorFingerprint = 'fp-breakpoint-10'
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2025-11-01T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000012',
-          fingerprint: cycleAnchorFingerprint,
-        }),
-      ])
-
-      const existingAlerts = [
-        {
-          id: '00000000-0000-0000-0000-999999999997',
-          container_id: CONTAINER_ID,
-          category: 'monitoring' as const,
-          type: 'NO_MOVEMENT' as const,
-          severity: 'warning' as const,
-          message_key: 'alerts.noMovementDetected' as const,
-          message_params: {
-            threshold_days: 5,
-            days_without_movement: 6,
-            days: 6,
-            lastEventDate: '2025-11-01',
-          },
-          detected_at: '2025-11-07T00:00:00.000Z',
-          triggered_at: '2025-11-07T00:00:00.000Z',
-          source_observation_fingerprints: [cycleAnchorFingerprint],
-          alert_fingerprint: computeNoMovementAlertFingerprint(CONTAINER_ID, 5, '2025-11-01'),
-          retroactive: false,
-          provider: null,
-          acked_at: '2025-11-08T00:00:00.000Z',
-          acked_by: 'operator@test',
-          acked_source: 'dashboard' as const,
-        },
-      ]
-
-      const alerts = deriveAlerts(timeline, 'LOADED', existingAlerts, false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeDefined()
-      expect(noMoveAlert?.message_params).toEqual({
-        threshold_days: 10,
-        days_without_movement: 11,
-        days: 11,
-        lastEventDate: '2025-11-01',
-      })
-      expect(noMoveAlert?.alert_fingerprint).toBe(
-        computeNoMovementAlertFingerprint(CONTAINER_ID, 10, '2025-11-01'),
-      )
-    })
-
-    it('does not re-emit when the highest crossed breakpoint was already emitted in this cycle', () => {
-      const now = instantFromIsoText('2025-11-13T00:00:00.000Z')
-      const cycleAnchorFingerprint = 'fp-breakpoint-12'
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2025-11-01T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000013',
-          fingerprint: cycleAnchorFingerprint,
-        }),
-      ])
-
-      const existingAlerts = [
-        {
-          id: '00000000-0000-0000-0000-999999999995',
-          container_id: CONTAINER_ID,
-          category: 'monitoring' as const,
-          type: 'NO_MOVEMENT' as const,
-          severity: 'warning' as const,
-          message_key: 'alerts.noMovementDetected' as const,
-          message_params: {
-            threshold_days: 5,
-            days_without_movement: 5,
-            days: 5,
-            lastEventDate: '2025-11-01',
-          },
-          detected_at: '2025-11-06T00:00:00.000Z',
-          triggered_at: '2025-11-06T00:00:00.000Z',
-          source_observation_fingerprints: [cycleAnchorFingerprint],
-          alert_fingerprint: computeNoMovementAlertFingerprint(CONTAINER_ID, 5, '2025-11-01'),
-          retroactive: false,
-          provider: null,
-          acked_at: null,
-          acked_by: null,
-          acked_source: null,
-        },
-        {
-          id: '00000000-0000-0000-0000-999999999994',
-          container_id: CONTAINER_ID,
-          category: 'monitoring' as const,
-          type: 'NO_MOVEMENT' as const,
-          severity: 'warning' as const,
-          message_key: 'alerts.noMovementDetected' as const,
-          message_params: {
-            threshold_days: 10,
-            days_without_movement: 10,
-            days: 10,
-            lastEventDate: '2025-11-01',
-          },
-          detected_at: '2025-11-11T00:00:00.000Z',
-          triggered_at: '2025-11-11T00:00:00.000Z',
-          source_observation_fingerprints: [cycleAnchorFingerprint],
-          alert_fingerprint: computeNoMovementAlertFingerprint(CONTAINER_ID, 10, '2025-11-01'),
-          retroactive: false,
-          provider: null,
-          acked_at: '2025-11-12T00:00:00.000Z',
-          acked_by: 'operator@test',
-          acked_source: 'dashboard' as const,
-        },
-      ]
-
-      const alerts = deriveAlerts(timeline, 'LOADED', existingAlerts, false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
-    })
-
-    it('does not re-emit after ACK + resync for legacy 7-day NO_MOVEMENT alerts', () => {
-      const now = instantFromIsoText('2026-03-09T00:00:00.000Z')
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2026-03-02T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000091',
-          fingerprint: 'fp-cycle-current',
-        }),
-      ])
-
-      const existingAlerts = [
-        {
-          id: '00000000-0000-0000-0000-999999999990',
-          container_id: CONTAINER_ID,
-          category: 'monitoring' as const,
-          type: 'NO_MOVEMENT' as const,
-          severity: 'warning' as const,
-          message_key: 'alerts.noMovementDetected' as const,
-          message_params: {
-            // Legacy data: threshold mirrored the days value (7), not the breakpoint (5).
-            threshold_days: 7,
-            days_without_movement: 7,
-            days: 7,
-            lastEventDate: '2026-03-02',
-          },
-          detected_at: '2026-03-09T00:00:00.000Z',
-          triggered_at: '2026-03-09T00:00:00.000Z',
-          source_observation_fingerprints: ['fp-legacy-anchor'],
-          alert_fingerprint: null,
-          retroactive: false,
-          provider: null,
-          acked_at: '2026-03-09T00:01:00.000Z',
-          acked_by: 'operator@test',
-          acked_source: 'dashboard' as const,
-        },
-      ]
-
-      const alerts = deriveAlerts(timeline, 'LOADED', existingAlerts, false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
-    })
-
-    it('does not re-emit when there are 0 active alerts and 1 acknowledged alert for the same cycle anchor fingerprint', () => {
-      const now = instantFromIsoText('2026-03-09T00:00:00.000Z')
-      const cycleAnchorFingerprint = 'fp-cycle-current-anchor'
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2026-03-02T15:30:00.000Z',
-          id: '00000000-0000-0000-0000-000000000092',
-          fingerprint: cycleAnchorFingerprint,
-        }),
-      ])
-
-      const existingAlerts = [
-        {
-          id: '00000000-0000-0000-0000-999999999989',
-          container_id: CONTAINER_ID,
-          category: 'monitoring' as const,
-          type: 'NO_MOVEMENT' as const,
-          severity: 'warning' as const,
-          message_key: 'alerts.noMovementDetected' as const,
-          message_params: {
-            threshold_days: 5,
-            days_without_movement: 7,
-            days: 7,
-            // Simulate a legacy/unstable date anchor while keeping the same cycle evidence.
-            lastEventDate: '2026-03-01',
-          },
-          detected_at: '2026-03-09T00:00:00.000Z',
-          triggered_at: '2026-03-09T00:00:00.000Z',
-          source_observation_fingerprints: [cycleAnchorFingerprint],
-          alert_fingerprint: null,
-          retroactive: false,
-          provider: null,
-          acked_at: '2026-03-09T00:01:00.000Z',
-          acked_by: 'operator@test',
-          acked_source: 'dashboard' as const,
-        },
-      ]
-
-      const alerts = deriveAlerts(timeline, 'LOADED', existingAlerts, false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
-    })
-
-    it('restarts from NO_MOVEMENT(5) after a new ACTUAL movement event', () => {
-      const now = instantFromIsoText('2025-11-21T00:00:00.000Z')
-      const oldCycleAnchor = 'fp-old-cycle'
-      const newCycleAnchor = 'fp-new-cycle'
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2025-11-01T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000014',
-          fingerprint: oldCycleAnchor,
-        }),
-        makeObs({
-          type: 'DISCHARGE',
-          event_time: '2025-11-15T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000015',
-          fingerprint: newCycleAnchor,
-        }),
-      ])
-
-      const existingAlerts = [
-        {
-          id: '00000000-0000-0000-0000-999999999993',
-          container_id: CONTAINER_ID,
-          category: 'monitoring' as const,
-          type: 'NO_MOVEMENT' as const,
-          severity: 'warning' as const,
-          message_key: 'alerts.noMovementDetected' as const,
-          message_params: {
-            threshold_days: 10,
-            days_without_movement: 11,
-            days: 11,
-            lastEventDate: '2025-11-01',
-          },
-          detected_at: '2025-11-12T00:00:00.000Z',
-          triggered_at: '2025-11-12T00:00:00.000Z',
-          source_observation_fingerprints: [oldCycleAnchor],
-          alert_fingerprint: computeNoMovementAlertFingerprint(CONTAINER_ID, 10, '2025-11-01'),
-          retroactive: false,
-          provider: null,
-          acked_at: '2025-11-13T00:00:00.000Z',
-          acked_by: 'operator@test',
-          acked_source: 'dashboard' as const,
-        },
-      ]
-
-      const alerts = deriveAlerts(timeline, 'DISCHARGED', existingAlerts, false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeDefined()
-      expect(noMoveAlert?.message_params).toEqual({
-        threshold_days: 5,
-        days_without_movement: 6,
-        days: 6,
-        lastEventDate: '2025-11-15',
-      })
-      expect(noMoveAlert?.source_observation_fingerprints).toEqual([newCycleAnchor])
-      expect(noMoveAlert?.alert_fingerprint).toBe(
-        computeNoMovementAlertFingerprint(CONTAINER_ID, 5, '2025-11-15'),
-      )
-    })
-
-    it('should NOT create NO_MOVEMENT alert during backfill', () => {
+  describe('monitoring alert removal', () => {
+    it('does not derive alerts for stale timelines without fact-based signals', () => {
       const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
           type: 'LOAD',
           event_time: '2025-11-01T00:00:00.000Z',
           id: '00000000-0000-0000-0000-000000000016',
-          fingerprint: 'fp-backfill',
+          fingerprint: 'fp-stale-load',
         }),
       ])
 
-      const alerts = deriveAlerts(timeline, 'LOADED', [], true, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
+      const alerts = deriveAlerts(timeline, 'LOADED', [], false, now)
+
+      expect(alerts).toEqual([])
     })
 
-    it('should NOT create NO_MOVEMENT alert for DELIVERED containers', () => {
-      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'DELIVERY',
-          event_time: '2025-11-01T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000017',
-          fingerprint: 'fp-delivered',
-        }),
-      ])
-
-      const alerts = deriveAlerts(timeline, 'DELIVERED', [], false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
-    })
-
-    it('should NOT create NO_MOVEMENT alert for EMPTY_RETURNED containers', () => {
-      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'EMPTY_RETURN',
-          event_time: '2025-11-01T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000018',
-          fingerprint: 'fp-empty-returned',
-        }),
-      ])
-
-      const alerts = deriveAlerts(timeline, 'EMPTY_RETURNED', [], false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
-    })
-
-    it('should keep alerts empty for a closed lifecycle DISCHARGED -> DELIVERY -> EMPTY_RETURN', () => {
+    it('keeps alerts empty for a closed lifecycle DISCHARGED -> DELIVERY -> EMPTY_RETURN', () => {
       const now = instantFromIsoText('2026-03-20T00:00:00.000Z')
       const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
         makeObs({
@@ -1195,22 +867,6 @@ describe('deriveAlerts', () => {
 
       const alerts = deriveAlerts(timeline, status, [], false, now)
       expect(alerts).toEqual([])
-    })
-
-    it('should NOT create NO_MOVEMENT alert when no breakpoint is crossed', () => {
-      const now = instantFromIsoText('2025-11-20T00:00:00.000Z')
-      const timeline = deriveTimeline(CONTAINER_ID, CONTAINER_NUMBER, [
-        makeObs({
-          type: 'LOAD',
-          event_time: '2025-11-18T00:00:00.000Z',
-          id: '00000000-0000-0000-0000-000000000019',
-          fingerprint: 'fp-recent',
-        }),
-      ])
-
-      const alerts = deriveAlerts(timeline, 'LOADED', [], false, now)
-      const noMoveAlert = alerts.find((a) => a.type === 'NO_MOVEMENT')
-      expect(noMoveAlert).toBeUndefined()
     })
   })
 })

@@ -1,12 +1,11 @@
 export type AlertDisplayVM = {
   readonly id: string
-  readonly type: 'delay' | 'customs' | 'missing-eta' | 'transshipment' | 'info'
+  readonly type: 'customs' | 'missing-eta' | 'transshipment' | 'info'
   readonly severity: 'info' | 'warning' | 'danger'
   readonly containerNumber: string
   readonly messageKey:
     | 'alerts.transshipmentDetected'
     | 'alerts.customsHoldDetected'
-    | 'alerts.noMovementDetected'
     | 'alerts.etaMissing'
     | 'alerts.etaPassed'
     | 'alerts.portChange'

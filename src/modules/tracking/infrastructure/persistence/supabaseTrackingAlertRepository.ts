@@ -7,10 +7,6 @@ import type {
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import { resolveAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import {
-  toNoMovementDedupKeysFromAlert,
-  toNoMovementDedupKeysFromRow,
-} from '~/modules/tracking/infrastructure/persistence/tracking.alert-no-movement.dedup'
-import {
   alertRowToDerivationState,
   alertRowToDomain,
   alertToInsertRow,
@@ -31,13 +27,27 @@ const TRACKING_ALERT_DOMAIN_SELECT =
 // `alertRowToDomain` (tracking.persistence.mappers). We prefer reusing that
 // centralized mapper to avoid duplication of enum logic here.
 
+type LegacyNoMovementAlertRow = {
+  readonly type?: unknown
+  readonly message_key?: unknown
+}
+
+function isLegacyNoMovementAlertRow(row: LegacyNoMovementAlertRow): boolean {
+  return row.type === 'NO_MOVEMENT' || row.message_key === 'alerts.noMovementDetected'
+}
+
+function filterLegacyNoMovementAlertRows<TRow extends LegacyNoMovementAlertRow>(
+  rows: readonly TRow[],
+): readonly TRow[] {
+  return rows.filter((row) => !isLegacyNoMovementAlertRow(row))
+}
+
 export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
   async insertMany(alerts: readonly NewTrackingAlert[]): Promise<readonly TrackingAlert[]> {
     if (alerts.length === 0) return []
 
     // Deduplicate inside the same batch before hitting the DB.
     const seenFingerprintKeysInBatch = new Set<string>()
-    const seenNoMovementKeysInBatch = new Set<string>()
     const dedupedAlerts: NewTrackingAlert[] = []
     for (const alert of alerts) {
       const fingerprint = alert.alert_fingerprint
@@ -47,15 +57,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         seenFingerprintKeysInBatch.add(fingerprintKey)
       }
 
-      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
-      if (noMovementKeys.length > 0) {
-        const alreadySeen = noMovementKeys.some((key) => seenNoMovementKeysInBatch.has(key))
-        if (alreadySeen) continue
-        for (const key of noMovementKeys) {
-          seenNoMovementKeysInBatch.add(key)
-        }
-      }
-
       dedupedAlerts.push(alert)
     }
 
@@ -63,15 +64,10 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
 
     const containerIds = Array.from(new Set(dedupedAlerts.map((alert) => alert.container_id)))
     const incomingFingerprintKeys = new Set<string>()
-    const incomingNoMovementKeys = new Set<string>()
 
     for (const alert of dedupedAlerts) {
       if (alert.alert_fingerprint !== null) {
         incomingFingerprintKeys.add(`${alert.container_id}|${alert.alert_fingerprint}`)
-      }
-      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
-      for (const key of noMovementKeys) {
-        incomingNoMovementKeys.add(key)
       }
     }
 
@@ -109,39 +105,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       }
     }
 
-    const existingNoMovementKeys = new Set<string>()
-    if (containerIds.length > 0 && incomingNoMovementKeys.size > 0) {
-      const existingNoMovementRowsResult = await measureAuditedReadQuery({
-        table: TABLE,
-        operation: 'insertMany.findExistingNoMovement',
-        query: () =>
-          supabase
-            .from(TABLE)
-            .select(
-              'container_id, category, type, message_key, message_params, source_observation_fingerprints',
-            )
-            .in('container_id', containerIds)
-            .eq('category', 'monitoring')
-            .eq('type', 'NO_MOVEMENT')
-            .eq('message_key', 'alerts.noMovementDetected')
-            .eq('lifecycle_state', 'ACTIVE'),
-        resultSelector: (queryResult) => queryResult.data ?? [],
-      })
-
-      const existingNoMovementRows =
-        unwrapSupabaseResultOrThrow(existingNoMovementRowsResult, {
-          operation: 'insertMany.findExistingNoMovement',
-          table: TABLE,
-        }) ?? []
-
-      for (const row of existingNoMovementRows) {
-        const dedupKeys = toNoMovementDedupKeysFromRow(row)
-        for (const key of dedupKeys) {
-          existingNoMovementKeys.add(key)
-        }
-      }
-    }
-
     const alertsToInsert = dedupedAlerts.filter((alert) => {
       if (alert.category !== 'monitoring' && alert.alert_fingerprint !== null) {
         const fingerprintKey = `${alert.container_id}|${alert.alert_fingerprint}`
@@ -151,11 +114,6 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         ) {
           return false
         }
-      }
-
-      const noMovementKeys = toNoMovementDedupKeysFromAlert(alert)
-      if (noMovementKeys.some((key) => existingNoMovementKeys.has(key))) {
-        return false
       }
 
       return true
@@ -180,7 +138,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findActiveByContainerId(containerId: string): Promise<readonly TrackingAlert[]> {
@@ -203,7 +161,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findActiveByContainerIds(
@@ -231,7 +189,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findActiveTypesByContainerId(containerId: string): Promise<ReadonlySet<string>> {
@@ -247,7 +205,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     })
 
     const types = new Set<string>()
-    for (const row of data ?? []) {
+    for (const row of filterLegacyNoMovementAlertRows(data ?? [])) {
       if (row && typeof row.type === 'string') types.add(row.type)
     }
     return types
@@ -272,7 +230,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findByContainerIds(containerIds: readonly string[]): Promise<readonly TrackingAlert[]> {
@@ -297,7 +255,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDomain)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDomain)
   },
 
   async findAlertDerivationStateByContainerId(containerId: string) {
@@ -315,7 +273,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
       table: TABLE,
     })
 
-    return (data ?? []).map(alertRowToDerivationState)
+    return filterLegacyNoMovementAlertRows(data ?? []).map(alertRowToDerivationState)
   },
 
   async findContainerNumbersByIds(
@@ -367,12 +325,13 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
         operation: 'listActiveAlertReadModel.alerts',
         table: TABLE,
       }) ?? []
+    const visibleAlertRows = filterLegacyNoMovementAlertRows(alertRows)
 
-    if (alertRows.length === 0) {
+    if (visibleAlertRows.length === 0) {
       return []
     }
 
-    const containerIds = Array.from(new Set(alertRows.map((row) => row.container_id)))
+    const containerIds = Array.from(new Set(visibleAlertRows.map((row) => row.container_id)))
 
     const containersResult = await measureAuditedReadQuery({
       table: CONTAINERS_TABLE,
@@ -393,7 +352,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     }
 
     const readModel: TrackingActiveAlertReadModel[] = []
-    for (const row of alertRows) {
+    for (const row of visibleAlertRows) {
       const processId = processIdByContainerId.get(row.container_id)
       if (!processId) {
         // Fail fast: missing container/process mapping indicates a data integrity
