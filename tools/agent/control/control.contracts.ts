@@ -1,12 +1,7 @@
+import { ControlStateSnapshotSchema } from '@tools/agent/control/control.state'
 import { z } from 'zod/v4'
 
-import { ControlStateSnapshotSchema } from './control.state.ts'
-
-export const ControlCommandExecutionStatusSchema = z.enum([
-  'accepted',
-  'completed',
-  'failed',
-])
+export const ControlCommandExecutionStatusSchema = z.enum(['accepted', 'completed', 'failed'])
 
 export const ControlCommandResultSchema = z.object({
   commandId: z.string().uuid(),

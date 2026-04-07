@@ -24,8 +24,6 @@ import {
   buildAgentControlPaths,
   readAgentControlPublicState,
 } from '@tools/agent/control-core/public-control-state'
-import { resolveInstalledLinuxAgentPathLayout } from '@tools/agent/runtime-paths'
-import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import {
   AgentControlBackendUrlInputSchema,
   type AgentControlBlockedVersionsInputSchema,
@@ -34,6 +32,8 @@ import {
   type AgentControlLogsQuerySchema,
   type AgentControlReleaseVersionInputSchema,
 } from '@tools/agent/electron/ipc'
+import type { AgentPathLayout } from '@tools/agent/runtime-paths'
+import { resolveInstalledLinuxAgentPathLayout } from '@tools/agent/runtime-paths'
 import type { z } from 'zod/v4'
 
 function toErrorMessage(error: unknown): string {

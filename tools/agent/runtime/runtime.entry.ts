@@ -41,10 +41,6 @@ import { resolveAgentPlatformKey } from '../platform/platform.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { readReleaseState, writeReleaseState } from '../release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
-import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
-import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './paths.ts'
-// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { writeRuntimeHealth } from '../runtime-health.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import type { AgentPathLayout } from '../runtime-paths.ts'
@@ -58,6 +54,10 @@ import * as supervisorControl from '../supervisor-control.ts'
 import { resolveAutomaticUpdateChecksMode } from '../update-checks.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchUpdateManifest, stageReleaseFromManifest } from '../updater.core.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './lifecycle-exit-codes.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
+import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './paths.ts'
 
 function unquoteValue(value: string): string {
   if (value.length < 2) return value

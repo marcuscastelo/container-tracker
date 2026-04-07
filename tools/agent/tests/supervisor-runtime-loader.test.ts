@@ -16,6 +16,8 @@ describe('supervisor runtime alias loader resolution', () => {
     fs.writeFileSync(scriptPath, '', 'utf8')
     fs.writeFileSync(registerPath, '', 'utf8')
 
-    expect(resolveRuntimeExecArgv(scriptPath)).toEqual([`--import=${pathToFileURL(registerPath).href}`])
+    expect(resolveRuntimeExecArgv(scriptPath)).toEqual([
+      `--import=${pathToFileURL(registerPath).href}`,
+    ])
   })
 })

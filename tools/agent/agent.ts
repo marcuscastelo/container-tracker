@@ -1,3 +1,3 @@
 #!/usr/bin/env node
 
-import './runtime/runtime.entry.ts'
+import '@tools/agent/runtime/runtime.entry'

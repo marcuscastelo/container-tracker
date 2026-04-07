@@ -1,7 +1,7 @@
 import {
+  type AgentPathLayout,
   ensureAgentPathLayout,
   resolveAgentPathLayout,
-  type AgentPathLayout,
 } from '@tools/agent/runtime-paths'
 
 export function createAgentRuntimeBootstrap(): { readonly layout: AgentPathLayout } {

@@ -27,13 +27,13 @@ import {
   buildAgentReleaseInventory,
   readAgentControlPublicState,
 } from '@tools/agent/control-core/public-control-state'
+import { resolvePlatformAdapter } from '@tools/agent/platform/platform.adapter'
+import type { AgentPlatformControlAdapter } from '@tools/agent/platform/platform.contract'
 import {
   resolveReleaseEntrypoint,
   rollbackRelease as rollbackReleaseState,
 } from '@tools/agent/release-manager'
 import { readReleaseState, writeReleaseState } from '@tools/agent/release-state'
-import { resolvePlatformAdapter } from '@tools/agent/platform/platform.adapter'
-import type { AgentPlatformControlAdapter } from '@tools/agent/platform/platform.contract'
 import { resolveAgentPublicStatePath } from '@tools/agent/runtime/paths'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { writeSupervisorControl } from '@tools/agent/supervisor-control'

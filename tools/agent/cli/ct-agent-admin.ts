@@ -3,7 +3,7 @@
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-
+import { createBootstrapControlService } from '@tools/agent/bootstrap/create-control-service'
 import {
   AgentControlBackendStateSchema,
   AgentControlBackendUpdateResultSchema,
@@ -14,7 +14,6 @@ import {
   AgentOperationalSnapshotSchema,
   AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
-import { createBootstrapControlService } from '@tools/agent/bootstrap/create-control-service'
 import { writeAgentControlPublicBackendState } from '@tools/agent/control-core/public-control-files'
 import {
   readAgentControlPublicState,

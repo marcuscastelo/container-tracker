@@ -1,3 +1,3 @@
 #!/usr/bin/env node
 
-import './supervisor/supervisor.entry.ts'
+import '@tools/agent/supervisor/supervisor.entry'

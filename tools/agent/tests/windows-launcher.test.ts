@@ -29,7 +29,7 @@ describe('windows supervisor launcher', () => {
     const content = fs.readFileSync(agentTrayHostFileUrl, 'utf8')
 
     expect(content).toContain('register-alias-loader.js')
-    expect(content).toContain("\\app\\dist\\tools\\agent\\supervisor.js")
+    expect(content).toContain('\\app\\dist\\tools\\agent\\supervisor.js')
     expect(content).toContain('app\\dist\\tools\\agent\\agent.js')
     expect(content).not.toContain("Join-Path $installRoot 'app\\dist\\agent.js'")
   })

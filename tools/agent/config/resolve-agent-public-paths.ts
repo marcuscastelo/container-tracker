@@ -1,14 +1,29 @@
-export {
-  resolveAgentConfigDir,
-  resolveAgentDataDir,
-  resolveAgentDataDirFrom,
-  resolveAgentPublicBackendStatePath,
-  resolveAgentPublicLogsPath,
-  resolveAgentPublicStateDir,
-  resolveAgentPublicStateDirFrom,
-  resolveAgentPublicStatePath,
-  resolveLogsDir,
-  resolveReleaseStatePath,
-  type ResolveAgentDataDirCommand,
-  type ResolveAgentPublicStateDirCommand,
-} from '../runtime/paths.ts'
+import type {
+  ResolveAgentDataDirCommand as CanonicalResolveAgentDataDirCommand,
+  ResolveAgentPublicStateDirCommand as CanonicalResolveAgentPublicStateDirCommand,
+} from '@tools/agent/runtime/paths'
+import {
+  resolveAgentConfigDir as canonicalResolveAgentConfigDir,
+  resolveAgentDataDir as canonicalResolveAgentDataDir,
+  resolveAgentDataDirFrom as canonicalResolveAgentDataDirFrom,
+  resolveAgentPublicBackendStatePath as canonicalResolveAgentPublicBackendStatePath,
+  resolveAgentPublicLogsPath as canonicalResolveAgentPublicLogsPath,
+  resolveAgentPublicStateDir as canonicalResolveAgentPublicStateDir,
+  resolveAgentPublicStateDirFrom as canonicalResolveAgentPublicStateDirFrom,
+  resolveAgentPublicStatePath as canonicalResolveAgentPublicStatePath,
+  resolveLogsDir as canonicalResolveLogsDir,
+  resolveReleaseStatePath as canonicalResolveReleaseStatePath,
+} from '@tools/agent/runtime/paths'
+
+export type ResolveAgentDataDirCommand = CanonicalResolveAgentDataDirCommand
+export type ResolveAgentPublicStateDirCommand = CanonicalResolveAgentPublicStateDirCommand
+export const resolveAgentConfigDir = canonicalResolveAgentConfigDir
+export const resolveAgentDataDir = canonicalResolveAgentDataDir
+export const resolveAgentDataDirFrom = canonicalResolveAgentDataDirFrom
+export const resolveAgentPublicBackendStatePath = canonicalResolveAgentPublicBackendStatePath
+export const resolveAgentPublicLogsPath = canonicalResolveAgentPublicLogsPath
+export const resolveAgentPublicStateDir = canonicalResolveAgentPublicStateDir
+export const resolveAgentPublicStateDirFrom = canonicalResolveAgentPublicStateDirFrom
+export const resolveAgentPublicStatePath = canonicalResolveAgentPublicStatePath
+export const resolveLogsDir = canonicalResolveLogsDir
+export const resolveReleaseStatePath = canonicalResolveReleaseStatePath
