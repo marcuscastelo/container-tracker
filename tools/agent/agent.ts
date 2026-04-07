@@ -6,8 +6,14 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import { createClient } from '@supabase/supabase-js'
+import {
+  acknowledgeRemoteCommand,
+  applyRemoteCommand,
+  type ControlRuntimeConfig,
+  syncAgentControlState,
+} from '@tools/agent/control-core/agent-control-core'
+import { publishAgentControlPublicSnapshot } from '@tools/agent/control-core/public-control-files'
 import { z } from 'zod/v4'
-
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchCmaCgmStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/cmacgm.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -18,6 +24,8 @@ import { fetchMscStatus } from '../../src/modules/tracking/infrastructure/carrie
 import { fetchOneStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/one.fetcher.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchPilStatus } from '../../src/modules/tracking/infrastructure/carriers/fetchers/pil.fetcher.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import type { SyncRequestsRealtimeStatusUpdate } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { subscribeSyncRequestsByTenant } from '../../src/shared/supabase/sync-requests.realtime.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -34,6 +42,8 @@ import { resolveAgentPlatformKey } from './platform/platform.adapter.ts'
 import { readReleaseState, writeReleaseState } from './release-state.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { EXIT_FATAL, EXIT_UPDATE_RESTART } from './runtime/lifecycle-exit-codes.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime keeps Linux public-state path resolution local to runtime helpers.
+import { resolveAgentPublicBackendStatePath, resolveAgentPublicStatePath } from './runtime/paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { writeRuntimeHealth } from './runtime-health.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
@@ -44,6 +54,8 @@ import * as runtimePaths from './runtime-paths.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 // biome-ignore lint/performance/noNamespaceImport: Runtime keeps grouped imports stable to avoid formatter wrapping regressions.
 import * as supervisorControl from './supervisor-control.ts'
+// biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
+import { resolveAutomaticUpdateChecksMode } from './update-checks.ts'
 // biome-ignore lint/style/noRestrictedImports: Agent runtime uses Node --experimental-strip-types with direct .ts imports.
 import { fetchUpdateManifest, stageReleaseFromManifest } from './updater.core.ts'
 
@@ -84,6 +96,13 @@ function normalizeOptionalEnv(value: string | undefined): string | undefined {
   return normalized
 }
 
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  if (normalized.length === 0) return null
+  return normalized
+}
+
 function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
   const normalized = normalizeOptionalEnv(value)?.toLowerCase()
   if (!normalized) return fallback
@@ -91,10 +110,6 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
   if (normalized === '1' || normalized === 'true') return true
   if (normalized === '0' || normalized === 'false') return false
   return fallback
-}
-
-function isUpdateManifestChecksDisabled(config: RuntimeConfig): boolean {
-  return config.AGENT_UPDATE_MANIFEST_CHANNEL === 'disabled'
 }
 
 function sanitizeText(value: string, secrets: readonly string[]): string {
@@ -226,6 +241,85 @@ const bootstrapConfigSchema = z.object({
 })
 
 type BootstrapConfig = z.infer<typeof bootstrapConfigSchema>
+
+function toControlRuntimeConfig(config: RuntimeConfig): ControlRuntimeConfig {
+  return {
+    AGENT_ID: config.AGENT_ID,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+    BACKEND_URL: config.BACKEND_URL,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR ?? null,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ?? null,
+    SUPABASE_URL: config.SUPABASE_URL ?? null,
+    TENANT_ID: config.TENANT_ID,
+  }
+}
+
+function toRuntimeConfigFromControlConfig(config: ControlRuntimeConfig): RuntimeConfig {
+  return runtimeConfigSchema.parse({
+    BACKEND_URL: config.BACKEND_URL,
+    SUPABASE_URL: config.SUPABASE_URL ?? undefined,
+    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY ?? undefined,
+    AGENT_TOKEN: config.AGENT_TOKEN,
+    TENANT_ID: config.TENANT_ID,
+    AGENT_ID: config.AGENT_ID,
+    INTERVAL_SEC: config.INTERVAL_SEC,
+    LIMIT: config.LIMIT,
+    MAERSK_ENABLED: config.MAERSK_ENABLED,
+    MAERSK_HEADLESS: config.MAERSK_HEADLESS,
+    MAERSK_TIMEOUT_MS: config.MAERSK_TIMEOUT_MS,
+    MAERSK_USER_DATA_DIR: config.MAERSK_USER_DATA_DIR ?? undefined,
+    AGENT_UPDATE_MANIFEST_CHANNEL: config.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+}
+
+async function syncControlStateAndPersistPublicState(command: {
+  readonly layout: AgentPathLayout
+  readonly currentConfig: ControlRuntimeConfig
+  readonly forceRemoteFetch?: boolean
+}) {
+  const syncCommand =
+    typeof command.forceRemoteFetch === 'boolean'
+      ? {
+          layout: command.layout,
+          currentConfig: command.currentConfig,
+          forceRemoteFetch: command.forceRemoteFetch,
+        }
+      : {
+          layout: command.layout,
+          currentConfig: command.currentConfig,
+        }
+  const result = await syncAgentControlState(syncCommand)
+  persistPublicControlState({
+    layout: command.layout,
+    controlSync: result,
+  })
+  return result
+}
+
+function persistPublicControlState(command: {
+  readonly layout: AgentPathLayout
+  readonly controlSync?: Awaited<ReturnType<typeof syncAgentControlState>>
+}): void {
+  if (process.platform !== 'linux') {
+    return
+  }
+
+  void publishAgentControlPublicSnapshot({
+    filePath: resolveAgentPublicStatePath(),
+    backendStatePath: resolveAgentPublicBackendStatePath(),
+    layout: command.layout,
+    forceRemoteFetch: false,
+    ...(typeof command.controlSync === 'undefined' ? {} : { controlSync: command.controlSync }),
+  }).catch((error) => {
+    console.warn(`[agent] failed to write public control state: ${toErrorMessage(error)}`)
+  })
+}
 
 const enrollResponseSchema = z.object({
   agentToken: z.string().min(1),
@@ -639,6 +733,8 @@ const TargetsResponseSchema = z.object({
 const IngestAcceptedResponseSchema = z.object({
   ok: z.literal(true),
   snapshot_id: z.string().uuid(),
+  new_observations_count: z.number().int().min(0).optional(),
+  new_alerts_count: z.number().int().min(0).optional(),
 })
 
 const IngestFailedResponseSchema = z.object({
@@ -687,6 +783,14 @@ type AgentActivityType =
   | 'UPDATE_APPLY_FAILED'
   | 'RESTART_FOR_UPDATE'
   | 'ROLLBACK_EXECUTED'
+  | 'LOCAL_UPDATE_PAUSED'
+  | 'LOCAL_UPDATE_RESUMED'
+  | 'CHANNEL_CHANGED'
+  | 'CONFIG_UPDATED'
+  | 'RELEASE_ACTIVATED'
+  | 'LOCAL_RESET'
+  | 'REMOTE_RESET'
+  | 'REMOTE_FORCE_UPDATE'
 
 type AgentRuntimeActivity = {
   readonly type: AgentActivityType
@@ -694,6 +798,19 @@ type AgentRuntimeActivity = {
   readonly severity: AgentActivitySeverity
   readonly metadata?: Record<string, unknown>
   readonly occurredAt?: string
+}
+
+type AgentRealtimeSignalMetadata = {
+  readonly channelState: SyncRequestsRealtimeStatusUpdate['state']
+  readonly scope: SyncRequestsRealtimeStatusUpdate['scope']
+  readonly key: string
+  readonly errorMessage: string | null
+}
+
+type AgentRealtimeSignal = {
+  readonly state: AgentRealtimeState
+  readonly message: string | null
+  readonly metadata: AgentRealtimeSignalMetadata | null
 }
 
 type AgentRuntimeState = {
@@ -1073,7 +1190,14 @@ async function ingestSnapshot(
     throw new Error(`invalid ingest response: ${parsed.error.message}`)
   }
 
-  console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}`)
+  const newObservationsCount = parsed.data.new_observations_count
+  const newAlertsCount = parsed.data.new_alerts_count
+  const summary =
+    newObservationsCount === undefined
+      ? ''
+      : ` (${newObservationsCount} new observation${newObservationsCount === 1 ? '' : 's'}${newAlertsCount === undefined ? '' : `, ${newAlertsCount} new alert${newAlertsCount === 1 ? '' : 's'}`})`
+
+  console.log(`[agent] ingested ${target.ref} -> snapshot ${parsed.data.snapshot_id}${summary}`)
   return { kind: 'accepted', snapshotId: parsed.data.snapshot_id }
 }
 
@@ -1248,19 +1372,78 @@ function shouldWakeForRealtimeEvent(event: {
   return event.row?.status === 'PENDING'
 }
 
+function buildRealtimeSignalFingerprint(signal: AgentRealtimeSignal): string {
+  const metadataFingerprint = signal.metadata
+    ? `${signal.metadata.channelState}|${signal.metadata.scope}|${signal.metadata.key}|${signal.metadata.errorMessage ?? 'none'}`
+    : 'none'
+
+  return `${signal.state}|${signal.message ?? 'none'}|${metadataFingerprint}`
+}
+
+function buildRealtimeDegradedMessage(status: SyncRequestsRealtimeStatusUpdate): string {
+  const errorMessage = normalizeOptionalText(status.errorMessage)
+  const detail =
+    errorMessage ??
+    (status.state === 'TIMED_OUT'
+      ? 'subscription timed out without an explicit error from Supabase Realtime'
+      : 'Supabase Realtime did not provide an explicit error message')
+
+  return `Realtime ${status.state.toLowerCase()} for ${status.scope} (${status.key}): ${detail}`
+}
+
+function toRealtimeSignal(status: SyncRequestsRealtimeStatusUpdate): AgentRealtimeSignal {
+  const metadata: AgentRealtimeSignalMetadata = {
+    channelState: status.state,
+    scope: status.scope,
+    key: status.key,
+    errorMessage: normalizeOptionalText(status.errorMessage),
+  }
+
+  if (status.state === 'SUBSCRIBED') {
+    return {
+      state: 'SUBSCRIBED',
+      message: 'Realtime subscribed for tenant sync requests',
+      metadata,
+    }
+  }
+
+  if (status.state === 'CLOSED') {
+    return {
+      state: 'DISCONNECTED',
+      message: `Realtime channel closed for ${status.scope} (${status.key})`,
+      metadata,
+    }
+  }
+
+  return {
+    state: 'CHANNEL_ERROR',
+    message: buildRealtimeDegradedMessage(status),
+    metadata,
+  }
+}
+
 function subscribeToRealtimeIfConfigured(command: {
   readonly config: RuntimeConfig
   readonly onWake: () => void
-  readonly onRealtimeStateChange: (state: AgentRealtimeState) => void
+  readonly onRealtimeStateChange: (signal: AgentRealtimeSignal) => void
 }): { readonly unsubscribe: () => void } | null {
   if (!command.config.SUPABASE_URL || !command.config.SUPABASE_ANON_KEY) {
     console.warn('[agent] realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured')
-    command.onRealtimeStateChange('DISCONNECTED')
+    command.onRealtimeStateChange({
+      state: 'DISCONNECTED',
+      message: 'Realtime disabled: SUPABASE_URL/SUPABASE_ANON_KEY not configured',
+      metadata: null,
+    })
     return null
   }
 
   try {
-    command.onRealtimeStateChange('CONNECTING')
+    command.onRealtimeStateChange({
+      state: 'CONNECTING',
+      message: 'Connecting to Supabase Realtime',
+      metadata: null,
+    })
+    let lastLoggedSignalFingerprint: string | null = null
 
     const supabaseRealtime = createClient(
       command.config.SUPABASE_URL,
@@ -1287,28 +1470,43 @@ function subscribeToRealtimeIfConfigured(command: {
         command.onWake()
       },
       onStatus(status) {
-        if (status.state === 'SUBSCRIBED') {
-          console.log('[agent] realtime subscribed for tenant sync requests')
-          command.onRealtimeStateChange('SUBSCRIBED')
+        const signal = toRealtimeSignal(status)
+        const signalFingerprint = buildRealtimeSignalFingerprint(signal)
+        const shouldLogSignal = lastLoggedSignalFingerprint !== signalFingerprint
+        lastLoggedSignalFingerprint = signalFingerprint
+
+        if (signal.state === 'SUBSCRIBED') {
+          if (shouldLogSignal) {
+            console.log('[agent] realtime subscribed for tenant sync requests')
+          }
+          command.onRealtimeStateChange(signal)
           return
         }
 
-        if (status.state === 'CHANNEL_ERROR' || status.state === 'TIMED_OUT') {
-          console.warn('[agent] realtime channel degraded; interval sweep remains active', status)
-          command.onRealtimeStateChange('CHANNEL_ERROR')
+        if (signal.state === 'CHANNEL_ERROR') {
+          if (shouldLogSignal) {
+            console.warn('[agent] realtime channel degraded; interval sweep remains active', {
+              ...status,
+              diagnostic: signal.message,
+            })
+          }
+          command.onRealtimeStateChange(signal)
           return
         }
 
-        if (status.state === 'CLOSED') {
-          command.onRealtimeStateChange('DISCONNECTED')
+        if (signal.state === 'DISCONNECTED') {
+          command.onRealtimeStateChange(signal)
         }
       },
     })
   } catch (error) {
-    console.warn(
-      `[agent] realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`,
-    )
-    command.onRealtimeStateChange('CHANNEL_ERROR')
+    const message = `Realtime setup failed; continuing with interval sweep only: ${toErrorMessage(error)}`
+    console.warn(`[agent] ${message}`)
+    command.onRealtimeStateChange({
+      state: 'CHANNEL_ERROR',
+      message,
+      metadata: null,
+    })
     return null
   }
 }
@@ -1320,6 +1518,7 @@ async function runUpdateCheck(command: {
   readonly releaseStatePath: string
   readonly agentLayout: AgentPathLayout
   readonly supervisorControlPath: string
+  readonly effectiveBlockedVersions: readonly string[]
 }): Promise<{
   readonly activities: readonly AgentRuntimeActivity[]
   readonly shouldDrain: boolean
@@ -1335,6 +1534,7 @@ async function runUpdateCheck(command: {
       agentToken: command.config.AGENT_TOKEN,
       agentId: command.config.AGENT_ID,
       platform: resolveAgentPlatformKey(),
+      updateChannelOverride: command.config.AGENT_UPDATE_MANIFEST_CHANNEL,
     })
 
     command.state.desiredVersion = manifest.desired_version
@@ -1364,10 +1564,16 @@ async function runUpdateCheck(command: {
     }
 
     const releaseState = readReleaseState(command.releaseStatePath, command.agentVersion)
+    const effectiveReleaseState = {
+      ...releaseState,
+      blocked_versions: [
+        ...new Set([...releaseState.blocked_versions, ...command.effectiveBlockedVersions]),
+      ],
+    }
     const stagedRelease = await stageReleaseFromManifest({
       manifest,
       layout: command.agentLayout,
-      state: releaseState,
+      state: effectiveReleaseState,
     })
 
     if (stagedRelease.kind === 'no_update') {
@@ -1492,8 +1698,17 @@ async function runUpdateCheck(command: {
 async function main(): Promise<void> {
   const agentLayout = runtimePaths.resolveAgentPathLayout()
   runtimePaths.ensureAgentPathLayout(agentLayout)
-  const runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
-  const updateManifestChecksDisabled = isUpdateManifestChecksDisabled(runtimeConfig)
+  let runtimeConfig = await resolveRuntimeConfigWithBootstrap(agentLayout)
+  let controlSync = await syncControlStateAndPersistPublicState({
+    layout: agentLayout,
+    currentConfig: toControlRuntimeConfig(runtimeConfig),
+  })
+  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+  let updateChecksMode = resolveAutomaticUpdateChecksMode({
+    env: process.env,
+    configuredChannel: runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+  })
+  let updateManifestChecksDisabled = updateChecksMode.disabled
   const agentVersion = resolveAgentVersion()
   const supervisorPaths = resolveSupervisorPaths(agentLayout.dataDir)
 
@@ -1501,9 +1716,15 @@ async function main(): Promise<void> {
     `[agent] started (tenant=${runtimeConfig.TENANT_ID}, agent=${runtimeConfig.AGENT_ID}, interval=${runtimeConfig.INTERVAL_SEC}s)`,
   )
   if (updateManifestChecksDisabled) {
-    console.log(
-      '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
-    )
+    if (updateChecksMode.reason === 'EXPLICIT_DISABLE_FLAG') {
+      console.log(
+        `[agent:update] manifest checks disabled by AGENT_DISABLE_AUTOMATIC_UPDATE_CHECKS; configured channel=${updateChecksMode.configuredChannel ?? 'unknown'}; using current runtime only`,
+      )
+    } else {
+      console.log(
+        '[agent:update] manifest checks disabled (AGENT_UPDATE_MANIFEST_CHANNEL=disabled); using current runtime only',
+      )
+    }
   }
 
   const runtimeState: AgentRuntimeState = {
@@ -1516,9 +1737,9 @@ async function main(): Promise<void> {
     lastError: null,
     bootStatus: 'starting',
     updateState: 'idle',
-    desiredVersion: null,
-    updateReadyVersion: null,
-    restartRequestedAt: null,
+    desiredVersion: controlSync.remotePolicy.desiredVersion,
+    updateReadyVersion: controlSync.releaseState.target_version,
+    restartRequestedAt: controlSync.remotePolicy.restartRequestedAt,
     updaterLastCheckedAt: null,
   }
 
@@ -1541,8 +1762,14 @@ async function main(): Promise<void> {
     activity: pendingActivities,
     healthPath: supervisorPaths.healthPath,
   })
+  controlSync = await syncControlStateAndPersistPublicState({
+    layout: agentLayout,
+    currentConfig: toControlRuntimeConfig(runtimeConfig),
+    forceRemoteFetch: false,
+  })
+  runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
-  let lastRealtimeState: AgentRealtimeState = runtimeState.realtimeState
+  let lastRealtimeSignalFingerprint: string | null = null
   let lastUpdateCheckAtMs = 0
   let requestRestartAfterHeartbeat = false
   let scheduler: ReturnType<typeof createAgentScheduler> | null = null
@@ -1552,6 +1779,48 @@ async function main(): Promise<void> {
     intervalMs: runtimeConfig.INTERVAL_SEC * 1000,
     runCycle: async (reason) => {
       const cycleActivities: AgentRuntimeActivity[] = []
+
+      controlSync = await syncControlStateAndPersistPublicState({
+        layout: agentLayout,
+        currentConfig: toControlRuntimeConfig(runtimeConfig),
+      })
+      runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+      updateChecksMode = resolveAutomaticUpdateChecksMode({
+        env: process.env,
+        configuredChannel: runtimeConfig.AGENT_UPDATE_MANIFEST_CHANNEL,
+      })
+      updateManifestChecksDisabled = updateChecksMode.disabled
+
+      const pendingRemoteCommand = controlSync.remoteCommands[0]
+      if (pendingRemoteCommand) {
+        const remoteCommandResult = await applyRemoteCommand({
+          layout: agentLayout,
+          currentConfig: toControlRuntimeConfig(runtimeConfig),
+          remoteCommand: pendingRemoteCommand,
+        })
+        controlSync = remoteCommandResult.result
+        runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
+
+        try {
+          await acknowledgeRemoteCommand({
+            config: toControlRuntimeConfig(runtimeConfig),
+            remoteCommandId: pendingRemoteCommand.id,
+            status: 'APPLIED',
+          })
+        } catch (error) {
+          console.warn(`[agent] failed to acknowledge remote command: ${toErrorMessage(error)}`)
+        }
+
+        if (remoteCommandResult.requiresRestart) {
+          runtimeState.updateState = 'draining'
+          runtimeState.restartRequestedAt = pendingRemoteCommand.requestedAt
+          supervisorControl.writeSupervisorControl(supervisorPaths.controlPath, {
+            drain_requested: true,
+            reason: 'restart',
+            requested_at: pendingRemoteCommand.requestedAt,
+          })
+        }
+      }
 
       const controlState = supervisorControl.readSupervisorControl(supervisorPaths.controlPath)
       if (controlState?.drain_requested) {
@@ -1570,6 +1839,7 @@ async function main(): Promise<void> {
       const nowMs = Date.now()
       const shouldRunUpdateCheck =
         !updateManifestChecksDisabled &&
+        !controlSync.snapshot.updates.paused.value &&
         runtimeState.updateState !== 'draining' &&
         nowMs - lastUpdateCheckAtMs >= UPDATE_CHECK_INTERVAL_MS
 
@@ -1581,6 +1851,7 @@ async function main(): Promise<void> {
           releaseStatePath: agentLayout.releaseStatePath,
           agentLayout,
           supervisorControlPath: supervisorPaths.controlPath,
+          effectiveBlockedVersions: controlSync.snapshot.updates.blockedVersions.effective,
         })
         lastUpdateCheckAtMs = nowMs
         cycleActivities.push(...updateResult.activities)
@@ -1610,6 +1881,12 @@ async function main(): Promise<void> {
         activity: cycleActivities,
         healthPath: supervisorPaths.healthPath,
       })
+      controlSync = await syncControlStateAndPersistPublicState({
+        layout: agentLayout,
+        currentConfig: toControlRuntimeConfig(runtimeConfig),
+        forceRemoteFetch: false,
+      })
+      runtimeConfig = toRuntimeConfigFromControlConfig(controlSync.effectiveConfig)
 
       if (requestRestartAfterHeartbeat && runtimeState.activeJobs === 0) {
         supervisorControl.writeSupervisorControl(supervisorPaths.controlPath, {
@@ -1654,12 +1931,14 @@ async function main(): Promise<void> {
     onWake() {
       scheduler?.triggerRun('realtime')
     },
-    onRealtimeStateChange(state) {
-      if (lastRealtimeState === state) return
-      lastRealtimeState = state
-      runtimeState.realtimeState = state
+    onRealtimeStateChange(signal) {
+      const fingerprint = buildRealtimeSignalFingerprint(signal)
+      if (lastRealtimeSignalFingerprint === fingerprint) return
+      lastRealtimeSignalFingerprint = fingerprint
+      runtimeState.realtimeState = signal.state
 
-      if (state === 'SUBSCRIBED') {
+      if (signal.state === 'SUBSCRIBED') {
+        runtimeState.lastError = null
         void sendHeartbeatAndPersistHealth({
           config: runtimeConfig,
           agentVersion,
@@ -1667,9 +1946,9 @@ async function main(): Promise<void> {
           activity: [
             {
               type: 'REALTIME_SUBSCRIBED',
-              message: 'Realtime subscribed for tenant sync requests',
+              message: signal.message ?? 'Realtime subscribed for tenant sync requests',
               severity: 'success',
-              metadata: {},
+              metadata: signal.metadata ?? {},
             },
           ],
           healthPath: supervisorPaths.healthPath,
@@ -1677,8 +1956,8 @@ async function main(): Promise<void> {
         return
       }
 
-      if (state === 'CHANNEL_ERROR') {
-        runtimeState.lastError = 'Realtime channel degraded'
+      if (signal.state === 'CHANNEL_ERROR') {
+        runtimeState.lastError = signal.message ?? 'Realtime channel degraded'
         void sendHeartbeatAndPersistHealth({
           config: runtimeConfig,
           agentVersion,
@@ -1686,9 +1965,9 @@ async function main(): Promise<void> {
           activity: [
             {
               type: 'REALTIME_CHANNEL_ERROR',
-              message: 'Realtime channel error; interval sweep is active',
+              message: signal.message ?? 'Realtime channel error; interval sweep is active',
               severity: 'warning',
-              metadata: {},
+              metadata: signal.metadata ?? {},
             },
           ],
           healthPath: supervisorPaths.healthPath,

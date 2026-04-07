@@ -65,9 +65,30 @@ pnpm run rebuild-restart:linux
 
 - Runtime: `/usr/lib/container-tracker-agent`
 - CLI: `/usr/bin/ct-agent`
+- Admin helper: `/usr/bin/ct-agent-admin`
+- Electron UI launcher: `/usr/bin/ct-agent-ui`
+- Tray launcher: `/usr/bin/ct-agent-tray`
 - Service file: `/usr/lib/systemd/system/container-tracker-agent.service`
 - Config dir: `/etc/container-tracker-agent`
 - Data dir: `/var/lib/container-tracker-agent`
+- Public tray/UI state: `/run/container-tracker-agent/control-ui-state.json`
+- Desktop launcher: `/usr/share/applications/container-tracker-agent-ui.desktop`
+- Autostart tray file: `/etc/xdg/autostart/container-tracker-agent-tray.desktop`
+- Icon: `/usr/share/icons/hicolor/256x256/apps/container-tracker-agent.png`
+
+## UI Electron + tray
+
+- O pacote instala um tray autostart global para sessoes graficas locais via `/etc/xdg/autostart`.
+- O tray abre a Electron UI e a UI conversa com o servico systemd sem rodar como root.
+- Leituras iniciais usam o estado publico em `/run/container-tracker-agent/control-ui-state.json`.
+- Acoes privilegiadas e refresh de logs usam elevacao local sob demanda.
+
+Launchers manuais:
+
+```bash
+ct-agent-ui
+ct-agent-tray
+```
 
 ## Uso do CLI (`ct-agent`)
 

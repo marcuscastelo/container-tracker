@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { resolveAgentDataDirFrom } from '@tools/agent/runtime/paths'
+import { resolveAgentDataDirFrom, resolveAgentPublicStateDirFrom } from '@tools/agent/runtime/paths'
 import { describe, expect, it } from 'vitest'
 
 describe('runtime path abstraction', () => {
@@ -68,5 +68,43 @@ describe('runtime path abstraction', () => {
     })
 
     expect(result).toBe('C:\\AgentData')
+  })
+
+  it('uses AGENT_PUBLIC_STATE_DIR override when provided', () => {
+    const result = resolveAgentPublicStateDirFrom({
+      env: {
+        AGENT_PUBLIC_STATE_DIR: '/tmp/custom-agent-run',
+      },
+      platform: 'linux',
+      resolveAgentDataDir() {
+        return '/unused'
+      },
+    })
+
+    expect(result).toBe('/tmp/custom-agent-run')
+  })
+
+  it('uses Linux public run directory when data dir is the installed system path', () => {
+    const result = resolveAgentPublicStateDirFrom({
+      env: {},
+      platform: 'linux',
+      resolveAgentDataDir() {
+        return '/var/lib/container-tracker-agent'
+      },
+    })
+
+    expect(result).toBe('/run/container-tracker-agent')
+  })
+
+  it('uses dataDir/run when Linux is running from a local agent runtime', () => {
+    const result = resolveAgentPublicStateDirFrom({
+      env: {},
+      platform: 'linux',
+      resolveAgentDataDir() {
+        return path.resolve('/workspace', '.agent-runtime')
+      },
+    })
+
+    expect(result).toBe(path.resolve('/workspace', '.agent-runtime', 'run'))
   })
 })

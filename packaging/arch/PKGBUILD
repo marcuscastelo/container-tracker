@@ -1,11 +1,11 @@
 pkgname=container-tracker-agent
 pkgver=0.1.0
-pkgrel=5
+pkgrel=8
 pkgdesc='Container Tracker headless Linux agent runtime'
 arch=('x86_64')
 url='https://github.com/marcuscastelo/container-tracker'
 license=('MIT')
-depends=('nodejs' 'systemd')
+depends=('nodejs' 'systemd' 'electron')
 makedepends=('typescript')
 install='container-tracker-agent.install'
 source=(
@@ -13,9 +13,19 @@ source=(
   'container-tracker-agent.sysusers'
   'container-tracker-agent.tmpfiles'
   'container-tracker-agent.launcher'
+  'container-tracker-agent-ui.launcher'
+  'container-tracker-agent-tray.launcher'
+  'container-tracker-agent-admin.launcher'
+  'container-tracker-agent-ui.desktop'
+  'container-tracker-agent-tray.desktop'
   'container-tracker-agent.install'
 )
 sha256sums=(
+  'SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP'
   'SKIP'
   'SKIP'
   'SKIP'
@@ -54,6 +64,7 @@ build() {
   cd "${_repo_root}" || exit 1
 
   run_pnpm run agent:build
+  run_pnpm run agent-control-ui:build
   run_pnpm --filter example-with-tailwindcss deploy --legacy --prod "${deploy_dir}"
   node "${_repo_root}/scripts/agent/sync-runtime-pnpm-deps.mjs" \
     "${_repo_root}/node_modules" \
@@ -65,7 +76,9 @@ package() {
   local install_root="${pkgdir}/usr/lib/container-tracker-agent"
 
   install -d "${install_root}"
+  install -d "${install_root}/dist"
   cp -a "${_repo_root}/tools/agent/dist/." "${install_root}/"
+  cp -a "${_repo_root}/dist/agent-control-ui" "${install_root}/dist/"
   cp -a "${deploy_dir}/node_modules" "${install_root}/node_modules"
   install -Dm644 "${_repo_root}/package.json" "${install_root}/package.json"
   install -Dm644 \
@@ -84,10 +97,28 @@ SHIM
   install -d "${pkgdir}/usr/bin"
   cat > "${pkgdir}/usr/bin/ct-agent" <<'WRAPPER'
 #!/usr/bin/env bash
-exec /usr/lib/container-tracker-agent/tools/agent/cli/ct-agent.js "$@"
+install_root="/usr/lib/container-tracker-agent"
+register_path="$install_root/tools/agent/runtime/register-alias-loader.js"
+agent_path="$install_root/tools/agent/cli/ct-agent.js"
+
+if [ -f "$register_path" ]; then
+  exec /usr/bin/node --import="$register_path" "$agent_path" "$@"
+fi
+
+exec /usr/bin/node "$agent_path" "$@"
 WRAPPER
+  install -Dm755 \
+    "${startdir}/container-tracker-agent-ui.launcher" \
+    "${pkgdir}/usr/bin/ct-agent-ui"
+  install -Dm755 \
+    "${startdir}/container-tracker-agent-tray.launcher" \
+    "${pkgdir}/usr/bin/ct-agent-tray"
+  install -Dm755 \
+    "${startdir}/container-tracker-agent-admin.launcher" \
+    "${pkgdir}/usr/bin/ct-agent-admin"
   chmod 0755 "${pkgdir}/usr/bin/ct-agent"
   chmod 0755 "${install_root}/tools/agent/cli/ct-agent.js"
+  chmod 0755 "${install_root}/tools/agent/cli/ct-agent-admin.js"
 
   install -Dm644 \
     "${startdir}/container-tracker-agent.service" \
@@ -98,4 +129,13 @@ WRAPPER
   install -Dm644 \
     "${startdir}/container-tracker-agent.tmpfiles" \
     "${pkgdir}/usr/lib/tmpfiles.d/container-tracker-agent.conf"
+  install -Dm644 \
+    "${startdir}/container-tracker-agent-ui.desktop" \
+    "${pkgdir}/usr/share/applications/container-tracker-agent-ui.desktop"
+  install -Dm644 \
+    "${startdir}/container-tracker-agent-tray.desktop" \
+    "${pkgdir}/etc/xdg/autostart/container-tracker-agent-tray.desktop"
+  install -Dm644 \
+    "${_repo_root}/public/branding/logo-light.png" \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/container-tracker-agent.png"
 }
