@@ -119,7 +119,9 @@ function createFinding(
       seriesKey,
       seriesType: primary.type,
     },
-    isActive: true,
+    // Redundant EXPECTED after ACTUAL is preserved for audit, but should not
+    // promote an operational validation state by itself.
+    isActive: false,
   }
 }
 

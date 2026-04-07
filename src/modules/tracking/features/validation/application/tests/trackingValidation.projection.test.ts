@@ -203,7 +203,7 @@ describe('trackingValidation.projection', () => {
     })
   })
 
-  it('suppresses the missing milestone advisory for a plain maritime gap while keeping other advisory detectors', () => {
+  it('does not surface redundant EXPECTED-after-ACTUAL residue as an active validation issue', () => {
     const observations = [
       makeObservation({
         id: 'load-1',
@@ -252,30 +252,13 @@ describe('trackingValidation.projection', () => {
       now: Instant.fromIso('2026-04-12T10:00:00.000Z'),
     })
 
-    expect(summary).toMatchObject({
-      hasIssues: true,
-      findingCount: 1,
-      highestSeverity: 'ADVISORY',
-      topIssue: {
-        code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
-        severity: 'ADVISORY',
-        reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
-        affectedArea: 'series',
-        affectedLocation: 'BRSSZ',
-        affectedBlockLabelKey: null,
-      },
+    expect(summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      topIssue: null,
+      activeIssues: [],
     })
-    expect(summary.activeIssues).toEqual([
-      {
-        code: 'EXPECTED_PLAN_NOT_RECONCILABLE',
-        severity: 'ADVISORY',
-        reasonKey: 'tracking.validation.expectedPlanNotReconcilable',
-        affectedArea: 'series',
-        affectedLocation: 'BRSSZ',
-        affectedBlockLabelKey: null,
-      },
-    ])
-    expect(summary.activeIssues[0]).not.toHaveProperty('debugEvidence')
   })
 
   it('surfaces missing critical milestone only when repeated downstream ACTUAL reinforces the gap', () => {

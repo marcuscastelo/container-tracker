@@ -78,7 +78,7 @@ describe('expectedPlanNotReconcilableDetector', () => {
     expect(findings).toEqual([])
   })
 
-  it('emits one ADVISORY finding when an EXPECTED remains redundant after ACTUAL in the same series', () => {
+  it('returns an inactive ADVISORY finding when an EXPECTED remains redundant after ACTUAL in the same series', () => {
     const findings = expectedPlanNotReconcilableDetector.detect(
       makeContext([
         makeObservation({
@@ -105,7 +105,7 @@ describe('expectedPlanNotReconcilableDetector', () => {
       summaryKey: 'tracking.validation.expectedPlanNotReconcilable',
       affectedLocation: 'BRSSZ',
       affectedBlockLabelKey: null,
-      isActive: true,
+      isActive: false,
       debugEvidence: {
         locationCode: 'BRSSZ',
         primaryObservationId: 'arrival-actual',
