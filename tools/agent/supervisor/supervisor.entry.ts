@@ -5,7 +5,7 @@ import type { ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   publishAgentControlPublicSnapshot,
   refreshAgentControlPublicLogs,
@@ -28,6 +28,7 @@ import {
 } from '../runtime/paths.ts'
 import { readRuntimeHealth } from '../runtime-health.ts'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from '../runtime-paths.ts'
+import { createRotatingChunkWriter } from './runtime-stdio-log-writer.ts'
 import { clearSupervisorControl } from '../supervisor-control.ts'
 import { resolveAutomaticUpdateChecksMode } from '../update-checks.ts'
 
@@ -40,7 +41,6 @@ const RESTART_BACKOFF_MS = 2_000
 const HEALTH_POLL_INTERVAL_MS = 500
 const MAX_SUPERVISOR_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_RUNTIME_STDIO_LOG_FILE_SIZE_BYTES = 20 * 1024 * 1024
-const RUNTIME_STDIO_ROTATION_CHECK_INTERVAL_MS = 2000
 const PUBLIC_ARTIFACT_REFRESH_DEBOUNCE_MS = 150
 const PUBLIC_SNAPSHOT_REFRESH_INTERVAL_MS = 5_000
 
@@ -200,95 +200,6 @@ function appendSupervisorLog(logsDir: string, message: string): void {
   requestPublicArtifactRefresh()
 }
 
-function isErrorCode(command: { readonly code: string; readonly error: unknown }): boolean {
-  const error = command.error
-  if (typeof error !== 'object' || error === null) return false
-  const code = Reflect.get(error, 'code')
-  return code === command.code
-}
-
-type RotatingChunkWriter = {
-  write: (chunk: Buffer | string) => void
-  close: () => Promise<void>
-}
-
-function createRotatingChunkWriter(command: {
-  readonly logPath: string
-  readonly maxSizeBytes: number
-}): RotatingChunkWriter {
-  fs.mkdirSync(path.dirname(command.logPath), { recursive: true })
-
-  let stream = fs.createWriteStream(command.logPath, { flags: 'a' })
-  let closed = false
-  let rotating = false
-  let buffer: (Buffer | string)[] = []
-
-  const closeStream = async (): Promise<void> => {
-    await new Promise<void>((resolve, reject) => {
-      stream.end(() => resolve())
-      stream.once('error', reject)
-    })
-  }
-
-  const flushBuffer = (): void => {
-    const pending = buffer
-    buffer = []
-    for (const chunk of pending) {
-      stream.write(chunk)
-    }
-  }
-
-  const rotate = async (): Promise<void> => {
-    if (closed || rotating) return
-    rotating = true
-
-    try {
-      await closeStream()
-
-      const rotationPath = `${command.logPath}.1`
-      await fs.promises.rm(rotationPath, { force: true }).catch(() => undefined)
-      await fs.promises.rename(command.logPath, rotationPath).catch(() => undefined)
-
-      stream = fs.createWriteStream(command.logPath, { flags: 'a' })
-      flushBuffer()
-    } finally {
-      rotating = false
-    }
-  }
-
-  const checkHandle = setInterval(() => {
-    void (async () => {
-      if (closed || rotating) return
-      try {
-        const stat = await fs.promises.stat(command.logPath)
-        if (stat.size <= command.maxSizeBytes) return
-        await rotate()
-      } catch (error) {
-        if (isErrorCode({ code: 'ENOENT', error })) {
-          return
-        }
-      }
-    })()
-  }, RUNTIME_STDIO_ROTATION_CHECK_INTERVAL_MS)
-
-  return {
-    write(chunk) {
-      if (closed) return
-      if (rotating) {
-        buffer.push(chunk)
-        return
-      }
-      stream.write(chunk)
-    },
-    async close() {
-      if (closed) return
-      closed = true
-      clearInterval(checkHandle)
-      await closeStream()
-    },
-  }
-}
-
 function mirrorRuntimeOutput(command: {
   readonly child: ChildProcess
   readonly logsDir: string
@@ -351,7 +262,7 @@ export function resolveRuntimeExecArgv(scriptPath: string): readonly string[] {
 
   for (const registerPath of registerCandidates) {
     if (fs.existsSync(registerPath) && fs.statSync(registerPath).isFile()) {
-      return [`--import=${registerPath}`]
+      return [`--import=${pathToFileURL(registerPath).href}`]
     }
   }
 
@@ -978,7 +889,24 @@ async function main(): Promise<void> {
   process.exitCode = supervisorExitCode
 }
 
-void main().catch((error) => {
-  console.error(`[supervisor] fatal error: ${toErrorMessage(error)}`)
-  process.exitCode = EXIT_FATAL
-})
+function isDirectExecution(moduleUrl: string): boolean {
+  const entryArg = process.argv[1]
+  if (!entryArg) {
+    return false
+  }
+
+  const modulePath = fileURLToPath(moduleUrl)
+  const resolvedEntryArg = path.resolve(entryArg)
+  if (process.platform === 'win32') {
+    return resolvedEntryArg.toLowerCase() === modulePath.toLowerCase()
+  }
+
+  return resolvedEntryArg === modulePath
+}
+
+if (isDirectExecution(import.meta.url)) {
+  void main().catch((error) => {
+    console.error(`[supervisor] fatal error: ${toErrorMessage(error)}`)
+    process.exitCode = EXIT_FATAL
+  })
+}

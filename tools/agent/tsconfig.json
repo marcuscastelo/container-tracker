@@ -1,6 +1,15 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": "../..",
+    "paths": {
+      "~/*": ["./src/*"],
+      "@tools/*": ["./tools/*"]
+    },
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "noEmit": false,
     "outDir": "./dist",
     "rootDir": "../..",

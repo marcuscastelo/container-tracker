@@ -9,6 +9,7 @@ $registerAliasLoaderPath = Join-Path $installRoot 'app\dist\tools\agent\runtime\
 $updaterScriptPath = Join-Path $installRoot 'app\dist\tools\agent\updater.js'
 $updaterOutLogPath = Join-Path $logsDir 'updater.out.log'
 $updaterErrLogPath = Join-Path $logsDir 'updater.err.log'
+$registerAliasLoaderUrl = $null
 
 function Ensure-FileExists {
   param(
@@ -35,6 +36,8 @@ try {
     throw "register-alias-loader.js not found at $registerAliasLoaderPath"
   }
 
+  $registerAliasLoaderUrl = [System.Uri]::new($registerAliasLoaderPath).AbsoluteUri
+
   if (-not (Test-Path -LiteralPath $updaterScriptPath)) {
     throw "updater.js not found at $updaterScriptPath"
   }
@@ -42,7 +45,7 @@ try {
   Ensure-FileExists -Path $updaterOutLogPath
   Ensure-FileExists -Path $updaterErrLogPath
 
-  & $nodeExePath '--import' $registerAliasLoaderPath $updaterScriptPath 1>> $updaterOutLogPath 2>> $updaterErrLogPath
+  & $nodeExePath '--import' $registerAliasLoaderUrl $updaterScriptPath 1>> $updaterOutLogPath 2>> $updaterErrLogPath
   exit $LASTEXITCODE
 } catch {
   try {

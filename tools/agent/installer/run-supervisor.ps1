@@ -8,6 +8,7 @@ $nodeExePath = Join-Path $installRoot 'node\node.exe'
 $registerAliasLoaderPath = Join-Path $installRoot 'app\dist\tools\agent\runtime\register-alias-loader.js'
 $supervisorScriptPath = Join-Path $installRoot 'app\dist\tools\agent\supervisor.js'
 $supervisorLogPath = Join-Path $logsDir 'supervisor.log'
+$registerAliasLoaderUrl = $null
 
 function Ensure-Directory {
   param(
@@ -40,6 +41,8 @@ try {
     throw "register-alias-loader.js not found at $registerAliasLoaderPath"
   }
 
+  $registerAliasLoaderUrl = [System.Uri]::new($registerAliasLoaderPath).AbsoluteUri
+
   if (-not (Test-Path -LiteralPath $supervisorScriptPath)) {
     throw "supervisor.js not found at $supervisorScriptPath"
   }
@@ -49,7 +52,7 @@ try {
 
   Push-Location $installRoot
   try {
-    & $nodeExePath '--import' $registerAliasLoaderPath $supervisorScriptPath
+    & $nodeExePath '--import' $registerAliasLoaderUrl $supervisorScriptPath
     $exitCode = $LASTEXITCODE
   }
   finally {

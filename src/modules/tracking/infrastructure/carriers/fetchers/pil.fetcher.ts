@@ -119,7 +119,7 @@ function toPilParseError(payload: unknown): string | null {
   }
 
   const trackingParse = parsePilTrackingPayload(schemaResult.data)
-  if (!trackingParse.ok) {
+  if (trackingParse.ok === false) {
     return trackingParse.error
   }
 

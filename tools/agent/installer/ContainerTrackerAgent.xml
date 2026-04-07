@@ -4,7 +4,7 @@
   <description>Container Tracker background sync service.</description>
 
   <executable>%LOCALAPPDATA%\Programs\ContainerTrackerAgent\node\node.exe</executable>
-  <arguments>--import "%LOCALAPPDATA%\Programs\ContainerTrackerAgent\app\dist\tools\agent\runtime\register-alias-loader.js" "%LOCALAPPDATA%\Programs\ContainerTrackerAgent\app\dist\tools\agent\supervisor.js"</arguments>
+  <arguments>"%LOCALAPPDATA%\Programs\ContainerTrackerAgent\app\dist\agent.js"</arguments>
   <workingdirectory>%LOCALAPPDATA%\Programs\ContainerTrackerAgent\app</workingdirectory>
   <startmode>Automatic</startmode>
 

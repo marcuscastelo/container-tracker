@@ -3,12 +3,22 @@
 import path from 'node:path'
 import process from 'node:process'
 
+import { resolveAgentPathLayout } from './runtime-paths.ts'
 import {
   createUpdaterPublicLogsPublisher,
   runUpdaterMain,
 } from './updater/updater.entry.ts'
 
 export { createUpdaterPublicLogsPublisher }
+
+function ensureDotenvPath(): void {
+  const currentDotenvPath = process.env.DOTENV_PATH?.trim()
+  if (currentDotenvPath && currentDotenvPath.length > 0) {
+    return
+  }
+
+  process.env.DOTENV_PATH = resolveAgentPathLayout().configPath
+}
 
 function isUpdaterEntrypoint(): boolean {
   const entrypoint = process.argv[1]
@@ -21,5 +31,6 @@ function isUpdaterEntrypoint(): boolean {
 }
 
 if (isUpdaterEntrypoint()) {
+  ensureDotenvPath()
   void runUpdaterMain()
 }

@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { resolveRuntimeExecArgv } from '@tools/agent/supervisor/supervisor.entry'
 import { describe, expect, it } from 'vitest'
@@ -15,6 +16,6 @@ describe('supervisor runtime alias loader resolution', () => {
     fs.writeFileSync(scriptPath, '', 'utf8')
     fs.writeFileSync(registerPath, '', 'utf8')
 
-    expect(resolveRuntimeExecArgv(scriptPath)).toEqual([`--import=${registerPath}`])
+    expect(resolveRuntimeExecArgv(scriptPath)).toEqual([`--import=${pathToFileURL(registerPath).href}`])
   })
 })
