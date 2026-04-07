@@ -1,23 +1,45 @@
-export type { AgentPathLayout } from './config/config.contract.ts'
-export {
-  resolveAgentConfigDir,
-  resolveAgentDataDir,
-  resolveAgentDataDirFrom,
-  resolveAgentPublicBackendStatePath,
-  resolveAgentPublicLogsPath,
-  resolveAgentPublicStateDir,
-  resolveAgentPublicStateDirFrom,
-  resolveAgentPublicStatePath,
-  resolveLogsDir,
-  resolveReleaseStatePath,
-  type ResolveAgentDataDirCommand,
-  type ResolveAgentPublicStateDirCommand,
-} from './runtime/paths.ts'
-export {
-  ensureAgentPathLayout,
-  resolveAgentPathLayout,
-  resolveCurrentRelease,
-  resolveDataDir,
-  resolveInstalledLinuxAgentPathLayout,
-  resolveReleasesDir,
-} from './config/resolve-agent-paths.ts'
+import type { AgentPathLayout as CanonicalAgentPathLayout } from '@tools/agent/config/config.contract'
+import {
+  ensureAgentPathLayout as canonicalEnsureAgentPathLayout,
+  resolveAgentPathLayout as canonicalResolveAgentPathLayout,
+  resolveCurrentRelease as canonicalResolveCurrentRelease,
+  resolveDataDir as canonicalResolveDataDir,
+  resolveInstalledLinuxAgentPathLayout as canonicalResolveInstalledLinuxAgentPathLayout,
+  resolveReleasesDir as canonicalResolveReleasesDir,
+} from '@tools/agent/config/resolve-agent-paths'
+import type {
+  ResolveAgentDataDirCommand as CanonicalResolveAgentDataDirCommand,
+  ResolveAgentPublicStateDirCommand as CanonicalResolveAgentPublicStateDirCommand,
+} from '@tools/agent/runtime/paths'
+import {
+  resolveAgentConfigDir as canonicalResolveAgentConfigDir,
+  resolveAgentDataDir as canonicalResolveAgentDataDir,
+  resolveAgentDataDirFrom as canonicalResolveAgentDataDirFrom,
+  resolveAgentPublicBackendStatePath as canonicalResolveAgentPublicBackendStatePath,
+  resolveAgentPublicLogsPath as canonicalResolveAgentPublicLogsPath,
+  resolveAgentPublicStateDir as canonicalResolveAgentPublicStateDir,
+  resolveAgentPublicStateDirFrom as canonicalResolveAgentPublicStateDirFrom,
+  resolveAgentPublicStatePath as canonicalResolveAgentPublicStatePath,
+  resolveLogsDir as canonicalResolveLogsDir,
+  resolveReleaseStatePath as canonicalResolveReleaseStatePath,
+} from '@tools/agent/runtime/paths'
+
+export type AgentPathLayout = CanonicalAgentPathLayout
+export const ensureAgentPathLayout = canonicalEnsureAgentPathLayout
+export const resolveAgentPathLayout = canonicalResolveAgentPathLayout
+export const resolveCurrentRelease = canonicalResolveCurrentRelease
+export const resolveDataDir = canonicalResolveDataDir
+export const resolveInstalledLinuxAgentPathLayout = canonicalResolveInstalledLinuxAgentPathLayout
+export const resolveReleasesDir = canonicalResolveReleasesDir
+export type ResolveAgentDataDirCommand = CanonicalResolveAgentDataDirCommand
+export type ResolveAgentPublicStateDirCommand = CanonicalResolveAgentPublicStateDirCommand
+export const resolveAgentConfigDir = canonicalResolveAgentConfigDir
+export const resolveAgentDataDir = canonicalResolveAgentDataDir
+export const resolveAgentDataDirFrom = canonicalResolveAgentDataDirFrom
+export const resolveAgentPublicBackendStatePath = canonicalResolveAgentPublicBackendStatePath
+export const resolveAgentPublicLogsPath = canonicalResolveAgentPublicLogsPath
+export const resolveAgentPublicStateDir = canonicalResolveAgentPublicStateDir
+export const resolveAgentPublicStateDirFrom = canonicalResolveAgentPublicStateDirFrom
+export const resolveAgentPublicStatePath = canonicalResolveAgentPublicStatePath
+export const resolveLogsDir = canonicalResolveLogsDir
+export const resolveReleaseStatePath = canonicalResolveReleaseStatePath

@@ -28,9 +28,9 @@ import {
 } from '../runtime/paths.ts'
 import { readRuntimeHealth } from '../runtime-health.ts'
 import { ensureAgentPathLayout, resolveAgentPathLayout } from '../runtime-paths.ts'
-import { createRotatingChunkWriter } from './runtime-stdio-log-writer.ts'
 import { clearSupervisorControl } from '../supervisor-control.ts'
 import { resolveAutomaticUpdateChecksMode } from '../update-checks.ts'
+import { createRotatingChunkWriter } from './runtime-stdio-log-writer.ts'
 
 const DEFAULT_STARTUP_TIMEOUT_MS = 30_000
 const DEFAULT_HEALTH_GRACE_MS = 120_000

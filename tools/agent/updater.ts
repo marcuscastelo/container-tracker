@@ -3,11 +3,11 @@
 import path from 'node:path'
 import process from 'node:process'
 
-import { resolveAgentPathLayout } from './runtime-paths.ts'
+import { resolveAgentPathLayout } from '@tools/agent/runtime-paths'
 import {
   createUpdaterPublicLogsPublisher,
   runUpdaterMain,
-} from './updater/updater.entry.ts'
+} from '@tools/agent/updater/updater.entry'
 
 export { createUpdaterPublicLogsPublisher }
 

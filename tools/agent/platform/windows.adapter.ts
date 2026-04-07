@@ -3,11 +3,9 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
-// biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
-import { ensureDirectory, runCommand, tryCommand } from './common.ts'
-import { createWindowsLocalControlAdapter } from './local-control.adapter.ts'
-// biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
-import type { AgentPlatformAdapter } from './platform.types.ts'
+import { ensureDirectory, runCommand, tryCommand } from '@tools/agent/platform/common'
+import { createWindowsLocalControlAdapter } from '@tools/agent/platform/local-control.adapter'
+import type { AgentPlatformAdapter } from '@tools/agent/platform/platform.types'
 
 const DEFAULT_DATA_DIR_NAME = 'ContainerTracker'
 

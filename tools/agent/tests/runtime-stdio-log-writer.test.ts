@@ -1,13 +1,11 @@
 import { EventEmitter } from 'node:events'
 import os from 'node:os'
 import path from 'node:path'
-
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
-  createRotatingChunkWriter,
   type ChunkWritable,
+  createRotatingChunkWriter,
 } from '@tools/agent/supervisor/runtime-stdio-log-writer'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 class StreamOpenError extends Error {
   readonly code: string

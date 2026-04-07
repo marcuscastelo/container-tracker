@@ -5,7 +5,7 @@ import type {
   AgentPlatformControlAdapter,
   PlatformControlCommand,
   PlatformServiceQueryResult,
-} from './platform.contract.ts'
+} from '@tools/agent/platform/platform.contract'
 
 const DEFAULT_LINUX_SERVICE_NAME = 'container-tracker-agent'
 const DEFAULT_WINDOWS_TASK_NAME = 'ContainerTrackerAgent'
@@ -42,7 +42,11 @@ function runCommand(
 }
 
 function resolveLinuxServiceName(command?: PlatformControlCommand): string {
-  return command?.serviceName?.trim() || process.env.AGENT_SERVICE_NAME?.trim() || DEFAULT_LINUX_SERVICE_NAME
+  return (
+    command?.serviceName?.trim() ||
+    process.env.AGENT_SERVICE_NAME?.trim() ||
+    DEFAULT_LINUX_SERVICE_NAME
+  )
 }
 
 function resolveWindowsTaskName(command?: PlatformControlCommand): string {
@@ -81,7 +85,9 @@ export function parseWindowsTaskQueryOutput(output: string): PlatformServiceQuer
   return { status: 'unknown', detail: output.trim() }
 }
 
-async function queryLinuxService(command?: PlatformControlCommand): Promise<PlatformServiceQueryResult> {
+async function queryLinuxService(
+  command?: PlatformControlCommand,
+): Promise<PlatformServiceQueryResult> {
   const serviceName = resolveLinuxServiceName(command)
 
   try {
@@ -106,7 +112,9 @@ function runWindowsTaskCommand(commandLine: string): Promise<void> {
   return runCommand('cmd.exe', ['/d', '/s', '/c', commandLine]).then(() => undefined)
 }
 
-async function queryWindowsTask(command?: PlatformControlCommand): Promise<PlatformServiceQueryResult> {
+async function queryWindowsTask(
+  command?: PlatformControlCommand,
+): Promise<PlatformServiceQueryResult> {
   const taskName = resolveWindowsTaskName(command)
 
   try {

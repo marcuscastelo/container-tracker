@@ -1,22 +1,23 @@
-import {
-  type AgentControlBackendStateSchema,
-  type AgentControlBackendUpdateResultSchema,
-  type AgentControlCommandResultSchema,
-  type AgentControlLogsResponseSchema,
-  type AgentControlPaths,
-  type AgentReleaseInventorySchema,
+import type { ControlCommand } from '@tools/agent/control/control.commands'
+import { ControlCommandResultSchema } from '@tools/agent/control/control.contracts'
+import type {
+  AgentControlBackendStateSchema,
+  AgentControlBackendUpdateResultSchema,
+  AgentControlCommandResultSchema,
+  AgentControlLogsResponseSchema,
+  AgentControlPaths,
+  AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
 import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import type { z } from 'zod/v4'
 
-import type { ControlCommand } from './control.commands.ts'
-import { ControlCommandResultSchema } from './control.contracts.ts'
-
 type LocalControlService = ReturnType<typeof createAgentControlLocalService>
 
 export type ControlService = LocalControlService & {
-  readonly dispatch: (command: ControlCommand) => Promise<z.infer<typeof ControlCommandResultSchema>>
+  readonly dispatch: (
+    command: ControlCommand,
+  ) => Promise<z.infer<typeof ControlCommandResultSchema>>
 }
 
 type CreateControlServiceDeps = {
@@ -27,7 +28,9 @@ type CreateControlServiceDeps = {
 function toCommandResult(command: {
   readonly commandId: string
   readonly message: string
-  readonly snapshot: Awaited<ReturnType<LocalControlService['getAgentOperationalSnapshot']>>['snapshot']
+  readonly snapshot: Awaited<
+    ReturnType<LocalControlService['getAgentOperationalSnapshot']>
+  >['snapshot']
 }) {
   return ControlCommandResultSchema.parse({
     commandId: command.commandId,

@@ -87,18 +87,36 @@ function createMockLocalService(): MockLocalService {
       infraConfigPath: '/tmp/agent/infra-config.json',
       auditLogPath: '/tmp/agent/agent-control-audit.ndjson',
     }),
-    startAgent: vi.fn().mockResolvedValue({ ok: true as const, message: 'started', snapshot: initialSnapshot }),
-    stopAgent: vi.fn().mockResolvedValue({ ok: true as const, message: 'stopped', snapshot: initialSnapshot }),
+    startAgent: vi
+      .fn()
+      .mockResolvedValue({ ok: true as const, message: 'started', snapshot: initialSnapshot }),
+    stopAgent: vi
+      .fn()
+      .mockResolvedValue({ ok: true as const, message: 'stopped', snapshot: initialSnapshot }),
     restartAgent: vi
       .fn()
       .mockResolvedValue({ ok: true as const, message: 'restarted', snapshot: initialSnapshot }),
-    pauseUpdates: vi.fn().mockResolvedValue({ ok: true as const, message: 'paused', snapshot: initialSnapshot }),
-    resumeUpdates: vi.fn().mockResolvedValue({ ok: true as const, message: 'resumed', snapshot: initialSnapshot }),
-    changeChannel: vi.fn().mockResolvedValue({ ok: true as const, message: 'channel updated', snapshot: initialSnapshot }),
-    setBlockedVersions: vi
+    pauseUpdates: vi
       .fn()
-      .mockResolvedValue({ ok: true as const, message: 'blocked versions updated', snapshot: initialSnapshot }),
-    updateConfig: vi.fn().mockResolvedValue({ ok: true as const, message: 'config updated', snapshot: initialSnapshot }),
+      .mockResolvedValue({ ok: true as const, message: 'paused', snapshot: initialSnapshot }),
+    resumeUpdates: vi
+      .fn()
+      .mockResolvedValue({ ok: true as const, message: 'resumed', snapshot: initialSnapshot }),
+    changeChannel: vi.fn().mockResolvedValue({
+      ok: true as const,
+      message: 'channel updated',
+      snapshot: initialSnapshot,
+    }),
+    setBlockedVersions: vi.fn().mockResolvedValue({
+      ok: true as const,
+      message: 'blocked versions updated',
+      snapshot: initialSnapshot,
+    }),
+    updateConfig: vi.fn().mockResolvedValue({
+      ok: true as const,
+      message: 'config updated',
+      snapshot: initialSnapshot,
+    }),
     setBackendUrl: vi.fn().mockResolvedValue({
       ok: true as const,
       message: 'backend updated',
@@ -113,9 +131,21 @@ function createMockLocalService(): MockLocalService {
         warnings: [],
       },
     }),
-    activateRelease: vi.fn().mockResolvedValue({ ok: true as const, message: 'release activated', snapshot: initialSnapshot }),
-    rollbackRelease: vi.fn().mockResolvedValue({ ok: true as const, message: 'rollback executed', snapshot: initialSnapshot }),
-    executeLocalReset: vi.fn().mockResolvedValue({ ok: true as const, message: 'reset executed', snapshot: initialSnapshot }),
+    activateRelease: vi.fn().mockResolvedValue({
+      ok: true as const,
+      message: 'release activated',
+      snapshot: initialSnapshot,
+    }),
+    rollbackRelease: vi.fn().mockResolvedValue({
+      ok: true as const,
+      message: 'rollback executed',
+      snapshot: initialSnapshot,
+    }),
+    executeLocalReset: vi.fn().mockResolvedValue({
+      ok: true as const,
+      message: 'reset executed',
+      snapshot: initialSnapshot,
+    }),
   }
 }
 

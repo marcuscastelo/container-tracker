@@ -1,6 +1,4 @@
-import {
-  resolveAgentPathLayout as resolveCanonicalAgentPathLayout,
-} from '@tools/agent/config/resolve-agent-paths'
+import { resolveAgentPathLayout as resolveCanonicalAgentPathLayout } from '@tools/agent/config/resolve-agent-paths'
 import { agentControlIpcChannels as canonicalIpcChannels } from '@tools/agent/electron/ipc'
 import { createInstalledLinuxControlService as createCanonicalInstalledLinuxControlService } from '@tools/agent/electron/main/installed-linux-control-service'
 import { createWindowLifecycleController as createCanonicalWindowLifecycleController } from '@tools/agent/electron/main/window-controller'

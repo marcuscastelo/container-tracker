@@ -637,7 +637,9 @@ export function collectInstallerTaskRegistrationErrors(
     line.includes('agent-tray-host.ps1'),
   )
   if (usesLegacyAgentTrayHost) {
-    errors.push('installer.iss agent task must launch run-supervisor.ps1 instead of agent-tray-host.ps1')
+    errors.push(
+      'installer.iss agent task must launch run-supervisor.ps1 instead of agent-tray-host.ps1',
+    )
   }
 
   const launchesRuntimeShimDirectly = taskRegistrationLines.some((line) =>
@@ -782,7 +784,9 @@ async function resolvePackagePathFromTargetPnpmStore(command: {
   readonly targetNodeModulesDir: string
   readonly relativePathFromNodeModules: string
 }): Promise<string | null> {
-  const packagePath = parsePackagePathFromNodeModulesRelativePath(command.relativePathFromNodeModules)
+  const packagePath = parsePackagePathFromNodeModulesRelativePath(
+    command.relativePathFromNodeModules,
+  )
   if (!packagePath) {
     return null
   }
@@ -1310,7 +1314,8 @@ async function normalizeAbsoluteRuntimeSymlinks(command: {
       }
 
       if (!(await pathExists(remappedTargetPath))) {
-        const relativePathFromNodeModules = extractRelativePathFromAnyNodeModules(resolvedRealTargetPath)
+        const relativePathFromNodeModules =
+          extractRelativePathFromAnyNodeModules(resolvedRealTargetPath)
         if (relativePathFromNodeModules) {
           const targetStorePackagePath = await resolvePackagePathFromTargetPnpmStore({
             targetNodeModulesDir: command.targetNodeModulesDir,

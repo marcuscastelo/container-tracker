@@ -111,7 +111,9 @@ function createMainWindow(): ElectronBrowserWindow {
   if (rendererUrl) {
     void createdWindow.loadURL(rendererUrl)
   } else {
-    void createdWindow.loadFile(path.resolve(currentDir, '../../../agent-control-ui/renderer/index.html'))
+    void createdWindow.loadFile(
+      path.resolve(currentDir, '../../../agent-control-ui/renderer/index.html'),
+    )
   }
 
   return createdWindow
