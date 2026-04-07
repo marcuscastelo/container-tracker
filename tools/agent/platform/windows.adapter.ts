@@ -5,6 +5,7 @@ import process from 'node:process'
 
 // biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
 import { ensureDirectory, runCommand, tryCommand } from './common.ts'
+import { createWindowsLocalControlAdapter } from './local-control.adapter.ts'
 // biome-ignore lint/style/noRestrictedImports: Platform runtime needs direct relative imports for portable release bundles.
 import type { AgentPlatformAdapter } from './platform.types.ts'
 
@@ -70,6 +71,7 @@ function extractArchive(command: {
 
 export const windowsPlatformAdapter: AgentPlatformAdapter = {
   key: 'windows-x64',
+  control: createWindowsLocalControlAdapter(),
   resolvePaths(command) {
     return {
       dataDir: resolveDataDir(command.env),

@@ -8,9 +8,11 @@ $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
 $logsDir = Join-Path $dataRoot 'logs'
 $nodeExePath = Join-Path $installRoot 'node\node.exe'
-$agentScriptPath = Join-Path $installRoot 'app\dist\agent.js'
+$registerAliasLoaderPath = Join-Path $installRoot 'app\dist\tools\agent\runtime\register-alias-loader.js'
+$agentScriptPath = Join-Path $installRoot 'app\dist\tools\agent\agent.js'
 $agentOutLogPath = Join-Path $logsDir 'agent.out.log'
 $agentErrLogPath = Join-Path $logsDir 'agent.err.log'
+$registerAliasLoaderUrl = $null
 
 $script:agentProcess = $null
 $script:lastAgentStartUtc = $null
@@ -46,7 +48,11 @@ function Convert-ToCmdQuoted {
 
 function Stop-AgentNodeProcesses {
   $normalizedInstallRoot = $installRoot.ToLowerInvariant()
-  $agentCommandFragment = '\app\dist\agent.js'
+  $agentCommandFragments = @(
+    '\app\dist\tools\agent\supervisor.js',
+    '\app\dist\tools\agent\agent.js',
+    '\app\dist\agent.js'
+  )
 
   $candidateProcesses = @(
     Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
@@ -58,7 +64,7 @@ function Stop-AgentNodeProcesses {
       $normalizedCommandLine = $_.CommandLine.ToLowerInvariant()
       return (
         $normalizedCommandLine.Contains($normalizedInstallRoot) -and
-        $normalizedCommandLine.Contains($agentCommandFragment)
+        ($agentCommandFragments | Where-Object { $normalizedCommandLine.Contains($_) }).Count -gt 0
       )
     }
   )
@@ -73,6 +79,12 @@ function Start-AgentProcess {
     throw "node.exe not found at $nodeExePath"
   }
 
+  if (-not (Test-Path -LiteralPath $registerAliasLoaderPath)) {
+    throw "register-alias-loader.js not found at $registerAliasLoaderPath"
+  }
+
+  $registerAliasLoaderUrl = [System.Uri]::new($registerAliasLoaderPath).AbsoluteUri
+
   if (-not (Test-Path -LiteralPath $agentScriptPath)) {
     throw "agent.js not found at $agentScriptPath"
   }
@@ -81,11 +93,13 @@ function Start-AgentProcess {
   Ensure-FileExists -Path $agentErrLogPath
 
   $nodeExeQuoted = Convert-ToCmdQuoted -Value $nodeExePath
+  $registerAliasLoaderQuoted = Convert-ToCmdQuoted -Value $registerAliasLoaderUrl
   $agentScriptQuoted = Convert-ToCmdQuoted -Value $agentScriptPath
   $outLogQuoted = Convert-ToCmdQuoted -Value $agentOutLogPath
   $errLogQuoted = Convert-ToCmdQuoted -Value $agentErrLogPath
 
-  $agentCommand = "$nodeExeQuoted $agentScriptQuoted 1>>$outLogQuoted 2>>$errLogQuoted"
+  $agentCommand =
+    "$nodeExeQuoted --import $registerAliasLoaderQuoted $agentScriptQuoted 1>>$outLogQuoted 2>>$errLogQuoted"
   $cmdArguments = @(
     '/d',
     '/s',

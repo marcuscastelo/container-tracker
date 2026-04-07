@@ -14,7 +14,7 @@ import {
   AgentOperationalSnapshotSchema,
   AgentReleaseInventorySchema,
 } from '@tools/agent/control-core/contracts'
-import { createAgentControlLocalService } from '@tools/agent/control-core/local-control-service'
+import { createBootstrapControlService } from '@tools/agent/bootstrap/create-control-service'
 import { writeAgentControlPublicBackendState } from '@tools/agent/control-core/public-control-files'
 import {
   readAgentControlPublicState,
@@ -73,7 +73,7 @@ const ctAgentAdminCommands = [
 
 type CtAgentAdminCommand = (typeof ctAgentAdminCommands)[number]
 
-export type CtAgentAdminService = ReturnType<typeof createAgentControlLocalService>
+export type CtAgentAdminService = ReturnType<typeof createBootstrapControlService>
 
 type CtAgentAdminDeps = {
   readonly service?: CtAgentAdminService
@@ -169,8 +169,7 @@ export async function runCtAgentAdmin(command: {
 }): Promise<number> {
   const print = command.deps?.print ?? console.log
   const printError = command.deps?.printError ?? console.error
-  const service =
-    command.deps?.service ?? createAgentControlLocalService({ layout: resolveCtAgentAdminLayout() })
+  const service = command.deps?.service ?? createBootstrapControlService()
 
   const subcommand = command.argv[2]
   if (subcommand === '--help' || subcommand === '-h' || subcommand === 'help') {

@@ -5,9 +5,11 @@ $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\ContainerTrackerAgent'
 $dataRoot = Join-Path $env:LOCALAPPDATA 'ContainerTracker'
 $logsDir = Join-Path $dataRoot 'logs'
 $nodeExePath = Join-Path $installRoot 'node\node.exe'
-$updaterScriptPath = Join-Path $installRoot 'app\dist\updater.js'
+$registerAliasLoaderPath = Join-Path $installRoot 'app\dist\tools\agent\runtime\register-alias-loader.js'
+$updaterScriptPath = Join-Path $installRoot 'app\dist\tools\agent\updater.js'
 $updaterOutLogPath = Join-Path $logsDir 'updater.out.log'
 $updaterErrLogPath = Join-Path $logsDir 'updater.err.log'
+$registerAliasLoaderUrl = $null
 
 function Ensure-FileExists {
   param(
@@ -25,19 +27,16 @@ function Ensure-FileExists {
   }
 }
 
-function Convert-ToCmdQuoted {
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$Value
-  )
-
-  return '"' + $Value.Replace('"', '""') + '"'
-}
-
 try {
   if (-not (Test-Path -LiteralPath $nodeExePath)) {
     throw "node.exe not found at $nodeExePath"
   }
+
+  if (-not (Test-Path -LiteralPath $registerAliasLoaderPath)) {
+    throw "register-alias-loader.js not found at $registerAliasLoaderPath"
+  }
+
+  $registerAliasLoaderUrl = [System.Uri]::new($registerAliasLoaderPath).AbsoluteUri
 
   if (-not (Test-Path -LiteralPath $updaterScriptPath)) {
     throw "updater.js not found at $updaterScriptPath"
@@ -46,27 +45,8 @@ try {
   Ensure-FileExists -Path $updaterOutLogPath
   Ensure-FileExists -Path $updaterErrLogPath
 
-  $nodeExeQuoted = Convert-ToCmdQuoted -Value $nodeExePath
-  $updaterScriptQuoted = Convert-ToCmdQuoted -Value $updaterScriptPath
-  $outLogQuoted = Convert-ToCmdQuoted -Value $updaterOutLogPath
-  $errLogQuoted = Convert-ToCmdQuoted -Value $updaterErrLogPath
-
-  $updaterCommand = "$nodeExeQuoted $updaterScriptQuoted 1>>$outLogQuoted 2>>$errLogQuoted"
-  $cmdArguments = @(
-    '/d',
-    '/s',
-    '/c',
-    "`"$updaterCommand`""
-  )
-
-  $process = Start-Process `
-    -FilePath 'cmd.exe' `
-    -ArgumentList $cmdArguments `
-    -WindowStyle Hidden `
-    -PassThru `
-    -Wait
-
-  exit $process.ExitCode
+  & $nodeExePath '--import' $registerAliasLoaderUrl $updaterScriptPath 1>> $updaterOutLogPath 2>> $updaterErrLogPath
+  exit $LASTEXITCODE
 } catch {
   try {
     Ensure-FileExists -Path $updaterErrLogPath

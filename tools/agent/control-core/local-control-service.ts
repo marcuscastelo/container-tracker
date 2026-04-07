@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -33,12 +32,13 @@ import {
   rollbackRelease as rollbackReleaseState,
 } from '@tools/agent/release-manager'
 import { readReleaseState, writeReleaseState } from '@tools/agent/release-state'
+import { resolvePlatformAdapter } from '@tools/agent/platform/platform.adapter'
+import type { AgentPlatformControlAdapter } from '@tools/agent/platform/platform.contract'
 import { resolveAgentPublicStatePath } from '@tools/agent/runtime/paths'
 import type { AgentPathLayout } from '@tools/agent/runtime-paths'
 import { writeSupervisorControl } from '@tools/agent/supervisor-control'
 import type { z } from 'zod/v4'
 
-const DEFAULT_SERVICE_NAME = 'container-tracker-agent'
 const LOG_FILE_BY_CHANNEL = {
   stdout: 'agent.out.log',
   stderr: 'agent.err.log',
@@ -48,12 +48,7 @@ const LOG_FILE_BY_CHANNEL = {
 
 type ManagedLogChannel = Exclude<keyof typeof LOG_FILE_BY_CHANNEL, 'all'>
 
-type AgentLocalControlAdapter = {
-  readonly key: 'linux' | 'windows'
-  readonly startAgent: () => Promise<void>
-  readonly stopAgent: () => Promise<void>
-  readonly restartAgent: () => Promise<void>
-}
+type AgentLocalControlAdapter = AgentPlatformControlAdapter
 
 type AgentControlLocalService = {
   readonly getAgentOperationalSnapshot: () => ReturnType<typeof syncSnapshot>
@@ -90,60 +85,11 @@ type AgentControlLocalService = {
 
 type CreateAgentControlLocalServiceDeps = {
   readonly layout: AgentPathLayout
-  readonly adapter?: AgentLocalControlAdapter
+  readonly adapter?: AgentPlatformControlAdapter
 }
 
-function runCommand(command: string, args: readonly string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(command, [...args], (error) => {
-      if (error) {
-        reject(error)
-        return
-      }
-
-      resolve()
-    })
-
-    child.once('error', reject)
-  })
-}
-
-function createWindowsStubAdapter(): AgentLocalControlAdapter {
-  async function notImplemented(): Promise<void> {
-    throw new Error('Windows local control adapter is not implemented in V1')
-  }
-
-  return {
-    key: 'windows',
-    startAgent: notImplemented,
-    stopAgent: notImplemented,
-    restartAgent: notImplemented,
-  }
-}
-
-function createLinuxAdapter(): AgentLocalControlAdapter {
-  const serviceName = process.env.AGENT_SERVICE_NAME?.trim() || DEFAULT_SERVICE_NAME
-
-  return {
-    key: 'linux',
-    startAgent() {
-      return runCommand('systemctl', ['start', serviceName])
-    },
-    stopAgent() {
-      return runCommand('systemctl', ['stop', serviceName])
-    },
-    restartAgent() {
-      return runCommand('systemctl', ['restart', serviceName])
-    },
-  }
-}
-
-function resolveLocalControlAdapter(): AgentLocalControlAdapter {
-  if (process.platform === 'win32') {
-    return createWindowsStubAdapter()
-  }
-
-  return createLinuxAdapter()
+function resolveLocalControlAdapter(): AgentPlatformControlAdapter {
+  return resolvePlatformAdapter().control
 }
 
 function writeFileAtomic(filePath: string, content: string): void {

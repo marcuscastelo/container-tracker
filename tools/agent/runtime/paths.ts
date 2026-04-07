@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-// biome-ignore lint/style/noRestrictedImports: Runtime path resolver needs direct relative imports in release bundles.
+// biome-ignore lint/style/noRestrictedImports: Canonical runtime path resolver needs direct relative imports in release bundles.
 import { resolvePlatformAdapter } from '../platform/platform.adapter.ts'
 
 const LINUX_SYSTEM_DATA_DIR = '/var/lib/container-tracker-agent'
