@@ -26,6 +26,14 @@ import { writeSupervisorControl } from '../supervisor-control.ts'
 import { fetchUpdateManifest, stageReleaseFromManifest } from '../updater.core.ts'
 
 const MAX_LOG_FILE_SIZE_BYTES = 10 * 1024 * 1024
+const PUBLIC_LOG_REFRESH_DEBOUNCE_MS = 150
+
+export type UpdaterPublicLogsPublisher = {
+  readonly requestRefresh: () => void
+  readonly flushPending: () => void
+}
+
+let publicLogsPublisher: UpdaterPublicLogsPublisher | null = null
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -128,6 +136,66 @@ function rotateLogIfNeeded(logPath: string): void {
   fs.renameSync(logPath, rotationPath)
 }
 
+export function createUpdaterPublicLogsPublisher(command: {
+  readonly refresh: () => void
+  readonly debounceMs?: number
+}): UpdaterPublicLogsPublisher {
+  let timer: NodeJS.Timeout | null = null
+  const debounceMs = command.debounceMs ?? PUBLIC_LOG_REFRESH_DEBOUNCE_MS
+
+  return {
+    requestRefresh() {
+      if (timer) {
+        return
+      }
+
+      timer = setTimeout(() => {
+        timer = null
+        command.refresh()
+      }, debounceMs)
+      timer.unref?.()
+    },
+    flushPending() {
+      if (!timer) {
+        return
+      }
+
+      clearTimeout(timer)
+      timer = null
+      command.refresh()
+    },
+  }
+}
+
+function getPublicLogsPublisher(layout: AgentPathLayout): UpdaterPublicLogsPublisher {
+  if (publicLogsPublisher) {
+    return publicLogsPublisher
+  }
+
+  publicLogsPublisher = createUpdaterPublicLogsPublisher({
+    refresh() {
+      if (process.platform !== 'linux') {
+        return
+      }
+
+      try {
+        refreshAgentControlPublicLogs({
+          filePath: resolveAgentPublicLogsPath(),
+          layout,
+        })
+      } catch (error) {
+        console.warn(`[updater] failed to refresh public control logs: ${toErrorMessage(error)}`)
+      }
+    },
+  })
+
+  return publicLogsPublisher
+}
+
+function flushPendingPublicLogs(): void {
+  publicLogsPublisher?.flushPending()
+}
+
 function appendLogLine(layout: AgentPathLayout, message: string): void {
   const line = `[${new Date().toISOString()}] ${message}`
   console.log(line)
@@ -139,14 +207,7 @@ function appendLogLine(layout: AgentPathLayout, message: string): void {
   fs.appendFileSync(logPath, `${line}\n`, 'utf8')
 
   if (process.platform === 'linux') {
-    try {
-      refreshAgentControlPublicLogs({
-        filePath: resolveAgentPublicLogsPath(),
-        layout,
-      })
-    } catch (error) {
-      console.warn(`[updater] failed to refresh public control logs: ${toErrorMessage(error)}`)
-    }
+    getPublicLogsPublisher(layout).requestRefresh()
   }
 }
 
@@ -333,16 +394,33 @@ async function runUpdater(): Promise<void> {
   appendLogLine(layout, `[updater] staged version ${staged.manifest.version}`)
 }
 
-async function main(): Promise<void> {
+export async function runUpdaterMain(): Promise<void> {
   try {
     await runUpdater()
+    flushPendingPublicLogs()
     process.exit(EXIT_OK)
   } catch (error) {
     const layout = resolveAgentPathLayout()
     ensureAgentPathLayout(layout)
     appendLogLine(layout, `[updater] failed: ${toErrorMessage(error)}`)
+    flushPendingPublicLogs()
     process.exit(EXIT_FATAL)
   }
 }
 
-void main()
+function isMainModule(): boolean {
+  const entrypoint = process.argv[1]
+  if (!entrypoint) {
+    return false
+  }
+
+  try {
+    return path.resolve(entrypoint) === fileURLToPath(import.meta.url)
+  } catch {
+    return false
+  }
+}
+
+if (isMainModule()) {
+  void runUpdaterMain()
+}
