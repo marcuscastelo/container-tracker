@@ -459,7 +459,7 @@ async function runChildWithoutHealthGate(command: {
   }
 }
 
-async function main(): Promise<void> {
+export async function runSupervisorMain(): Promise<void> {
   const scriptPath = fileURLToPath(import.meta.url)
   const scriptDir = path.dirname(scriptPath)
   const fallbackEntrypoint = resolveFallbackRuntimeEntrypoint(scriptDir)
@@ -905,7 +905,7 @@ function isDirectExecution(moduleUrl: string): boolean {
 }
 
 if (isDirectExecution(import.meta.url)) {
-  void main().catch((error) => {
+  void runSupervisorMain().catch((error) => {
     console.error(`[supervisor] fatal error: ${toErrorMessage(error)}`)
     process.exitCode = EXIT_FATAL
   })
