@@ -22,16 +22,23 @@ export const LIFECYCLE_CONTINUATION_TYPES_AFTER_DELIVERED: readonly ObservationT
 
 export type StrongCompletionStatus = Extract<ContainerStatus, 'DELIVERED' | 'EMPTY_RETURNED'>
 
-export type StrongCompletionMilestone = {
+export type StrongCompletionObservation = Pick<
+  Observation,
+  'type' | 'event_time' | 'event_time_type' | 'created_at' | 'is_empty'
+>
+
+export type StrongCompletionMilestone<
+  TObservation extends StrongCompletionObservation = Observation,
+> = {
   readonly status: StrongCompletionStatus
-  readonly observation: Observation
+  readonly observation: TObservation
   readonly chronologyIndex: number
   readonly source: 'DELIVERY' | 'DELIVERY_GATE_OUT' | 'EMPTY_RETURN' | 'EMPTY_RETURN_GATE_OUT'
 }
 
-export function toActualObservationChronology(
-  observations: readonly Observation[],
-): readonly Observation[] {
+export function toActualObservationChronology<TObservation extends StrongCompletionObservation>(
+  observations: readonly TObservation[],
+): readonly TObservation[] {
   return observations
     .map((observation, timelineIndex) => ({ observation, timelineIndex }))
     .filter((entry) => entry.observation.event_time_type === 'ACTUAL')
@@ -43,11 +50,11 @@ export function toActualObservationChronology(
     .map((entry) => entry.observation)
 }
 
-export function findStrongCompletionMilestones(
-  observations: readonly Observation[],
-): readonly StrongCompletionMilestone[] {
+export function findStrongCompletionMilestones<TObservation extends StrongCompletionObservation>(
+  observations: readonly TObservation[],
+): readonly StrongCompletionMilestone<TObservation>[] {
   const actualObservations = toActualObservationChronology(observations)
-  const milestones: StrongCompletionMilestone[] = []
+  const milestones: StrongCompletionMilestone<TObservation>[] = []
 
   for (const [chronologyIndex, observation] of actualObservations.entries()) {
     if (observation.type === 'EMPTY_RETURN') {

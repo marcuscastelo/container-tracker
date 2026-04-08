@@ -1,4 +1,5 @@
 import type { TrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
+import { isTrackingContainmentIssueCode } from '~/modules/tracking/features/containment/domain/model/trackingContainment'
 import type { TrackingValidationLifecycleTransition } from '~/modules/tracking/features/validation/domain/model/trackingValidationLifecycle'
 import {
   requireTrackingValidationTransitionType,
@@ -90,6 +91,7 @@ export const supabaseTrackingValidationLifecycleRepository: TrackingValidationLi
       const activeStates = [...latestRowByLifecycleKey.values()]
         .filter(
           (row) =>
+            !isTrackingContainmentIssueCode(row.issue_code) &&
             requireTrackingValidationTransitionType(
               row.transition_type,
               'tracking_validation.transition_type',

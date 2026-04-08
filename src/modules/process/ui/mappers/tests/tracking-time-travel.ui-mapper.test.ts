@@ -46,7 +46,7 @@ function makeTimeTravelResponse(): TrackingTimeTravelResponseDto {
         tracking_validation: {
           has_issues: true,
           highest_severity: 'danger',
-          finding_count: 2,
+          finding_count: 1,
           active_issues: [
             {
               code: 'CONFLICTING_CRITICAL_ACTUALS',
@@ -54,14 +54,6 @@ function makeTimeTravelResponse(): TrackingTimeTravelResponseDto {
               reason_key: 'tracking.validation.conflictingCriticalActuals',
               affected_area: 'series',
               affected_location: 'BRSSZ',
-              affected_block_label_key: null,
-            },
-            {
-              code: 'POST_COMPLETION_TRACKING_CONTINUED',
-              severity: 'danger',
-              reason_key: 'tracking.validation.postCompletionTrackingContinued',
-              affected_area: 'timeline',
-              affected_location: null,
               affected_block_label_key: null,
             },
           ],
@@ -83,7 +75,7 @@ describe('tracking-time-travel.ui-mapper', () => {
     expect(result.syncs[0]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'danger',
-      findingCount: 2,
+      findingCount: 1,
       activeIssues: [
         {
           code: 'CONFLICTING_CRITICAL_ACTUALS',
@@ -91,14 +83,6 @@ describe('tracking-time-travel.ui-mapper', () => {
           reasonKey: 'tracking.validation.conflictingCriticalActuals',
           affectedArea: 'series',
           affectedLocation: 'BRSSZ',
-          affectedBlockLabelKey: null,
-        },
-        {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
-          severity: 'danger',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-          affectedArea: 'timeline',
-          affectedLocation: null,
           affectedBlockLabelKey: null,
         },
       ],

@@ -311,7 +311,7 @@ describe('process.http.mappers', () => {
     expect(parsed.attention_severity).toBeNull()
   })
 
-  it('keeps post-completion validation issues on the compact process response contract', () => {
+  it('keeps critical validation issues on the compact process response contract', () => {
     const response = toProcessResponseWithSummary(
       createProcessWithContainers(),
       createSummary({
@@ -322,11 +322,11 @@ describe('process.http.mappers', () => {
           highestSeverity: 'CRITICAL',
         },
         tracking_validation_top_issue: {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
           severity: 'CRITICAL',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-          affectedArea: 'timeline',
-          affectedLocation: null,
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRSSZ',
           affectedBlockLabelKey: null,
         },
       }),
@@ -344,11 +344,11 @@ describe('process.http.mappers', () => {
     expect(parsed.tracking_validation).not.toHaveProperty('debug_evidence')
     expect(parsed.tracking_validation.highest_severity).toBe('danger')
     expect(parsed.tracking_validation.top_issue).toEqual({
-      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      code: 'CONFLICTING_CRITICAL_ACTUALS',
       severity: 'danger',
-      reason_key: 'tracking.validation.postCompletionTrackingContinued',
-      affected_area: 'timeline',
-      affected_location: null,
+      reason_key: 'tracking.validation.conflictingCriticalActuals',
+      affected_area: 'series',
+      affected_location: 'BRSSZ',
       affected_block_label_key: null,
     })
   })

@@ -104,6 +104,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
             dataIssue: false,
           }),
           trackingValidation: EMPTY_TRACKING_VALIDATION,
+          trackingContainment: null,
           activeAlerts: [
             {
               id: 'alert-1',
@@ -145,6 +146,7 @@ function createDeps(args?: { readonly hotReadResult?: FindContainersHotReadProje
             dataIssue: false,
           }),
           trackingValidation: EMPTY_TRACKING_VALIDATION,
+          trackingContainment: null,
           activeAlerts: [],
           hasObservations: true,
           lastEventAt: temporalValueFromCanonical('2026-03-11T12:00:00.000Z'),
@@ -269,23 +271,24 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               highestSeverity: 'CRITICAL',
               activeIssues: [
                 {
-                  code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                  code: 'CONFLICTING_CRITICAL_ACTUALS',
                   severity: 'CRITICAL',
-                  reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-                  affectedArea: 'timeline',
-                  affectedLocation: null,
+                  reasonKey: 'tracking.validation.conflictingCriticalActuals',
+                  affectedArea: 'series',
+                  affectedLocation: 'Santos',
                   affectedBlockLabelKey: null,
                 },
               ],
               topIssue: {
-                code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                code: 'CONFLICTING_CRITICAL_ACTUALS',
                 severity: 'CRITICAL',
-                reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-                affectedArea: 'timeline',
-                affectedLocation: null,
+                reasonKey: 'tracking.validation.conflictingCriticalActuals',
+                affectedArea: 'series',
+                affectedLocation: 'Santos',
                 affectedBlockLabelKey: null,
               },
             },
+            trackingContainment: null,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: temporalValueFromCanonical('2026-03-11T12:00:00.000Z'),
@@ -303,6 +306,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               dataIssue: false,
             }),
             trackingValidation: EMPTY_TRACKING_VALIDATION,
+            trackingContainment: null,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: temporalValueFromCanonical('2026-03-10T12:00:00.000Z'),
@@ -331,11 +335,11 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
       totalFindingCount: 1,
     })
     expect(result.processes[0]?.summary.tracking_validation_top_issue).toEqual({
-      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      code: 'CONFLICTING_CRITICAL_ACTUALS',
       severity: 'CRITICAL',
-      reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-      affectedArea: 'timeline',
-      affectedLocation: null,
+      reasonKey: 'tracking.validation.conflictingCriticalActuals',
+      affectedArea: 'series',
+      affectedLocation: 'Santos',
       affectedBlockLabelKey: null,
     })
     expect(result.processes[0]?.summary.attention_severity).toBe('danger')
@@ -380,6 +384,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
                 affectedBlockLabelKey: 'shipmentView.timeline.blocks.postCarriage',
               },
             },
+            trackingContainment: null,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: temporalValueFromCanonical('2026-03-11T12:00:00.000Z'),
@@ -397,6 +402,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               dataIssue: false,
             }),
             trackingValidation: EMPTY_TRACKING_VALIDATION,
+            trackingContainment: null,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: temporalValueFromCanonical('2026-03-10T12:00:00.000Z'),
@@ -435,7 +441,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
     expect(result.processes[0]?.summary.attention_severity).toBeNull()
   })
 
-  it('aggregates post-completion continuation into the process summary without inflating the dashboard payload', async () => {
+  it('keeps containment out of process validation and dashboard attention', async () => {
     const { deps } = createDeps({
       hotReadResult: {
         containers: [
@@ -451,28 +457,11 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               lifecycleBucket: 'final_delivery',
               dataIssue: false,
             }),
-            trackingValidation: {
-              hasIssues: true,
-              findingCount: 1,
-              highestSeverity: 'CRITICAL',
-              activeIssues: [
-                {
-                  code: 'POST_COMPLETION_TRACKING_CONTINUED',
-                  severity: 'CRITICAL',
-                  reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-                  affectedArea: 'timeline',
-                  affectedLocation: null,
-                  affectedBlockLabelKey: null,
-                },
-              ],
-              topIssue: {
-                code: 'POST_COMPLETION_TRACKING_CONTINUED',
-                severity: 'CRITICAL',
-                reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-                affectedArea: 'timeline',
-                affectedLocation: null,
-                affectedBlockLabelKey: null,
-              },
+            trackingValidation: EMPTY_TRACKING_VALIDATION,
+            trackingContainment: {
+              active: true,
+              reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION',
+              activatedAt: '2026-03-11T12:00:00.000Z',
             },
             activeAlerts: [],
             hasObservations: true,
@@ -491,6 +480,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               dataIssue: false,
             }),
             trackingValidation: EMPTY_TRACKING_VALIDATION,
+            trackingContainment: null,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: temporalValueFromCanonical('2026-03-10T12:00:00.000Z'),
@@ -513,20 +503,13 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
     const result = await useCase()
 
     expect(result.processes[0]?.summary.tracking_validation).toEqual({
-      hasIssues: true,
-      highestSeverity: 'CRITICAL',
-      affectedContainerCount: 1,
-      totalFindingCount: 1,
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      totalFindingCount: 0,
     })
-    expect(result.processes[0]?.summary.tracking_validation_top_issue).toEqual({
-      code: 'POST_COMPLETION_TRACKING_CONTINUED',
-      severity: 'CRITICAL',
-      reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-      affectedArea: 'timeline',
-      affectedLocation: null,
-      affectedBlockLabelKey: null,
-    })
-    expect(result.processes[0]?.summary.attention_severity).toBe('danger')
+    expect(result.processes[0]?.summary.tracking_validation_top_issue).toBeNull()
+    expect(result.processes[0]?.summary.attention_severity).toBeNull()
   })
 
   it('fails explicitly when the hot-read projection omits a requested container', async () => {
@@ -551,6 +534,7 @@ describe('createListProcessesWithOperationalSummaryUseCase', () => {
               dataIssue: false,
             }),
             trackingValidation: EMPTY_TRACKING_VALIDATION,
+            trackingContainment: null,
             activeAlerts: [],
             hasObservations: true,
             lastEventAt: null,

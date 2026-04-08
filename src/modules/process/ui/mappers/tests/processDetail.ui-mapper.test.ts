@@ -95,14 +95,16 @@ function makeContainerTrackingValidationResponse(
 }
 
 function makeContainerResponse(
-  overrides: Omit<Partial<ContainerResponse>, 'tracking_validation'> & {
+  overrides: Omit<Partial<ContainerResponse>, 'tracking_validation' | 'tracking_containment'> & {
     readonly tracking_validation?: ContainerResponse['tracking_validation']
+    readonly tracking_containment?: ContainerResponse['tracking_containment']
   } = {},
 ): ContainerResponse {
   return {
     id: overrides.id ?? 'container-default',
     container_number: overrides.container_number ?? 'MSCU0000000',
     tracking_validation: overrides.tracking_validation ?? makeContainerTrackingValidationResponse(),
+    tracking_containment: overrides.tracking_containment ?? null,
     ...overrides,
   }
 }
@@ -410,12 +412,12 @@ describe('toShipmentDetailVM critical tracking mapping', () => {
                 affected_block_label_key: null,
               },
               {
-                code: 'POST_COMPLETION_TRACKING_CONTINUED',
+                code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
                 severity: 'danger',
-                reason_key: 'tracking.validation.postCompletionTrackingContinued',
+                reason_key: 'tracking.validation.canonicalTimelineSegmentDuplicated',
                 affected_area: 'timeline',
-                affected_location: null,
-                affected_block_label_key: null,
+                affected_location: 'SANTOS',
+                affected_block_label_key: 'shipmentView.timeline.blocks.voyage',
               },
             ],
           },
@@ -452,12 +454,12 @@ describe('toShipmentDetailVM critical tracking mapping', () => {
           affectedBlockLabelKey: null,
         },
         {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          code: 'CANONICAL_TIMELINE_SEGMENT_DUPLICATED',
           severity: 'danger',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          reasonKey: 'tracking.validation.canonicalTimelineSegmentDuplicated',
           affectedArea: 'timeline',
-          affectedLocation: null,
-          affectedBlockLabelKey: null,
+          affectedLocation: 'SANTOS',
+          affectedBlockLabelKey: 'shipmentView.timeline.blocks.voyage',
         },
       ],
     })
@@ -538,12 +540,12 @@ describe('toShipmentDetailVM duplicated segment tracking mapping', () => {
   })
 })
 
-describe('toShipmentDetailVM post-completion tracking mapping', () => {
-  it('maps a critical post-completion validation summary without deriving reason in the UI', () => {
+describe('toShipmentDetailVM containment mapping', () => {
+  it('maps tracking containment independently from tracking validation', () => {
     const example = makeProcessDetailResponse({
-      id: 'proc-post-completion-validation',
-      tracking_freshness_token: 'token-post-completion-validation',
-      reference: 'REF-POST-COMPLETION',
+      id: 'proc-container-reuse',
+      tracking_freshness_token: 'token-container-reuse',
+      reference: 'REF-CONTAINER-REUSE',
       origin: { display_name: 'Busan' },
       destination: { display_name: 'Santos' },
       carrier: 'msc',
@@ -552,37 +554,16 @@ describe('toShipmentDetailVM post-completion tracking mapping', () => {
       source: 'api',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      tracking_validation: {
-        has_issues: true,
-        highest_severity: 'danger',
-        affected_container_count: 1,
-        top_issue: {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
-          severity: 'danger',
-          reason_key: 'tracking.validation.postCompletionTrackingContinued',
-          affected_area: 'timeline',
-          affected_location: null,
-          affected_block_label_key: null,
-        },
-      },
+      tracking_validation: makeProcessTrackingValidationResponse(),
       containers: [
         makeContainerResponse({
-          id: 'container-post-completion',
+          id: 'container-reuse',
           container_number: 'FCIU2000205',
-          tracking_validation: {
-            has_issues: true,
-            highest_severity: 'danger',
-            finding_count: 1,
-            active_issues: [
-              {
-                code: 'POST_COMPLETION_TRACKING_CONTINUED',
-                severity: 'danger',
-                reason_key: 'tracking.validation.postCompletionTrackingContinued',
-                affected_area: 'timeline',
-                affected_location: null,
-                affected_block_label_key: null,
-              },
-            ],
+          tracking_containment: {
+            active: true,
+            reason_code: 'CONTAINER_REUSED_AFTER_COMPLETION',
+            activated_at: '2026-04-08T12:00:00.000Z',
+            external_tracking_url: 'https://www.msc.com/en/track-a-shipment',
           },
         }),
       ],
@@ -591,32 +572,22 @@ describe('toShipmentDetailVM post-completion tracking mapping', () => {
     const result = toShipmentDetailVM(example)
 
     expect(result.trackingValidation).toEqual({
-      hasIssues: true,
-      highestSeverity: 'danger',
-      affectedContainerCount: 1,
-      topIssue: {
-        code: 'POST_COMPLETION_TRACKING_CONTINUED',
-        severity: 'danger',
-        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-        affectedArea: 'timeline',
-        affectedLocation: null,
-        affectedBlockLabelKey: null,
-      },
+      hasIssues: false,
+      highestSeverity: null,
+      affectedContainerCount: 0,
+      topIssue: null,
     })
     expect(result.containers[0]?.trackingValidation).toEqual({
-      hasIssues: true,
-      highestSeverity: 'danger',
-      findingCount: 1,
-      activeIssues: [
-        {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
-          severity: 'danger',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-          affectedArea: 'timeline',
-          affectedLocation: null,
-          affectedBlockLabelKey: null,
-        },
-      ],
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+      activeIssues: [],
+    })
+    expect(result.containers[0]?.trackingContainment).toEqual({
+      active: true,
+      reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION',
+      activatedAt: '2026-04-08T12:00:00.000Z',
+      externalTrackingUrl: 'https://www.msc.com/en/track-a-shipment',
     })
   })
 })

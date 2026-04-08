@@ -83,6 +83,7 @@ function makeShipmentDetailVm(): ShipmentDetailVM {
         dataIssueChipVm: {
           visible: false,
         },
+        trackingContainment: null,
         trackingValidation: {
           hasIssues: true,
           highestSeverity: 'warning',
@@ -141,6 +142,7 @@ function makeShipmentDetailVm(): ShipmentDetailVM {
         dataIssueChipVm: {
           visible: false,
         },
+        trackingContainment: null,
         trackingValidation: {
           hasIssues: true,
           highestSeverity: 'warning',

@@ -106,6 +106,7 @@ function makeContainer(id: string, number: string): ShipmentDetailVM['containers
     dataIssueChipVm: {
       visible: false,
     },
+    trackingContainment: null,
     trackingValidation: {
       hasIssues: false,
       highestSeverity: null,

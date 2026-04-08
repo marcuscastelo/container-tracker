@@ -3,6 +3,7 @@ import { findContainersHotReadProjection } from '~/modules/tracking/application/
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Snapshot } from '~/modules/tracking/domain/model/snapshot'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { TrackingContainmentState } from '~/modules/tracking/features/containment/domain/model/trackingContainment'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import {
   instantFromIsoText,
@@ -43,10 +44,12 @@ function makeObservation(
 function createDeps(args?: {
   readonly observations?: readonly Observation[]
   readonly activeAlerts?: readonly TrackingAlert[]
+  readonly containmentStatesByContainerId?: ReadonlyMap<string, TrackingContainmentState>
   readonly failActiveAlerts?: boolean
 }) {
   const observations = args?.observations ?? []
   const activeAlerts = args?.activeAlerts ?? []
+  const containmentStatesByContainerId = args?.containmentStatesByContainerId ?? new Map()
   const findAllByContainerId = vi.fn(async (containerId: string) =>
     observations.filter((observation) => observation.container_id === containerId),
   )
@@ -63,6 +66,14 @@ function createDeps(args?: {
     }
     const requestedIds = new Set(containerIds)
     return activeAlerts.filter((alert) => requestedIds.has(alert.container_id))
+  })
+  const findActiveContainmentByContainerIds = vi.fn(async (containerIds: readonly string[]) => {
+    const requestedIds = new Set(containerIds)
+    return new Map(
+      [...containmentStatesByContainerId.entries()].filter(([containerId]) =>
+        requestedIds.has(containerId),
+      ),
+    )
   })
 
   const deps: TrackingUseCasesDeps = {
@@ -96,6 +107,13 @@ function createDeps(args?: {
     syncMetadataRepository: {
       listByContainerNumbers: vi.fn(async () => []),
     },
+    trackingContainmentRepository: {
+      findActiveByContainerId: vi.fn(async (containerId: string) => {
+        return containmentStatesByContainerId.get(containerId) ?? null
+      }),
+      findActiveByContainerIds: findActiveContainmentByContainerIds,
+      activate: vi.fn(async () => undefined),
+    },
   }
 
   return {
@@ -104,6 +122,7 @@ function createDeps(args?: {
     findAllByContainerIds,
     findAllSnapshotsByContainerId,
     findActiveByContainerIds,
+    findActiveContainmentByContainerIds,
   }
 }
 
@@ -141,11 +160,16 @@ describe('findContainersHotReadProjection', () => {
         acked_source: null,
       },
     ]
-    const { deps, findAllByContainerId, findAllByContainerIds, findActiveByContainerIds } =
-      createDeps({
-        observations,
-        activeAlerts,
-      })
+    const {
+      deps,
+      findAllByContainerId,
+      findAllByContainerIds,
+      findActiveByContainerIds,
+      findActiveContainmentByContainerIds,
+    } = createDeps({
+      observations,
+      activeAlerts,
+    })
 
     const result = await findContainersHotReadProjection(deps, {
       containers: [
@@ -159,10 +183,13 @@ describe('findContainersHotReadProjection', () => {
     expect(findAllByContainerIds).toHaveBeenCalledWith(['c1', 'c2'])
     expect(findActiveByContainerIds).toHaveBeenCalledTimes(1)
     expect(findActiveByContainerIds).toHaveBeenCalledWith(['c1', 'c2'])
+    expect(findActiveContainmentByContainerIds).toHaveBeenCalledTimes(1)
+    expect(findActiveContainmentByContainerIds).toHaveBeenCalledWith(['c1', 'c2'])
     expect(findAllByContainerId).not.toHaveBeenCalled()
     expect(result.containers).toHaveLength(2)
     expect(result.containers[0]?.containerId).toBe('c1')
     expect(result.containers[0]?.activeAlerts).toHaveLength(1)
+    expect(result.containers[0]?.trackingContainment).toBeNull()
     expect(result.containers[0]?.trackingValidation).toEqual({
       hasIssues: false,
       findingCount: 0,
@@ -228,7 +255,7 @@ describe('findContainersHotReadProjection', () => {
     })
   })
 
-  it('marks the container when tracking continues after a strong completion milestone', async () => {
+  it('returns containment state without surfacing post-completion reuse as tracking validation', async () => {
     const postCompletionObservations = [
       makeObservation('c1', 'MSCU1111111', {
         id: 'obs-c1-discharge-1',
@@ -263,8 +290,24 @@ describe('findContainersHotReadProjection', () => {
         voyage: '777E',
       }),
     ]
+    const containmentStatesByContainerId = new Map<string, TrackingContainmentState>([
+      [
+        'c1',
+        {
+          active: true,
+          reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION',
+          activatedAt: '2026-02-15T10:30:00.000Z',
+          provider: 'msc',
+          snapshotId: 'snapshot-containment-1',
+          lifecycleKey: 'CONTAINER_REUSED_AFTER_COMPLETION:c1',
+          stateFingerprint: 'containment-state-1',
+          evidenceSummary: 'LOAD ACTUAL appeared after DELIVERED.',
+        },
+      ],
+    ])
     const { deps } = createDeps({
       observations: postCompletionObservations,
+      containmentStatesByContainerId,
     })
 
     const result = await findContainersHotReadProjection(deps, {
@@ -272,28 +315,17 @@ describe('findContainersHotReadProjection', () => {
       now: instantFromIsoText('2026-02-15T00:00:00.000Z'),
     })
 
+    expect(result.containers[0]?.trackingContainment).toEqual({
+      active: true,
+      reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION',
+      activatedAt: '2026-02-15T10:30:00.000Z',
+    })
     expect(result.containers[0]?.trackingValidation).toEqual({
-      hasIssues: true,
-      findingCount: 1,
-      highestSeverity: 'CRITICAL',
-      activeIssues: [
-        {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
-          severity: 'CRITICAL',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-          affectedArea: 'timeline',
-          affectedLocation: null,
-          affectedBlockLabelKey: null,
-        },
-      ],
-      topIssue: {
-        code: 'POST_COMPLETION_TRACKING_CONTINUED',
-        severity: 'CRITICAL',
-        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-        affectedArea: 'timeline',
-        affectedLocation: null,
-        affectedBlockLabelKey: null,
-      },
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
     })
   })
 

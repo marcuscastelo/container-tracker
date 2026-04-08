@@ -55,6 +55,7 @@ function makeContainer(overrides: ContainerOverrides = {}): ContainerDetailVM {
     dataIssueChipVm: {
       visible: false,
     },
+    trackingContainment: null,
     trackingValidation: {
       hasIssues: false,
       highestSeverity: null,

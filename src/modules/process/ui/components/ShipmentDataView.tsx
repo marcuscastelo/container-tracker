@@ -1,3 +1,4 @@
+import { ExternalLink, Info } from 'lucide-solid'
 import type { JSX } from 'solid-js'
 import { createMemo, ErrorBoundary, Show } from 'solid-js'
 import { AlertsPanel } from '~/modules/process/ui/components/AlertsPanel'
@@ -13,6 +14,7 @@ import { TrackingTimeTravelDiffSummary } from '~/modules/process/ui/screens/ship
 import { TrackingTimeTravelStatusPanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelStatusPanel'
 import { TrackingTimeTravelTimelinePanel } from '~/modules/process/ui/screens/shipment/components/TrackingTimeTravelTimelinePanel'
 import type { TrackingTimeTravelControllerResult } from '~/modules/process/ui/screens/shipment/hooks/useTrackingTimeTravelController'
+import { resolveShipmentTrackingContainmentDisplay } from '~/modules/process/ui/screens/shipment/lib/shipmentTrackingContainmentDisplay'
 import { resolveShipmentTrackingValidationDisplay } from '~/modules/process/ui/screens/shipment/lib/shipmentTrackingReviewDisplay'
 import type { AlertDisplayVM } from '~/modules/process/ui/viewmodels/alert.vm'
 import type { AlertIncidentsVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
@@ -82,13 +84,60 @@ type ShipmentTimelineRegionProps = Pick<
   'data' | 'activeAlerts' | 'selectedContainer' | 'trackingTimeTravel'
 >
 
+type TrackingContainmentNoticeProps = {
+  readonly containment: NonNullable<ShipmentDetailVM['containers'][number]['trackingContainment']>
+}
+
+function TrackingContainmentNotice(props: TrackingContainmentNoticeProps): JSX.Element {
+  const { t, keys } = useTranslation()
+
+  return (
+    <div class="rounded-xl border border-tone-info-border bg-tone-info-bg/50 px-4 py-3 text-sm-ui text-tone-info-fg shadow-[0_1px_2px_rgb(0_0_0_/6%)]">
+      <div class="flex items-start gap-3">
+        <Info aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0" />
+        <div class="min-w-0 space-y-2">
+          <div>
+            <p class="font-semibold">{t(keys.shipmentView.containment.noticeTitle)}</p>
+            <p class="mt-1 text-xs-ui text-tone-info-fg">
+              {t(keys.shipmentView.containment.noticeDescription)}
+            </p>
+          </div>
+          <Show when={props.containment.externalTrackingUrl}>
+            {(externalTrackingUrl) => (
+              <a
+                href={externalTrackingUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 rounded-md border border-tone-info-border bg-surface px-2 py-1 text-xs-ui font-medium text-tone-info-strong transition-colors hover:bg-tone-info-bg/70"
+              >
+                <ExternalLink class="h-3.5 w-3.5" />
+                <span>{t(keys.shipmentView.containment.openCarrierTracking)}</span>
+              </a>
+            )}
+          </Show>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element {
   const { t, keys } = useTranslation()
+  const containmentNotice = createMemo(() =>
+    resolveShipmentTrackingContainmentDisplay({
+      shipment: props.data,
+      selectedContainerId: props.selectedContainer?.id ?? '',
+      selectedSync: props.trackingTimeTravel.selectedSync(),
+    }),
+  )
 
   return (
     <Show when={props.selectedContainer}>
       {(container) => (
         <section id="shipment-timeline" class="scroll-mt-30 space-y-3">
+          <Show when={containmentNotice()}>
+            {(containment) => <TrackingContainmentNotice containment={containment()} />}
+          </Show>
           <ErrorBoundary
             fallback={(err) => {
               console.error('Timeline panel render failure:', err)

@@ -48,6 +48,7 @@ function buildProcessDetailResponse(
           finding_count: 0,
           active_issues: [],
         },
+        tracking_containment: null,
         timeline: [],
         operational: {
           status: 'IN_TRANSIT',

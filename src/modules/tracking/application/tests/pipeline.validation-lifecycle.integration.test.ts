@@ -451,7 +451,7 @@ describe('processSnapshot validation lifecycle integration', () => {
     })
   })
 
-  it('derives validation lifecycle from snapshot fetched_at instead of retry wall clock time', async () => {
+  it('does not surface legacy post-completion continuation as tracking validation for historical contamination', async () => {
     const containerId = randomUUID()
     const containerNumber = 'MSCU1234567'
     const snapshotRepository = new InMemorySnapshotRepository()
@@ -507,57 +507,47 @@ describe('processSnapshot validation lifecycle integration', () => {
         snapshotId: seedSnapshotId,
       }),
     ])
+    const firstResult = await processSnapshot(
+      retrySnapshot,
+      containerId,
+      containerNumber,
+      {
+        snapshotRepository,
+        observationRepository,
+        trackingAlertRepository: alertRepository,
+        trackingValidationLifecycleRepository: lifecycleRepository,
+      },
+      false,
+    )
 
-    vi.useFakeTimers()
+    const secondResult = await processSnapshot(
+      retrySnapshot,
+      containerId,
+      containerNumber,
+      {
+        snapshotRepository,
+        observationRepository,
+        trackingAlertRepository: alertRepository,
+        trackingValidationLifecycleRepository: lifecycleRepository,
+      },
+      false,
+    )
 
-    try {
-      vi.setSystemTime(new Date('2026-04-10T12:00:00.000Z'))
-      const firstResult = await processSnapshot(
-        retrySnapshot,
-        containerId,
-        containerNumber,
-        {
-          snapshotRepository,
-          observationRepository,
-          trackingAlertRepository: alertRepository,
-          trackingValidationLifecycleRepository: lifecycleRepository,
-        },
-        false,
-      )
-
-      vi.setSystemTime(new Date('2026-04-12T12:00:00.000Z'))
-      const secondResult = await processSnapshot(
-        retrySnapshot,
-        containerId,
-        containerNumber,
-        {
-          snapshotRepository,
-          observationRepository,
-          trackingAlertRepository: alertRepository,
-          trackingValidationLifecycleRepository: lifecycleRepository,
-        },
-        false,
-      )
-
-      expect(firstResult.trackingValidation).toMatchObject({
-        hasIssues: true,
-        highestSeverity: 'CRITICAL',
-        findingCount: 1,
-      })
-      expect(secondResult.trackingValidation).toMatchObject({
-        hasIssues: true,
-        highestSeverity: 'CRITICAL',
-        findingCount: 1,
-      })
-      expect(lifecycleRepository.transitions).toHaveLength(1)
-      expect(lifecycleRepository.transitions[0]).toMatchObject({
-        transitionType: 'activated',
-        issueCode: 'POST_COMPLETION_TRACKING_CONTINUED',
-        occurredAt: '2026-04-03T12:00:00.000Z',
-      })
-    } finally {
-      vi.useRealTimers()
-    }
+    expect(firstResult.trackingValidation).toEqual({
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+      activeIssues: [],
+      topIssue: null,
+    })
+    expect(secondResult.trackingValidation).toEqual({
+      hasIssues: false,
+      highestSeverity: null,
+      findingCount: 0,
+      activeIssues: [],
+      topIssue: null,
+    })
+    expect(lifecycleRepository.transitions).toEqual([])
   })
 
   it('persists lifecycle activation for duplicated canonical voyage segments without leaking debug evidence', async () => {
