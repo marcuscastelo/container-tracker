@@ -166,4 +166,90 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
       ])
     }
   })
+
+  it('keeps chained expected transshipment continuations out of post-carriage', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'leg-a-departure',
+          type: 'DEPARTURE',
+          eventTime: temporalDtoFromCanonical('2026-04-07'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'Karachi',
+        }),
+        makeEvent({
+          id: 'leg-a-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-04-11'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'Colombo',
+        }),
+        makeEvent({
+          id: 'planned-colombo',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-04-13'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Colombo',
+        }),
+        makeEvent({
+          id: 'planned-singapore-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-04-18'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'planned-singapore',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-04-23'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'planned-santos-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-05-17'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Santos',
+        }),
+      ],
+      instantFromIsoText('2026-04-08T00:00:00.000Z'),
+    )
+
+    const voyageBlocks = renderList.filter((item) => item.type === 'voyage-block')
+    const postCarriageBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'post-carriage',
+    )
+
+    expect(voyageBlocks).toHaveLength(3)
+    expect(postCarriageBlocks).toHaveLength(0)
+
+    const firstContinuation = requireDefined(voyageBlocks[1])
+    if (firstContinuation.type === 'voyage-block') {
+      expect(firstContinuation.block.vessel).toBeNull()
+      expect(firstContinuation.block.origin).toBe('Colombo')
+      expect(firstContinuation.block.destination).toBe('Singapore')
+    }
+
+    const secondContinuation = requireDefined(voyageBlocks[2])
+    if (secondContinuation.type === 'voyage-block') {
+      expect(secondContinuation.block.vessel).toBeNull()
+      expect(secondContinuation.block.origin).toBe('Singapore')
+      expect(secondContinuation.block.destination).toBe('Santos')
+      expect(secondContinuation.block.events.map((event) => event.type)).toEqual([
+        'TRANSSHIPMENT_INTENDED',
+        'ARRIVAL',
+      ])
+    }
+  })
 })

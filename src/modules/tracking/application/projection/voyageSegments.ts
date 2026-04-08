@@ -107,6 +107,17 @@ export function groupVoyageSegments(
     return event.type === 'TRANSSHIPMENT_INTENDED' && event.eventTimeType === 'EXPECTED'
   }
 
+  function canPrecedePlannedContinuation(
+    event: TrackingTimelineItem | null,
+    location: string | null,
+  ): boolean {
+    if (event === null || !matchesLocation(event, location)) {
+      return false
+    }
+
+    return event.type === 'ARRIVAL' || event.type === 'DISCHARGE'
+  }
+
   function isTransshipmentHelperEvent(event: TrackingTimelineItem): boolean {
     return TRANSSHIPMENT_HELPER_TYPES.has(event.type)
   }
@@ -135,12 +146,9 @@ export function groupVoyageSegments(
     if (origin === null) return null
 
     const previousMaritimeEvent = findLastStrongMaritimeEvent(startIndex - 1)
-    if (
-      previousMaritimeEvent === null ||
-      previousMaritimeEvent.type !== 'DISCHARGE' ||
-      previousMaritimeEvent.eventTimeType !== 'ACTUAL' ||
-      !matchesLocation(previousMaritimeEvent, origin)
-    ) {
+    // Planned continuation can start after a confirmed discharge or after a
+    // predicted arrival/discharge when the next leg is still only carrier-planned.
+    if (!canPrecedePlannedContinuation(previousMaritimeEvent, origin)) {
       return null
     }
 
@@ -190,6 +198,26 @@ export function groupVoyageSegments(
     }
   }
 
+  function appendPlannedContinuation(startIndex: number): number | null {
+    const anchor = events[startIndex]
+    if (anchor === undefined) return null
+
+    const plannedContinuation = matchPlannedContinuation(startIndex)
+    if (plannedContinuation === null) return null
+
+    flushCurrent()
+    segments.push({
+      vessel: null,
+      voyage: null,
+      origin: anchor.location ?? null,
+      destination: plannedContinuation.destination,
+      plannedContinuation: true,
+      events: events.slice(startIndex, plannedContinuation.endIndex + 1),
+    })
+
+    return plannedContinuation.endIndex
+  }
+
   function matchesCurrentVoyageIdentity(event: TrackingTimelineItem): boolean {
     const eventVessel = event.vesselName ?? null
     const eventVoyage = event.voyage ?? null
@@ -218,6 +246,14 @@ export function groupVoyageSegments(
 
     if (inVoyage) {
       if (!isMaritimeEvent(event)) {
+        const plannedContinuationEndIndex = isPlannedContinuationAnchor(event)
+          ? appendPlannedContinuation(index)
+          : null
+        if (plannedContinuationEndIndex !== null) {
+          index = plannedContinuationEndIndex
+          continue
+        }
+
         flushCurrent()
         currentEvents.push(event)
         continue
@@ -261,18 +297,9 @@ export function groupVoyageSegments(
       continue
     }
 
-    const plannedContinuation = matchPlannedContinuation(index)
-    if (plannedContinuation !== null) {
-      flushCurrent()
-      segments.push({
-        vessel: null,
-        voyage: null,
-        origin: event.location ?? null,
-        destination: plannedContinuation.destination,
-        plannedContinuation: true,
-        events: events.slice(index, plannedContinuation.endIndex + 1),
-      })
-      index = plannedContinuation.endIndex
+    const plannedContinuationEndIndex = appendPlannedContinuation(index)
+    if (plannedContinuationEndIndex !== null) {
+      index = plannedContinuationEndIndex
       continue
     }
 

@@ -267,6 +267,83 @@ describe('groupVoyageSegments', () => {
     ])
   })
 
+  it('creates chained planned continuation segments after predicted arrivals', () => {
+    const events = [
+      makeEvent({
+        id: 'leg-a-departure',
+        type: 'DEPARTURE',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'Karachi',
+      }),
+      makeEvent({
+        id: 'leg-a-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        location: 'Colombo',
+      }),
+      makeEvent({
+        id: 'planned-colombo',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Colombo',
+      }),
+      makeEvent({
+        id: 'planned-singapore-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-singapore',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Singapore',
+      }),
+      makeEvent({
+        id: 'planned-santos-arrival',
+        type: 'ARRIVAL',
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'Santos',
+      }),
+    ]
+
+    const segments = groupVoyageSegments(events)
+
+    expect(segments).toHaveLength(3)
+    expect(requireDefined(segments[0]).events.map((event) => event.type)).toEqual([
+      'DEPARTURE',
+      'ARRIVAL',
+    ])
+
+    const colomboContinuation = requireDefined(segments[1])
+    expect(colomboContinuation.plannedContinuation).toBe(true)
+    expect(colomboContinuation.origin).toBe('Colombo')
+    expect(colomboContinuation.destination).toBe('Singapore')
+    expect(colomboContinuation.events.map((event) => event.type)).toEqual([
+      'TRANSSHIPMENT_INTENDED',
+      'ARRIVAL',
+    ])
+
+    const singaporeContinuation = requireDefined(segments[2])
+    expect(singaporeContinuation.plannedContinuation).toBe(true)
+    expect(singaporeContinuation.origin).toBe('Singapore')
+    expect(singaporeContinuation.destination).toBe('Santos')
+    expect(singaporeContinuation.events.map((event) => event.type)).toEqual([
+      'TRANSSHIPMENT_INTENDED',
+      'ARRIVAL',
+    ])
+  })
+
   it('keeps explicit future legs stronger than intended transshipment anchors', () => {
     const events = [
       makeEvent({
