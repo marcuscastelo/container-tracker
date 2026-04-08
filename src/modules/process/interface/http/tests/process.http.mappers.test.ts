@@ -7,6 +7,7 @@ import { toProcessSource } from '~/modules/process/domain/identity/process-sourc
 import { createProcessEntity } from '~/modules/process/domain/process.entity'
 import type { ProcessOperationalSummary } from '~/modules/process/features/operational-projection/application/processOperationalSummary'
 import {
+  toInsertProcessRecord,
   toProcessResponseWithSummary,
   toUpdateProcessRecord,
 } from '~/modules/process/interface/http/process.http.mappers'
@@ -27,6 +28,7 @@ function createProcessWithContainers() {
     importerName: 'Importer A',
     exporterName: 'Exporter B',
     referenceImporter: null,
+    depositary: 'Santos Brasil',
     product: null,
     redestinationNumber: null,
     source: toProcessSource('manual'),
@@ -124,6 +126,7 @@ describe('process.http.mappers', () => {
       importer_name: null,
       exporter_name: null,
       reference_importer: null,
+      depositary: null,
       product: null,
       redestination_number: null,
     }
@@ -137,8 +140,29 @@ describe('process.http.mappers', () => {
       importer_name: null,
       exporter_name: null,
       reference_importer: null,
+      depositary: null,
       product: null,
       redestination_number: null,
+    })
+  })
+
+  it('normalizes depositary for insert and update request mappers', () => {
+    expect(
+      toInsertProcessRecord({
+        carrier: 'msc',
+        containers: [],
+        depositary: '  Santos Brasil  ',
+      } satisfies CreateProcessInput),
+    ).toMatchObject({
+      depositary: 'Santos Brasil',
+    })
+
+    expect(
+      toUpdateProcessRecord({
+        depositary: '   ',
+      }),
+    ).toEqual({
+      depositary: null,
     })
   })
 
@@ -160,6 +184,7 @@ describe('process.http.mappers', () => {
 
     const parsed = ProcessResponseSchema.parse(response)
 
+    expect(parsed.depositary).toBe('Santos Brasil')
     expect(parsed.process_status).toBe('IN_TRANSIT')
     expect(parsed.highest_container_status).toBe('DISCHARGED')
     expect(parsed.status_counts?.DISCHARGED).toBe(1)

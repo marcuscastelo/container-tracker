@@ -464,6 +464,7 @@ export function toShipmentDetailVM(
     importer_name: data.importer_name ?? null,
     exporter_name: data.exporter_name ?? null,
     reference_importer: data.reference_importer ?? null,
+    depositary: data.depositary ?? null,
     product: data.product ?? null,
     redestination_number: data.redestination_number ?? null,
     origin: data.origin?.display_name || '—',

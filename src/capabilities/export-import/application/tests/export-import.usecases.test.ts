@@ -17,7 +17,13 @@ function createReportProcessEntry(overrides: {
       readonly reference: string
       readonly origin: string
       readonly destination: string
+      readonly depositary: string | null
       readonly carrier: string
+      readonly billOfLading: string | null
+      readonly importerName: string | null
+      readonly exporterName: string | null
+      readonly product: string | null
+      readonly redestinationNumber: string | null
     }
     readonly containers: readonly {
       readonly id: string
@@ -44,7 +50,13 @@ function createReportProcessEntry(overrides: {
         reference: `REF-${overrides.processId}`,
         origin: 'Santos',
         destination: 'Hamburg',
+        depositary: 'CLI',
         carrier: 'MSC',
+        billOfLading: null,
+        importerName: null,
+        exporterName: null,
+        product: null,
+        redestinationNumber: null,
       },
       containers: overrides.containerIds.map((containerId, index) => ({
         id: containerId,
@@ -126,6 +138,7 @@ describe('export-import usecases', () => {
             reference: 'REF-1',
             origin: 'Santos',
             destination: 'Hamburg',
+            depositary: 'CLI',
             carrier: 'MSC',
             billOfLading: 'BL123',
             bookingNumber: 'BK123',
@@ -159,7 +172,70 @@ describe('export-import usecases', () => {
     expect(bundle.exportType).toBe('PORTABLE_SYMMETRIC')
     expect(bundle.processes).toHaveLength(1)
     expect(bundle.documents).toEqual([])
+    expect(bundle.processes[0]?.depositary).toBe('CLI')
     expect(bundle.processes[0]?.containers[0]?.containerNumber).toBe('MSCU1111111')
+  })
+
+  it('imports symmetric bundle preserving depositary explicitly', async () => {
+    const { deps, useCases } = createUseCases()
+    vi.mocked(deps.processUseCases.listProcesses).mockResolvedValueOnce({
+      processes: [],
+    })
+    vi.mocked(deps.processUseCases.createProcess).mockResolvedValueOnce({
+      process: {
+        id: 'created-process-1',
+      },
+      containers: [],
+    })
+
+    await useCases.executeSymmetricImport({
+      schemaVersion: '1.0',
+      exportType: 'PORTABLE_SYMMETRIC',
+      exportedAt: '2026-03-15T00:00:00.000Z',
+      metadata: {
+        tenant: null,
+        processCount: 1,
+        containerCount: 0,
+        documentCount: 0,
+      },
+      manifest: {
+        schemaVersion: '1.0',
+        exportType: 'PORTABLE_SYMMETRIC',
+        exportedAt: '2026-03-15T00:00:00.000Z',
+        processCount: 1,
+        containerCount: 0,
+        documentCount: 0,
+      },
+      processes: [
+        {
+          importKey: 'process-1',
+          reference: 'REF-1',
+          origin: 'Santos',
+          destination: 'Hamburg',
+          depositary: 'CLI',
+          carrier: 'MSC',
+          billOfLading: null,
+          bookingNumber: null,
+          importerName: null,
+          exporterName: null,
+          referenceImporter: null,
+          product: null,
+          redestinationNumber: null,
+          source: 'manual',
+          createdAt: '2026-03-15T00:00:00.000Z',
+          updatedAt: '2026-03-15T00:00:00.000Z',
+          containers: [],
+        },
+      ],
+      documents: [],
+    })
+
+    expect(deps.processUseCases.createProcess).toHaveBeenCalledWith({
+      record: expect.objectContaining({
+        depositary: 'CLI',
+      }),
+      containers: [],
+    })
   })
 
   it('blocks validation when database is not empty', async () => {

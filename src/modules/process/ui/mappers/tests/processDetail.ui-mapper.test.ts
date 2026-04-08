@@ -139,6 +139,7 @@ describe('toShipmentDetailVM base mapping', () => {
       reference: 'REF-1',
       origin: { display_name: 'Shanghai' },
       destination: { display_name: 'Santos' },
+      depositary: 'Santos Brasil',
       carrier: 'maersk',
       bill_of_lading: null,
       booking_number: null,
@@ -174,6 +175,7 @@ describe('toShipmentDetailVM base mapping', () => {
     expect(result).toBeTruthy()
     expect(result.id).toBe('proc-1')
     expect(result.trackingFreshnessToken).toBe('token-proc-1')
+    expect(result.depositary).toBe('Santos Brasil')
     expect(Array.isArray(result.containers)).toBe(true)
     expect(firstContainer.number).toBe('MRKU1234567')
     expect(firstContainer.status).toBe('indigo-500')

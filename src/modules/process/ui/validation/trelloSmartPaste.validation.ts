@@ -22,6 +22,7 @@ export type ParsedProcessDraft = {
     readonly redestinationNumber?: string
     readonly origin?: string
     readonly destination?: string
+    readonly depositary?: string
     readonly billOfLading?: string
     readonly bookingNumber?: string
     readonly carrier?: string
@@ -49,6 +50,7 @@ type ParsedLineFields = {
     readonly redestinationNumber?: string
     readonly origin?: string
     readonly destination?: string
+    readonly depositary?: string
     readonly billOfLading?: string
     readonly bookingNumber?: string
     readonly carrier?: string
@@ -142,8 +144,11 @@ function toLabelClassification(rawLabel: string): LabelClassification {
   if (normalized === 'ORIGEM') {
     return { type: 'mapped', key: 'origin' }
   }
-  if (normalized === 'DESTINO' || normalized === 'DEPOSITARIO') {
+  if (normalized === 'DESTINO') {
     return { type: 'mapped', key: 'destination' }
+  }
+  if (normalized === 'DEPOSITARIO') {
+    return { type: 'mapped', key: 'depositary' }
   }
   if (normalized === 'BL' || normalized === 'B/L' || normalized === 'BILL OF LADING') {
     return { type: 'mapped', key: 'billOfLading' }
@@ -295,6 +300,7 @@ function parseLineFields(lines: readonly string[]): ParsedLineFields {
     redestinationNumber?: string
     origin?: string
     destination?: string
+    depositary?: string
     billOfLading?: string
     bookingNumber?: string
     carrier?: string
@@ -400,6 +406,9 @@ export function parseTrelloSmartPaste(rawInput: string): ParsedProcessDraft {
     ...(lineFields.scalar.destination === undefined
       ? {}
       : { destination: lineFields.scalar.destination }),
+    ...(lineFields.scalar.depositary === undefined
+      ? {}
+      : { depositary: lineFields.scalar.depositary }),
     ...(lineFields.scalar.billOfLading === undefined
       ? {}
       : { billOfLading: lineFields.scalar.billOfLading }),

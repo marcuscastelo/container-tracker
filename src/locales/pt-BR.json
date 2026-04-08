@@ -300,6 +300,7 @@
       "booking": "Booking",
       "importer": "Importador",
       "exporter": "Exportador",
+      "depositary": "Depositário",
       "product": "Produto",
       "redestinationNumber": "Redestinação"
     },
@@ -681,6 +682,8 @@
       "exporterNamePlaceholder": "ex. Empresa XYZ",
       "referenceImporter": "Referência do Importador",
       "referenceImporterPlaceholder": "ex. PO-98765",
+      "depositary": "Depositário",
+      "depositaryPlaceholder": "ex. Santos Brasil",
       "product": "Produto",
       "productPlaceholder": "ex. Eletrônicos, Têxteis",
       "redestinationNumber": "Número de Redestinação",

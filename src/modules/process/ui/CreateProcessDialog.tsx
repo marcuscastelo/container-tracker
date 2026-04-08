@@ -64,6 +64,7 @@ export type CreateProcessDialogFormData = {
   importerName: string
   exporterName: string
   referenceImporter: string
+  depositary: string
   product: string
   redestinationNumber: string
 }
@@ -104,6 +105,7 @@ type BuildFormDataInput = {
   readonly importerName: string
   readonly exporterName: string
   readonly referenceImporter: string
+  readonly depositary: string
   readonly product: string
   readonly redestinationNumber: string
 }
@@ -119,6 +121,7 @@ type FormFieldSetters = {
   readonly setImporterName: Setter<string>
   readonly setExporterName: Setter<string>
   readonly setReferenceImporter: Setter<string>
+  readonly setDepositary: Setter<string>
   readonly setProduct: Setter<string>
   readonly setRedestinationNumber: Setter<string>
 }
@@ -172,6 +175,8 @@ type BuildDialogFormParams = {
   readonly onExporterNameInput: (value: string) => void
   readonly referenceImporter: string
   readonly onReferenceImporterInput: (value: string) => void
+  readonly depositary: string
+  readonly onDepositaryInput: (value: string) => void
   readonly product: string
   readonly onProductInput: (value: string) => void
   readonly redestinationNumber: string
@@ -305,6 +310,8 @@ type DialogState = {
   readonly setExporterName: Setter<string>
   readonly referenceImporter: Accessor<string>
   readonly setReferenceImporter: Setter<string>
+  readonly depositary: Accessor<string>
+  readonly setDepositary: Setter<string>
   readonly product: Accessor<string>
   readonly setProduct: Setter<string>
   readonly redestinationNumber: Accessor<string>
@@ -366,6 +373,7 @@ function buildFormData(input: BuildFormDataInput): CreateProcessDialogFormData {
     importerName: input.importerName,
     exporterName: input.exporterName,
     referenceImporter: input.referenceImporter,
+    depositary: input.depositary,
     product: input.product,
     redestinationNumber: input.redestinationNumber,
   }
@@ -564,6 +572,7 @@ function populateFormFromInitialData(params: {
   params.setters.setImporterName(data.importerName || '')
   params.setters.setExporterName(data.exporterName || '')
   params.setters.setReferenceImporter(data.referenceImporter || '')
+  params.setters.setDepositary(data.depositary || '')
   params.setters.setProduct(data.product || '')
   params.setters.setRedestinationNumber(data.redestinationNumber || '')
   params.setters.setContainers(
@@ -588,6 +597,7 @@ function resetDialogState(setters: DialogStateSetters): void {
   setters.setImporterName('')
   setters.setExporterName('')
   setters.setReferenceImporter('')
+  setters.setDepositary('')
   setters.setProduct('')
   setters.setRedestinationNumber('')
   setters.setTouched({})
@@ -752,6 +762,7 @@ function createDialogState(): DialogState {
   const [importerName, setImporterName] = createSignal('')
   const [exporterName, setExporterName] = createSignal('')
   const [referenceImporter, setReferenceImporter] = createSignal('')
+  const [depositary, setDepositary] = createSignal('')
   const [product, setProduct] = createSignal('')
   const [redestinationNumber, setRedestinationNumber] = createSignal('')
   const [touched, setTouched] = createSignal<Record<string, boolean>>({})
@@ -778,6 +789,8 @@ function createDialogState(): DialogState {
     setExporterName,
     referenceImporter,
     setReferenceImporter,
+    depositary,
+    setDepositary,
     product,
     setProduct,
     redestinationNumber,
@@ -801,6 +814,7 @@ function asFormFieldSetters(state: DialogState): FormFieldSetters {
     setImporterName: state.setImporterName,
     setExporterName: state.setExporterName,
     setReferenceImporter: state.setReferenceImporter,
+    setDepositary: state.setDepositary,
     setProduct: state.setProduct,
     setRedestinationNumber: state.setRedestinationNumber,
   }
@@ -1032,6 +1046,8 @@ function buildDialogForm(params: BuildDialogFormParams) {
     onExporterNameInput: params.onExporterNameInput,
     referenceImporter: params.referenceImporter,
     onReferenceImporterInput: params.onReferenceImporterInput,
+    depositary: params.depositary,
+    onDepositaryInput: params.onDepositaryInput,
     product: params.product,
     onProductInput: params.onProductInput,
     redestinationNumber: params.redestinationNumber,
@@ -1079,6 +1095,7 @@ function buildSubmitDataFromState(
     importerName: state.importerName(),
     exporterName: state.exporterName(),
     referenceImporter: state.referenceImporter(),
+    depositary: state.depositary(),
     product: state.product(),
     redestinationNumber: state.redestinationNumber(),
   })
@@ -1106,6 +1123,7 @@ function toCloseGuardFormSnapshotFromState(
     importerName: state.importerName(),
     exporterName: state.exporterName(),
     referenceImporter: state.referenceImporter(),
+    depositary: state.depositary(),
     product: state.product(),
     redestinationNumber: state.redestinationNumber(),
   }
@@ -1132,6 +1150,7 @@ function toCloseGuardFormSnapshotFromInitialData(
     importerName: initialData.importerName || '',
     exporterName: initialData.exporterName || '',
     referenceImporter: initialData.referenceImporter || '',
+    depositary: initialData.depositary || '',
     product: initialData.product || '',
     redestinationNumber: initialData.redestinationNumber || '',
   }
@@ -1142,8 +1161,9 @@ function toSmartPasteFormSnapshot(state: DialogState): SmartPasteFormSnapshot {
     reference: state.reference(),
     importerName: state.importerName(),
     exporterName: state.exporterName(),
-    product: state.product(),
     referenceImporter: state.referenceImporter(),
+    depositary: state.depositary(),
+    product: state.product(),
     redestinationNumber: state.redestinationNumber(),
     origin: state.origin(),
     destination: state.destination(),
@@ -1174,8 +1194,9 @@ function applySmartPasteSnapshotToState(params: {
   params.state.setReference(params.next.reference)
   params.state.setImporterName(params.next.importerName)
   params.state.setExporterName(params.next.exporterName)
-  params.state.setProduct(params.next.product)
   params.state.setReferenceImporter(params.next.referenceImporter)
+  params.state.setDepositary(params.next.depositary)
+  params.state.setProduct(params.next.product)
   params.state.setRedestinationNumber(params.next.redestinationNumber)
   params.state.setOrigin(params.next.origin)
   params.state.setDestination(params.next.destination)
@@ -1215,6 +1236,7 @@ function toSmartPasteDetectedFields(params: {
   maybePush('importerName', fields.importerName)
   maybePush('exporterName', fields.exporterName)
   maybePush('product', fields.product)
+  maybePush('depositary', fields.depositary)
   maybePush('origin', fields.origin)
   maybePush('billOfLading', fields.billOfLading)
   maybePush('redestinationNumber', fields.redestinationNumber)
@@ -1270,6 +1292,8 @@ function createDialogFormMemo(
       onExporterNameInput: params.state.setExporterName,
       referenceImporter: params.state.referenceImporter(),
       onReferenceImporterInput: params.state.setReferenceImporter,
+      depositary: params.state.depositary(),
+      onDepositaryInput: params.state.setDepositary,
       product: params.state.product(),
       onProductInput: params.state.setProduct,
       redestinationNumber: params.state.redestinationNumber(),
@@ -1325,6 +1349,7 @@ function createSmartPasteController(
     exporterName: params.t(params.keys.createProcess.field.exporterName),
     product: params.t(params.keys.createProcess.field.product),
     referenceImporter: params.t(params.keys.createProcess.field.referenceImporter),
+    depositary: params.t(params.keys.createProcess.field.depositary),
     redestinationNumber: params.t(params.keys.createProcess.field.redestinationNumber),
     origin: params.t(params.keys.createProcess.field.origin),
     destination: params.t(params.keys.createProcess.field.destination),

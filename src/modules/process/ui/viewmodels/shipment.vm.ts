@@ -155,6 +155,7 @@ export type ShipmentDetailVM = {
   readonly importer_name?: string | null
   readonly exporter_name?: string | null
   readonly reference_importer?: string | null
+  readonly depositary?: string | null
   readonly product?: string | null
   readonly redestination_number?: string | null
   readonly origin: string
