@@ -62,10 +62,12 @@ The following fields MUST NOT exist in any layer:
 - `reference_importer`
 
 ### New Columns (Migration Required)
-See `docs/migrations/f1-1-add-product-redestination.md` for:
+Add the following nullable columns to the shipments/processes table as part of the F1.1 schema update:
 - `product`
 - `redestination_number`
 - `depositary`
+
+These fields are part of the canonical contract in this document and must be available across DB, API, domain, and UI layers using the exact names shown above.
 
 ### Legacy Columns (Deprecated, Do Not Use)
 - `operation_type` - Marked as legacy, not read or written by domain layer
