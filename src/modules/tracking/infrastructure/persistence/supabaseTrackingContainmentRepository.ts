@@ -56,7 +56,7 @@ function toTrackingContainmentState(row: TrackingValidationLifecycleRow): Tracki
 function dedupeActiveContainmentRows(
   rows: readonly TrackingValidationLifecycleRow[],
 ): ReadonlyMap<string, TrackingContainmentState> {
-  const latestRowByLifecycleKey = new Map<string, TrackingValidationLifecycleRow>()
+  const latestActiveRowByLifecycleKey = new Map<string, TrackingValidationLifecycleRow>()
 
   for (const row of rows) {
     const issueCode = row.issue_code
@@ -64,14 +64,6 @@ function dedupeActiveContainmentRows(
       continue
     }
 
-    const lifecycleMapKey = `${row.container_id}:${row.lifecycle_key}`
-    if (!latestRowByLifecycleKey.has(lifecycleMapKey)) {
-      latestRowByLifecycleKey.set(lifecycleMapKey, row)
-    }
-  }
-
-  const activeByContainerId = new Map<string, TrackingContainmentState>()
-  for (const row of latestRowByLifecycleKey.values()) {
     if (
       requireTrackingValidationTransitionType(
         row.transition_type,
@@ -81,6 +73,14 @@ function dedupeActiveContainmentRows(
       continue
     }
 
+    const lifecycleMapKey = `${row.container_id}:${row.lifecycle_key}`
+    if (!latestActiveRowByLifecycleKey.has(lifecycleMapKey)) {
+      latestActiveRowByLifecycleKey.set(lifecycleMapKey, row)
+    }
+  }
+
+  const activeByContainerId = new Map<string, TrackingContainmentState>()
+  for (const row of latestActiveRowByLifecycleKey.values()) {
     if (!activeByContainerId.has(row.container_id)) {
       activeByContainerId.set(row.container_id, toTrackingContainmentState(row))
     }

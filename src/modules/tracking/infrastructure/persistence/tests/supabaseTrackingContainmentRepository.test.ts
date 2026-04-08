@@ -110,7 +110,16 @@ describe('supabaseTrackingContainmentRepository', () => {
 
     const state = await supabaseTrackingContainmentRepository.findActiveByContainerId('container-1')
 
-    expect(state).toBeNull()
+    expect(state).toEqual({
+      active: true,
+      reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION',
+      activatedAt: '2026-04-03T10:00:00.000Z',
+      provider: 'msc',
+      snapshotId: 'snapshot-1',
+      lifecycleKey: 'CONTAINER_REUSED_AFTER_COMPLETION:container-1',
+      stateFingerprint: 'state-1',
+      evidenceSummary: 'LOAD ACTUAL appeared after DELIVERED.',
+    })
   })
 
   it('persists containment activation with the dedicated issue code and idempotent upsert', async () => {

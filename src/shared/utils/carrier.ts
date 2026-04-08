@@ -32,6 +32,8 @@ export function directCarrierTrackUrl(
 }
 
 export function carrierTrackUrl(carrier: string | null, containerNumber: string): string | null {
+  if (!carrier || !containerNumber) return null
+
   const directUrl = directCarrierTrackUrl(carrier, containerNumber)
   if (directUrl !== null) {
     return directUrl

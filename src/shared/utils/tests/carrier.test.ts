@@ -40,6 +40,12 @@ describe('carrierTrackUrl util', () => {
     expect(url).toContain('google.com/search')
   })
 
+  it('returns null when carrier or container number is missing', () => {
+    expect(carrierTrackUrl(null, 'MRKU1234567')).toBeNull()
+    expect(carrierTrackUrl('', 'MRKU1234567')).toBeNull()
+    expect(carrierTrackUrl('Maersk', '')).toBeNull()
+  })
+
   it('returns null for unknown carriers when direct tracking is required', () => {
     const url = directCarrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
     expect(url).toBeNull()

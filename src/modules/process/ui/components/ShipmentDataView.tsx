@@ -107,7 +107,7 @@ function TrackingContainmentNotice(props: TrackingContainmentNoticeProps): JSX.E
               <a
                 href={externalTrackingUrl()}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 class="inline-flex items-center gap-1 rounded-md border border-tone-info-border bg-surface px-2 py-1 text-xs-ui font-medium text-tone-info-strong transition-colors hover:bg-tone-info-bg/70"
               >
                 <ExternalLink class="h-3.5 w-3.5" />
