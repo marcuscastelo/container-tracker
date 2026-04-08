@@ -60,6 +60,89 @@ function dominantLocation(events: readonly TrackingTimelineItem[]): string | nul
   return best
 }
 
+const EVENT_TIE_BREAK_PRIORITY = new Map<string, number>([
+  ['GATE_OUT', 10],
+  ['GATE_IN', 20],
+  ['ARRIVAL', 30],
+  ['DISCHARGE', 40],
+  ['TRANSSHIPMENT_INTENDED', 50],
+  ['TRANSSHIPMENT_POSITIONED_IN', 60],
+  ['TERMINAL_MOVE', 70],
+  ['TRANSSHIPMENT_POSITIONED_OUT', 80],
+  ['LOAD', 90],
+  ['DEPARTURE', 100],
+  ['DELIVERY', 110],
+  ['EMPTY_RETURN', 120],
+])
+
+const DEFAULT_EVENT_TIE_BREAK_PRIORITY = 500
+
+function compareTextValue(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): number {
+  const normalizedLeft = left ?? ''
+  const normalizedRight = right ?? ''
+
+  if (normalizedLeft < normalizedRight) return -1
+  if (normalizedLeft > normalizedRight) return 1
+  return 0
+}
+
+function eventTieBreakPriority(type: string): number {
+  return EVENT_TIE_BREAK_PRIORITY.get(type) ?? DEFAULT_EVENT_TIE_BREAK_PRIORITY
+}
+
+function compareTimelineItemsForBlockDerivation(
+  left: TrackingTimelineItem,
+  right: TrackingTimelineItem,
+): number {
+  const leftInstant = toTimelineInstant(left.eventTime)
+  const rightInstant = toTimelineInstant(right.eventTime)
+
+  if (leftInstant === null && rightInstant !== null) return 1
+  if (leftInstant !== null && rightInstant === null) return -1
+
+  if (leftInstant !== null && rightInstant !== null) {
+    const timeCompare = leftInstant.compare(rightInstant)
+    if (timeCompare !== 0) return timeCompare
+  }
+
+  if (left.eventTimeType === 'ACTUAL' && right.eventTimeType === 'EXPECTED') return -1
+  if (left.eventTimeType === 'EXPECTED' && right.eventTimeType === 'ACTUAL') return 1
+
+  const priorityCompare = eventTieBreakPriority(left.type) - eventTieBreakPriority(right.type)
+  if (priorityCompare !== 0) return priorityCompare
+
+  const typeCompare = compareTextValue(left.type, right.type)
+  if (typeCompare !== 0) return typeCompare
+
+  const locationCompare = compareTextValue(left.location, right.location)
+  if (locationCompare !== 0) return locationCompare
+
+  const vesselCompare = compareTextValue(left.vesselName, right.vesselName)
+  if (vesselCompare !== 0) return vesselCompare
+
+  const voyageCompare = compareTextValue(left.voyage, right.voyage)
+  if (voyageCompare !== 0) return voyageCompare
+
+  return compareTextValue(left.id, right.id)
+}
+
+/**
+ * Timeline block classification depends on the relative order of timeline items.
+ * Providers that emit date-only milestones can collapse multiple transshipment
+ * steps onto the same comparable instant, so we apply a semantic tie-break here
+ * to keep those helper events stable and prevent them from drifting into
+ * post-carriage because of incidental array order.
+ */
+function sortTimelineItemsForBlockDerivation(
+  events: readonly TrackingTimelineItem[],
+): readonly TrackingTimelineItem[] {
+  if (events.length < 2) return events
+  return [...events].sort(compareTimelineItemsForBlockDerivation)
+}
+
 /**
  * Group events that do NOT belong to any voyage segment into terminal segments.
  *
@@ -420,11 +503,12 @@ export function buildTimelineRenderList(
 ): readonly TimelineRenderItem[] {
   if (events.length === 0) return []
 
-  const voyageSegments = groupVoyageSegments(events)
-  const terminalSegments = groupTerminalSegments(events, voyageSegments)
+  const orderedEvents = sortTimelineItemsForBlockDerivation(events)
+  const voyageSegments = groupVoyageSegments(orderedEvents)
+  const terminalSegments = groupTerminalSegments(orderedEvents, voyageSegments)
   const transshipments = detectTransshipmentsBetweenVoyages(voyageSegments)
-  const gapMarkers = computeGapMarkers(events)
-  const portRiskEntries = computePortRiskMarkers(events, now)
+  const gapMarkers = computeGapMarkers(orderedEvents)
+  const portRiskEntries = computePortRiskMarkers(orderedEvents, now)
 
   // Build a set of port-risk afterEventIds for Phase 19:
   // suppress generic gap markers that overlap with port risk windows
@@ -433,7 +517,7 @@ export function buildTimelineRenderList(
   // Map gap markers by position: keyed by "fromEventId" for placement
   const gapsByFromEvent = new Map<string, GapMarker>()
   {
-    const datedEvents = events.filter((event) => toTimelineInstant(event.eventTime) !== null)
+    const datedEvents = orderedEvents.filter((event) => toTimelineInstant(event.eventTime) !== null)
     let gapIdx = 0
     for (let i = 0; i < datedEvents.length - 1 && gapIdx < gapMarkers.length; i++) {
       const current = datedEvents[i]
@@ -486,7 +570,7 @@ export function buildTimelineRenderList(
     blockEvents: readonly TrackingTimelineItem[],
     isLastBlock: boolean,
   ): void {
-    const lastOverallEvent = events[events.length - 1] ?? null
+    const lastOverallEvent = orderedEvents[orderedEvents.length - 1] ?? null
 
     for (let i = 0; i < blockEvents.length; i++) {
       const event = blockEvents[i]
@@ -574,9 +658,11 @@ export function buildTimelineRenderList(
         if (lastCurrentVoyageEvent === undefined || firstNextVoyageEvent === undefined) continue
 
         // Check if the terminal event is positioned between the two voyages
-        const termEventIdx = events.findIndex((e) => e.id === firstTermEvent.id)
-        const lastCurrentVoyageIdx = events.findIndex((e) => e.id === lastCurrentVoyageEvent.id)
-        const firstNextVoyageIdx = events.findIndex((e) => e.id === firstNextVoyageEvent.id)
+        const termEventIdx = orderedEvents.findIndex((e) => e.id === firstTermEvent.id)
+        const lastCurrentVoyageIdx = orderedEvents.findIndex(
+          (e) => e.id === lastCurrentVoyageEvent.id,
+        )
+        const firstNextVoyageIdx = orderedEvents.findIndex((e) => e.id === firstNextVoyageEvent.id)
 
         if (termEventIdx > lastCurrentVoyageIdx && termEventIdx < firstNextVoyageIdx) {
           usedTerminalKinds.add(`ts-${segIdx}`)
