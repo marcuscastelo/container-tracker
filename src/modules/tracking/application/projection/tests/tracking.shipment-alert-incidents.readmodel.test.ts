@@ -42,14 +42,10 @@ function makeTransshipmentAlert(command: {
   }
 }
 
-function makeNoMovementAlert(command: {
+function makeEtaPassedAlert(command: {
   readonly id: string
   readonly containerId: string
-  readonly thresholdDays: number
-  readonly daysWithoutMovement: number
-  readonly lastEventDate: string
   readonly triggeredAt: string
-  readonly cycleFingerprint: string
   readonly ackedAt?: string | null
   readonly resolvedAt?: string | null
   readonly lifecycleState?: 'ACTIVE' | 'ACKED' | 'AUTO_RESOLVED'
@@ -59,19 +55,14 @@ function makeNoMovementAlert(command: {
     id: command.id,
     container_id: command.containerId,
     category: 'monitoring',
-    type: 'NO_MOVEMENT',
+    type: 'ETA_PASSED',
     severity: 'warning',
-    message_key: 'alerts.noMovementDetected',
-    message_params: {
-      threshold_days: command.thresholdDays,
-      days_without_movement: command.daysWithoutMovement,
-      days: command.daysWithoutMovement,
-      lastEventDate: command.lastEventDate,
-    },
+    message_key: 'alerts.etaPassed',
+    message_params: {},
     detected_at: command.triggeredAt,
     triggered_at: command.triggeredAt,
-    source_observation_fingerprints: [command.cycleFingerprint],
-    alert_fingerprint: `no-movement-${command.containerId}-${command.thresholdDays}-${command.cycleFingerprint}`,
+    source_observation_fingerprints: [`eta-${command.id}`],
+    alert_fingerprint: `eta-passed-${command.containerId}`,
     retroactive: false,
     provider: null,
     acked_at: command.ackedAt ?? null,
@@ -284,32 +275,29 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     expect(singaporeIncidents.map((incident) => incident.transshipmentOrder)).toEqual([2, 1])
   })
 
-  it('collapses no-movement thresholds into the strongest active incident and keeps history', () => {
+  it('groups eta-passed alerts into one active incident per type', () => {
     const result = buildShipmentAlertIncidentsReadModel({
       containers: [
         {
           containerId: 'container-1',
           containerNumber: 'MSDU1652364',
           alerts: [
-            makeNoMovementAlert({
-              id: 'alert-20d',
+            makeEtaPassedAlert({
+              id: 'alert-eta-1',
               containerId: 'container-1',
-              thresholdDays: 20,
-              daysWithoutMovement: 20,
-              lastEventDate: '2026-02-28',
               triggeredAt: '2026-03-20T12:00:00.000Z',
-              cycleFingerprint: 'cycle-1',
-              ackedAt: '2026-03-21T12:00:00.000Z',
-              lifecycleState: 'ACKED',
+              lifecycleState: 'ACTIVE',
             }),
-            makeNoMovementAlert({
-              id: 'alert-30d',
-              containerId: 'container-1',
-              thresholdDays: 30,
-              daysWithoutMovement: 30,
-              lastEventDate: '2026-02-28',
-              triggeredAt: '2026-03-30T12:00:00.000Z',
-              cycleFingerprint: 'cycle-1',
+          ],
+        },
+        {
+          containerId: 'container-2',
+          containerNumber: 'MSBU3493578',
+          alerts: [
+            makeEtaPassedAlert({
+              id: 'alert-eta-2',
+              containerId: 'container-2',
+              triggeredAt: '2026-03-21T12:00:00.000Z',
               lifecycleState: 'ACTIVE',
             }),
           ],
@@ -318,103 +306,11 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
     })
 
     expect(result.summary.activeIncidentCount).toBe(1)
-    expect(result.summary.recognizedIncidentCount).toBe(0)
-    expect(result.active[0]?.type).toBe('NO_MOVEMENT')
-    expect(result.active[0]?.thresholdDays).toBe(30)
-    expect(result.active[0]?.activeAlertIds).toEqual(['alert-30d'])
-    expect(result.active[0]?.monitoringHistory.map((record) => record.thresholdDays)).toEqual([
-      20, 30,
-    ])
-  })
-
-  it('keeps repeated no-movement thresholds from different cycles as separate incidents', () => {
-    const result = buildShipmentAlertIncidentsReadModel({
-      containers: [
-        {
-          containerId: 'container-1',
-          containerNumber: 'MSDU1652364',
-          alerts: [
-            makeNoMovementAlert({
-              id: 'alert-cycle-1',
-              containerId: 'container-1',
-              thresholdDays: 30,
-              daysWithoutMovement: 30,
-              lastEventDate: '2026-02-28',
-              triggeredAt: '2026-03-30T12:00:00.000Z',
-              cycleFingerprint: 'cycle-1',
-              lifecycleState: 'ACTIVE',
-            }),
-            makeNoMovementAlert({
-              id: 'alert-cycle-2',
-              containerId: 'container-1',
-              thresholdDays: 30,
-              daysWithoutMovement: 30,
-              lastEventDate: '2026-03-31',
-              triggeredAt: '2026-04-30T12:00:00.000Z',
-              cycleFingerprint: 'cycle-2',
-              lifecycleState: 'ACTIVE',
-            }),
-          ],
-        },
-      ],
-    })
-
-    expect(result.active).toHaveLength(2)
-    expect(result.active.map((incident) => incident.incidentKey).sort()).toEqual([
-      'NO_MOVEMENT:30:fp:cycle-1',
-      'NO_MOVEMENT:30:fp:cycle-2',
-    ])
-  })
-
-  it('sorts monitoring history ties by latest alert action time first', () => {
-    const result = buildShipmentAlertIncidentsReadModel({
-      containers: [
-        {
-          containerId: 'container-1',
-          containerNumber: 'MSDU1652364',
-          alerts: [
-            makeNoMovementAlert({
-              id: 'alert-older-action',
-              containerId: 'container-1',
-              thresholdDays: 20,
-              daysWithoutMovement: 20,
-              lastEventDate: '2026-02-28',
-              triggeredAt: '2026-03-20T12:00:00.000Z',
-              cycleFingerprint: 'cycle-1',
-              ackedAt: '2026-03-21T12:00:00.000Z',
-              lifecycleState: 'ACKED',
-            }),
-            makeNoMovementAlert({
-              id: 'alert-newer-action',
-              containerId: 'container-1',
-              thresholdDays: 20,
-              daysWithoutMovement: 20,
-              lastEventDate: '2026-02-28',
-              triggeredAt: '2026-03-20T13:00:00.000Z',
-              cycleFingerprint: 'cycle-1',
-              ackedAt: '2026-03-22T12:00:00.000Z',
-              lifecycleState: 'ACKED',
-            }),
-            makeNoMovementAlert({
-              id: 'alert-active',
-              containerId: 'container-1',
-              thresholdDays: 30,
-              daysWithoutMovement: 30,
-              lastEventDate: '2026-02-28',
-              triggeredAt: '2026-03-30T12:00:00.000Z',
-              cycleFingerprint: 'cycle-1',
-              lifecycleState: 'ACTIVE',
-            }),
-          ],
-        },
-      ],
-    })
-
-    expect(result.active[0]?.monitoringHistory.map((record) => record.alertId)).toEqual([
-      'alert-newer-action',
-      'alert-older-action',
-      'alert-active',
-    ])
+    expect(result.summary.affectedContainerCount).toBe(2)
+    expect(result.active[0]?.type).toBe('ETA_PASSED')
+    expect(result.active[0]?.category).toBe('eta')
+    expect(result.active[0]?.affectedContainerCount).toBe(2)
+    expect(result.active[0]?.activeAlertIds).toEqual(['alert-eta-2', 'alert-eta-1'])
   })
 
   it('places acknowledged and auto-resolved incidents in the recognized bucket', () => {
@@ -438,14 +334,10 @@ describe('tracking.shipment-alert-incidents.readmodel', () => {
           containerId: 'container-2',
           containerNumber: 'MSBU3493578',
           alerts: [
-            makeNoMovementAlert({
+            makeEtaPassedAlert({
               id: 'alert-auto-resolved',
               containerId: 'container-2',
-              thresholdDays: 30,
-              daysWithoutMovement: 30,
-              lastEventDate: '2026-02-28',
               triggeredAt: '2026-03-30T12:00:00.000Z',
-              cycleFingerprint: 'cycle-2',
               resolvedAt: '2026-03-31T12:00:00.000Z',
               lifecycleState: 'AUTO_RESOLVED',
             }),

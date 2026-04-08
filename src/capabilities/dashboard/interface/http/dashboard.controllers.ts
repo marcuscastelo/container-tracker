@@ -108,14 +108,6 @@ function toNavbarAlertResponse(alert: NavbarAlertReadModel): NavbarAlertResponse
     }
   }
 
-  if (alert.messageKey === 'alerts.noMovementDetected') {
-    return {
-      ...baseAlert,
-      message_key: 'alerts.noMovementDetected',
-      message_params: alert.messageParams,
-    }
-  }
-
   if (alert.messageKey === 'alerts.etaMissing') {
     return {
       ...baseAlert,

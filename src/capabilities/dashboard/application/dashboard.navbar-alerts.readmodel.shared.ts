@@ -45,15 +45,6 @@ export type NavbarAlertMessageContract =
       }
     }
   | {
-      readonly messageKey: 'alerts.noMovementDetected'
-      readonly messageParams: {
-        readonly threshold_days: number
-        readonly days_without_movement: number
-        readonly days: number
-        readonly lastEventDate: string
-      }
-    }
-  | {
       readonly messageKey: 'alerts.etaMissing'
       readonly messageParams: Readonly<Record<never, never>>
     }

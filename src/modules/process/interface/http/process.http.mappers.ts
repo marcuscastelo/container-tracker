@@ -347,9 +347,6 @@ function toShipmentAlertIncidentRecordResponse(record: ShipmentAlertIncidentReco
     acked_at: record.ackedAt,
     resolved_at: record.resolvedAt,
     resolved_reason: record.resolvedReason,
-    threshold_days: record.thresholdDays,
-    days_without_movement: record.daysWithoutMovement,
-    last_event_date: record.lastEventDate,
   }
 }
 
@@ -364,9 +361,6 @@ function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadMode
     message_params: incident.messageParams,
     detected_at: incident.detectedAt,
     triggered_at: incident.triggeredAt,
-    threshold_days: incident.thresholdDays,
-    days_without_movement: incident.daysWithoutMovement,
-    last_event_date: incident.lastEventDate,
     transshipment_order: incident.transshipmentOrder,
     port: incident.port,
     from_vessel: incident.fromVessel,
@@ -379,16 +373,12 @@ function toShipmentAlertIncidentResponse(incident: ShipmentAlertIncidentReadMode
       container_number: member.containerNumber,
       lifecycle_state: member.lifecycleState,
       detected_at: member.detectedAt,
-      threshold_days: member.thresholdDays,
-      days_without_movement: member.daysWithoutMovement,
-      last_event_date: member.lastEventDate,
       transshipment_order: member.transshipmentOrder,
       port: member.port,
       from_vessel: member.fromVessel,
       to_vessel: member.toVessel,
       records: member.records.map(toShipmentAlertIncidentRecordResponse),
     })),
-    monitoring_history: incident.monitoringHistory.map(toShipmentAlertIncidentRecordResponse),
   }
 }
 

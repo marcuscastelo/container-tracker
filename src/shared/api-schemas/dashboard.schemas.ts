@@ -68,17 +68,6 @@ const NavbarAlertMessageSchema = z.discriminatedUnion('message_key', [
       .strict(),
   }),
   z.object({
-    message_key: z.literal('alerts.noMovementDetected'),
-    message_params: z
-      .object({
-        threshold_days: z.number(),
-        days_without_movement: z.number(),
-        days: z.number(),
-        lastEventDate: z.string(),
-      })
-      .strict(),
-  }),
-  z.object({
     message_key: z.literal('alerts.etaMissing'),
     message_params: z.object({}).strict(),
   }),

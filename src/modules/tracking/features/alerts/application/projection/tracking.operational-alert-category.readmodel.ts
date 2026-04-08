@@ -13,7 +13,6 @@ export function toTrackingOperationalAlertCategory(
     case 'ETA_MISSING':
     case 'ETA_PASSED':
       return 'eta'
-    case 'NO_MOVEMENT':
     case 'TRANSSHIPMENT':
       return 'movement'
     case 'CUSTOMS_HOLD':

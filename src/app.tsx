@@ -1,4 +1,4 @@
-import { Router, useLocation, usePreloadRoute } from '@solidjs/router'
+import { Router, usePreloadRoute } from '@solidjs/router'
 import { FileRoutes } from '@solidjs/start/router'
 import type { JSX } from 'solid-js'
 import { createEffect, createMemo, ErrorBoundary, Show, Suspense } from 'solid-js'
@@ -20,6 +20,9 @@ type AppErrorBoundaryFallbackProps = {
 
 type AppRouterRootProps = {
   readonly children: JSX.Element
+  readonly location: {
+    readonly pathname: string
+  }
 }
 
 function AppErrorBoundaryFallback(props: AppErrorBoundaryFallbackProps): JSX.Element {
@@ -68,17 +71,19 @@ function GlobalServerProblemBanner(): JSX.Element {
 }
 
 function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
-  const location = useLocation()
   const preloadRoute = usePreloadRoute()
   const { locale } = useTranslation()
 
   return (
     <div class="root">
-      <AppInitialRoutePrefetchBoundary pathname={() => location.pathname} locale={locale} />
-      <DashboardKeepWarmBoundary pathname={() => location.pathname} preloadRoute={preloadRoute} />
+      <AppInitialRoutePrefetchBoundary pathname={() => props.location.pathname} locale={locale} />
+      <DashboardKeepWarmBoundary
+        pathname={() => props.location.pathname}
+        preloadRoute={preloadRoute}
+      />
       <GlobalServerProblemBanner />
       <ErrorBoundary fallback={(err) => <AppErrorBoundaryFallback error={err} />}>
-        <Suspense fallback={<AppRouteSkeleton pathname={() => location.pathname} />}>
+        <Suspense fallback={<AppRouteSkeleton pathname={() => props.location.pathname} />}>
           {props.children}
         </Suspense>
       </ErrorBoundary>
@@ -90,7 +95,7 @@ function AppRouterRoot(props: AppRouterRootProps): JSX.Element {
 /** @public */
 export default function App() {
   return (
-    <Router root={(props) => <AppRouterRoot>{props.children}</AppRouterRoot>}>
+    <Router root={(props) => <AppRouterRoot {...props}>{props.children}</AppRouterRoot>}>
       <FileRoutes />
     </Router>
   )

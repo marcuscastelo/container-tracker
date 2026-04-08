@@ -8,7 +8,7 @@ import type { ProcessDetailResponse } from '~/shared/api-schemas/processes.schem
 type AlertIncidentsResponse = ProcessDetailResponse['alert_incidents']
 
 function toAlertIncidentRecordVm(
-  record: NonNullable<AlertIncidentsResponse>['active'][number]['monitoring_history'][number],
+  record: NonNullable<AlertIncidentsResponse>['active'][number]['members'][number]['records'][number],
 ): AlertIncidentRecordVM {
   return {
     alertId: record.alert_id,
@@ -18,9 +18,6 @@ function toAlertIncidentRecordVm(
     ackedAtIso: record.acked_at,
     resolvedAtIso: record.resolved_at,
     resolvedReason: record.resolved_reason,
-    thresholdDays: record.threshold_days,
-    daysWithoutMovement: record.days_without_movement,
-    lastEventDate: record.last_event_date,
   }
 }
 
@@ -37,9 +34,6 @@ function toAlertIncidentVm(
     messageParams: incident.message_params,
     detectedAtIso: incident.detected_at,
     triggeredAtIso: incident.triggered_at,
-    thresholdDays: incident.threshold_days,
-    daysWithoutMovement: incident.days_without_movement,
-    lastEventDate: incident.last_event_date,
     transshipmentOrder: incident.transshipment_order,
     port: incident.port,
     fromVessel: incident.from_vessel,
@@ -52,16 +46,12 @@ function toAlertIncidentVm(
       containerNumber: member.container_number,
       lifecycleState: member.lifecycle_state,
       detectedAtIso: member.detected_at,
-      thresholdDays: member.threshold_days,
-      daysWithoutMovement: member.days_without_movement,
-      lastEventDate: member.last_event_date,
       transshipmentOrder: member.transshipment_order,
       port: member.port,
       fromVessel: member.from_vessel,
       toVessel: member.to_vessel,
       records: member.records.map(toAlertIncidentRecordVm),
     })),
-    monitoringHistory: incident.monitoring_history.map(toAlertIncidentRecordVm),
   }
 }
 

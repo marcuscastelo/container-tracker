@@ -1,6 +1,6 @@
 import type { TrackingAlertLifecycleState } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 
-export type AlertIncidentCategoryVM = 'movement' | 'eta' | 'customs' | 'status' | 'data'
+export type AlertIncidentCategoryVM = 'movement' | 'eta' | 'customs' | 'data'
 export type AlertIncidentBucketVM = 'active' | 'recognized'
 
 export type AlertIncidentRecordVM = {
@@ -11,9 +11,6 @@ export type AlertIncidentRecordVM = {
   readonly ackedAtIso: string | null
   readonly resolvedAtIso: string | null
   readonly resolvedReason: 'condition_cleared' | 'terminal_state' | null
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
 }
 
 export type AlertIncidentMemberVM = {
@@ -21,9 +18,6 @@ export type AlertIncidentMemberVM = {
   readonly containerNumber: string
   readonly lifecycleState: TrackingAlertLifecycleState
   readonly detectedAtIso: string
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -39,7 +33,6 @@ export type AlertIncidentVM = {
     | 'TRANSSHIPMENT'
     | 'CUSTOMS_HOLD'
     | 'PORT_CHANGE'
-    | 'NO_MOVEMENT'
     | 'ETA_PASSED'
     | 'ETA_MISSING'
     | 'DATA_INCONSISTENT'
@@ -47,7 +40,6 @@ export type AlertIncidentVM = {
   readonly messageKey:
     | 'alerts.transshipmentDetected'
     | 'alerts.customsHoldDetected'
-    | 'alerts.noMovementDetected'
     | 'alerts.etaMissing'
     | 'alerts.etaPassed'
     | 'alerts.portChange'
@@ -55,9 +47,6 @@ export type AlertIncidentVM = {
   readonly messageParams: Record<string, string | number>
   readonly detectedAtIso: string
   readonly triggeredAtIso: string
-  readonly thresholdDays: number | null
-  readonly daysWithoutMovement: number | null
-  readonly lastEventDate: string | null
   readonly transshipmentOrder: number | null
   readonly port: string | null
   readonly fromVessel: string | null
@@ -66,7 +55,6 @@ export type AlertIncidentVM = {
   readonly activeAlertIds: readonly string[]
   readonly ackedAlertIds: readonly string[]
   readonly members: readonly AlertIncidentMemberVM[]
-  readonly monitoringHistory: readonly AlertIncidentRecordVM[]
 }
 
 export type AlertIncidentsSummaryVM = {

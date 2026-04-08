@@ -14,11 +14,6 @@ export function toTrackingAlertMessageContract(
         message_key: alert.message_key,
         message_params: alert.message_params,
       }
-    case 'alerts.noMovementDetected':
-      return {
-        message_key: alert.message_key,
-        message_params: alert.message_params,
-      }
     case 'alerts.etaMissing':
       return {
         message_key: alert.message_key,

@@ -182,9 +182,6 @@ const ShipmentAlertIncidentRecordResponseSchema = z.object({
   acked_at: z.string().nullable(),
   resolved_at: z.string().nullable(),
   resolved_reason: z.enum(['condition_cleared', 'terminal_state']).nullable(),
-  threshold_days: z.number().nullable(),
-  days_without_movement: z.number().nullable(),
-  last_event_date: z.string().nullable(),
 })
 
 const ShipmentAlertIncidentMemberResponseSchema = z.object({
@@ -192,9 +189,6 @@ const ShipmentAlertIncidentMemberResponseSchema = z.object({
   container_number: z.string(),
   lifecycle_state: z.enum(['ACTIVE', 'ACKED', 'AUTO_RESOLVED']),
   detected_at: z.string(),
-  threshold_days: z.number().nullable(),
-  days_without_movement: z.number().nullable(),
-  last_event_date: z.string().nullable(),
   transshipment_order: z.number().int().nullable(),
   port: z.string().nullable(),
   from_vessel: z.string().nullable(),
@@ -205,12 +199,11 @@ const ShipmentAlertIncidentMemberResponseSchema = z.object({
 const ShipmentAlertIncidentResponseSchema = z.object({
   incident_key: z.string(),
   bucket: z.enum(['active', 'recognized']),
-  category: z.enum(['movement', 'eta', 'customs', 'status', 'data']),
+  category: z.enum(['movement', 'eta', 'customs', 'data']),
   type: z.enum([
     'TRANSSHIPMENT',
     'CUSTOMS_HOLD',
     'PORT_CHANGE',
-    'NO_MOVEMENT',
     'ETA_PASSED',
     'ETA_MISSING',
     'DATA_INCONSISTENT',
@@ -219,7 +212,6 @@ const ShipmentAlertIncidentResponseSchema = z.object({
   message_key: z.enum([
     'alerts.transshipmentDetected',
     'alerts.customsHoldDetected',
-    'alerts.noMovementDetected',
     'alerts.etaMissing',
     'alerts.etaPassed',
     'alerts.portChange',
@@ -228,9 +220,6 @@ const ShipmentAlertIncidentResponseSchema = z.object({
   message_params: ShipmentAlertIncidentMessageParamsSchema,
   detected_at: z.string(),
   triggered_at: z.string(),
-  threshold_days: z.number().nullable(),
-  days_without_movement: z.number().nullable(),
-  last_event_date: z.string().nullable(),
   transshipment_order: z.number().int().nullable(),
   port: z.string().nullable(),
   from_vessel: z.string().nullable(),
@@ -239,7 +228,6 @@ const ShipmentAlertIncidentResponseSchema = z.object({
   active_alert_ids: z.array(z.string()),
   acked_alert_ids: z.array(z.string()),
   members: z.array(ShipmentAlertIncidentMemberResponseSchema),
-  monitoring_history: z.array(ShipmentAlertIncidentRecordResponseSchema),
 })
 
 const ShipmentAlertIncidentsSummaryResponseSchema = z.object({

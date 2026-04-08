@@ -73,17 +73,6 @@ function makeAlert(
         message_params: { location: 'SANTOS' },
       }
     }
-    if (type === 'NO_MOVEMENT') {
-      return {
-        message_key: 'alerts.noMovementDetected',
-        message_params: {
-          threshold_days: 10,
-          days_without_movement: 11,
-          days: 11,
-          lastEventDate: '2026-02-28',
-        },
-      }
-    }
     if (type === 'ETA_MISSING') {
       return {
         message_key: 'alerts.etaMissing',
@@ -165,7 +154,7 @@ describe('dashboard operational summary read model integration', () => {
         container_id: 'container-1',
         category: 'monitoring',
         severity: 'warning',
-        type: 'NO_MOVEMENT',
+        type: 'ETA_PASSED',
       }),
       makeAlert({
         alert_id: 'alert-3',
@@ -221,8 +210,8 @@ describe('dashboard operational summary read model integration', () => {
         success: 0,
       },
       byCategory: {
-        eta: 1,
-        movement: 2,
+        eta: 2,
+        movement: 1,
         customs: 1,
         status: 1,
         data: 1,
@@ -501,7 +490,7 @@ describe('dashboard operational summary read model integration', () => {
         container_id: 'container-warning-z',
         category: 'monitoring',
         severity: 'warning',
-        type: 'NO_MOVEMENT',
+        type: 'ETA_PASSED',
       }),
       makeAlert({
         alert_id: 'alert-warning-a',

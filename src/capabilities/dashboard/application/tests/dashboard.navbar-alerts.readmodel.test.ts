@@ -46,17 +46,6 @@ function makeAlert(args: {
         message_params: { location: 'HAMBURG' },
       }
     }
-    if (type === 'NO_MOVEMENT') {
-      return {
-        message_key: 'alerts.noMovementDetected',
-        message_params: {
-          threshold_days: 10,
-          days_without_movement: 11,
-          days: 11,
-          lastEventDate: '2026-02-28',
-        },
-      }
-    }
     if (type === 'ETA_MISSING') {
       return {
         message_key: 'alerts.etaMissing',
@@ -153,7 +142,7 @@ describe('createDashboardNavbarAlertsReadModelUseCase', () => {
         containerId: 'container-warn-1',
         category: 'monitoring',
         severity: 'warning',
-        type: 'NO_MOVEMENT',
+        type: 'ETA_PASSED',
         generatedAt: '2026-03-11T12:00:00.000Z',
       }),
       makeAlert({

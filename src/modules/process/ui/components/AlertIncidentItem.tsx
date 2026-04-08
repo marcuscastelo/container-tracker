@@ -83,8 +83,6 @@ function toCategoryLabel(
       return t(keys.shipmentView.alerts.category.eta)
     case 'customs':
       return t(keys.shipmentView.alerts.category.customs)
-    case 'status':
-      return t(keys.shipmentView.alerts.category.status)
     case 'data':
       return t(keys.shipmentView.alerts.category.data)
   }
@@ -117,14 +115,7 @@ function toLifecycleChipClasses(lifecycleState: AlertIncidentMemberVM['lifecycle
 function toIncidentBaseTitle(
   incident: AlertIncidentVM,
   t: ReturnType<typeof useTranslation>['t'],
-  keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (incident.type === 'NO_MOVEMENT' && incident.thresholdDays !== null) {
-    return t(keys.shipmentView.alerts.incidents.title.noMovementThreshold, {
-      days: incident.thresholdDays,
-    })
-  }
-
   return t(incident.messageKey, incident.messageParams)
 }
 
@@ -155,16 +146,6 @@ function toIncidentSummary(
   t: ReturnType<typeof useTranslation>['t'],
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string {
-  if (incident.type === 'NO_MOVEMENT') {
-    return t(keys.shipmentView.alerts.incidents.summary.noMovement, {
-      count: incident.affectedContainerCount,
-      date:
-        incident.lastEventDate === null
-          ? t(keys.header.alertsPanel.valueUnavailable)
-          : formatDateForLocale(incident.lastEventDate),
-    })
-  }
-
   return toContainerPreview(incident, t, keys)
 }
 
@@ -230,7 +211,7 @@ function AlertIncidentHeader(props: {
         </div>
 
         <p class="text-sm-ui font-semibold leading-tight text-foreground">
-          {toIncidentBaseTitle(props.incident, t, keys)}
+          {toIncidentBaseTitle(props.incident, t)}
           <Show
             when={props.showTransshipmentOccurrence && props.incident.transshipmentOrder !== null}
           >
@@ -293,14 +274,6 @@ function AlertIncidentMemberMetadata(props: {
         <p>
           {t(keys.shipmentView.alerts.incidents.details.toVessel)}:{' '}
           <span class="font-medium text-foreground">{props.member.toVessel}</span>
-        </p>
-      </Show>
-      <Show when={props.member.lastEventDate !== null}>
-        <p>
-          {t(keys.shipmentView.alerts.incidents.details.lastEvent)}:{' '}
-          <span class="font-medium text-foreground">
-            {formatDateForLocale(props.member.lastEventDate ?? '')}
-          </span>
         </p>
       </Show>
     </div>
@@ -385,36 +358,6 @@ function AlertIncidentMembersSection(props: {
   )
 }
 
-function AlertIncidentMonitoringHistory(props: {
-  readonly records: AlertIncidentVM['monitoringHistory']
-}): JSX.Element {
-  const { t, keys } = useTranslation()
-
-  return (
-    <div class="space-y-2">
-      <p class="text-micro font-semibold uppercase tracking-wide text-text-muted">
-        {t(keys.shipmentView.alerts.incidents.details.history)}
-      </p>
-
-      <ul class="space-y-1 text-xs-ui text-text-muted">
-        <For each={props.records}>
-          {(record) => (
-            <li class="list-none">
-              <span class="font-medium text-foreground">{record.thresholdDays ?? 0}d</span>{' '}
-              {t(keys.shipmentView.alerts.incidents.details.thresholdReachedOn, {
-                date:
-                  record.lastEventDate === null
-                    ? t(keys.header.alertsPanel.valueUnavailable)
-                    : formatDateForLocale(record.lastEventDate),
-              })}
-            </li>
-          )}
-        </For>
-      </ul>
-    </div>
-  )
-}
-
 function AlertIncidentActionBar(props: {
   readonly incident: AlertIncidentVM
   readonly isBusy: boolean
@@ -471,9 +414,6 @@ function AlertIncidentExpandedContent(props: {
         onAcknowledgeIncident={props.onAcknowledgeIncident}
         onSelectContainer={props.onSelectContainer}
       />
-      <Show when={props.incident.monitoringHistory.length > 0}>
-        <AlertIncidentMonitoringHistory records={props.incident.monitoringHistory} />
-      </Show>
       <AlertIncidentActionBar
         incident={props.incident}
         isBusy={props.isBusy}

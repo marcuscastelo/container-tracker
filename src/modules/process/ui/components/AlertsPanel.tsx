@@ -250,10 +250,6 @@ export function AlertsPanel(props: Props): JSX.Element {
       value: 'data',
       label: t(keys.shipmentView.alerts.incidents.filters.data),
     },
-    {
-      value: 'status',
-      label: t(keys.shipmentView.alerts.incidents.filters.status),
-    },
   ])
 
   const emptyStateKind = createMemo(() =>
