@@ -41,6 +41,8 @@ type OperationalCurrentContext = ContainerOperational['current_context']
 type OperationalNextLocation = ContainerOperational['next_location']
 type ContainerTrackingValidationResponse =
   ProcessDetailResponse['containers'][number]['tracking_validation']
+type ContainerTrackingContainmentResponse =
+  ProcessDetailResponse['containers'][number]['tracking_containment']
 type ProcessTrackingValidationResponse = ProcessDetailResponse['tracking_validation']
 
 type TimelineResponseItem = NonNullable<
@@ -339,6 +341,21 @@ function toContainerTrackingValidationVm(
   }
 }
 
+function toContainerTrackingContainmentVm(
+  trackingContainment: ContainerTrackingContainmentResponse,
+): ShipmentDetailVM['containers'][number]['trackingContainment'] {
+  if (trackingContainment === null) {
+    return null
+  }
+
+  return {
+    active: true,
+    reasonCode: trackingContainment.reason_code,
+    activatedAt: trackingContainment.activated_at,
+    externalTrackingUrl: trackingContainment.external_tracking_url,
+  }
+}
+
 function toTsChipVm(
   transshipment: ShipmentDetailVM['containers'][number]['transshipment'],
 ): ShipmentDetailVM['containers'][number]['tsChipVm'] {
@@ -437,6 +454,7 @@ export function toShipmentDetailVM(
       dataIssueChipVm: {
         visible: container.operational?.data_issue === true,
       },
+      trackingContainment: toContainerTrackingContainmentVm(container.tracking_containment ?? null),
       trackingValidation: toContainerTrackingValidationVm(container.tracking_validation),
       transshipment,
       timeline,

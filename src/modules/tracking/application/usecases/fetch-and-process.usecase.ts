@@ -2,6 +2,7 @@ import {
   type PipelineResult,
   processSnapshot,
 } from '~/modules/tracking/application/orchestration/pipeline'
+import { noopTrackingContainmentRepository } from '~/modules/tracking/application/ports/tracking.containment.repository'
 import { noopTrackingValidationLifecycleRepository } from '~/modules/tracking/application/ports/tracking.validation-lifecycle.repository'
 import type { TrackingUseCasesDeps } from '~/modules/tracking/application/usecases/types'
 import type { Provider } from '~/modules/tracking/domain/model/provider'
@@ -51,6 +52,8 @@ export async function fetchAndProcess(
     snapshotRepository,
     observationRepository,
     trackingAlertRepository,
+    trackingContainmentRepository:
+      deps.trackingContainmentRepository ?? noopTrackingContainmentRepository,
     trackingValidationLifecycleRepository:
       deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository,
   }

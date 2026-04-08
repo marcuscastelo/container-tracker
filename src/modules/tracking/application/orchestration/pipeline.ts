@@ -1,4 +1,8 @@
 import type { TrackingAlertRepository } from '~/modules/tracking/application/ports/tracking.alert.repository'
+import {
+  noopTrackingContainmentRepository,
+  type TrackingContainmentRepository,
+} from '~/modules/tracking/application/ports/tracking.containment.repository'
 import type { ObservationRepository } from '~/modules/tracking/application/ports/tracking.observation.repository'
 import type { SnapshotRepository } from '~/modules/tracking/application/ports/tracking.snapshot.repository'
 import {
@@ -15,6 +19,7 @@ import type {
   NewTrackingAlert,
   TrackingAlert,
 } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import { detectContainerReuseAfterCompletion } from '~/modules/tracking/features/containment/domain/services/detectContainerReuseAfterCompletion'
 import { diffObservations } from '~/modules/tracking/features/observation/application/orchestration/diffObservations'
 import { normalizeSnapshot } from '~/modules/tracking/features/observation/application/orchestration/normalizeSnapshot'
 import type {
@@ -61,7 +66,189 @@ type PipelineDeps = {
   readonly snapshotRepository: SnapshotRepository
   readonly observationRepository: ObservationRepository
   readonly trackingAlertRepository: TrackingAlertRepository
+  readonly trackingContainmentRepository?: TrackingContainmentRepository
   readonly trackingValidationLifecycleRepository?: TrackingValidationLifecycleRepository
+}
+
+function toContainmentCandidateObservations(command: {
+  readonly existingObservations: readonly Observation[]
+  readonly newObservations: readonly NewObservation[]
+  readonly snapshot: Snapshot
+}) {
+  const baseEpochMs = Instant.fromIso(command.snapshot.fetched_at).toEpochMs()
+  const candidateNewObservations = command.newObservations.map((observation, index) => ({
+    entityId: `candidate:${observation.fingerprint}:${index}`,
+    fingerprint: observation.fingerprint,
+    type: observation.type,
+    event_time: observation.event_time,
+    event_time_type: observation.event_time_type,
+    created_at: Instant.fromEpochMs(baseEpochMs + index).toIsoString(),
+    is_empty: observation.is_empty,
+  }))
+
+  const existingObservations = command.existingObservations.map((observation) => ({
+    entityId: observation.id,
+    fingerprint: observation.fingerprint,
+    type: observation.type,
+    event_time: observation.event_time,
+    event_time_type: observation.event_time_type,
+    created_at: observation.created_at,
+    is_empty: observation.is_empty,
+  }))
+
+  return [...existingObservations, ...candidateNewObservations]
+}
+
+async function loadActiveTrackingContainment(command: {
+  readonly repository: TrackingContainmentRepository
+  readonly containerId: string
+  readonly containerNumber: string
+}) {
+  try {
+    return await command.repository.findActiveByContainerId(command.containerId)
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.processSnapshot.containment_unavailable', {
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      operation: 'findActiveByContainerId',
+      error: error.message,
+    })
+
+    return null
+  }
+}
+
+async function activateTrackingContainment(command: {
+  readonly repository: TrackingContainmentRepository
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly snapshot: Snapshot
+  readonly detection: ReturnType<typeof detectContainerReuseAfterCompletion>
+}) {
+  if (command.detection === null) {
+    return
+  }
+
+  try {
+    await command.repository.activate({
+      containerId: command.containerId,
+      provider: command.snapshot.provider,
+      snapshotId: command.snapshot.id,
+      activatedAt: command.snapshot.fetched_at,
+      stateFingerprint: command.detection.stateFingerprint,
+      evidenceSummary: command.detection.evidenceSummary,
+    })
+  } catch (error) {
+    if (!(error instanceof InfrastructureError)) {
+      throw error
+    }
+
+    console.error('tracking.processSnapshot.containment_unavailable', {
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      operation: 'activate',
+      error: error.message,
+    })
+  }
+}
+
+async function derivePipelineState(command: {
+  readonly deps: PipelineDeps
+  readonly snapshot: Snapshot
+  readonly containerId: string
+  readonly containerNumber: string
+  readonly allObservations: readonly Observation[]
+  readonly isBackfill: boolean
+  readonly allowAlertMutations: boolean
+}) {
+  const timeline = deriveTimeline(
+    command.containerId,
+    command.containerNumber,
+    command.allObservations,
+  )
+  const status = deriveStatus(timeline)
+
+  let newAlerts: readonly TrackingAlert[] = []
+  if (command.allowAlertMutations) {
+    const existingAlerts =
+      await command.deps.trackingAlertRepository.findAlertDerivationStateByContainerId(
+        command.containerId,
+      )
+    const alertTransitions = deriveAlertTransitions(
+      timeline,
+      status,
+      existingAlerts,
+      command.isBackfill,
+    )
+    const newAlertDescriptors: readonly NewTrackingAlert[] = alertTransitions.newAlerts
+
+    if (alertTransitions.monitoringAutoResolutions.length > 0) {
+      const reasonByAlertId = new Map(
+        alertTransitions.monitoringAutoResolutions.map(
+          (entry) => [entry.alertId, entry.reason] as const,
+        ),
+      )
+      const idsByReason = new Map<string, string[]>()
+      for (const [alertId, reason] of reasonByAlertId) {
+        const existing = idsByReason.get(reason)
+        if (existing) {
+          existing.push(alertId)
+        } else {
+          idsByReason.set(reason, [alertId])
+        }
+      }
+
+      const resolvedAt = systemClock.now().toIsoString()
+      for (const [reason, alertIds] of idsByReason) {
+        if (reason === 'condition_cleared' || reason === 'terminal_state') {
+          await command.deps.trackingAlertRepository.autoResolveMany({
+            alertIds,
+            resolvedAt,
+            reason,
+          })
+        }
+      }
+    }
+
+    if (newAlertDescriptors.length > 0) {
+      newAlerts = await command.deps.trackingAlertRepository.insertMany(newAlertDescriptors)
+    }
+  }
+
+  const transshipment = deriveTransshipment(timeline)
+  const snapshotValidationNow = Instant.fromIso(command.snapshot.fetched_at)
+  const validationTimeline = deriveTimeline(
+    command.containerId,
+    command.containerNumber,
+    command.allObservations,
+    snapshotValidationNow,
+  )
+  const validationStatus = deriveStatus(validationTimeline)
+  const validationTransshipment = deriveTransshipment(validationTimeline)
+  const trackingValidationProjection = deriveTrackingValidationProjection(
+    createTrackingValidationContext({
+      containerId: command.containerId,
+      containerNumber: command.containerNumber,
+      observations: command.allObservations,
+      timeline: validationTimeline,
+      status: validationStatus,
+      transshipment: validationTransshipment,
+      now: snapshotValidationNow,
+    }),
+  )
+
+  return {
+    timeline,
+    status,
+    transshipment,
+    newAlerts,
+    trackingValidation: trackingValidationProjection.summary,
+    trackingValidationFindings: trackingValidationProjection.findings,
+  }
 }
 
 async function loadTrackingValidationLifecycleStates(command: {
@@ -144,6 +331,60 @@ export async function processSnapshot(
   // Step 1: Snapshot is already persisted by the caller (or we persist it here)
   // The snapshot should already have an id at this point.
 
+  const trackingContainmentRepository =
+    deps.trackingContainmentRepository ?? noopTrackingContainmentRepository
+  const activeContainment = await loadActiveTrackingContainment({
+    repository: trackingContainmentRepository,
+    containerId,
+    containerNumber,
+  })
+
+  if (activeContainment !== null) {
+    const allObservations = await deps.observationRepository.findAllByContainerId(containerId)
+    const derivedState = await derivePipelineState({
+      deps,
+      snapshot,
+      containerId,
+      containerNumber,
+      allObservations,
+      isBackfill,
+      allowAlertMutations: false,
+    })
+    const trackingValidationLifecycleRepository =
+      deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
+    const existingValidationLifecycleStates = await loadTrackingValidationLifecycleStates({
+      repository: trackingValidationLifecycleRepository,
+      containerId,
+      containerNumber,
+    })
+    const validationLifecycleTransitions = deriveTrackingValidationLifecycleTransitions({
+      activeFindings: derivedState.trackingValidationFindings,
+      existingActiveStates: existingValidationLifecycleStates,
+      context: {
+        containerId,
+        provider: snapshot.provider,
+        snapshotId: snapshot.id,
+        occurredAt: snapshot.fetched_at,
+      },
+    })
+
+    await persistTrackingValidationLifecycleTransitions({
+      repository: trackingValidationLifecycleRepository,
+      transitions: validationLifecycleTransitions,
+      containerId,
+      containerNumber,
+    })
+
+    return {
+      newObservations: [],
+      newAlerts: [],
+      timeline: derivedState.timeline,
+      status: derivedState.status,
+      transshipment: derivedState.transshipment,
+      trackingValidation: derivedState.trackingValidation,
+    }
+  }
+
   // Step 2: Normalize → ObservationDrafts
   const drafts = normalizeSnapshot(snapshot)
 
@@ -155,6 +396,70 @@ export async function processSnapshot(
     drafts,
     containerId,
   )
+  const existingObservations = await deps.observationRepository.findAllByContainerId(containerId)
+  const containmentDetection =
+    newObsToInsert.length > 0
+      ? detectContainerReuseAfterCompletion(
+          toContainmentCandidateObservations({
+            existingObservations,
+            newObservations: newObsToInsert,
+            snapshot,
+          }),
+        )
+      : null
+
+  if (containmentDetection !== null) {
+    await activateTrackingContainment({
+      repository: trackingContainmentRepository,
+      containerId,
+      containerNumber,
+      snapshot,
+      detection: containmentDetection,
+    })
+
+    const derivedState = await derivePipelineState({
+      deps,
+      snapshot,
+      containerId,
+      containerNumber,
+      allObservations: existingObservations,
+      isBackfill,
+      allowAlertMutations: false,
+    })
+    const trackingValidationLifecycleRepository =
+      deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
+    const existingValidationLifecycleStates = await loadTrackingValidationLifecycleStates({
+      repository: trackingValidationLifecycleRepository,
+      containerId,
+      containerNumber,
+    })
+    const validationLifecycleTransitions = deriveTrackingValidationLifecycleTransitions({
+      activeFindings: derivedState.trackingValidationFindings,
+      existingActiveStates: existingValidationLifecycleStates,
+      context: {
+        containerId,
+        provider: snapshot.provider,
+        snapshotId: snapshot.id,
+        occurredAt: snapshot.fetched_at,
+      },
+    })
+
+    await persistTrackingValidationLifecycleTransitions({
+      repository: trackingValidationLifecycleRepository,
+      transitions: validationLifecycleTransitions,
+      containerId,
+      containerNumber,
+    })
+
+    return {
+      newObservations: [],
+      newAlerts: [],
+      timeline: derivedState.timeline,
+      status: derivedState.status,
+      transshipment: derivedState.transshipment,
+      trackingValidation: derivedState.trackingValidation,
+    }
+  }
 
   // Step 4: Persist new observations
   let newObservations: readonly Observation[] = []
@@ -164,74 +469,15 @@ export async function processSnapshot(
 
   // Step 5: Derive Timeline (from ALL observations, not just new ones)
   const allObservations = await deps.observationRepository.findAllByContainerId(containerId)
-  const timeline = deriveTimeline(containerId, containerNumber, allObservations)
-
-  // Step 6: Derive Status
-  const status = deriveStatus(timeline)
-
-  // Step 7: Derive Alerts
-  // Fact alerts dedupe by historical fingerprint, so derivation must see full history.
-  const existingAlerts =
-    await deps.trackingAlertRepository.findAlertDerivationStateByContainerId(containerId)
-  const alertTransitions = deriveAlertTransitions(timeline, status, existingAlerts, isBackfill)
-  const newAlertDescriptors: readonly NewTrackingAlert[] = alertTransitions.newAlerts
-
-  if (alertTransitions.monitoringAutoResolutions.length > 0) {
-    const reasonByAlertId = new Map(
-      alertTransitions.monitoringAutoResolutions.map(
-        (entry) => [entry.alertId, entry.reason] as const,
-      ),
-    )
-    const idsByReason = new Map<string, string[]>()
-    for (const [alertId, reason] of reasonByAlertId) {
-      const existing = idsByReason.get(reason)
-      if (existing) {
-        existing.push(alertId)
-      } else {
-        idsByReason.set(reason, [alertId])
-      }
-    }
-
-    const resolvedAt = systemClock.now().toIsoString()
-    for (const [reason, alertIds] of idsByReason) {
-      if (reason === 'condition_cleared' || reason === 'terminal_state') {
-        await deps.trackingAlertRepository.autoResolveMany({
-          alertIds,
-          resolvedAt,
-          reason,
-        })
-      }
-    }
-  }
-
-  // Step 8: Persist new alerts
-  let newAlerts: readonly TrackingAlert[] = []
-  if (newAlertDescriptors.length > 0) {
-    newAlerts = await deps.trackingAlertRepository.insertMany(newAlertDescriptors)
-  }
-
-  // Derive transshipment info
-  const transshipment = deriveTransshipment(timeline)
-  const snapshotValidationNow = Instant.fromIso(snapshot.fetched_at)
-  const validationTimeline = deriveTimeline(
+  const derivedState = await derivePipelineState({
+    deps,
+    snapshot,
     containerId,
     containerNumber,
     allObservations,
-    snapshotValidationNow,
-  )
-  const validationStatus = deriveStatus(validationTimeline)
-  const validationTransshipment = deriveTransshipment(validationTimeline)
-  const trackingValidationProjection = deriveTrackingValidationProjection(
-    createTrackingValidationContext({
-      containerId,
-      containerNumber,
-      observations: allObservations,
-      timeline: validationTimeline,
-      status: validationStatus,
-      transshipment: validationTransshipment,
-      now: snapshotValidationNow,
-    }),
-  )
+    isBackfill,
+    allowAlertMutations: true,
+  })
   const trackingValidationLifecycleRepository =
     deps.trackingValidationLifecycleRepository ?? noopTrackingValidationLifecycleRepository
   const existingValidationLifecycleStates = await loadTrackingValidationLifecycleStates({
@@ -240,7 +486,7 @@ export async function processSnapshot(
     containerNumber,
   })
   const validationLifecycleTransitions = deriveTrackingValidationLifecycleTransitions({
-    activeFindings: trackingValidationProjection.findings,
+    activeFindings: derivedState.trackingValidationFindings,
     existingActiveStates: existingValidationLifecycleStates,
     context: {
       containerId,
@@ -259,10 +505,10 @@ export async function processSnapshot(
 
   return {
     newObservations,
-    newAlerts,
-    timeline,
-    status,
-    transshipment,
-    trackingValidation: trackingValidationProjection.summary,
+    newAlerts: derivedState.newAlerts,
+    timeline: derivedState.timeline,
+    status: derivedState.status,
+    transshipment: derivedState.transshipment,
+    trackingValidation: derivedState.trackingValidation,
   }
 }

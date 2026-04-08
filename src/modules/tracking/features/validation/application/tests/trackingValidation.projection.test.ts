@@ -84,7 +84,7 @@ describe('trackingValidation.projection', () => {
 
     expect(summary).toMatchObject({
       hasIssues: true,
-      findingCount: 2,
+      findingCount: 1,
       highestSeverity: 'CRITICAL',
       topIssue: {
         code: 'CONFLICTING_CRITICAL_ACTUALS',
@@ -102,14 +102,6 @@ describe('trackingValidation.projection', () => {
         reasonKey: 'tracking.validation.conflictingCriticalActuals',
         affectedArea: 'series',
         affectedLocation: 'BRIOA',
-        affectedBlockLabelKey: null,
-      },
-      {
-        code: 'POST_COMPLETION_TRACKING_CONTINUED',
-        severity: 'CRITICAL',
-        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-        affectedArea: 'timeline',
-        affectedLocation: null,
         affectedBlockLabelKey: null,
       },
     ])
@@ -132,22 +124,22 @@ describe('trackingValidation.projection', () => {
       {
         containerNumber: 'MSCU1111111',
         topIssue: {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
           severity: 'CRITICAL',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-          affectedArea: 'timeline',
-          affectedLocation: null,
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
+          affectedArea: 'series',
+          affectedLocation: 'BRIOA',
           affectedBlockLabelKey: null,
         },
       },
     ])
 
     expect(result).toEqual({
-      code: 'POST_COMPLETION_TRACKING_CONTINUED',
+      code: 'CONFLICTING_CRITICAL_ACTUALS',
       severity: 'CRITICAL',
-      reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-      affectedArea: 'timeline',
-      affectedLocation: null,
+      reasonKey: 'tracking.validation.conflictingCriticalActuals',
+      affectedArea: 'series',
+      affectedLocation: 'BRIOA',
       affectedBlockLabelKey: null,
     })
   })

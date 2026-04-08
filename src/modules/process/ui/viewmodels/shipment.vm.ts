@@ -69,6 +69,13 @@ export type ContainerDataIssueChipVM = {
   readonly visible: boolean
 }
 
+export type ContainerTrackingContainmentVM = {
+  readonly active: true
+  readonly reasonCode: 'CONTAINER_REUSED_AFTER_COMPLETION'
+  readonly activatedAt: string
+  readonly externalTrackingUrl: string | null
+} | null
+
 export type ContainerSyncState = 'syncing' | 'ok' | 'error' | 'never'
 
 export type ContainerSyncVM = {
@@ -115,6 +122,7 @@ export type ContainerDetailVM = {
   readonly nextLocation: ContainerNextLocationVM
   readonly tsChipVm: ContainerTsChipVM
   readonly dataIssueChipVm: ContainerDataIssueChipVM
+  readonly trackingContainment: ContainerTrackingContainmentVM
   readonly trackingValidation: ContainerTrackingValidationVM
   readonly transshipment: ContainerTransshipmentVM
   readonly timeline: readonly TrackingTimelineItem[]

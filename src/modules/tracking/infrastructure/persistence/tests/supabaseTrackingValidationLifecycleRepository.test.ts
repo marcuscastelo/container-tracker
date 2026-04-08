@@ -52,13 +52,13 @@ function makeLifecycleRow(
     id: overrides.id ?? 'transition-row-1',
     process_id: overrides.process_id ?? 'process-1',
     container_id: overrides.container_id ?? 'container-1',
-    issue_code: overrides.issue_code ?? 'POST_COMPLETION_TRACKING_CONTINUED',
-    detector_id: overrides.detector_id ?? 'POST_COMPLETION_TRACKING_CONTINUED',
+    issue_code: overrides.issue_code ?? 'CONFLICTING_CRITICAL_ACTUALS',
+    detector_id: overrides.detector_id ?? 'CONFLICTING_CRITICAL_ACTUALS',
     detector_version: overrides.detector_version ?? '1',
     affected_scope: overrides.affected_scope ?? 'TIMELINE',
     severity: overrides.severity ?? 'CRITICAL',
     transition_type: overrides.transition_type ?? 'activated',
-    lifecycle_key: overrides.lifecycle_key ?? 'POST_COMPLETION_TRACKING_CONTINUED:container-1',
+    lifecycle_key: overrides.lifecycle_key ?? 'CONFLICTING_CRITICAL_ACTUALS:container-1',
     state_fingerprint: overrides.state_fingerprint ?? 'state-1',
     evidence_summary: overrides.evidence_summary ?? 'Load ACTUAL appeared after EMPTY_RETURNED.',
     provider: overrides.provider ?? 'msc',
@@ -73,13 +73,13 @@ function makeTransition(
 ): TrackingValidationLifecycleTransition {
   return {
     containerId: overrides.containerId ?? 'container-1',
-    issueCode: overrides.issueCode ?? 'POST_COMPLETION_TRACKING_CONTINUED',
-    detectorId: overrides.detectorId ?? 'POST_COMPLETION_TRACKING_CONTINUED',
+    issueCode: overrides.issueCode ?? 'CONFLICTING_CRITICAL_ACTUALS',
+    detectorId: overrides.detectorId ?? 'CONFLICTING_CRITICAL_ACTUALS',
     detectorVersion: overrides.detectorVersion ?? '1',
     affectedScope: overrides.affectedScope ?? 'TIMELINE',
     severity: overrides.severity ?? 'CRITICAL',
     transitionType: overrides.transitionType ?? 'activated',
-    lifecycleKey: overrides.lifecycleKey ?? 'POST_COMPLETION_TRACKING_CONTINUED:container-1',
+    lifecycleKey: overrides.lifecycleKey ?? 'CONFLICTING_CRITICAL_ACTUALS:container-1',
     stateFingerprint: overrides.stateFingerprint ?? 'state-1',
     evidenceSummary: overrides.evidenceSummary ?? 'Load ACTUAL appeared after EMPTY_RETURNED.',
     provider: overrides.provider ?? 'msc',
@@ -110,9 +110,27 @@ describe('supabaseTrackingValidationLifecycleRepository', () => {
     ])
     expect(activeStates).toHaveLength(1)
     expect(activeStates[0]).toMatchObject({
-      lifecycleKey: 'POST_COMPLETION_TRACKING_CONTINUED:container-1',
+      lifecycleKey: 'CONFLICTING_CRITICAL_ACTUALS:container-1',
       stateFingerprint: 'state-1',
     })
+  })
+
+  it('ignores containment rows so the generic validation lifecycle path does not surface them', async () => {
+    const query = createReadQuery([
+      makeLifecycleRow({
+        issue_code: 'CONTAINER_REUSED_AFTER_COMPLETION',
+        detector_id: 'CONTAINER_REUSED_AFTER_COMPLETION',
+        lifecycle_key: 'CONTAINER_REUSED_AFTER_COMPLETION:container-1',
+      }),
+    ])
+    mocks.from.mockReturnValue(query)
+
+    const activeStates =
+      await supabaseTrackingValidationLifecycleRepository.findActiveStatesByContainerId(
+        'container-1',
+      )
+
+    expect(activeStates).toEqual([])
   })
 
   it('uses idempotent upsert semantics for deduplicated lifecycle transitions', async () => {
@@ -132,13 +150,13 @@ describe('supabaseTrackingValidationLifecycleRepository', () => {
         {
           process_id: 'process-1',
           container_id: 'container-1',
-          issue_code: 'POST_COMPLETION_TRACKING_CONTINUED',
-          detector_id: 'POST_COMPLETION_TRACKING_CONTINUED',
+          issue_code: 'CONFLICTING_CRITICAL_ACTUALS',
+          detector_id: 'CONFLICTING_CRITICAL_ACTUALS',
           detector_version: '1',
           affected_scope: 'TIMELINE',
           severity: 'CRITICAL',
           transition_type: 'activated',
-          lifecycle_key: 'POST_COMPLETION_TRACKING_CONTINUED:container-1',
+          lifecycle_key: 'CONFLICTING_CRITICAL_ACTUALS:container-1',
           state_fingerprint: 'state-1',
           evidence_summary: 'Load ACTUAL appeared after EMPTY_RETURNED.',
           provider: 'msc',

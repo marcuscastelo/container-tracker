@@ -30,6 +30,7 @@ import {
 } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-display.readmodel'
 import { toTrackingAlertMessageContract } from '~/modules/tracking/features/alerts/application/projection/tracking.alert-message-contract.mapper'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { TrackingContainmentReadModel } from '~/modules/tracking/features/containment/application/projection/tracking.containment.readmodel'
 import type {
   TrackingSeriesHistory,
   TrackingTimelineItem,
@@ -46,6 +47,7 @@ import { compareTemporal } from '~/shared/time/compare-temporal'
 import { type TemporalValueDto, toTemporalValueDto } from '~/shared/time/dto'
 import { parseTemporalValue } from '~/shared/time/parsing'
 import type { TemporalValue } from '~/shared/time/temporal-value'
+import { directCarrierTrackUrl } from '~/shared/utils/carrier'
 
 // ---------------------------------------------------------------------------
 // Request DTO → Command / Record
@@ -504,6 +506,23 @@ function toContainerTrackingValidationResponse(summary: TrackingValidationContai
   }
 }
 
+function toContainerTrackingContainmentResponse(command: {
+  readonly containment: TrackingContainmentReadModel | null
+  readonly carrier: string | null
+  readonly containerNumber: string
+}) {
+  if (command.containment === null) {
+    return null
+  }
+
+  return {
+    active: true as const,
+    reason_code: command.containment.reasonCode,
+    activated_at: command.containment.activatedAt,
+    external_tracking_url: directCarrierTrackUrl(command.carrier, command.containerNumber),
+  }
+}
+
 function toProcessTrackingValidationResponse(
   summary?: TrackingValidationProcessSummary,
   topIssue: TrackingValidationDisplayIssue | null = null,
@@ -716,6 +735,7 @@ function toTrackingFreshnessToken(command: {
     ContainerWithTrackingResponse & {
       readonly operational: ReturnType<typeof toContainerOperationalResponse>
       readonly tracking_validation: ReturnType<typeof toContainerTrackingValidationResponse>
+      readonly tracking_containment: ReturnType<typeof toContainerTrackingContainmentResponse>
     }
   >
   readonly alerts: readonly ReturnType<typeof toTrackingAlertResponse>[]
@@ -729,6 +749,7 @@ function toTrackingFreshnessToken(command: {
       status: container.status,
       operational: container.operational,
       tracking_validation: container.tracking_validation,
+      tracking_containment: container.tracking_containment,
       timeline: container.timeline,
     })),
     alerts: command.alerts.map((alert) => ({
@@ -760,6 +781,7 @@ export function toProcessDetailResponse(
   alerts: readonly TrackingAlertRecord[],
   activeAlertIncidents: ShipmentAlertIncidentsReadModel,
   operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>,
+  trackingContainmentByContainerId: ReadonlyMap<string, TrackingContainmentReadModel>,
   trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>,
   containersSync: readonly ContainerSyncRecord[],
 ) {
@@ -797,6 +819,11 @@ export function toProcessDetailResponse(
       ...container,
       operational: toContainerOperationalResponse(summary),
       tracking_validation: toContainerTrackingValidationResponse(trackingValidation),
+      tracking_containment: toContainerTrackingContainmentResponse({
+        containment: trackingContainmentByContainerId.get(container.id) ?? null,
+        carrier: container.carrier_code ?? pwc.process.carrier ?? null,
+        containerNumber: container.container_number,
+      }),
     }
   })
 

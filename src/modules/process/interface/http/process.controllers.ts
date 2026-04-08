@@ -71,6 +71,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
       activeAlerts,
       activeAlertIncidents,
       operationalByContainerId,
+      trackingContainmentByContainerId,
       trackingValidationByContainerId,
       containersSync,
     } = await resolveProcessDetailTracking(pwc, trackingUseCases, now)
@@ -88,6 +89,7 @@ export function createProcessControllers(deps: ProcessControllerDeps) {
         activeAlerts,
         activeAlertIncidents,
         operationalByContainerId,
+        trackingContainmentByContainerId,
         trackingValidationByContainerId,
         containersSync,
       ),

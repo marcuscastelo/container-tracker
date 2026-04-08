@@ -19,13 +19,14 @@ It does not create a new status, rewrite facts, or move semantics to UI/capabili
 ## Active Detectors
 
 - `CONFLICTING_CRITICAL_ACTUALS`
-- `POST_COMPLETION_TRACKING_CONTINUED`
 - `CANONICAL_TIMELINE_CLASSIFICATION_INCONSISTENT`
 - `CANONICAL_TIMELINE_SEGMENT_DUPLICATED`
 - `EXPECTED_PLAN_NOT_RECONCILABLE`
 - `MISSING_CRITICAL_MILESTONE_WITH_CONTRADICTORY_CONTEXT`
 
-These detectors are the agreed V1-V1.2 set. Final polish phases must keep them on the same registry path instead of opening any parallel wiring.
+These detectors are the agreed V1-V1.2 validation set. Final polish phases must keep them on the same registry path instead of opening any parallel wiring.
+
+Container reuse after strong completion is no longer a tracking-validation detector. It is handled by the dedicated containment slice so the product surfaces one informational concept instead of overlapping warning semantics.
 
 ## Contract Ownership By Layer
 

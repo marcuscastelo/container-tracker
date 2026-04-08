@@ -174,27 +174,11 @@ describe('buildTrackingTimeTravelReadModel', () => {
     const timeTravel = buildTrackingTimeTravelReadModel(run)
 
     expect(timeTravel.syncs[0]?.trackingValidation).toEqual({
-      hasIssues: true,
-      findingCount: 1,
-      highestSeverity: 'CRITICAL',
-      activeIssues: [
-        {
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
-          severity: 'CRITICAL',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-          affectedArea: 'timeline',
-          affectedLocation: null,
-          affectedBlockLabelKey: null,
-        },
-      ],
-      topIssue: {
-        code: 'POST_COMPLETION_TRACKING_CONTINUED',
-        severity: 'CRITICAL',
-        reasonKey: 'tracking.validation.postCompletionTrackingContinued',
-        affectedArea: 'timeline',
-        affectedLocation: null,
-        affectedBlockLabelKey: null,
-      },
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
     })
   })
 })

@@ -8,6 +8,7 @@ import {
   createContainerSyncMetadataFallback,
 } from '~/modules/tracking/application/usecases/get-containers-sync-metadata.usecase'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
+import type { TrackingContainmentReadModel } from '~/modules/tracking/features/containment/application/projection/tracking.containment.readmodel'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
 import type { Instant } from '~/shared/time/instant'
 import { normalizeContainerNumber } from '~/shared/utils/normalizeContainerNumber'
@@ -23,6 +24,7 @@ type ProcessTrackingResult = {
   readonly activeAlertIncidents: ShipmentAlertIncidentsReadModel
   readonly operationalByContainerId: ReadonlyMap<string, TrackingOperationalSummary>
   readonly trackingValidationByContainerId: ReadonlyMap<string, TrackingValidationContainerSummary>
+  readonly trackingContainmentByContainerId: ReadonlyMap<string, TrackingContainmentReadModel>
   readonly containersSync: readonly ContainerSyncRecord[]
 }
 
@@ -127,9 +129,13 @@ export async function resolveProcessDetailTracking(
   )
   const operationalByContainerId = new Map<string, TrackingOperationalSummary>()
   const trackingValidationByContainerId = new Map<string, TrackingValidationContainerSummary>()
+  const trackingContainmentByContainerId = new Map<string, TrackingContainmentReadModel>()
   for (const container of trackingProjection.containers) {
     operationalByContainerId.set(container.containerId, container.operational)
     trackingValidationByContainerId.set(container.containerId, container.trackingValidation)
+    if (container.trackingContainment !== null) {
+      trackingContainmentByContainerId.set(container.containerId, container.trackingContainment)
+    }
   }
 
   const containersWithTracking = processWithContainers.containers.map((container) => {
@@ -153,6 +159,7 @@ export async function resolveProcessDetailTracking(
     activeAlertIncidents: trackingProjection.activeAlertIncidents,
     operationalByContainerId,
     trackingValidationByContainerId,
+    trackingContainmentByContainerId,
     containersSync,
   }
 }

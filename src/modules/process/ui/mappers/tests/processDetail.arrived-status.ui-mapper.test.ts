@@ -35,12 +35,14 @@ describe('toShipmentDetailVM ARRIVED_AT_POD mapping', () => {
           container_number: 'CAIU1234567',
           status: 'ARRIVED_AT_POD',
           tracking_validation: makeContainerTrackingValidationResponse(),
+          tracking_containment: null,
         },
         {
           id: 'c-arrived-2',
           container_number: 'CAIU7654321',
           status: 'ARRIVED_AT_POD',
           tracking_validation: makeContainerTrackingValidationResponse(),
+          tracking_containment: null,
         },
       ],
       process_operational: {

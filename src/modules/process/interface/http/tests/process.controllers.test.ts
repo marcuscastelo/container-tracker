@@ -148,6 +148,7 @@ function createHotReadContainer(
     status,
     operational,
     trackingValidation: EMPTY_TRACKING_VALIDATION,
+    trackingContainment: null,
     activeAlerts: alerts,
     hasObservations: operational.dataIssue !== true,
     lastEventAt: temporalValueFromDto(operational.eta?.eventTime ?? null),

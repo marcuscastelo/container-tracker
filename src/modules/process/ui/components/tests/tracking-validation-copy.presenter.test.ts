@@ -49,23 +49,23 @@ describe('tracking-validation-copy.presenter', () => {
       toTrackingValidationTooltipText({
         aggregateLabel: 'Este processo contém 1 container que requer validação',
         issue: makeIssue({
-          code: 'POST_COMPLETION_TRACKING_CONTINUED',
+          code: 'CONFLICTING_CRITICAL_ACTUALS',
           severity: 'danger',
-          reasonKey: 'tracking.validation.postCompletionTrackingContinued',
+          reasonKey: 'tracking.validation.conflictingCriticalActuals',
           affectedBlockLabelKey: null,
           affectedLocation: null,
         }),
         labels,
         resolveBlockLabel: (key) => key,
         resolveReason: (key) =>
-          key === 'tracking.validation.postCompletionTrackingContinued'
-            ? 'O tracking continuou depois de um marco forte de conclusão.'
+          key === 'tracking.validation.conflictingCriticalActuals'
+            ? 'Há eventos reais críticos conflitantes na série atual.'
             : key,
       }),
     ).toBe(
       [
         'Este processo contém 1 container que requer validação',
-        'O tracking continuou depois de um marco forte de conclusão.',
+        'Há eventos reais críticos conflitantes na série atual.',
         'Área: Timeline',
       ].join('\n'),
     )

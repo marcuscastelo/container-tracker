@@ -68,6 +68,13 @@ const ContainerTrackingValidationResponseSchema = z.object({
   active_issues: z.array(TrackingValidationIssueResponseDtoSchema),
 })
 
+const ContainerTrackingContainmentResponseSchema = z.object({
+  active: z.literal(true),
+  reason_code: z.literal('CONTAINER_REUSED_AFTER_COMPLETION'),
+  activated_at: z.string(),
+  external_tracking_url: z.string().nullable(),
+})
+
 export const ProcessResponseSchema = z.object({
   id: z.string(),
   reference: z.string().nullish(),
@@ -376,6 +383,8 @@ export const ProcessDetailResponseSchema = ProcessResponseSchema.extend({
       operational: ContainerOperationalResponseSchema.optional(),
       /** Tracking validation summary owned by Tracking BC */
       tracking_validation: ContainerTrackingValidationResponseSchema,
+      /** Container-scoped tracking containment notice owned by Tracking BC */
+      tracking_containment: ContainerTrackingContainmentResponseSchema.nullable(),
     }),
   ),
   /** Active tracking alerts for this process (across all containers) */

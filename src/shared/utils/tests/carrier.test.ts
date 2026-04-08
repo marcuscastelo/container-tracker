@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { carrierTrackUrl } from '~/shared/utils/carrier'
+import { carrierTrackUrl, directCarrierTrackUrl } from '~/shared/utils/carrier'
 
 describe('carrierTrackUrl util', () => {
   it('returns maersk tracking URL when carrier includes maersk', () => {
@@ -38,5 +38,10 @@ describe('carrierTrackUrl util', () => {
   it('returns google search fallback for unknown carrier', () => {
     const url = carrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
     expect(url).toContain('google.com/search')
+  })
+
+  it('returns null for unknown carriers when direct tracking is required', () => {
+    const url = directCarrierTrackUrl('Some Unknown Carrier', 'MRKU1234567')
+    expect(url).toBeNull()
   })
 })
