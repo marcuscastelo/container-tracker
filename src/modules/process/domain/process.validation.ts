@@ -7,3 +7,10 @@ export function validateReference(reference: string): void {
     throw new Error('Reference cannot be empty')
   }
 }
+
+export function normalizeDepositary(value: string | null | undefined): string | null {
+  if (value == null) return null
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}

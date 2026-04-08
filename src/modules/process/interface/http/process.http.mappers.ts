@@ -9,6 +9,7 @@ import type {
 } from '~/modules/process/application/process.records'
 import type { ProcessSyncSummaryReadModel } from '~/modules/process/application/usecases/list-processes-with-operational-summary.usecase'
 import type { ProcessEntity } from '~/modules/process/domain/process.entity'
+import { normalizeDepositary } from '~/modules/process/domain/process.validation'
 import {
   deriveProcessStatusDispersion,
   deriveProcessStatusFromContainers,
@@ -61,6 +62,7 @@ export function toInsertProcessRecord(dto: CreateProcessInput): InsertProcessRec
     importer_name: dto.importer_name ?? null,
     exporter_name: dto.exporter_name ?? null,
     reference_importer: dto.reference_importer ?? null,
+    ...(dto.depositary !== undefined ? { depositary: normalizeDepositary(dto.depositary) } : {}),
     ...(dto.product !== undefined ? { product: dto.product ?? null } : {}),
     ...(dto.redestination_number !== undefined
       ? { redestination_number: dto.redestination_number ?? null }
@@ -84,6 +86,7 @@ export function toUpdateProcessRecord(dto: Partial<CreateProcessInput>): UpdateP
     ...(dto.reference_importer !== undefined
       ? { reference_importer: dto.reference_importer ?? null }
       : {}),
+    ...(dto.depositary !== undefined ? { depositary: normalizeDepositary(dto.depositary) } : {}),
     ...(dto.product !== undefined ? { product: dto.product ?? null } : {}),
     ...(dto.redestination_number !== undefined
       ? { redestination_number: dto.redestination_number ?? null }
@@ -223,6 +226,7 @@ function processToResponseFields(p: ProcessEntity) {
     importer_name: p.importerName ?? null,
     exporter_name: p.exporterName ?? null,
     reference_importer: p.referenceImporter ?? null,
+    depositary: p.depositary ?? null,
     product: p.product ?? null,
     redestination_number: p.redestinationNumber ?? null,
     source: p.source,

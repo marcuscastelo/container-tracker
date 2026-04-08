@@ -23,7 +23,8 @@ REDESTINAÇÃO: 129495`)
     expect(parsed.fields.exporterName).toBe('FUTURE FOR FOOD')
     expect(parsed.fields.product).toBe('AZEITONA')
     expect(parsed.fields.origin).toBe('EGITO')
-    expect(parsed.fields.destination).toBe('MOVECTA')
+    expect(parsed.fields.destination).toBeUndefined()
+    expect(parsed.fields.depositary).toBe('MOVECTA')
     expect(parsed.fields.billOfLading).toBe('EG 0017057')
     expect(parsed.fields.redestinationNumber).toBe('129495')
     expect(parsed.fields.containers).toEqual(['MRSU8798130', 'CAAU7648798'])
@@ -52,6 +53,15 @@ CTNR: mrsu8798130, CAAU7648798; TGHU1234567`)
     expect(parsed.fields.exporterName).toBe('Exportadora PT')
     expect(parsed.fields.containers).toEqual(['MRSU8798130', 'CAAU7648798', 'TGHU1234567'])
     expect(parsed.warnings).not.toContain('no_valid_container_found')
+  })
+
+  it('keeps DESTINO and DEPOSITARIO as distinct canonical fields', () => {
+    const parsed = parseTrelloSmartPaste(`DESTINO: Santos
+DEPOSITARIO: Santos Brasil
+CTNR: MSCU1234567`)
+
+    expect(parsed.fields.destination).toBe('Santos')
+    expect(parsed.fields.depositary).toBe('Santos Brasil')
   })
 
   it('uses global container fallback when CTNR label is absent', () => {

@@ -363,6 +363,7 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           destination: Json | null
+          depositary: string | null
           exporter_name: string | null
           id: string
           importer_name: string | null
@@ -384,6 +385,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           destination?: Json | null
+          depositary?: string | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null
@@ -405,6 +407,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           destination?: Json | null
+          depositary?: string | null
           exporter_name?: string | null
           id?: string
           importer_name?: string | null

@@ -27,6 +27,7 @@ export type SymmetricProcessEntry = {
   readonly reference: string | null
   readonly origin: string | null
   readonly destination: string | null
+  readonly depositary: string | null
   readonly carrier: string | null
   readonly billOfLading: string | null
   readonly bookingNumber: string | null
@@ -122,6 +123,7 @@ export type ReportProcessEntry = {
   readonly carrier: string | null
   readonly origin: string | null
   readonly destination: string | null
+  readonly depositary: string | null
   readonly billOfLading: string | null
   readonly importerName: string | null
   readonly exporterName: string | null

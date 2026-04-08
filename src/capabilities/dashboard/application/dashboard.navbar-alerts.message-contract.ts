@@ -98,5 +98,8 @@ export function toAlertItemReadModel(
         messageKey: 'alerts.dataInconsistent',
         messageParams: {},
       }
+    default:
+      alert.message_key satisfies never // Ensure all cases are handled
+      throw new Error(`Unsupported alert message key: ${alert.message_key}`)
   }
 }

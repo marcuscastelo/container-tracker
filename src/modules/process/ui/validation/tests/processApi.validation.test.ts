@@ -207,6 +207,7 @@ describe('toCreateProcessInput', () => {
       importerName: 'Importer Co',
       exporterName: 'Exporter Co',
       referenceImporter: 'IMP-REF',
+      depositary: '  Santos Brasil  ',
       product: 'Coffee',
       redestinationNumber: 'RD-9',
     })
@@ -221,6 +222,7 @@ describe('toCreateProcessInput', () => {
       importer_name: 'Importer Co',
       exporter_name: 'Exporter Co',
       reference_importer: 'IMP-REF',
+      depositary: 'Santos Brasil',
       product: 'Coffee',
       redestination_number: 'RD-9',
       containers: [
@@ -242,6 +244,7 @@ describe('toCreateProcessInput', () => {
       importerName: '',
       exporterName: '',
       referenceImporter: '',
+      depositary: '   ',
       product: '',
       redestinationNumber: '',
     })
@@ -251,6 +254,7 @@ describe('toCreateProcessInput', () => {
     expect(payload.importer_name).toBeNull()
     expect(payload.exporter_name).toBeNull()
     expect(payload.reference_importer).toBeNull()
+    expect(payload.depositary).toBeNull()
     expect(payload.product).toBeNull()
     expect(payload.redestination_number).toBeNull()
   })
