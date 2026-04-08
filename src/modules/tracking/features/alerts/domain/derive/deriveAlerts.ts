@@ -27,6 +27,16 @@ type TransshipmentPair = {
   readonly vesselTo: string
 }
 
+type TransshipmentOccurrence = {
+  readonly dischargeObs: Observation
+  readonly loadObs: Observation
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly sourceObservationFingerprints: readonly string[]
+  readonly alertFingerprint: string
+}
+
 type MonitoringAutoResolution = {
   readonly alertId: string
   readonly reason: TrackingAlertResolvedReason
@@ -50,6 +60,75 @@ function resolveObservationLocationDisplay(observation: Observation | null | und
 function toDetectedAtIso(value: Observation['event_time'], fallback: Instant): string {
   if (value === null) return fallback.toIsoString()
   return toComparableInstant(value, TRACKING_CHRONOLOGY_COMPARE_OPTIONS).toIsoString()
+}
+
+function toObservationTimeKey(observation: Observation): string {
+  if (observation.event_time === null) {
+    return `null:${observation.created_at}`
+  }
+
+  return toComparableInstant(
+    observation.event_time,
+    TRACKING_CHRONOLOGY_COMPARE_OPTIONS,
+  ).toIsoString()
+}
+
+function normalizeAlertVesselPart(value: string): string {
+  const normalized = normalizeVesselName(value)
+  if (normalized !== null) return normalized
+  return value.trim().toUpperCase()
+}
+
+function computeTransshipmentOccurrenceFingerprint(pair: TransshipmentPair): string {
+  return computeAlertFingerprint('TRANSSHIPMENT', [
+    `port:${pair.port}`,
+    `from:${normalizeAlertVesselPart(pair.vesselFrom)}`,
+    `to:${normalizeAlertVesselPart(pair.vesselTo)}`,
+    `discharge:${toObservationTimeKey(pair.dischargeObs)}`,
+    `load:${toObservationTimeKey(pair.loadObs)}`,
+  ])
+}
+
+function mergeObservationFingerprints(
+  current: readonly string[],
+  incoming: readonly string[],
+): readonly string[] {
+  return [...new Set([...current, ...incoming])].sort()
+}
+
+function collapseTransshipmentOccurrences(
+  pairs: readonly TransshipmentPair[],
+): readonly TransshipmentOccurrence[] {
+  const occurrences: TransshipmentOccurrence[] = []
+
+  for (const pair of pairs) {
+    const alertFingerprint = computeTransshipmentOccurrenceFingerprint(pair)
+    const evidence = [pair.dischargeObs.fingerprint, pair.loadObs.fingerprint]
+    const previousOccurrence = occurrences[occurrences.length - 1]
+
+    if (previousOccurrence?.alertFingerprint === alertFingerprint) {
+      occurrences[occurrences.length - 1] = {
+        ...previousOccurrence,
+        sourceObservationFingerprints: mergeObservationFingerprints(
+          previousOccurrence.sourceObservationFingerprints,
+          evidence,
+        ),
+      }
+      continue
+    }
+
+    occurrences.push({
+      dischargeObs: pair.dischargeObs,
+      loadObs: pair.loadObs,
+      port: pair.port,
+      vesselFrom: pair.vesselFrom,
+      vesselTo: pair.vesselTo,
+      sourceObservationFingerprints: evidence,
+      alertFingerprint,
+    })
+  }
+
+  return occurrences
 }
 
 /**
@@ -125,12 +204,12 @@ function findTransshipmentPairs(timeline: Timeline): readonly TransshipmentPair[
  * @see docs/TRACKING_INVARIANTS.md
  */
 export function deriveTransshipment(timeline: Timeline): TransshipmentInfo {
-  const pairs = findTransshipmentPairs(timeline)
-  const ports = [...new Set(pairs.map((p) => p.port))]
+  const occurrences = collapseTransshipmentOccurrences(findTransshipmentPairs(timeline))
+  const ports = [...new Set(occurrences.map((occurrence) => occurrence.port))]
 
   return {
-    hasTransshipment: pairs.length > 0,
-    transshipmentCount: pairs.length,
+    hasTransshipment: occurrences.length > 0,
+    transshipmentCount: occurrences.length,
     ports,
   }
 }
@@ -182,15 +261,13 @@ export function deriveAlertTransitions(
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
 
   // 1. Transshipment detection — one alert per confirmed DISCHARGE → LOAD vessel-change pair
-  const transshipmentPairs = findTransshipmentPairs(timeline)
-  for (const pair of transshipmentPairs) {
-    const pairFingerprints = [pair.dischargeObs.fingerprint, pair.loadObs.fingerprint]
-    const alertFingerprint = computeAlertFingerprint('TRANSSHIPMENT', pairFingerprints)
-
-    // Deduplicate by fingerprint — same DISCHARGE+LOAD pair must not create duplicate alerts
-    if (!existingFactFingerprints.has(alertFingerprint)) {
+  const transshipmentOccurrences = collapseTransshipmentOccurrences(
+    findTransshipmentPairs(timeline),
+  )
+  for (const occurrence of transshipmentOccurrences) {
+    if (!existingFactFingerprints.has(occurrence.alertFingerprint)) {
       // detected_at = time the LOAD onto the new vessel was confirmed
-      const detectedAt = toDetectedAtIso(pair.loadObs.event_time, now)
+      const detectedAt = toDetectedAtIso(occurrence.loadObs.event_time, now)
 
       alerts.push({
         lifecycle_state: 'ACTIVE',
@@ -200,14 +277,14 @@ export function deriveAlertTransitions(
         severity: 'warning',
         message_key: 'alerts.transshipmentDetected',
         message_params: {
-          port: pair.port,
-          fromVessel: pair.vesselFrom,
-          toVessel: pair.vesselTo,
+          port: occurrence.port,
+          fromVessel: occurrence.vesselFrom,
+          toVessel: occurrence.vesselTo,
         },
         detected_at: detectedAt,
         triggered_at: nowIso,
-        source_observation_fingerprints: pairFingerprints,
-        alert_fingerprint: alertFingerprint,
+        source_observation_fingerprints: [...occurrence.sourceObservationFingerprints],
+        alert_fingerprint: occurrence.alertFingerprint,
         retroactive: isBackfill,
         provider: null,
         acked_at: null,

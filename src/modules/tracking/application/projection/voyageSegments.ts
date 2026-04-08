@@ -19,6 +19,8 @@ export type VoyageSegment = {
   readonly origin: string | null
   /** Destination port (from the DISCHARGE event location) */
   readonly destination: string | null
+  /** Planned maritime continuation inferred from intended transshipment context. */
+  readonly plannedContinuation: boolean
   /** Events belonging to this segment, in original order */
   readonly events: readonly TrackingTimelineItem[]
 }
@@ -43,12 +45,19 @@ export function groupVoyageSegments(
 ): readonly VoyageSegment[] {
   if (events.length === 0) return []
 
+  const TRANSSHIPMENT_HELPER_TYPES = new Set([
+    'TRANSSHIPMENT_POSITIONED_IN',
+    'TRANSSHIPMENT_POSITIONED_OUT',
+    'TERMINAL_MOVE',
+  ])
+
   const segments: VoyageSegment[] = []
   let currentEvents: TrackingTimelineItem[] = []
   let currentVessel: string | null = null
   let currentVoyage: string | null = null
   let currentOrigin: string | null = null
   let currentDestination: string | null = null
+  let currentPlannedContinuation = false
   let inVoyage = false
 
   function flushCurrent(): void {
@@ -58,6 +67,7 @@ export function groupVoyageSegments(
       voyage: currentVoyage,
       origin: currentOrigin,
       destination: currentDestination,
+      plannedContinuation: currentPlannedContinuation,
       events: currentEvents,
     })
     currentEvents = []
@@ -65,6 +75,7 @@ export function groupVoyageSegments(
     currentVoyage = null
     currentOrigin = null
     currentDestination = null
+    currentPlannedContinuation = false
     inVoyage = false
   }
 
@@ -83,6 +94,102 @@ export function groupVoyageSegments(
     return (event.vesselName?.trim().length ?? 0) > 0 || (event.voyage?.trim().length ?? 0) > 0
   }
 
+  function hasVoyageIdentity(event: TrackingTimelineItem): boolean {
+    return (event.vesselName?.trim().length ?? 0) > 0 || (event.voyage?.trim().length ?? 0) > 0
+  }
+
+  function matchesLocation(event: TrackingTimelineItem, location: string | null): boolean {
+    if (location === null) return false
+    return event.location === location
+  }
+
+  function isPlannedContinuationAnchor(event: TrackingTimelineItem): boolean {
+    return event.type === 'TRANSSHIPMENT_INTENDED' && event.eventTimeType === 'EXPECTED'
+  }
+
+  function isTransshipmentHelperEvent(event: TrackingTimelineItem): boolean {
+    return TRANSSHIPMENT_HELPER_TYPES.has(event.type)
+  }
+
+  function findLastStrongMaritimeEvent(startIndex: number): TrackingTimelineItem | null {
+    for (let index = startIndex; index >= 0; index--) {
+      const candidate = events[index]
+      if (candidate !== undefined && isMaritimeEvent(candidate)) {
+        return candidate
+      }
+    }
+
+    return null
+  }
+
+  type PlannedContinuationMatch = {
+    readonly destination: string
+    readonly endIndex: number
+  }
+
+  function matchPlannedContinuation(startIndex: number): PlannedContinuationMatch | null {
+    const anchor = events[startIndex]
+    if (anchor === undefined || !isPlannedContinuationAnchor(anchor)) return null
+
+    const origin = anchor.location ?? null
+    if (origin === null) return null
+
+    const previousMaritimeEvent = findLastStrongMaritimeEvent(startIndex - 1)
+    if (
+      previousMaritimeEvent === null ||
+      previousMaritimeEvent.type !== 'DISCHARGE' ||
+      previousMaritimeEvent.eventTimeType !== 'ACTUAL' ||
+      !matchesLocation(previousMaritimeEvent, origin)
+    ) {
+      return null
+    }
+
+    let destination: string | null = null
+    let endIndex = startIndex
+
+    for (let index = startIndex + 1; index < events.length; index++) {
+      const event = events[index]
+      if (event === undefined) continue
+
+      if (event.type === 'LOAD' || canStartPredictedVoyage(event)) {
+        return null
+      }
+
+      if (
+        isPlannedContinuationAnchor(event) ||
+        isTransshipmentHelperEvent(event) ||
+        (event.type === 'DEPARTURE' && !hasVoyageIdentity(event))
+      ) {
+        if (matchesLocation(event, origin)) {
+          endIndex = index
+          continue
+        }
+        break
+      }
+
+      const eventLocation = event.location ?? null
+
+      if (
+        (event.type === 'ARRIVAL' || event.type === 'DISCHARGE') &&
+        eventLocation !== null &&
+        eventLocation !== origin
+      ) {
+        destination = eventLocation
+        endIndex = index
+        continue
+      }
+
+      break
+    }
+
+    if (destination === null) return null
+
+    return {
+      destination,
+      endIndex,
+    }
+  }
+
   function matchesCurrentVoyageIdentity(event: TrackingTimelineItem): boolean {
     const eventVessel = event.vesselName ?? null
     const eventVoyage = event.voyage ?? null
@@ -97,6 +204,7 @@ export function groupVoyageSegments(
 
   function beginVoyage(event: TrackingTimelineItem): void {
     inVoyage = true
+    currentPlannedContinuation = false
     currentVessel = event.vesselName ?? null
     currentVoyage = event.voyage ?? null
     currentOrigin = event.location ?? null
@@ -104,7 +212,10 @@ export function groupVoyageSegments(
     currentEvents.push(event)
   }
 
-  for (const event of events) {
+  for (let index = 0; index < events.length; index++) {
+    const event = events[index]
+    if (event === undefined) continue
+
     if (inVoyage) {
       if (!isMaritimeEvent(event)) {
         flushCurrent()
@@ -147,6 +258,21 @@ export function groupVoyageSegments(
       if (event.type === 'DISCHARGE' && event.eventTimeType === 'ACTUAL') {
         flushCurrent()
       }
+      continue
+    }
+
+    const plannedContinuation = matchPlannedContinuation(index)
+    if (plannedContinuation !== null) {
+      flushCurrent()
+      segments.push({
+        vessel: null,
+        voyage: null,
+        origin: event.location ?? null,
+        destination: plannedContinuation.destination,
+        plannedContinuation: true,
+        events: events.slice(index, plannedContinuation.endIndex + 1),
+      })
+      index = plannedContinuation.endIndex
       continue
     }
 

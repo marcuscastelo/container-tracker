@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { deriveTransshipment } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
+import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import {
   createTrackingValidationContext,
   deriveTrackingValidationSummaryFromState,
@@ -625,6 +627,67 @@ describe('trackingValidation.projection', () => {
       activeIssues: [],
       topIssue: null,
     })
+  })
+
+  it('does not emit a post-carriage advisory for planned maritime continuation', () => {
+    const observations = [
+      makeObservation({
+        id: 'leg-a-load',
+        type: 'LOAD',
+        location_code: 'PKKHI',
+        location_display: 'Karachi',
+        vessel_name: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        event_time: temporalValueFromCanonical('2026-03-01T10:00:00.000Z'),
+        created_at: '2026-03-01T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'leg-a-discharge',
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        location_display: 'Singapore',
+        event_time: temporalValueFromCanonical('2026-03-11T10:00:00.000Z'),
+        created_at: '2026-03-11T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'planned-intended',
+        type: 'TRANSSHIPMENT_INTENDED',
+        location_code: 'SGSIN',
+        location_display: 'Singapore',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-03-12'),
+        created_at: '2026-03-12T10:30:00.000Z',
+      }),
+      makeObservation({
+        id: 'planned-arrival',
+        type: 'ARRIVAL',
+        location_code: 'BRSSZ',
+        location_display: 'Santos',
+        event_time_type: 'EXPECTED',
+        event_time: temporalValueFromCanonical('2026-04-10'),
+        created_at: '2026-03-12T10:31:00.000Z',
+      }),
+    ] satisfies readonly Observation[]
+
+    const timeline = deriveTimeline(
+      'container-1',
+      'MSCU1234567',
+      observations,
+      Instant.fromIso('2026-03-20T10:00:00.000Z'),
+    )
+
+    const summary = deriveTrackingValidationSummaryFromState({
+      containerId: 'container-1',
+      containerNumber: 'MSCU1234567',
+      observations,
+      timeline,
+      status: 'LOADED',
+      transshipment: deriveTransshipment(timeline),
+      now: Instant.fromIso('2026-03-20T10:00:00.000Z'),
+    })
+
+    expect(summary.hasIssues).toBe(false)
+    expect(summary.activeIssues).toEqual([])
   })
 
   it('does not flag duplicated segments when the same voyage identity points to a different origin', () => {

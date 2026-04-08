@@ -20,7 +20,7 @@ type TerminalSegment = {
 }
 
 function isVoyageLikeSegment(segment: VoyageSegment): boolean {
-  return segment.vessel !== null || segment.voyage !== null
+  return segment.plannedContinuation || segment.vessel !== null || segment.voyage !== null
 }
 
 function findNextVoyageLikeSegment(
@@ -304,6 +304,13 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
     const current = voyageOnly[i]
     const next = voyageOnly[i + 1]
     if (current === undefined || next === undefined) continue
+
+    // Planned maritime continuation is not a confirmed vessel-change fact yet.
+    // Keep the future leg maritime, but do not emit a transshipment card that
+    // would imply a concrete vessel handoff before stronger facts arrive.
+    if (current.seg.plannedContinuation || next.seg.plannedContinuation) {
+      continue
+    }
 
     const currentVessel = normalizeVesselName(current.seg.vessel)
     const nextVessel = normalizeVesselName(next.seg.vessel)
