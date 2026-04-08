@@ -32,6 +32,109 @@ function requireDefined<T>(value: T | undefined): T {
   return value
 }
 
+type SameDayTieEventKey = 'load' | 'positionedIn' | 'positionedOut' | 'other'
+
+function makeMscSameDayTransshipmentFixture(
+  sameDayOrder: readonly SameDayTieEventKey[],
+): readonly TrackingTimelineItem[] {
+  const sameDayEventTime = temporalDtoFromCanonical('2026-02-28')
+  const sameDayEvents: Record<SameDayTieEventKey, TrackingTimelineItem> = {
+    load: makeEvent({
+      id: 'same-day-load',
+      type: 'LOAD',
+      eventTime: sameDayEventTime,
+      vesselName: 'MSC BIANCA SILVIA',
+      voyage: 'UX605A',
+      location: 'BUSAN, KR',
+    }),
+    positionedIn: makeEvent({
+      id: 'same-day-positioned-in',
+      type: 'TRANSSHIPMENT_POSITIONED_IN',
+      eventTime: sameDayEventTime,
+      location: 'BUSAN, KR',
+    }),
+    positionedOut: makeEvent({
+      id: 'same-day-positioned-out',
+      type: 'TRANSSHIPMENT_POSITIONED_OUT',
+      eventTime: sameDayEventTime,
+      location: 'BUSAN, KR',
+    }),
+    other: makeEvent({
+      id: 'same-day-other',
+      type: 'OTHER',
+      eventTime: sameDayEventTime,
+      location: 'BUSAN, KR',
+    }),
+  }
+
+  return [
+    makeEvent({
+      id: 'pre-gate-out',
+      type: 'GATE_OUT',
+      eventTime: temporalDtoFromCanonical('2025-11-30'),
+      location: 'FAISALABAD, PK',
+    }),
+    makeEvent({
+      id: 'pre-gate-in',
+      type: 'GATE_IN',
+      eventTime: temporalDtoFromCanonical('2025-12-30'),
+      location: 'KARACHI, PK',
+    }),
+    makeEvent({
+      id: 'voyage-a-load',
+      type: 'LOAD',
+      eventTime: temporalDtoFromCanonical('2026-01-02'),
+      vesselName: 'MSC IRIS',
+      voyage: 'QS551R',
+      location: 'KARACHI, PK',
+    }),
+    makeEvent({
+      id: 'voyage-a-discharge',
+      type: 'DISCHARGE',
+      eventTime: temporalDtoFromCanonical('2026-02-10'),
+      vesselName: 'MSC IRIS',
+      voyage: 'UX604A',
+      location: 'BUSAN, KR',
+    }),
+    ...sameDayOrder.map((key) => sameDayEvents[key]),
+    makeEvent({
+      id: 'voyage-b-arrival-expected',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-08'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      vesselName: 'MSC BIANCA SILVIA',
+      voyage: 'UX614R',
+      location: 'SANTOS, BR',
+    }),
+  ]
+}
+
+function renderListSignature(
+  renderList: ReturnType<typeof buildTimelineRenderList>,
+): readonly string[] {
+  return renderList.map((item) => {
+    switch (item.type) {
+      case 'voyage-block':
+        return `voyage-block:${item.block.vessel ?? ''}:${item.block.voyage ?? ''}:${item.block.origin ?? ''}:${item.block.destination ?? ''}`
+      case 'terminal-block':
+        return `terminal-block:${item.block.kind}:${item.block.events.map((event) => event.type).join(',')}`
+      case 'transshipment-block':
+        return `transshipment-block:${item.block.fromVessel ?? ''}:${item.block.toVessel ?? ''}:${item.block.port ?? ''}`
+      case 'event':
+        return `event:${item.event.id}:${item.event.type}:${item.isLast ? 'last' : 'mid'}`
+      case 'gap-marker':
+        return `gap-marker:${item.marker.kind}:${item.marker.fromEventType}:${item.marker.toEventType}:${item.marker.durationDays}`
+      case 'port-risk-marker':
+        return `port-risk-marker:${item.marker.severity}:${item.marker.durationDays}:${item.marker.ongoing ? 'ongoing' : 'closed'}`
+      case 'block-end':
+        return 'block-end'
+      default:
+        return 'unreachable'
+    }
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Phase 4-5 — buildTimelineRenderList (block assembly + transshipment)
 // ---------------------------------------------------------------------------
@@ -42,10 +145,31 @@ describe('buildTimelineRenderList voyage grouping', () => {
 
   it('creates a voyage block for a single voyage', () => {
     const events = [
-      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', location: 'A' }),
-      makeEvent({ id: 'e2', type: 'DEPARTURE', location: 'A' }),
-      makeEvent({ id: 'e3', type: 'ARRIVAL', location: 'B' }),
-      makeEvent({ id: 'e4', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({
+        id: 'e1',
+        type: 'LOAD',
+        vesselName: 'V1',
+        location: 'A',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
+      }),
+      makeEvent({
+        id: 'e2',
+        type: 'DEPARTURE',
+        location: 'A',
+        eventTime: temporalDtoFromCanonical('2026-03-02T00:00:00Z'),
+      }),
+      makeEvent({
+        id: 'e3',
+        type: 'ARRIVAL',
+        location: 'B',
+        eventTime: temporalDtoFromCanonical('2026-03-03T00:00:00Z'),
+      }),
+      makeEvent({
+        id: 'e4',
+        type: 'DISCHARGE',
+        location: 'B',
+        eventTime: temporalDtoFromCanonical('2026-03-04T00:00:00Z'),
+      }),
     ]
     const renderList = buildTimelineRenderList(
       events,
@@ -68,6 +192,7 @@ describe('buildTimelineRenderList voyage grouping', () => {
       makeEvent({
         id: 'e1',
         type: 'DEPARTURE',
+        eventTime: temporalDtoFromCanonical('2026-04-01T00:00:00Z'),
         eventTimeType: 'EXPECTED',
         derivedState: 'ACTIVE_EXPECTED',
         vesselName: 'MSC MIRAYA V',
@@ -77,6 +202,7 @@ describe('buildTimelineRenderList voyage grouping', () => {
       makeEvent({
         id: 'e2',
         type: 'ARRIVAL',
+        eventTime: temporalDtoFromCanonical('2026-04-04T00:00:00Z'),
         eventTimeType: 'EXPECTED',
         derivedState: 'ACTIVE_EXPECTED',
         vesselName: 'MSC MIRAYA V',
@@ -236,11 +362,24 @@ describe('buildTimelineRenderList terminal grouping', () => {
 
   it('renders transshipment helper events as transshipment-terminal between maritime legs', () => {
     const events = [
-      makeEvent({ id: 'e1', type: 'LOAD', vesselName: 'V1', voyage: 'VY1', location: 'A' }),
-      makeEvent({ id: 'e2', type: 'DISCHARGE', location: 'B' }),
+      makeEvent({
+        id: 'e1',
+        type: 'LOAD',
+        vesselName: 'V1',
+        voyage: 'VY1',
+        location: 'A',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
+      }),
+      makeEvent({
+        id: 'e2',
+        type: 'DISCHARGE',
+        location: 'B',
+        eventTime: temporalDtoFromCanonical('2026-03-04T00:00:00Z'),
+      }),
       makeEvent({
         id: 'e3',
         type: 'TRANSSHIPMENT_INTENDED',
+        eventTime: temporalDtoFromCanonical('2026-03-05T00:00:00Z'),
         eventTimeType: 'EXPECTED',
         derivedState: 'ACTIVE_EXPECTED',
         location: 'B',
@@ -248,11 +387,13 @@ describe('buildTimelineRenderList terminal grouping', () => {
       makeEvent({
         id: 'e4',
         type: 'TRANSSHIPMENT_POSITIONED_IN',
+        eventTime: temporalDtoFromCanonical('2026-03-06T00:00:00Z'),
         location: 'B',
       }),
       makeEvent({
         id: 'e5',
         type: 'DEPARTURE',
+        eventTime: temporalDtoFromCanonical('2026-03-07T00:00:00Z'),
         eventTimeType: 'EXPECTED',
         derivedState: 'ACTIVE_EXPECTED',
         vesselName: 'V2',
@@ -262,6 +403,7 @@ describe('buildTimelineRenderList terminal grouping', () => {
       makeEvent({
         id: 'e6',
         type: 'ARRIVAL',
+        eventTime: temporalDtoFromCanonical('2026-03-10T00:00:00Z'),
         eventTimeType: 'EXPECTED',
         derivedState: 'ACTIVE_EXPECTED',
         vesselName: 'V2',
@@ -285,6 +427,77 @@ describe('buildTimelineRenderList terminal grouping', () => {
       expect(terminalBlock.block.events.map((event) => event.type)).toEqual([
         'TRANSSHIPMENT_INTENDED',
         'TRANSSHIPMENT_POSITIONED_IN',
+      ])
+    }
+  })
+})
+
+describe('buildTimelineRenderList same-day tie-break ordering', () => {
+  it('keeps MSC date-only transshipment helpers inside transshipment-terminal blocks', () => {
+    const renderList = buildTimelineRenderList(
+      makeMscSameDayTransshipmentFixture(['load', 'positionedOut', 'positionedIn']),
+      instantFromIsoText('2026-04-02T00:00:00.000Z'),
+    )
+
+    const transshipmentTerminalBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
+    )
+    const postCarriageBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'post-carriage',
+    )
+
+    expect(transshipmentTerminalBlocks).toHaveLength(1)
+    expect(postCarriageBlocks).toHaveLength(0)
+
+    const terminalBlock = requireDefined(transshipmentTerminalBlocks[0])
+    if (terminalBlock.type === 'terminal-block') {
+      expect(terminalBlock.block.events.map((event) => event.type)).toEqual([
+        'TRANSSHIPMENT_POSITIONED_IN',
+        'TRANSSHIPMENT_POSITIONED_OUT',
+      ])
+    }
+  })
+
+  it('produces identical block output across same-day tie permutations', () => {
+    const sameDayOrders: readonly (readonly SameDayTieEventKey[])[] = [
+      ['load', 'positionedIn', 'positionedOut'],
+      ['positionedOut', 'load', 'positionedIn'],
+      ['positionedIn', 'positionedOut', 'load'],
+      ['positionedOut', 'positionedIn', 'load'],
+    ]
+
+    const signatures = sameDayOrders.map((sameDayOrder) =>
+      renderListSignature(
+        buildTimelineRenderList(
+          makeMscSameDayTransshipmentFixture(sameDayOrder),
+          instantFromIsoText('2026-04-02T00:00:00.000Z'),
+        ),
+      ),
+    )
+
+    const baselineSignature = requireDefined(signatures[0])
+    for (const signature of signatures.slice(1)) {
+      expect(signature).toEqual(baselineSignature)
+    }
+  })
+
+  it('keeps transshipment grouping stable when an unknown same-day event is present', () => {
+    const renderList = buildTimelineRenderList(
+      makeMscSameDayTransshipmentFixture(['load', 'other', 'positionedOut', 'positionedIn']),
+      instantFromIsoText('2026-04-02T00:00:00.000Z'),
+    )
+
+    const transshipmentTerminalBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
+    )
+
+    expect(transshipmentTerminalBlocks).toHaveLength(1)
+
+    const terminalBlock = requireDefined(transshipmentTerminalBlocks[0])
+    if (terminalBlock.type === 'terminal-block') {
+      expect(terminalBlock.block.events.map((event) => event.type)).toEqual([
+        'TRANSSHIPMENT_POSITIONED_IN',
+        'TRANSSHIPMENT_POSITIONED_OUT',
       ])
     }
   })

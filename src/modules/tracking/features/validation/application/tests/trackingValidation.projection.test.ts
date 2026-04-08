@@ -35,6 +35,128 @@ function makeObservation(
   }
 }
 
+type SameDayValidationTieEventKey = 'load' | 'positionedIn' | 'positionedOut'
+
+function makeSameDayTransshipmentValidationObservations(
+  sameDayOrder: readonly SameDayValidationTieEventKey[],
+): readonly Observation[] {
+  const sameDayCreatedAt = '2026-04-04T16:08:29.699745+00'
+  const sameDayEvents: Record<SameDayValidationTieEventKey, Observation> = {
+    load: makeObservation({
+      id: 'same-day-load',
+      type: 'LOAD',
+      created_at: sameDayCreatedAt,
+      event_time: temporalValueFromCanonical('2026-02-28'),
+      location_code: 'KRPUS',
+      location_display: 'BUSAN, KR',
+      vessel_name: 'MSC BIANCA SILVIA',
+      voyage: 'UX605A',
+    }),
+    positionedIn: makeObservation({
+      id: 'same-day-positioned-in',
+      type: 'TRANSSHIPMENT_POSITIONED_IN',
+      created_at: sameDayCreatedAt,
+      event_time: temporalValueFromCanonical('2026-02-28'),
+      location_code: 'KRPUS',
+      location_display: 'BUSAN, KR',
+      vessel_name: null,
+      voyage: null,
+    }),
+    positionedOut: makeObservation({
+      id: 'same-day-positioned-out',
+      type: 'TRANSSHIPMENT_POSITIONED_OUT',
+      created_at: sameDayCreatedAt,
+      event_time: temporalValueFromCanonical('2026-02-28'),
+      location_code: 'KRPUS',
+      location_display: 'BUSAN, KR',
+      vessel_name: null,
+      voyage: null,
+    }),
+  }
+
+  return [
+    makeObservation({
+      id: 'pre-gate-out',
+      type: 'GATE_OUT',
+      created_at: '2026-04-04T16:08:29.699745+00',
+      event_time: temporalValueFromCanonical('2025-11-30'),
+      location_code: 'PKLYP',
+      location_display: 'FAISALABAD, PK',
+      vessel_name: null,
+      voyage: null,
+      is_empty: true,
+    }),
+    makeObservation({
+      id: 'pre-gate-in',
+      type: 'GATE_IN',
+      created_at: '2026-04-04T16:08:29.699745+00',
+      event_time: temporalValueFromCanonical('2025-12-30'),
+      location_code: 'PKKHI',
+      location_display: 'KARACHI, PK',
+      vessel_name: null,
+      voyage: null,
+      is_empty: false,
+    }),
+    makeObservation({
+      id: 'voyage-a-load',
+      type: 'LOAD',
+      created_at: '2026-04-04T16:08:29.699745+00',
+      event_time: temporalValueFromCanonical('2026-01-02'),
+      location_code: 'PKKHI',
+      location_display: 'KARACHI, PK',
+      vessel_name: 'MSC IRIS',
+      voyage: 'QS551R',
+    }),
+    makeObservation({
+      id: 'voyage-a-discharge',
+      type: 'DISCHARGE',
+      created_at: '2026-04-04T16:08:29.699745+00',
+      event_time: temporalValueFromCanonical('2026-02-10'),
+      location_code: 'KRPUS',
+      location_display: 'BUSAN, KR',
+      vessel_name: 'MSC IRIS',
+      voyage: 'UX604A',
+    }),
+    ...sameDayOrder.map((key) => sameDayEvents[key]),
+    makeObservation({
+      id: 'voyage-b-arrival-expected',
+      type: 'ARRIVAL',
+      created_at: '2026-04-04T16:08:29.699745+00',
+      event_time_type: 'EXPECTED',
+      event_time: temporalValueFromCanonical('2026-05-08'),
+      location_code: 'BRSSZ',
+      location_display: 'SANTOS, BR',
+      vessel_name: 'MSC BIANCA SILVIA',
+      voyage: 'UX614R',
+    }),
+  ]
+}
+
+function deriveValidationSummaryForObservations(
+  observations: readonly Observation[],
+  containerNumber = 'CAIU6241835',
+) {
+  return deriveTrackingValidationSummaryFromState({
+    containerId: 'container-1',
+    containerNumber,
+    observations,
+    timeline: {
+      container_id: 'container-1',
+      container_number: containerNumber,
+      observations,
+      derived_at: '2026-04-08T10:00:00.000Z',
+      holes: [],
+    },
+    status: 'IN_TRANSIT',
+    transshipment: {
+      hasTransshipment: true,
+      transshipmentCount: 1,
+      ports: ['KRPUS'],
+    },
+    now: Instant.fromIso('2026-04-08T10:00:00.000Z'),
+  })
+}
+
 describe('trackingValidation.projection', () => {
   it('exposes ordered active issues with public explanation metadata only', () => {
     const observations = [
@@ -640,6 +762,32 @@ describe('trackingValidation.projection', () => {
     })
 
     expect(summary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
+  })
+
+  it('keeps same-day transshipment ties from surfacing canonical timeline advisories', () => {
+    const badOrderSummary = deriveValidationSummaryForObservations(
+      makeSameDayTransshipmentValidationObservations(['load', 'positionedIn', 'positionedOut']),
+      'CAIU6241835',
+    )
+    const goodOrderSummary = deriveValidationSummaryForObservations(
+      makeSameDayTransshipmentValidationObservations(['positionedIn', 'positionedOut', 'load']),
+      'MSBU3493578',
+    )
+
+    expect(badOrderSummary).toEqual({
+      hasIssues: false,
+      findingCount: 0,
+      highestSeverity: null,
+      activeIssues: [],
+      topIssue: null,
+    })
+    expect(goodOrderSummary).toEqual({
       hasIssues: false,
       findingCount: 0,
       highestSeverity: null,
