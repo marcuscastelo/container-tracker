@@ -1,6 +1,10 @@
+import { applyVoyageExpectedSubstitution } from '~/modules/tracking/application/projection/voyageExpectedSubstitution.readmodel'
 import type { TransshipmentInfo } from '~/modules/tracking/domain/logistics/transshipment'
 import { isTrackingTemporalValueExpired } from '~/modules/tracking/domain/temporal/tracking-temporal'
-import { classifySeries } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
+import {
+  type ClassifiedObservation,
+  classifySeries,
+} from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import {
   buildSeriesKey,
   compareObservationsChronologically,
@@ -126,13 +130,21 @@ function derivePrimarySeriesObservations(
     }
   }
 
-  const primaries: TrackingObservationForOperationalSummary[] = []
+  const candidates: Array<{
+    readonly primary: TrackingObservationForOperationalSummary
+    readonly classified: readonly ClassifiedObservation<TrackingObservationForOperationalSummary>[]
+    readonly hasActualConflict: boolean
+  }> = []
 
   for (const series of groups.values()) {
     series.sort(compareObservationsChronologically)
     const classification = classifySeries(series, now)
     if (classification.primary) {
-      primaries.push(classification.primary)
+      candidates.push({
+        primary: classification.primary,
+        classified: classification.classified,
+        hasActualConflict: classification.hasActualConflict,
+      })
       continue
     }
 
@@ -143,11 +155,17 @@ function derivePrimarySeriesObservations(
       .find((observation) => observation.event_time_type === 'EXPECTED')
 
     if (latestExpected) {
-      primaries.push(latestExpected)
+      candidates.push({
+        primary: latestExpected,
+        classified: classification.classified,
+        hasActualConflict: classification.hasActualConflict,
+      })
     }
   }
 
-  return primaries
+  return applyVoyageExpectedSubstitution(candidates).visibleCandidates.map(
+    (candidate) => candidate.primary,
+  )
 }
 
 function locationCodesMatch(

@@ -355,6 +355,78 @@ describe('deriveTrackingOperationalSummary', () => {
     expect(summary.eta?.locationCode).toBe('BRSSZBT')
   })
 
+  it('prefers the stronger final expected when a future voyage chain supersedes a generic POD ETA', () => {
+    const summary = deriveTrackingOperationalSummary({
+      observations: [
+        makeObservation({
+          id: 'final-generic-old',
+          type: 'ARRIVAL',
+          event_time: '2026-05-20',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS',
+          created_at: '2026-04-01T00:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'colombo-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          event_time: '2026-04-13',
+          location_code: 'LKCMB',
+          location_display: 'COLOMBO',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'singapore-arrival',
+          type: 'ARRIVAL',
+          event_time: '2026-04-18',
+          location_code: 'SGSIN',
+          location_display: 'SINGAPORE',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'singapore-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          event_time: '2026-04-23',
+          location_code: 'SGSIN',
+          location_display: 'SINGAPORE',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'final-specific-new',
+          type: 'ARRIVAL',
+          event_time: '2026-05-15',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+      ],
+      status: 'IN_TRANSIT',
+      transshipment: {
+        hasTransshipment: true,
+        transshipmentCount: 1,
+        ports: ['LKCMB', 'SGSIN'],
+      },
+      podLocationCode: 'BRSSZ',
+      now: instantFromIsoText('2026-04-06T00:00:00.000Z'),
+    })
+
+    const eta = requireEta(summary)
+    const nextLocation = requireNextLocation(summary)
+
+    expect(temporalCanonicalText(eta.eventTime)).toBe('2026-05-15')
+    expect(eta.locationCode).toBe('BRSSZ')
+    expect(nextLocation).toEqual({
+      eventTime: eta.eventTime,
+      eventTimeType: 'EXPECTED',
+      type: 'ARRIVAL',
+      locationCode: 'BRSSZ',
+      locationDisplay: 'SANTOS',
+    })
+  })
+
   it('infers final ETA from expected DISCHARGE when POD code is missing but the route is canonical', () => {
     const summary = deriveTrackingOperationalSummary({
       observations: [
