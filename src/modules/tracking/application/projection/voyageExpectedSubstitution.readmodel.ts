@@ -86,6 +86,11 @@ function compareByCreatedAtThenChronology(
     return createdCompare
   }
 
+  const specificityCompare = specificityScore(left) - specificityScore(right)
+  if (specificityCompare !== 0) {
+    return specificityCompare
+  }
+
   return compareObservationsChronologically(left, right)
 }
 
@@ -181,7 +186,7 @@ function canBeSuppressedBy<T extends VoyageExpectedSubstitutionObservation>(
   newer: T,
   allPrimaries: readonly T[],
 ): boolean {
-  if (older.created_at >= newer.created_at) return false
+  if (older.created_at > newer.created_at) return false
   if (older.type !== newer.type) return false
 
   const olderAnchor = normalizeLocationAnchor(older)

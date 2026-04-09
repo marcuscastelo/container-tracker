@@ -98,6 +98,49 @@ describe('deriveTimelineWithSeriesReadModel voyage expected substitution', () =>
     ])
   })
 
+  it('suppresses a generic final arrival even when both terminal expecteds share the same created_at', () => {
+    const timeline = deriveTimelineWithSeriesReadModel(
+      [
+        makeObservation({
+          id: 'final-generic-same-created-at',
+          type: 'ARRIVAL',
+          event_time: '2026-05-20',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS, BR',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'singapore-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          event_time: '2026-04-23',
+          location_code: 'SGSIN',
+          location_display: 'SINGAPORE, SG',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+        makeObservation({
+          id: 'final-specific-same-created-at',
+          type: 'ARRIVAL',
+          event_time: '2026-05-15',
+          location_code: 'BRSSZ',
+          location_display: 'SANTOS, BR',
+          vessel_name: 'SAO PAULO EXPRESS',
+          voyage: '2613W',
+          created_at: '2026-04-05T00:00:00.000Z',
+        }),
+      ],
+      now,
+    )
+
+    expect(timeline.map((item) => item.id)).not.toContain('final-generic-same-created-at')
+
+    const promoted = requireTimelineItem(timeline, 'final-specific-same-created-at')
+    expect(promoted.hasSeriesHistory).toBe(true)
+    expect(promoted.seriesHistory?.classified.map((item) => [item.id, item.seriesLabel])).toEqual([
+      ['final-specific-same-created-at', 'ACTIVE'],
+      ['final-generic-same-created-at', 'SUPERSEDED_EXPECTED'],
+    ])
+  })
+
   it('collapses final expected duplication when a full future voyage chain points to the same port', () => {
     const timeline = deriveTimelineWithSeriesReadModel(
       [
