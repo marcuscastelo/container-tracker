@@ -265,6 +265,27 @@ function PlannedDateLabel(props: {
   )
 }
 
+function transshipmentHandoffLabel(
+  block: TransshipmentBlock,
+  translate: ReturnType<typeof useTranslation>['t'],
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string | null {
+  if (block.handoffDisplayMode === 'FULL') {
+    return translate(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+      from: block.previousVesselName ?? '?',
+      to: block.nextVesselName ?? '?',
+    })
+  }
+
+  if (block.handoffDisplayMode === 'NEXT_ONLY' && block.nextVesselName !== null) {
+    return translate(keys.shipmentView.timeline.blocks.vesselChangeNextOnly, {
+      to: block.nextVesselName,
+    })
+  }
+
+  return null
+}
+
 function PlannedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const representativeEvent = createMemo<TrackingTimelineItem | null>(() => {
@@ -272,11 +293,7 @@ function PlannedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.
     const event = lastIndex >= 0 ? props.block.events[lastIndex] : undefined
     return event ?? null
   })
-  const plannedVesselLabel = createMemo(() => {
-    const vessel = props.block.plannedVessel
-    if (vessel === null) return null
-    return props.block.plannedVoyage ? `${vessel} (${props.block.plannedVoyage})` : vessel
-  })
+  const handoffLabel = createMemo(() => transshipmentHandoffLabel(props.block, t, keys))
   const carrierHref = createMemo(() => {
     const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
     return typeof trackUrl === 'string' ? trackUrl : undefined
@@ -357,16 +374,16 @@ function PlannedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.
               {(port) => <p class="mt-0.5 text-micro font-medium text-text-muted">{port()}</p>}
             </Show>
             <Show
-              when={plannedVesselLabel()}
+              when={handoffLabel()}
               fallback={
                 <Show when={props.block.reason}>
                   {(reason) => <p class="mt-1 text-micro text-text-muted">{reason()}</p>}
                 </Show>
               }
             >
-              {(vesselLabel) => (
+              {(label) => (
                 <div class="mt-1 inline-flex items-center rounded border border-tone-warning-border/70 bg-tone-warning-bg/45 px-2 py-0.5 text-micro font-medium text-tone-warning-fg">
-                  {vesselLabel()}
+                  {label()}
                 </div>
               )}
             </Show>
@@ -409,7 +426,7 @@ function PlannedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.
 function ConfirmedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
   const { t, keys } = useTranslation()
 
-  const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
+  const handoffLabel = createMemo(() => transshipmentHandoffLabel(props.block, t, keys))
 
   return (
     <div class="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
@@ -423,7 +440,7 @@ function ConfirmedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JS
         {(port) => <p class="mt-0.5 text-micro font-medium text-tone-warning-fg">{port()}</p>}
       </Show>
       <Show
-        when={hasVesselChange()}
+        when={handoffLabel()}
         fallback={
           <Show when={props.block.reason}>
             {(reason) => <p class="mt-0.5 text-micro text-tone-warning-fg">{reason()}</p>}
@@ -431,12 +448,7 @@ function ConfirmedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JS
         }
       >
         <div class="mt-1 flex items-center gap-1 rounded bg-tone-warning-border/50 px-2 py-0.5 text-micro">
-          <span class="text-tone-warning-fg font-semibold shrink-0" aria-hidden="true">
-            {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-              from: props.block.fromVessel ?? '?',
-              to: props.block.toVessel ?? '?',
-            })}
-          </span>
+          <span class="text-tone-warning-fg font-semibold shrink-0">{handoffLabel()}</span>
         </div>
       </Show>
     </div>

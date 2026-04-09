@@ -219,7 +219,7 @@ function renderListSignature(
       case 'terminal-block':
         return `terminal-block:${item.block.kind}:${item.block.events.map((event) => event.type).join(',')}`
       case 'transshipment-block':
-        return `transshipment-block:${item.block.mode}:${item.block.fromVessel ?? ''}:${item.block.toVessel ?? ''}:${item.block.plannedVessel ?? ''}:${item.block.port ?? ''}`
+        return `transshipment-block:${item.block.mode}:${item.block.handoffDisplayMode}:${item.block.previousVesselName ?? ''}:${item.block.nextVesselName ?? ''}:${item.block.port ?? ''}`
       case 'event':
         return `event:${item.event.id}:${item.event.type}:${item.isLast ? 'last' : 'mid'}`
       case 'gap-marker':
@@ -245,7 +245,7 @@ function describeMainTimelineBlocks(
     }
     if (item.type === 'transshipment-block') {
       return [
-        `transshipment:${item.block.mode}:${item.block.port ?? ''}:${item.block.plannedVessel ?? ''}`,
+        `transshipment:${item.block.mode}:${item.block.handoffDisplayMode}:${item.block.port ?? ''}:${item.block.previousVesselName ?? ''}:${item.block.nextVesselName ?? ''}`,
       ]
     }
     if (item.type === 'terminal-block') {
@@ -367,8 +367,9 @@ describe('buildTimelineRenderList voyage grouping', () => {
     if (transshipmentBlock.type === 'transshipment-block') {
       expect(transshipmentBlock.block.port).toBe('B')
       expect(transshipmentBlock.block.reason).toBe('Vessel and voyage change')
-      expect(transshipmentBlock.block.fromVessel).toBe('V1')
-      expect(transshipmentBlock.block.toVessel).toBe('V2')
+      expect(transshipmentBlock.block.handoffDisplayMode).toBe('FULL')
+      expect(transshipmentBlock.block.previousVesselName).toBe('V1')
+      expect(transshipmentBlock.block.nextVesselName).toBe('V2')
     }
   })
 
@@ -606,8 +607,8 @@ describe('buildTimelineRenderList planned transshipment rendering', () => {
       'gap-marker:transit:LOAD:DISCHARGE:10',
       'event:leg-a-discharge:DISCHARGE:mid',
       'block-end',
-      'transshipment-block:planned:::SAO PAULO EXPRESS:Singapore',
-      'voyage-block:::Singapore:Santos',
+      'transshipment-block:planned:FULL:MSC MIRAYA V:SAO PAULO EXPRESS:Singapore',
+      'voyage-block:SAO PAULO EXPRESS:SPX001:Singapore:Santos',
       'event:planned-arrival:ARRIVAL:mid',
       'port-risk-marker:warning:2:closed',
       'event:planned-discharge:DISCHARGE:last',
@@ -640,10 +641,10 @@ describe('buildTimelineRenderList planned transshipment rendering', () => {
     expect(plannedPorts).toEqual(['Colombo', 'Singapore'])
     expect(describeMainTimelineBlocks(renderList)).toEqual([
       'voyage:MSC MIRAYA V:Karachi:Colombo',
-      'transshipment:planned:Colombo:',
-      'voyage::Colombo:Singapore',
-      'transshipment:planned:Singapore:ONE MAGDALENA',
-      'voyage::Singapore:Santos',
+      'transshipment:planned:FULL:Colombo:MSC MIRAYA V:MSC RENEE XIII',
+      'voyage:MSC RENEE XIII:Colombo:Singapore',
+      'transshipment:planned:FULL:Singapore:MSC RENEE XIII:ONE MAGDALENA',
+      'voyage:ONE MAGDALENA:Singapore:Santos',
     ])
   })
 })

@@ -126,6 +126,61 @@ function makeChainedPlannedFutureEvents(): readonly TrackingTimelineItem[] {
 }
 
 describe('tracking.timeline.blocks planned maritime continuation', () => {
+  it('derives a full confirmed handoff for a healthy real transshipment', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'voyage-a-load',
+          type: 'LOAD',
+          eventTime: temporalDtoFromCanonical('2026-01-02'),
+          vesselName: 'MSC IRIS',
+          voyage: 'QS551R',
+          location: 'KARACHI, PK',
+        }),
+        makeEvent({
+          id: 'voyage-a-discharge',
+          type: 'DISCHARGE',
+          eventTime: temporalDtoFromCanonical('2026-02-10'),
+          vesselName: 'MSC IRIS',
+          voyage: 'UX604A',
+          location: 'BUSAN, KR',
+        }),
+        makeEvent({
+          id: 'voyage-b-load',
+          type: 'LOAD',
+          eventTime: temporalDtoFromCanonical('2026-02-28'),
+          vesselName: 'MSC BIANCA SILVIA',
+          voyage: 'UX605A',
+          location: 'BUSAN, KR',
+        }),
+        makeEvent({
+          id: 'voyage-b-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-05-08'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'MSC BIANCA SILVIA',
+          voyage: 'UX614R',
+          location: 'SANTOS, BR',
+        }),
+      ],
+      instantFromIsoText('2026-03-20T00:00:00.000Z'),
+    )
+
+    const confirmedTransshipment = renderList.find(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'confirmed',
+    )
+
+    expect(confirmedTransshipment).toBeDefined()
+
+    if (confirmedTransshipment?.type === 'transshipment-block') {
+      expect(confirmedTransshipment.block.port).toBe('BUSAN, KR')
+      expect(confirmedTransshipment.block.handoffDisplayMode).toBe('FULL')
+      expect(confirmedTransshipment.block.previousVesselName).toBe('MSC IRIS')
+      expect(confirmedTransshipment.block.nextVesselName).toBe('MSC BIANCA SILVIA')
+    }
+  })
+
   it('keeps intended transshipment continuation inside a generic maritime leg', () => {
     const renderList = buildTimelineRenderList(
       [
@@ -186,6 +241,9 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     const plannedTransshipment = requireDefined(plannedTransshipmentBlocks[0])
     if (plannedTransshipment.type === 'transshipment-block') {
       expect(plannedTransshipment.block.port).toBe('Singapore')
+      expect(plannedTransshipment.block.handoffDisplayMode).toBe('NONE')
+      expect(plannedTransshipment.block.previousVesselName).toBe('MSC MIRAYA V')
+      expect(plannedTransshipment.block.nextVesselName).toBeNull()
       expect(plannedTransshipment.block.events.map((event) => event.type)).toEqual([
         'TRANSSHIPMENT_INTENDED',
       ])
@@ -255,6 +313,9 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     const transshipmentTerminal = renderList.filter(
       (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
     )
+    const confirmedTransshipment = renderList.find(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'confirmed',
+    )
     const plannedTransshipmentBlocks = renderList.filter(
       (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
     )
@@ -262,6 +323,7 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     expect(voyageBlocks).toHaveLength(2)
     expect(transshipmentTerminal).toHaveLength(1)
     expect(plannedTransshipmentBlocks).toHaveLength(0)
+    expect(confirmedTransshipment).toBeDefined()
 
     const explicitVoyage = requireDefined(voyageBlocks[1])
     if (explicitVoyage.type === 'voyage-block') {
@@ -276,6 +338,175 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
       expect(terminalBlock.block.events.map((event) => event.type)).toEqual([
         'TRANSSHIPMENT_INTENDED',
       ])
+    }
+
+    if (confirmedTransshipment?.type === 'transshipment-block') {
+      expect(confirmedTransshipment.block.handoffDisplayMode).toBe('FULL')
+      expect(confirmedTransshipment.block.previousVesselName).toBe('MSC MIRAYA V')
+      expect(confirmedTransshipment.block.nextVesselName).toBe('SAO PAULO EXPRESS')
+    }
+  })
+
+  it('renders a full planned handoff before an expected explicit future leg', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'leg-a-load',
+          type: 'LOAD',
+          eventTime: temporalDtoFromCanonical('2026-03-01T10:00:00Z'),
+          vesselName: 'GSL VIOLETTA',
+          voyage: 'GSL001',
+          location: 'Colombo',
+        }),
+        makeEvent({
+          id: 'leg-a-discharge',
+          type: 'DISCHARGE',
+          eventTime: temporalDtoFromCanonical('2026-03-11T10:00:00Z'),
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'planned-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-03-12'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'leg-b-departure',
+          type: 'DEPARTURE',
+          eventTime: temporalDtoFromCanonical('2026-03-14'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: 'SPX001',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'leg-b-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-04-10'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: 'SPX001',
+          location: 'Santos',
+        }),
+      ],
+      instantFromIsoText('2026-03-20T00:00:00.000Z'),
+    )
+
+    const plannedTransshipment = renderList.find(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
+    const confirmedTransshipment = renderList.find(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'confirmed',
+    )
+    const futureVoyage = renderList.filter((item) => item.type === 'voyage-block')[1]
+
+    expect(plannedTransshipment).toBeDefined()
+    expect(confirmedTransshipment).toBeUndefined()
+
+    if (plannedTransshipment?.type === 'transshipment-block') {
+      expect(plannedTransshipment.block.port).toBe('Singapore')
+      expect(plannedTransshipment.block.handoffDisplayMode).toBe('FULL')
+      expect(plannedTransshipment.block.previousVesselName).toBe('GSL VIOLETTA')
+      expect(plannedTransshipment.block.nextVesselName).toBe('SAO PAULO EXPRESS')
+    }
+
+    if (futureVoyage?.type === 'voyage-block') {
+      expect(futureVoyage.block.vessel).toBe('SAO PAULO EXPRESS')
+      expect(futureVoyage.block.voyage).toBe('SPX001')
+      expect(futureVoyage.block.origin).toBe('Singapore')
+      expect(futureVoyage.block.destination).toBe('Santos')
+    }
+  })
+
+  it('renders a next-only planned handoff when only the upcoming vessel is known', () => {
+    const renderList = buildTimelineRenderList(
+      [
+        makeEvent({
+          id: 'leg-a-departure',
+          type: 'DEPARTURE',
+          eventTime: temporalDtoFromCanonical('2026-04-07'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'Karachi',
+        }),
+        makeEvent({
+          id: 'leg-a-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-04-11'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'Colombo',
+        }),
+        makeEvent({
+          id: 'planned-colombo',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-04-13'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Colombo',
+        }),
+        makeEvent({
+          id: 'planned-singapore-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-04-18'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'planned-singapore',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: temporalDtoFromCanonical('2026-04-23'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'leg-b-departure',
+          type: 'DEPARTURE',
+          eventTime: temporalDtoFromCanonical('2026-04-24'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: 'SPX001',
+          location: 'Singapore',
+        }),
+        makeEvent({
+          id: 'leg-b-arrival',
+          type: 'ARRIVAL',
+          eventTime: temporalDtoFromCanonical('2026-05-14'),
+          eventTimeType: 'EXPECTED',
+          derivedState: 'ACTIVE_EXPECTED',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: 'SPX001',
+          location: 'Santos',
+        }),
+      ],
+      instantFromIsoText('2026-04-08T00:00:00.000Z'),
+    )
+
+    const plannedTransshipmentBlocks = renderList.filter(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
+
+    expect(plannedTransshipmentBlocks).toHaveLength(2)
+
+    const singaporeTransshipment = plannedTransshipmentBlocks.find(
+      (item) => item.type === 'transshipment-block' && item.block.port === 'Singapore',
+    )
+
+    if (singaporeTransshipment?.type === 'transshipment-block') {
+      expect(singaporeTransshipment.block.handoffDisplayMode).toBe('NEXT_ONLY')
+      expect(singaporeTransshipment.block.previousVesselName).toBeNull()
+      expect(singaporeTransshipment.block.nextVesselName).toBe('SAO PAULO EXPRESS')
     }
   })
 
@@ -295,11 +526,33 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     expect(plannedTransshipmentBlocks).toHaveLength(2)
     expect(transshipmentTerminalBlocks).toHaveLength(0)
 
-    const plannedPorts = plannedTransshipmentBlocks.map((item) =>
-      item.type === 'transshipment-block' ? item.block.port : null,
-    )
+    const plannedPorts = plannedTransshipmentBlocks.map((item) => {
+      if (item.type !== 'transshipment-block') {
+        return null
+      }
 
-    expect(plannedPorts).toEqual(['Colombo', 'Singapore'])
+      return {
+        port: item.block.port,
+        mode: item.block.handoffDisplayMode,
+        previous: item.block.previousVesselName,
+        next: item.block.nextVesselName,
+      }
+    })
+
+    expect(plannedPorts).toEqual([
+      {
+        port: 'Colombo',
+        mode: 'FULL',
+        previous: 'MSC MIRAYA V',
+        next: 'MSC RENEE XIII',
+      },
+      {
+        port: 'Singapore',
+        mode: 'FULL',
+        previous: 'MSC RENEE XIII',
+        next: 'ONE MAGDALENA',
+      },
+    ])
   })
 
   it('keeps chained expected transshipment continuations out of post-carriage', () => {
@@ -405,6 +658,22 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
       expect(block.block.events.some((event) => event.type === 'TRANSSHIPMENT_INTENDED')).toBe(
         false,
       )
+    }
+
+    const colomboVoyage = requireDefined(plannedVoyageBlocks[0])
+    const singaporeVoyage = requireDefined(plannedVoyageBlocks[1])
+
+    if (colomboVoyage.type === 'voyage-block') {
+      expect(colomboVoyage.block.vessel).toBe('MSC RENEE XIII')
+      expect(colomboVoyage.block.voyage).toBe('QB609E')
+    }
+
+    if (singaporeVoyage.type === 'voyage-block') {
+      expect(singaporeVoyage.block.vessel).toBe('ONE MAGDALENA')
+      expect(singaporeVoyage.block.voyage).toBe('2616W')
+      expect(singaporeVoyage.block.events.map((event) => event.id)).toEqual([
+        'planned-santos-arrival-final',
+      ])
     }
   })
 })
