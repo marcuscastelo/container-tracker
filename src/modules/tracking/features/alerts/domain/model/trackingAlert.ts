@@ -140,6 +140,7 @@ export type TrackingAlertDerivationState = Pick<
   | 'category'
   | 'type'
   | 'message_params'
+  | 'detected_at'
   | 'source_observation_fingerprints'
   | 'alert_fingerprint'
   | 'acked_at'

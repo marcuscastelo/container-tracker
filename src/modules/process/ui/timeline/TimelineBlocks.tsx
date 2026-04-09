@@ -1,5 +1,6 @@
 import { Construction, EyeIcon, Hourglass, Repeat, Ship, TriangleAlert, Truck } from 'lucide-solid'
 import { createEffect, createMemo, createSignal, type JSX, Match, Show, Switch } from 'solid-js'
+import { CarrierLinkButton } from '~/modules/process/ui/components/CarrierLinkButton'
 import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
 import { fetchObservationInspector } from '~/modules/process/ui/fetchProcessTrackingDetails'
 import type {
@@ -14,7 +15,6 @@ import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/
 import { useTranslation } from '~/shared/localization/i18n'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
-import { copyToClipboard } from '~/shared/utils/clipboard'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // ---------------------------------------------------------------------------
@@ -176,53 +176,8 @@ type InlineCarrierLinkProps = {
   readonly label: string
 }
 
-async function copyAndOpenCarrierLink(
-  href: string,
-  containerNumber?: string | null,
-): Promise<void> {
-  try {
-    if (containerNumber) {
-      await copyToClipboard(containerNumber)
-    }
-  } catch {
-    /* ignore copy failures */
-  }
-
-  try {
-    window.open(href, '_blank')
-  } catch {
-    /* ignore window open failures */
-  }
-}
-
 function InlineCarrierLinkButton(props: InlineCarrierLinkProps): JSX.Element | null {
-  return (
-    <Show when={props.href}>
-      {(href) => (
-        <a
-          href={href()}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={props.label}
-          class="inline-flex h-4 w-4 items-center justify-center rounded text-text-muted transition-colors hover:text-foreground"
-          onClick={(event) => {
-            event.preventDefault()
-            void copyAndOpenCarrierLink(href(), props.containerNumber)
-          }}
-        >
-          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <title>{props.label}</title>
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
-            />
-          </svg>
-        </a>
-      )}
-    </Show>
-  )
+  return <CarrierLinkButton {...props} class="transition-colors" />
 }
 
 function ObservationButton(props: {
@@ -233,11 +188,12 @@ function ObservationButton(props: {
     <button
       type="button"
       onClick={() => props.onClick()}
+      title={props.label}
+      aria-label={props.label}
       class="inline-flex items-center rounded border border-border bg-surface px-1 py-px text-micro font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground text-xs"
     >
-      <span title={props.label}>
-        <EyeIcon width={12} height={12} class="ml-0.5" aria-hidden="true" />
-      </span>
+      <span class="sr-only">{props.label}</span>
+      <EyeIcon width={12} height={12} class="ml-0.5" aria-hidden="true" />
     </button>
   )
 }

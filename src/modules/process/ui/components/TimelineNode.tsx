@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createSignal, type JSX, Show } from 'solid-js'
+import { CarrierLinkButton } from '~/modules/process/ui/components/CarrierLinkButton'
 import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
@@ -16,7 +17,6 @@ import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/
 import { useTranslation } from '~/shared/localization/i18n'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import { carrierTrackUrl } from '~/shared/utils/carrier'
-import { copyToClipboard } from '~/shared/utils/clipboard'
 import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 type EventStatus = 'completed' | 'current' | 'expected' | 'delayed'
@@ -40,11 +40,6 @@ type DateLabelProps = {
   readonly toTooltip: (iso?: TemporalValueDto | null) => string | undefined
 }
 
-type CarrierLinkProps = {
-  readonly href?: string
-  readonly containerNumber?: string | null
-  readonly label: string
-}
 type TimelineSeriesHistoryState = NonNullable<TrackingTimelineItem['seriesHistory']> | null
 
 function toOptionalTimelineNodeLayoutProps(params: {
@@ -112,55 +107,6 @@ function DateLabel(props: DateLabelProps): JSX.Element | null {
           <span class="sr-only">{props.actualLabel}</span>
           {formatDateForLocale(actualDateIso(), props.locale)}
         </p>
-      )}
-    </Show>
-  )
-}
-
-async function copyAndOpenCarrierLink(
-  href: string,
-  containerNumber?: string | null,
-): Promise<void> {
-  try {
-    if (containerNumber) {
-      await copyToClipboard(containerNumber)
-    }
-  } catch {
-    /* ignore copy failures */
-  }
-
-  try {
-    window.open(href, '_blank')
-  } catch {
-    /* ignore window open failures */
-  }
-}
-
-function CarrierLinkButton(props: CarrierLinkProps): JSX.Element | null {
-  return (
-    <Show when={props.href}>
-      {(href) => (
-        <a
-          href={href()}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={props.label}
-          class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded text-text-muted hover:text-foreground"
-          onClick={(event) => {
-            event.preventDefault()
-            void copyAndOpenCarrierLink(href(), props.containerNumber)
-          }}
-        >
-          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <title>{props.label}</title>
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"
-            />
-          </svg>
-        </a>
       )}
     </Show>
   )
@@ -416,6 +362,7 @@ export function TimelineNode(props: TimelineNodeProps): JSX.Element {
         carrierLink={
           <CarrierLinkButton
             label={t(keys.shipmentView.timeline.viewOnCarrierSite)}
+            class="ml-1"
             {...toOptionalCarrierLinkProps({
               href: href(),
               containerNumber: props.containerNumber,

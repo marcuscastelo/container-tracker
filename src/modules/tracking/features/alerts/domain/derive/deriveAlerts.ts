@@ -89,6 +89,48 @@ function computeTransshipmentOccurrenceFingerprint(pair: TransshipmentPair): str
   ])
 }
 
+function computeLegacyTransshipmentFingerprint(command: {
+  readonly dischargeObs: Observation
+  readonly loadObs: Observation
+}): string {
+  return computeAlertFingerprint('TRANSSHIPMENT', [
+    command.dischargeObs.fingerprint,
+    command.loadObs.fingerprint,
+  ])
+}
+
+function computeTransshipmentSemanticDedupKey(command: {
+  readonly port: string
+  readonly vesselFrom: string
+  readonly vesselTo: string
+  readonly detectedAt: string
+}): string {
+  return [
+    `port:${command.port.toUpperCase()}`,
+    `from:${normalizeAlertVesselPart(command.vesselFrom)}`,
+    `to:${normalizeAlertVesselPart(command.vesselTo)}`,
+    `detected:${command.detectedAt}`,
+  ].join('|')
+}
+
+function toExistingTransshipmentSemanticDedupKey(
+  alert: TrackingAlertDerivationState,
+): string | null {
+  if (alert.type !== 'TRANSSHIPMENT') return null
+
+  const messageParams = alert.message_params
+  if (!('port' in messageParams)) return null
+  if (!('fromVessel' in messageParams)) return null
+  if (!('toVessel' in messageParams)) return null
+
+  return computeTransshipmentSemanticDedupKey({
+    port: messageParams.port,
+    vesselFrom: messageParams.fromVessel,
+    vesselTo: messageParams.toVessel,
+    detectedAt: alert.detected_at,
+  })
+}
+
 function mergeObservationFingerprints(
   current: readonly string[],
   incoming: readonly string[],
@@ -256,6 +298,11 @@ export function deriveAlertTransitions(
       .map((a) => a.alert_fingerprint)
       .filter((fp): fp is string => fp !== null),
   )
+  const existingTransshipmentSemanticDedupKeys = new Set(
+    existingAlerts
+      .map(toExistingTransshipmentSemanticDedupKey)
+      .filter((key): key is string => key !== null),
+  )
 
   // === FACT-BASED ALERTS ===
   // CRITICAL: Fact-based alerts should only trigger on ACTUAL observations
@@ -265,35 +312,50 @@ export function deriveAlertTransitions(
     findTransshipmentPairs(timeline),
   )
   for (const occurrence of transshipmentOccurrences) {
-    if (!existingFactFingerprints.has(occurrence.alertFingerprint)) {
-      // detected_at = time the LOAD onto the new vessel was confirmed
-      const detectedAt = toDetectedAtIso(occurrence.loadObs.event_time, now)
+    // detected_at = time the LOAD onto the new vessel was confirmed
+    const detectedAt = toDetectedAtIso(occurrence.loadObs.event_time, now)
+    const legacyFingerprint = computeLegacyTransshipmentFingerprint({
+      dischargeObs: occurrence.dischargeObs,
+      loadObs: occurrence.loadObs,
+    })
+    const semanticDedupKey = computeTransshipmentSemanticDedupKey({
+      port: occurrence.port,
+      vesselFrom: occurrence.vesselFrom,
+      vesselTo: occurrence.vesselTo,
+      detectedAt,
+    })
 
-      alerts.push({
-        lifecycle_state: 'ACTIVE',
-        container_id: timeline.container_id,
-        category: 'fact',
-        type: 'TRANSSHIPMENT',
-        severity: 'warning',
-        message_key: 'alerts.transshipmentDetected',
-        message_params: {
-          port: occurrence.port,
-          fromVessel: occurrence.vesselFrom,
-          toVessel: occurrence.vesselTo,
-        },
-        detected_at: detectedAt,
-        triggered_at: nowIso,
-        source_observation_fingerprints: [...occurrence.sourceObservationFingerprints],
-        alert_fingerprint: occurrence.alertFingerprint,
-        retroactive: isBackfill,
-        provider: null,
-        acked_at: null,
-        acked_by: null,
-        acked_source: null,
-        resolved_at: null,
-        resolved_reason: null,
-      })
-    }
+    // Backward compatibility during fingerprint rollout:
+    // - recognize alerts created with the older raw-observation fingerprint scheme
+    // - also dedupe semantically equivalent persisted alerts across re-ingests
+    if (existingFactFingerprints.has(occurrence.alertFingerprint)) continue
+    if (existingFactFingerprints.has(legacyFingerprint)) continue
+    if (existingTransshipmentSemanticDedupKeys.has(semanticDedupKey)) continue
+
+    alerts.push({
+      lifecycle_state: 'ACTIVE',
+      container_id: timeline.container_id,
+      category: 'fact',
+      type: 'TRANSSHIPMENT',
+      severity: 'warning',
+      message_key: 'alerts.transshipmentDetected',
+      message_params: {
+        port: occurrence.port,
+        fromVessel: occurrence.vesselFrom,
+        toVessel: occurrence.vesselTo,
+      },
+      detected_at: detectedAt,
+      triggered_at: nowIso,
+      source_observation_fingerprints: [...occurrence.sourceObservationFingerprints],
+      alert_fingerprint: occurrence.alertFingerprint,
+      retroactive: isBackfill,
+      provider: null,
+      acked_at: null,
+      acked_by: null,
+      acked_source: null,
+      resolved_at: null,
+      resolved_reason: null,
+    })
   }
 
   // 2. Customs hold - only ACTUAL customs holds should trigger alerts

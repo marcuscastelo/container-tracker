@@ -3,6 +3,7 @@ import {
   deriveAlerts,
   deriveTransshipment,
 } from '~/modules/tracking/features/alerts/domain/derive/deriveAlerts'
+import { computeAlertFingerprint } from '~/modules/tracking/features/alerts/domain/identity/alertFingerprint'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
 import { deriveStatus } from '~/modules/tracking/features/status/domain/derive/deriveStatus'
 import { deriveTimeline } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
@@ -585,6 +586,7 @@ describe('deriveAlerts', () => {
             fromVessel: 'VesselA',
             toVessel: 'VesselB',
           },
+          detected_at: existingAlert?.detected_at ?? '2025-12-03T00:00:00.000Z',
           source_observation_fingerprints: existingAlert?.source_observation_fingerprints ?? [],
           alert_fingerprint: existingAlert?.alert_fingerprint ?? null,
           acked_at: null,
@@ -600,6 +602,38 @@ describe('deriveAlerts', () => {
       const alerts = deriveAlerts(timeline, 'DISCHARGED', [], true)
       const transAlert = alerts.find((a) => a.type === 'TRANSSHIPMENT')
       expect(transAlert?.retroactive).toBe(true)
+    })
+
+    it('should NOT create duplicate TRANSSHIPMENT alert when an older fingerprinted alert exists for the same semantic occurrence', () => {
+      const reingestedTimeline = makeSemanticTransshipmentTimeline({
+        dischargeFingerprint: 'fp-discharge-reingested',
+        loadFingerprint: 'fp-load-reingested',
+        dischargeTime: '2025-12-01T00:00:00.000Z',
+        loadTime: '2025-12-03T00:00:00.000Z',
+      })
+
+      const alerts = deriveAlerts(reingestedTimeline, 'LOADED', [
+        {
+          id: 'existing-legacy-transshipment',
+          category: 'fact',
+          type: 'TRANSSHIPMENT',
+          message_params: {
+            port: 'SGSIN',
+            fromVessel: 'VesselA',
+            toVessel: 'VesselB',
+          },
+          detected_at: '2025-12-03T00:00:00.000Z',
+          source_observation_fingerprints: ['fp-discharge-original', 'fp-load-original'],
+          alert_fingerprint: computeAlertFingerprint('TRANSSHIPMENT', [
+            'fp-discharge-original',
+            'fp-load-original',
+          ]),
+          acked_at: null,
+          resolved_at: null,
+        },
+      ])
+
+      expect(alerts.some((alert) => alert.type === 'TRANSSHIPMENT')).toBe(false)
     })
 
     it('should NOT create duplicate TRANSSHIPMENT alert if already exists (dedup by fingerprint)', () => {
@@ -725,6 +759,7 @@ describe('deriveAlerts', () => {
             fromVessel: 'VesselA',
             toVessel: 'VesselB',
           },
+          detected_at: existingAlert?.detected_at ?? '2025-12-03T00:00:00.000Z',
           source_observation_fingerprints: existingAlert?.source_observation_fingerprints ?? [],
           alert_fingerprint: existingAlert?.alert_fingerprint ?? null,
           acked_at: null,
