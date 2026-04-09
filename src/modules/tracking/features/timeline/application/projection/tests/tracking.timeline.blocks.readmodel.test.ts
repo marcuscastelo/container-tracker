@@ -26,6 +26,105 @@ function requireDefined<T>(value: T | undefined): T {
   return value
 }
 
+function makeChainedPlannedFutureEvents(): readonly TrackingTimelineItem[] {
+  return [
+    makeEvent({
+      id: 'leg-a-departure',
+      type: 'DEPARTURE',
+      eventTime: temporalDtoFromCanonical('2026-04-07'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      vesselName: 'MSC MIRAYA V',
+      voyage: 'OB612R',
+      location: 'Karachi',
+    }),
+    makeEvent({
+      id: 'leg-a-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-04-11'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      vesselName: 'MSC MIRAYA V',
+      voyage: 'OB612R',
+      location: 'Colombo',
+    }),
+    makeEvent({
+      id: 'planned-colombo',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-04-13'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Colombo',
+    }),
+    makeEvent({
+      id: 'planned-singapore-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-04-18'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+    }),
+    makeEvent({
+      id: 'planned-singapore',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-04-23'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+      vesselName: 'ONE MAGDALENA',
+      voyage: '2616W',
+    }),
+    makeEvent({
+      id: 'planned-colombo-return',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-04-28'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Colombo',
+      vesselName: 'MSC RENEE XIII',
+      voyage: 'QB609E',
+    }),
+    makeEvent({
+      id: 'planned-singapore-return-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-01'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      vesselName: 'MSC RENEE XIII',
+      voyage: 'QB609E',
+      location: 'Singapore',
+    }),
+    makeEvent({
+      id: 'planned-final-singapore',
+      type: 'TRANSSHIPMENT_INTENDED',
+      eventTime: temporalDtoFromCanonical('2026-05-03'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Singapore',
+      vesselName: 'ONE MAGDALENA',
+      voyage: '2616W',
+    }),
+    makeEvent({
+      id: 'planned-santos-arrival',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-17'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Santos',
+    }),
+    makeEvent({
+      id: 'planned-santos-arrival-final',
+      type: 'ARRIVAL',
+      eventTime: temporalDtoFromCanonical('2026-05-27'),
+      eventTimeType: 'EXPECTED',
+      derivedState: 'ACTIVE_EXPECTED',
+      location: 'Santos',
+      vesselName: 'ONE MAGDALENA',
+      voyage: '2616W',
+    }),
+  ]
+}
+
 describe('tracking.timeline.blocks planned maritime continuation', () => {
   it('keeps intended transshipment continuation inside a generic maritime leg', () => {
     const renderList = buildTimelineRenderList(
@@ -76,11 +175,21 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     const postCarriageBlocks = renderList.filter(
       (item) => item.type === 'terminal-block' && item.block.kind === 'post-carriage',
     )
-    const transshipmentBlocks = renderList.filter((item) => item.type === 'transshipment-block')
+    const plannedTransshipmentBlocks = renderList.filter(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
 
     expect(voyageBlocks).toHaveLength(2)
     expect(postCarriageBlocks).toHaveLength(0)
-    expect(transshipmentBlocks).toHaveLength(0)
+    expect(plannedTransshipmentBlocks).toHaveLength(1)
+
+    const plannedTransshipment = requireDefined(plannedTransshipmentBlocks[0])
+    if (plannedTransshipment.type === 'transshipment-block') {
+      expect(plannedTransshipment.block.port).toBe('Singapore')
+      expect(plannedTransshipment.block.events.map((event) => event.type)).toEqual([
+        'TRANSSHIPMENT_INTENDED',
+      ])
+    }
 
     const plannedVoyage = requireDefined(voyageBlocks[1])
     if (plannedVoyage.type === 'voyage-block') {
@@ -89,7 +198,6 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
       expect(plannedVoyage.block.origin).toBe('Singapore')
       expect(plannedVoyage.block.destination).toBe('Santos')
       expect(plannedVoyage.block.events.map((event) => event.type)).toEqual([
-        'TRANSSHIPMENT_INTENDED',
         'ARRIVAL',
         'DISCHARGE',
       ])
@@ -147,9 +255,13 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     const transshipmentTerminal = renderList.filter(
       (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
     )
+    const plannedTransshipmentBlocks = renderList.filter(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
 
     expect(voyageBlocks).toHaveLength(2)
     expect(transshipmentTerminal).toHaveLength(1)
+    expect(plannedTransshipmentBlocks).toHaveLength(0)
 
     const explicitVoyage = requireDefined(voyageBlocks[1])
     if (explicitVoyage.type === 'voyage-block') {
@@ -165,6 +277,29 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
         'TRANSSHIPMENT_INTENDED',
       ])
     }
+  })
+
+  it('renders intended-only terminal gaps as planned transshipment blocks between maritime legs', () => {
+    const renderList = buildTimelineRenderList(
+      makeChainedPlannedFutureEvents(),
+      instantFromIsoText('2026-04-08T00:00:00.000Z'),
+    )
+
+    const plannedTransshipmentBlocks = renderList.filter(
+      (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
+    )
+    const transshipmentTerminalBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
+    )
+
+    expect(plannedTransshipmentBlocks).toHaveLength(2)
+    expect(transshipmentTerminalBlocks).toHaveLength(0)
+
+    const plannedPorts = plannedTransshipmentBlocks.map((item) =>
+      item.type === 'transshipment-block' ? item.block.port : null,
+    )
+
+    expect(plannedPorts).toEqual(['Colombo', 'Singapore'])
   })
 
   it('keeps chained expected transshipment continuations out of post-carriage', () => {
@@ -246,10 +381,30 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
       expect(secondContinuation.block.vessel).toBeNull()
       expect(secondContinuation.block.origin).toBe('Singapore')
       expect(secondContinuation.block.destination).toBe('Santos')
-      expect(secondContinuation.block.events.map((event) => event.type)).toEqual([
-        'TRANSSHIPMENT_INTENDED',
-        'ARRIVAL',
-      ])
+      expect(secondContinuation.block.events.map((event) => event.type)).toEqual(['ARRIVAL'])
+    }
+  })
+
+  it('suppresses redundant planned terminal leftovers when the next dominant leg is already known', () => {
+    const renderList = buildTimelineRenderList(
+      makeChainedPlannedFutureEvents(),
+      instantFromIsoText('2026-04-08T00:00:00.000Z'),
+    )
+
+    const transshipmentTerminalBlocks = renderList.filter(
+      (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
+    )
+    const voyageBlocks = renderList.filter((item) => item.type === 'voyage-block')
+
+    expect(transshipmentTerminalBlocks).toHaveLength(0)
+    expect(voyageBlocks).toHaveLength(3)
+
+    const plannedVoyageBlocks = voyageBlocks.slice(1)
+    for (const block of plannedVoyageBlocks) {
+      if (block?.type !== 'voyage-block') continue
+      expect(block.block.events.some((event) => event.type === 'TRANSSHIPMENT_INTENDED')).toBe(
+        false,
+      )
     }
   })
 })
