@@ -330,6 +330,96 @@ describe('tracking controllers', () => {
     expect(findAllObservationsByContainerId).toHaveBeenCalledWith(containerId)
   })
 
+  it('series-history drilldown includes cross-series suppressed expected entries on the promoted item', async () => {
+    const containerId = 'container-voyage-substitution'
+    const observations: readonly Observation[] = [
+      {
+        id: 'final-generic-old',
+        fingerprint: 'fp-final-generic-old',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-20'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'Estimated Time of Arrival',
+        created_at: '2026-04-01T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'singapore-intended',
+        fingerprint: 'fp-singapore-intended',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'TRANSSHIPMENT_INTENDED',
+        event_time: temporalValueFromCanonical('2026-04-23'),
+        event_time_type: 'EXPECTED',
+        location_code: 'SGSIN',
+        location_display: 'SINGAPORE, SG',
+        vessel_name: null,
+        voyage: null,
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Full Intended Transshipment',
+        created_at: '2026-04-05T00:00:00.000Z',
+        retroactive: false,
+      },
+      {
+        id: 'final-specific-new',
+        fingerprint: 'fp-final-specific-new',
+        container_id: containerId,
+        container_number: 'MSDU1976635',
+        type: 'ARRIVAL',
+        event_time: temporalValueFromCanonical('2026-05-15'),
+        event_time_type: 'EXPECTED',
+        location_code: 'BRSSZ',
+        location_display: 'SANTOS, BR',
+        vessel_name: 'SAO PAULO EXPRESS',
+        voyage: '2613W',
+        is_empty: null,
+        confidence: 'medium',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Estimated Time of Arrival',
+        created_at: '2026-04-05T00:00:00.000Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/final-specific-new/history?now=2026-04-06T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'final-specific-new' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(
+      body.classified.map((item: { id: string; series_label: string }) => ({
+        id: item.id,
+        series_label: item.series_label,
+      })),
+    ).toEqual([
+      { id: 'final-specific-new', series_label: 'ACTIVE' },
+      { id: 'final-generic-old', series_label: 'SUPERSEDED_EXPECTED' },
+    ])
+  })
+
   it('observation-inspector drilldown returns a single observation payload', async () => {
     const containerId = 'container-observation'
     const observation: Observation = {

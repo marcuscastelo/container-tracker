@@ -1,4 +1,5 @@
 import { resolveLocationDisplay } from '~/modules/tracking/application/projection/locationDisplayResolver'
+import { applyVoyageExpectedSubstitution } from '~/modules/tracking/application/projection/voyageExpectedSubstitution.readmodel'
 import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import {
@@ -6,6 +7,7 @@ import {
   deriveObservationState,
 } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
 import {
+  type ClassifiedObservation,
   classifySeries,
   type SeriesLabel,
 } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
@@ -52,6 +54,12 @@ export type TrackingTimelineItem = {
   readonly hasSeriesHistory?: boolean
   /** Optional series history with backend-derived classification. */
   readonly seriesHistory?: TrackingSeriesHistory
+}
+
+type TimelineSeriesCandidate = {
+  readonly primary: TrackingObservationProjection
+  readonly classified: readonly ClassifiedObservation<TrackingObservationProjection>[]
+  readonly hasActualConflict: boolean
 }
 
 function observationToTrackingTimelineItem(
@@ -101,6 +109,26 @@ function timelineItemToTrackingItem(
     : { ...base, hasSeriesHistory: true, seriesHistory: item.seriesHistory }
 }
 
+function toTrackingSeriesHistoryItem(
+  observation: ClassifiedObservation<TrackingObservationProjection>,
+): TrackingSeriesHistoryItem {
+  return {
+    id: observation.id,
+    type: observation.type,
+    event_time: trackingTemporalValueToDto(observation.event_time),
+    event_time_type: observation.event_time_type,
+    created_at: observation.created_at,
+    seriesLabel: observation.seriesLabel,
+  }
+}
+
+function sortClassifiedTimelineHistory(
+  classified: readonly ClassifiedObservation<TrackingObservationProjection>[],
+): readonly ClassifiedObservation<TrackingObservationProjection>[] {
+  if (classified.length < 2) return classified
+  return [...classified].sort(compareObservationsChronologically)
+}
+
 /**
  * Derive timeline with event series grouping from observations.
  *
@@ -132,34 +160,45 @@ export function deriveTimelineWithSeriesReadModel(
     hasSeriesHistory: boolean
     seriesHistory?: TrackingSeriesHistory
   }> = []
+  const seriesCandidates: TimelineSeriesCandidate[] = []
 
   for (const series of groups.values()) {
     series.sort(compareObservationsChronologically)
     const classification = classifySeries(series, now)
 
     if (classification.primary) {
-      const shouldIncludeSeriesHistory = options?.includeSeriesHistory ?? true
-      const seriesHistory: TrackingSeriesHistory | undefined =
-        shouldIncludeSeriesHistory && series.length > 1
-          ? {
-              hasActualConflict: classification.hasActualConflict,
-              classified: classification.classified.map((observation) => ({
-                id: observation.id,
-                type: observation.type,
-                event_time: trackingTemporalValueToDto(observation.event_time),
-                event_time_type: observation.event_time_type,
-                created_at: observation.created_at,
-                seriesLabel: observation.seriesLabel,
-              })),
-            }
-          : undefined
-
-      result.push({
+      seriesCandidates.push({
         primary: classification.primary,
-        hasSeriesHistory: series.length > 1,
-        ...(seriesHistory === undefined ? {} : { seriesHistory }),
+        classified: classification.classified,
+        hasActualConflict: classification.hasActualConflict,
       })
     }
+  }
+
+  const shouldIncludeSeriesHistory = options?.includeSeriesHistory ?? true
+  const substitution = applyVoyageExpectedSubstitution(seriesCandidates)
+
+  for (const candidate of substitution.visibleCandidates) {
+    const mergedSuppressedHistory =
+      substitution.mergedSuppressedHistoryByPrimaryId.get(candidate.primary.id) ?? []
+    const combinedClassified = sortClassifiedTimelineHistory([
+      ...candidate.classified,
+      ...mergedSuppressedHistory,
+    ])
+    const hasSeriesHistory = combinedClassified.length > 1
+    const seriesHistory: TrackingSeriesHistory | undefined =
+      shouldIncludeSeriesHistory && hasSeriesHistory
+        ? {
+            hasActualConflict: candidate.hasActualConflict,
+            classified: combinedClassified.map(toTrackingSeriesHistoryItem),
+          }
+        : undefined
+
+    result.push({
+      primary: candidate.primary,
+      hasSeriesHistory,
+      ...(seriesHistory === undefined ? {} : { seriesHistory }),
+    })
   }
 
   result.sort((a, b) => compareObservationsChronologically(a.primary, b.primary))
