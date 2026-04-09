@@ -262,7 +262,7 @@ export const supabaseTrackingAlertRepository: TrackingAlertRepository = {
     const result = await supabase
       .from(TABLE)
       .select(
-        'id, category, type, message_key, message_params, source_observation_fingerprints, alert_fingerprint, acked_at, resolved_at',
+        'id, category, type, message_key, message_params, detected_at, source_observation_fingerprints, alert_fingerprint, acked_at, resolved_at',
       )
       .eq('container_id', containerId)
       .order('triggered_at', { ascending: false })

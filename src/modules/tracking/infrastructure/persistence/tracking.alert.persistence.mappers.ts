@@ -256,6 +256,7 @@ export function alertRowToDerivationState(
     | 'type'
     | 'message_key'
     | 'message_params'
+    | 'detected_at'
     | 'source_observation_fingerprints'
     | 'alert_fingerprint'
     | 'acked_at'
@@ -280,6 +281,7 @@ export function alertRowToDerivationState(
     category: requireAlertCategory(row.category, 'alert.category'),
     type: requireAlertType(row.type, 'alert.type'),
     message_params: messageContract.message_params,
+    detected_at: requireString(row.detected_at, 'alert.detected_at'),
     source_observation_fingerprints: fingerprints,
     alert_fingerprint: row.alert_fingerprint ?? null,
     acked_at: normalizeAlertIso(row.acked_at),

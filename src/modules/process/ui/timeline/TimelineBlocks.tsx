@@ -1,5 +1,8 @@
-import { Construction, Hourglass, Repeat, Ship, TriangleAlert, Truck } from 'lucide-solid'
-import { type JSX, Match, Show, Switch } from 'solid-js'
+import { Construction, EyeIcon, Hourglass, Repeat, Ship, TriangleAlert, Truck } from 'lucide-solid'
+import { createEffect, createMemo, createSignal, type JSX, Match, Show, Switch } from 'solid-js'
+import { CarrierLinkButton } from '~/modules/process/ui/components/CarrierLinkButton'
+import { ObservationInspector } from '~/modules/process/ui/components/ObservationInspector'
+import { fetchObservationInspector } from '~/modules/process/ui/fetchProcessTrackingDetails'
 import type {
   GapMarker,
   PortRiskMarker,
@@ -7,7 +10,12 @@ import type {
   TransshipmentBlock,
   VoyageBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
+import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
+import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
+import type { TemporalValueDto } from '~/shared/time/dto'
+import { carrierTrackUrl } from '~/shared/utils/carrier'
+import { formatDateForLocale } from '~/shared/utils/formatDate'
 
 // ---------------------------------------------------------------------------
 // Phase 20 — Voyage Block Header ("Identity Card")
@@ -155,10 +163,226 @@ export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): J
 // Phase 22 — Transshipment Block
 // ---------------------------------------------------------------------------
 
-export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlock }): JSX.Element {
+type TransshipmentBlockCardProps = {
+  readonly block: TransshipmentBlock
+  readonly containerId: string | null | undefined
+  readonly carrier: string | null | undefined
+  readonly containerNumber: string | null | undefined
+}
+
+type InlineCarrierLinkProps = {
+  readonly href: string | undefined
+  readonly containerNumber: string | null | undefined
+  readonly label: string
+}
+
+function InlineCarrierLinkButton(props: InlineCarrierLinkProps): JSX.Element | null {
+  return <CarrierLinkButton {...props} class="transition-colors" />
+}
+
+function ObservationButton(props: {
+  readonly label: string
+  readonly onClick: () => void
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => props.onClick()}
+      title={props.label}
+      aria-label={props.label}
+      class="inline-flex items-center rounded border border-border bg-surface px-1 py-px text-micro font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground text-xs"
+    >
+      <span class="sr-only">{props.label}</span>
+      <EyeIcon width={12} height={12} class="ml-0.5" aria-hidden="true" />
+    </button>
+  )
+}
+
+function PlannedDateLabel(props: {
+  readonly eventTime: TemporalValueDto | null
+  readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
+  readonly locale: string
+  readonly expectedLabel: string
+  readonly actualLabel: string
+}): JSX.Element | null {
+  return (
+    <Show when={props.eventTime}>
+      {(eventTime) => (
+        <div class="flex flex-col items-end" title={eventTime().value}>
+          <span class="tabular-nums text-sm-ui font-medium text-foreground">
+            {formatDateForLocale(eventTime(), props.locale)}
+          </span>
+          <span class="mt-0.5 text-micro leading-tight text-text-muted">
+            {props.eventTimeType === 'EXPECTED' ? props.expectedLabel : props.actualLabel}
+          </span>
+        </div>
+      )}
+    </Show>
+  )
+}
+
+function transshipmentHandoffLabel(
+  block: TransshipmentBlock,
+  translate: ReturnType<typeof useTranslation>['t'],
+  keys: ReturnType<typeof useTranslation>['keys'],
+): string | null {
+  if (block.handoffDisplayMode === 'FULL') {
+    return translate(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+      from: block.previousVesselName ?? '?',
+      to: block.nextVesselName ?? '?',
+    })
+  }
+
+  if (block.handoffDisplayMode === 'NEXT_ONLY' && block.nextVesselName !== null) {
+    return translate(keys.shipmentView.timeline.blocks.vesselChangeNextOnly, {
+      to: block.nextVesselName,
+    })
+  }
+
+  return null
+}
+
+function PlannedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
+  const { t, keys, locale } = useTranslation()
+  const representativeEvent = createMemo<TrackingTimelineItem | null>(() => {
+    const lastIndex = props.block.events.length - 1
+    const event = lastIndex >= 0 ? props.block.events[lastIndex] : undefined
+    return event ?? null
+  })
+  const handoffLabel = createMemo(() => transshipmentHandoffLabel(props.block, t, keys))
+  const carrierHref = createMemo(() => {
+    const trackUrl = carrierTrackUrl(props.carrier ?? null, props.containerNumber ?? '')
+    return typeof trackUrl === 'string' ? trackUrl : undefined
+  })
+
+  const [showObservationInspector, setShowObservationInspector] = createSignal(false)
+  const [observation, setObservation] = createSignal<ContainerObservationVM | null>(null)
+  const [observationLoading, setObservationLoading] = createSignal(false)
+  const [observationErrorMessage, setObservationErrorMessage] = createSignal<string | null>(null)
+
+  createEffect(() => {
+    representativeEvent()?.id
+    setShowObservationInspector(false)
+    setObservation(null)
+    setObservationLoading(false)
+    setObservationErrorMessage(null)
+  })
+
+  const canOpenObservation = createMemo(() => {
+    const event = representativeEvent()
+    return (
+      event !== null &&
+      typeof event.observationId === 'string' &&
+      props.containerId !== null &&
+      props.containerId !== undefined
+    )
+  })
+
+  const openObservationInspector = async (): Promise<void> => {
+    const event = representativeEvent()
+    const containerId = props.containerId
+
+    setShowObservationInspector(true)
+    setObservationErrorMessage(null)
+
+    if (
+      event === null ||
+      typeof event.observationId !== 'string' ||
+      containerId === null ||
+      containerId === undefined ||
+      observation() !== null
+    ) {
+      return
+    }
+
+    setObservationLoading(true)
+    try {
+      const loadedObservation = await fetchObservationInspector(containerId, event.observationId)
+      setObservation(loadedObservation)
+    } catch (error) {
+      console.error(`Failed to load observation ${event.observationId}:`, error)
+      setObservationErrorMessage(t(keys.shipmentView.loadError))
+    } finally {
+      setObservationLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <div class="rounded-xl border border-border bg-surface-muted/80 px-3 py-2.5">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <Repeat class="w-4 h-4 shrink-0 text-tone-warning-fg" aria-hidden="true" />
+              <span class="text-sm-ui font-semibold text-foreground tracking-tight">
+                {t(keys.shipmentView.timeline.blocks.plannedTransshipment)}
+              </span>
+              <Show when={canOpenObservation()}>
+                <ObservationButton
+                  label={t(keys.shipmentView.timeline.viewObservation)}
+                  onClick={() => {
+                    void openObservationInspector()
+                  }}
+                />
+              </Show>
+            </div>
+            <Show when={props.block.port}>
+              {(port) => <p class="mt-0.5 text-micro font-medium text-text-muted">{port()}</p>}
+            </Show>
+            <Show
+              when={handoffLabel()}
+              fallback={
+                <Show when={props.block.reason}>
+                  {(reason) => <p class="mt-1 text-micro text-text-muted">{reason()}</p>}
+                </Show>
+              }
+            >
+              {(label) => (
+                <div class="mt-1 inline-flex items-center rounded border border-tone-warning-border/70 bg-tone-warning-bg/45 px-2 py-0.5 text-micro font-medium text-tone-warning-fg">
+                  {label()}
+                </div>
+              )}
+            </Show>
+          </div>
+
+          <div class="shrink-0 text-right">
+            <div class="flex items-center justify-end gap-0.5">
+              <Show when={representativeEvent()}>
+                {(event) => (
+                  <PlannedDateLabel
+                    eventTime={event().eventTime}
+                    eventTimeType={event().eventTimeType}
+                    locale={locale()}
+                    expectedLabel={t(keys.shipmentView.timeline.expected).toLowerCase()}
+                    actualLabel={t(keys.shipmentView.timeline.actual)}
+                  />
+                )}
+              </Show>
+              <InlineCarrierLinkButton
+                href={carrierHref()}
+                containerNumber={props.containerNumber}
+                label={t(keys.shipmentView.timeline.viewOnCarrierSite)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ObservationInspector
+        observation={observation()}
+        isOpen={showObservationInspector()}
+        loading={observationLoading()}
+        errorMessage={observationErrorMessage()}
+        onClose={() => setShowObservationInspector(false)}
+      />
+    </>
+  )
+}
+
+function ConfirmedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
   const { t, keys } = useTranslation()
 
-  const hasVesselChange = () => Boolean(props.block.fromVessel || props.block.toVessel)
+  const handoffLabel = createMemo(() => transshipmentHandoffLabel(props.block, t, keys))
 
   return (
     <div class="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
@@ -172,7 +396,7 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
         {(port) => <p class="mt-0.5 text-micro font-medium text-tone-warning-fg">{port()}</p>}
       </Show>
       <Show
-        when={hasVesselChange()}
+        when={handoffLabel()}
         fallback={
           <Show when={props.block.reason}>
             {(reason) => <p class="mt-0.5 text-micro text-tone-warning-fg">{reason()}</p>}
@@ -180,15 +404,23 @@ export function TransshipmentBlockCard(props: { readonly block: TransshipmentBlo
         }
       >
         <div class="mt-1 flex items-center gap-1 rounded bg-tone-warning-border/50 px-2 py-0.5 text-micro">
-          <span class="text-tone-warning-fg font-semibold shrink-0" aria-hidden="true">
-            {t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-              from: props.block.fromVessel ?? '?',
-              to: props.block.toVessel ?? '?',
-            })}
-          </span>
+          <span class="text-tone-warning-fg font-semibold shrink-0">{handoffLabel()}</span>
         </div>
       </Show>
     </div>
+  )
+}
+
+export function TransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
+  return (
+    <Switch>
+      <Match when={props.block.mode === 'planned'}>
+        <PlannedTransshipmentBlockCard {...props} />
+      </Match>
+      <Match when={true}>
+        <ConfirmedTransshipmentBlockCard {...props} />
+      </Match>
+    </Switch>
   )
 }
 

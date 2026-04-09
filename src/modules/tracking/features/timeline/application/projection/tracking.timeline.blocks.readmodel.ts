@@ -13,6 +13,7 @@ import { parseTemporalValue } from '~/shared/time/parsing'
 export type TerminalSegmentKind = 'pre-carriage' | 'transshipment-terminal' | 'post-carriage'
 
 type TerminalSegment = {
+  readonly id: string
   readonly kind: TerminalSegmentKind
   readonly title: string
   readonly location: string | null
@@ -20,14 +21,28 @@ type TerminalSegment = {
 }
 
 function isVoyageLikeSegment(segment: VoyageSegment): boolean {
-  return segment.vessel !== null || segment.voyage !== null
+  return segment.plannedContinuation || segment.vessel !== null || segment.voyage !== null
 }
 
-function findNextVoyageLikeSegment(
-  voyageSegments: readonly VoyageSegment[],
+function findNextVoyageLikeSegment<TSegment extends VoyageSegment>(
+  voyageSegments: readonly TSegment[],
   currentIndex: number,
-): { readonly index: number; readonly segment: VoyageSegment } | null {
+): { readonly index: number; readonly segment: TSegment } | null {
   for (let index = currentIndex + 1; index < voyageSegments.length; index++) {
+    const candidate = voyageSegments[index]
+    if (candidate !== undefined && isVoyageLikeSegment(candidate)) {
+      return { index, segment: candidate }
+    }
+  }
+
+  return null
+}
+
+function findPreviousVoyageLikeSegment<TSegment extends VoyageSegment>(
+  voyageSegments: readonly TSegment[],
+  currentIndex: number,
+): { readonly index: number; readonly segment: TSegment } | null {
+  for (let index = currentIndex - 1; index >= 0; index--) {
     const candidate = voyageSegments[index]
     if (candidate !== undefined && isVoyageLikeSegment(candidate)) {
       return { index, segment: candidate }
@@ -58,6 +73,63 @@ function dominantLocation(events: readonly TrackingTimelineItem[]): string | nul
     }
   }
   return best
+}
+
+function terminalSegmentTitle(kind: TerminalSegmentKind): string {
+  if (kind === 'pre-carriage') return 'Pre-carriage'
+  if (kind === 'transshipment-terminal') return 'Transshipment Terminal'
+  return 'Post-carriage / Delivery'
+}
+
+function terminalSegmentId(events: readonly TrackingTimelineItem[]): string {
+  const first = events[0]
+  const last = events[events.length - 1]
+
+  return `${first?.id ?? 'terminal'}:${last?.id ?? 'terminal'}`
+}
+
+function pushTerminalSegment(
+  segments: TerminalSegment[],
+  runPosition: 'before' | 'between' | 'after',
+  events: readonly TrackingTimelineItem[],
+): void {
+  if (events.length === 0) return
+
+  let kind: TerminalSegmentKind
+  if (runPosition === 'before') kind = 'pre-carriage'
+  else if (runPosition === 'after') kind = 'post-carriage'
+  else kind = 'transshipment-terminal'
+
+  segments.push({
+    id: terminalSegmentId(events),
+    kind,
+    title: terminalSegmentTitle(kind),
+    location: dominantLocation(events),
+    events,
+  })
+}
+
+function shouldSplitTerminalRunByLocation(
+  runPosition: 'before' | 'between' | 'after',
+  currentRun: readonly TrackingTimelineItem[],
+  nextEvent: TrackingTimelineItem,
+): boolean {
+  if (runPosition !== 'between' || currentRun.length === 0) return false
+
+  let lastKnownLocation: string | null = null
+  for (let index = currentRun.length - 1; index >= 0; index--) {
+    const event = currentRun[index]
+    if (event?.location) {
+      lastKnownLocation = event.location
+      break
+    }
+  }
+
+  return lastKnownLocation !== null &&
+    nextEvent.location !== undefined &&
+    nextEvent.location !== null
+    ? lastKnownLocation !== nextEvent.location
+    : false
 }
 
 const EVENT_TIE_BREAK_PRIORITY = new Map<string, number>([
@@ -186,22 +258,7 @@ function groupTerminalSegments(
     if (voyageEventIds.has(event.id)) {
       // Flush any accumulated terminal events
       if (currentRun.length > 0) {
-        let kind: TerminalSegmentKind
-        if (runPosition === 'before') kind = 'pre-carriage'
-        else if (runPosition === 'after') kind = 'post-carriage'
-        else kind = 'transshipment-terminal'
-
-        let title: string
-        if (kind === 'pre-carriage') title = 'Pre-carriage'
-        else if (kind === 'transshipment-terminal') title = 'Transshipment Terminal'
-        else title = 'Post-carriage / Delivery'
-
-        segments.push({
-          kind,
-          title,
-          location: dominantLocation(currentRun),
-          events: currentRun,
-        })
+        pushTerminalSegment(segments, runPosition, currentRun)
         currentRun = []
       }
       // After the first voyage event, the run position switches
@@ -211,22 +268,17 @@ function groupTerminalSegments(
         runPosition = 'between'
       }
     } else {
+      if (shouldSplitTerminalRunByLocation(runPosition, currentRun, event)) {
+        pushTerminalSegment(segments, runPosition, currentRun)
+        currentRun = []
+      }
       currentRun.push(event)
     }
   }
 
   // Flush remaining terminal events
   if (currentRun.length > 0) {
-    const kind: TerminalSegmentKind =
-      firstVoyageIdx === -1
-        ? 'pre-carriage' // no voyages at all → treat as pre-carriage
-        : 'post-carriage'
-    segments.push({
-      kind,
-      title: kind === 'post-carriage' ? 'Post-carriage / Delivery' : 'Pre-carriage',
-      location: dominantLocation(currentRun),
-      events: currentRun,
-    })
+    pushTerminalSegment(segments, firstVoyageIdx === -1 ? 'before' : 'after', currentRun)
   }
 
   return segments
@@ -253,12 +305,19 @@ export type TerminalBlock = {
   readonly events: readonly TrackingTimelineItem[]
 }
 
+export type HandoffDisplayMode = 'FULL' | 'NEXT_ONLY' | 'NONE'
+
 export type TransshipmentBlock = {
   readonly blockType: 'transshipment'
+  readonly mode: 'confirmed' | 'planned'
   readonly port: string | null
   readonly reason: string | null
-  readonly fromVessel: string | null
-  readonly toVessel: string | null
+  readonly previousVesselName: string | null
+  readonly previousVoyage: string | null
+  readonly nextVesselName: string | null
+  readonly nextVoyage: string | null
+  readonly handoffDisplayMode: HandoffDisplayMode
+  readonly events: readonly TrackingTimelineItem[]
 }
 
 export type GapMarker = {
@@ -276,26 +335,259 @@ export type PortRiskMarker = {
   readonly severity: 'info' | 'warning' | 'danger'
 }
 
-// ---------------------------------------------------------------------------
-// Phase 5 — Transshipment Detection
-// ---------------------------------------------------------------------------
+type ResolvedVoyageSegment = VoyageSegment & {
+  readonly displayVessel: string | null
+  readonly displayVoyage: string | null
+  readonly legKey: string | null
+}
 
-function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegment[]): readonly {
+type PlannedHandoffCandidate = {
+  readonly legKey: string
+  readonly port: string
+  readonly destination: string
+  readonly nextVesselName: string | null
+  readonly nextVoyage: string | null
+  readonly event: TrackingTimelineItem
+}
+
+function toOptionalDisplayValue(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function hasVesselOrVoyageIdentity(
+  vesselName: string | null | undefined,
+  voyage: string | null | undefined,
+): boolean {
+  return toOptionalDisplayValue(vesselName) !== null || toOptionalDisplayValue(voyage) !== null
+}
+
+function handoffDisplayMode(
+  previousVesselName: string | null,
+  nextVesselName: string | null,
+): HandoffDisplayMode {
+  if (previousVesselName !== null && nextVesselName !== null) {
+    return 'FULL'
+  }
+  if (nextVesselName !== null) {
+    return 'NEXT_ONLY'
+  }
+  return 'NONE'
+}
+
+function createTransshipmentBlock(params: {
+  readonly mode: 'confirmed' | 'planned'
+  readonly port: string | null
+  readonly reason: string | null
+  readonly previousVesselName: string | null
+  readonly previousVoyage: string | null
+  readonly nextVesselName: string | null
+  readonly nextVoyage: string | null
+  readonly events: readonly TrackingTimelineItem[]
+}): TransshipmentBlock {
+  return {
+    blockType: 'transshipment',
+    mode: params.mode,
+    port: params.port,
+    reason: params.reason,
+    previousVesselName: params.previousVesselName,
+    previousVoyage: params.previousVoyage,
+    nextVesselName: params.nextVesselName,
+    nextVoyage: params.nextVoyage,
+    handoffDisplayMode: handoffDisplayMode(params.previousVesselName, params.nextVesselName),
+    events: params.events,
+  }
+}
+
+function legKeyFor(origin: string | null, destination: string | null): string | null {
+  if (origin === null || destination === null) {
+    return null
+  }
+
+  return `${origin}->${destination}`
+}
+
+function findPlannedContinuationDestination(
+  events: readonly TrackingTimelineItem[],
+  startIndex: number,
+): string | null {
+  const anchor = events[startIndex]
+  const origin = anchor?.location ?? null
+  if (origin === null) {
+    return null
+  }
+
+  for (let index = startIndex + 1; index < events.length; index++) {
+    const candidate = events[index]
+    if (candidate === undefined) continue
+
+    if (candidate.type !== 'ARRIVAL' && candidate.type !== 'DISCHARGE') {
+      continue
+    }
+
+    const location = candidate.location ?? null
+    if (location !== null && location !== origin) {
+      return location
+    }
+  }
+
+  return null
+}
+
+function isStrongerPlannedHandoffCandidate(
+  candidate: PlannedHandoffCandidate,
+  current: PlannedHandoffCandidate,
+): boolean {
+  const candidateHasIdentity = hasVesselOrVoyageIdentity(
+    candidate.nextVesselName,
+    candidate.nextVoyage,
+  )
+  const currentHasIdentity = hasVesselOrVoyageIdentity(current.nextVesselName, current.nextVoyage)
+
+  if (candidateHasIdentity !== currentHasIdentity) {
+    return candidateHasIdentity
+  }
+
+  const candidateInstant = toTimelineInstant(candidate.event.eventTime)
+  const currentInstant = toTimelineInstant(current.event.eventTime)
+
+  if (candidateInstant !== null && currentInstant !== null) {
+    const compare = candidateInstant.compare(currentInstant)
+    if (compare !== 0) {
+      return compare > 0
+    }
+  } else if (candidateInstant !== null || currentInstant !== null) {
+    return candidateInstant !== null
+  }
+
+  return compareTimelineItemsForBlockDerivation(candidate.event, current.event) > 0
+}
+
+type ConfirmedTransshipmentDetection = {
   readonly afterVoyageIndex: number
   readonly port: string | null
   readonly reason: string
-  readonly fromVessel: string | null
-  readonly toVessel: string | null
-}[] {
-  const transshipments: {
-    afterVoyageIndex: number
-    port: string | null
-    reason: string
-    fromVessel: string | null
-    toVessel: string | null
-  }[] = []
+  readonly previousVesselName: string | null
+  readonly previousVoyage: string | null
+  readonly nextVesselName: string | null
+  readonly nextVoyage: string | null
+}
 
-  // Only consider segments that are voyage-like (vessel or voyage present)
+function resolveDominantPlannedHandoffCandidates(
+  events: readonly TrackingTimelineItem[],
+): ReadonlyMap<string, PlannedHandoffCandidate> {
+  const candidates = new Map<string, PlannedHandoffCandidate>()
+
+  for (let index = 0; index < events.length; index++) {
+    const event = events[index]
+    if (
+      event === undefined ||
+      event.type !== 'TRANSSHIPMENT_INTENDED' ||
+      event.eventTimeType !== 'EXPECTED'
+    ) {
+      continue
+    }
+
+    const port = event.location ?? null
+    if (port === null) continue
+
+    const destination = findPlannedContinuationDestination(events, index)
+    const legKey = legKeyFor(port, destination)
+    if (destination === null || legKey === null) continue
+
+    const candidate: PlannedHandoffCandidate = {
+      legKey,
+      port,
+      destination,
+      nextVesselName: toOptionalDisplayValue(event.vesselName),
+      nextVoyage: toOptionalDisplayValue(event.voyage),
+      event,
+    }
+
+    const current = candidates.get(legKey)
+    if (current === undefined || isStrongerPlannedHandoffCandidate(candidate, current)) {
+      candidates.set(legKey, candidate)
+    }
+  }
+
+  return candidates
+}
+
+function resolveSegmentDisplayIdentity(
+  segment: VoyageSegment,
+  dominantCandidate: PlannedHandoffCandidate | undefined,
+): { readonly vessel: string | null; readonly voyage: string | null } {
+  if (!segment.plannedContinuation) {
+    return {
+      vessel: segment.vessel,
+      voyage: segment.voyage,
+    }
+  }
+
+  if (dominantCandidate !== undefined) {
+    return {
+      vessel: dominantCandidate.nextVesselName,
+      voyage: dominantCandidate.nextVoyage,
+    }
+  }
+
+  for (let index = segment.events.length - 1; index >= 0; index--) {
+    const event = segment.events[index]
+    if (event === undefined) continue
+
+    if (hasVesselOrVoyageIdentity(event.vesselName, event.voyage)) {
+      return {
+        vessel: toOptionalDisplayValue(event.vesselName),
+        voyage: toOptionalDisplayValue(event.voyage),
+      }
+    }
+  }
+
+  return {
+    vessel: segment.vessel,
+    voyage: segment.voyage,
+  }
+}
+
+function enrichVoyageSegments(
+  voyageSegments: readonly VoyageSegment[],
+  dominantPlannedHandoffs: ReadonlyMap<string, PlannedHandoffCandidate>,
+): readonly ResolvedVoyageSegment[] {
+  return voyageSegments.map((segment) => {
+    const legKey = legKeyFor(segment.origin, segment.destination)
+    const dominantCandidate = legKey === null ? undefined : dominantPlannedHandoffs.get(legKey)
+    const identity = resolveSegmentDisplayIdentity(segment, dominantCandidate)
+
+    return {
+      ...segment,
+      displayVessel: identity.vessel,
+      displayVoyage: identity.voyage,
+      legKey,
+    }
+  })
+}
+
+function hasActualVoyageExitEvidence(segment: VoyageSegment): boolean {
+  return segment.events.some(
+    (event) =>
+      event.eventTimeType === 'ACTUAL' &&
+      (event.type === 'ARRIVAL' || event.type === 'DISCHARGE' || event.type === 'LOAD'),
+  )
+}
+
+function hasActualVoyageStartEvidence(segment: VoyageSegment): boolean {
+  return segment.events.some(
+    (event) =>
+      event.eventTimeType === 'ACTUAL' && (event.type === 'LOAD' || event.type === 'DEPARTURE'),
+  )
+}
+
+function detectConfirmedTransshipmentsBetweenVoyages(
+  voyageSegments: readonly ResolvedVoyageSegment[],
+): readonly ConfirmedTransshipmentDetection[] {
+  const transshipments: ConfirmedTransshipmentDetection[] = []
+
   const voyageOnly = voyageSegments
     .map((seg, idx) => ({ seg, idx }))
     .filter(({ seg }) => isVoyageLikeSegment(seg))
@@ -305,32 +597,169 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
     const next = voyageOnly[i + 1]
     if (current === undefined || next === undefined) continue
 
-    const currentVessel = normalizeVesselName(current.seg.vessel)
-    const nextVessel = normalizeVesselName(next.seg.vessel)
-    const vesselChanged = currentVessel !== nextVessel
-    const voyageChanged = current.seg.voyage !== next.seg.voyage
-
-    // Transshipment when vessel or voyage differs
-    if (vesselChanged || voyageChanged) {
-      const port = current.seg.destination ?? next.seg.origin ?? null
-      let reason = 'Voyage change'
-      if (vesselChanged && voyageChanged) {
-        reason = 'Vessel and voyage change'
-      } else if (vesselChanged) {
-        reason = 'Vessel change'
-      }
-
-      transshipments.push({
-        afterVoyageIndex: current.idx,
-        port,
-        reason,
-        fromVessel: current.seg.vessel,
-        toVessel: next.seg.vessel,
-      })
+    if (current.seg.plannedContinuation || next.seg.plannedContinuation) {
+      continue
     }
+
+    if (!hasActualVoyageExitEvidence(current.seg) || !hasActualVoyageStartEvidence(next.seg)) {
+      continue
+    }
+
+    const currentVessel = normalizeVesselName(current.seg.displayVessel)
+    const nextVessel = normalizeVesselName(next.seg.displayVessel)
+    const vesselChanged = currentVessel !== nextVessel
+    const voyageChanged = current.seg.displayVoyage !== next.seg.displayVoyage
+
+    if (!vesselChanged && !voyageChanged) {
+      continue
+    }
+
+    let reason = 'Voyage change'
+    if (vesselChanged && voyageChanged) {
+      reason = 'Vessel and voyage change'
+    } else if (vesselChanged) {
+      reason = 'Vessel change'
+    }
+
+    transshipments.push({
+      afterVoyageIndex: current.idx,
+      port: current.seg.destination ?? next.seg.origin ?? null,
+      reason,
+      previousVesselName: current.seg.displayVessel,
+      previousVoyage: current.seg.displayVoyage,
+      nextVesselName: next.seg.displayVessel,
+      nextVoyage: next.seg.displayVoyage,
+    })
   }
 
   return transshipments
+}
+
+function isPlannedTransshipmentTerminal(segment: TerminalSegment): boolean {
+  return (
+    segment.kind === 'transshipment-terminal' &&
+    segment.events.length > 0 &&
+    segment.events.every((event) => event.type === 'TRANSSHIPMENT_INTENDED')
+  )
+}
+
+function plannedContinuationAnchorEvent(segment: VoyageSegment): TrackingTimelineItem | null {
+  if (!segment.plannedContinuation) return null
+
+  for (const event of segment.events) {
+    if (event.type === 'TRANSSHIPMENT_INTENDED' && event.eventTimeType === 'EXPECTED') {
+      return event
+    }
+  }
+
+  return null
+}
+
+function collapseRedundantProjectedDestinationEvents(
+  segment: ResolvedVoyageSegment,
+  events: readonly TrackingTimelineItem[],
+): readonly TrackingTimelineItem[] {
+  if (
+    !segment.plannedContinuation &&
+    !hasVesselOrVoyageIdentity(segment.displayVessel, segment.displayVoyage)
+  ) {
+    return events
+  }
+
+  const specificDestinationKeys = new Set<string>()
+  for (const event of events) {
+    if (
+      event.eventTimeType === 'EXPECTED' &&
+      (event.type === 'ARRIVAL' || event.type === 'DISCHARGE') &&
+      event.location === segment.destination &&
+      hasVesselOrVoyageIdentity(event.vesselName, event.voyage)
+    ) {
+      specificDestinationKeys.add(`${event.type}|${event.location ?? ''}`)
+    }
+  }
+
+  if (specificDestinationKeys.size === 0) {
+    return events
+  }
+
+  return events.filter((event) => {
+    if (
+      event.eventTimeType !== 'EXPECTED' ||
+      (event.type !== 'ARRIVAL' && event.type !== 'DISCHARGE') ||
+      !specificDestinationKeys.has(`${event.type}|${event.location ?? ''}`)
+    ) {
+      return true
+    }
+
+    return hasVesselOrVoyageIdentity(event.vesselName, event.voyage)
+  })
+}
+
+function displayEventsForVoyageSegment(
+  segment: ResolvedVoyageSegment,
+): readonly TrackingTimelineItem[] {
+  const events = segment.plannedContinuation
+    ? segment.events.filter((event) => event.type !== 'TRANSSHIPMENT_INTENDED')
+    : segment.events
+
+  return collapseRedundantProjectedDestinationEvents(segment, events)
+}
+
+function isSuppressiblePlannedTerminalRemainder(segment: TerminalSegment): boolean {
+  if (segment.kind !== 'transshipment-terminal' || segment.events.length === 0) {
+    return false
+  }
+
+  return segment.events.every(
+    (event) =>
+      event.eventTimeType === 'EXPECTED' &&
+      (event.type === 'TRANSSHIPMENT_INTENDED' ||
+        event.type === 'ARRIVAL' ||
+        event.type === 'DISCHARGE'),
+  )
+}
+
+function toPlannedTransshipmentBlockFromSegment(params: {
+  readonly segment: ResolvedVoyageSegment
+  readonly previousSegment: ResolvedVoyageSegment | null
+  readonly dominantPlannedCandidate: PlannedHandoffCandidate | undefined
+}): TransshipmentBlock | null {
+  const { segment, previousSegment, dominantPlannedCandidate } = params
+  const anchor = plannedContinuationAnchorEvent(segment)
+  if (anchor === null) return null
+
+  return createTransshipmentBlock({
+    mode: 'planned',
+    port: anchor.location ?? segment.origin,
+    reason: anchor.carrierLabel ?? dominantPlannedCandidate?.event.carrierLabel ?? null,
+    previousVesselName: previousSegment?.displayVessel ?? null,
+    previousVoyage: previousSegment?.displayVoyage ?? null,
+    nextVesselName: dominantPlannedCandidate?.nextVesselName ?? segment.displayVessel,
+    nextVoyage: dominantPlannedCandidate?.nextVoyage ?? segment.displayVoyage,
+    events: [anchor],
+  })
+}
+
+function toPlannedTransshipmentBlock(params: {
+  readonly segment: TerminalSegment
+  readonly previousSegment: ResolvedVoyageSegment | null
+  readonly nextSegment: ResolvedVoyageSegment | null
+}): TransshipmentBlock {
+  const { segment, previousSegment, nextSegment } = params
+  const representativeEvent = segment.events[segment.events.length - 1] ?? null
+
+  return createTransshipmentBlock({
+    mode: 'planned',
+    port: segment.location,
+    reason: representativeEvent?.carrierLabel ?? null,
+    previousVesselName: previousSegment?.displayVessel ?? null,
+    previousVoyage: previousSegment?.displayVoyage ?? null,
+    nextVesselName:
+      toOptionalDisplayValue(representativeEvent?.vesselName) ?? nextSegment?.displayVessel ?? null,
+    nextVoyage:
+      toOptionalDisplayValue(representativeEvent?.voyage) ?? nextSegment?.displayVoyage ?? null,
+    events: segment.events,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -504,9 +933,11 @@ export function buildTimelineRenderList(
   if (events.length === 0) return []
 
   const orderedEvents = sortTimelineItemsForBlockDerivation(events)
-  const voyageSegments = groupVoyageSegments(orderedEvents)
+  const baseVoyageSegments = groupVoyageSegments(orderedEvents)
+  const dominantPlannedHandoffs = resolveDominantPlannedHandoffCandidates(orderedEvents)
+  const voyageSegments = enrichVoyageSegments(baseVoyageSegments, dominantPlannedHandoffs)
   const terminalSegments = groupTerminalSegments(orderedEvents, voyageSegments)
-  const transshipments = detectTransshipmentsBetweenVoyages(voyageSegments)
+  const transshipments = detectConfirmedTransshipmentsBetweenVoyages(voyageSegments)
   const gapMarkers = computeGapMarkers(orderedEvents)
   const portRiskEntries = computePortRiskMarkers(orderedEvents, now)
 
@@ -549,13 +980,19 @@ export function buildTimelineRenderList(
   // Build transshipment map: afterVoyageIndex → TransshipmentBlock
   const transshipmentMap = new Map<number, TransshipmentBlock>()
   for (const ts of transshipments) {
-    transshipmentMap.set(ts.afterVoyageIndex, {
-      blockType: 'transshipment',
-      port: ts.port,
-      reason: ts.reason,
-      fromVessel: ts.fromVessel,
-      toVessel: ts.toVessel,
-    })
+    transshipmentMap.set(
+      ts.afterVoyageIndex,
+      createTransshipmentBlock({
+        mode: 'confirmed',
+        port: ts.port,
+        reason: ts.reason,
+        previousVesselName: ts.previousVesselName,
+        previousVoyage: ts.previousVoyage,
+        nextVesselName: ts.nextVesselName,
+        nextVoyage: ts.nextVoyage,
+        events: [],
+      }),
+    )
   }
 
   // Now assemble the flat render list
@@ -563,7 +1000,7 @@ export function buildTimelineRenderList(
   const result: TimelineRenderItem[] = []
 
   // Track which terminal segments we've used
-  const usedTerminalKinds = new Set<string>()
+  const usedTerminalSegmentIds = new Set<string>()
 
   // Helper: emit events for a block with gap/port-risk markers interleaved
   function emitEventsWithMarkers(
@@ -598,7 +1035,7 @@ export function buildTimelineRenderList(
   // Pre-carriage terminal segments (before first voyage)
   for (const ts of terminalSegments) {
     if (ts.kind !== 'pre-carriage') continue
-    usedTerminalKinds.add('pre-carriage')
+    usedTerminalSegmentIds.add(ts.id)
 
     const termBlock: TerminalBlock = {
       blockType: 'terminal',
@@ -622,17 +1059,30 @@ export function buildTimelineRenderList(
       terminalSegments.every((ts) => ts.kind !== 'post-carriage')
 
     if (isVoyageLikeSegment(segment)) {
+      const displayedVoyageEvents = displayEventsForVoyageSegment(segment)
+      const previousVoyageEntry = findPreviousVoyageLikeSegment(voyageSegments, segIdx)
+      const plannedContinuationBlock = toPlannedTransshipmentBlockFromSegment({
+        segment,
+        previousSegment: previousVoyageEntry?.segment ?? null,
+        dominantPlannedCandidate:
+          segment.legKey === null ? undefined : dominantPlannedHandoffs.get(segment.legKey),
+      })
+
+      if (plannedContinuationBlock !== null) {
+        result.push({ type: 'transshipment-block', block: plannedContinuationBlock })
+      }
+
       // It's a voyage block
       const voyageBlock: VoyageBlock = {
         blockType: 'voyage',
-        vessel: segment.vessel,
-        voyage: segment.voyage,
+        vessel: segment.displayVessel,
+        voyage: segment.displayVoyage,
         origin: segment.origin,
         destination: segment.destination,
-        events: segment.events,
+        events: displayedVoyageEvents,
       }
       result.push({ type: 'voyage-block', block: voyageBlock })
-      emitEventsWithMarkers(segment.events, isLastSegment)
+      emitEventsWithMarkers(displayedVoyageEvents, isLastSegment)
       result.push({ type: 'block-end' })
 
       // Check for transshipment after this voyage
@@ -644,7 +1094,7 @@ export function buildTimelineRenderList(
       // Check for transshipment-terminal segments between voyages
       for (const ts of terminalSegments) {
         if (ts.kind !== 'transshipment-terminal') continue
-        if (usedTerminalKinds.has(`ts-${segIdx}`)) continue
+        if (usedTerminalSegmentIds.has(ts.id)) continue
 
         // Check if this terminal segment's events fall between current and next voyage
         const firstTermEvent = ts.events[0]
@@ -665,17 +1115,39 @@ export function buildTimelineRenderList(
         const firstNextVoyageIdx = orderedEvents.findIndex((e) => e.id === firstNextVoyageEvent.id)
 
         if (termEventIdx > lastCurrentVoyageIdx && termEventIdx < firstNextVoyageIdx) {
-          usedTerminalKinds.add(`ts-${segIdx}`)
-          const termBlock: TerminalBlock = {
-            blockType: 'terminal',
-            kind: ts.kind,
-            title: ts.title,
-            location: ts.location,
-            events: ts.events,
+          usedTerminalSegmentIds.add(ts.id)
+
+          if (
+            nextVoyageEntry.segment.plannedContinuation &&
+            isSuppressiblePlannedTerminalRemainder(ts)
+          ) {
+            continue
           }
-          result.push({ type: 'terminal-block', block: termBlock })
-          emitEventsWithMarkers(ts.events, false)
-          result.push({ type: 'block-end' })
+
+          // Keep the planned signal secondary once an explicit vessel handoff is
+          // already known. The banner variant is reserved for intended-only gaps
+          // where it is still the primary maritime continuation clue.
+          if (tsBlock === undefined && isPlannedTransshipmentTerminal(ts)) {
+            result.push({
+              type: 'transshipment-block',
+              block: toPlannedTransshipmentBlock({
+                segment: ts,
+                previousSegment: segment,
+                nextSegment: nextVoyageEntry.segment,
+              }),
+            })
+          } else {
+            const termBlock: TerminalBlock = {
+              blockType: 'terminal',
+              kind: ts.kind,
+              title: ts.title,
+              location: ts.location,
+              events: ts.events,
+            }
+            result.push({ type: 'terminal-block', block: termBlock })
+            emitEventsWithMarkers(ts.events, false)
+            result.push({ type: 'block-end' })
+          }
         }
       }
     } else {
@@ -705,7 +1177,7 @@ export function buildTimelineRenderList(
   // Post-carriage terminal segments (after last voyage)
   for (const ts of terminalSegments) {
     if (ts.kind !== 'post-carriage') continue
-    usedTerminalKinds.add('post-carriage')
+    usedTerminalSegmentIds.add(ts.id)
 
     const hasNoMoreBlocks = true
     const termBlock: TerminalBlock = {
