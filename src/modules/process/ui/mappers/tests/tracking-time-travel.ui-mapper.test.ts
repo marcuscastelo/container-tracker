@@ -38,9 +38,14 @@ function makeTimeTravelResponse(): TrackingTimeTravelResponseDto {
           },
           next_location: null,
           transshipment: {
-            has_transshipment: false,
-            count: 0,
-            ports: [],
+            has_transshipment: true,
+            count: 1,
+            ports: [
+              {
+                code: 'SGSIN',
+                display: 'Singapore',
+              },
+            ],
           },
         },
         tracking_validation: {
@@ -72,6 +77,16 @@ describe('tracking-time-travel.ui-mapper', () => {
     const result = toTrackingTimeTravelVm(makeTimeTravelResponse(), 'pt-BR')
 
     expect(result.selectedSnapshotId).toBe('snapshot-2')
+    expect(result.syncs[0]?.transshipment).toEqual({
+      hasTransshipment: true,
+      count: 1,
+      ports: [
+        {
+          code: 'SGSIN',
+          display: 'Singapore',
+        },
+      ],
+    })
     expect(result.syncs[0]?.trackingValidation).toEqual({
       hasIssues: true,
       highestSeverity: 'danger',

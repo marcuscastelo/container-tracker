@@ -160,6 +160,7 @@ function ShipmentTimelineRegion(props: ShipmentTimelineRegionProps): JSX.Element
             >
               <TrackingTimeTravelTimelinePanel
                 containerNumber={container().number}
+                referenceNowIso={props.trackingTimeTravel.value()?.referenceNowIso ?? null}
                 selectedSync={props.trackingTimeTravel.selectedSync()}
                 {...(props.data.carrier === undefined ? {} : { carrier: props.data.carrier })}
               />

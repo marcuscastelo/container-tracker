@@ -5,6 +5,7 @@ import { ObservationInspector } from '~/modules/process/ui/components/Observatio
 import { fetchObservationInspector } from '~/modules/process/ui/fetchProcessTrackingDetails'
 import type {
   GapMarker,
+  PlannedTransshipmentBlock,
   PortRiskMarker,
   TerminalBlock,
   TransshipmentBlock,
@@ -242,7 +243,7 @@ function transshipmentHandoffLabel(
   return null
 }
 
-function PlannedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
+function PlannedTransshipmentHandoffCard(props: TransshipmentBlockCardProps): JSX.Element {
   const { t, keys, locale } = useTranslation()
   const representativeEvent = createMemo<TrackingTimelineItem | null>(() => {
     const lastIndex = props.block.events.length - 1
@@ -411,11 +412,68 @@ function ConfirmedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JS
   )
 }
 
+export function PlannedTransshipmentBlockCard(props: {
+  readonly block: PlannedTransshipmentBlock
+}): JSX.Element {
+  const { t, keys, locale } = useTranslation()
+
+  const handoffSummary = () => {
+    if (!props.block.fromVessel && !props.block.toVessel) {
+      return null
+    }
+
+    return t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
+      from: props.block.fromVessel ?? '?',
+      to: props.block.toVessel ?? '?',
+    })
+  }
+
+  const nextLeg = () => {
+    const details = [props.block.toVessel, props.block.toVoyage].filter((value): value is string =>
+      Boolean(value && value.trim().length > 0),
+    )
+
+    return details.length > 0 ? details.join(' · ') : null
+  }
+
+  const expectedDate = () =>
+    props.block.event.eventTime === null
+      ? null
+      : formatDateForLocale(props.block.event.eventTime, locale())
+
+  return (
+    <div class="rounded-xl border border-tone-info-border bg-tone-info-bg/40 px-3 py-2.5 shadow-[0_1px_2px_rgb(0_0_0_/8%)]">
+      <div class="flex items-center gap-1.5">
+        <Hourglass class="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span class="text-sm-ui font-bold tracking-tight text-tone-info-fg">
+          {t(keys.shipmentView.timeline.blocks.plannedTransshipment)}
+        </span>
+      </div>
+      <Show when={props.block.port}>
+        {(port) => <p class="mt-0.5 text-micro font-medium text-tone-info-fg">{port()}</p>}
+      </Show>
+      <Show when={handoffSummary()}>
+        {(summary) => <p class="mt-1 text-micro text-tone-info-fg">{summary()}</p>}
+      </Show>
+      <Show when={nextLeg()}>
+        {(leg) => <p class="mt-1 text-micro font-medium text-tone-info-fg">{leg()}</p>}
+      </Show>
+      <Show when={expectedDate()}>
+        {(date) => (
+          <p class="mt-1 text-micro text-tone-info-fg">
+            {t(keys.shipmentView.timeline.expected)} · {date()}
+          </p>
+        )}
+      </Show>
+    </div>
+  )
+}
+
 export function TransshipmentBlockCard(props: TransshipmentBlockCardProps): JSX.Element {
   return (
     <Switch>
       <Match when={props.block.mode === 'planned'}>
-        <PlannedTransshipmentBlockCard {...props} />
+        <PlannedTransshipmentHandoffCard {...props} />
       </Match>
       <Match when={true}>
         <ConfirmedTransshipmentBlockCard {...props} />

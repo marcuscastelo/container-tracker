@@ -399,12 +399,19 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
     const plannedTransshipment = renderList.find(
       (item) => item.type === 'transshipment-block' && item.block.mode === 'planned',
     )
+    const plannedGapMarker = renderList.find(
+      (item) =>
+        item.type === 'gap-marker' &&
+        item.marker.fromEventType === 'TRANSSHIPMENT_INTENDED' &&
+        item.marker.toEventType === 'DEPARTURE',
+    )
     const confirmedTransshipment = renderList.find(
       (item) => item.type === 'transshipment-block' && item.block.mode === 'confirmed',
     )
     const futureVoyage = renderList.filter((item) => item.type === 'voyage-block')[1]
 
     expect(plannedTransshipment).toBeDefined()
+    expect(plannedGapMarker).toBeDefined()
     expect(confirmedTransshipment).toBeUndefined()
 
     if (plannedTransshipment?.type === 'transshipment-block') {
@@ -414,11 +421,22 @@ describe('tracking.timeline.blocks planned maritime continuation', () => {
       expect(plannedTransshipment.block.nextVesselName).toBe('SAO PAULO EXPRESS')
     }
 
+    if (plannedGapMarker?.type === 'gap-marker') {
+      expect(plannedGapMarker.marker.kind).toBe('generic')
+      expect(plannedGapMarker.marker.durationDays).toBe(2)
+    }
+
     if (futureVoyage?.type === 'voyage-block') {
       expect(futureVoyage.block.vessel).toBe('SAO PAULO EXPRESS')
       expect(futureVoyage.block.voyage).toBe('SPX001')
       expect(futureVoyage.block.origin).toBe('Singapore')
       expect(futureVoyage.block.destination).toBe('Santos')
+    }
+
+    if (plannedTransshipment !== undefined && plannedGapMarker !== undefined) {
+      expect(renderList.indexOf(plannedGapMarker)).toBeGreaterThan(
+        renderList.indexOf(plannedTransshipment),
+      )
     }
   })
 

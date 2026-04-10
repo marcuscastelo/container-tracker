@@ -28,6 +28,15 @@ export type TrackingTimeTravelNextLocationVM = {
   readonly locationDisplay: string | null
 } | null
 
+export type TrackingTimeTravelTransshipmentVM = {
+  readonly hasTransshipment: boolean
+  readonly count: number
+  readonly ports: readonly {
+    readonly code: string
+    readonly display: string | null
+  }[]
+}
+
 export type TrackingTimeTravelDiffVM =
   | {
       readonly kind: 'initial'
@@ -61,6 +70,7 @@ export type TrackingTimeTravelSyncVM = {
   readonly eta: TrackingTimeTravelEtaVM
   readonly currentContext: TrackingTimeTravelCurrentContextVM
   readonly nextLocation: TrackingTimeTravelNextLocationVM
+  readonly transshipment: TrackingTimeTravelTransshipmentVM
   readonly trackingValidation: ContainerTrackingValidationVM
   readonly diff: TrackingTimeTravelDiffVM
   readonly debugAvailable: boolean

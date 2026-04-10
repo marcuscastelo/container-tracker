@@ -197,6 +197,11 @@ function makeHistoricalSync(): TrackingTimeTravelSyncVM {
       vesselVisible: true,
     },
     nextLocation: null,
+    transshipment: {
+      hasTransshipment: false,
+      count: 0,
+      ports: [],
+    },
     trackingValidation: {
       hasIssues: false,
       highestSeverity: null,
