@@ -1,12 +1,12 @@
+import type { PredictionHistorySource } from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
 import type { AlertIncidentVM } from '~/modules/process/ui/viewmodels/alert-incident.vm'
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
-import type { TrackingSeriesHistory } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { typedFetch } from '~/shared/api/typedFetch'
 import {
   ObservationResponseSchema,
   ProcessRecognizedAlertIncidentsResponseSchema,
   ProcessSyncSnapshotResponseSchema,
-  TrackingTimelineSeriesHistoryResponseSchema,
+  TrackingPredictionHistoryResponseSchema,
 } from '~/shared/api-schemas/processes.schemas'
 
 function toReadTriggerHeaders(triggeredBy: string): HeadersInit {
@@ -40,29 +40,33 @@ function toObservationInspectorVm(
   }
 }
 
-function toSeriesHistory(
-  seriesHistory: ReturnType<typeof TrackingTimelineSeriesHistoryResponseSchema.parse>,
-): TrackingSeriesHistory {
+function toPredictionHistorySource(
+  predictionHistory: ReturnType<typeof TrackingPredictionHistoryResponseSchema.parse>,
+): PredictionHistorySource {
   return {
-    hasActualConflict: seriesHistory.has_actual_conflict,
-    ...(seriesHistory.conflict === null || seriesHistory.conflict === undefined
-      ? {}
-      : {
-          conflict: {
-            kind: seriesHistory.conflict.kind,
-            fields: [...seriesHistory.conflict.fields],
-          },
-        }),
-    classified: seriesHistory.classified.map((item) => ({
-      id: item.id,
-      type: item.type,
-      event_time: item.event_time,
-      event_time_type: item.event_time_type,
-      created_at: item.created_at,
-      seriesLabel: item.series_label,
-      ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
-      ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
-      ...(item.change_kind === undefined ? {} : { changeKind: item.change_kind }),
+    header: {
+      tone: predictionHistory.header.tone,
+      summaryKind: predictionHistory.header.summary_kind,
+      currentVersionId: predictionHistory.header.current_version_id,
+      previousVersionId: predictionHistory.header.previous_version_id,
+      originalVersionId: predictionHistory.header.original_version_id,
+      reasonKind: predictionHistory.header.reason_kind,
+    },
+    versions: predictionHistory.versions.map((version) => ({
+      id: version.id,
+      isCurrent: version.is_current,
+      type: version.type,
+      eventTime: version.event_time,
+      eventTimeType: version.event_time_type,
+      vesselName: version.vessel_name,
+      voyage: version.voyage,
+      versionState: version.version_state,
+      explanatoryTextKind: version.explanatory_text_kind,
+      transitionKindFromPreviousVersion: version.transition_kind_from_previous_version,
+      observedAtCount: version.observed_at_count,
+      observedAtList: [...version.observed_at_list],
+      firstObservedAt: version.first_observed_at,
+      lastObservedAt: version.last_observed_at,
     })),
   }
 }
@@ -133,17 +137,17 @@ export async function fetchRecognizedAlertIncidents(
   return response.recognized.map(toAlertIncidentVm)
 }
 
-export async function fetchTimelineSeriesHistory(
+export async function fetchTimelinePredictionHistory(
   containerId: string,
   timelineItemId: string,
-): Promise<TrackingSeriesHistory> {
+): Promise<PredictionHistorySource> {
   const response = await typedFetch(
     `/api/tracking/containers/${encodeURIComponent(containerId)}/timeline-items/${encodeURIComponent(timelineItemId)}/history`,
     undefined,
-    TrackingTimelineSeriesHistoryResponseSchema,
+    TrackingPredictionHistoryResponseSchema,
   )
 
-  return toSeriesHistory(response)
+  return toPredictionHistorySource(response)
 }
 
 export async function fetchObservationInspector(

@@ -17,7 +17,7 @@ import {
 import {
   findContainersRecognizedAlertIncidentsProjection,
   findObservationInspectorProjection,
-  findTimelineItemSeriesHistory,
+  findTimelineItemPredictionHistory,
 } from '~/modules/tracking/application/usecases/find-lazy-tracking-detail.usecases'
 import {
   type GetContainerSummaryResult,
@@ -172,12 +172,12 @@ export function createTrackingUseCases(deps: TrackingUseCasesDeps) {
       return findContainersHotReadProjection(deps, command)
     },
 
-    async findTimelineItemSeriesHistory(command: {
+    async findTimelineItemPredictionHistory(command: {
       readonly containerId: string
       readonly timelineItemId: string
       readonly now?: Instant
     }) {
-      return findTimelineItemSeriesHistory(deps, {
+      return findTimelineItemPredictionHistory(deps, {
         containerId: command.containerId,
         timelineItemId: command.timelineItemId,
         now: command.now ?? systemClock.now(),
