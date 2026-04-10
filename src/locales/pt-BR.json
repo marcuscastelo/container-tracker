@@ -361,6 +361,9 @@
     "actions": {
       "refresh": "Atualizar",
       "refreshing": "Atualizando…",
+      "copyTimeline": "Copiar timeline",
+      "copyTimelineSuccess": "Timeline copiada para a área de transferência",
+      "copyTimelineError": "Não foi possível copiar a timeline",
       "edit": "Editar",
       "delete": "Excluir embarque"
     },
@@ -441,6 +444,7 @@
         "postCarriage": "Pós-transporte / Entrega",
         "transshipmentTerminal": "Terminal de Transbordo",
         "transshipment": "Transbordo",
+        "plannedTransshipment": "Transbordo Planejado",
         "transshipmentPort": "Transbordo — {{port}}",
         "vesselChange": "Troca de navio",
         "vesselChangeDetail": "{{from}} → {{to}}",

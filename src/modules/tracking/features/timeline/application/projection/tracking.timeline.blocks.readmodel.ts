@@ -261,6 +261,16 @@ export type TransshipmentBlock = {
   readonly toVessel: string | null
 }
 
+export type PlannedTransshipmentBlock = {
+  readonly blockType: 'planned-transshipment'
+  readonly port: string | null
+  readonly event: TrackingTimelineItem
+  readonly fromVessel: string | null
+  readonly fromVoyage: string | null
+  readonly toVessel: string | null
+  readonly toVoyage: string | null
+}
+
 export type GapMarker = {
   readonly blockType: 'gap-marker'
   readonly kind: 'transit' | 'generic'
@@ -333,8 +343,154 @@ function detectTransshipmentsBetweenVoyages(voyageSegments: readonly VoyageSegme
   return transshipments
 }
 
+type PositionedVoyageSegment = {
+  readonly renderIndex: number
+  readonly segment: VoyageSegment
+  readonly firstEventIndex: number
+  readonly lastEventIndex: number
+}
+
+type TerminalSegmentRenderUnit =
+  | { readonly type: 'terminal'; readonly block: TerminalBlock }
+  | { readonly type: 'planned-transshipment'; readonly block: PlannedTransshipmentBlock }
+
+function positionVoyageLikeSegments(
+  orderedEvents: readonly TrackingTimelineItem[],
+  voyageSegments: readonly VoyageSegment[],
+): readonly PositionedVoyageSegment[] {
+  return voyageSegments
+    .map((segment, renderIndex) => {
+      if (!isVoyageLikeSegment(segment)) {
+        return null
+      }
+
+      const firstEvent = segment.events[0]
+      const lastEvent = segment.events[segment.events.length - 1]
+      if (firstEvent === undefined || lastEvent === undefined) {
+        return null
+      }
+
+      const firstEventIndex = orderedEvents.findIndex((event) => event.id === firstEvent.id)
+      const lastEventIndex = orderedEvents.findIndex((event) => event.id === lastEvent.id)
+      if (firstEventIndex < 0 || lastEventIndex < 0) {
+        return null
+      }
+
+      return {
+        renderIndex,
+        segment,
+        firstEventIndex,
+        lastEventIndex,
+      }
+    })
+    .filter((segment): segment is PositionedVoyageSegment => segment !== null)
+}
+
+function findAdjacentVoyageLikeSegmentsForEvent(command: {
+  readonly event: TrackingTimelineItem
+  readonly orderedEvents: readonly TrackingTimelineItem[]
+  readonly positionedVoyageSegments: readonly PositionedVoyageSegment[]
+}): {
+  readonly previous: PositionedVoyageSegment | null
+  readonly next: PositionedVoyageSegment | null
+} {
+  const eventIndex = command.orderedEvents.findIndex(
+    (candidate) => candidate.id === command.event.id,
+  )
+
+  if (eventIndex < 0) {
+    return {
+      previous: null,
+      next: null,
+    }
+  }
+
+  let previous: PositionedVoyageSegment | null = null
+  let next: PositionedVoyageSegment | null = null
+
+  for (const segment of command.positionedVoyageSegments) {
+    if (segment.lastEventIndex < eventIndex) {
+      previous = segment
+      continue
+    }
+
+    if (segment.firstEventIndex > eventIndex) {
+      next = segment
+      break
+    }
+  }
+
+  return {
+    previous,
+    next,
+  }
+}
+
+function splitTerminalSegmentIntoRenderUnits(command: {
+  readonly segment: TerminalSegment
+  readonly orderedEvents: readonly TrackingTimelineItem[]
+  readonly positionedVoyageSegments: readonly PositionedVoyageSegment[]
+}): readonly TerminalSegmentRenderUnit[] {
+  const units: TerminalSegmentRenderUnit[] = []
+  let currentRun: TrackingTimelineItem[] = []
+
+  const flushCurrentRun = (): void => {
+    if (currentRun.length === 0) {
+      return
+    }
+
+    units.push({
+      type: 'terminal',
+      block: {
+        blockType: 'terminal',
+        kind: command.segment.kind,
+        title: command.segment.title,
+        location: dominantLocation(currentRun),
+        events: currentRun,
+      },
+    })
+    currentRun = []
+  }
+
+  for (const event of command.segment.events) {
+    if (event.type !== 'TRANSSHIPMENT_INTENDED') {
+      currentRun.push(event)
+      continue
+    }
+
+    flushCurrentRun()
+
+    const adjacentSegments = findAdjacentVoyageLikeSegmentsForEvent({
+      event,
+      orderedEvents: command.orderedEvents,
+      positionedVoyageSegments: command.positionedVoyageSegments,
+    })
+
+    units.push({
+      type: 'planned-transshipment',
+      block: {
+        blockType: 'planned-transshipment',
+        port:
+          event.location ??
+          adjacentSegments.previous?.segment.destination ??
+          adjacentSegments.next?.segment.origin ??
+          null,
+        event,
+        fromVessel: adjacentSegments.previous?.segment.vessel ?? null,
+        fromVoyage: adjacentSegments.previous?.segment.voyage ?? null,
+        toVessel: adjacentSegments.next?.segment.vessel ?? null,
+        toVoyage: adjacentSegments.next?.segment.voyage ?? null,
+      },
+    })
+  }
+
+  flushCurrentRun()
+
+  return units
+}
+
 // ---------------------------------------------------------------------------
-// Phase 11-14 — Gap Marker Computation (UI-only)
+// Phase 11-14 — Gap Marker Computation (projection-only)
 // ---------------------------------------------------------------------------
 
 const GAP_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000 // 2 days
@@ -397,7 +553,7 @@ function computeGapMarkers(events: readonly TrackingTimelineItem[]): readonly Ga
 }
 
 // ---------------------------------------------------------------------------
-// Phase 15-19 — Port Risk Window Detection (UI-only)
+// Phase 15-19 — Port Risk Window Detection (projection-only)
 // ---------------------------------------------------------------------------
 
 const PORT_ARRIVAL_TYPES: ReadonlySet<string> = new Set(['ARRIVAL'])
@@ -476,6 +632,7 @@ export type TimelineRenderItem =
   | { readonly type: 'voyage-block'; readonly block: VoyageBlock }
   | { readonly type: 'terminal-block'; readonly block: TerminalBlock }
   | { readonly type: 'transshipment-block'; readonly block: TransshipmentBlock }
+  | { readonly type: 'planned-transshipment-block'; readonly block: PlannedTransshipmentBlock }
   | { readonly type: 'event'; readonly event: TrackingTimelineItem; readonly isLast: boolean }
   | { readonly type: 'gap-marker'; readonly marker: GapMarker }
   | { readonly type: 'port-risk-marker'; readonly marker: PortRiskMarker }
@@ -491,7 +648,7 @@ export type TimelineRenderItem =
  * 4. Computes port risk markers after ARRIVAL events
  * 5. Interleaves all items into a flat render list
  *
- * All derivations are UI-only, deterministic, and side-effect-free.
+ * All derivations are projection-only, deterministic, and side-effect-free.
  *
  * @param events - Ordered timeline events for a single container
  * @param now - Current date for monitoring markers (port risk ongoing)
@@ -506,6 +663,7 @@ export function buildTimelineRenderList(
   const orderedEvents = sortTimelineItemsForBlockDerivation(events)
   const voyageSegments = groupVoyageSegments(orderedEvents)
   const terminalSegments = groupTerminalSegments(orderedEvents, voyageSegments)
+  const positionedVoyageSegments = positionVoyageLikeSegments(orderedEvents, voyageSegments)
   const transshipments = detectTransshipmentsBetweenVoyages(voyageSegments)
   const gapMarkers = computeGapMarkers(orderedEvents)
   const portRiskEntries = computePortRiskMarkers(orderedEvents, now)
@@ -563,21 +721,17 @@ export function buildTimelineRenderList(
   const result: TimelineRenderItem[] = []
 
   // Track which terminal segments we've used
-  const usedTerminalKinds = new Set<string>()
+  const usedTerminalSegmentIndices = new Set<number>()
+
+  const lastOverallEvent = orderedEvents[orderedEvents.length - 1] ?? null
 
   // Helper: emit events for a block with gap/port-risk markers interleaved
-  function emitEventsWithMarkers(
-    blockEvents: readonly TrackingTimelineItem[],
-    isLastBlock: boolean,
-  ): void {
-    const lastOverallEvent = orderedEvents[orderedEvents.length - 1] ?? null
-
+  function emitEventsWithMarkers(blockEvents: readonly TrackingTimelineItem[]): void {
     for (let i = 0; i < blockEvents.length; i++) {
       const event = blockEvents[i]
       if (event === undefined) continue
 
-      const isLastEvent =
-        isLastBlock && lastOverallEvent !== null && event.id === lastOverallEvent.id
+      const isLastEvent = lastOverallEvent !== null && event.id === lastOverallEvent.id
 
       result.push({ type: 'event', event, isLast: isLastEvent })
 
@@ -595,31 +749,42 @@ export function buildTimelineRenderList(
     }
   }
 
-  // Pre-carriage terminal segments (before first voyage)
-  for (const ts of terminalSegments) {
-    if (ts.kind !== 'pre-carriage') continue
-    usedTerminalKinds.add('pre-carriage')
+  function emitTerminalSegmentRenderUnits(units: readonly TerminalSegmentRenderUnit[]): void {
+    for (const unit of units) {
+      if (unit.type === 'planned-transshipment') {
+        result.push({
+          type: 'planned-transshipment-block',
+          block: unit.block,
+        })
+        continue
+      }
 
-    const termBlock: TerminalBlock = {
-      blockType: 'terminal',
-      kind: ts.kind,
-      title: ts.title,
-      location: ts.location,
-      events: ts.events,
+      result.push({
+        type: 'terminal-block',
+        block: unit.block,
+      })
+      emitEventsWithMarkers(unit.block.events)
+      result.push({ type: 'block-end' })
     }
-    result.push({ type: 'terminal-block', block: termBlock })
-    emitEventsWithMarkers(ts.events, false)
-    result.push({ type: 'block-end' })
+  }
+
+  // Pre-carriage terminal segments (before first voyage)
+  for (const [terminalIndex, ts] of terminalSegments.entries()) {
+    if (ts.kind !== 'pre-carriage') continue
+    usedTerminalSegmentIndices.add(terminalIndex)
+    emitTerminalSegmentRenderUnits(
+      splitTerminalSegmentIntoRenderUnits({
+        segment: ts,
+        orderedEvents,
+        positionedVoyageSegments,
+      }),
+    )
   }
 
   // Voyage segments with transshipment markers between them
   for (let segIdx = 0; segIdx < voyageSegments.length; segIdx++) {
     const segment = voyageSegments[segIdx]
     if (segment === undefined) continue
-
-    const isLastSegment =
-      segIdx === voyageSegments.length - 1 &&
-      terminalSegments.every((ts) => ts.kind !== 'post-carriage')
 
     if (isVoyageLikeSegment(segment)) {
       // It's a voyage block
@@ -632,7 +797,7 @@ export function buildTimelineRenderList(
         events: segment.events,
       }
       result.push({ type: 'voyage-block', block: voyageBlock })
-      emitEventsWithMarkers(segment.events, isLastSegment)
+      emitEventsWithMarkers(segment.events)
       result.push({ type: 'block-end' })
 
       // Check for transshipment after this voyage
@@ -642,9 +807,9 @@ export function buildTimelineRenderList(
       }
 
       // Check for transshipment-terminal segments between voyages
-      for (const ts of terminalSegments) {
+      for (const [terminalIndex, ts] of terminalSegments.entries()) {
         if (ts.kind !== 'transshipment-terminal') continue
-        if (usedTerminalKinds.has(`ts-${segIdx}`)) continue
+        if (usedTerminalSegmentIndices.has(terminalIndex)) continue
 
         // Check if this terminal segment's events fall between current and next voyage
         const firstTermEvent = ts.events[0]
@@ -665,17 +830,14 @@ export function buildTimelineRenderList(
         const firstNextVoyageIdx = orderedEvents.findIndex((e) => e.id === firstNextVoyageEvent.id)
 
         if (termEventIdx > lastCurrentVoyageIdx && termEventIdx < firstNextVoyageIdx) {
-          usedTerminalKinds.add(`ts-${segIdx}`)
-          const termBlock: TerminalBlock = {
-            blockType: 'terminal',
-            kind: ts.kind,
-            title: ts.title,
-            location: ts.location,
-            events: ts.events,
-          }
-          result.push({ type: 'terminal-block', block: termBlock })
-          emitEventsWithMarkers(ts.events, false)
-          result.push({ type: 'block-end' })
+          usedTerminalSegmentIndices.add(terminalIndex)
+          emitTerminalSegmentRenderUnits(
+            splitTerminalSegmentIntoRenderUnits({
+              segment: ts,
+              orderedEvents,
+              positionedVoyageSegments,
+            }),
+          )
         }
       }
     } else {
@@ -696,28 +858,23 @@ export function buildTimelineRenderList(
           events: segment.events,
         }
         result.push({ type: 'terminal-block', block: termBlock })
-        emitEventsWithMarkers(segment.events, isLastSegment)
+        emitEventsWithMarkers(segment.events)
         result.push({ type: 'block-end' })
       }
     }
   }
 
   // Post-carriage terminal segments (after last voyage)
-  for (const ts of terminalSegments) {
+  for (const [terminalIndex, ts] of terminalSegments.entries()) {
     if (ts.kind !== 'post-carriage') continue
-    usedTerminalKinds.add('post-carriage')
-
-    const hasNoMoreBlocks = true
-    const termBlock: TerminalBlock = {
-      blockType: 'terminal',
-      kind: ts.kind,
-      title: ts.title,
-      location: ts.location,
-      events: ts.events,
-    }
-    result.push({ type: 'terminal-block', block: termBlock })
-    emitEventsWithMarkers(ts.events, hasNoMoreBlocks)
-    result.push({ type: 'block-end' })
+    usedTerminalSegmentIndices.add(terminalIndex)
+    emitTerminalSegmentRenderUnits(
+      splitTerminalSegmentIntoRenderUnits({
+        segment: ts,
+        orderedEvents,
+        positionedVoyageSegments,
+      }),
+    )
   }
 
   return result

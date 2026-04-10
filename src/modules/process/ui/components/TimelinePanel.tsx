@@ -1,7 +1,14 @@
 import { createMemo, For, type JSX, Show } from 'solid-js'
+import toast from 'solid-toast'
 import { TimelineNode } from '~/modules/process/ui/components/TimelineNode'
 import type { NonMappedIndicatorVariant } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import { trackingStatusToLabelKey } from '~/modules/process/ui/mappers/trackingStatus.ui-mapper'
+import {
+  serializeTimelineToText,
+  shouldShowTimelineCopyAction,
+  type TimelineTextExportSource,
+  toCurrentTimelineTextExportSource,
+} from '~/modules/process/ui/screens/shipment/lib/serializeTimelineToText'
 import {
   resolveCurrentVoyageIndex,
   toCurrentVoyageGroups,
@@ -10,6 +17,7 @@ import {
   BlockCard,
   EventSeparator,
   GapMarkerRow,
+  PlannedTransshipmentBlockCard,
   PortRiskMarkerRow,
   TerminalBlockHeader,
   TransshipmentBlockCard,
@@ -25,6 +33,7 @@ import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/
 import { useTranslation } from '~/shared/localization/i18n'
 import { Panel } from '~/shared/ui/layout/Panel'
 import { StatusBadge } from '~/shared/ui/StatusBadge'
+import { copyToClipboard } from '~/shared/utils/clipboard'
 
 type Props = {
   selectedContainer: ContainerDetailVM | null
@@ -43,6 +52,7 @@ type TrackingTimelinePanelContentProps = {
   readonly container: TrackingTimelinePanelContainerContext | null
   readonly containerId: string | null
   readonly timeline: readonly TrackingTimelineItem[]
+  readonly exportSource: TimelineTextExportSource | null
   readonly carrier?: string | null
   readonly nonMappedIndicatorVariant?: NonMappedIndicatorVariant
   readonly alerts?: readonly AlertDisplayVM[]
@@ -143,7 +153,7 @@ function toOptionalTimelineNodeProps(params: {
 export function TrackingTimelinePanelContent(
   props: TrackingTimelinePanelContentProps,
 ): JSX.Element {
-  const { t, keys } = useTranslation()
+  const { t, keys, locale } = useTranslation()
   const timeline = () => props.timeline
   const highlightedTypes = () => buildHighlightedEventTypes(props.alerts ?? [])
   const currentVessel = createMemo(() =>
@@ -152,10 +162,48 @@ export function TrackingTimelinePanelContent(
       : (props.container?.currentContext.vesselName ?? null),
   )
   const portsRoute = createMemo(() => derivePortsRoute(props.container))
-  const renderList = createMemo(() => buildTimelineRenderList(timeline()))
+  const renderList = createMemo(
+    () => props.exportSource?.renderList ?? buildTimelineRenderList(timeline()),
+  )
+  const showCopyAction = createMemo(() => shouldShowTimelineCopyAction(props.exportSource))
+
+  const handleCopyTimeline = async (): Promise<void> => {
+    if (props.exportSource === null) {
+      return
+    }
+
+    try {
+      await copyToClipboard(
+        serializeTimelineToText(props.exportSource, {
+          t,
+          keys,
+          locale: locale(),
+        }),
+      )
+      toast.success(t(keys.shipmentView.actions.copyTimelineSuccess))
+    } catch (error) {
+      console.error('Failed to copy timeline text export', error)
+      toast.error(t(keys.shipmentView.actions.copyTimelineError))
+    }
+  }
 
   return (
-    <Panel title={props.title} class="rounded-xl" bodyClass="px-3 py-3">
+    <Panel
+      title={props.title}
+      class="rounded-xl"
+      bodyClass="px-3 py-3"
+      headerSlot={
+        <Show when={showCopyAction()}>
+          <button
+            type="button"
+            class="inline-flex h-7 items-center rounded-md border border-border bg-surface px-2.5 text-xs-ui font-medium text-foreground transition-colors hover:bg-surface-muted"
+            onClick={() => void handleCopyTimeline()}
+          >
+            {t(keys.shipmentView.actions.copyTimeline)}
+          </button>
+        </Show>
+      }
+    >
       <div>
         {/* Phase 6 — Timeline Header: Selected Container Context */}
         <Show when={props.container}>
@@ -239,12 +287,24 @@ function ContainerContextHeader(props: ContainerContextHeaderProps): JSX.Element
 
 export function TimelinePanel(props: Props): JSX.Element {
   const { t, keys } = useTranslation()
+  const exportSource = createMemo<TimelineTextExportSource | null>(() => {
+    if (props.selectedContainer === null) {
+      return null
+    }
+
+    return toCurrentTimelineTextExportSource({
+      title: t(keys.shipmentView.timeline.title),
+      statusLabel: t(trackingStatusToLabelKey(keys, props.selectedContainer.statusCode)),
+      container: props.selectedContainer,
+    })
+  })
 
   return (
     <TrackingTimelinePanelContent
       title={t(keys.shipmentView.timeline.title)}
       container={props.selectedContainer}
       timeline={props.selectedContainer?.timeline ?? []}
+      exportSource={exportSource()}
       {...toOptionalTrackingTimelinePanelContentProps({
         containerId: props.selectedContainer?.id ?? null,
         carrier: props.carrier,
@@ -273,6 +333,10 @@ type BlockGroup =
   | {
       readonly kind: 'transshipment'
       readonly block: Extract<TimelineRenderItem, { type: 'transshipment-block' }>['block']
+    }
+  | {
+      readonly kind: 'planned-transshipment'
+      readonly block: Extract<TimelineRenderItem, { type: 'planned-transshipment-block' }>['block']
     }
   | { readonly kind: 'standalone'; readonly item: TimelineRenderItem }
 
@@ -303,6 +367,9 @@ function groupRenderItems(items: readonly TimelineRenderItem[]): readonly BlockG
       }
     } else if (item.type === 'transshipment-block') {
       groups.push({ kind: 'transshipment', block: item.block })
+      i++
+    } else if (item.type === 'planned-transshipment-block') {
+      groups.push({ kind: 'planned-transshipment', block: item.block })
       i++
     } else if (item.type === 'block-end') {
       i++ // skip orphan block-end
@@ -424,6 +491,8 @@ function TimelineBlockList(props: {
       }
       case 'transshipment':
         return <TransshipmentBlockCard block={group.block} />
+      case 'planned-transshipment':
+        return <PlannedTransshipmentBlockCard block={group.block} />
       case 'standalone':
         switch (group.item.type) {
           case 'event':
@@ -445,6 +514,8 @@ function TimelineBlockList(props: {
             return <GapMarkerRow marker={group.item.marker} />
           case 'port-risk-marker':
             return <PortRiskMarkerRow marker={group.item.marker} />
+          case 'planned-transshipment-block':
+            return <PlannedTransshipmentBlockCard block={group.item.block} />
           default:
             return null
         }

@@ -121,6 +121,8 @@ function renderListSignature(
         return `terminal-block:${item.block.kind}:${item.block.events.map((event) => event.type).join(',')}`
       case 'transshipment-block':
         return `transshipment-block:${item.block.fromVessel ?? ''}:${item.block.toVessel ?? ''}:${item.block.port ?? ''}`
+      case 'planned-transshipment-block':
+        return `planned-transshipment-block:${item.block.port ?? ''}:${item.block.fromVessel ?? ''}:${item.block.toVessel ?? ''}:${item.block.toVoyage ?? ''}:${item.block.event.eventTimeType}`
       case 'event':
         return `event:${item.event.id}:${item.event.type}:${item.isLast ? 'last' : 'mid'}`
       case 'gap-marker':
@@ -420,15 +422,83 @@ describe('buildTimelineRenderList terminal grouping', () => {
     const transshipmentTerminalBlocks = renderList.filter(
       (item) => item.type === 'terminal-block' && item.block.kind === 'transshipment-terminal',
     )
+    const plannedTransshipmentBlocks = renderList.filter(
+      (item) => item.type === 'planned-transshipment-block',
+    )
+
+    expect(plannedTransshipmentBlocks).toHaveLength(1)
     expect(transshipmentTerminalBlocks).toHaveLength(1)
+
+    const plannedBlock = requireDefined(plannedTransshipmentBlocks[0])
+    if (plannedBlock.type === 'planned-transshipment-block') {
+      expect(plannedBlock.block.port).toBe('B')
+      expect(plannedBlock.block.fromVessel).toBe('V1')
+      expect(plannedBlock.block.toVessel).toBe('V2')
+      expect(plannedBlock.block.toVoyage).toBe('VY2')
+      expect(plannedBlock.block.event.type).toBe('TRANSSHIPMENT_INTENDED')
+    }
 
     const terminalBlock = requireDefined(transshipmentTerminalBlocks[0])
     if (terminalBlock.type === 'terminal-block') {
       expect(terminalBlock.block.events.map((event) => event.type)).toEqual([
-        'TRANSSHIPMENT_INTENDED',
         'TRANSSHIPMENT_POSITIONED_IN',
       ])
     }
+  })
+
+  it('keeps the planned transshipment block before the following maritime leg', () => {
+    const events = [
+      makeEvent({
+        id: 'voyage-load',
+        type: 'LOAD',
+        eventTime: temporalDtoFromCanonical('2026-03-01T00:00:00Z'),
+        vesselName: 'MSC ARICA',
+        voyage: 'OB610R',
+        location: 'KARACHI, PK',
+      }),
+      makeEvent({
+        id: 'voyage-discharge',
+        type: 'DISCHARGE',
+        eventTime: temporalDtoFromCanonical('2026-03-19T00:00:00Z'),
+        vesselName: 'MSC ARICA',
+        voyage: 'OB610R',
+        location: 'COLOMBO, LK',
+      }),
+      makeEvent({
+        id: 'planned',
+        type: 'TRANSSHIPMENT_INTENDED',
+        eventTime: temporalDtoFromCanonical('2026-03-20T00:00:00Z'),
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        location: 'SINGAPORE, SG',
+      }),
+      makeEvent({
+        id: 'future-departure',
+        type: 'DEPARTURE',
+        eventTime: temporalDtoFromCanonical('2026-03-25T00:00:00Z'),
+        eventTimeType: 'EXPECTED',
+        derivedState: 'ACTIVE_EXPECTED',
+        vesselName: 'GSL VIOLETTA',
+        voyage: '2613W',
+        location: 'SINGAPORE, SG',
+      }),
+    ]
+
+    const renderList = buildTimelineRenderList(
+      events,
+      instantFromIsoText('2026-03-21T00:00:00.000Z'),
+    )
+
+    const plannedIndex = renderList.findIndex((item) => item.type === 'planned-transshipment-block')
+    const nextVoyageIndex = renderList.findIndex(
+      (item) =>
+        item.type === 'voyage-block' &&
+        item.block.vessel === 'GSL VIOLETTA' &&
+        item.block.voyage === '2613W',
+    )
+
+    expect(plannedIndex).toBeGreaterThan(-1)
+    expect(nextVoyageIndex).toBeGreaterThan(plannedIndex)
   })
 })
 

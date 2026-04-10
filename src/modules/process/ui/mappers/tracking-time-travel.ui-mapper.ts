@@ -127,6 +127,19 @@ function toNextLocationVm(
   }
 }
 
+function toTransshipmentVm(
+  transshipment: TrackingTimeTravelResponseDto['syncs'][number]['operational']['transshipment'],
+) {
+  return {
+    hasTransshipment: transshipment.has_transshipment,
+    count: transshipment.count,
+    ports: transshipment.ports.map((port) => ({
+      code: port.code,
+      display: port.display,
+    })),
+  }
+}
+
 function toDiffVm(
   diff: TrackingTimeTravelResponseDto['syncs'][number]['diff_from_previous'],
   locale: string,
@@ -199,6 +212,7 @@ function toSyncVm(
     eta: toEtaVm(checkpoint.eta, locale),
     currentContext: toCurrentContextVm(checkpoint.operational.current_context),
     nextLocation: toNextLocationVm(checkpoint.operational.next_location, locale),
+    transshipment: toTransshipmentVm(checkpoint.operational.transshipment),
     trackingValidation: toTrackingValidationVm(checkpoint.tracking_validation),
     diff: toDiffVm(checkpoint.diff_from_previous, locale),
     debugAvailable: checkpoint.debug_available,
