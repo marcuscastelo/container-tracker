@@ -11,6 +11,15 @@ import type {
   TransshipmentBlock,
   VoyageBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
+import {
+  toPlannedTransshipmentBlockCanonicalTitle,
+  toPlannedTransshipmentHandoffSummary,
+  toTerminalBlockDisplayTitle,
+  toTransshipmentBlockCanonicalTitle,
+  toTransshipmentHandoffSummary,
+  toVoyageBlockDisplayTitle,
+  toVoyageBlockRoute,
+} from '~/modules/process/ui/timeline/timelineBlockPresentation'
 import type { ContainerObservationVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { useTranslation } from '~/shared/localization/i18n'
@@ -27,60 +36,11 @@ export function VoyageBlockHeader(props: {
   readonly isCurrent?: boolean
 }): JSX.Element {
   const { t, keys } = useTranslation()
-
-  const route = () => {
-    const b = props.block
-    let origin = b.origin
-    let destination = b.destination
-
-    if (!origin) {
-      for (const ev of b.events) {
-        if (ev.location && (ev.type === 'LOAD' || ev.type === 'DEPARTURE')) {
-          origin = ev.location
-          break
-        }
-      }
-    }
-
-    if (!destination) {
-      for (let i = b.events.length - 1; i >= 0; i--) {
-        const ev = b.events[i]
-        if (!ev) continue
-        if (ev.type === 'ARRIVAL' && ev.eventTimeType === 'EXPECTED' && ev.location) {
-          destination = ev.location
-          break
-        }
-      }
-    }
-
-    if (!destination) {
-      for (let i = b.events.length - 1; i >= 0; i--) {
-        const ev = b.events[i]
-        if (!ev) continue
-        if (ev.type === 'DISCHARGE' && ev.eventTimeType === 'EXPECTED' && ev.location) {
-          destination = ev.location
-          break
-        }
-      }
-    }
-
-    if (!destination) {
-      for (let i = b.events.length - 1; i >= 0; i--) {
-        const ev = b.events[i]
-        if (!ev) continue
-        if (ev.location && (ev.type === 'ARRIVAL' || ev.type === 'DISCHARGE')) {
-          destination = ev.location
-          break
-        }
-      }
-    }
-
-    if (!origin && !destination) return null
-    return t(keys.shipmentView.timeline.blocks.voyageRoute, {
-      origin: origin ?? '?',
-      destination: destination ?? '?',
-    })
-  }
+  const presentation = {
+    t,
+    keys,
+  } as const
+  const route = () => toVoyageBlockRoute(props.block, presentation)
 
   return (
     <div class="rounded-t-xl border-b border-border/70 bg-surface-muted px-3 py-2.5">
@@ -88,7 +48,7 @@ export function VoyageBlockHeader(props: {
         {/* Ship icon */}
         <Ship class="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
         <span class="text-sm-ui font-bold text-foreground tracking-tight">
-          {props.block.vessel ?? t(keys.shipmentView.timeline.blocks.voyage)}
+          {toVoyageBlockDisplayTitle(props.block, presentation)}
         </span>
         <Show when={props.isCurrent}>
           <span class="inline-flex items-center rounded-full bg-tone-info-bg px-1.5 py-px text-micro font-bold uppercase tracking-wider text-tone-info-fg ring-1 ring-tone-info-border">
@@ -122,19 +82,7 @@ export function VoyageBlockHeader(props: {
 
 export function TerminalBlockHeader(props: { readonly block: TerminalBlock }): JSX.Element {
   const { t, keys } = useTranslation()
-
-  const title = () => {
-    switch (props.block.kind) {
-      case 'pre-carriage':
-        return t(keys.shipmentView.timeline.blocks.preCarriage)
-      case 'transshipment-terminal':
-        return t(keys.shipmentView.timeline.blocks.transshipmentTerminal)
-      case 'post-carriage':
-        return t(keys.shipmentView.timeline.blocks.postCarriage)
-      default:
-        return t(keys.shipmentView.timeline.blocks.terminalInland)
-    }
-  }
+  const title = () => toTerminalBlockDisplayTitle(props.block, { t, keys })
 
   const Icon = () => (
     <Switch fallback={<Construction class="w-4 h-4 shrink-0" aria-hidden="true" />}>
@@ -227,20 +175,7 @@ function transshipmentHandoffLabel(
   translate: ReturnType<typeof useTranslation>['t'],
   keys: ReturnType<typeof useTranslation>['keys'],
 ): string | null {
-  if (block.handoffDisplayMode === 'FULL') {
-    return translate(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-      from: block.previousVesselName ?? '?',
-      to: block.nextVesselName ?? '?',
-    })
-  }
-
-  if (block.handoffDisplayMode === 'NEXT_ONLY' && block.nextVesselName !== null) {
-    return translate(keys.shipmentView.timeline.blocks.vesselChangeNextOnly, {
-      to: block.nextVesselName,
-    })
-  }
-
-  return null
+  return toTransshipmentHandoffSummary(block, { t: translate, keys })
 }
 
 function PlannedTransshipmentHandoffCard(props: TransshipmentBlockCardProps): JSX.Element {
@@ -316,7 +251,7 @@ function PlannedTransshipmentHandoffCard(props: TransshipmentBlockCardProps): JS
             <div class="flex flex-wrap items-center gap-1.5">
               <Repeat class="w-4 h-4 shrink-0 text-tone-warning-fg" aria-hidden="true" />
               <span class="text-sm-ui font-semibold text-foreground tracking-tight">
-                {t(keys.shipmentView.timeline.blocks.plannedTransshipment)}
+                {toTransshipmentBlockCanonicalTitle(props.block, { t, keys })}
               </span>
               <Show when={canOpenObservation()}>
                 <ObservationButton
@@ -390,7 +325,7 @@ function ConfirmedTransshipmentBlockCard(props: TransshipmentBlockCardProps): JS
       <div class="flex items-center gap-1.5">
         <Repeat class="w-4 h-4 shrink-0" aria-hidden="true" />
         <span class="text-sm-ui font-bold text-tone-warning-fg tracking-tight">
-          {t(keys.shipmentView.timeline.blocks.transshipment)}
+          {toTransshipmentBlockCanonicalTitle(props.block, { t, keys })}
         </span>
       </div>
       <Show when={props.block.port}>
@@ -416,17 +351,7 @@ export function PlannedTransshipmentBlockCard(props: {
   readonly block: PlannedTransshipmentBlock
 }): JSX.Element {
   const { t, keys, locale } = useTranslation()
-
-  const handoffSummary = () => {
-    if (!props.block.fromVessel && !props.block.toVessel) {
-      return null
-    }
-
-    return t(keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-      from: props.block.fromVessel ?? '?',
-      to: props.block.toVessel ?? '?',
-    })
-  }
+  const handoffSummary = () => toPlannedTransshipmentHandoffSummary(props.block, { t, keys })
 
   const nextLeg = () => {
     const details = [props.block.toVessel, props.block.toVoyage].filter((value): value is string =>
@@ -446,7 +371,7 @@ export function PlannedTransshipmentBlockCard(props: {
       <div class="flex items-center gap-1.5">
         <Hourglass class="h-4 w-4 shrink-0" aria-hidden="true" />
         <span class="text-sm-ui font-bold tracking-tight text-tone-info-fg">
-          {t(keys.shipmentView.timeline.blocks.plannedTransshipment)}
+          {toPlannedTransshipmentBlockCanonicalTitle({ t, keys })}
         </span>
       </div>
       <Show when={props.block.port}>

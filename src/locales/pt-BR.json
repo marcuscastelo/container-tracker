@@ -445,6 +445,8 @@
         "transshipmentTerminal": "Terminal de Transbordo",
         "transshipment": "Transbordo",
         "plannedTransshipment": "Transbordo Planejado",
+        "events": "Eventos",
+        "markers": "Marcadores",
         "transshipmentPort": "Transbordo — {{port}}",
         "vesselChange": "Troca de navio",
         "vesselChangeDetail": "{{from}} → {{to}}",

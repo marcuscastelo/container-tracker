@@ -1,6 +1,10 @@
 import { resolveTimelineEventLabel } from '~/modules/process/ui/mappers/trackingEventLabel.ui-mapper'
 import type { TrackingTimeTravelSyncVM } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
 import {
+  resolveCurrentVoyageIndex,
+  toCurrentVoyageGroups,
+} from '~/modules/process/ui/timeline/currentVoyage'
+import {
   buildTimelineRenderList,
   type PlannedTransshipmentBlock,
   type TerminalBlock,
@@ -8,6 +12,22 @@ import {
   type TransshipmentBlock,
   type VoyageBlock,
 } from '~/modules/process/ui/timeline/timelineBlockModel'
+import {
+  toPlannedTransshipmentBlockCanonicalTitle,
+  toPlannedTransshipmentBlockDisplayTitle,
+  toPlannedTransshipmentHandoffSummary,
+  toTerminalBlockCanonicalTitle,
+  toTerminalBlockDisplayTitle,
+  toTimelineEventsBlockTitle,
+  toTimelineMarkersBlockTitle,
+  toTransshipmentBlockCanonicalTitle,
+  toTransshipmentBlockDisplayTitle,
+  toTransshipmentHandoffSummary,
+  toVoyageBlockBadges,
+  toVoyageBlockCanonicalTitle,
+  toVoyageBlockDisplayTitle,
+  toVoyageBlockRoute,
+} from '~/modules/process/ui/timeline/timelineBlockPresentation'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TranslationKeys } from '~/shared/localization/translationTypes'
 import { systemClock } from '~/shared/time/clock'
@@ -146,6 +166,25 @@ function pushKeyValue(lines: string[], key: string, value: string | null): void 
   lines.push(`${key}: ${value}`)
 }
 
+function pushBlockHeader(
+  lines: string[],
+  command: {
+    readonly kind: string
+    readonly canonicalTitle: string
+    readonly displayTitle: string
+    readonly badges?: readonly string[]
+  },
+): void {
+  pushLine(lines, `## Bloco: ${command.canonicalTitle}`)
+  pushLine(lines, `block_kind: ${command.kind}`)
+  pushLine(lines, `block_title_canonical: ${command.canonicalTitle}`)
+  pushLine(lines, `block_title_display: ${command.displayTitle}`)
+
+  if ((command.badges?.length ?? 0) > 0) {
+    pushLine(lines, `block_badges: ${command.badges?.join(' | ') ?? ''}`)
+  }
+}
+
 function toTerminalBlockKind(block: TerminalBlock): string {
   switch (block.kind) {
     case 'pre-carriage':
@@ -154,20 +193,6 @@ function toTerminalBlockKind(block: TerminalBlock): string {
       return 'TRANSSHIPMENT_TERMINAL'
     case 'post-carriage':
       return 'POST_CARRIAGE'
-  }
-}
-
-function toTerminalBlockTitle(
-  block: TerminalBlock,
-  dependencies: TimelineTextExportDependencies,
-): string {
-  switch (block.kind) {
-    case 'pre-carriage':
-      return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.preCarriage)
-    case 'transshipment-terminal':
-      return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.transshipmentTerminal)
-    case 'post-carriage':
-      return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.postCarriage)
   }
 }
 
@@ -198,37 +223,6 @@ function toMarkerLabel(
     : dependencies.t(dependencies.keys.shipmentView.timeline.blocks.portRiskShort, {
         days: item.marker.durationDays,
       })
-}
-
-function toRoute(block: VoyageBlock, dependencies: TimelineTextExportDependencies): string | null {
-  if (block.origin === null && block.destination === null) {
-    return null
-  }
-
-  return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.voyageRoute, {
-    origin: block.origin ?? '?',
-    destination: block.destination ?? '?',
-  })
-}
-
-function toHandoffSummary(
-  block: TransshipmentBlock,
-  dependencies: TimelineTextExportDependencies,
-): string | null {
-  if (block.handoffDisplayMode === 'FULL') {
-    return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-      from: block.previousVesselName ?? '?',
-      to: block.nextVesselName ?? '?',
-    })
-  }
-
-  if (block.handoffDisplayMode === 'NEXT_ONLY' && block.nextVesselName !== null) {
-    return dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeNextOnly, {
-      to: block.nextVesselName,
-    })
-  }
-
-  return null
 }
 
 function toIntermediatePorts(source: TimelineTextExportSource): string | null {
@@ -297,7 +291,14 @@ function serializeBlockChildren(
 
   while (index < renderList.length) {
     const child = renderList[index]
-    if (child === undefined || child.type === 'block-end') {
+    if (
+      child === undefined ||
+      child.type === 'block-end' ||
+      child.type === 'voyage-block' ||
+      child.type === 'terminal-block' ||
+      child.type === 'transshipment-block' ||
+      child.type === 'planned-transshipment-block'
+    ) {
       break
     }
 
@@ -313,23 +314,161 @@ function serializeBlockChildren(
   return renderList[index]?.type === 'block-end' ? index + 1 : index
 }
 
+function serializeInlineMarkerChildren(
+  lines: string[],
+  renderList: readonly TimelineRenderItem[],
+  startIndex: number,
+  dependencies: TimelineTextExportDependencies,
+): number {
+  let index = startIndex
+
+  while (index < renderList.length) {
+    const child = renderList[index]
+    if (child === undefined || (child.type !== 'gap-marker' && child.type !== 'port-risk-marker')) {
+      break
+    }
+
+    serializeMarker(lines, child, dependencies)
+    index += 1
+  }
+
+  return index
+}
+
+function serializeStandaloneItems(
+  lines: string[],
+  renderList: readonly TimelineRenderItem[],
+  startIndex: number,
+  dependencies: TimelineTextExportDependencies,
+): number {
+  const firstItem = renderList[startIndex]
+  if (firstItem === undefined) {
+    return startIndex
+  }
+
+  if (firstItem.type === 'gap-marker' || firstItem.type === 'port-risk-marker') {
+    const title = toTimelineMarkersBlockTitle(dependencies)
+    pushBlockHeader(lines, {
+      kind: 'TIMELINE_MARKERS',
+      canonicalTitle: title,
+      displayTitle: title,
+    })
+
+    let index = startIndex
+    while (index < renderList.length) {
+      const child = renderList[index]
+      if (
+        child === undefined ||
+        (child.type !== 'gap-marker' && child.type !== 'port-risk-marker')
+      ) {
+        break
+      }
+
+      serializeMarker(lines, child, dependencies)
+      index += 1
+    }
+
+    return index
+  }
+
+  const title = toTimelineEventsBlockTitle(dependencies)
+  pushBlockHeader(lines, {
+    kind: 'TIMELINE_EVENTS',
+    canonicalTitle: title,
+    displayTitle: title,
+  })
+
+  let index = startIndex
+  while (index < renderList.length) {
+    const child = renderList[index]
+    if (
+      child === undefined ||
+      child.type === 'block-end' ||
+      child.type === 'voyage-block' ||
+      child.type === 'terminal-block' ||
+      child.type === 'transshipment-block' ||
+      child.type === 'planned-transshipment-block'
+    ) {
+      break
+    }
+
+    if (child.type === 'event') {
+      serializeEvent(lines, child, dependencies)
+    } else if (child.type === 'gap-marker' || child.type === 'port-risk-marker') {
+      serializeMarker(lines, child, dependencies)
+    }
+
+    index += 1
+  }
+
+  return index
+}
+
+function buildRenderIndexToCurrentVoyageGroupIndex(
+  renderList: readonly TimelineRenderItem[],
+): ReadonlyMap<number, number> {
+  const groupIndexByRenderIndex = new Map<number, number>()
+  let groupIndex = 0
+  let index = 0
+
+  while (index < renderList.length) {
+    const item = renderList[index]
+    if (item === undefined) {
+      break
+    }
+
+    if (item.type === 'block-end') {
+      index += 1
+      continue
+    }
+
+    groupIndexByRenderIndex.set(index, groupIndex)
+
+    if (item.type === 'voyage-block' || item.type === 'terminal-block') {
+      groupIndex += 1
+      index += 1
+      while (index < renderList.length) {
+        const child = renderList[index]
+        if (
+          child === undefined ||
+          child.type === 'block-end' ||
+          child.type === 'voyage-block' ||
+          child.type === 'terminal-block' ||
+          child.type === 'transshipment-block' ||
+          child.type === 'planned-transshipment-block'
+        ) {
+          break
+        }
+        index += 1
+      }
+      if (renderList[index]?.type === 'block-end') {
+        index += 1
+      }
+      continue
+    }
+
+    groupIndex += 1
+    index += 1
+  }
+
+  return groupIndexByRenderIndex
+}
+
 function serializeVoyageBlock(
   lines: string[],
   block: VoyageBlock,
   dependencies: TimelineTextExportDependencies,
+  options?: { readonly isCurrent?: boolean },
 ): void {
-  pushLine(
-    lines,
-    `## Bloco: ${dependencies.t(dependencies.keys.shipmentView.timeline.blocks.voyage)}`,
-  )
-  pushLine(lines, 'block_kind: VOYAGE')
-  pushLine(
-    lines,
-    `block_title: ${dependencies.t(dependencies.keys.shipmentView.timeline.blocks.voyage)}`,
-  )
+  pushBlockHeader(lines, {
+    kind: 'VOYAGE',
+    canonicalTitle: toVoyageBlockCanonicalTitle(dependencies),
+    displayTitle: toVoyageBlockDisplayTitle(block, dependencies),
+    badges: toVoyageBlockBadges(dependencies, options),
+  })
   pushKeyValue(lines, 'vessel', block.vessel)
   pushKeyValue(lines, 'voyage', block.voyage)
-  pushKeyValue(lines, 'route', toRoute(block, dependencies))
+  pushKeyValue(lines, 'route', toVoyageBlockRoute(block, dependencies))
 }
 
 function serializeTerminalBlock(
@@ -337,9 +476,11 @@ function serializeTerminalBlock(
   block: TerminalBlock,
   dependencies: TimelineTextExportDependencies,
 ): void {
-  pushLine(lines, `## Bloco: ${toTerminalBlockTitle(block, dependencies)}`)
-  pushLine(lines, `block_kind: ${toTerminalBlockKind(block)}`)
-  pushLine(lines, `block_title: ${toTerminalBlockTitle(block, dependencies)}`)
+  pushBlockHeader(lines, {
+    kind: toTerminalBlockKind(block),
+    canonicalTitle: toTerminalBlockCanonicalTitle(block, dependencies),
+    displayTitle: toTerminalBlockDisplayTitle(block, dependencies),
+  })
   pushKeyValue(lines, 'location', block.location)
 }
 
@@ -349,19 +490,16 @@ function serializeTransshipmentBlock(
   dependencies: TimelineTextExportDependencies,
 ): void {
   const isPlanned = block.mode === 'planned'
-  const title = dependencies.t(
-    isPlanned
-      ? dependencies.keys.shipmentView.timeline.blocks.plannedTransshipment
-      : dependencies.keys.shipmentView.timeline.blocks.transshipment,
-  )
   const representativeEvent = block.events[block.events.length - 1] ?? null
 
-  pushLine(lines, `## Bloco: ${title}`)
-  pushLine(lines, `block_kind: ${isPlanned ? 'PLANNED_TRANSSHIPMENT' : 'TRANSSHIPMENT'}`)
-  pushLine(lines, `block_title: ${title}`)
+  pushBlockHeader(lines, {
+    kind: isPlanned ? 'PLANNED_TRANSSHIPMENT' : 'TRANSSHIPMENT',
+    canonicalTitle: toTransshipmentBlockCanonicalTitle(block, dependencies),
+    displayTitle: toTransshipmentBlockDisplayTitle(block, dependencies),
+  })
   pushLine(lines, `transshipment_mode: ${block.mode.toUpperCase()}`)
   pushKeyValue(lines, 'location', block.port)
-  pushKeyValue(lines, 'handoff_summary', toHandoffSummary(block, dependencies))
+  pushKeyValue(lines, 'handoff_summary', toTransshipmentHandoffSummary(block, dependencies))
   pushKeyValue(lines, 'reason', block.reason)
   if (isPlanned && representativeEvent !== null) {
     pushLine(lines, `canonical_type: ${representativeEvent.type}`)
@@ -385,26 +523,13 @@ function serializePlannedTransshipmentBlock(
   block: PlannedTransshipmentBlock,
   dependencies: TimelineTextExportDependencies,
 ): void {
-  pushLine(
-    lines,
-    `## Bloco: ${dependencies.t(dependencies.keys.shipmentView.timeline.blocks.plannedTransshipment)}`,
-  )
-  pushLine(lines, 'block_kind: PLANNED_TRANSSHIPMENT')
-  pushLine(
-    lines,
-    `block_title: ${dependencies.t(dependencies.keys.shipmentView.timeline.blocks.plannedTransshipment)}`,
-  )
+  pushBlockHeader(lines, {
+    kind: 'PLANNED_TRANSSHIPMENT',
+    canonicalTitle: toPlannedTransshipmentBlockCanonicalTitle(dependencies),
+    displayTitle: toPlannedTransshipmentBlockDisplayTitle(dependencies),
+  })
   pushKeyValue(lines, 'location', block.port)
-  pushKeyValue(
-    lines,
-    'handoff_summary',
-    block.fromVessel === null && block.toVessel === null
-      ? null
-      : dependencies.t(dependencies.keys.shipmentView.timeline.blocks.vesselChangeDetail, {
-          from: block.fromVessel ?? '?',
-          to: block.toVessel ?? '?',
-        }),
-  )
+  pushKeyValue(lines, 'handoff_summary', toPlannedTransshipmentHandoffSummary(block, dependencies))
   pushLine(lines, `canonical_type: ${block.event.type}`)
   pushLine(lines, `event_time_type: ${block.event.eventTimeType}`)
   pushKeyValue(
@@ -448,6 +573,8 @@ export function serializeTimelineToText(
     pushLine(lines, '')
   }
 
+  const currentVoyageIndex = resolveCurrentVoyageIndex(toCurrentVoyageGroups(source.renderList))
+  const groupIndexByRenderIndex = buildRenderIndexToCurrentVoyageGroupIndex(source.renderList)
   let index = 0
   while (index < source.renderList.length) {
     const item = source.renderList[index]
@@ -457,7 +584,9 @@ export function serializeTimelineToText(
 
     switch (item.type) {
       case 'voyage-block':
-        serializeVoyageBlock(lines, item.block, dependencies)
+        serializeVoyageBlock(lines, item.block, dependencies, {
+          isCurrent: groupIndexByRenderIndex.get(index) === currentVoyageIndex,
+        })
         index = serializeBlockChildren(lines, source.renderList, index + 1, dependencies)
         pushLine(lines, '')
         continue
@@ -468,27 +597,18 @@ export function serializeTimelineToText(
         continue
       case 'transshipment-block':
         serializeTransshipmentBlock(lines, item.block, dependencies)
-        index += 1
+        index = serializeInlineMarkerChildren(lines, source.renderList, index + 1, dependencies)
         pushLine(lines, '')
         continue
       case 'planned-transshipment-block':
         serializePlannedTransshipmentBlock(lines, item.block, dependencies)
-        index += 1
+        index = serializeInlineMarkerChildren(lines, source.renderList, index + 1, dependencies)
         pushLine(lines, '')
         continue
       case 'event':
-        pushLine(lines, '## Bloco: Eventos')
-        pushLine(lines, 'block_kind: STANDALONE_EVENTS')
-        serializeEvent(lines, item, dependencies)
-        index += 1
-        pushLine(lines, '')
-        continue
       case 'gap-marker':
       case 'port-risk-marker':
-        pushLine(lines, '## Bloco: Marcadores')
-        pushLine(lines, 'block_kind: STANDALONE_MARKERS')
-        serializeMarker(lines, item, dependencies)
-        index += 1
+        index = serializeStandaloneItems(lines, source.renderList, index, dependencies)
         pushLine(lines, '')
         continue
       case 'block-end':

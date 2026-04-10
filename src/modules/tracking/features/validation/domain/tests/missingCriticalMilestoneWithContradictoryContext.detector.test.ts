@@ -60,6 +60,103 @@ function detectFindings(observations: readonly Observation[]) {
   return missingCriticalMilestoneWithContradictoryContextDetector.detect(makeContext(observations))
 }
 
+function makeSplitLegTransshipmentObservations(command?: {
+  readonly includeTerminalMoves?: boolean
+  readonly includeSamePortDischargeDuplicate?: boolean
+}): readonly Observation[] {
+  const samePortDuplicate = command?.includeSamePortDischargeDuplicate
+    ? [
+        makeObservation({
+          id: 'colombo-discharge-arica-duplicate',
+          type: 'DISCHARGE',
+          location_code: 'LKCMB',
+          location_display: 'Colombo',
+          vessel_name: 'MSC ARICA',
+          voyage: 'OB610R',
+          created_at: '2026-03-28T11:30:00.000Z',
+          event_time: temporalValueFromCanonical('2026-03-28T10:00:00.000Z'),
+          carrier_label: 'Full Transshipment Discharged',
+        }),
+      ]
+    : []
+
+  const terminalMoves = command?.includeTerminalMoves
+    ? [
+        makeObservation({
+          id: 'colombo-positioned-in',
+          type: 'TRANSSHIPMENT_POSITIONED_IN',
+          location_code: 'LKCMB',
+          location_display: 'Colombo',
+          vessel_name: null,
+          voyage: null,
+          created_at: '2026-03-29T08:30:00.000Z',
+          event_time: temporalValueFromCanonical('2026-03-29T08:00:00.000Z'),
+          carrier_label: 'Full Transshipment Positioned In',
+        }),
+        makeObservation({
+          id: 'colombo-positioned-out',
+          type: 'TRANSSHIPMENT_POSITIONED_OUT',
+          location_code: 'LKCMB',
+          location_display: 'Colombo',
+          vessel_name: null,
+          voyage: null,
+          created_at: '2026-03-29T18:30:00.000Z',
+          event_time: temporalValueFromCanonical('2026-03-29T18:00:00.000Z'),
+          carrier_label: 'Full Transshipment Positioned Out',
+        }),
+      ]
+    : []
+
+  return [
+    makeObservation({
+      id: 'karachi-load-arica',
+      type: 'LOAD',
+      location_code: 'PKKHI',
+      location_display: 'Karachi',
+      vessel_name: 'MSC ARICA',
+      voyage: 'OB610R',
+      created_at: '2026-03-19T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-19T10:00:00.000Z'),
+      carrier_label: 'Export Loaded on Vessel',
+    }),
+    makeObservation({
+      id: 'colombo-discharge-arica',
+      type: 'DISCHARGE',
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: 'MSC ARICA',
+      voyage: 'IV610A',
+      created_at: '2026-03-28T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-28T10:00:00.000Z'),
+      carrier_label: 'Full Transshipment Discharged',
+    }),
+    ...samePortDuplicate,
+    ...terminalMoves,
+    makeObservation({
+      id: 'colombo-load-violetta',
+      type: 'LOAD',
+      location_code: 'LKCMB',
+      location_display: 'Colombo',
+      vessel_name: 'GSL VIOLETTA',
+      voyage: 'ZF609R',
+      created_at: '2026-03-31T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-03-31T10:00:00.000Z'),
+      carrier_label: 'Full Transshipment Loaded',
+    }),
+    makeObservation({
+      id: 'singapore-discharge-violetta',
+      type: 'DISCHARGE',
+      location_code: 'SGSIN',
+      location_display: 'Singapore',
+      vessel_name: 'GSL VIOLETTA',
+      voyage: 'ZF609R',
+      created_at: '2026-04-07T10:30:00.000Z',
+      event_time: temporalValueFromCanonical('2026-04-07T10:00:00.000Z'),
+      carrier_label: 'Import Discharged from Vessel',
+    }),
+  ]
+}
+
 describe('missingCriticalMilestoneWithContradictoryContextDetector', () => {
   it('does not emit a finding when the ACTUAL maritime sequence is complete', () => {
     const findings = detectFindings([
@@ -98,6 +195,62 @@ describe('missingCriticalMilestoneWithContradictoryContextDetector', () => {
     expect(findings).toEqual([])
   })
 
+  it('does not emit when a new LOAD ACTUAL opens a distinct maritime leg', () => {
+    const findings = detectFindings(makeSplitLegTransshipmentObservations())
+
+    expect(findings).toEqual([])
+  })
+
+  it('does not emit when same-port transshipment helper events sit between maritime legs', () => {
+    const findings = detectFindings(
+      makeSplitLegTransshipmentObservations({ includeTerminalMoves: true }),
+    )
+
+    expect(findings).toEqual([])
+  })
+
+  it('does not emit for the Colombo transshipment case when the same discharge is duplicated at the same port', () => {
+    const findings = detectFindings(
+      makeSplitLegTransshipmentObservations({
+        includeSamePortDischargeDuplicate: true,
+        includeTerminalMoves: true,
+      }),
+    )
+
+    expect(findings).toEqual([])
+  })
+
+  it('does not emit when location codes are absent but location_display normalizes to the same port', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        type: 'LOAD',
+        location_code: null,
+        location_display: 'Colombo',
+        created_at: '2026-04-01T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-01T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: 'Colombo, LK',
+        created_at: '2026-04-10T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-10T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: null,
+        location_display: '  COLOMBO  ',
+        created_at: '2026-04-12T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-12T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toEqual([])
+  })
+
   it('does not emit for a plain LOAD -> DISCHARGE gap', () => {
     const findings = detectFindings([
       makeObservation({
@@ -117,6 +270,56 @@ describe('missingCriticalMilestoneWithContradictoryContextDetector', () => {
     ])
 
     expect(findings).toEqual([])
+  })
+
+  it('emits one ADVISORY finding when DISCHARGE repeats inside the same leg after a missing DEPARTURE', () => {
+    const findings = detectFindings([
+      makeObservation({
+        id: 'load-1',
+        fingerprint: 'load-1',
+        type: 'LOAD',
+        location_code: 'PKKHI',
+        location_display: 'Karachi',
+        vessel_name: 'MSC ARICA',
+        voyage: 'OB610R',
+        created_at: '2026-03-19T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-03-19T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-1',
+        fingerprint: 'discharge-1',
+        type: 'DISCHARGE',
+        location_code: 'LKCMB',
+        location_display: 'Colombo',
+        vessel_name: 'MSC ARICA',
+        voyage: 'IV610A',
+        created_at: '2026-03-28T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-03-28T10:00:00.000Z'),
+      }),
+      makeObservation({
+        id: 'discharge-2',
+        fingerprint: 'discharge-2',
+        type: 'DISCHARGE',
+        location_code: 'SGSIN',
+        location_display: 'Singapore',
+        vessel_name: 'MSC ARICA',
+        voyage: 'IV610A',
+        created_at: '2026-04-07T10:30:00.000Z',
+        event_time: temporalValueFromCanonical('2026-04-07T10:00:00.000Z'),
+      }),
+    ])
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toMatchObject({
+      affectedLocation: 'LKCMB',
+      debugEvidence: {
+        anchorObservationId: 'discharge-1',
+        anchorObservationType: 'DISCHARGE',
+        missingMilestone: 'DEPARTURE',
+        previousObservationId: 'load-1',
+        previousObservationType: 'LOAD',
+      },
+    })
   })
 
   it('does not emit for a plain DEPARTURE -> DISCHARGE gap', () => {
