@@ -10,6 +10,7 @@ import {
   toHistoricalTimelineTextExportSource,
 } from '~/modules/process/ui/screens/shipment/lib/serializeTimelineToText'
 import type { TrackingTimeTravelSyncVM } from '~/modules/process/ui/screens/shipment/types/tracking-time-travel.vm'
+import type { TimelineRenderItem } from '~/modules/process/ui/timeline/timelineBlockModel'
 import type { ContainerDetailVM } from '~/modules/process/ui/viewmodels/shipment.vm'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import { createTranslationApi } from '~/shared/localization/i18n'
@@ -274,7 +275,8 @@ it('serializes a simple timeline with pre-carriage, a single voyage and an expec
       '',
       '## Bloco: Pré-transporte',
       'block_kind: PRE_CARRIAGE',
-      'block_title: Pré-transporte',
+      'block_title_canonical: Pré-transporte',
+      'block_title_display: Pré-transporte',
       'location: FAISALABAD, PK',
       '- label: Saída do Terminal',
       '  type: GATE_OUT',
@@ -284,7 +286,9 @@ it('serializes a simple timeline with pre-carriage, a single voyage and an expec
       '',
       '## Bloco: Viagem',
       'block_kind: VOYAGE',
-      'block_title: Viagem',
+      'block_title_canonical: Viagem',
+      'block_title_display: MSC ARICA',
+      'block_badges: Atual',
       'vessel: MSC ARICA',
       'voyage: OB610R',
       'route: KARACHI-MUHAMMAD BIN QASIM, PK → SANTOS, BR',
@@ -384,7 +388,8 @@ it('serializes a real transshipment with voyage, handoff block, terminal block a
       '',
       '## Bloco: Viagem',
       'block_kind: VOYAGE',
-      'block_title: Viagem',
+      'block_title_canonical: Viagem',
+      'block_title_display: MSC ARICA',
       'vessel: MSC ARICA',
       'voyage: OB610R',
       'route: KARACHI, PK → COLOMBO, LK',
@@ -405,7 +410,8 @@ it('serializes a real transshipment with voyage, handoff block, terminal block a
       '',
       '## Bloco: Transbordo',
       'block_kind: TRANSSHIPMENT',
-      'block_title: Transbordo',
+      'block_title_canonical: Transbordo',
+      'block_title_display: Transbordo',
       'transshipment_mode: CONFIRMED',
       'location: COLOMBO, LK',
       'handoff_summary: MSC ARICA → GSL VIOLETTA',
@@ -417,7 +423,8 @@ it('serializes a real transshipment with voyage, handoff block, terminal block a
       '',
       '## Bloco: Terminal de Transbordo',
       'block_kind: TRANSSHIPMENT_TERMINAL',
-      'block_title: Terminal de Transbordo',
+      'block_title_canonical: Terminal de Transbordo',
+      'block_title_display: Terminal de Transbordo',
       'location: COLOMBO, LK',
       '- label: Entrada Operacional no Transbordo',
       '  type: TRANSSHIPMENT_POSITIONED_IN',
@@ -427,7 +434,9 @@ it('serializes a real transshipment with voyage, handoff block, terminal block a
       '',
       '## Bloco: Viagem',
       'block_kind: VOYAGE',
-      'block_title: Viagem',
+      'block_title_canonical: Viagem',
+      'block_title_display: GSL VIOLETTA',
+      'block_badges: Atual',
       'vessel: GSL VIOLETTA',
       'voyage: 2613W',
       'route: COLOMBO, LK → SANTOS, BR',
@@ -519,7 +528,8 @@ it('serializes an explicit planned transshipment block with future leg metadata'
     [
       '## Bloco: Transbordo Planejado',
       'block_kind: PLANNED_TRANSSHIPMENT',
-      'block_title: Transbordo Planejado',
+      'block_title_canonical: Transbordo Planejado',
+      'block_title_display: Transbordo Planejado',
       'transshipment_mode: PLANNED',
       'location: SINGAPORE, SG',
       'handoff_summary: MSC ARICA → SAO PAULO EXPRESS',
@@ -582,7 +592,8 @@ it('preserves heterogeneous block order and serializes visible gap and port-risk
     [
       '## Bloco: Viagem',
       'block_kind: VOYAGE',
-      'block_title: Viagem',
+      'block_title_canonical: Viagem',
+      'block_title_display: MSC ARICA',
       'vessel: MSC ARICA',
       'voyage: OB610R',
       'route: KARACHI, PK → SANTOS, BR',
@@ -704,13 +715,16 @@ it('omits optional fields cleanly when vessel, voyage and handoff summary are un
       '',
       '## Bloco: Transbordo',
       'block_kind: TRANSSHIPMENT',
-      'block_title: Transbordo',
+      'block_title_canonical: Transbordo',
+      'block_title_display: Transbordo',
       'transshipment_mode: CONFIRMED',
       'location: COLOMBO, LK',
       '',
       '## Bloco: Viagem',
       'block_kind: VOYAGE',
-      'block_title: Viagem',
+      'block_title_canonical: Viagem',
+      'block_title_display: Viagem',
+      'route: ? → SANTOS, BR',
       '- label: Chegada ao Porto',
       '  type: ARRIVAL',
       '  event_time_type: EXPECTED',
@@ -815,7 +829,9 @@ it('uses the visible historical checkpoint and its reference_now for export', ()
       '',
       '## Bloco: Viagem',
       'block_kind: VOYAGE',
-      'block_title: Viagem',
+      'block_title_canonical: Viagem',
+      'block_title_display: SAO PAULO EXPRESS',
+      'block_badges: Atual',
       'vessel: SAO PAULO EXPRESS',
       'voyage: 2613W',
       'route: SINGAPORE, SG → SANTOS, BR',
@@ -889,4 +905,309 @@ it('uses the visible historical checkpoint and its reference_now for export', ()
 
   expect(historicalWithoutContainer).not.toContain('UNKNOWN')
   expect(historicalWithoutContainer.split('\n')[1]).toBe('export_mode: HISTORICAL')
+})
+
+it('keeps planned-block markers under the planned transshipment instead of emitting standalone markers', () => {
+  const source = makeCurrentSource(
+    makeContainer({
+      currentContext: {
+        locationCode: 'SGSIN',
+        locationDisplay: 'SINGAPORE, SG',
+        vesselName: 'MSC MIRAYA V',
+        voyage: 'OB612R',
+        vesselVisible: true,
+      },
+      transshipment: {
+        hasTransshipment: true,
+        count: 1,
+        ports: [
+          {
+            code: 'SGSIN',
+            display: 'SINGAPORE, SG',
+          },
+        ],
+      },
+      timeline: [
+        makeEvent({
+          id: 'leg-a-load',
+          type: 'LOAD',
+          eventTime: '2026-03-01',
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'KARACHI, PK',
+        }),
+        makeEvent({
+          id: 'leg-a-discharge',
+          type: 'DISCHARGE',
+          eventTime: '2026-03-11',
+          vesselName: 'MSC MIRAYA V',
+          voyage: 'OB612R',
+          location: 'SINGAPORE, SG',
+        }),
+        makeEvent({
+          id: 'planned-intended',
+          type: 'TRANSSHIPMENT_INTENDED',
+          eventTime: '2026-03-12',
+          eventTimeType: 'EXPECTED',
+          location: 'SINGAPORE, SG',
+          vesselName: 'SAO PAULO EXPRESS',
+          voyage: 'SPX001',
+        }),
+        makeEvent({
+          id: 'planned-arrival',
+          type: 'ARRIVAL',
+          eventTime: '2026-04-10',
+          eventTimeType: 'EXPECTED',
+          location: 'SANTOS, BR',
+        }),
+        makeEvent({
+          id: 'planned-discharge',
+          type: 'DISCHARGE',
+          eventTime: '2026-04-12',
+          eventTimeType: 'EXPECTED',
+          location: 'SANTOS, BR',
+        }),
+      ],
+    }),
+  )
+
+  const output = serialize(source)
+
+  expect(output).toContain(
+    [
+      '## Bloco: Transbordo Planejado',
+      'block_kind: PLANNED_TRANSSHIPMENT',
+      'block_title_canonical: Transbordo Planejado',
+      'block_title_display: Transbordo Planejado',
+      'transshipment_mode: PLANNED',
+      'location: SINGAPORE, SG',
+      'handoff_summary: MSC MIRAYA V → SAO PAULO EXPRESS',
+      'canonical_type: TRANSSHIPMENT_INTENDED',
+      'event_time_type: EXPECTED',
+      'date: 12/03/2026',
+      'from_vessel: MSC MIRAYA V',
+      'from_voyage: OB612R',
+      'to_vessel: SAO PAULO EXPRESS',
+      'to_voyage: SPX001',
+      '- marker_kind: GAP',
+      '  label: Intervalo: 29 dias sem novos eventos',
+      '  gap_kind: GENERIC',
+      '  duration_days: 29',
+      '  from_event_type: TRANSSHIPMENT_INTENDED',
+      '  to_event_type: ARRIVAL',
+    ].join('\n'),
+  )
+  expect(output).not.toContain('block_kind: TIMELINE_MARKERS')
+})
+
+it('preserves real voyage discrepancies between block header metadata and child events without inventing a fake alignment', () => {
+  const source = makeCurrentSource(
+    makeContainer({
+      timeline: [
+        makeEvent({
+          id: 'voyage-load',
+          type: 'LOAD',
+          eventTime: '2026-03-19',
+          vesselName: 'MSC ARICA',
+          voyage: 'OB610R',
+          location: 'KARACHI-MUHAMMAD BIN QASIM, PK',
+        }),
+        makeEvent({
+          id: 'voyage-discharge',
+          type: 'DISCHARGE',
+          eventTime: '2026-03-28',
+          vesselName: 'MSC ARICA',
+          voyage: 'IV610A',
+          location: 'COLOMBO, LK',
+        }),
+      ],
+    }),
+  )
+
+  const output = serialize(source)
+
+  expect(output).toContain(
+    [
+      '## Bloco: Viagem',
+      'block_kind: VOYAGE',
+      'block_title_canonical: Viagem',
+      'block_title_display: MSC ARICA',
+      'block_badges: Atual',
+      'vessel: MSC ARICA',
+      'voyage: OB610R',
+      'route: KARACHI-MUHAMMAD BIN QASIM, PK → COLOMBO, LK',
+    ].join('\n'),
+  )
+  expect(output).toContain(
+    [
+      '- label: Descarregado do Navio',
+      '  type: DISCHARGE',
+      '  event_time_type: ACTUAL',
+      '  date: 28/03/2026',
+      '  location: COLOMBO, LK',
+      '  vessel: MSC ARICA',
+      '  voyage: IV610A',
+    ].join('\n'),
+  )
+  expect(output).not.toContain('block_kind: TIMELINE_MARKERS')
+})
+
+it('keeps the current voyage badge aligned when standalone markers appear between voyages', () => {
+  const source: TimelineTextExportSource = {
+    mode: 'current',
+    title: t(keys.shipmentView.timeline.title),
+    containerNumber: 'GLDU2928252',
+    statusCode: 'IN_TRANSIT',
+    statusLabel: t(trackingStatusToLabelKey(keys, 'IN_TRANSIT')),
+    eta: null,
+    currentContext: {
+      locationDisplay: 'SINGAPORE, SG',
+      vesselName: 'GSL VIOLETTA',
+      voyage: '2613W',
+      vesselVisible: true,
+    },
+    transshipment: {
+      hasTransshipment: false,
+      count: 0,
+      ports: [],
+    },
+    referenceNowIso: null,
+    renderList: [
+      {
+        type: 'voyage-block',
+        block: {
+          blockType: 'voyage',
+          vessel: 'MSC ARICA',
+          voyage: 'OB610R',
+          origin: 'KARACHI, PK',
+          destination: 'COLOMBO, LK',
+          events: [
+            makeEvent({
+              id: 'voyage-1-load',
+              type: 'LOAD',
+              eventTime: '2026-04-05',
+              vesselName: 'MSC ARICA',
+              voyage: 'OB610R',
+              location: 'KARACHI, PK',
+            }),
+            makeEvent({
+              id: 'voyage-1-discharge',
+              type: 'DISCHARGE',
+              eventTime: '2026-04-06',
+              vesselName: 'MSC ARICA',
+              voyage: 'OB610R',
+              location: 'COLOMBO, LK',
+            }),
+          ],
+        },
+      },
+      {
+        type: 'block-end',
+      },
+      {
+        type: 'gap-marker',
+        marker: {
+          blockType: 'gap-marker',
+          kind: 'generic',
+          durationDays: 2,
+          fromEventType: 'DISCHARGE',
+          toEventType: 'LOAD',
+        },
+      },
+      {
+        type: 'port-risk-marker',
+        marker: {
+          blockType: 'port-risk-marker',
+          durationDays: 3,
+          ongoing: false,
+          severity: 'warning',
+        },
+      },
+      {
+        type: 'voyage-block',
+        block: {
+          blockType: 'voyage',
+          vessel: 'GSL VIOLETTA',
+          voyage: '2613W',
+          origin: 'SINGAPORE, SG',
+          destination: 'SANTOS, BR',
+          events: [
+            makeEvent({
+              id: 'voyage-2-load',
+              type: 'LOAD',
+              eventTime: '2026-04-08',
+              vesselName: 'GSL VIOLETTA',
+              voyage: '2613W',
+              location: 'SINGAPORE, SG',
+            }),
+            makeEvent({
+              id: 'voyage-2-departure',
+              type: 'DEPARTURE',
+              eventTime: '2026-04-09',
+              vesselName: 'GSL VIOLETTA',
+              voyage: '2613W',
+              location: 'SINGAPORE, SG',
+            }),
+          ],
+        },
+      },
+      {
+        type: 'block-end',
+      },
+    ] satisfies readonly TimelineRenderItem[],
+  }
+
+  const output = serialize(source)
+
+  expect(output).toContain('block_title_display: GSL VIOLETTA\nblock_badges: Atual')
+  expect(output).not.toContain('block_title_display: MSC ARICA\nblock_badges: Atual')
+  expect(output).toContain('block_kind: TIMELINE_MARKERS')
+  expect(output).toContain('label: Intervalo: 2 dias sem novos eventos')
+  expect(output).toContain('label: No porto por 3 dias')
+})
+
+it('uses a readable timeline markers fallback only when markers are truly standalone', () => {
+  const source: TimelineTextExportSource = {
+    mode: 'current',
+    title: t(keys.shipmentView.timeline.title),
+    containerNumber: 'MSCU9999999',
+    statusCode: 'IN_PROGRESS',
+    statusLabel: t(trackingStatusToLabelKey(keys, 'IN_PROGRESS')),
+    eta: null,
+    currentContext: {
+      locationDisplay: null,
+      vesselName: null,
+      voyage: null,
+      vesselVisible: true,
+    },
+    transshipment: {
+      hasTransshipment: false,
+      count: 0,
+      ports: [],
+    },
+    referenceNowIso: null,
+    renderList: [
+      {
+        type: 'gap-marker',
+        marker: {
+          blockType: 'gap-marker',
+          kind: 'generic',
+          durationDays: 4,
+          fromEventType: 'GATE_IN',
+          toEventType: 'GATE_OUT',
+        },
+      },
+    ],
+  }
+
+  expect(serialize(source)).toContain(
+    [
+      '## Bloco: Marcadores',
+      'block_kind: TIMELINE_MARKERS',
+      'block_title_canonical: Marcadores',
+      'block_title_display: Marcadores',
+      '- marker_kind: GAP',
+      '  label: Intervalo: 4 dias sem novos eventos',
+    ].join('\n'),
+  )
 })
