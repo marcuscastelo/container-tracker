@@ -137,7 +137,7 @@ export async function fetchRecognizedAlertIncidents(
   return response.recognized.map(toAlertIncidentVm)
 }
 
-export async function fetchTimelineSeriesHistory(
+export async function fetchTimelinePredictionHistory(
   containerId: string,
   timelineItemId: string,
 ): Promise<PredictionHistorySource> {

@@ -4,7 +4,7 @@ import { ObservationInspector } from '~/modules/process/ui/components/Observatio
 import { PredictionHistoryModal } from '~/modules/process/ui/components/PredictionHistoryModal'
 import {
   fetchObservationInspector,
-  fetchTimelineSeriesHistory,
+  fetchTimelinePredictionHistory,
 } from '~/modules/process/ui/fetchProcessTrackingDetails'
 import { toPredictionHistoryModalVM } from '~/modules/process/ui/mappers/predictionHistory.ui-mapper'
 import {
@@ -41,7 +41,9 @@ type DateLabelProps = {
   readonly toTooltip: (iso?: TemporalValueDto | null) => string | undefined
 }
 
-type PredictionHistorySourceState = Awaited<ReturnType<typeof fetchTimelineSeriesHistory>> | null
+type PredictionHistorySourceState = Awaited<
+  ReturnType<typeof fetchTimelinePredictionHistory>
+> | null
 
 function toOptionalTimelineNodeLayoutProps(params: {
   readonly nonMappedBadgeLabel: string | undefined
@@ -127,7 +129,7 @@ function usePredictionHistoryController(command: {
   )
 
   createEffect(() => {
-    command.event().id
+    void command.event().id
     setShowPredictionHistory(false)
     setPredictionHistorySource(null)
     setSeriesHistoryLoading(false)
@@ -148,7 +150,7 @@ function usePredictionHistoryController(command: {
 
     setSeriesHistoryLoading(true)
     try {
-      const loadedPredictionHistory = await fetchTimelineSeriesHistory(
+      const loadedPredictionHistory = await fetchTimelinePredictionHistory(
         command.containerId(),
         event.id,
       )
@@ -184,7 +186,7 @@ function useObservationInspectorController(command: {
   const [observationErrorMessage, setObservationErrorMessage] = createSignal<string | null>(null)
 
   createEffect(() => {
-    command.event().id
+    void command.event().id
     setShowObservationInspector(false)
     setObservation(command.initialObservation())
     setObservationLoading(false)

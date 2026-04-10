@@ -390,22 +390,32 @@ const PredictionHistoryTransitionKindResponseSchema = z.enum([
   'VOYAGE_CHANGED_AFTER_CONFIRMATION',
 ])
 
-const PredictionHistoryVersionResponseSchema = z.object({
-  id: z.string(),
-  is_current: z.boolean(),
-  type: z.string(),
-  event_time: TemporalValueDtoSchema.nullable(),
-  event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
-  vessel_name: z.string().nullable(),
-  voyage: z.string().nullable(),
-  version_state: PredictionHistoryVersionStateResponseSchema,
-  explanatory_text_kind: PredictionHistoryExplanatoryTextKindResponseSchema.nullable(),
-  transition_kind_from_previous_version: PredictionHistoryTransitionKindResponseSchema.nullable(),
-  observed_at_count: z.number().int().positive(),
-  observed_at_list: z.array(z.string()),
-  first_observed_at: z.string(),
-  last_observed_at: z.string(),
-})
+const PredictionHistoryVersionResponseSchema = z
+  .object({
+    id: z.string(),
+    is_current: z.boolean(),
+    type: z.string(),
+    event_time: TemporalValueDtoSchema.nullable(),
+    event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
+    vessel_name: z.string().nullable(),
+    voyage: z.string().nullable(),
+    version_state: PredictionHistoryVersionStateResponseSchema,
+    explanatory_text_kind: PredictionHistoryExplanatoryTextKindResponseSchema.nullable(),
+    transition_kind_from_previous_version: PredictionHistoryTransitionKindResponseSchema.nullable(),
+    observed_at_count: z.number().int().positive(),
+    observed_at_list: z.array(z.string()).min(1),
+    first_observed_at: z.string(),
+    last_observed_at: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.observed_at_list.length !== value.observed_at_count) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['observed_at_list'],
+        message: 'observed_at_list must match observed_at_count',
+      })
+    }
+  })
 
 export const TrackingPredictionHistoryResponseSchema = z.object({
   header: z.object({
