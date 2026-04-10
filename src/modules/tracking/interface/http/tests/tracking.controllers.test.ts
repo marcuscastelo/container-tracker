@@ -420,6 +420,95 @@ describe('tracking controllers', () => {
     ])
   })
 
+  it('series-history drilldown exposes voyage conflict metadata for merged discharge ACTUAL siblings', async () => {
+    const containerId = 'container-discharge-voyage-conflict'
+    const observations: readonly Observation[] = [
+      {
+        id: 'discharge-old',
+        fingerprint: 'fp-discharge-old',
+        container_id: containerId,
+        container_number: 'GLDU2928252',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        location_code: 'LKCMB',
+        location_display: 'COLOMBO, LK',
+        vessel_name: 'MSC ARICA',
+        voyage: 'IV610A',
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-1',
+        carrier_label: 'Full Transshipment Discharged',
+        created_at: '2026-04-02T19:12:43.853916Z',
+        retroactive: false,
+      },
+      {
+        id: 'discharge-new',
+        fingerprint: 'fp-discharge-new',
+        container_id: containerId,
+        container_number: 'GLDU2928252',
+        type: 'DISCHARGE',
+        event_time: temporalValueFromCanonical('2026-03-28'),
+        event_time_type: 'ACTUAL',
+        location_code: 'LKCMB',
+        location_display: 'COLOMBO, LK',
+        vessel_name: 'MSC ARICA',
+        voyage: 'OB610R',
+        is_empty: null,
+        confidence: 'high',
+        provider: 'msc',
+        created_from_snapshot_id: 'snapshot-2',
+        carrier_label: 'Full Transshipment Discharged',
+        created_at: '2026-04-04T16:53:10.273469Z',
+        retroactive: false,
+      },
+    ]
+
+    const { controllers } = createControllers({
+      observationsByContainerId: new Map([[containerId, observations]]),
+    })
+
+    const request = new Request(
+      `http://localhost/api/tracking/containers/${containerId}/timeline-items/discharge-new/history?now=2026-04-05T00:00:00.000Z`,
+    )
+    const response = await controllers.detail.getTimelineItemSeriesHistory({
+      params: { containerId, timelineItemId: 'discharge-new' },
+      request,
+    })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.conflict).toEqual({
+      kind: 'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
+      fields: ['voyage'],
+    })
+    expect(body.classified).toEqual([
+      {
+        id: 'discharge-old',
+        type: 'DISCHARGE',
+        event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+        event_time_type: 'ACTUAL',
+        created_at: '2026-04-02T19:12:43.853916Z',
+        series_label: 'CONFLICTING_ACTUAL',
+        vessel_name: 'MSC ARICA',
+        voyage: 'IV610A',
+        change_kind: 'VOYAGE_CORRECTED_AFTER_CONFIRMATION',
+      },
+      {
+        id: 'discharge-new',
+        type: 'DISCHARGE',
+        event_time: { kind: 'date', value: '2026-03-28', timezone: null },
+        event_time_type: 'ACTUAL',
+        created_at: '2026-04-04T16:53:10.273469Z',
+        series_label: 'CONFIRMED',
+        vessel_name: 'MSC ARICA',
+        voyage: 'OB610R',
+        change_kind: null,
+      },
+    ])
+  })
+
   it('observation-inspector drilldown returns a single observation payload', async () => {
     const containerId = 'container-observation'
     const observation: Observation = {

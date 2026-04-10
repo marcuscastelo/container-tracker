@@ -120,6 +120,9 @@ export type TrackingReplayDebugStateVM = {
       readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
       readonly createdAt: string
       readonly seriesLabel: string
+      readonly vesselName?: string | null
+      readonly voyage?: string | null
+      readonly changeKind?: string | null
     }[]
   }[]
   readonly timeline: readonly TrackingTimelineItem[]

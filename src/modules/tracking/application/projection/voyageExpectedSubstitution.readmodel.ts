@@ -36,16 +36,21 @@ export type VoyageExpectedSubstitutionCandidate<
 
 export type VoyageExpectedSubstitutionResult<
   T extends VoyageExpectedSubstitutionObservation = VoyageExpectedSubstitutionObservation,
+  TCandidate extends
+    VoyageExpectedSubstitutionCandidate<T> = VoyageExpectedSubstitutionCandidate<T>,
 > = {
-  readonly visibleCandidates: readonly VoyageExpectedSubstitutionCandidate<T>[]
+  readonly visibleCandidates: readonly TCandidate[]
   readonly mergedSuppressedHistoryByPrimaryId: ReadonlyMap<
     string,
     readonly ClassifiedObservation<T>[]
   >
 }
 
-type WorkingCandidate<T extends VoyageExpectedSubstitutionObservation> = {
-  readonly candidate: VoyageExpectedSubstitutionCandidate<T>
+type WorkingCandidate<
+  T extends VoyageExpectedSubstitutionObservation,
+  TCandidate extends VoyageExpectedSubstitutionCandidate<T>,
+> = {
+  readonly candidate: TCandidate
   readonly mergedSuppressedHistory: readonly ClassifiedObservation<T>[]
 }
 
@@ -198,9 +203,10 @@ function canBeSuppressedBy<T extends VoyageExpectedSubstitutionObservation>(
   return hasCoherentFutureChainEvidence(newer, allPrimaries)
 }
 
-export function applyVoyageExpectedSubstitution<T extends VoyageExpectedSubstitutionObservation>(
-  candidates: readonly VoyageExpectedSubstitutionCandidate<T>[],
-): VoyageExpectedSubstitutionResult<T> {
+export function applyVoyageExpectedSubstitution<
+  T extends VoyageExpectedSubstitutionObservation,
+  TCandidate extends VoyageExpectedSubstitutionCandidate<T>,
+>(candidates: readonly TCandidate[]): VoyageExpectedSubstitutionResult<T, TCandidate> {
   if (candidates.length < 2) {
     return {
       visibleCandidates: candidates,
@@ -209,8 +215,8 @@ export function applyVoyageExpectedSubstitution<T extends VoyageExpectedSubstitu
   }
 
   const allPrimaries = candidates.map((candidate) => candidate.primary)
-  const nonEligible: WorkingCandidate<T>[] = []
-  const eligibleGroups = new Map<string, VoyageExpectedSubstitutionCandidate<T>[]>()
+  const nonEligible: WorkingCandidate<T, TCandidate>[] = []
+  const eligibleGroups = new Map<string, TCandidate[]>()
 
   for (const candidate of candidates) {
     if (!isEligibleTerminalExpected(candidate.primary)) {
@@ -239,18 +245,18 @@ export function applyVoyageExpectedSubstitution<T extends VoyageExpectedSubstitu
     }
   }
 
-  const visibleWorking: WorkingCandidate<T>[] = [...nonEligible]
+  const visibleWorking: WorkingCandidate<T, TCandidate>[] = [...nonEligible]
 
   for (const group of eligibleGroups.values()) {
     const orderedGroup = [...group].sort((left, right) =>
       compareByCreatedAtThenChronology(left.primary, right.primary),
     )
 
-    let visibleGroup: WorkingCandidate<T>[] = []
+    let visibleGroup: WorkingCandidate<T, TCandidate>[] = []
 
     for (const candidate of orderedGroup) {
       let mergedSuppressedHistory: readonly ClassifiedObservation<T>[] = []
-      const survivors: WorkingCandidate<T>[] = []
+      const survivors: WorkingCandidate<T, TCandidate>[] = []
 
       for (const prior of visibleGroup) {
         if (canBeSuppressedBy(prior.candidate.primary, candidate.primary, allPrimaries)) {

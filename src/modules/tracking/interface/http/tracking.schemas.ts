@@ -158,6 +158,22 @@ const DetailTimelineSeriesLabelResponseDtoSchema = z.enum([
   'CONFLICTING_ACTUAL',
 ])
 
+const TrackingSeriesConflictKindResponseDtoSchema = z.enum([
+  'MULTIPLE_ACTUALS',
+  'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
+])
+
+const TrackingSeriesConflictFieldResponseDtoSchema = z.enum(['voyage'])
+
+const TrackingSeriesConflictResponseDtoSchema = z.object({
+  kind: TrackingSeriesConflictKindResponseDtoSchema,
+  fields: z.array(TrackingSeriesConflictFieldResponseDtoSchema),
+})
+
+const TrackingSeriesHistoryChangeKindResponseDtoSchema = z.enum([
+  'VOYAGE_CORRECTED_AFTER_CONFIRMATION',
+])
+
 const DetailTimelineSeriesItemResponseDtoSchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -165,10 +181,14 @@ const DetailTimelineSeriesItemResponseDtoSchema = z.object({
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   created_at: z.string(),
   series_label: DetailTimelineSeriesLabelResponseDtoSchema,
+  vessel_name: z.string().nullable().optional(),
+  voyage: z.string().nullable().optional(),
+  change_kind: TrackingSeriesHistoryChangeKindResponseDtoSchema.nullable().optional(),
 })
 
 export const TimelineSeriesHistoryResponseDtoSchema = z.object({
   has_actual_conflict: z.boolean(),
+  conflict: TrackingSeriesConflictResponseDtoSchema.nullable().optional(),
   classified: z.array(DetailTimelineSeriesItemResponseDtoSchema),
 })
 
@@ -228,6 +248,9 @@ const ReplayTimelineSeriesItemResponseDtoSchema = z.object({
     'CONFIRMED',
     'CONFLICTING_ACTUAL',
   ]),
+  vessel_name: z.string().nullable().optional(),
+  voyage: z.string().nullable().optional(),
+  change_kind: TrackingSeriesHistoryChangeKindResponseDtoSchema.nullable().optional(),
 })
 
 const ReplaySeriesResponseDtoSchema = z.object({
@@ -252,9 +275,11 @@ const TrackingTimelineItemResponseDtoSchema = z.object({
   derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   vessel_name: z.string().nullable(),
   voyage: z.string().nullable(),
+  series_conflict: TrackingSeriesConflictResponseDtoSchema.nullable().optional(),
   series_history: z
     .object({
       has_actual_conflict: z.boolean(),
+      conflict: TrackingSeriesConflictResponseDtoSchema.nullable().optional(),
       classified: z.array(ReplayTimelineSeriesItemResponseDtoSchema),
     })
     .nullable(),

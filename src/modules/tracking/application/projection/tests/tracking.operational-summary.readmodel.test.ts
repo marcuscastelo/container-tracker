@@ -127,6 +127,48 @@ describe('deriveTrackingOperationalSummary', () => {
     expect(temporalCanonicalText(summary.eta?.eventTime ?? null)).toBe('2026-02-18T08:00:00.000Z')
   })
 
+  it('resolves current context from the winning ACTUAL when discharge voyage observations conflict', () => {
+    const summary = deriveTrackingOperationalSummary({
+      observations: [
+        makeObservation({
+          id: 'discharge-old',
+          type: 'DISCHARGE',
+          event_time: '2026-03-28',
+          event_time_type: 'ACTUAL',
+          location_code: 'LKCMB',
+          location_display: 'COLOMBO, LK',
+          vessel_name: 'MSC ARICA',
+          voyage: 'IV610A',
+          created_at: '2026-04-02T19:12:43.853916Z',
+        }),
+        makeObservation({
+          id: 'discharge-new',
+          type: 'DISCHARGE',
+          event_time: '2026-03-28',
+          event_time_type: 'ACTUAL',
+          location_code: 'LKCMB',
+          location_display: 'COLOMBO, LK',
+          vessel_name: 'MSC ARICA',
+          voyage: 'OB610R',
+          created_at: '2026-04-04T16:53:10.273469Z',
+        }),
+      ],
+      status: 'DISCHARGED',
+      transshipment: {
+        hasTransshipment: false,
+        transshipmentCount: 0,
+        ports: [],
+      },
+      podLocationCode: 'LKCMB',
+      now: instantFromIsoText('2026-04-05T00:00:00.000Z'),
+    })
+
+    expect(summary.currentContext.locationCode).toBe('LKCMB')
+    expect(summary.currentContext.locationDisplay).toBe('COLOMBO, LK')
+    expect(summary.currentContext.vesselName).toBe('MSC ARICA')
+    expect(summary.currentContext.voyage).toBe('OB610R')
+  })
+
   it('forces eta=null at and after ARRIVED_AT_POD', () => {
     const statuses = [
       'ARRIVED_AT_POD',

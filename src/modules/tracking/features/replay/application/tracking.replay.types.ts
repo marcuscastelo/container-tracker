@@ -4,7 +4,10 @@ import type {
 } from '~/modules/tracking/application/projection/tracking.operational-summary.readmodel'
 import type { TrackingAlert } from '~/modules/tracking/features/alerts/domain/model/trackingAlert'
 import type { Observation } from '~/modules/tracking/features/observation/domain/model/observation'
-import type { SeriesLabel } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
+import type {
+  SeriesLabel,
+  TrackingSeriesHistoryChangeKind,
+} from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
 import type { ContainerStatus } from '~/modules/tracking/features/status/domain/model/containerStatus'
 import type { TrackingTimelineItem } from '~/modules/tracking/features/timeline/application/projection/tracking.timeline.readmodel'
 import type { TrackingValidationContainerSummary } from '~/modules/tracking/features/validation/application/projection/trackingValidation.projection'
@@ -45,6 +48,9 @@ export type TrackingReplaySeries = {
     readonly eventTimeType: 'ACTUAL' | 'EXPECTED'
     readonly createdAt: string
     readonly seriesLabel: SeriesLabel
+    readonly vesselName?: string | null
+    readonly voyage?: string | null
+    readonly changeKind?: TrackingSeriesHistoryChangeKind | null
   }[]
 }
 

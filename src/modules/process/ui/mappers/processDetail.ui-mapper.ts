@@ -84,6 +84,14 @@ function toTimelineSeriesHistory(
 
   return {
     hasActualConflict: seriesHistory.has_actual_conflict,
+    ...(seriesHistory.conflict === null || seriesHistory.conflict === undefined
+      ? {}
+      : {
+          conflict: {
+            kind: seriesHistory.conflict.kind,
+            fields: [...seriesHistory.conflict.fields],
+          },
+        }),
     classified: seriesHistory.classified.map((entry) => ({
       id: entry.id,
       type: entry.type,
@@ -91,6 +99,9 @@ function toTimelineSeriesHistory(
       event_time_type: entry.event_time_type,
       created_at: entry.created_at,
       seriesLabel: entry.series_label,
+      ...(entry.vessel_name === undefined ? {} : { vesselName: entry.vessel_name }),
+      ...(entry.voyage === undefined ? {} : { voyage: entry.voyage }),
+      ...(entry.change_kind === undefined ? {} : { changeKind: entry.change_kind }),
     })),
   }
 }
@@ -112,6 +123,14 @@ function toTimelineItem(item: TimelineResponseItem): TrackingTimelineItem {
     ...(item.location === null || item.location === undefined ? {} : { location: item.location }),
     ...(item.vessel_name === undefined ? {} : { vesselName: item.vessel_name }),
     ...(item.voyage === undefined ? {} : { voyage: item.voyage }),
+    ...(item.series_conflict === null || item.series_conflict === undefined
+      ? {}
+      : {
+          seriesConflict: {
+            kind: item.series_conflict.kind,
+            fields: [...item.series_conflict.fields],
+          },
+        }),
     ...(seriesHistory === undefined ? {} : { seriesHistory }),
   }
 }

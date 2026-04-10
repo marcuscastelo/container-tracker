@@ -331,6 +331,20 @@ const TrackingSeriesLabelSchema = z.enum([
   'CONFLICTING_ACTUAL',
 ])
 
+const TrackingSeriesConflictKindSchema = z.enum([
+  'MULTIPLE_ACTUALS',
+  'VOYAGE_MISMATCH_AFTER_ACTUAL_CONFIRMATION',
+])
+
+const TrackingSeriesConflictFieldSchema = z.enum(['voyage'])
+
+const TrackingSeriesConflictResponseSchema = z.object({
+  kind: TrackingSeriesConflictKindSchema,
+  fields: z.array(TrackingSeriesConflictFieldSchema),
+})
+
+const TrackingSeriesHistoryChangeKindSchema = z.enum(['VOYAGE_CORRECTED_AFTER_CONFIRMATION'])
+
 const TrackingTimelineSeriesItemResponseSchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -338,10 +352,14 @@ const TrackingTimelineSeriesItemResponseSchema = z.object({
   event_time_type: z.enum(['ACTUAL', 'EXPECTED']),
   created_at: z.string(),
   series_label: TrackingSeriesLabelSchema,
+  vessel_name: z.string().nullable().optional(),
+  voyage: z.string().nullable().optional(),
+  change_kind: TrackingSeriesHistoryChangeKindSchema.nullable().optional(),
 })
 
 export const TrackingTimelineSeriesHistoryResponseSchema = z.object({
   has_actual_conflict: z.boolean(),
+  conflict: TrackingSeriesConflictResponseSchema.nullable().optional(),
   classified: z.array(TrackingTimelineSeriesItemResponseSchema),
 })
 
@@ -356,6 +374,7 @@ const TrackingTimelineItemResponseSchema = z.object({
   derived_state: z.enum(['ACTUAL', 'ACTIVE_EXPECTED', 'EXPIRED_EXPECTED']),
   vessel_name: z.string().nullable(),
   voyage: z.string().nullable(),
+  series_conflict: TrackingSeriesConflictResponseSchema.nullable().optional(),
   has_series_history: z.boolean(),
   series_history: TrackingTimelineSeriesHistoryResponseSchema.nullable(),
 })

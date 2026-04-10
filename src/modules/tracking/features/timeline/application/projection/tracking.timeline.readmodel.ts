@@ -3,6 +3,10 @@ import { applyVoyageExpectedSubstitution } from '~/modules/tracking/application/
 import { trackingTemporalValueToDto } from '~/modules/tracking/domain/temporal/tracking-temporal'
 import type { TrackingObservationProjection } from '~/modules/tracking/features/observation/application/projection/tracking.observation.projection'
 import {
+  buildCanonicalSeriesGroups,
+  type CanonicalSeriesGroup,
+} from '~/modules/tracking/features/series/domain/reconcile/canonicalSeries'
+import {
   type DerivedObservationState,
   deriveObservationState,
 } from '~/modules/tracking/features/series/domain/reconcile/expiredExpected'
@@ -10,11 +14,10 @@ import {
   type ClassifiedObservation,
   classifySeries,
   type SeriesLabel,
+  type TrackingSeriesConflict,
+  type TrackingSeriesHistoryChangeKind,
 } from '~/modules/tracking/features/series/domain/reconcile/seriesClassification'
-import {
-  buildSeriesKey,
-  compareObservationsChronologically,
-} from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
+import { compareObservationsChronologically } from '~/modules/tracking/features/timeline/domain/derive/deriveTimeline'
 import { systemClock } from '~/shared/time/clock'
 import type { TemporalValueDto } from '~/shared/time/dto'
 import type { Instant } from '~/shared/time/instant'
@@ -26,10 +29,14 @@ export type TrackingSeriesHistoryItem = {
   readonly event_time_type: 'ACTUAL' | 'EXPECTED'
   readonly created_at: string
   readonly seriesLabel: SeriesLabel
+  readonly vesselName?: string | null
+  readonly voyage?: string | null
+  readonly changeKind?: TrackingSeriesHistoryChangeKind | null
 }
 
 export type TrackingSeriesHistory = {
   readonly hasActualConflict: boolean
+  readonly conflict?: TrackingSeriesConflict | null
   readonly classified: readonly TrackingSeriesHistoryItem[]
 }
 
@@ -52,6 +59,8 @@ export type TrackingTimelineItem = {
 
   /** Whether this primary has additional series entries available on demand. */
   readonly hasSeriesHistory?: boolean
+  /** Structured conflict metadata for the canonical series. */
+  readonly seriesConflict?: TrackingSeriesConflict | null
   /** Optional series history with backend-derived classification. */
   readonly seriesHistory?: TrackingSeriesHistory
 }
@@ -60,11 +69,13 @@ type TimelineSeriesCandidate = {
   readonly primary: TrackingObservationProjection
   readonly classified: readonly ClassifiedObservation<TrackingObservationProjection>[]
   readonly hasActualConflict: boolean
+  readonly conflict: TrackingSeriesConflict | null
 }
 
 function observationToTrackingTimelineItem(
   obs: TrackingObservationProjection,
   index: number,
+  seriesConflict: TrackingSeriesConflict | null,
   derivedState: DerivedObservationState = obs.event_time_type === 'ACTUAL'
     ? 'ACTUAL'
     : 'ACTIVE_EXPECTED',
@@ -90,12 +101,14 @@ function observationToTrackingTimelineItem(
     ...(location === undefined ? {} : { location }),
     ...(obs.vessel_name === undefined ? {} : { vesselName: obs.vessel_name }),
     ...(obs.voyage === undefined ? {} : { voyage: obs.voyage }),
+    ...(seriesConflict === null ? {} : { seriesConflict }),
   }
 }
 
 function timelineItemToTrackingItem(
   item: {
     readonly primary: TrackingObservationProjection
+    readonly seriesConflict: TrackingSeriesConflict | null
     readonly hasSeriesHistory: boolean
     readonly seriesHistory?: TrackingSeriesHistory
   },
@@ -103,7 +116,12 @@ function timelineItemToTrackingItem(
   index: number,
 ): TrackingTimelineItem {
   const derivedState = deriveObservationState(item.primary, allObservations)
-  const base = observationToTrackingTimelineItem(item.primary, index, derivedState)
+  const base = observationToTrackingTimelineItem(
+    item.primary,
+    index,
+    item.seriesConflict,
+    derivedState,
+  )
   return item.seriesHistory === undefined
     ? { ...base, hasSeriesHistory: item.hasSeriesHistory }
     : { ...base, hasSeriesHistory: true, seriesHistory: item.seriesHistory }
@@ -119,6 +137,9 @@ function toTrackingSeriesHistoryItem(
     event_time_type: observation.event_time_type,
     created_at: observation.created_at,
     seriesLabel: observation.seriesLabel,
+    ...(observation.vessel_name === undefined ? {} : { vesselName: observation.vessel_name }),
+    ...(observation.voyage === undefined ? {} : { voyage: observation.voyage }),
+    changeKind: observation.changeKind,
   }
 }
 
@@ -146,31 +167,26 @@ export function deriveTimelineWithSeriesReadModel(
 ): TrackingTimelineItem[] {
   if (observations.length === 0) return []
 
-  const groups = new Map<string, TrackingObservationProjection[]>()
-
-  for (const obs of observations) {
-    const key = buildSeriesKey(obs)
-    const group = groups.get(key)
-    if (group) group.push(obs)
-    else groups.set(key, [obs])
-  }
-
   const result: Array<{
     primary: TrackingObservationProjection
+    seriesConflict: TrackingSeriesConflict | null
     hasSeriesHistory: boolean
     seriesHistory?: TrackingSeriesHistory
   }> = []
   const seriesCandidates: TimelineSeriesCandidate[] = []
 
-  for (const series of groups.values()) {
-    series.sort(compareObservationsChronologically)
-    const classification = classifySeries(series, now)
+  const canonicalSeriesGroups: readonly CanonicalSeriesGroup<TrackingObservationProjection>[] =
+    buildCanonicalSeriesGroups(observations, now)
+
+  for (const canonicalSeries of canonicalSeriesGroups) {
+    const classification = classifySeries(canonicalSeries.observations, now)
 
     if (classification.primary) {
       seriesCandidates.push({
         primary: classification.primary,
         classified: classification.classified,
         hasActualConflict: classification.hasActualConflict,
+        conflict: classification.conflict,
       })
     }
   }
@@ -190,12 +206,14 @@ export function deriveTimelineWithSeriesReadModel(
       shouldIncludeSeriesHistory && hasSeriesHistory
         ? {
             hasActualConflict: candidate.hasActualConflict,
+            ...(candidate.conflict === null ? {} : { conflict: candidate.conflict }),
             classified: combinedClassified.map(toTrackingSeriesHistoryItem),
           }
         : undefined
 
     result.push({
       primary: candidate.primary,
+      seriesConflict: candidate.conflict,
       hasSeriesHistory,
       ...(seriesHistory === undefined ? {} : { seriesHistory }),
     })
